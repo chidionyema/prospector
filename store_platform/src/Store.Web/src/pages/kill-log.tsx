@@ -275,8 +275,8 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
             {killed.toLocaleString('en-GB')} ideas killed.
           </h1>
           <p className="mt-5 max-w-[60ch] text-body text-muted">
-            Anyone can claim rigour. This is the receipt: every rejected idea, the argument that
-            killed it, and the sources so you can check it yourself.
+            Most ideas do not survive. Here is what we rejected, the reason each one failed, and
+            the sources, so you can check the reasoning yourself.
           </p>
           {/* THE CAVEAT, AT THE TOP.
               It used to sit below all the entries, under a homepage line promising the log "has
@@ -285,9 +285,9 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
               overclaim, the correction has to arrive before the claim it corrects. */}
           <p className="mt-4 max-w-[68ch] text-meta text-muted">
             This page publishes {publishedKills} of those kills, not all {killed.toLocaleString('en-GB')}.
-            Kills whose only reason was a score below the bar are left out. They&rsquo;re true, but
-            they tell you nothing. What you see here is the kills that came with an argument,
-            {` ${withSource}`} of them carrying a source you can open.
+            The rest were rejected on a low overall score, with no single finding behind it, so
+            there would be nothing here for you to read. Every kill below names the check it
+            failed and why, and{` ${withSource}`} of them link the source.
           </p>
           {/* Mono: both are counts, and the pair is the one place on the site where the rejection
               rate is stated as a measured quantity rather than a boast. */}
@@ -320,7 +320,7 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
             The chart is the page's thesis in one object, and it is placed above the table because
             it is what makes the table legible: a reader who knows incumbency is the largest
             publishable cause reads 188 incumbency rows as a pattern rather than as repetition. */}
-        <section aria-labelledby="distribution-heading" className="rounded-md border border-border bg-surface p-5 md:p-7">
+        <section aria-labelledby="distribution-heading" className="rounded-md border border-border bg-surface p-6 md:p-7">
           <h2 id="distribution-heading" className="text-h2 font-semibold text-text">
             How ideas die
           </h2>
@@ -570,9 +570,9 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
           CTA so a reader who reaches the end still meets it.
         */}
         <p className="mt-10 max-w-[68ch] text-meta text-muted">
-          This is a sample of the log, not all {killed.toLocaleString('en-GB')}. Kills whose only
-          reason was a low score are left out, true, but they tell you nothing. Every kill here
-          came with an argument.
+          This is a sample of the log, not all {killed.toLocaleString('en-GB')}. The rest were
+          rejected on a low overall score, with no single finding behind it, so there would be
+          nothing here for you to read. Every kill above names the check it failed and why.
         </p>
 
         <div className="mt-10 rounded-md border border-border bg-surface2 p-8 md:p-10">

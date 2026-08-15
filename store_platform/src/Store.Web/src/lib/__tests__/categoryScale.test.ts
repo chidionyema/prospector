@@ -174,8 +174,22 @@ describe('the untagged pack renders no sector marker', () => {
      * untagged card that card's title sat ~34px higher than its neighbours' and its price row
      * was pushed down to match. What this test protects is the GUARD, not the identifier -- an
      * ungated chip prints an empty pill on the 9-of-63 untagged packs.
+     *
+     * `?` joins `&&` as an accepted spelling (2026-08-15). Two call sites now hand the label to
+     * the shared `PackCardHeader` as a prop (`cat.tagged ? cat.label : null`) and the row hands
+     * its own branch a DELIBERATE empty placeholder, so the guard is a ternary in three of the
+     * four places it appears. What this test protects has never been the operator -- it is that
+     * no code path can reach the chip with an untagged category.
      */
-    expect(page, 'the chip must be behind a tagged guard').toMatch(/\{(?:cat|category)\.tagged &&/);
+    expect(page, 'the chip must be behind a tagged guard').toMatch(
+      /\{(?:cat|category)\.tagged (?:&&|\?)/,
+    );
+
+    // The row's empty branch must stay INVISIBLE, not merely empty: it exists to hold the
+    // sector column open so the figure beside it lands on the same x, and a placeholder that
+    // announced itself would read as a missing value rather than as alignment.
+    const placeholder = page.match(/<span className="hidden flex-none sm:block sm:w-44"[^>]*\/>/);
+    expect(placeholder?.[0], 'the row placeholder must be aria-hidden').toContain('aria-hidden');
   });
 
   it('the card draws no marker for a missing sector, and is not empty without one', () => {
@@ -214,14 +228,30 @@ describe('the untagged pack renders no sector marker', () => {
     expect(cardCode, 'the untagged fallback identity must not come back').not.toMatch(
       /UNLABELLED|monogram/i,
     );
-    // Every sector rendering is behind the guard, so an untagged pack prints no empty chip.
+    /*
+     * Every sector rendering is behind a guard, so an untagged pack prints no empty chip.
+     *
+     * TWO SPELLINGS, BOTH ACCEPTED (2026-08-15). The `&&` form is the row's, which prints the
+     * label inline in its meta row. The ternary form is what the two CARD variants now use, and
+     * they use it because they no longer own their header: both pass
+     * `label={cat.tagged ? cat.label : null}` to `PackCardHeader`, so the guard has to be an
+     * expression rather than a statement. Counting only `&&` made this test fail on a change that
+     * strengthened the very invariant it protects -- the header component renders nothing at all
+     * for a falsy label, which is asserted directly below, so the guarantee is now made in ONE
+     * place instead of being re-made correctly at three call sites.
+     */
     const sectorPrints = cardCode.match(/cat\.label/g) ?? [];
-    const sectorGuards = cardCode.match(/cat\.tagged &&/g) ?? [];
+    const sectorGuards = cardCode.match(/cat\.tagged (?:&&|\?)/g) ?? [];
     expect(sectorPrints.length, 'the card must print the sector as its own label').toBeGreaterThan(0);
     expect(
       sectorGuards.length,
       'every sector label must sit behind its own `cat.tagged` guard',
     ).toBe(sectorPrints.length);
+
+    // The guarantee at its single source: the shared header draws nothing without a label, so a
+    // card cannot print an empty band even if a future call site forgets to branch.
+    const header = readSource('../../components/ui/PackCardHeader.tsx');
+    expect(header, 'the shared header must gate its label').toMatch(/\{label &&/);
 
     // And the identity that does not depend on the sector at all: the pack's own figure, on
     // every variant. This is the part an untagged pack relies on.

@@ -284,12 +284,40 @@ def test_cache_true_wraps_and_takes_ttl_and_dir_from_config(monkeypatch, tmp_pat
     cfg.retrieval.cache = True
     cfg.retrieval.cache_ttl_s = 999
 
-    prov = R.make_provider(cfg, fixtures={})
+    # A LIVE provider, not the fixture one. `_pinned` is `fixtures is not None or "fixture"
+    # in names`, and a pinned chain deliberately bypasses DiskCache (see the test below), so
+    # asserting the cache wrapping on a fixture config now asserts the opposite of the truth.
+    cfg.retrieval.provider = ["ddg"]
+
+    prov = R.make_provider(cfg)
 
     assert isinstance(prov, DiskCache)
     assert prov.ttl_s == 999, "TTL comes from config, never a hardcoded literal"
     assert prov.cache_dir == tmp_path / "cache", (
         "cache_dir must resolve CACHE_DIR at construction, not at import")
+
+
+def test_pinned_run_bypasses_the_cache_entirely(monkeypatch, tmp_path):
+    """A fixture-pinned run must not read DiskCache, however `cache: true` is configured.
+
+    `store/_cache` is full of entries written by earlier UNPINNED live runs under the SAME
+    stable golden query strings — the promotion gate asks the same questions every time. A
+    cache hit would serve real web passages to a run whose whole purpose is that the brain
+    sees only the fixture, and it would do so invisibly: the passages look fine, they are
+    simply not the held-constant evidence the score is attributed to."""
+    monkeypatch.setattr(R, "CACHE_DIR", tmp_path / "cache")
+    cfg = _fixture_cfg()
+    cfg.retrieval.cache = True
+
+    # Pinned BY THE DICT, on a config whose provider is live.
+    cfg.retrieval.provider = ["ddg"]
+    assert not isinstance(R.make_provider(cfg, fixtures={}), DiskCache)
+    # ...while the identical config UNPINNED still caches, so this is the pin's doing and
+    # not `cache: true` being ignored.
+    assert isinstance(R.make_provider(cfg), DiskCache)
+    # Pinned BY THE CONFIG NAME, with no dict passed at all — the second half of `_pinned`.
+    cfg.retrieval.provider = ["fixture"]
+    assert not isinstance(R.make_provider(cfg), DiskCache)
 
 
 def test_config_declares_the_ttl_and_the_bypass_flag():

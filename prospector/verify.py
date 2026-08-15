@@ -553,6 +553,34 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
     # ending mid-word (measured 2026-08-06), and this is the field a kill dossier renders as
     # its whole argument. See prospector/trimming.py.
     _rationale = clip_to_sentence(str(data.get("rationale", "")), RATIONALE_MAX)
+    # A RULING WITH NO REASON IS NOT EVIDENCE — same rule as the `except` branch above, for
+    # the case it cannot catch: a reply that parses cleanly, carries a verdict, and says
+    # NOTHING. `prompts/verdict.md:73-74` requires a rationale grounded in cited passages;
+    # nothing enforced it, so an empty string flowed into scoring and the kill gates exactly
+    # like a considered finding. That is the 2102bacc6dd75cf9 defect wearing a different
+    # coat: the dossier reads as fully reasoned and the argument field is blank.
+    #
+    # MEASURED before adding this (2026-08-15, golden set, fixture-pinned, same nine cases):
+    # claude_cli 0 of 27 checks ruled with an empty rationale; minimax 5 of 33. So the guard
+    # costs the trusted brain nothing and catches precisely the failure mode of the cheap
+    # tail — including one dental `payer_solvency` check that ruled `unverifiable` while its
+    # own (empty-after-clip) reply argued the payer could pay.
+    #
+    # DEFER, not demote: an unjustified answer is an unevaluated check, and the honest
+    # verdict on an unevaluated check is "come back to it", never "this idea is dead". This
+    # reuses `degraded`/`retrieval_failed` so the existing DEFER gate fires unchanged — no
+    # new path to keep in sync.
+    if not _rationale.strip():
+        logger.error(
+            f"Empty rationale from the verdict brain on {check_name} "
+            f"(verdict={verdict.value}, conf={confidence}) — treating as a failed call, "
+            f"not as a finding.",
+            extra={"check": check_name, "provider": _provider_used})
+        return CheckResult(check_name=check_name, verdict=Verdict.UNVERIFIABLE,
+                           confidence=0.0,
+                           rationale="Verdict returned without a rationale; fail-safe.",
+                           sources=sources, degraded=True, retrieval_failed=True,
+                           provider=_provider_used, provisional=_provisional)
     # Programme doc §33: does every claim-bearing number in the rationale come from a passage the
     # model was actually shown? `price_comparables._appears_in` has enforced exactly this for PRICES
     # since the seventh check shipped, and the six checks that CAN kill never did — 30% of the packs

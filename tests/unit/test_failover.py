@@ -203,8 +203,30 @@ def test_make_provider_builds_chain_from_list():
     cfg = load_config()
     cfg.retrieval.provider = ["fixture", "fixture"]
     cfg.retrieval.cache = False
-    prov = make_provider(cfg, fixtures={})
+    prov = make_provider(cfg)
     assert isinstance(prov, FallbackSearchProvider)
+
+
+def test_passing_fixtures_pins_to_one_provider_and_kills_the_chain():
+    """The other half of the same factory, and the reason the test above may NOT pass
+    `fixtures=`. `--fixtures` used to PREPEND the fixture provider (`names = ["fixture",
+    *names]`), leaving DDG/Exa behind it — and FallbackSearchProvider's relevance failover
+    escalates off any provider scoring under `min_relevance`, which a short canned passage
+    always does. So every "pinned" golden query went LIVE and every score ever produced by
+    the promotion gate was part search variance. A chain of one has no escalation path.
+
+    `fixtures={}` counts: an EMPTY fixture file must pin to nothing and return no passages,
+    never quietly fall through to the live web. That is why the condition is
+    `fixtures is not None`, not `if fixtures`."""
+    from prospector.config import load_config
+    from prospector.retrieval import make_provider
+    cfg = load_config()
+    cfg.retrieval.provider = ["fixture", "ddg", "exa"]
+    cfg.retrieval.cache = False
+    prov = make_provider(cfg, fixtures={})
+    assert not isinstance(prov, FallbackSearchProvider), (
+        "a pinned run must not be wrapped in the chain that can escalate off the fixture")
+    assert prov.search("anything at all") == []
 
 
 def test_make_operator_single_string_is_not_wrapped():

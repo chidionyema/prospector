@@ -1,9 +1,9 @@
 import { LEGAL } from '@/lib/config';
-/* The document count is COUNTED, never typed. `PACK_CONTENTS` is pinned to the engine's own
+/* The document count is COUNTED, never typed. `PACK_DOCUMENTS` is pinned to the engine's own
    `BUNDLE_FILES` by `__tests__/packContents.test.ts`, and this is the answer a buyer reads before
    paying: the last time the number was written out by hand it said four while the bundle had
    grown to eight. */
-import { PACK_CONTENTS } from '@/components/marketing/PackContents';
+import { PACK_DOCUMENTS } from '@/components/marketing/PackContents';
 
 /**
  * The FAQ copy, the ONE source both the visible page and the FAQPage structured data read.
@@ -54,12 +54,17 @@ export const FAQS: FaqItem[] = [
   { category: 'packs',
     question: 'What am I actually buying?',
     answer: [
-      // ANSWER-FIRST (email §6). State the 8 documents in one sentence, in the order the bundle
-      // ships them, so a reader who only reads the first sentence has the answer. The previous
-      // version opened "A pack is one vetted business opportunity in N documents" and listed them
-      // across the same sentence, so a buyer who skimmed could not count to eight. Eight it is,
-      // one sentence.
-      `One vetted business opportunity, as ${PACK_CONTENTS.length} documents: a build spec, go-to-market plan, operations plan, financial model, first-week checklist, marketing assets, an executive summary, and a QA report with a source behind every claim. Every one in Markdown you can edit, and the whole pack again as one typeset PDF. One zip, one payment, instant download.`,
+      // ANSWER-FIRST (email §6). State the documents in one sentence, in the order the pack reads
+      // them, so a reader who only reads the first sentence has the answer. The previous version
+      // opened "A pack is one vetted business opportunity in N documents" and listed them across
+      // the same sentence, so a buyer who skimmed could not count them.
+      //
+      // "Every one in Markdown you can edit" came out on 2026-08-15: the Markdown stopped shipping
+      // when bridge.py split render input from archive contract. The second sentence replaces it
+      // with what the buyer now actually opens, which is the more concrete claim anyway -- the
+      // founder's objection was "we are not selling to developers", and "Markdown you can edit"
+      // was the single most developer-facing sentence on the site.
+      `One vetted business opportunity, as ${PACK_DOCUMENTS.length} documents: an executive summary, a build spec, a go-to-market plan, an operations plan, a financial model, a first-week checklist, marketing assets, the evidence in one place, and a QA report with a source behind every claim. They arrive as a web page you read in your browser, a typeset PDF you can print, a one-page plan for your first fortnight, a spreadsheet of every assumption, and the marketing copy as plain text to paste. One zip, one payment, instant download.`,
     ],
   },
   { category: 'packs',
@@ -136,8 +141,15 @@ export const FAQS: FaqItem[] = [
   { category: 'packs',
     question: 'What format is it delivered in?',
     answer: [
-      // Per email §6: lead with the format, list open-in tools, link to the sample.
-      'Plain Markdown files in a zip. They open anywhere: Notion, Obsidian, a text editor, your AI tool.',
+      // Per email §6: lead with the format, list what opens each part.
+      //
+      // Rewritten 2026-08-15. "Plain Markdown files in a zip. They open anywhere: Notion,
+      // Obsidian, a text editor, your AI tool." was false from the moment bridge.py stopped
+      // writing the `.md` into the archive, and it was the answer to the one question a buyer
+      // asks BEFORE paying. It was also the sentence the founder's objection was aimed at: it
+      // names two tools most readers do not use to make a point ("it opens anywhere") that the
+      // formats now make on their own, and it sold a research product as a developer artefact.
+      'A zip you open like any other. A web page for reading the whole pack, a typeset PDF for printing, a one-page plan for your first fortnight, a spreadsheet of the assumptions, and the marketing copy as plain text to paste. Nothing to install, no account.',
     ],
   },
   { category: 'packs',

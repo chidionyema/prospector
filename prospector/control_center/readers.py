@@ -836,12 +836,20 @@ def today_spend_cached() -> dict[str, Any]:
 
 @st.cache_data(ttl=30)
 def load_golden_runs() -> list[dict[str, Any]]:
-    """Load all golden run files from store/golden_runs/, newest first."""
+    """Load all golden run files from store/golden_runs/, newest first.
+
+    Sorted by MTIME, not by filename.  Filenames are `<operator>_<ISO8601>.json`, so a
+    reverse lexical sort orders by OPERATOR first and only then by time — it agreed with
+    "newest first" for as long as every file shared one prefix, and stopped the moment a
+    second brain was benchmarked.  Measured 2026-08-15: `mock_20260814T2149…` (a CI
+    artefact, discrimination 1.0) sorted above `minimax_20260815T0046…` (the real gate
+    run, 0.667), so the cockpit's headline gate score was a mock's green.
+    """
     golden_dir = paths.store_path("golden_runs")
     if not golden_dir.exists():
         return []
     results = []
-    for p in sorted(golden_dir.glob("*.json"), reverse=True):
+    for p in golden_dir.glob("*.json"):
         try:
             d = json.loads(p.read_text(encoding="utf-8"))
             d["_filename"] = p.name
@@ -849,14 +857,25 @@ def load_golden_runs() -> list[dict[str, Any]]:
             results.append(d)
         except (json.JSONDecodeError, OSError):
             pass
+    # Filename breaks mtime ties so the order is deterministic within one second —
+    # `--runs 3` writes three records in well under that.
+    results.sort(key=lambda d: (d["_mtime"], d["_filename"]), reverse=True)
     return results
 
 
 @st.cache_data(ttl=30)
 def latest_golden() -> Optional[dict[str, Any]]:
-    """The most recent golden run result."""
-    runs = load_golden_runs()
-    return runs[0] if runs else None
+    """The most recent REAL golden run — a mock run is never the estate's score.
+
+    `--operator mock` exercises the harness, not a brain: it returns canned verdicts and
+    reaches 1.0 by construction.  Displaying one as "latest golden" states that the moat
+    passed its gate when nothing was measured.  History keeps them (`load_golden_runs`
+    returns everything); the live number may not be one.
+    """
+    for run in load_golden_runs():
+        if str(run.get("operator", "")).lower() != "mock":
+            return run
+    return None
 
 
 # ---------------------------------------------------------------------------

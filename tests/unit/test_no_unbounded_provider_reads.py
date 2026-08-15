@@ -92,11 +92,15 @@ def test_the_adapters_that_hung_are_specifically_covered():
     """Name the call sites from the incident, so a future refactor cannot quietly drop them.
 
     StandardCompute is the one that was live in the chain during the 46-hour wedge
-    (`config.yaml:53` operator, `:76` noncritical_operator).
+    (`config.yaml:53` operator, `:76` noncritical_operator). Its adapter was DELETED on
+    2026-08-15 by founder directive, so it is off the list below: a name assertion against a
+    class that no longer exists fails for the one reason this test does not care about. The
+    invariant is unweakened -- the bounded-read count still covers every adapter that
+    survives, and `_build_operator` raises on `kind == "standardcompute"`
+    (`prospector/operator.py:1383`), so a stale config cannot resurrect an unbounded read.
     """
     text = OPERATOR.read_text()
-    for adapter in ("StandardComputeOperator", "DeepSeekOperator", "OllamaOperator",
-                    "OpenRouterOperator"):
+    for adapter in ("DeepSeekOperator", "OllamaOperator", "OpenRouterOperator"):
         assert f"class {adapter}" in text, f"{adapter} vanished — re-derive this test"
 
     # Every adapter class must reach a bounded helper at least once. MiniMax moved to the SSE

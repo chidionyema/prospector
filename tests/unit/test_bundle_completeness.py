@@ -8,6 +8,13 @@ Two proven failure modes this pins:
 2. The Marketing_Assets loop appended a `##` heading per marketing piece even when `copy` was
    empty, so an all-empty list produced exactly `"# Marketing Assets\n\n"` — 20 bytes. Seen as
    late as 2026-07-30 22:21 (publish/bundles/a03a2ba0*).
+
+Both incidents happened when the archive WAS the eight markdown documents. Since 2026-08-15 the
+documents are the render input and the archive holds the rendered pack (`BUNDLE_FILES` =
+index.html, Complete_Pack.pdf, First_Fortnight.html, Assumptions.csv, Marketing_Assets.txt), so
+the same two failure modes are asserted where they now land: an absent artifact reaches the
+buyer as an honest placeholder INSIDE the reader, and the marketing floor is measured on
+`Marketing_Assets.txt`, the one document that still ships as editable text.
 """
 from __future__ import annotations
 
@@ -106,12 +113,16 @@ def _entries(zip_path):
 
 
 class TestCompleteBundle:
-    def test_all_eight_files_present(self, bridge):
+    def test_every_contract_file_is_present(self, bridge):
+        """Renamed 2026-08-15 from `test_all_eight_files_present`: the contract is no longer
+        eight markdown documents, it is the five rendered artefacts of `BUNDLE_FILES`. The name
+        stated a count that had become false, which is worse than no name at all.
+        """
         path = bridge._create_bundle(_dossier(), _full_artifacts(), [])
         assert path is not None
-        # `<=` not `==`: the bundle also ships index.html (pack_html.py), a bonus reading
-        # view that is deliberately NOT part of the BUNDLE_FILES sellability contract — see
-        # test_bundle_index_html.py for that file's own coverage.
+        # `<=` not `==`: the bundle also ships manifest.jsonld, a declared bonus that is
+        # deliberately NOT part of the BUNDLE_FILES sellability contract. The exact-set
+        # assertion lives in test_bundle_declared_entries.py, which owns that question.
         assert set(BUNDLE_FILES) <= set(_entries(path))
 
     def test_no_entry_is_a_stub(self, bridge):
@@ -120,8 +131,12 @@ class TestCompleteBundle:
             assert size >= _MIN_BUNDLE_ENTRY_BYTES, f"{name} is {size}b"
 
 
-class TestMissingArtifactsStillProduceAllEightFiles:
-    """REGRESSION: empty prose used to make the file vanish from the zip entirely."""
+class TestMissingArtifactsStillProduceEveryContractFile:
+    """REGRESSION: empty prose used to make the file vanish from the zip entirely.
+
+    Renamed 2026-08-15 (was `...ProduceAllEightFiles`). The eight documents are no longer zip
+    entries, so the property is stated against the contract rather than against a count.
+    """
 
     @pytest.mark.parametrize("dropped", ["build_spec", "gtm_plan", "ops_plan"])
     def test_empty_artifact_becomes_an_honest_placeholder(self, bridge, dropped):
@@ -133,24 +148,44 @@ class TestMissingArtifactsStillProduceAllEightFiles:
         assert all(s >= _MIN_BUNDLE_ENTRY_BYTES for s in entries.values())
 
     def test_placeholder_invents_nothing(self, bridge):
+        """Read from the READER since 2026-08-15, not from `03_Operations_Plan.md`.
+
+        The placeholder is unchanged (`bridge._held_back_md`) and so is the property being
+        pinned — a missing artifact must state its own absence rather than be papered over
+        with invented content. What changed is where a buyer meets it: the documents are the
+        render input now, so the honest placeholder has to survive INTO index.html, which is
+        the file the buyer actually opens. Asserting it on a .md that no longer ships would
+        have proved nothing about what was delivered.
+        """
         artifacts = _full_artifacts()
         artifacts["ops_plan"] = ""
         path = bridge._create_bundle(_dossier(), artifacts, [])
         with zipfile.ZipFile(path) as zf:
-            text = zf.read("03_Operations_Plan.md").decode()
+            text = zf.read("index.html").decode()
         assert "not generated" in text.lower()
         assert "held back from sale" in text.lower()
 
-    def test_every_artifact_missing_still_yields_eight_files(self, bridge):
+    def test_every_artifact_missing_still_yields_every_contract_file(self, bridge):
         path = bridge._create_bundle(_dossier(), {}, [])
         assert set(BUNDLE_FILES) <= set(_entries(path))
 
 
 class TestMarketingAssetsNeverAStub:
+    """Measured on `Marketing_Assets.txt` since 2026-08-15.
+
+    The 20-byte incident happened to `Marketing_Assets.md`, which is no longer a zip entry —
+    it is the render input for `Marketing_Assets.txt`, the one document the pack still ships in
+    an editable form because a buyer PASTES it rather than reads it. The stub floor therefore
+    has to hold on the .txt: that is the file the buyer receives, and a header-only .txt is the
+    same short delivery the .md was. The assertions below are the originals, re-pointed — the
+    markdown `## ` prefix is gone from plain text, so an emitted heading is caught by its LABEL
+    (`marketing_assets.heading_for`), which is strictly the thing that must not appear.
+    """
+
     def test_empty_marketing_list_is_filled_by_the_floor(self, bridge):
         """REGRESSION: this is the exact input that produced the 20-byte file."""
         path = bridge._create_bundle(_dossier(), _full_artifacts(), [])
-        size = _entries(path)["Marketing_Assets.md"]
+        size = _entries(path)["Marketing_Assets.txt"]
         assert size > 20, "20 bytes is the bare '# Marketing Assets' header"
         assert size >= _MIN_BUNDLE_ENTRY_BYTES
 
@@ -161,9 +196,9 @@ class TestMarketingAssetsNeverAStub:
         ]
         path = bridge._create_bundle(_dossier(), _full_artifacts(), marketing)
         with zipfile.ZipFile(path) as zf:
-            text = zf.read("Marketing_Assets.md").decode()
-        assert "## Social Post" not in text
-        assert f"## {heading_for('launch_email')[0]}" not in text
+            text = zf.read("Marketing_Assets.txt").decode()
+        assert heading_for("social_post")[0] not in text
+        assert heading_for("launch_email")[0] not in text
         # the floor still supplied a real listing page
         assert len(text) >= _MIN_BUNDLE_ENTRY_BYTES
 
@@ -171,13 +206,13 @@ class TestMarketingAssetsNeverAStub:
         marketing = [{"type": "launch_email", "copy": "Real email body with substance."}]
         path = bridge._create_bundle(_dossier(), _full_artifacts(), marketing)
         with zipfile.ZipFile(path) as zf:
-            text = zf.read("Marketing_Assets.md").decode()
+            text = zf.read("Marketing_Assets.txt").decode()
         # Read from `marketing_assets.heading_for`, not a literal. The heading used to be
         # `type.replace("_", " ").title()`, which shipped "Seo Preview" — our internal enum,
         # title-cased, in a £49.99 product (P6). Pinning the literal here made this test fail
         # for the FIX rather than for a regression, which is the opposite of its job: what it
         # guards is that a real piece survives into the file, whatever the heading says.
-        assert f"## {heading_for('launch_email')[0]}" in text
+        assert heading_for("launch_email")[0] in text
         assert "Real email body with substance." in text
 
 
@@ -195,26 +230,39 @@ class TestAuditBundle:
         assert audit_bundle(path) == ([], [])
 
     def test_missing_file_is_reported(self, tmp_path):
+        """The dropped file is `Complete_Pack.pdf` since 2026-08-15 (was
+        `05_First_Week_Checklist.md`, which is no longer an archive entry).
+
+        It is the deliberate consequence of the new contract, stated as a test: the typeset
+        edition is a promised deliverable now, so a pack whose PDF failed to render is SHORT
+        and must not list. Before the change the renderers sat in BUNDLE_BONUS_FILES and a
+        pack missing one listed anyway, silently incomplete.
+        """
         path = tmp_path / "pack.zip"
         with zipfile.ZipFile(path, "w") as zf:
             for name in BUNDLE_FILES:
-                if name == "05_First_Week_Checklist.md":
+                if name == "Complete_Pack.pdf":
                     continue
                 zf.writestr(name, "x" * (_MIN_BUNDLE_ENTRY_BYTES + 1))
         missing, stubs = audit_bundle(str(path))
-        assert missing == ["05_First_Week_Checklist.md"]
+        assert missing == ["Complete_Pack.pdf"]
         assert stubs == []
 
     def test_stub_entry_is_reported(self, tmp_path):
-        """The exact a03a2ba0 shape: the file is present, and 20 bytes of it."""
+        """The a03a2ba0 shape: the file is present, and a header's worth of it.
+
+        The 2026-07-30 incident was a 20-byte `Marketing_Assets.md`. The marketing copy now
+        ships as `Marketing_Assets.txt` — same document, same failure mode, one heading and
+        nothing under it — so the stub floor is asserted where the buyer would meet it.
+        """
         path = tmp_path / "pack.zip"
         with zipfile.ZipFile(path, "w") as zf:
             for name in BUNDLE_FILES:
-                body = "# Marketing Assets\n\n" if name == "Marketing_Assets.md" else "x" * 500
+                body = "Marketing Assets\n\n" if name == "Marketing_Assets.txt" else "x" * 500
                 zf.writestr(name, body)
         missing, stubs = audit_bundle(str(path))
         assert missing == []
-        assert stubs == ["Marketing_Assets.md=20b"]
+        assert stubs == ["Marketing_Assets.txt=18b"]
 
     def test_absent_zip_counts_as_wholly_missing_rather_than_raising(self, tmp_path):
         # The caller uses this to decide listing; an audit that throws would take down the
@@ -309,7 +357,10 @@ class TestIncompleteBundleCannotBeListed:
             path.parent.mkdir(parents=True, exist_ok=True)
             with zipfile.ZipFile(path, "w") as zf:
                 for name in BUNDLE_FILES:
-                    if name == "05_First_Week_Checklist.md":
+                    # Since 2026-08-15 the file dropped here is the typeset edition: it is a
+                    # promised deliverable now, so its absence is exactly what must reach the
+                    # catalogue as `is_listed=False`.
+                    if name == "Complete_Pack.pdf":
                         continue
                     zf.writestr(name, "x" * 500)
             return path
@@ -325,7 +376,12 @@ class TestIncompleteBundleCannotBeListed:
         assert call["content_hash"] is None
 
     def test_the_a03a2ba0_shape_is_registered_unlisted(self, publishing_bridge, monkeypatch):
-        """The live defect: 3 of 8 files, one of them a 20-byte header, listed for sale."""
+        """The live defect: 3 of 8 files, one of them a 20-byte header, listed for sale.
+
+        The fixture still writes the 2026-07 markdown shape on purpose. Since 2026-08-15 that
+        archive is short of every file in `BUNDLE_FILES` rather than five of eight, which is a
+        stronger version of the same verdict: a bundle in the old shape is not sellable either.
+        """
         def _stubbed(self, dossier, artifacts, marketing):
             path = Path("publish/bundles/stubbed.zip")
             path.parent.mkdir(parents=True, exist_ok=True)

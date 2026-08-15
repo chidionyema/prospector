@@ -1,5 +1,5 @@
 import { formatGbp, type LadderRung } from '@/lib/priceRange';
-import { PACK_CONTENTS } from '@/components/marketing/PackContents';
+import { PACK_DOCUMENTS } from '@/components/marketing/PackContents';
 import { cx } from '@/components/ui/cx';
 
 /*
@@ -17,7 +17,7 @@ import { cx } from '@/components/ui/cx';
   columns placed side by side. One climbs. The other is the same token repeated at every height,
   identically, all the way down. A reader takes that in without reading a word, and can then check
   it: every rung here is a price the catalogue actually charges, and the constant column is
-  `PACK_CONTENTS.length`, the same list rendered on the pack page and in the buyer's download.
+  `PACK_DOCUMENTS.length`, the same list rendered on the pack page and in the buyer's download.
 
   WHERE THE RUNGS COME FROM. `priceLadder(packs)` over the catalogue this request already fetched,
   not the seven rungs declared in `config.yaml:925`. Config states which prices are POSSIBLE; only
@@ -99,7 +99,7 @@ export function PriceLadder({ rungs, className }: { rungs: LadderRung[]; classNa
                   a single note at the foot of the figure. Reading down this column and finding it
                   unchanged is the reader verifying the claim for themselves. */}
               <span className="w-full flex-none text-caption text-survive sm:w-auto sm:text-right">
-                {PACK_CONTENTS.length} documents, every source cited
+                {PACK_DOCUMENTS.length} documents, every source cited
               </span>
             </li>
           );

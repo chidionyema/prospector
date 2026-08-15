@@ -50,14 +50,14 @@
 # PROMOTION GATE (to make a cheap model a TRUSTED primary, not just a fallback): see
 # specs/offline-moat-validation.md and run, recording a clearance:
 #   python -m prospector.golden --operator deepseek --fixtures fixtures/golden_fixtures.json --runs 3
-operator: [claude_cli, standardcompute, minimax]
-# standardcompute inserted ahead of minimax 2026-08-08 (founder directive: "fall back for claude
-# ahead of minimax"). It is a TAIL, not a head — claude_cli still leads, per the standing rule that
-# the chain must stay led by a trusted brain. It is NOT in MOAT_PRIMARY (`prospector/operator.py`), so a
-# ruling it serves is stamped `provisional`, never publishes on PASS (run.py:528) and is auto
-# re-vetted — the same posture minimax already had, which is what makes a cheap tail safe.
-# To promote it to trusted-final, the gate is the one named below:
-#   python -m prospector.golden --operator standardcompute --fixtures fixtures/golden_fixtures.json --runs 3
+operator: [claude_cli, minimax]
+# standardcompute was the middle tier here from 2026-08-08. Its adapter was DELETED on 2026-08-15
+# (founder: "we should get rid of standard compute"), and `_build_operator` now RAISES on the kind,
+# so leaving the name on this line would have failed the engine at startup on a config it could not
+# build. minimax is the tail: it is NOT in MOAT_PRIMARY (`prospector/operator.py:1199`), so a ruling
+# it serves is stamped `provisional`, never publishes on PASS (run.py:528) and is auto re-vetted —
+# which is what makes a cheap tail safe. To promote a tail to trusted-final, the gate is the one
+# named above, run against that provider.
 #
 # The CHEAP chain: divergent generation, prescreen, scoring. Never rules a verdict — anything of
 # its that reaches a ruling is stamped `provisional` (operator.py:1071), so the fence above does
@@ -74,13 +74,15 @@ operator: [claude_cli, standardcompute, minimax]
 # that never rules a verdict. `prospector/run.py::_noncritical_order` also STRIPS claude_cli when
 # it builds the chain, so editing this line back cannot quietly reinstate it.
 #
-# minimax heads it because standardcompute is out of allowance on disk right now —
-# store/provider_health_noncritical.json: strikes 6, last_error "You've used up your free trial".
-# standardcompute stays as the failover tier: a chain of one is not a chain, and it is the
-# cheapest tier again the day the account is funded.
+# minimax is now the WHOLE chain. It headed it because standardcompute was out of allowance on
+# disk (store/provider_health_noncritical.json: strikes 6, last_error "You've used up your free
+# trial"), and on 2026-08-15 that adapter was deleted outright. A chain of one is not a chain, and
+# that is a real exposure: if minimax fails, non-critical work raises ProviderExhaustedError and
+# the signal is parked for `generate --resume` rather than silently promoting a trusted brain into
+# ancillary work. Adding a second cheap tier here is the fix; claude_cli is not eligible for it.
 # NOTE: the moat (`operator:`) and the pack prose (`artifact_operator:`) are UNCHANGED — this
 # directive is about ancillary work, and the £49 deliverable is not ancillary.
-noncritical_operator: [minimax, standardcompute]
+noncritical_operator: [minimax]
 model: ""                            # verdict brain model pin (blank = each CLI's default).
 model_fast: ""                   # cheap model for query-gen/prescreen; blank = each provider's
                                  # own fast default (model_defaults.fast). Was deepseek-v4-flash.
@@ -141,7 +143,6 @@ model_defaults:
   # StandardCompute (api.stdcmpt.com) — OpenAI-compatible, key in .env as
   # STANDARDCOMPUTE_API_KEY, base URL overridable via STANDARDCOMPUTE_BASE_URL.
   # Wire format verified live 2026-08-08: /v1/chat/completions 200, /v1/messages 404.
-  standardcompute: "standardcompute"    # StandardComputeOperator default
   search:
     deepseek:    "deepseek-v4-flash"
     minimax:     "MiniMax-M3"

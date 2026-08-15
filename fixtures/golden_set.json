@@ -1,54 +1,81 @@
 [
   {
     "idea": "Haulage HMRC fuel-duty PTO rebate",
+    "fixture_key": "Haulage HMRC fuel-duty",
     "expected": "kill",
     "gate": "value_durability",
-    "must_surface": "red-diesel reform"
+    "must_surface": "red-diesel reform",
+    "why": "The rebate the business resells was abolished by the 2022 red-diesel reform, so the value is legislated away, not merely contested.",
+    "label_basis": "derivable from the fixture passage alone"
   },
   {
     "idea": "Construction retention recovery",
+    "fixture_key": "Construction retention recovery retentions banned insolvency",
     "expected": "kill",
     "gate": "distribution",
-    "must_surface": "retentions banned"
+    "must_surface": "retentions banned",
+    "why": "The fixture states retentions are being banned and the loss is insolvency-driven, so the recoverable pool is disappearing.",
+    "label_basis": "derivable from the fixture passage alone"
   },
   {
     "idea": "Care-home council fee arbitrage",
+    "fixture_key": "Care-home council fee",
     "expected": "kill",
     "gate": "payer_solvency",
-    "must_surface": "councils under-funded"
+    "must_surface": "councils under-funded",
+    "why": "The payer is a chronically under-funded council: structurally unable to pay.",
+    "label_basis": "derivable from the fixture passage alone"
   },
   {
     "idea": "AI meal-planner subscription (generic consumer)",
+    "fixture_key": "Generic AI meal-planner",
     "expected": "kill",
     "gate": "value_durability",
-    "must_surface": "saturated consumer"
+    "must_surface": "saturated consumer",
+    "why": "Saturated consumer category with no acute pain — a nice-to-have, per verdict.md's pain_reality polarity.",
+    "label_basis": "derivable from the fixture passage alone"
   },
   {
     "idea": "NFT marketplace (generic)",
+    "fixture_key": "NFT marketplace generic",
     "expected": "kill",
     "gate": "value_durability",
-    "must_surface": "NFT market collapsed"
+    "must_surface": "NFT market collapsed",
+    "why": "The market the service sits on collapsed, so the basis for the value no longer exists.",
+    "label_basis": "NO FIXTURE ENTRY EXISTS for this idea — it is scored against whatever the fixture matcher happens to return. Flagged 2026-08-15; either add a fixture or drop the case."
   },
   {
     "idea": "Construction Statutory Adjudication Arbitrage",
+    "fixture_key": "Construction Statutory Adjudication Arbitrage",
     "expected": "pass",
-    "must_surface": "statutory adjudication forcing mechanism"
+    "must_surface": "statutory adjudication forcing mechanism",
+    "why": "A statutory right (HGCRA 1996) is a durable, lawful forcing mechanism; the payer is a solvent main contractor withholding money it owes; sub-£100k claims are declined by construction-law firms, so the segment is open; trade federations are an executable route.",
+    "label_basis": "Every one of the six checks is now covered by the three fixture passages (rewritten 2026-08-15). Before that rewrite this case carried ONE sentence against six checks and BOTH claude_cli and minimax killed it — the label was unreachable from the evidence supplied, so the miss measured the fixture, not the brain."
   },
   {
     "idea": "Illegal LinkedIn Scraping Hub",
+    "fixture_key": "Illegal LinkedIn Scraping Hub",
     "expected": "kill",
     "gate": "legality",
-    "must_surface": "violates section 8.2 of the User Agreement"
+    "must_surface": "violates section 8.2 of the User Agreement",
+    "why": "The margin cannot exist without breaching the LinkedIn User Agreement — verdict.md:51-54 makes a ToS violation a legality refutation.",
+    "label_basis": "derivable from the fixture passage alone. NOTE: the incumbent fires value_durability here, not legality; the gate label is advisory (see run_golden_set) because gate ORDER under kill-fast differs between brains."
   },
   {
     "idea": "Niche Dental Practice CRM (<3 staff)",
+    "fixture_key": "Niche Dental Practice CRM (<3 staff)",
     "expected": "pass",
-    "must_surface": "ignored by enterprise CRM vendors"
+    "must_surface": "ignored by enterprise CRM vendors",
+    "why": "Enterprise CRM vendors price the <3-staff segment out and no vertical incumbent serves it; practices already pay for practice-management software so pain and solvency are established; associations sell vendor access; recall processing is lawful under UK GDPR.",
+    "label_basis": "Every one of the six checks is now covered by the three fixture passages (rewritten 2026-08-15). Same history as the adjudication case: one sentence against six checks, killed by both brains."
   },
   {
     "idea": "Generic E-commerce Platform for SMBs",
+    "fixture_key": "Generic E-commerce Platform for SMBs",
     "expected": "kill",
     "gate": "incumbency",
-    "must_surface": "Shopify and Amazon already own 90%"
+    "must_surface": "Shopify and Amazon already own 90%",
+    "why": "Shopify and Amazon are clear market leaders with dominant share — the exact example verdict.md:44-46 gives for an incumbency refutation.",
+    "label_basis": "derivable from the fixture passage alone"
   }
-  ]
+]

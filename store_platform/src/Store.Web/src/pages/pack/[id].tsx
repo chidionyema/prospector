@@ -14,7 +14,7 @@ import { cx } from '@/components/ui/cx';
 import { categoryFor } from '@/lib/category';
 import { COMMON_CHECKS, checkForGate } from '@/lib/checks';
 import { Section } from '@/components/marketing/blocks';
-import { PackContentsSection, PACK_CONTENTS } from '@/components/marketing/PackContents';
+import { PackContentsSection, PACK_DOCUMENTS } from '@/components/marketing/PackContents';
 import { ApiError, fetchCatalog, fetchPackDetails, freshnessLabel, marketLabel, parseCheckCounts, scoreAxes, splitVerdict, Pack, PackDetails, FinancialSnapshot } from '@/lib/api/client';
 import { RESEARCH_STATS } from '@/lib/stats';
 import { paybackEquation } from '@/lib/payback';
@@ -23,7 +23,6 @@ import { isTruncated, repairTruncation } from '@/lib/copy';
 import { track, trackPriceEvent } from '@/lib/analytics';
 import { BuyerIdentityNote } from '@/components/checkout/BuyerIdentityNote';
 import EvidenceExcerptPlate from '@/components/marketing/EvidenceExcerptPlate';
-import PackMark from '@/components/ui/PackMark';
 import PackBuyButton from '@/components/checkout/PackBuyButton';
 import { usePackCheckout } from '@/lib/checkout/usePackCheckout';
 import { PREOPENED_CHECKOUT_PARAM, preopenedClientSecret } from '@/lib/preopenedCheckout';
@@ -597,70 +596,32 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
              * above it. One fact, rendered once, in the data voice.
              */}
             {/*
-             * THE MORPH TARGET.
+             * THE MASTHEAD STRIP IS REMOVED (2026-08-15). It was a 96px `bg-ins-bg` band carrying
+             * a generated `PackMark`, and it is the fourth and last near-black block to go under
+             * the founder's 2026-08-14 ruling ("Remove the black media block until there is real
+             * imagery for it", docs/SITE_SPEC_PROGRAM.md:1007). The other three were on the shelf;
+             * this one was on the product page, which is why leaving it would have been the worse
+             * outcome of the two -- a shelf of pale text cards opening onto a near-black hero is a
+             * bigger discontinuity than the one being fixed.
              *
-             * The shelf's lead card renders `<PackMark morph />` (pages/index.tsx:354) and until
-             * now nothing on this page claimed the same `view-transition-name`, so the shared
-             * element had a source and no destination: the browser cross-faded the whole root and
-             * the one animation worth paying for never ran. This strip is the other half.
+             * ITS OWN DOCBLOCK IS WHY IT GOES, and the argument is worth keeping. It ran to six
+             * paragraphs, and every one of them tuned what to draw ON the block: the ground
+             * (`cat.tint` -> `--ins-bg`), the ink (`--ins-dim` at 0.88, composited to #2A2E33),
+             * the axis (`down`, because bands drawn `across` in a wide box are "the text-skeleton
+             * idiom"), the radial lift, the decision to keep labels off it. Six corrections, each
+             * one sound, none of them answering whether a shop with no photography should be
+             * drawing a frame for photography it does not have.
              *
-             * 96px, not 550px. The full-bleed sector cover was deleted for a measured reason
-             * (see the note in `PackCover`): it pushed the h1, the price and the buy button below
-             * the fold on a 1280x720 viewport. A strip this tall is a masthead, not a hero -- it
-             * gives the transition somewhere to land and gives the page the pack's own mark,
-             * without spending the fold on decoration.
+             * THE MORPH GOES WITH IT. `view-transition-name` needs both halves; the shelf's lead
+             * card no longer renders one either (pages/index.tsx), so this is a matched removal
+             * rather than a dangling source. `PackMark` is untouched and still exported --
+             * `AccountPanel` renders it -- so a future imagery decision has the component intact.
              *
-             * THE GROUND IS THE INSTRUMENT PLATE (2026-08-14), and this is a correction of the
-             * paragraph that used to sit here arguing for `cat.tint`/`cat.ink` ("colour still
-             * means sector"). That argument was sound about MEANING and wrong about the surface it
-             * chose: on white, low-opacity bars of ragged width are a loading skeleton whichever
-             * way they run -- which is the exact defect the `axis` note below is fighting, one
-             * layer up. Sector still means sector; it is carried by the breadcrumb's last crumb
-             * directly above this strip, in words, which is where a sector belongs.
-             *
-             * It also has to match the shelf or the morph is a lie. `pages/index.tsx` draws the
-             * lead card's mark on `bg-ins-bg` now; a shared-element transition from a near-black
-             * plate to a pale mint one animates a colour change nobody asked for, on top of the
-             * scale that is the point of the transition.
-             *
-             * `emphasis` IS correct here and is not on the shelf: it lifts the bands to 0.26-0.88,
-             * which is unreadable under a readout and exactly right when the mark is alone. Nothing
-             * is overlaid on this strip -- the chip and the dossier number were deliberately kept
-             * out (see below), because a label sitting on the mark turns a masthead back into a
-             * cover.
-             *
-             * The ink is a step DARKER than the shelf's for that reason, not by oversight:
-             * `--ins-dim` (#2E3238) at 0.88 composites to #2A2E33, where the shelf's `--ins-dim2`
-             * at the same strength would give #363B42. At 976x96 this strip is the widest single
-             * graphic above the h1, and the brighter pair rendered as a row of lit blocks that
-             * out-shouted the title it is a masthead for. Strength times area is the quantity that
-             * matters; the shelf can afford the lighter ink because its plate is a quarter of a
-             * card, not a full-measure band across the fold.
+             * NOTHING IT STATED IS DROPPED, because it stated nothing: the sector is carried by
+             * the breadcrumb's last crumb directly above, in words, and the strip deliberately
+             * held no label at all. What is left in its place is the h1, which is what the fold
+             * was always for.
              */}
-            <div
-              className={cx(
-                'relative mb-3 h-20 w-full overflow-hidden rounded-md sm:h-24',
-                'bg-ins-bg text-ins-dim',
-              )}
-            >
-              {/* THE PLATE IS LIT EVERYWHERE ELSE. Every other instrument surface on the site --
-                  the shelf's lead card and `DossierCard`'s cover -- carries this exact radial, so
-                  the ground reads as a plate under a light rather than as a flat fill. This
-                  masthead is the one that did not, which is why the widest instrument band on the
-                  site was also the deadest looking. Same gradient, same origin, no new token. */}
-              <div
-                aria-hidden
-                className={cx(
-                  'pointer-events-none absolute inset-0',
-                  'bg-[image:radial-gradient(120%_80%_at_12%_100%,rgb(250_250_250/0.07),transparent_60%)]',
-                )}
-              />
-              {/* `axis="down"` because this box is 704x96 -- the one WIDE box the mark lands in.
-                  Left `across`, the bands stretch into ragged-width horizontal lines, which is the
-                  text-skeleton idiom (`components/ui/Skeleton.tsx`), so the masthead reads as an
-                  unfinished render above the buy button. See the rule on `PackMark`'s `axis`. */}
-              <PackMark id={pack.id} morph emphasis axis="down" />
-            </div>
             {/* `PackCover` was here, a 44px bordered strip holding the sector chip, the market and
                 "№ 08B220". It is gone from the fold, and each of its three facts is accounted for
                 rather than dropped:
@@ -901,7 +862,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
             <div className="mt-12">
               <PackContentsSection
                 heading="What’s inside your pack"
-                lead={`The moment you pay, you download the whole pack. ${PACK_CONTENTS.length} documents, no drip feed, no login.`}
+                lead={`The moment you pay, you download the whole pack. ${PACK_DOCUMENTS.length} documents, no drip feed, no login.`}
                 sourceCount={pack.sourceCount}
               />
             </div>
@@ -1184,7 +1145,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                   {pack.whatYouGet.map((item, i) => (
                     <li
                       key={i}
-                      className="flex items-start gap-3 rounded-md border border-border bg-surface p-5"
+                      className="flex items-start gap-3 rounded-md border border-border bg-surface p-6"
                     >
            <span className="mt-0.5 text-caption font-medium text-subtle">
                         {String(i + 1).padStart(2, '0')}
@@ -1313,7 +1274,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
           <div className="hidden w-full shrink-0 lg:block lg:w-80">
             <div
               className={cx(
-                'sticky top-24 rounded-md border border-border bg-surface p-7',
+                'sticky top-24 rounded-md border border-border bg-surface p-8',
                 'max-h-[calc(100svh-7rem)] overflow-y-auto overscroll-contain [scrollbar-width:thin]',
               )}
             >
@@ -1324,7 +1285,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
 
         {/* Sticky mobile checkout bar, keeps price + CTA above the fold on phones. */}
         {canCheckout && !clientSecret && (
-          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface p-3 pb-[env(safe-area-inset-bottom)] lg:hidden">
+          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface p-4 pb-[env(safe-area-inset-bottom)] lg:hidden">
             <div className="flex items-center justify-between gap-3">
               {/* The terms, not the number. This said `One time  £79` beside a button reading
                   `Buy this pack  £79`, so the bar spent its whole left half repeating the figure
@@ -1353,7 +1314,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
           <button
             type="button"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="fixed bottom-6 right-4 z-20 hidden rounded-sm border border-border bg-surface p-3 shadow-none transition-colors hover:bg-bg lg:block"
+            className="fixed bottom-6 right-4 z-20 hidden rounded-sm border border-border bg-surface p-4 shadow-none transition-colors hover:bg-bg lg:block"
             aria-label="Back to top"
           >
             <Icon name="trending-up" size={16} />

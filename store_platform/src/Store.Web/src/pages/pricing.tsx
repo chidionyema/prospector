@@ -3,7 +3,7 @@ import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
 import { Button, Icon, textLinkClass } from '@/components/ui';
-import { PACK_CONTENTS } from '@/components/marketing/PackContents';
+import { PACK_DOCUMENTS } from '@/components/marketing/PackContents';
 import { BRAND, LEGAL } from '@/lib/config';
 import { GetStaticProps } from 'next';
 import { fetchCatalog } from '@/lib/api/client';
@@ -93,7 +93,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
               and which market it targets. US-market packs sit one price step higher, because the
               market they address is bigger. A weekend side business and a
               venture-scale one get the same{' '}
-              {PACK_CONTENTS.length} documents, researched to the same standard and held to the same
+              {PACK_DOCUMENTS.length} documents, researched to the same standard and held to the same
               bar. What differs is how much is on the table if it works, so a cheaper pack is not a
               thinner one.
             </p>
@@ -104,33 +104,37 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
         <div className="mt-12">
           <h2 className="text-h2 font-semibold text-text">What you get, at every price</h2>
           <p className="mt-3 max-w-[60ch] text-body text-muted">
-            Every pack is the same shape: {PACK_CONTENTS.length} documents, sourced
+            Every pack is the same shape: {PACK_DOCUMENTS.length} documents, sourced
             and cited. No tier, no add-on. The list below is
             identical for every pack on the shelf
             {range && !range.uniform ? `, whether it is ${formatGbp(range.min)} or ${formatGbp(range.max)}` : ''}
             .
           </p>
-          {/* Two columns from `sm` up, matching `PackContents` (the same eight items, rendered on
-              the pack page). Stacked full-width, eight rows of a title plus a filename ran the
-              length of a 1440px viewport with ~900px of empty card to the right of every line
-              (desktop-pricing-fold.png, 2026-08-06), and pushed the price argument below them a
-              full screen further down. */}
+          {/* Two columns from `sm` up, matching `PackContents` (the same items, rendered on the
+              pack page). Stacked full-width, nine rows ran the length of a 1440px viewport with
+              ~900px of empty card to the right of every line (desktop-pricing-fold.png,
+              2026-08-06), and pushed the price argument below them a full screen further down.
+
+              2026-08-15: the filename line under each title is GONE, and this page stops being
+              "the bare-filenames half" of the §5.3 ownership split. The split survives -- the
+              enumerated manifest with real archive entries is still index.tsx's, via
+              `PackContentsSection` -- but these nine are sections of the reader now, so their
+              `.md` names are true of our source tree and false of the buyer's download folder.
+              A filename that does not appear in the zip is worse than no filename: this page's
+              argument is "every pack is the same shape whatever it costs", and the shape is the
+              documents. */}
           <ul className="mt-6 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2">
-            {PACK_CONTENTS.map((item) => (
+            {PACK_DOCUMENTS.map((item) => (
               <li
-                key={item.filename}
+                key={item.section}
                 className="flex items-start gap-3 rounded-md border border-border bg-surface p-4"
               >
-                {/* The emoji is not rendered (brand v3): eight emoji stacked down a list is the
+                {/* The emoji is not rendered (brand v3): nine emoji stacked down a list is the
                     single loudest thing on a page about a professional research product, and each
-                    one renders as a different vendor's artwork per OS. The filename is the honest
-                    icon -- it is what lands in the buyer's download folder. */}
+                    one renders as a different vendor's artwork per OS. */}
                 <Icon name="check" size={16} className="mt-0.5 flex-none text-success" />
                 <div className="min-w-0">
                   <p className="text-meta font-medium text-text">{item.title}</p>
-                  <p className="mt-0.5 break-all font-mono text-caption text-subtle">
-                    {item.filename}
-                  </p>
                 </div>
               </li>
             ))}
@@ -164,7 +168,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
 
         {/* Trust + refund */}
         <div className="mt-12 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-md border border-border bg-surface p-5">
+          <div className="rounded-md border border-border bg-surface p-6">
             <div className="flex items-center gap-2">
               <Icon name="shield" size={16} className="text-success" />
               <h3 className="text-meta font-semibold text-text">14 day money back</h3>
@@ -182,7 +186,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
               .
             </p>
           </div>
-          <div className="rounded-md border border-border bg-surface p-5">
+          <div className="rounded-md border border-border bg-surface p-6">
             <div className="flex items-center gap-2">
               <Icon name="verified" size={16} className="text-success" />
               <h3 className="text-meta font-semibold text-text">Every claim cited</h3>

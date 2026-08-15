@@ -2,6 +2,7 @@ import Link from 'next/link';
 import React from 'react';
 
 import { EvidenceBar } from '@/components/ui/EvidenceBar';
+import { PackCardHeader } from '@/components/ui/PackCardHeader';
 import { cx } from '@/components/ui/cx';
 import { freshnessLabel, type Pack } from '@/lib/api/client';
 import { categoryFor } from '@/lib/category';
@@ -19,6 +20,12 @@ import { FacetChips } from './FacetChips';
  * but smaller padding, no buy button, and no FitChips cap of 5. Used by SimilarPacks and PackGrid
  * so those surfaces don't carry their own hardcoded card markup, which has already drifted from
  * the catalogue card once.
+ *
+ * ONE HEADER, ONE HEADING (2026-08-15). Both now come from the same place as the shelf card's:
+ * `PackCardHeader` for the band, `h3 text-body font-semibold leading-snug` for the title. This
+ * card is smaller than the shelf card and stays smaller -- a two-line clamp, no buy button --
+ * but it is no longer a DIFFERENT card. What it was: an 80px near-black plate and a `span` one
+ * type step down, i.e. the one surface that never got the founder's 2026-08-14 ruling.
  *
  * Brand v3 (2026-08-06): `ring-1 ring-black/[0.06]` became a real `border-border` hairline (a
  * ring is drawn outside the box, so a ringed card and a bordered card in the same grid sit on
@@ -61,50 +68,36 @@ export function DossierCard({
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
       )}
     >
-      {/* THE COVER, at the small size (2026-08-14).
-          A pack was a different object depending on which shelf you found it on: the home page
-          drew it on the instrument plate with its evidence run as the artwork, while /ideas/<slug>
-          -- the shelf a search engine actually lands people on -- drew a white rectangle with a
-          green tick and a number in the body. Same product, two identities, and the weaker one on
-          the page with the inbound traffic.
+      {/* THE SHARED HEADER (2026-08-15). This was an 80px `bg-ins-bg` plate -- a scaled copy of
+          `PackCoverArt`, which was DELETED from the homepage on 2026-08-14 when the founder ruled
+          the black media block out. The ruling landed on index.tsx and never reached here, so for
+          a day the same pack wore a near-black plate on /ideas/<slug> (the shelf search engines
+          land people on) and a pale band on the home shelf. The comment that used to sit here
+          still claimed this was "the SAME drawing as `PackCoverArt` in pages/index.tsx", by then a
+          component that did not exist.
 
-          This is the SAME drawing as `PackCoverArt` in pages/index.tsx, scaled: same ground, same
-          bottom-left lift, same sector line in mono, same `EvidenceBar` component with
-          `tone="instrument"` at its `sm` step. 80px rather than 112px because this card also
-          serves the `SimilarPacks` rail, where it is a secondary object on a page that already has
-          a masthead; the cover must not out-weigh what it sits under.
+          It is now literally the same element as every other pack card's, because it is the same
+          component. See `PackCardHeader`. */}
+      <PackCardHeader label={cat.tagged ? cat.label : null} labelClassName={cat.ink} />
 
-          `size` stays at the default `sm`: the tick shape is the same 5-step skyline either way
-          (see EvidenceBar), so a 26-source pack is recognisably the same run here as on the home
-          shelf, just smaller. */}
-      <div className="relative flex h-20 flex-col justify-between overflow-hidden border-b border-ins-line bg-ins-bg px-5 py-3.5">
-        <div
-          aria-hidden
-          className={cx(
-            'pointer-events-none absolute inset-0',
-            // Literal, not a token, and identical to the home cover's: it is a surface texture
-            // rather than a semantic colour. Tailwind scans source text, so it must stay a full
-            // literal class string and can never be built by interpolation.
-            'bg-[image:radial-gradient(120%_80%_at_12%_100%,rgb(250_250_250/0.07),transparent_60%)]',
-          )}
-        />
-        <span className="relative min-w-0 truncate font-mono text-caption text-ins-muted">
-          {cat.tagged ? cat.label : null}
-        </span>
-        {/* The evidence line moved OUT of the body and onto the plate, which is where the green
-            `Glyph name="source"` went with it. That glyph was the site's "one cited source" mark
-            printed once, beside a number, in success green -- a verdict colour on a fact that is
-            not a verdict. The run states the same number and can be compared card to card. */}
-        <span className="relative">
-          <EvidenceBar count={pack.sourceCount} tone="instrument" />
-        </span>
-      </div>
-
-      <div className="flex flex-1 flex-col p-5">
-        <span className="line-clamp-2 text-meta font-semibold leading-snug text-text">{heading}</span>
-        {line && <span className="mt-1 line-clamp-2 text-caption text-muted">{line}</span>}
+      <div className="flex flex-1 flex-col p-6">
+        {/* `h3` at `text-body`, matching the shelf card (index.tsx). It was a `span` at
+            `text-meta`: one size smaller AND not a heading element at all, so a screen reader
+            walking /ideas/<slug> by heading found the page title and then nothing for twenty
+            products. The content helper was unified months ago (`cardHeading`); the styling and
+            the semantics were not. */}
+        <h3 className="line-clamp-2 text-body font-semibold leading-snug text-text">{heading}</h3>
+        {line && <p className="mt-1 line-clamp-2 text-caption text-muted">{line}</p>}
 
         <FacetChips pack={pack} compact omit={omitFacet} className="mt-3" />
+
+        {/* THE EVIDENCE RUN, IN THE BODY, IN THE CARD'S ORDINARY INK. It used to be the lit thing
+            on the dark plate; the plate is what went, not the fact. `tone` drops to the default,
+            which is the whole point of the tone prop -- the same run, drawn for a light surface
+            (`--survive` ticks, `--subtle` label) instead of an instrument one. */}
+        <div className="mt-3">
+          <EvidenceBar count={pack.sourceCount} />
+        </div>
 
         {fresh && <p className="mt-3 font-mono text-caption text-subtle">{fresh}</p>}
 

@@ -3,7 +3,6 @@
 Every model call goes through Operator.complete_json(), which enforces strict JSON
 output with repair-retries (Part 9) — a bad parse never crashes a run. Adapters:
   - GeminiOperator: google-genai direct. Default for 'now' (key present).
-  - ClaudeOperator: Anthropic API (select once ANTHROPIC_API_KEY is set).
   - MiniMaxOperator: MiniMax OpenAI-compatible API. Routed to NON-VERIFICATION
     tasks only (generation, marketing content, artifacts). The verification moat
     (kill-check verdicts, adversarial pass) MUST stay with Claude/Gemini per
@@ -241,48 +240,18 @@ class Operator(ABC):
         raise ParseError(f"{self.name}: failed after {retries + 1} attempts: {last_err}")
 
 
-class ClaudeOperator(Operator):
-    """Anthropic API brain. Selectable once ANTHROPIC_API_KEY is present."""
-    def __init__(self, model: str = "claude-opus-4-8", api_key: Optional[str] = None):
-        from anthropic import Anthropic
-        key = api_key or os.environ.get("ANTHROPIC_API_KEY")
-        if not key:
-            raise RuntimeError("ANTHROPIC_API_KEY not set")
-        self._client = Anthropic(api_key=key)
-        self.model = model
-        self.name = f"claude/{self.model}"
-
-    @track_latency(name="claude_raw_call")
-    def _raw(self, system: str, user: str, temperature: float) -> str:
-        try:
-            resp = self._client.messages.create(
-                model=self.model, max_tokens=4096, temperature=temperature,
-                system=system, messages=[{"role": "user", "content": user}],
-            )
-        except Exception as e:
-            # This had NO try/except at all until 2026-08-10, the one gap `classify_exhaustion`
-            # was built to close. "claude" is one of the two MOAT_PRIMARY names, so a raw
-            # Anthropic SDK error (a genuine 402, a spent monthly allowance) propagated past
-            # FallbackOperator's `hard = isinstance(e, ProviderExhaustedError)` check as an
-            # ordinary failure -- never classified, never reaching `_health.mark_exhausted` --
-            # so the one operator singled out as trusted got NONE of the persisted-dead-mark
-            # protection every other adapter (MiniMax, DeepSeek, StandardCompute) gets here.
-            # Net effect: a dead claude_cli key was retried fresh every tick instead of benched
-            # for the documented 1h/60s. Same tested classifier as every other adapter, not an
-            # ad-hoc substring test — see the marker list in errors.py.
-            from .errors import ProviderExhaustedError, looks_exhausted
-            if looks_exhausted(str(e)):
-                raise ProviderExhaustedError(f"Claude API exhausted: {e}",
-                                              provider=self.name) from e
-            raise RuntimeError(f"Claude API call failed: {e}") from e
-        # Track usage
-        usage = resp.usage
-        from .telemetry import record_usage
-        record_usage(input_tokens=usage.input_tokens,
-                     output_tokens=usage.output_tokens,
-                     total_tokens=usage.input_tokens + usage.output_tokens,
-                     provider=self.name)
-        return "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
+# ClaudeOperator (the PAID Anthropic API brain, ANTHROPIC_API_KEY) was DELETED on 2026-08-15
+# by founder directive, alongside StandardComputeOperator below. It was one of the two names in
+# MOAT_PRIMARY, so this is a trust-boundary change and not a cleanup: MOAT_PRIMARY is now
+# `{"claude_cli"}` alone (see below). The engine runs on the Claude Code SUBSCRIPTION via
+# `claude_cli`, which is unaffected — do not confuse the two, most lines in this file that say
+# "claude" mean the subscription CLI.
+#
+# It was dead in practice anyway: `python -m prospector.golden --operator claude` on 2026-08-15
+# failed to construct with "ANTHROPIC_API_KEY not set or anthropic not installed", i.e. the tier
+# singled out as trusted could not serve a single call on this machine. Per the standing rule
+# that a dead brain must leave a trace rather than sit in a chain as invisible failure, it is
+# deleted rather than demoted, and `_build_operator` raises an explicit ValueError on the name.
 
 
 class GeminiOperator(Operator):
@@ -747,8 +716,12 @@ class DeepSeekOperator(Operator):
             method="POST",
         )
         try:
-            # Bounded read, not a bare per-recv timeout — see the note at the StandardCompute
-            # call site for the 46-hour daemon wedge this shape produced on 2026-08-11.
+            # Bounded read, not a bare per-recv timeout. `urlopen(timeout=...)` bounds each
+            # individual socket recv, so a server that trickles the body resets it on every
+            # chunk and `resp.read()` blocks forever: on 2026-08-11 the daemon logged one
+            # `LLM completion started` line at 08:05:25 and emitted NOTHING for 46 hours.
+            # (The adapter that wedged was standardcompute, removed 2026-08-15; the shape is
+            # every metered adapter's, which is why the bound lives in one helper.)
             raw = _urlopen_read_bounded(req, timeout=120, total_deadline=180)
             data = json.loads(raw.decode("utf-8"))
         except Exception as e:
@@ -778,160 +751,24 @@ class DeepSeekOperator(Operator):
         return content
 
 
-class StandardComputeOperator(Operator):
-    """StandardCompute OpenAI-compatible API brain.
-
-    Wire format verified live 2026-08-08 against https://api.stdcmpt.com/v1:
-      - POST /v1/chat/completions  -> 200, OpenAI `choices[0].message.content` shape
-      - POST /v1/messages          -> 404 {"detail":"Not Found"}   (NOT Anthropic-shaped)
-      - GET  /v1/models            -> 200, one model, id "StandardCompute"
-      - Auth is `Authorization: Bearer <key>`; `x-api-key` is not accepted.
-    So this is an OpenAI-compatible adapter, never an Anthropic one. Pointing the
-    Anthropic SDK (or ANTHROPIC_BASE_URL) at this host posts to a path that 404s.
-
-    NOT CLEARED FOR MOAT. `MOAT_PRIMARY` does not contain "standardcompute", so
-    everything this brain rules is stamped `provisional` and blocked from publishing
-    (run.py:528). Promotion requires the golden-set gate recorded in config.yaml:50-52.
-
-    Uses urllib directly (no extra dependencies), matching DeepSeekOperator above.
-    """
-
-    _BASE_URL = "https://api.stdcmpt.com/v1"
-    _USER_AGENT = "prospector/1.0"
-    # Upper bound on a body that may be read as an out-of-allowance notice rather than a
-    # completion (see the end of `_raw`). Measured notice: 197 chars.
-    _OUT_OF_CREDIT_MAX_CHARS = 1000
-
-    def __init__(self, model: Optional[str] = None, api_key: Optional[str] = None,
-                 default_model: Optional[str] = None, base_url: Optional[str] = None,
-                 cfg=None):
-        key = api_key or os.environ.get("STANDARDCOMPUTE_API_KEY")
-        if not key:
-            raise RuntimeError("STANDARDCOMPUTE_API_KEY not set")
-        self._key = key
-        # `default_model` comes from cfg.model_defaults.standardcompute. An explicit
-        # `model` (from cfg.model) overrides it. No hardcoded identifier is the
-        # source of truth here — see the model-config audit ticket.
-        self.model = model or default_model or "standardcompute"
-        self.base_url = (base_url or os.environ.get("STANDARDCOMPUTE_BASE_URL")
-                         or self._BASE_URL).rstrip("/")
-        self.name = f"standardcompute/{self.model}"
-        # Threaded into every record_usage() call below (audit HIGH finding 4) so that
-        # once a real rate is entered under config.yaml's pricing.standardcompute block,
-        # get_price() can actually see it. `cfg.pricing.standardcompute` currently
-        # defaults to None (config.py) because no rate is publicly known — see the class
-        # docstring; that stays a loud $0 (record_usage's `priced` warning), not a
-        # fabricated number.
-        self._cfg = cfg
-
-    @property
-    def model_version(self) -> str:
-        return self.name
-
-    @track_latency(name="standardcompute_raw_call")
-    def _raw(self, system: str, user: str, temperature: float) -> str:
-        """Call the StandardCompute OpenAI-compatible /v1/chat/completions endpoint."""
-        import urllib.error
-        import urllib.request
-
-        payload = {
-            "model": self.model,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            "temperature": temperature,
-            "max_tokens": 8192,
-        }
-        body = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(
-            f"{self.base_url}/chat/completions",
-            data=body,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self._key}",
-                # REQUIRED, and it does not look required. This host sits behind
-                # Cloudflare, which bot-blocks urllib's default signature: measured
-                # 2026-08-08, identical request, UA "Python-urllib/3.14" -> 403
-                # "error code: 1010", UA "prospector/1.0" -> 200. A 403 reads as a bad
-                # key, so without this line the next diagnosis goes hunting for a
-                # credential problem that does not exist.
-                "User-Agent": self._USER_AGENT,
-            },
-            method="POST",
-        )
-        try:
-            # HARD total deadline, not a bare per-recv timeout. `urlopen(timeout=300)` bounds each
-            # individual socket recv; a server that trickles the body resets it on every chunk and
-            # `resp.read()` blocks forever. That is not theoretical here: this adapter sits in BOTH
-            # the verdict chain and the non-critical chain (`config.yaml:53` and `:76`), and on
-            # 2026-08-11 the daemon logged `LLM completion started: fallback(claude_cli+
-            # standardcompute+minimax)` at 08:05:25 and then emitted NOTHING for 46 hours, until
-            # `Failed minimax_raw_call` at 2026-08-13T06:12:02. Two days of a live storefront's
-            # supply, spent inside one `read()` that no timeout could reach.
-            #
-            # `_urlopen_read_bounded` (operator.py:277) was written for precisely this in July and
-            # applied to MiniMax alone; every other metered adapter kept the bare call. One helper,
-            # every call site — a bound that protects one provider protects nothing, because the
-            # chain hangs on whichever member was left bare.
-            raw = _urlopen_read_bounded(req, timeout=300, total_deadline=360)
-            data = json.loads(raw.decode("utf-8"))
-        except Exception as e:
-            # The classifier needs the RESPONSE BODY, not just str(e). urllib renders an
-            # HTTPError as "HTTP Error 402: Payment Required" and drops the JSON body, which
-            # is the only place a provider spells out *which* allowance ran out. This
-            # provider's exhaustion wording is unknown to us, so `_ALLOWANCE_LIMIT_RE`
-            # (errors.py:112) gets the body too — a failure the classifier misses is retried
-            # forever and never leaves a dead mark.
-            detail = ""
-            if isinstance(e, urllib.error.HTTPError):
-                try:
-                    detail = (e.read() or b"").decode("utf-8", "replace")[:600]
-                except Exception:
-                    detail = ""
-            probe = f"{e} {detail}".strip()
-            from .errors import ProviderExhaustedError, looks_exhausted
-            if looks_exhausted(probe):
-                raise ProviderExhaustedError(
-                    f"StandardCompute quota exhausted: {probe}", provider=self.name)
-            raise RuntimeError(f"StandardCompute call failed: {probe}") from e
-
-        # Track token usage. The live probe returned prompt/completion/total plus a
-        # prompt_tokens_details.cached_tokens field; feed the cached count through so the
-        # ledger does not read a cache hit as fresh input.
-        usage = data.get("usage") or {}
-        inp = int(usage.get("prompt_tokens", 0) or 0)
-        out = int(usage.get("completion_tokens", 0) or 0)
-        total = int(usage.get("total_tokens", 0) or 0)
-        cached = int(((usage.get("prompt_tokens_details") or {}).get("cached_tokens", 0)) or 0)
-        from .telemetry import logger, record_usage
-        record_usage(input_tokens=inp, output_tokens=out, total_tokens=total,
-                     cached_tokens=cached, web=False, provider=self.name, cfg=self._cfg)
-
-        content = (data.get("choices", [{}])[0].get("message", {})
-                   .get("content", "") or "")
-        logger.info(f"StandardCompute response: length={len(content)}")
-
-        # A spent allowance arrives here as HTTP 200 with the upsell AS the completion, so the
-        # except-branch above never sees it. Measured 2026-08-09: every layer upstairs read that
-        # as a SUCCESSFUL call — FallbackOperator ran `record_success()` and `_health.clear()`,
-        # which is why store/provider_health_noncritical.json was `{}` and no dead mark could
-        # ever exist; the chain therefore never advanced to claude_cli, and `complete_json`
-        # simply re-asked the same dead brain three times and raised ParseError. Thirteen
-        # consecutive generation ticks produced nothing while the moat's own claude_cli was
-        # answering verdicts normally. Raising is the whole difference between an outage and a
-        # failover.
-        #
-        # The length bound is the false-positive guard: this notice is a short canned body
-        # (197 chars measured), whereas a real completion that merely discusses a spent
-        # allowance is long and structured. Both conditions must hold.
-        from .errors import ProviderExhaustedError, looks_exhausted
-        if len(content) <= self._OUT_OF_CREDIT_MAX_CHARS and looks_exhausted(content):
-            raise ProviderExhaustedError(
-                f"StandardCompute returned an out-of-allowance notice instead of a "
-                f"completion: {content[:200]}", provider=self.name)
-        return content
-
+# StandardComputeOperator (api.stdcmpt.com, STANDARDCOMPUTE_API_KEY) was DELETED on 2026-08-15 by
+# founder directive, alongside ClaudeOperator above. STANDARDCOMPUTE_API_KEY is unset in this
+# estate and the free trial is spent: the last live calls returned an out-of-allowance upsell body
+# with HTTP 200 instead of a completion, and store/provider_health_noncritical.json carried
+# strikes: 4 with that notice as `last_error`. A tier that cannot answer is not a failover — it is
+# a guaranteed failure paid before every call, which is exactly the shape that got cursor_cli
+# deleted on 2026-08-06.
+#
+# Per the standing rule that a dead brain must leave a trace, it is deleted rather than demoted,
+# and `_build_operator` raises an explicit ValueError on the name so a stale config.yaml or
+# launchd plist fails LOUDLY at startup instead of silently building a chain one brain shorter
+# than it reads.
+#
+# What went with it: `Pricing.standardcompute` / `ModelDefaults.standardcompute`
+# (prospector/config.py), the `standardcompute` tail of `_NONCRITICAL_ORDER` (prospector/run.py),
+# and the `cfg=`-threading audit fix (ENGINE_AUDIT_2026-08-10 HIGH #4) whose only caller this
+# adapter was. `record_usage(cfg=...)` still works and still warns on an unpriced provider; it
+# simply has no caller passing `cfg` today.
 
 
 class OpenRouterOperator(Operator):
@@ -1279,7 +1116,8 @@ class OllamaOperator(Operator):
         )
         try:
             # Bounded read — a local Ollama that stalls mid-stream wedges the caller exactly the
-            # same way a remote one does; see the StandardCompute call site for the incident.
+            # same way a remote one does; see `_urlopen_read_bounded` for the 46-hour daemon
+            # wedge on 2026-08-11 that made this a shared helper rather than one adapter's fix.
             raw = _urlopen_read_bounded(req, timeout=300, total_deadline=360)
             data = json.loads(raw.decode("utf-8"))
         except Exception as e:
@@ -1348,7 +1186,17 @@ class MockOperator(Operator):
 # are NOT re-derived from this set — `is_provisional_provider` is only ever called on the name
 # of the brain that just served a LIVE call (see `served_is_provisional` below), never on a
 # stored dossier field. Removing cursor_cli therefore cannot retroactively flip a past PASS.
-MOAT_PRIMARY: frozenset[str] = frozenset({"claude_cli", "claude"})
+# NARROWED 2026-08-15 (founder directive): was `frozenset({"claude_cli", "claude"})`. The paid
+# Anthropic API tier `claude` was deleted with its adapter, so the set is a single name. This is
+# the line that decides what may PUBLISH — `is_provisional_provider` below is its only reader,
+# and `health._brains_we_trust` is its only other consumer — so narrowing it means the engine
+# now has exactly ONE trusted brain. That is a statement of fact, not a new risk: `claude` could
+# not construct on this machine for want of ANTHROPIC_API_KEY, so it was never going to rule.
+#
+# The same historical-dossier note as cursor_cli applies: `is_provisional_provider` is only ever
+# called on the name of the brain that just served a LIVE call, never on a stored dossier field,
+# so removing `claude` cannot retroactively flip a past PASS.
+MOAT_PRIMARY: frozenset[str] = frozenset({"claude_cli"})
 
 
 def is_provisional_provider(name: str) -> bool:
@@ -1482,12 +1330,10 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
     # Heuristic: a model name starting with the provider name or its aliases
     # (e.g. "claude-*", "deepseek-*", "minimax-*") belongs to that provider.
     _PROVIDER_MODEL_PREFIX = {
-        "claude": ("claude-",),
         "claude_cli": ("claude-",),
         "deepseek": ("deepseek-",),
         "minimax": ("minimax-", "MiniMax-"),
         "ollama": (),
-        "standardcompute": ("standardcompute",),
     }
     prefixes = _PROVIDER_MODEL_PREFIX.get(kind, ())
     model_matches = bool(cfg_model) and any(cfg_model.lower().startswith(p.lower()) for p in prefixes)
@@ -1498,14 +1344,12 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
         from .claude_cli import ClaudeCliOperator
         return ClaudeCliOperator(model=None)
     if kind == "claude":
-        try:
-            if has_cfg_model:
-                return ClaudeOperator(model=model)
-            return ClaudeOperator(
-                model=md.claude if md else "claude-sonnet-4-5"
-            )
-        except ModuleNotFoundError as e:
-            raise RuntimeError("ANTHROPIC_API_KEY not set or anthropic not installed") from e
+        raise ValueError(
+            "operator 'claude' (the PAID Anthropic API tier) was removed on 2026-08-15 "
+            "(founder directive). It needed ANTHROPIC_API_KEY, which this estate does not "
+            "set, so it could not construct at all. Use 'claude_cli' — the Claude Code "
+            "SUBSCRIPTION CLI, which is unaffected. Update config.yaml "
+            "`operator:`/`artifact_operator:`/`noncritical_operator:`.")
     if kind == "mock":
         return MockOperator()
     if kind == "minimax":
@@ -1533,16 +1377,17 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
             model=model,
             default_model=md.ollama if md else None,
         )
+    # standardcompute was removed here on 2026-08-15 (founder directive), same treatment as
+    # cursor_cli below: an EXPLICIT error, not an unknown-operator one, so a stale config or plist
+    # fails loudly at startup instead of silently building a chain one brain shorter than it reads.
     if kind == "standardcompute":
-        # OpenAI-compatible third-party endpoint (api.stdcmpt.com). Added 2026-08-08 to
-        # move load off the Claude Code subscription. It is NOT in MOAT_PRIMARY, so any
-        # verdict it serves is stamped `provisional` and cannot publish — promotion needs
-        # the golden-set gate in config.yaml:50-52.
-        return StandardComputeOperator(
-            model=model,
-            default_model=md.standardcompute if md else None,
-            cfg=cfg,
-        )
+        raise ValueError(
+            "operator 'standardcompute' was removed on 2026-08-15 (founder directive): "
+            "STANDARDCOMPUTE_API_KEY is unset in this estate and the free trial is spent, so the "
+            "adapter returned an out-of-allowance upsell body instead of a completion and every "
+            "call through it paid a guaranteed failure first. Use 'minimax' for non-critical work "
+            "and 'claude_cli' for the moat. Update config.yaml "
+            "`operator:`/`artifact_operator:`/`noncritical_operator:`.")
     # cursor_cli was removed here on 2026-08-06 (founder directive). It stays an EXPLICIT
     # error rather than an unknown one, so a stale config or plist fails loudly at startup
     # instead of silently building a chain one brain shorter than it reads.
@@ -1552,8 +1397,7 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
             "measured at its usage limit and every call paid a guaranteed failure first). "
             "Use claude_cli. Update config.yaml `operator:`/`artifact_operator:`.")
     raise ValueError(f"unknown operator: {kind!r} "
-                     "(expected claude_cli|claude|minimax|deepseek|ollama|"
-                     "standardcompute|mock)")
+                     "(expected claude_cli|minimax|deepseek|ollama|mock)")
 
 
 def make_operator(cfg, fast: bool = False) -> Operator:

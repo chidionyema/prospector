@@ -178,15 +178,62 @@ class TestItQuotesTheDocumentsOwnHeadings:
         assert "The buyer, stated precisely" not in md
 
     def test_with_no_channel_section_it_names_the_document_rather_than_the_wrong_section(self):
+        """Re-pointed 2026-08-15: the fallback names the SECTION, not the dict key. Until that
+        day this asserted `*02_Marketing_Plan_GTM.md*` — a filename that is no longer in the
+        download, so the test was pinning the defect rather than the behaviour. The property is
+        untouched: when no heading in the plan names a channel, send the buyer to the whole
+        plan rather than to a section that is not about channels."""
         docs = dict(DOCS, **{pack_checklist.GTM_PLAN: "## The buyer, stated precisely\n\nWords.\n"})
         out = pack_checklist.render(_dossier(), docs)
-        assert f"Pick ONE channel out of *{pack_checklist.GTM_PLAN}*" in out
+        assert f"Pick ONE channel out of *{pack_checklist.GTM_PLAN_SECTION}*" in out
 
     def test_a_document_the_pack_does_not_carry_is_never_referred_to(self):
         out = pack_checklist.render(_dossier(), {})
-        assert pack_checklist.GTM_PLAN not in out
-        assert pack_checklist.FINANCIAL_MODEL not in out
+        for absent in (pack_checklist.GTM_PLAN, pack_checklist.GTM_PLAN_SECTION,
+                       pack_checklist.FINANCIAL_MODEL, pack_checklist.FINANCIAL_MODEL_SECTION):
+            assert absent not in out, absent
         assert "Find five of them" in out, "the plan still stands on the buyer alone"
+
+
+class TestItSendsTheBuyerSomewhereThatExists:
+    """Added 2026-08-15, for a defect of the same class as `pack_floors.exec_summary_md`.
+
+    This module interpolated its own dict KEYS into buyer prose — "It is in
+    *04_Financial_Model.md*", "Cut ... in *01_Blueprint_BuildSpec.md*" — and on 2026-08-15 the
+    archive stopped carrying any `.md` at all (`PACK_DOCUMENTS`, the render input, split from
+    `BUNDLE_FILES`, the archive contract). The one page a buyer pins up was directing them to
+    open four files that are not in the download.
+
+    The fix names SECTIONS of the reader instead, which is both what the buyer can find and
+    what was always meant — the two cross-references already written by hand on this page, to
+    *Evidence and Constraints*, were section titles rather than filenames.
+
+    Those four constants are duplicated in `pack_checklist` rather than imported from `bridge`,
+    because `bridge` imports this module and an import cycle on the money rail is not worth the
+    DRY. Duplication is only safe while something holds the copies equal, which is this class.
+    """
+
+    def test_each_section_constant_is_the_heading_the_reader_actually_prints(self):
+        from prospector.bridge import _SECTION_TITLES
+
+        for key, title in (
+            (pack_checklist.BUILD_SPEC, pack_checklist.BUILD_SPEC_SECTION),
+            (pack_checklist.GTM_PLAN, pack_checklist.GTM_PLAN_SECTION),
+            (pack_checklist.OPS_PLAN, pack_checklist.OPS_PLAN_SECTION),
+            (pack_checklist.FINANCIAL_MODEL, pack_checklist.FINANCIAL_MODEL_SECTION),
+        ):
+            assert title == _SECTION_TITLES[key], key
+
+    def test_no_filename_is_printed_at_the_buyer(self, md):
+        """The `md` fixture is a pack that RENDERS — `render()` returns "" when the dossier
+        names no buyer, and a filename assertion against "" passes vacuously. The first two
+        assertions are what stops this test going quiet that way."""
+        import re
+
+        assert md, "precondition: this fixture must produce a document, not the empty early-out"
+        assert pack_checklist.BUILD_SPEC_SECTION in md or pack_checklist.GTM_PLAN_SECTION in md
+        assert re.findall(r"\b[\w/]+\.md\b", md) == [], (
+            "the checklist named a file; no .md reaches the buyer's archive any more")
 
 
 class TestItIsOneNumberedSequence:

@@ -12,10 +12,10 @@ import { cx } from '@/components/ui/cx';
 // terms right) rather than the shared title/lead/two-buttons shape. See the note above it.
 import { SectionBand, Section } from '@/components/marketing/blocks';
 // The home page OWNS the pack manifest (§5.3 of docs/SITE_SPEC_PROGRAM.md, founder-confirmed
-// 2026-08-07). `PACK_CONTENTS` for the count beside the prices, `PackContentsSection` for the
+// 2026-08-07). `PACK_DOCUMENTS` for the count beside the prices, `PackContentsSection` for the
 // manifest itself. /pricing keeps bare filenames only (`pricing.tsx:123`), which is the same
 // section's other half of the ownership split, not a duplicate.
-import { PACK_CONTENTS, PackContentsSection } from '@/components/marketing/PackContents';
+import { PACK_DOCUMENTS, PackContentsSection } from '@/components/marketing/PackContents';
 import { EvidenceRecordPanel } from '@/components/marketing/EvidenceRecordPanel';
 // `LiveKillCard` is no longer imported here: its render site below the shelf was removed on
 // 2026-08-14 (see the record where it stood). The component is untouched and still used elsewhere.
@@ -26,7 +26,7 @@ import { BuyDrawerProvider } from '@/components/checkout/BuyDrawer';
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
 import { DiscoveryNearMiss, DiscoveryWaitlist, missLabelFor, type NearMissCandidate } from '@/components/discovery/EmptyState';
 import { AppliedFilterChips, FilterFab, FilterSheet, StepFlow } from '@/components/discovery/FacetBar';
-import PackMark from '@/components/ui/PackMark';
+import { PackCardHeader } from '@/components/ui/PackCardHeader';
 import { EvidenceBar } from '@/components/ui/EvidenceBar';
 
 
@@ -219,19 +219,62 @@ export function packWeight(pack: Pack): PackWeight {
  * the middle of a clause reads as a broken string, not as a summary, and it is the LAST thing the
  * eye sees before the price.
  *
- * So the card gets its own line, cut at a WORD boundary at 20 words, independent of whatever
- * length the full description happens to be. No ellipsis is appended: at a clean word boundary
- * the line reads as a complete short summary, and an ellipsis would reintroduce the "there is
- * more and you are missing it" signal this exists to remove.
+ * A WORD BOUNDARY WAS NEVER THE THING THAT MATTERED (2026-08-15, founder: this is "the worst
+ * thing on the shelf"). This function used to cut at 20 words and append nothing, on the
+ * argument that "at a clean word boundary the line reads as a complete short summary". Measured
+ * against the live catalogue (all 59 packs, GET api.mumchimp.com/catalog): SIXTEEN of them ended
+ * on a dangling function word -- "...and the approved contractor booking, so a", "...exactly
+ * which permit, licence and", "...the contractor must withhold part of". Word 20 is not a
+ * meaning boundary, so cutting there lands mid-clause about a quarter of the time, and no
+ * ellipsis is what makes it read as broken DATA rather than as an elision.
+ *
+ * The engine is not at fault and was wrongly blamed for this: the same fetch shows all 59
+ * `oneLine` values arriving whole, every one ending in terminal punctuation, longest 268 chars
+ * against `bridge.py`'s 280 cap. The shelf was cutting its own copy.
+ *
+ * THREE BOUNDARIES, IN DESCENDING ORDER OF MEANING. The first sentence, because these strings
+ * are one sentence by construction and a second one is a restatement of the purchase terms.
+ * Then a clause boundary inside the window, because a line ending on a comma's clause is a
+ * finished thought. Only then a word boundary -- and there, back off over any trailing function
+ * word, which is the specific defect: a line may not end on "so", "the", "which", "part of".
+ *
+ * 30 words rather than 20 because the cap now costs something. At 30, 44 of 59 pass through
+ * WHOLE (median 155 chars, max 203) against 6 of 59 at 20, and the dangling count is 0 at both
+ * -- so the lower cap was mutilating three quarters of the shelf to buy nothing. Still capped
+ * rather than unbounded because the card clamps in CSS, and a clamp reached mid-word puts the
+ * browser's own ellipsis back on the card.
  */
-function cardLine(text: string | null | undefined, maxWords = 20): string {
+const DANGLING_TAIL = new Set([
+  'the', 'a', 'an', 'and', 'or', 'but', 'so', 'to', 'of', 'in', 'on', 'at', 'for', 'with',
+  'that', 'which', 'what', 'they', 'by', 'from', 'its', 'their', 'as', 'into', 'per', 'up',
+  'out', 'over', 'under', 'is', 'are', 'was', 'were', 'be', 'been', 'when', 'while', 'after',
+  'before', 'than', 'then', 'if', 'this', 'these', 'those', 'part', 'each', 'every', 'both',
+]);
+
+export function cardLine(text: string | null | undefined, maxWords = 30): string {
   if (!text) return '';
-  const clean = text.replace(/\s*[…]\s*$/, '').replace(/\s*\.\.\.\s*$/, '').trim();
+  let clean = text.replace(/\s*[…]\s*$/, '').replace(/\s*\.\.\.\s*$/, '').trim();
+  // The first sentence only. Split on `. ` rather than `.` so a decimal or an abbreviation
+  // mid-sentence cannot cut the line short -- the same rule `ideas/index.tsx`'s `firstSentence`
+  // uses on landing descriptions.
+  const stop = clean.search(/\.\s/);
+  if (stop !== -1) clean = clean.slice(0, stop);
+  clean = clean.replace(/\.$/, '').trim();
+
   const words = clean.split(/\s+/);
   if (words.length <= maxWords) return clean;
-  // Drop a trailing comma/semicolon left dangling by the cut -- "the knee, neck and wrist," is a
-  // worse ending than "the knee, neck and wrist".
-  return words.slice(0, maxWords).join(' ').replace(/[,;:]$/, '');
+
+  const head = words.slice(0, maxWords);
+  // A clause boundary inside the window beats a word boundary at the end of it. Bounded to the
+  // last 8 words so a comma near the start cannot amputate the line to three words.
+  for (let i = head.length - 1; i >= Math.max(head.length - 8, 0); i -= 1) {
+    if (/[,;:]$/.test(head[i])) return head.slice(0, i + 1).join(' ').replace(/[,;:]+$/, '');
+  }
+  // Otherwise back off over trailing function words, so the line cannot end on "so the".
+  while (head.length > 0 && DANGLING_TAIL.has(head[head.length - 1].replace(/[,;:]$/, '').toLowerCase())) {
+    head.pop();
+  }
+  return head.join(' ').replace(/[,;:]+$/, '');
 }
 
 /**
@@ -385,37 +428,19 @@ function PackCard({
           focusRing,
         )}
       >
-        {/* The mark as a SPINE. At row scale a cover is impossible (there is no vertical room for
-            one) but an identity is still needed, so the stratigraphy runs as a narrow vertical
-            core sample -- which is the orientation the form was drawn for anyway.
+        {/* THE SPINE IS GONE (2026-08-15), and it is the last of four near-black blocks to go.
+            Its own two docblocks are the argument for removing it: the first records that on a
+            pale ground forty of them read as "forty rows that have not finished loading", the
+            second that on the instrument ground they read as "forty solid black blocks, i.e. as
+            images that failed to load". Two grounds were tried, both were reported as a failed
+            render, and the reason is the same one the founder gave for the plate and the cover --
+            a generated mark in the place a product photo goes is read as the photo, missing. The
+            fix was never the third ground.
 
-            ON THE INSTRUMENT GROUND like every other pack mark on this shelf (2026-08-14). It kept
-            `cat.tint`/`cat.ink` after the cover and the poster moved, and one screenshot of the
-            page settles what that costs: 32x48 of pale mint or cream with faint bars in it, forty
-            of them down a column under two near-black plates, reads as forty rows that have not
-            finished loading. A shelf whose small element looks like a skeleton of its large one is
-            not two treatments, it is one treatment plus a bug. */}
-        {/* THE INK, NOT THE GROUND, WAS THE BUG (2026-08-14, founder review at 390px).
-            The note above is still right that the mark belongs on the instrument ground; what
-            it got wrong was what to draw on it. `--ins-dim2` is #3C4149 and `PackMark` caps
-            unemphasised band opacity at 0.34, so the strata composited to roughly #14171B..
-            #1A1D22 over a #0B0D0F plate -- a near-black mark on a near-black ground. Forty of
-            them down a phone column read as forty solid black blocks, i.e. as images that
-            failed to load, which is a worse misread than the skeleton one this ground was
-            chosen to fix.
-            `--ins-muted` (#8A9099, 6.14:1 on the plate) with `emphasis` lifts the bands to
-            0.26-0.88 of it, so the faintest still reads as drawn. Same seed, same geometry,
-            same `across` axis: the core-sample form and the shelf-to-detail morph are
-            untouched, it is only now visible. */}
-        <span
-          className={cx(
-            'relative h-12 w-7 flex-none overflow-hidden rounded-sm sm:w-8',
-            'bg-ins-bg text-ins-muted',
-          )}
-        >
-          <PackMark id={pack.id} emphasis />
-        </span>
-
+            It also buys the row 44px of horizontal space at 390px, where the file already
+            documents the title fitting 41% of its own string. A row is a line in a list; it
+            carries no chrome at all, which is exactly what makes it a different object from a
+            card rather than a smaller one. */}
         <span className="min-w-0 flex-1">
           {/* TWO LINES ON A PHONE, ONE FROM `sm` UP. The reported defect was "cuts at ~50% of
               available width while empty space remains", and the space is real but it is not the
@@ -453,8 +478,26 @@ function PackCard({
               disagreeing about how this row lays out. A wrapped row is taller; a row whose
               contents print on top of each other is broken. */}
           <span className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-            {cat.tagged && (
-              <span className={cx('flex-none font-mono text-caption', cat.ink)}>{cat.label}</span>
+            {/* A FIXED COLUMN, so the promise the note below makes is finally kept (2026-08-15).
+                That note claims the figure "lands on the same x on every row". It did not: the
+                sector printed at its natural width and the labels run from "Sector" to "Care and
+                benefits claims", so the figure started at a different x on nearly every row -- and
+                on an untagged pack the slot collapsed and the whole run jumped left. Measured on
+                the deployed shelf, that ragged left edge is what makes a column of rows read as
+                unaligned even though every row is built identically.
+
+                From `sm` the sector gets an 11rem column; the longest label in the catalogue,
+                "Care and benefits claims", sets ~10.8rem at `text-caption` mono, so it fits and
+                anything longer ellipses rather than pushing the run. An untagged pack leaves the
+                column EMPTY instead of closing it, which is the whole point. Below `sm` the line
+                wraps anyway, so a fixed column there would only steal width from a 390px row --
+                hence the placeholder is `hidden sm:block`, not a transparent spacer. */}
+            {cat.tagged ? (
+              <span className={cx('flex-none truncate font-mono text-caption sm:w-44', cat.ink)}>
+                {cat.label}
+              </span>
+            ) : (
+              <span className="hidden flex-none sm:block sm:w-44" aria-hidden />
             )}
             {/* THE SAME DEVICE AS THE CARDS, at the smallest of its three sizes: figure and label
                 on one baseline instead of stacked. A row is a line in a list, so the number sits
@@ -508,12 +551,17 @@ function PackCard({
   }
 
   /* ── LEAD ───────────────────────────────────────────────────────────────────────────────────
-     Full-bleed, horizontal, and the only pack on the shelf allowed to look like a poster.
+     Full-bleed and the widest card on the shelf: the one pack allowed to look like a poster.
 
-     It carries `morph` on its mark: this is the card most likely to be clicked, so it is the one
-     worth spending the shared-element transition on. Exactly one element per document may claim
-     a given `view-transition-name`, and the lead is rendered once, which is what makes it the
-     safe place to put it -- see the note on `PackMark`'s `morph` prop. */
+     "Poster" is now a claim about WIDTH and TYPE, not about artwork -- the near-black mark column
+     that used to open it is removed (see the record at its call site). The card still outranks its
+     neighbours by every means that costs nothing: full container width, `text-h2` on the heading
+     against their `text-body`, the lead figure at `text-display`, and a price rail with a filled
+     button that no other weight carries.
+
+     It no longer claims a `view-transition-name`. The morph's other half was the pack page's own
+     near-black masthead, removed in the same edit; a shared element with one half left is a
+     cross-fade of the whole root, which is the state this was originally added to fix. */
   if (weight === 'lead') {
     return (
       <Link
@@ -525,87 +573,70 @@ function PackCard({
              directly beneath it ran the full 120..1320. Two right edges 300px apart in one shelf
              is not an editorial choice, it is a card that looks unfinished next to the list under
              it -- and the "poster" claim this treatment makes is a claim about WIDTH. */
-          'group flex w-full flex-col overflow-hidden rounded-md border border-border bg-surface lg:flex-row',
+          /* `lg:flex-row` moved DOWN one level (2026-08-15). The card's own axis is now vertical
+             on every breakpoint -- header band, then body -- and the body is what turns into two
+             columns at `lg`. It had to be the card while the mark column was the card's first
+             child; with the mark gone, a header that stops 34% short of the right edge is not a
+             header. */
+          'group flex w-full flex-col overflow-hidden rounded-md border border-border bg-surface',
           'transition-[border-color,box-shadow] duration-[180ms] ease-[cubic-bezier(0.2,0,0,1)]',
           'hover:border-border-strong',
           focusRing,
         )}
       >
+        {/* THE POSTER COLUMN IS GONE (2026-08-15), and with it the last `--ins-bg` on the shelf.
+
+            It was a 305x305 near-black square -- measured, at 1440, the largest single graphic on
+            the homepage -- carrying a generated `PackMark` and a readout. Its own docblock spent
+            four paragraphs tuning the ink ON that ground (`--ins-dim2` at 0.10-0.34, contrast
+            measured to 5.14:1) and every one of those paragraphs answers "what should be drawn on
+            the black block", never "should there be one". The founder answered the prior question
+            on 2026-08-14: "Remove the black media block until there is real imagery for it"
+            (docs/SITE_SPEC_PROGRAM.md:1007). The mid card and `PackCoverArt` obeyed that day; this
+            one and the row spine did not, so the same ruling produced a shelf with two identities.
+
+            THE MORPH GOES WITH IT, deliberately. `morph` named a shared element whose other half
+            was the pack page's own near-black masthead, and that masthead is removed in the same
+            edit for the same reason -- a transition is not a reason to keep two blocks nobody
+            wanted. `PackMark` itself is untouched and still exported.
+
+            NOTHING THE COLUMN STATED IS DROPPED. The sector is in the header band, in the same
+            mono caption at the same size as every other card on the site; the evidence run is in
+            the body a few lines below, at `size="lg"`, drawn for a light surface. */}
+        {/* `sm:px-8` because THIS card's body opens to `p-8` from `sm` (:552) while every other
+            card stays at `p-6`. The header's inset is not a constant, it is the card's own left
+            edge -- a shared component that hardcoded one inset would put a 8px step inside the
+            widest card on the shelf. */}
+        <PackCardHeader
+          label={cat.tagged ? cat.label : null}
+          labelClassName={cat.ink}
+          className="sm:px-8"
+        />
+
+        {/* TWO COLUMNS AT `lg`: what it is / what it costs. (It was three; the mark column is
+            removed above.) The price and its button are a vertically-centred right rail rather
+            than a bottom row, which spends the card's width on the two things a shelf card is for
+            -- the claim and the number. Below `lg` this is untouched: one column, price row last,
+            price left, button right. */}
+        {/* THREE TRACKS AT `lg`, NOT TWO (2026-08-15). Removing the poster column left this card a
+            two-column flex whose left child was `flex-1` while its copy was capped at `max-w-[58ch]`
+            -- so at 1440 the copy set to ~520px inside a ~950px track and the card carried a ~430px
+            hole between the paragraph and the price rail. Measured on the deployed shelf: the lead
+            card was the emptiest object on the page, which is the opposite of what "the one card
+            allowed to look like a poster" is supposed to mean.
+
+            A grid fixes it by construction rather than by tuning a max-width against a flex basis:
+            `1.4fr` for the claim, `1fr` for the evidence, `auto` for the money. Every track is
+            filled because the tracks ARE the width -- there is no leftover to leak into a gap. The
+            proportion also keeps the copy near a readable measure (~46ch at 1440) without a cap
+            that fights the layout. Below `lg` nothing changes: one column, in reading order. */}
         <span
           className={cx(
-            /* `lg:max-w-[20rem]` CAPS THE CARD'S HEIGHT, which is not obvious from the class list
-               and is why it is written down. `PackMark` is an SVG with a `0 0 1 1` viewBox at
-               `h-full w-full`; inside a `h-auto` flex item that resolves to its 1:1 intrinsic
-               ratio, so this column is a SQUARE and its width sets the whole card's height.
-               Measured: at the card's old content-sized 900px the column was 305x305; giving the
-               card the full 1200px it should have had made it 407x407, and the text column --
-               whose content is 271px tall -- absorbed the difference as a 162px hole above the
-               price. The cap keeps the proportion that was already working at any card width. */
-            'relative h-36 w-full flex-none overflow-hidden sm:h-44 lg:h-auto lg:w-[34%] lg:max-w-[20rem]',
-            /* THE POSTER IS ON THE INSTRUMENT GROUND (2026-08-14), the same plate the shelf cards
-               wear, and for the same reason. `cat.tint`+`cat.ink` here rendered the largest single
-               graphic on the homepage -- measured 305x305 at 1440 -- as a stack of pale mint or
-               grey bars: a big pastel slab, on the card the page is trying hardest to sell. The
-               mark's own docblock has been chasing this defect through two fixes already (opacity,
-               then axis), and both were right about the geometry and wrong about the GROUND. On
-               white, low-opacity bars of ragged width are a loading skeleton no matter which way
-               they run. On near-black they are strata.
-               THE MARK IS FURNITURE HERE AND ITS INK IS PICKED FOR THE READOUT ON TOP OF IT.
-               Founder, on the deployed shelf: "the text against background isnt clear" for this
-               section. It was measured wrong, not judged wrong -- the first attempt drew the
-               strata in `--ins-muted` (#8A9099) WITH `emphasis`, i.e. bands at up to 0.88 of the
-               exact token the sector label and the evidence figure are printed in. Label on band
-               computes to ~1.2:1 there, so the readout vanished into its own texture.
-               The two things are separated by a full step of the instrument scale instead:
-               `--ins-dim2` (#3C4149) at the default 0.10-0.34, so the worst band composites to
-               #1C1F23 and `--ins-muted` on it still measures 5.14:1 (WCAG 2.1, computed from the
-               tokens, same method as `categoryScale.test.ts`). `emphasis` stays off the shelf --
-               it exists for the detail masthead, where the mark is alone with nothing over it. */
-            'bg-ins-bg text-ins-dim2',
+            'flex flex-1 flex-col p-6 sm:p-8',
+            'lg:grid lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] lg:items-center lg:gap-10',
           )}
         >
-          {/* `axis="down"` for the same reason the detail masthead uses it, and the reason is
-              MEASURED, not inferred from the class list: this box is never tall. `h-36 w-full` is
-              ~2.4:1 on a phone, `sm:h-44 w-full` ~2.0:1, and `lg:h-auto lg:w-[34%]` measures
-              305x305 -- exactly 1.00:1, which is why an "is it wide?" check written as `ratio > 1`
-              skips it while the eye does not. Drawn `across` at any of those, the bands are
-              ragged-width horizontal lines: the text-skeleton idiom, in the largest single graphic
-              on the homepage. It is worst on an UNTAGGED pack, where the ink is zinc #71717A and
-              the result is a grey bar stack indistinguishable from a card that has not loaded.
-              Matching the masthead also makes the shared-element morph a clean scale instead of a
-              transpose, since both ends of the transition now run the same way. */}
-          <PackMark id={pack.id} morph axis="down" />
-
-          {/* THE POSTER CARRIES THE READOUT TOO, not just the texture. Same two facts as the
-              shelf card's plate, in the same two corners, at poster scale: the sector as one line
-              of mono, the evidence run as the only lit thing on the ground. The pill and its 12px
-              icon are gone with the tint that made a pill necessary -- a chip exists to lift a
-              label off busy artwork, and there is no busy artwork here any more. */}
-          {cat.tagged && (
-            <span className="absolute left-5 top-5 right-5 truncate font-mono text-caption text-ins-muted">
-              {cat.label}
-            </span>
-          )}
-          <span className="absolute bottom-5 left-5">
-            <EvidenceBar
-              count={pack.sourceCount}
-              tone="instrument"
-              size="lg"
-              label={evidenceLabel}
-            />
-          </span>
-        </span>
-
-        {/* THREE COLUMNS AT `lg`, NOT TWO: mark / what it is / what it costs.
-            Stacked, the price sat at the bottom of the text column under `mt-auto`, so a card that
-            is 322px tall because its mark is square left a 74px hole between the source bar and
-            the price, while the copy (capped at 58ch) used ~500px of an 848px column and the rest
-            of the width was blank. Making the price and its button a vertically-centred right rail
-            spends the width on the two things a shelf card is for -- the claim and the number --
-            and the hole closes because nothing is being pushed to a bottom any more.
-            Below `lg` this is untouched: one column, price row last, price left, button right. */}
-        <span className="flex flex-1 flex-col p-6 sm:p-8 lg:flex-row lg:items-center lg:gap-10">
-          <span className="flex flex-1 flex-col">
+          <span className="flex min-w-0 flex-col">
             {/* CLAMPED, LIKE THE OTHER TWO WEIGHTS. This was the only card heading on the shelf
                 with no bound, and it is also the largest type (`text-h2`), so it ran longest where
                 it cost most: pack titles measure 43..60 characters on the live catalogue (all 59
@@ -613,22 +644,19 @@ function PackCard({
                 out of the card's optical centre. `row` truncates to one line (:437) and `mid`
                 clamps to two (:691); one shelf should not state the same field at three lengths. */}
             <span className="line-clamp-2 block text-h2 font-semibold text-text">{heading}</span>
-            {line && <span className="mt-2 block max-w-[58ch] text-body text-muted">{line}</span>}
-            {/* The evidence run moved onto the plate (2026-08-14) and is not drawn twice on one
-                card. On the poster it is the largest thing on the largest graphic on the page,
-                which is where a shop whose pitch is "the checking already happened" should put the
-                one number that varies between two products.
-                THE LEAD FIGURE IS THE OTHER ONE, and it is the same device the shelf cards and the
-                rows carry, one size larger -- `text-display` against their `text-h1`. This is the
-                one card allowed to look like a poster, so it is the one card whose number is
-                allowed to be the biggest type in the band. It sits under the copy rather than over
-                it because the heading still has to say what the thing IS before a figure about it
-                can mean anything. */}
-            {stat && (
-              <span className="mt-6 block">
-                <PackFigure stat={stat} weight="lead" />
-              </span>
-            )}
+            {line && <span className="mt-2 block text-body text-muted">{line}</span>}
+          </span>
+
+          {/* THE EVIDENCE TRACK. Both numbers the card carries, in the order the mid card already
+              uses -- figure first, run under it (`:697`) -- so the two weights stop disagreeing
+              about which of the two is read first. The run came back off the deleted plate at the
+              same `size="lg"`, drawn for a light surface; the figure is `text-display`, one step
+              above the other weights, because this is the one card whose number is allowed to be
+              the biggest type in the band. Neither is above the heading: a figure about a thing
+              means nothing until the heading has said what the thing is. */}
+          <span className="mt-6 flex min-w-0 flex-col gap-4 lg:mt-0">
+            {stat && <PackFigure stat={stat} weight="lead" />}
+            <EvidenceBar count={pack.sourceCount} size="lg" label={evidenceLabel} />
           </span>
           <span className="mt-auto flex items-end justify-between gap-4 pt-6 lg:mt-0 lg:flex-none lg:flex-col lg:items-end lg:gap-5 lg:pt-0">
             <PriceText className="text-h1 font-semibold text-text">{price}</PriceText>
@@ -722,18 +750,9 @@ function PackCard({
           band is fixed-height and outside the body's flow, so an empty one costs nothing and keeps
           every title in the grid on the same baseline -- the jitter rule the docblock above spends
           a paragraph on. A card with no ground at all is what started this. */}
-      <span
-        className={cx(
-          'flex h-10 w-full flex-none items-center gap-x-2 overflow-hidden px-5',
-          'border-b border-border bg-surface2',
-        )}
-      >
-        {cat.tagged && (
-          <span className={cx('truncate font-mono text-caption', cat.ink)}>{cat.label}</span>
-        )}
-      </span>
+      <PackCardHeader label={cat.tagged ? cat.label : null} labelClassName={cat.ink} />
 
-      <div className="flex flex-1 flex-col p-5">
+      <div className="flex flex-1 flex-col p-6">
         {/* No `group-hover:text-primary`. A title that changes colour on hover implies the title
             alone is the link; the whole card is. Border + lift already say "interactive". */}
         <h3 className="line-clamp-2 text-body font-semibold leading-snug text-text">{heading}</h3>
@@ -1385,7 +1404,7 @@ function CatalogBrowser({
           the better ones", which invites them to distrust the cheap ones and hesitate over the
           dear ones. The rule is real and it is the opposite: `config.yaml listing.pricing` picks a
           rung on a fixed ladder from the opportunity's ambition tier plus a market offset, and
-          every pack ships the identical `PACK_CONTENTS.length` documents. The page already said
+          every pack ships the identical `PACK_DOCUMENTS.length` documents. The page already said
           this, ~6,000px below the shelf, in the "What you get" intro.
           A per-card tier BADGE was the other option and is deliberately not built: the ladder is
           not invertible from the price, because a us/smb pack and a uk/growth pack both land on
@@ -1404,7 +1423,7 @@ function CatalogBrowser({
           one: `e2e/discovery.spec.ts` asserts the first pack card is above the fold at 360x780,
           and the four-line version of this paragraph failed it by 16px. */}
       <p className="mb-4 max-w-[68ch] text-caption text-subtle">
-        Same {PACK_CONTENTS.length} documents in every pack. Bigger opportunity, higher price.{' '}
+        Same {PACK_DOCUMENTS.length} documents in every pack. Bigger opportunity, higher price.{' '}
         <Link href="/pricing" className={textLinkClass('font-medium')}>
           Why prices differ
         </Link>
@@ -2261,7 +2280,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
         <div className="mb-4 sm:mb-6">
           {/* THE CATALOGUE INTRO (email §1).
               The email replaces the 67-word version with a 22-word line that does the whole job:
-              it states what every pack is (same `PACK_CONTENTS.length` documents, COUNTED not
+              it states what every pack is (same `PACK_DOCUMENTS.length` documents, COUNTED not
               typed -- see below), why prices differ (opportunity size,
               not download size), and where to read the longer version (/pricing). The kill-rate
               line is not here because the proof strip above the shelf already carries it -- this
@@ -2329,7 +2348,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
           Two sections used to argue the same thing here. The first was an essay about the ladder:
           which rung a pack lands on, why £29 and £199 buy the same documents, what the ambition
           tier and the market offset do -- that is /pricing's fact, and it is now one line above the
-          shelf ("Same {PACK_CONTENTS.length} documents in every pack...") plus a link. The second,
+          shelf ("Same {PACK_DOCUMENTS.length} documents in every pack...") plus a link. The second,
           `PackContentsSection`, is the manifest, and §5.3 names THIS page its owner: the buyer's
           "what do I actually get for £49" is answered where they meet the price, not one click
           away. /pricing keeps bare filenames only; a pack page lists its own.

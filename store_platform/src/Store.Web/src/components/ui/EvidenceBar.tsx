@@ -5,7 +5,7 @@ import { cx } from '@/components/ui/cx';
  *
  * WHAT THIS REPLACES. Every card on the shelf carried `8 documents · N sources` in mono
  * (`pages/index.tsx:351` before this pass). The document half is the same on all 57 cards --
- * `PACK_CONTENTS.length` is a constant -- so it is zero-information ink repeated 57 times, and
+ * `PACK_DOCUMENTS.length` is a constant -- so it is zero-information ink repeated 57 times, and
  * because it sits FIRST it is what the eye reads first on every card. Counted in the served HTML
  * on 2026-08-07: 61 occurrences of `8 documents` on one page. The only number on that line that
  * varies between packs is the source count, and it was the half printed second, in the same size

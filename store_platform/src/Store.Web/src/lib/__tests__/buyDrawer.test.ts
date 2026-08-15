@@ -18,10 +18,10 @@ const hook = readFileSync(join(SRC, 'lib', 'checkout', 'usePackCheckout.ts'), 'u
 
 describe('the drawer carries the pre-contract set', () => {
   it('lists the deliverables from the one shared source, never its own copy', () => {
-    // PACK_CONTENTS is already drift-tested against the engine's BUNDLE_FILES
+    // PACK_DOCUMENTS is already drift-tested against the engine's BUNDLE_FILES
     // (packContents.test.ts), so reusing it is what stops a third surface promising a ninth file.
     expect(drawer).toContain("from '@/components/marketing/PackContents'");
-    expect(drawer).toContain('PACK_CONTENTS.map');
+    expect(drawer).toContain('PACK_DOCUMENTS.map');
   });
 
   it('shows the catalogue price string rather than recomputing one', () => {

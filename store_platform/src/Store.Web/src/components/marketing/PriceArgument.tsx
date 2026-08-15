@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { buttonClasses, Icon } from '@/components/ui';
-import { PACK_CONTENTS } from '@/components/marketing/PackContents';
+import { PACK_DOCUMENTS } from '@/components/marketing/PackContents';
 import { SourcedCaveat, SourcedFigure } from '@/components/marketing/SourcedFigure';
 import { citedFigure } from '@/lib/sources';
 import { formatGbp, type PriceRange } from '@/lib/priceRange';
@@ -53,7 +53,7 @@ export function MethodCostAnchor({ range }: { range: PriceRange | null }) {
           cell to signal "this is the good one", which is the shape of a pricing table trying to
           steer rather than a comparison trying to inform. The numbers make the point unaided. */}
       <dl className="mt-6 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-md border border-border bg-surface2 p-5">
+        <div className="rounded-md border border-border bg-surface2 p-6">
           <dt className="text-caption font-medium text-subtle">
             {documentary.publisher},{' '}
             {new Date(documentary.publishedOn ?? documentary.checkedOn).getFullYear()} price list
@@ -63,12 +63,12 @@ export function MethodCostAnchor({ range }: { range: PriceRange | null }) {
             <span className="mt-1 block text-caption text-subtle">for {documentary.of}</span>
           </dd>
         </div>
-        <div className="rounded-md border border-border bg-surface2 p-5">
+        <div className="rounded-md border border-border bg-surface2 p-6">
           <dt className="text-caption font-medium text-subtle">A pack, already run</dt>
           <dd className="mt-2 text-meta text-text">
             <span className="font-mono font-semibold text-text">{range ? range.label : 'One payment'}</span>
             <span className="mt-1 block text-caption text-subtle">
-              one payment, {PACK_CONTENTS.length} documents, every claim sourced
+              one payment, {PACK_DOCUMENTS.length} documents, every claim sourced
             </span>
           </dd>
         </div>
@@ -92,7 +92,7 @@ export function ComparisonBlock({ range }: { range: PriceRange | null }) {
   */
   const rows: { label: string; feed: string; pack: string }[] = [
     { label: 'You pay', feed: 'every year, forever', pack: 'once' },
-    { label: 'You get', feed: 'raw leads to vet yourself', pack: `one vetted opportunity, ${PACK_CONTENTS.length} documents` },
+    { label: 'You get', feed: 'raw leads to vet yourself', pack: `one vetted opportunity, ${PACK_DOCUMENTS.length} documents` },
     { label: 'If you cancel', feed: 'you keep nothing', pack: 'it was never a subscription' },
   ];
   return (

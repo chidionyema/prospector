@@ -229,7 +229,7 @@ export function FeatureCard({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="space-y-3 border-border bg-surface p-5">
+    <Card className="space-y-3 border-border bg-surface p-6">
       <div className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface2 text-subtle">
         <Icon name={icon} size={18} />
       </div>
