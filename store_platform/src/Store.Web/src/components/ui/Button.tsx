@@ -174,8 +174,24 @@ export function chipClasses({
    * wins depends on the order Tailwind happens to emit them, not on the order they are listed.
    */
   removable = false,
+  /**
+   * Let the label wrap and the chip grow, instead of holding one line at a fixed height.
+   *
+   * For a chip in a `flex-wrap` rail this is wrong -- it shrink-wraps its label, so there is
+   * nothing to wrap against. It is for a chip in a GRID cell, where the column width is fixed by
+   * the grid and a long label has nowhere to go. Measured 2026-08-15 on the StepFlow tiles at
+   * 320px: "I can run operations" pushed its trailing count 45px PAST the tile's padding edge and
+   * put four elements off-screen; at 390px the overshoot was 10px. A count cannot sit in a
+   * right-aligned column when its own sibling is shoving it out of the box.
+   *
+   * Modelled here rather than passed as a `className`, for the reason `removable` gives above:
+   * `h-11` and `h-auto` have equal specificity, so which one won would depend on the order
+   * Tailwind happened to emit them. `min-h` keeps the 44px touch floor as a FLOOR, which is what
+   * it was always meant to be, and `py-2` stops a two-line label sitting hard against the border.
+   */
+  wrap = false,
   className,
-}: { selected?: boolean; removable?: boolean; className?: string } = {}) {
+}: { selected?: boolean; removable?: boolean; wrap?: boolean; className?: string } = {}) {
   return cx(
     /*
      * 44px on touch, 32px from `sm` up. `h-8` everywhere put the shelf's facet chips, the kill
@@ -187,7 +203,10 @@ export function chipClasses({
      * a pointer does not need the target and a 44px chip rail would dominate a page it only
      * qualifies.
      */
-    'inline-flex h-11 items-center rounded-sm border text-meta font-medium sm:h-8',
+    'inline-flex items-center rounded-sm border text-meta font-medium',
+    // `sm:py-0` matters: the desktop chip must stay exactly 32px. `py-2` + a 20px line box is
+    // 36px, so without it every wizard chip would grow 4px on a breakpoint where nothing wraps.
+    wrap ? 'min-h-11 py-2 sm:min-h-8 sm:py-0' : 'h-11 sm:h-8',
     removable ? 'gap-1.5 pl-3 pr-2' : 'px-3',
     'transition-colors duration-[120ms] ease-[cubic-bezier(0.2,0,0,1)]',
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',

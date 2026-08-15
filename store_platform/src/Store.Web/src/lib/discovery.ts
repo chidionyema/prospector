@@ -273,7 +273,7 @@ export function activeFacetValues(state: DiscoveryState, kind: FacetKind): strin
  * `activeConstraintCount` counts `advantage` as one constraint however many values are in it,
  * because the near-miss rule asks "how many AND-ed constraints did this pack fail". A "Filters"
  * badge answers a different question, how many controls did I switch on, and a buyer who lit
- * "Suits builders" and "Suits sellers" and reads "Filters 1" has been told something they can
+ * "I can build" and "I can sell" and reads "Filters 1" has been told something they can
  * see is false.
  */
 export function activeFacetSelectionCount(state: DiscoveryState): number {
