@@ -2,6 +2,7 @@ import Link from 'next/link';
 
 import report from '@/data/sample-report.json';
 import { PACK_DOCUMENTS } from '@/components/marketing/PackContents';
+import { plainEnglish } from '@/lib/plainEnglish';
 import { Button, Icon, SourceChip, sourceHost } from '@/components/ui';
 
 /**
@@ -256,7 +257,7 @@ export function PackSpecimen({ className }: { className?: string }) {
                       founder saw. 1.5 below `sm`, 1.75 from `sm` up where the 62ch cap does bind
                       and the ratio it was chosen for is the ratio in effect. */}
                   <p className="mt-6 max-w-[62ch] text-body leading-[1.5] text-muted sm:leading-[1.75]">
-                    …{sentenceTail(PRECEDING?.rationale ?? '')}
+                    …{sentenceTail(plainEnglish(PRECEDING?.rationale ?? ''))}
                   </p>
 
                   {/* THE SECTION HEADING, numbered the way a document numbers itself. The counter
@@ -304,7 +305,7 @@ export function PackSpecimen({ className }: { className?: string }) {
                       dissolving. `sm:line-clamp-none` because from `sm` up the sheet is 38rem and
                       the paragraph fits whole -- the desktop composition is unchanged. */}
                   <p className="mt-5 line-clamp-5 max-w-[62ch] text-body leading-[1.5] text-text sm:line-clamp-none sm:leading-[1.75]">
-                    {FAILED?.rationale}
+                    {plainEnglish(FAILED?.rationale ?? '')}
                   </p>
 
                   {/* THE FOOTNOTE. A rule, a short one -- not full width, the way a footnote rule

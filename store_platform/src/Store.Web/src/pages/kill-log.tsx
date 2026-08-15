@@ -8,6 +8,7 @@ import { WaitlistCallout } from '@/components/waitlist/WaitlistCallout';
 import killLog from '@/data/kill-log.json';
 import { tightDecimal } from '@/components/ui/Money';
 import { RESEARCH_STATS } from '@/lib/stats';
+import { plainEnglish } from '@/lib/plainEnglish';
 import { fetchCatalogStats } from '@/lib/api/client';
 import { track } from '@/lib/analytics';
 import type { GetStaticProps } from 'next';
@@ -220,8 +221,11 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
       items = items.filter(
         (e) =>
           e.title.toLowerCase().includes(q) ||
-          e.oneLiner.toLowerCase().includes(q) ||
-          e.reason.toLowerCase().includes(q),
+          plainEnglish(e.oneLiner).toLowerCase().includes(q) ||
+          // Searched in the words the reader can SEE. `plainEnglish` rewrites "the candidate" to
+          // "the idea" on the way to the page, so searching the raw prose would return rows for a
+          // query no row displays, and return nothing for the word 104 of them now show.
+          plainEnglish(e.reason).toLowerCase().includes(q),
       );
     }
     // Every sort falls back to date descending, so the order is total and a re-sort never
@@ -517,9 +521,19 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
                     <tr>
                       <td colSpan={4} className="bg-surface3 px-3 py-4">
                         {entry.oneLiner && (
-                          <p className="max-w-[80ch] text-meta text-muted">{entry.oneLiner}</p>
+                          <p className="max-w-[80ch] text-meta text-muted">
+                            {plainEnglish(entry.oneLiner)}
+                          </p>
                         )}
-                        <p className="mt-3 max-w-[80ch] text-meta text-text">{entry.reason}</p>
+                        {/* THE ENGINE'S OWN WORDS, TRANSLATED ON THE WAY OUT. This paragraph is
+                            written by the verdict brain for an audit trail and rendered verbatim
+                            to a buyer, and on 2026-08-15 that meant 104 of these 400 reasons said
+                            "the candidate" and 32 named a gate as `payer_solvency`. The JSON keeps
+                            the engine's words; `plainEnglish` is the last step before a reader.
+                            See lib/plainEnglish.ts for what it deliberately does NOT translate. */}
+                        <p className="mt-3 max-w-[80ch] text-meta text-text">
+                          {plainEnglish(entry.reason)}
+                        </p>
                         <div className="mt-3 flex flex-wrap items-center gap-2">
                           {/* Kills with no resolvable source are BADGED, not left blank. The page
                               promises "the sourced reason why", so an entry with nothing to link

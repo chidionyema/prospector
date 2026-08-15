@@ -7,6 +7,7 @@ import { buttonClasses, Icon } from '@/components/ui';
 import { useCopyVariant } from '@/lib/useCopyVariant';
 import { COMMON_CHECKS, idsFor, type Check } from '@/lib/checks';
 import { RESEARCH_STATS, killsSummary } from '@/lib/stats';
+import { plainEnglish } from '@/lib/plainEnglish';
 import CheckSequence from '@/components/marketing/CheckSequence';
 /* `kill-log-examples.json`, NOT the full `kill-log.json`. This page draws ONE illustrative kill per
    check and needs the whole record (reason, citations), so the names file is not enough. The
@@ -258,7 +259,7 @@ export default function HowItWorks() {
                         {example.title}
                       </h3>
                       <p className="mt-2 text-meta leading-relaxed text-muted">
-                        {firstSentences(example.reason, 160)}
+                        {firstSentences(plainEnglish(example.reason), 160)}
                       </p>
                       <Link
                         href="/kill-log"
