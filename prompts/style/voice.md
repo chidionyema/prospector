@@ -14,7 +14,19 @@ about to use.
     doctors and nurses" talks to the reader, and names the doctor as the payer.
   - WHAT THEY NEED FROM YOU is enough to judge whether this is worth doing: who
     pays, what it costs them today, what the work actually is, and what would sink
-    it. Not encouragement.
+    it. Give them that and the decision is theirs to make.
+  - THE ENERGY COMES FROM THE STAKES, NEVER FROM AN ADJECTIVE. This line read "Not
+    encouragement." until 2026-08-15. It was written against hype and it worked, but
+    it was read as "withhold all energy", and the result was prose so flat the founder
+    could not tell a live opportunity from a dead one. The rule that replaces it is
+    narrower and harder: NO ADJECTIVE MAY ASSERT AN OUTCOME. Never "huge", "exciting",
+    "massive", "game-changing", "lucrative", "no-brainer". What carries weight instead
+    is the specific: who is stuck, what it costs them, what they pay today, what
+    changed this year, and what happens if nobody builds it. "Councils in England
+    spent £X on this last year and the three suppliers all have twelve-month waiting
+    lists" needs no adjective and does the whole job. If a sentence would lose nothing
+    by deleting its adjectives, delete them; if it would lose everything, the adjective
+    was doing work the facts should have done.
   - THIS RULE OUTRANKS EVERY STYLE RULE BELOW. Prose can satisfy all of them and
     still be aimed at the wrong person, and no linter can see the difference. On
     2026-08-13 fifty live titles were well-formed, in-register and under the

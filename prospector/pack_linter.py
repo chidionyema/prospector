@@ -75,6 +75,232 @@ def _warn(check: str, where: str, detail: str) -> Problem:
 
 
 # ---------------------------------------------------------------------------
+# Repetition across the assembled pack (the "why wasn't this caught at root" check)
+# ---------------------------------------------------------------------------
+#
+# WHY THIS DID NOT EXIST UNTIL 2026-08-15
+# ---------------------------------------
+# The founder read a rebuilt pack and said "repetitions occur", then asked why nothing had
+# caught it. The answer is structural rather than an oversight in any one rule: EVERY check in
+# this module before this one grades a single document or a single field. `check_currency` is
+# the only one that ever sees two texts at once, and it compares currency symbols.
+#
+# So nothing in this repo had ever read the pack as ONE DOCUMENT. Each renderer was verified
+# on its own — word counts, unit tests, its own output — and each was correct on its own. The
+# defect only exists BETWEEN them: `pack_reference` and `pack_bear_case` both walked the same
+# `unverifiable` rows; `dossier.render_markdown` reprinted every passage its own per-check
+# lists had already printed; `pack_bear_case` lifted two whole blocks out of the financial
+# model. Measured on pack e698149e137fc164: 43 sentences appearing in two or more sections,
+# 26 repeated inside a single section, 34 near-duplicate pairs.
+#
+# A per-document linter cannot see any of that, however many rules it has. This one takes the
+# assembled reading order and is the only check here that does.
+#
+# WHAT IS DELIBERATELY NOT GRADED
+# --------------------------------
+# Block quotes are skipped. This module's own standing rule is that quoted third-party
+# passages are never linted — two checks citing the same page SHOULD quote the same sentence,
+# and "correcting" that would falsify the citation on a source-or-die storefront.
+#
+# Short sentences are skipped. Section furniture recurs by design ("Read this one before you
+# build.") and a floor on length is what separates a repeated FACT from a repeated signpost.
+# Sections whose JOB is to restate the pack. Membership is an argument, not a category, and
+# the list is expected to stay at one entry: "Copy you can paste" hands the buyer a headline,
+# a one-line description and a proof point to lift into a landing page, and every one of those
+# is by definition a line printed elsewhere in the pack. See `check_repetition` for what
+# membership actually buys (a downgrade to warning, and only when exactly one other section is
+# involved) and why it is keyed on the buyer-visible title.
+_REPETITION_RESTATES_ON_PURPOSE = frozenset({"Copy you can paste"})
+
+_REPETITION_MIN_WORDS = 9
+_REPETITION_NEAR_RATIO = 88.0     # rapidfuzz ratio, 0-100
+_REPETITION_MD = re.compile(r"[*_`#\[\]()]|https?://\S+")
+_REPETITION_LIST = re.compile(r"^\s*(?:\d+[.)]|[-•*])\s*")
+
+
+def _repetition_sentences(markdown: str) -> List[str]:
+    """Engine-authored sentences of a section, normalised for comparison."""
+    out: List[str] = []
+    fenced = False
+    for line in str(markdown or "").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            fenced = not fenced
+            continue
+        # Headings carry no claim; block quotes are somebody else's words (see above).
+        if fenced or not stripped or stripped.startswith(("#", ">", "|")):
+            continue
+        body = _REPETITION_MD.sub(" ", _REPETITION_LIST.sub("", stripped))
+        for sentence in re.split(r"(?<=[.!?])\s+", body):
+            words = sentence.split()
+            if len(words) >= _REPETITION_MIN_WORDS:
+                out.append(" ".join(words))
+    return out
+
+
+def _repetition_key(sentence: str) -> str:
+    return re.sub(r"[^a-z0-9 ]", "", sentence.lower())
+
+
+def readability_grades(sections: Optional[Mapping[str, str]]) -> Dict[str, float]:
+    """US reading-grade per section, recorded and never actuated.
+
+    Measured 2026-08-15 on pack e698149e137fc164, the fourteen sections spread from grade 5.9
+    to grade 17.3, and the spread is not noise: the three sections rendered deterministically
+    from the dossier came in at 5.9-7.3, and the four model-written documents at 12.6-13.8.
+    The worst was "Copy you can paste" at 17.3 — the one section whose entire job is to hand
+    the buyer sentences to put on a landing page.
+
+    That is the finding, and it is the reason this returns numbers rather than problems. A
+    grade ceiling would block a pack for quoting a statute, and the honest reading of the
+    spread is that it grades WHO WROTE a section, not whether the writing is any good. It
+    accrues in `<id>.lint.json` until there is enough of it to say something a threshold
+    could act on.
+
+    Returns {} when textstat is absent or when nothing is long enough to score — a readability
+    number over two sentences is arithmetic, not a measurement.
+    """
+    if not sections:
+        return {}
+    try:
+        import textstat  # declared in requirements.txt; pure Python, no build
+    except ImportError:
+        # The optional metric is absent. NARROWED from `except Exception` on merging
+        # origin/main 2026-08-15, which brought the tier-1 swallow ratchet
+        # (`tools/audit_swallow_sites.py`) that flagged this line: `{}` here is the SAME value
+        # the success path returns for a pack with nothing long enough to score, so a broad
+        # handler made "textstat is not installed" and "this pack has no scoreable section"
+        # the same fact to every caller — and the whole point of this function is that the
+        # numbers accrue in `<id>.lint.json` until there are enough of them to say something.
+        # Accruing nothing, silently, because of an unrelated exception is how that never
+        # happens. ImportError is the one condition this handler is actually for.
+        return {}
+    out: Dict[str, float] = {}
+    for title, body in sections.items():
+        plain = " ".join(_REPETITION_MD.sub(" ", str(body or "")).split())
+        if len(plain.split()) < 60:
+            continue
+        try:
+            out[title] = round(float(textstat.flesch_kincaid_grade(plain)), 1)
+        except Exception:              # noqa: BLE001 — one unscoreable section, not the pack
+            # Deliberately still broad, and NOT the same defect as the import above: this
+            # skips ONE section of fourteen and the other thirteen still record their grade,
+            # so a caller can see that a number is missing. `textstat` is a third party
+            # scoring arbitrary prose and its failure modes are not enumerable from here;
+            # widening a metric's blast radius to the whole publish would be the worse trade.
+            continue
+    return out
+
+
+def check_repetition(sections: Optional[Mapping[str, str]],
+                     *, block: bool = True) -> List[Problem]:
+    """Grade the assembled pack for text the buyer reads twice.
+
+    `sections` is the reading order the buyer actually gets — section TITLE -> markdown body,
+    exactly what `bridge` hands the HTML renderer. Keyed by title rather than by filename
+    because the title is what the report has to name for the defect to be actionable.
+
+    Three findings, and only the first blocks:
+
+      * the same sentence in TWO OR MORE sections. There is no case where this is right: two
+        renderers each decided a fact was worth stating and neither knew about the other.
+      * the same sentence twice INSIDE one section — a warning, because a genuinely long
+        section can restate a premise on purpose.
+      * a near-duplicate across sections (rapidfuzz >= 88) — a warning, because a rephrase is
+        a judgement about meaning and this check is not the place to make it. It is the
+        paraphrase problem `pack_reference`'s docstring measured at 3.5% of the corpus, and
+        blocking on a similarity score would unlist packs over a style the model chose.
+
+    `block=False` grades without the actuator, which is how `check_grammar` and
+    `check_shelf_copy` earn their thresholds in this module: the report still carries the
+    count, so a baseline accrues on live packs before anything refuses to sell one.
+    """
+    if not sections:
+        return []
+    from rapidfuzz import fuzz  # declared in requirements.txt; a wheel, no build step
+
+    problems: List[Problem] = []
+    by_key: Dict[str, List[Tuple[str, str]]] = {}
+    for title, body in sections.items():
+        counts: Dict[str, int] = {}
+        for sentence in _repetition_sentences(body):
+            key = _repetition_key(sentence)
+            counts[key] = counts.get(key, 0) + 1
+            by_key.setdefault(key, []).append((str(title), sentence))
+        for key, n in counts.items():
+            if n > 1:
+                example = next(s for t, s in by_key[key] if t == str(title))
+                problems.append(_warn(
+                    "repetition", str(title),
+                    f"one sentence printed {n} times in this section: {example[:160]!r}"))
+
+    make = _err if block else _warn
+    for key, hits in by_key.items():
+        titles = sorted({t for t, _ in hits})
+        if len(titles) > 1:
+            # THE ONE EXEMPTION, AND WHY IT IS NARROW. A section that exists to hand the buyer
+            # lines to paste elsewhere is restating on purpose; blocking it would mean the only
+            # way to ship is to make the paste-ready copy differ from the pack it came out of,
+            # which is a worse pack and a false claim. So restatement BY that section is
+            # downgraded, not waived — the finding is still reported, so a renderer that starts
+            # copying whole sections into it is still visible in the report.
+            #
+            # It is keyed on the section title rather than on a filename or a flag because the
+            # title is what the exemption is an argument about: "Copy you can paste" earns it,
+            # and a future section does not inherit it by being added to the reading order.
+            # Two sections neither of which is exempt still block, even if one is adjacent to
+            # the exempt one in the pack.
+            exempt = _REPETITION_RESTATES_ON_PURPOSE.intersection(titles)
+            downgraded = bool(exempt) and (len(titles) - len(exempt)) < 2
+            report = _warn if downgraded else make
+            note = (f" (allowed: {' + '.join(sorted(exempt))} exists to restate)"
+                    if downgraded else "")
+            problems.append(report(
+                "repetition", " + ".join(titles),
+                f"the same sentence is printed in {len(titles)} sections{note}: "
+                f"{hits[0][1][:160]!r}"))
+
+    # Near-duplicates. Compared once per unordered pair, over the SAME population the exact
+    # rule uses. There was a second floor here (`len(k) >= 60`) justified as keeping two short
+    # sentences of similar shape from scoring high, but `_repetition_sentences` has already
+    # made that judgement at `_REPETITION_MIN_WORDS` = 9, and nine words is about 45-50
+    # characters — so the floor was silently exempting the shortest third of real sentences
+    # from the only check that catches a REPHRASE. Two gates answering one question is how a
+    # corpus ends up smaller than the rule that defines it.
+    keys = list(by_key)
+    pairs = 0
+    for i, a in enumerate(keys):
+        for b in keys[i + 1:]:
+            # THE PREFILTER IS DERIVED FROM THE THRESHOLD, NOT A ROUND NUMBER (2026-08-15).
+            # It was `abs(len(a) - len(b)) > 40`, and 40 is not conservative at ratio 88.
+            # rapidfuzz's ratio is 2*matches/(la+lb), so reaching T needs the longer string
+            # within `m*(200-T)/T` of the shorter — 1.27x at T=88, i.e. 43 characters apart at
+            # m=160, not 40. A 160/205-character pair scoring 91 was skipped before it was
+            # ever compared, which is a false CLEAN and the expensive direction to be wrong in.
+            la, lb = len(a), len(b)
+            if abs(la - lb) * _REPETITION_NEAR_RATIO > \
+                    min(la, lb) * (200.0 - 2 * _REPETITION_NEAR_RATIO):
+                continue
+            titles_a = {t for t, _ in by_key[a]}
+            titles_b = {t for t, _ in by_key[b]}
+            if titles_a == titles_b and len(titles_a) == 1:
+                continue  # one section: the within-section rule above already has it
+            if fuzz.ratio(a, b) < _REPETITION_NEAR_RATIO:
+                continue
+            pairs += 1
+            if pairs <= 20:   # the report names the worst; the count carries the rest
+                problems.append(_warn(
+                    "repetition", " + ".join(sorted(titles_a | titles_b)),
+                    "near-duplicate sentences: "
+                    f"{by_key[a][0][1][:110]!r} / {by_key[b][0][1][:110]!r}"))
+    if pairs > 20:
+        problems.append(_warn("repetition", "pack",
+                              f"{pairs} near-duplicate sentence pairs across sections; "
+                              "the first 20 are listed above"))
+    return problems
+
+
+# ---------------------------------------------------------------------------
 # Currency consistency (the £/$ defect)
 # ---------------------------------------------------------------------------
 
@@ -1248,7 +1474,9 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
               title_block_on_breach: bool = TITLE_BLOCK_ON_BREACH_DEFAULT,
               shelf_copy_block_on_breach: bool = False,
               grammar_enabled: bool = False,
-              max_grammar_defects_per_1k: float = 0.0) -> Dict[str, Any]:
+              max_grammar_defects_per_1k: float = 0.0,
+              pack_sections: Optional[Mapping[str, str]] = None,
+              repetition_block: bool = False) -> Dict[str, Any]:
     """Run every lint check; return the machine-readable report.
 
     `report["ok"]` is False iff any problem has severity "error" — that is the half the
@@ -1256,6 +1484,14 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
 
     `archived_urls` maps citation URL -> Wayback memento, so a dead citation whose evidence
     is still reachable warns instead of blocking. Callers build it from `Source.archived_url`.
+
+    `pack_sections` is the assembled read — buyer-visible section title -> markdown, in
+    reading order — which is a DIFFERENT corpus from `artifacts` and the reason this
+    parameter exists. `artifacts` holds the four model-written documents; the pack a buyer
+    opens has fourteen sections, five of them rendered deterministically after those four,
+    and until 2026-08-15 nothing in this module had ever seen them. Only `check_repetition`
+    reads it, because repetition is the one defect that is invisible section by section and
+    exists only in the assembly.
 
     `house_fields` carries engine-authored single-line copy that is NOT already in
     `listing_texts` — `title` above all. Its absence was the second half of the 2026-08-08
@@ -1273,6 +1509,11 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
     # would ask each piece to agree with a label this engine wrote over it.
     problems += check_marketing(marketing)
     problems += check_truncation(listing_texts or {}, truncation_caps)
+    # Graded on the ASSEMBLY, not on any one document, which is why it takes its own corpus
+    # and why it had none until 2026-08-15: `check_repetition` existed, was commented as live
+    # in four renderers, and had zero callers. A sentence printed once in each of two sections
+    # is correct in both files and a defect in the pack.
+    problems += check_repetition(pack_sections, block=repetition_block)
 
     # --- copy quality -----------------------------------------------------------------
     # Engine-authored prose only. Quoted third-party passages are never linted: a cited
@@ -1342,5 +1583,11 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
         # is still off — the number you turn `max_grammar_defects_per_1k` on with should be
         # one you have seen on live packs, not one guessed from a sample.
         "grammar_rate_per_1k": grammar_rate,
+        # Same reason as `grammar_rate_per_1k`: the actuator is off, so the receipt is the
+        # only thing that can earn it a threshold. Counted from the problems rather than
+        # returned by the check so it stays right whether the finding blocked or warned.
+        "repetition_findings": sum(1 for p in problems if p.get("check") == "repetition"),
+        "sections_graded": len(pack_sections or {}),
+        "readability_grade": readability_grades(pack_sections),
         "problems": problems,
     }

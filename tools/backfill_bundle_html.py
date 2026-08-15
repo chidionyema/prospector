@@ -81,6 +81,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib
 import io
 import json
 import os
@@ -331,6 +332,62 @@ def rebuild_zip_with_index(
             dossier, {n: _text(b) for n, b in payload.items() if n.endswith(".md")})
         if checklist_md:
             payload[pack_checklist.FILENAME] = checklist_md.encode("utf-8")
+
+        # THE FIVE NARRATIVE SECTIONS (2026-08-15), backfilled onto packs already sold.
+        #
+        # Without this block the restructure is a fix for FUTURE buyers only: the 145 bundles
+        # under publish/ keep the old shape forever, because these sections are appended after
+        # the .md the pack was built from and nothing re-derives them. They can be backfilled
+        # at all for exactly the reason the generator's own comment gives — all five render
+        # from the dossier with NO model call, so a re-render here is not a regeneration.
+        #
+        # This mirrors bridge.py `_create_bundle` (the `for module_name, kwargs in (` loop)
+        # deliberately line for line, INCLUDING the order and the position: it runs after the
+        # checklist and BEFORE the card/table below, so `pack_card` is handed the financial
+        # model AFTER the bear case has absorbed its weaknesses, exactly as in the generator.
+        # Two implementations that drift is the defect `pack_reference` and `pack_checklist`
+        # are both written to avoid, and this loop is the third instance of the same promise.
+        #
+        # Guarded INDIVIDUALLY, like the generator: one section that raises costs that section
+        # and nothing else, never the backfill of the pack, and never an exception on the apply
+        # path. `""` is not a failure — `pack_field` and `pack_bear_case` legitimately return it
+        # on a thin dossier (no incumbency sources; nothing refuted or unproven), and "" means
+        # OMIT THE SECTION. The reader picks whatever survives up out of `payload` via
+        # `ordered_md_entries`, since all five names are in BUNDLE_READING_ORDER.
+        for module_name, kwargs in (
+            ("pack_offer", {}),
+            ("pack_field", {}),
+            ("pack_bear_case",
+             {"financial_md": _text(payload.get("04_Financial_Model.md"))}),
+            ("pack_toolkit", {}),
+            ("pack_kicker", {}),
+        ):
+            try:
+                module = importlib.import_module(f"prospector.{module_name}")
+                body = module.render(dossier, **kwargs)
+                if body:
+                    # The prose pass, for the same reason the generator applies it: it is pure
+                    # Python (`plain_text.publish_pass_document`, no model call), so it is safe
+                    # on a backfill, and SKIPPING it here is what would make a backfilled pack
+                    # differ byte-for-byte from a freshly generated one.
+                    body = plain_text.publish_pass_document(body)
+                    payload[module.FILENAME] = body.encode("utf-8")
+                    # The bear case lifted two blocks out of the financial model verbatim, so
+                    # the model now hands them over and keeps a pointer — otherwise the buyer
+                    # reads the same fifteen sentences in two sections, which is the exact
+                    # duplication this branch exists to remove. Only on success: a render that
+                    # returned "" or raised absorbed nothing, and the model keeps its own.
+                    # The title comes from `_SECTION_TITLES`, never a literal, so the pointer
+                    # names the section the reader will actually see.
+                    if module_name == "pack_bear_case" and payload.get("04_Financial_Model.md"):
+                        payload["04_Financial_Model.md"] = module.financial_md_after_absorbing(
+                            _text(payload["04_Financial_Model.md"]),
+                            _SECTION_TITLES.get(module.FILENAME, "the bear case"),
+                        ).encode("utf-8")
+            except Exception as e:  # noqa: BLE001 — one section, never the pack
+                print(f"  {pack_id}: {module_name} render failed ({e}); "
+                      "converting the pack without that section", flush=True)
+
         # P5. Both are deterministic projections of files ALREADY IN THIS ZIP plus the dossier,
         # which is the only reason a pack sold in June can be given them at all. Rendered by the
         # same two modules the generator calls, so a backfilled pack and a fresh one are

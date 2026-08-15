@@ -4,12 +4,17 @@
 > (`reference-project-claude-md-full-2026-08-06.md` is the verbatim pre-compression text).
 > This file carries the RULE; the memory files carry the incident that produced it.
 >
-> Three programmes have their own tracked specs — read and append there, never here:
+> Four programmes have their own tracked specs — read and append there, never here:
 > `docs/COST_PROGRAM.md` (all cost work, all measurements),
-> `docs/GRAPHIFY_ENFORCEMENT_SPEC.md` (estate-wide graph freshness) and
+> `docs/GRAPHIFY_ENFORCEMENT_SPEC.md` (estate-wide graph freshness),
 > `docs/SITE_SPEC_PROGRAM.md` (the mumchimp.com design/UX/copy spec + its live status ledger —
 > it lived only in a chat transcript until 2026-08-07, which is why its status kept evaporating
-> between sessions; read it before touching the storefront).
+> between sessions; read it before touching the storefront) and
+> `docs/PACK_NARRATIVE_PROGRAM.md` (what the buyer actually reads: the 14-section reading order,
+> the eight deterministic renderers and why they must stay model-free, the three gates that were
+> grading less than they appeared to, and the switches that are deliberately OFF. Read it before
+> touching a `pack_*.py` renderer, the pack linter, or `tools/backfill_bundle_html.py` — the
+> diagnosis is the top half, the implementation ledger is the bottom half).
 
 **Source-or-die:** every factual claim and quantitative figure must cite a retrievable source or be marked `unverifiable`. No unsourced numbers ship, ever.
 

@@ -37,8 +37,9 @@ damage off the storefront. Neither makes the other redundant.
 from __future__ import annotations
 
 import re
+from typing import Any
 
-__all__ = ["clip_to_sentence", "RATIONALE_MAX", "ABBREV_GUARD"]
+__all__ = ["clip_to_sentence", "as_phrase", "RATIONALE_MAX", "ABBREV_GUARD"]
 
 #: The budget every verdict rationale is held to. The prompt asks for <=2 sentences, so this is a
 #: backstop against a model that ignores the instruction, not the normal path.
@@ -112,3 +113,22 @@ def clip_to_sentence(text: str, limit: int = RATIONALE_MAX) -> str:
     space = window.rfind(" ")
     body = window[:space] if space > 0 else window
     return body.rstrip(_TRAILING_JUNK) + "…"
+
+
+def as_phrase(text: Any) -> str:
+    """A dossier field made safe to embed mid-sentence: collapsed, unstopped, unbolded.
+
+    Added 2026-08-15. `who_pays` is written as a full sentence by the generator, so every site
+    that embedded it inside a sentence of its own printed two stops::
+
+        the payer this was checked against is **... Naperville 203.**.
+
+    That was live in `pack_floors.exec_summary_md` in the first block a buyer reads. The double
+    stop is the visible half; the real defect is that a field written as a sentence and a
+    renderer that treats it as a noun phrase disagree about who owns the punctuation, and the
+    renderer is the one that knows the context.
+
+    Trailing commas and semicolons go too -- the same disagreement, one clause earlier.
+    """
+    out = " ".join(str(text or "").split())
+    return out.rstrip(" .,;:")
