@@ -450,6 +450,25 @@ does not improve the writing, it empties the catalogue.
 
 Newest first. Each entry names the commit and the receipt.
 
+### 2026-08-15 — the rules reach the writer, not just the gate
+
+`prompts/style/voice.md` now carries R1–R6, R8, R10, R11 and Q1–Q3/Q5 as instructions. That
+file is auto-injected as `{style_guide}` into `generate_system`, `refine_system`,
+`revise_system`, `artifacts`, `content_gen` and `retitle` (`prompts.style_kwargs`), and
+deliberately NOT into `verdict` or `adversarial` — the moat gets the fenced `rationale` style,
+because a buyer-facing voice is the wrong instruction for a ruling.
+
+This is the half that changes the prose. The lint side added earlier today is the backstop: at
+43.9% R1 violations a blocking linter with no change here stops the line rather than fixing a
+sentence. Pinned by `test_the_voice_carries_the_house_writing_spec`, which fails by rule id if
+an edit to the voice file drops one.
+
+Two rules stay unenforced anywhere and the ledger says so: R7 (passive / nominalisation) needs
+a POS tagger this repo has no dependency for, and R3 needs a claim parser. Both are now at
+least ASKED FOR at generation, which is the only place they can be met.
+
+Receipts: `tests/invariants/` 94 passed.
+
 ### 2026-08-15 — the spec reaches the publish gate
 
 `prospector/house_style.py` (new) implements the eight rules Part Six lists as beyond Vale's

@@ -42,8 +42,45 @@ age, any background — no gendered, age-coded or insider assumptions.
 
 These are the rules that actually decide whether it reads clearly:
 
-  - ONE IDEA PER SENTENCE. Aim under 25 words. If a sentence needs a second
-    comma-clause to stay upright, split it in two.
+  - ONE IDEA PER SENTENCE. Aim under 25 words, never over 28. One claim, one
+    sentence. If a sentence needs a second comma-clause to stay upright, split it in
+    two. No semicolons in a sentence making a claim: a semicolon is a full stop that
+    lost its nerve.
+  - THE SOURCE RIDES WITH THE FACT. Every sentence containing a figure names where
+    the figure came from, IN THAT SENTENCE. Not in the next sentence, not in a
+    footnote, not in a citation block underneath. "Retentions ran to £4.5bn in 2018,
+    according to Build UK" is one sentence a reader can check; "Retentions ran to
+    £4.5bn in 2018. This comes from industry data." is two sentences they cannot.
+  - NEVER MORE THAN THREE ITEMS IN A LIST. Three is the ceiling in a sentence, in a
+    bullet, in a heading, anywhere. A four-item list is the single strongest tell
+    that the writing ran out of content before it ran out of rhythm, and the fourth
+    item is where invented facts appear: by then the sentence needs a word, and
+    there is no evidence left to supply one. Cut to the three that carry weight.
+  - NO QUANTITY WORD WITHOUT A QUANTITY. "Numerous", "significant", "substantial",
+    "considerable", "dozens of", "a trail of", "a fraction of" — either the number
+    is in the sentence or the word comes out. If the evidence gives no number, say
+    what it does give: "the three largest suppliers", "every council that replied".
+  - NEVER OPEN A SENTENCE WITH "That", "Which", "And that" or "So that". A sentence
+    that starts that way is reporting to a verb in some earlier sentence, and the
+    reader has to reverse to find it. Give the sentence its own subject and verb.
+  - A PREDICTION IS SOURCED OR IT IS LABELLED. Any claim about the future, and any
+    claim about what a competitor will or cannot do, is either attributed to a named
+    source in the sentence or written as the assumption it is. "Late copiers cannot
+    catch up" is not a finding, it is a guess wearing a finding's clothes. Write
+    "we are assuming late entrants cannot catch up, because…" and let the reader
+    weigh it. This is the most damaging thing you can get wrong: one unsourced claim
+    about the future costs more trust than a hundred clumsy sentences.
+  - QUOTE PROPERLY OR DO NOT QUOTE. A quote is a complete grammatical unit of at
+    least eight words that parses on its own. Never join two retrieved fragments
+    with a full stop or an ellipsis and present the result as one quote. Never quote
+    navigation text, cookie banners, SEO boilerplate, "Logo" strings, or a passage
+    that describes the site in the third person — that is furniture, not evidence.
+    Attribute as publication, then date. If no clean quote exists, SAY SO: "we found
+    no page stating this in its own words" is publishable, and a mangled quote is
+    not.
+  - SAY THE PACK'S ONE-LINE DESCRIPTION ONCE PER DOCUMENT. A reader who meets the
+    same sentence in three sections stops reading, and rightly: they conclude there
+    is only one sentence.
   - EXPLAIN BEFORE YOU NAME. Give the plain description first, then the term of art
     in brackets only if it earns its place: "it pays a fixed amount per day, with no
     assessor and no argument (the trade calls this 'parametric')". Never the term on
