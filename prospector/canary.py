@@ -9,6 +9,7 @@ Part of the production-grade self-improvement infrastructure (Priority 6).
 """
 
 import json
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
@@ -18,6 +19,8 @@ from typing import Optional
 from .attribution import measure_effect
 from .metrics_store import MetricsStore
 from .self_modify import SelfModificationLog
+
+logger = logging.getLogger(__name__)
 
 
 class CanaryVerdict(str, Enum):
@@ -79,6 +82,9 @@ class CanaryRunner:
         self.min_canary_runs = min_canary_runs
         self.significance_threshold = significance_threshold
         self._state_file = self.store_dir / "canary_state.json"
+        # Set by `_load_state` when the state file EXISTS but cannot be read. Without it,
+        # every caller below sees the same `None` an absent file produces — see `_load_state`.
+        self._state_error: Optional[str] = None
 
     def start_canary(self, change_id: str) -> CanaryState:
         """Begin a canary experiment for a modification."""
@@ -140,6 +146,11 @@ class CanaryRunner:
         """
         state = self._load_state()
         if state is None:
+            if self._state_error:
+                return {"verdict": "state_unreadable",
+                        "reason": f"canary state file {self._state_file} could not be read "
+                                  f"({self._state_error}); refusing to rule on an experiment "
+                                  f"whose record is missing"}
             return {"verdict": "no_experiment", "reason": "No canary state found"}
 
         if state.status != "running":
@@ -231,19 +242,42 @@ class CanaryRunner:
         return True
 
     def status(self) -> Optional[dict]:
-        """Get current canary status."""
+        """Get current canary status.
+
+        `state_unreadable` is deliberately NOT `no_experiment`: the second is an answer, the
+        first is the absence of one, and an operator who reads "no experiment" stops looking.
+        """
         state = self._load_state()
         if state is None:
+            if self._state_error:
+                return {"status": "state_unreadable", "error": self._state_error,
+                        "state_file": str(self._state_file)}
             return {"status": "no_experiment"}
         return state.to_dict()
 
     def _load_state(self) -> Optional[CanaryState]:
+        """The experiment on disk, or None. `self._state_error` says WHICH kind of None.
+
+        The two Nones are not the same fact and the callers act on them identically, which is
+        the defect: `revert()` returns False and never calls `mod_log.rollback`, `evaluate()`
+        answers "no_experiment", `record_run()` drops the sample — all of it reading as "there
+        is no canary" when in truth a canary IS running and its state file is unreadable. A
+        change left in production because its rollback silently no-opped is the worst outcome
+        this module has. The load still fails safe (never fabricate a state), but the file's
+        EXISTENCE now separates "nothing to load" from "we could not load it".
+        """
+        self._state_error = None
         if not self._state_file.is_file():
             return None
         try:
             data = json.loads(self._state_file.read_text())
             return CanaryState(**data)
-        except (json.JSONDecodeError, TypeError):
+        except (json.JSONDecodeError, TypeError, OSError) as e:
+            self._state_error = f"{type(e).__name__}: {e}"
+            logger.error(
+                "canary state file %s exists but is unreadable (%s) — any experiment it "
+                "described is NOT being evaluated, promoted or rolled back",
+                self._state_file, self._state_error)
             return None
 
     def _save_state(self, state: CanaryState):

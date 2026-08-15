@@ -119,9 +119,20 @@ def _cache_load(path: Optional[Path]) -> Dict[str, Any]:
         return {}
     try:
         data = json.loads(Path(path).read_text())
-        return data if isinstance(data, dict) else {}
-    except (OSError, ValueError):
+    except FileNotFoundError:
+        return {}                         # first run: an empty cache is the correct answer
+    except (OSError, ValueError) as exc:
+        # A cache file that exists and will not load re-queries the Internet Archive for every
+        # URL on every publish, forever, and pays the rate limit for it. Best-effort is the right
+        # behaviour; being silent about it is what makes it permanent.
+        logger.error("archive: citation cache at %s is unreadable, re-querying every URL: %s",
+                     path, exc)
         return {}
+    if not isinstance(data, dict):
+        logger.error("archive: citation cache at %s is a %s, not an object; ignoring it",
+                     path, type(data).__name__)
+        return {}
+    return data
 
 
 def _cache_save(path: Optional[Path], cache: Dict[str, Any]) -> None:
@@ -463,6 +474,13 @@ def archive_sources(sources: Sequence[Any], *, cache_path: Optional[Path] = None
     money rail; a `requests` edge case here must never be the reason a paid-for pack fails to
     ship. The worst outcome of a total failure is a pack with no mementos, which is exactly
     what every pack published before today has.
+
+    The blanket therefore STAYS, but it is split in two. `requests.RequestException` subclasses
+    `OSError`, so the remote failures this is built to absorb are nameable; anything outside that
+    set is a bug in THIS function, not the Internet Archive being slow, and one `logger.warning`
+    with no traceback made a refactor's `TypeError` read exactly like a socket timeout. Both
+    still return 0 — the caller (`store.py:192`, `bridge.py:968`) only ever logs the count — so
+    the log is the only place the distinction can live.
     """
     try:
         by_url = archive_urls((getattr(s, "url", "") for s in sources),
@@ -480,6 +498,13 @@ def archive_sources(sources: Sequence[Any], *, cache_path: Optional[Path] = None
                 except AttributeError:
                     pass
         return n
+    except (OSError, ValueError) as exc:
+        logger.error("archive: skipped entirely (remote or I/O failure)",
+                     extra={"err": f"{type(exc).__name__}: {exc}"})
+        return 0
     except Exception as exc:  # noqa: BLE001 — see the docstring; archiving is never fatal
-        logger.warning("archive: skipped entirely", extra={"err": f"{type(exc).__name__}: {exc}"})
+        logger.exception(
+            "archive: skipped entirely on an UNEXPECTED %s — this is a bug in archive_sources, "
+            "not a remote failure", type(exc).__name__,
+            extra={"err": f"{type(exc).__name__}: {exc}"})
         return 0

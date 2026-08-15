@@ -140,8 +140,14 @@ def refresh_families(store: Any, cfg: Any) -> list[dict]:
         if cache_path.exists():
             try:
                 cache = json.loads(cache_path.read_text(encoding="utf-8"))
-            except Exception:
-                cache = {}  # corrupted cache — treat as cold
+            except (OSError, ValueError) as e:
+                # Corrupted or unreadable cache — treat as cold, but never in silence: this
+                # is the only place that would tell us the cache is being rebuilt on EVERY
+                # generation call (the cost this cache exists to avoid). Narrow, so a
+                # TypeError from a future refactor surfaces instead of reading as corruption.
+                logger.error(f"denylist cache unreadable at {cache_path}, rebuilding: {e}",
+                             extra={"path": str(cache_path), "error": str(e)})
+                cache = {}
             if (len(kill_rows) - int(cache.get("built_at_kill_count", 0))
                     < refresh_every):
                 return list(cache.get("families", []) or [])
@@ -158,14 +164,24 @@ def refresh_families(store: Any, cfg: Any) -> list[dict]:
         try:
             cache_path.parent.mkdir(parents=True, exist_ok=True)
             cache_path.write_text(json.dumps(payload), encoding="utf-8")
-        except Exception:
-            pass  # cache write best-effort; we still return the fresh list
+        except OSError as e:
+            # Still return the fresh list — but an unwritable cache means every future call
+            # re-mines the whole kill corpus, so it is an ERROR, not a `pass`.
+            logger.error(f"denylist cache not written to {cache_path}: {e}",
+                         extra={"path": str(cache_path), "error": str(e)})
         logger.info(
             f"denylist: {len(families)} exhausted families from {len(kill_rows)} kills"
         )
         return families
-    except Exception as e:
-        logger.warning(f"denylist refresh failed, skipping: {e}")
+    except Exception as e:  # noqa: BLE001
+        # Deliberately still broad, and the empty list stays: the module's never-raise-into-
+        # generation invariant is a TESTED contract (tests/unit/test_denylist.py:233 passes an
+        # arbitrary RuntimeError through a store), and a prompt hint may not take down a run.
+        # What changes is the trace — `[]` here is also what "no family qualifies" returns, and
+        # at WARNING the two were the same line in a log full of generation chatter. ERROR with
+        # a traceback is what tells them apart after the fact.
+        logger.exception(f"denylist refresh FAILED, generation loses the denial list: {e}",
+                         extra={"error": str(e)})
         return []
 
 
@@ -201,6 +217,10 @@ def denial_directive(store: Any, cfg: Any) -> str:
             "genuinely new."
         )
         return "\n".join(lines)
-    except Exception as e:
-        logger.warning(f"denial_directive failed, skipping: {e}")
+    except Exception as e:  # noqa: BLE001 — same never-raise invariant as `refresh_families`
+        # `""` is also what the gate-off and no-family paths return, so a directive that broke
+        # was indistinguishable from one that legitimately had nothing to say — at WARNING,
+        # next to hundreds of generation lines. ERROR + traceback.
+        logger.exception(f"denial_directive FAILED, generation loses the denial list: {e}",
+                         extra={"error": str(e)})
         return ""

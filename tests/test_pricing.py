@@ -65,9 +65,16 @@ GOLDEN: list[tuple[str, str, int]] = [
     ("growth",      "",      7999),
     ("growth",      "uk",    7999),
     ("growth",      "us",    9999),
-    ("venture",     "",     14999),
-    ("venture",     "uk",   14999),
-    ("venture",     "us",   19999),
+    # CEILING, not a price cut. The £149.99 and £199.99 rungs were DELETED from
+    # `config.yaml listing.pricing.rungs` on 2026-08-15 (founder: "i dont think we should have
+    # inventory over 99.99"), leaving a 5-rung ladder whose top is £99.99. `venture` moved to
+    # base index 4 with it. The `us` cell is 9999 and not a higher number because the +1 market
+    # offset clamps to `last_idx` (= 4): at the top of the ladder there is nothing above to
+    # offset into, so all three venture cells land on the ceiling. That collapse is the ceiling
+    # working, and this table asserts it rather than the old uncapped ladder.
+    ("venture",     "",      9999),
+    ("venture",     "uk",    9999),
+    ("venture",     "us",    9999),
 ]
 
 
@@ -150,7 +157,7 @@ def test_decision_carries_its_own_justification(cfg: Config) -> None:
     # price that moved with no stated cause is indistinguishable from a bug. The decision has to
     # arrive carrying the material for that Reason, or the caller invents one.
     decision = price_for(_candidate("venture", "us"), _score(), cfg)
-    assert decision.price_pence == 19999
+    assert decision.price_pence == 9999   # the £99.99 ceiling — see GOLDEN above
     assert decision.rung
     assert decision.rationale
     assert decision.segment["ambition_tier"] == "venture"

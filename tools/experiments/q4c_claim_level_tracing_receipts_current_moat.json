@@ -1,78 +1,147 @@
 {
   "buckets": {
-    "other_passage": 2,
-    "self_ref": 62,
-    "traceable": 801,
-    "untraceable": 80
+    "other_passage": 3,
+    "self_ref": 60,
+    "traceable": 1181,
+    "untraceable": 158
   },
   "by_check": {
     "buyer_intent": {
-      "traceable": 75,
-      "untraceable": 1
+      "traceable": 113,
+      "untraceable": 6
     },
     "claims_verifiable": {
+      "other_passage": 1,
       "self_ref": 6,
-      "traceable": 48,
-      "untraceable": 11
+      "traceable": 64,
+      "untraceable": 12
     },
     "currency": {
       "self_ref": 1,
-      "traceable": 66
+      "traceable": 111
     },
     "distribution": {
-      "self_ref": 5,
-      "traceable": 38,
-      "untraceable": 4
+      "self_ref": 3,
+      "traceable": 54,
+      "untraceable": 7
     },
     "incumbency": {
-      "self_ref": 2,
-      "traceable": 55,
-      "untraceable": 5
+      "self_ref": 1,
+      "traceable": 81,
+      "untraceable": 6
     },
     "legality": {
-      "self_ref": 3,
-      "traceable": 15,
+      "self_ref": 4,
+      "traceable": 20,
       "untraceable": 1
     },
     "pain_reality": {
-      "traceable": 94,
+      "self_ref": 1,
+      "traceable": 166,
       "untraceable": 3
     },
     "payer_solvency": {
       "other_passage": 2,
       "self_ref": 37,
-      "traceable": 231,
-      "untraceable": 46
+      "traceable": 339,
+      "untraceable": 110
     },
     "route_to_market": {
       "self_ref": 2,
-      "traceable": 8
+      "traceable": 13
     },
     "value_durability": {
-      "self_ref": 6,
-      "traceable": 171,
-      "untraceable": 9
+      "self_ref": 5,
+      "traceable": 220,
+      "untraceable": 13
     }
   },
   "by_verdict": {
     "refuted": {
-      "other_passage": 1,
-      "self_ref": 18,
-      "traceable": 151,
-      "untraceable": 35
+      "other_passage": 2,
+      "self_ref": 13,
+      "traceable": 235,
+      "untraceable": 71
     },
     "supported": {
       "other_passage": 1,
-      "self_ref": 44,
-      "traceable": 650,
-      "untraceable": 45
+      "self_ref": 47,
+      "traceable": 946,
+      "untraceable": 87
     }
   },
-  "checks_all_traceable": 400,
-  "checks_with_figures": 464,
-  "checks_with_untraceable": 64,
-  "dossiers": 1572,
+  "checks_all_traceable": 564,
+  "checks_with_figures": 693,
+  "checks_with_untraceable": 129,
+  "dossiers": 1925,
   "examples": [
+    {
+      "candidate": "00c4ae38398992d9",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "ngcareer.chickenstarter.com",
+        "tiktok.com"
+      ],
+      "cited_tiers": [
+        "other",
+        "ugc_social"
+      ],
+      "rationale": "A Band 5 NHS nurse salary of \u00a332,073, plus an announced 3.3% pay rise, gives a working nurse income well above the \u00a349 fee, making the fee trivially affordable if they want the service. The other passages concern nursing *students'* financial hardship, a different population from",
+      "untraceable_figures": [
+        "49"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "00cb2de0d53c517e",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "expertsure.com",
+        "global-fin-info.com"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "The passages show early-stage UK startups already budget for software as a normal running cost \u2014 HR tooling is priced at \u00a33\u2013\u00a310 per employee per month, with flat-fee options such as Breathe HR from \u00a324/month, and software overhead is counted inside the roughly \u00a362,000 true cost o",
+      "untraceable_figures": [
+        "79"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "02ab931edbd02f15",
+      "check": "buyer_intent",
+      "cited_hosts": [
+        "bryanston.co.uk",
+        "lordwandsworth.org"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "One passage is a UK private boarding school marketing page explaining flexi boarding and weekly boarding and inviting parents to explore those options at leading schools [1eb859c60b8ec19f], which shows schools already market short-commitment boarding to parents who are looking fo",
+      "untraceable_figures": [
+        "10000",
+        "11500"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "02e398769b737847",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "carersuk.org",
+        "eurocarers.org"
+      ],
+      "cited_tiers": [
+        "established_org",
+        "other"
+      ],
+      "rationale": "The passages describe the unpaid-carer population as disproportionately poor \u2014 a 50% higher poverty rate than non-carers, 1.2m of 5.7m in poverty, and half of Carer's Allowance recipients living in poverty on a benefit of just \u00a381.90/week \u2014 with campaigners calling for extra paym",
+      "untraceable_figures": [
+        "149"
+      ],
+      "verdict": "refuted"
+    },
     {
       "candidate": "08b22037fc2afc07",
       "check": "payer_solvency",
@@ -146,6 +215,23 @@
       "verdict": "refuted"
     },
     {
+      "candidate": "0cc434887c47cb9a",
+      "check": "distribution",
+      "cited_hosts": [
+        "amazon.co.uk",
+        "ebay.co.uk",
+        "thermometersdirect.co.uk"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "The passages show fridge and freezer thermometers being sold self-serve online in the UK \u2014 an eBay UK listing, a low-price web shop (Thermometers Direct), and a multipack explicitly marketed to restaurants, bars and caf\u00e9s \u2014 proving the target buyers already shop for this category",
+      "untraceable_figures": [
+        "149"
+      ],
+      "verdict": "supported"
+    },
+    {
       "candidate": "1196d282c00cbf0c",
       "check": "payer_solvency",
       "cited_hosts": [
@@ -183,6 +269,41 @@
       "verdict": "refuted"
     },
     {
+      "candidate": "16265a8d0c81ab5c",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "carers.org",
+        "express.co.uk",
+        "gov.uk"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "The passages show unpaid carers in acute financial hardship, struggling to pay essential bills and describing fear over money \u2014 evidence of insolvency, not spare capacity for a \u00a349.99 fee. None of the passages describe a segment able and willing to pay this price; they instead de",
+      "untraceable_figures": [
+        "49.99"
+      ],
+      "verdict": "refuted"
+    },
+    {
+      "candidate": "16ebe5a83ca03ebc",
+      "check": "claims_verifiable",
+      "cited_hosts": [
+        "airtasker.com",
+        "homeleisuredirect.com",
+        "libertygames.co.uk",
+        "pooltablesonline.co.uk"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "Independent UK sources confirm the specific cost claim at the heart of the pitch: pool table re-clothing is a real, purchasable service in the UK priced at roughly \u00a3150\u2013\u00a3400 per table, matching the candidate's stated \u00a3200\u2013\u00a3400 one-off figure, and on-site recovering visits are off",
+      "untraceable_figures": [
+        "200"
+      ],
+      "verdict": "supported"
+    },
+    {
       "candidate": "1723d378cff66ebc",
       "check": "payer_solvency",
       "cited_hosts": [
@@ -217,6 +338,58 @@
       "verdict": "refuted"
     },
     {
+      "candidate": "1db01b70d4a29345",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "moneysavingexpert.com",
+        "moneysupermarket.com"
+      ],
+      "cited_tiers": [
+        "established_org",
+        "other"
+      ],
+      "rationale": "None of the passages address council budgets, willingness to pay, or ability to fund a \u00a349 claim pack\u2014three are dictionary/unrelated council definitions, and the two relevant ones ([9e48fe69e9e65d5e], [1efb25a0d8f93e2f]) only describe the claims process, not the payer's finances.",
+      "untraceable_figures": [
+        "49"
+      ],
+      "verdict": "refuted"
+    },
+    {
+      "candidate": "1eaea39238b5b584",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "cityam.com",
+        "computerweekly.com",
+        "linkedin.com"
+      ],
+      "cited_tiers": [
+        "other",
+        "ugc_social"
+      ],
+      "rationale": "The passages show UK fintech startups collectively raising hundreds of millions of pounds in funding even in a down quarter, meaning the target buyers are capitalised companies for whom a one-off \u00a349 fee is a trivial expense; no passage suggests these firms are cash-constrained.",
+      "untraceable_figures": [
+        "49"
+      ],
+      "verdict": "supported"
+    },
+    {
+      "candidate": "225115a9fc8a5c0f",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "birminghammail.co.uk",
+        "cost-ofliving.net",
+        "huffingtonpost.co.uk"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "The passages show NHS pay has been squeezed by real-terms cuts, staff selling back holiday or working extra shifts to get by, and unexpected pay shortfalls, indicating financial strain rather than spare discretionary income to fund a \u00a349.99 personal purchase.",
+      "untraceable_figures": [
+        "49.99"
+      ],
+      "verdict": "refuted"
+    },
+    {
       "candidate": "26c4fd2f769f72ab",
       "check": "value_durability",
       "cited_hosts": [
@@ -235,6 +408,23 @@
         "20"
       ],
       "verdict": "refuted"
+    },
+    {
+      "candidate": "28c744dfeb46d2cd",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "ecoskills.academy",
+        "expensein.com",
+        "srsreport.com"
+      ],
+      "cited_tiers": [
+        "other"
+      ],
+      "rationale": "The passages show SECR applies to large UK companies (\u00a336m+ turnover, \u00a318m+ balance sheet, or 250+ employees) facing mandatory disclosure and FRC penalties up to \u00a37,500 for non-compliance, which gives engineering teams at such firms both budget headroom and regulatory motive well",
+      "untraceable_figures": [
+        "79.99"
+      ],
+      "verdict": "supported"
     },
     {
       "candidate": "2fdeef46fde55379",
@@ -275,6 +465,43 @@
       "verdict": "supported"
     },
     {
+      "candidate": "3a574ebca808b0a5",
+      "check": "payer_solvency",
+      "cited_hosts": [
+        "gov.uk",
+        "independent.co.uk",
+        "nhspaycalculator.co.uk"
+      ],
+      "cited_tiers": [
+        "media",
+        "other"
+      ],
+      "rationale": "The band 5 salary (~\u00a331,050) and up to 3.3% raises show gross pay, but [159c2768932b9367] shows over half of British households, including a specific NHS nurse example, cutting essential spending amid a cost-of-living crisis severe enough to skip meals \u2014 that is direct evidence o",
+      "untraceable_figures": [
+        "49"
+      ],
+      "verdict": "refuted"
+    },
+    {
+      "candidate": "3aa064cd41d888b7",
+      "check": "incumbency",
+      "cited_hosts": [
+        "clearancesolutionsltd.co.uk",
+        "gurrjohns.com",
+        "linkedin.com",
+        "swiftvalues.co.uk"
+      ],
+      "cited_tiers": [
+        "other",
+        "ugc_social"
+      ],
+      "rationale": "The passages show established firms already selling exactly this to UK executors: nationwide HMRC-compliant probate valuations for classic cars from \u00a325 [7fed3aead803cb34], and Gurr Johns, a 100-year-old appraiser with 160 specialists worldwide covering art, antiques, jewellery, ",
+      "untraceable_figures": [
+        "199"
+      ],
+      "verdict": "refuted"
+    },
+    {
       "candidate": "3ccc21766f538b52",
       "check": "distribution",
       "cited_hosts": [
@@ -293,252 +520,12 @@
         "1600"
       ],
       "verdict": "supported"
-    },
-    {
-      "candidate": "461c5264f5ec8ba8",
-      "check": "incumbency",
-      "cited_hosts": [
-        "hyndburnconnected.co.uk",
-        "knowsleyinfo.co.uk"
-      ],
-      "cited_tiers": [
-        "other"
-      ],
-      "rationale": "Passage 529082a4c171336b shows the Family Information Service already performs exactly the brokered service for parents struggling to find childcare \u2014 'we will conduct on your behalf a detailed search of childcare available that best suits your needs' \u2014 i.e. a free, council-run b",
-      "untraceable_figures": [
-        "145"
-      ],
-      "verdict": "refuted"
-    },
-    {
-      "candidate": "4d812f9263cabdb9",
-      "check": "payer_solvency",
-      "cited_hosts": [
-        "carersuk.org",
-        "express.co.uk",
-        "thecareruk.com",
-        "theguardian.com"
-      ],
-      "cited_tiers": [
-        "established_org",
-        "media",
-        "other"
-      ],
-      "rationale": "The passages describe unpaid carers as a financially squeezed group: over a million live in poverty with one in ten struggling to afford food or heating [64e511abd0749c50], carers of both children and older adults are out of pocket by about \u00a3279 a month even after benefits [2403c",
-      "untraceable_figures": [
-        "500"
-      ],
-      "verdict": "refuted"
-    },
-    {
-      "candidate": "55b60cdaabe9ffc1",
-      "check": "value_durability",
-      "cited_hosts": [
-        "coffeehero.com.au",
-        "coffeetec.com",
-        "github.com"
-      ],
-      "cited_tiers": [
-        "other"
-      ],
-      "rationale": "Passage 11a51bb2b86c3980 affirms roasters/caf\u00e9s value technology that removes human error and mechanical inconsistency to achieve precision, showing the consistency value is real; the Artisan passages (912829, 0f94d61) show only a free generic curve recorder with no lot-to-outcom",
-      "untraceable_figures": [
-        "912829"
-      ],
-      "verdict": "supported"
-    },
-    {
-      "candidate": "58639bfc8b92de1c",
-      "check": "payer_solvency",
-      "cited_hosts": [
-        "credit-connect.co.uk",
-        "scalesuite.com.au",
-        "sleeplesstradesman.com",
-        "whattocharge.co.uk",
-        "youtube.com"
-      ],
-      "cited_tiers": [
-        "other",
-        "ugc_social"
-      ],
-      "rationale": "The passages show the median UK tradesperson day rate (\u00a3207) sits below the \u00a3218 floor needed to net \u00a335,000/year, that the bottom 25% of small businesses make no or negative profit, and that small-business insolvencies are rising 7-13% \u2014 meaning most of the target payer segment ",
-      "untraceable_figures": [
-        "30"
-      ],
-      "verdict": "refuted"
-    },
-    {
-      "candidate": "586e1deb19a3d3e0",
-      "check": "payer_solvency",
-      "cited_hosts": [
-        "gbnews.com",
-        "independent.co.uk",
-        "mortgagesoup.co.uk"
-      ],
-      "cited_tiers": [
-        "media",
-        "other"
-      ],
-      "rationale": "The passages show that UK homeowners over 55\u201365 hold substantial and growing property wealth \u2014 over-65s' housing wealth rose by more than \u00a36.3 billion in three months (about \u00a31,300\u2013\u00a31,346 per household), and over-55s are releasing an average of nearly \u00a3114,000 from their homes to",
-      "untraceable_figures": [
-        "249"
-      ],
-      "verdict": "supported"
-    },
-    {
-      "candidate": "5d1d352c5fcd9fab",
-      "check": "payer_solvency",
-      "cited_hosts": [
-        "cyclingindustry.news",
-        "cytech.training",
-        "reddit.com"
-      ],
-      "cited_tiers": [
-        "other",
-        "ugc_social"
-      ],
-      "rationale": "The passages depict a structurally thin-margin trade: a \u00a360k turnover yields only a \u00a37k profit on a \u00a330k salary [6c309b0927f3919b], average bike technician salary is just \u00a314k [85a48ca0e24e0ba4], and a shop owner went ~3 years without consistently paying himself [a86f29ea6bea8ce0",
-      "untraceable_figures": [
-        "7",
-        "14"
-      ],
-      "verdict": "refuted"
-    },
-    {
-      "candidate": "5d38279d82b43256",
-      "check": "payer_solvency",
-      "cited_hosts": [
-        "carers.org",
-        "carersuk.org",
-        "midyorks.nhs.uk",
-        "theguardian.com",
-        "walthamforest.gov.uk"
-      ],
-      "cited_tiers": [
-        "established_org",
-        "government",
-        "media",
-        "other"
-      ],
-      "rationale": "The passages describe unpaid carers as a low-income group: the main benefit for them is \u00a381.90 a week, described as one of the lowest of its kind, and around 44% of the roughly one million carers claiming it are in poverty, with half a million of them living in poverty [bbf55f42d",
-      "untraceable_figures": [
-        "39"
-      ],
-      "verdict": "refuted"
-    },
-    {
-      "candidate": "60cb98e9a6197796",
-      "check": "payer_solvency",
-      "cited_hosts": [
-        "artsprofessional.co.uk",
-        "creativesunite.eu",
-        "dacs.org.uk",
-        "getpotteryclass.com",
-        "kilncrafts.co.uk"
-      ],
-      "cited_tiers": [
-        "other"
-      ],
-      "rationale": "The passages show the payer segment is structurally low-income: UK visual artists have a median income of \u00a312,500/year, 79% cannot afford their livelihoods from art earnings and 96.4% earn below the median wage [e9185e24e7da0773][d53d73a70980fe1b][3191599cf3b2f45e], and a whole s",
-      "untraceable_figures": [
-        "45"
-      ],
-      "verdict": "refuted"
-    },
-    {
-      "candidate": "6171136b72015134",
-      "check": "claims_verifiable",
-      "cited_hosts": [
-        "erisaattorneys.com",
-        "kantorlaw.net",
-        "leginfo.legislature.ca.gov",
-        "sandstonelawgroup.com",
-        "theinsuranceattorneys.com"
-      ],
-      "cited_tiers": [
-        "government",
-        "other"
-      ],
-      "rationale": "Multiple retrievable public sources confirm the candidate's central factual claim: long-term care insurance claim denials are a real and common problem for California families, leaving them with unexpected bills and pushing them toward legal help [dfce839d0add1152][30cea33832b42a",
-      "untraceable_figures": [
-        "10127.1"
-      ],
-      "verdict": "supported"
-    },
-    {
-      "candidate": "65d1d898e62cf5b9",
-      "check": "payer_solvency",
-      "cited_hosts": [
-        "calculatorcollection.org",
-        "esportsearnings.com"
-      ],
-      "cited_tiers": [
-        "other"
-      ],
-      "rationale": "The passages establish that real, substantial prize money flows to esports players ($1.68B across 134,373 players per [46fb40c44724db26]), and that players already routinely cede a percentage cut of their winnings (10\u201330% to orgs per [93a0481a7c33c191]) \u2014 since this service is co",
-      "untraceable_figures": [
-        "1.68",
-        "134373"
-      ],
-      "verdict": "supported"
-    },
-    {
-      "candidate": "65f20f7cc17a2597",
-      "check": "payer_solvency",
-      "cited_hosts": [
-        "amnesty.org.uk",
-        "multiquotetime.co.uk",
-        "theguardian.com",
-        "tuc.org.uk",
-        "uk.indeed.com"
-      ],
-      "cited_tiers": [
-        "media",
-        "other"
-      ],
-      "rationale": "The passages describe gig and platform workers as financially squeezed \u2014 poor pay, job insecurity, no sick pay, with 1.88 million self-employed workers earning less than two thirds of the median wage [b80a40efaa4d4238][0725ae1015e2c7b8][62439c26e0860a6f] \u2014 which matches the pitch",
-      "untraceable_figures": [
-        "200",
-        "39"
-      ],
-      "verdict": "refuted"
-    },
-    {
-      "candidate": "6817348413f4658c",
-      "check": "payer_solvency",
-      "cited_hosts": [
-        "fluxnote.io"
-      ],
-      "cited_tiers": [
-        "other"
-      ],
-      "rationale": "Passage [5ee4589f6ec4f5c3] confirms Twitch offers real monetization/revenue streams to streamers in 2026, establishing that the payer segment earns income they can spend and stand to lose \u2014 the ad+sub revenue the service protects. This shows motive and a plausible budget, though ",
-      "untraceable_figures": [
-        "5000"
-      ],
-      "verdict": "supported"
-    },
-    {
-      "candidate": "823a9920812ab3d4",
-      "check": "payer_solvency",
-      "cited_hosts": [
-        "carmarthenshire.gov.wales",
-        "employersforcarers.org"
-      ],
-      "cited_tiers": [
-        "other"
-      ],
-      "rationale": "Passages [31e1b98e5e00fb65] and [2e4fad601f8267cf] confirm carers face real, worsening financial hardship, which \u2014 under a \u00a30-upfront contingency model paid from recovered funds \u2014 gives an acute motive to pay and no solvency barrier, since the fee comes out of money the broker re",
-      "untraceable_figures": [
-        "0"
-      ],
-      "verdict": "supported"
     }
   ],
-  "figures": 945,
+  "figures": 1402,
   "live_items": null,
   "live_items_dirty": null,
-  "ruled_cited_checks": 1265,
+  "ruled_cited_checks": 1955,
   "scope": "all dossiers, current moat only",
   "verdict_passage_truncate": 600
 }

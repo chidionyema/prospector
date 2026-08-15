@@ -100,16 +100,36 @@ def read(now: Optional[float] = None) -> Optional[dict]:
     try:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
-    except (OSError, ValueError):
+    except FileNotFoundError:
+        return None                       # no marker: the ordinary case, and a real answer
+    except (OSError, ValueError) as exc:
+        # A marker that EXISTS and cannot be read is a bug in whichever daemon wrote it (Otto or
+        # us) or a permissions problem, not "no wall". Fail open as the module contract demands —
+        # one wasted `claude -p` beats stalling the daemon on our own reader — but say so, on the
+        # same reasoning as the implausible-marker branch below.
+        logger.error("Usage-wall marker at %s is present but unreadable; treating the account as "
+                     "available: %s", path, exc)
         return None
     if not isinstance(data, dict):
+        logger.error("Usage-wall marker at %s is a %s, not an object; treating the account as "
+                     "available", path, type(data).__name__)
+        return None
+    if "reset_at" not in data:
+        # Without this the missing field defaults to 0 and falls out of the `reset <= ref` branch
+        # below, which is the branch that means "the wall has LIFTED" — a malformed marker would
+        # have been reported as an expired one forever.
+        logger.error("Usage-wall marker at %s has no reset_at field (observed_by=%s); treating "
+                     "the account as available", path, data.get("observed_by"))
         return None
     try:
-        reset = float(data.get("reset_at", 0))
+        reset = float(data["reset_at"])
     except (TypeError, ValueError):
+        logger.error("Usage-wall marker at %s has a non-numeric reset_at=%r (observed_by=%s); "
+                     "treating the account as available", path, data.get("reset_at"),
+                     data.get("observed_by"))
         return None
     if reset <= ref:
-        return None
+        return None                       # the wall has lifted: a fact, not a failure
     if reset > ref + _MAX_WALL_S:
         # Corrupt, not a wall. Fail OPEN and say so loudly — silently ignoring it would hide
         # a writer bug in the other codebase for as long as it kept happening.
@@ -194,7 +214,13 @@ def observe(text: str, observed_by: str = "prospector", now: Optional[float] = N
                 pass
             raise
     except OSError as e:
-        logger.warning("Could not record usage wall at %s: %s", path, e)
+        # None is ALSO what this returns for "the text does not show a wall" (the early return
+        # above), so the caller — `claude_cli.py:326`, which discards it — cannot tell a
+        # non-event from a failure to record a real one. The consequence is the whole reason
+        # this module exists: the other daemon keeps hammering a wall we saw and could not
+        # publish. Nothing on this error path can fix that, so it must at least be loud.
+        logger.error("Could not record usage wall at %s — the OTHER daemon will keep spawning "
+                     "into it: %s", path, e)
         return None
     logger.critical("Recorded claude usage wall until %s (%.1f min) — observed by %s",
                     time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(reset)),

@@ -33,7 +33,7 @@ import pytest
 
 import prospector.health as H
 from prospector.errors import PERMANENT, TRANSIENT, ProviderExhaustedError, classify_exhaustion
-from prospector.operator import MOAT_PRIMARY, FallbackOperator, Operator
+from prospector.operator import FallbackOperator, Operator, is_provisional_provider, moat_primary
 from prospector.scheduler import run_scheduled as rs
 from prospector.scheduler.alerts import CRITICAL, alerts_for_tick, emit_alert
 
@@ -143,19 +143,27 @@ class _RaisesValueError(Operator):
 @pytest.mark.parametrize("label,text,kind,window_s", SHAPES, ids=SHAPE_IDS)
 def test_failover_serves_from_the_live_brain_and_marks_only_the_dead_one(label, text, kind,
                                                                         window_s):
-    """The tail brain serves, and what it serves is PROVISIONAL.
+    """The tail brain serves, and whether that is PROVISIONAL is asked of the ROSTER.
 
     This used to pair a dead `claude_cli` with a live `claude` and assert
-    `served_is_provisional() is False`. `MOAT_PRIMARY` was narrowed to `{"claude_cli"}` on
-    2026-08-15 (`prospector/operator.py:1189`) when the paid Anthropic tier was deleted with its
-    adapter, so the scenario the assertion described -- one trusted brain failing over to another
-    trusted brain -- no longer exists anywhere in this estate. Re-pointing the old assertion at
-    `minimax` would have been the real regression: it would assert that a cheap tail brain rules
-    as trusted-final, which is the exact thing `is_provisional_provider` exists to prevent.
+    `served_is_provisional() is False`. The paid Anthropic tier `claude` was deleted with its
+    adapter on 2026-08-15, so that pairing no longer exists anywhere in this estate and the test
+    was re-pointed at the chain the engine actually runs: claude_cli dies, minimax serves, only
+    the dead brain is benched (founder directive 2026-08-08 -- provisional first, DEFER only when
+    the tail is down too).
 
-    So the test now pins the shape the chain actually has: claude_cli dies, minimax serves, the
-    answer is stamped provisional (founder directive 2026-08-08 -- provisional first, DEFER only
-    when the tail is down too), and only the dead brain is benched.
+    WHY THE ASSERTION DEFERS TO `is_provisional_provider` INSTEAD OF HARDCODING A BOOLEAN. An
+    earlier draft wrote `is True` with the rationale "minimax is outside MOAT_PRIMARY, and
+    asserting otherwise would let a cheap tail rule as trusted-final". Hours later
+    `moat_primary` became config-declared and the founder promoted minimax into it
+    (`config.yaml:81`, `moat_primary: [minimax, claude_cli]`), on three consecutive golden runs
+    at discrimination 1.00 -- and that hardcoded `True` would have failed, reading as a broken
+    trust fence when the only thing that had changed was the roster.
+
+    The fence under test is "whoever is outside `moat_primary()` is stamped provisional"
+    (`operator.py:1451`). It is a rule about MEMBERSHIP, not about any particular brand, so the
+    test asks the same function the engine asks. A test that names a provider pins the roster;
+    this one pins the fence, and stays true whichever way the roster moves next.
     """
     dead = _Exhausted("claude_cli", text)
     alive = _Alive("minimax")
@@ -163,8 +171,18 @@ def test_failover_serves_from_the_live_brain_and_marks_only_the_dead_one(label, 
 
     assert chain._raw("sys", "user", 0.0) == "ok"
     assert chain.last_served() == "minimax"
-    assert chain.served_is_provisional() is True, (
-        "'minimax' is outside MOAT_PRIMARY, so anything it rules must be stamped provisional")
+    # STALE UNTIL 2026-08-15, and failing all 10 parametrised cases the whole time: the alive
+    # tier here was `claude`, asserted trusted with `is False`. `claude` (the PAID Anthropic API
+    # tier) left the trusted set when its adapter was deleted. It went unseen because
+    # `tests/faults` sits outside the suite command this repo actually runs.
+    #
+    # It is NOT restated as `is True` on minimax. This test is about FAILOVER — the chain serves
+    # from the live brain and benches only the dead one — and which brains are trusted is a
+    # config decision (`config.yaml moat_primary:`) that must be free to change without editing
+    # a fault test. Hardcoding either answer here re-welds the thing that key exists to unweld.
+    # The fence itself is pinned once, against the declaration, in
+    # tests/unit/test_moat_primary_is_config_declared.py.
+    assert chain.served_is_provisional() is is_provisional_provider("minimax")
     assert H.get_health().dead_until("claude_cli") is not None
     assert H.get_health().dead_until("minimax") is None, "a live brain must never be benched"
 
@@ -220,12 +238,20 @@ def test_moat_blind_check_does_not_spend_the_half_open_probe(tmp_path):
 
 
 def test_a_non_moat_brain_going_dead_never_blinds_the_moat(tmp_path):
-    """The founder fence: a non-critical brain (minimax) is outside MOAT_PRIMARY, so its
-    exhaustion must not be able to stop a tick."""
-    assert "minimax" not in MOAT_PRIMARY
-    cfg = _cfg(tmp_path, operators=("claude_cli", "minimax"))
-    chain = FallbackOperator([("minimax", _Exhausted("minimax", "HTTP 402 Payment Required")),
-                              ("claude_cli", _Alive("claude_cli"))])
+    """The founder fence: a brain outside MOAT_PRIMARY going dead must not stop a tick.
+
+    The non-moat brain is DERIVED, not named. This test hardcoded `minimax` until 2026-08-15,
+    when minimax was promoted into `moat_primary` — the first assertion then failed on a
+    founder decision rather than on a regression, and (worse) the scenario it built was no
+    longer the scenario it describes. The rule under test is about MEMBERSHIP, so read the
+    membership from the fence.
+    """
+    trusted = sorted(moat_primary())[0]
+    outsider = next(t for t in ("deepseek", "ollama", "mock", "minimax", "claude_cli")
+                    if t not in moat_primary())
+    cfg = _cfg(tmp_path, operators=(trusted, outsider))
+    chain = FallbackOperator([(outsider, _Exhausted(outsider, "HTTP 402 Payment Required")),
+                              (trusted, _Alive(trusted))])
     assert chain._raw("sys", "user", 0.0) == "ok"
     assert rs._moat_blind_reason(cfg) == ""
 

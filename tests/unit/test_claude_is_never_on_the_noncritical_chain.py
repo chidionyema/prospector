@@ -38,8 +38,8 @@ def test_the_hardcoded_default_has_no_claude_either():
 def test_a_config_that_names_claude_is_stripped_not_obeyed(banned):
     """Editing the config back must not reinstate it."""
     cfg = load_config()
-    cfg.noncritical_operator = [banned, "minimax", "standardcompute"]
-    assert _noncritical_order(cfg) == ("minimax", "standardcompute")
+    cfg.noncritical_operator = [banned, "minimax", "deepseek"]
+    assert _noncritical_order(cfg) == ("minimax", "deepseek")
 
 
 def test_a_chain_of_only_claude_falls_back_rather_than_running_claude():
@@ -64,8 +64,8 @@ def test_the_strip_is_logged_not_silent(caplog):
 
 def test_a_clean_chain_is_passed_through_untouched():
     cfg = load_config()
-    cfg.noncritical_operator = ["minimax", "standardcompute"]
-    assert _noncritical_order(cfg) == ("minimax", "standardcompute")
+    cfg.noncritical_operator = ["minimax", "deepseek"]
+    assert _noncritical_order(cfg) == ("minimax", "deepseek")
 
 
 def test_the_moat_chain_is_NOT_stripped():

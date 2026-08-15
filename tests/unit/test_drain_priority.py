@@ -292,16 +292,34 @@ def test_the_default_is_the_historical_behaviour(tmp_path):
     assert drain_state.revet_provisional_kills(_cfg(tmp_path, revet_provisional_kills=False)) is False
 
 
-def test_the_shipped_config_turns_the_exclusion_on():
-    """config.yaml is the deployed decision; a test that only checks the knob proves nothing."""
+def test_the_shipped_config_turns_the_exclusion_off_while_the_bugged_kills_are_worked_off():
+    """config.yaml is the deployed decision; a test that only checks the knob proves nothing.
+
+    Flipped false -> true on 2026-08-15, and the two measurements that bought `false` are the
+    two that changed:
+
+    1. Those rows were not all judgements. They were ruled under `verify._calc_confidence`,
+       which scored citation VOLUME and domain COUNT and never read the brain's own confidence
+       — so a terse-but-correct brain was scored ungrounded and killed on `moat_ungrounded` /
+       `min_composite`. That function was fixed the same day. An unknown share of the 176
+       provisional KILLs are therefore artefacts of our scorer, not of the evidence.
+    2. The cost that justified the exclusion was claude_cli's (~$28.65 of subscription CLI for
+       one 15-row drain tick). minimax now leads the chain at ~$0.0004 a check, which puts the
+       whole sweep under a dollar.
+
+    This test pins the DECISION, so it is meant to fail the day someone flips the line back —
+    at which point the reason above belongs in the docstring too. Set back to false once the
+    backlog is worked off.
+    """
     from pathlib import Path
 
     from prospector.config import load_config
     # Absolute, not "config.yaml": a cwd-relative load makes the assertion silently vacuous
     # (or a collection error) depending on where pytest was invoked from.
     cfg = load_config(str(Path(__file__).resolve().parents[2] / "config.yaml"))
-    assert drain_state.revet_provisional_kills(cfg) is False, (
-        "schedule.revet_provisional_kills must ship False — see config.yaml for the receipts"
+    assert drain_state.revet_provisional_kills(cfg) is True, (
+        "schedule.revet_provisional_kills must ship True until the scorer-manufactured KILL "
+        "backlog is drained — see config.yaml:1950 for the receipts"
     )
 
 

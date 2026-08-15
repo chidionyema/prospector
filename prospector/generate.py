@@ -11,6 +11,7 @@ import math
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from datetime import datetime
 from typing import Any, Optional
 
@@ -210,6 +211,18 @@ def plan_wave(remaining: int, n_axis: int, n_lenses: int, max_per_call: int,
     n_calls = max(1, min(n_axis, math.ceil(remaining / ask_target)))
     ask = max(1, min(max_per_call, math.ceil(remaining / n_calls)))
     return n_calls, ask
+
+
+def _budget_left(deadline_mono: Optional[float]) -> Optional[float]:
+    """Seconds left before the generation phase must stop WAITING, or None if unbounded.
+
+    Never returns <= 0: a zero timeout to `as_completed` means "check once and give up",
+    which is the correct behaviour at the deadline, so the floor is a small positive value
+    that lets an already-finished future be collected.
+    """
+    if deadline_mono is None:
+        return None
+    return max(0.05, deadline_mono - time.monotonic())
 
 
 @track_latency(name="generate")
@@ -431,6 +444,23 @@ def generate(
                 diagnostics["chain_exhausted"] = True
                 diagnostics.setdefault("exhaustion_errors", []).append(f"{stage}: {exc}")
 
+    def _note_batch_failure(stage: str, exc: Exception) -> None:
+        """Record a generation call that RAISED, in the same sink `_note_exhaustion` uses.
+
+        A batch that threw (bad JSON, a crashed adapter, a bug of ours) and a batch where the
+        model simply had nothing to say both hand the caller `[]`. That ambiguity is why
+        zero-yield has been re-diagnosed six times here (memory `zero-yield-root-cause-2026-06-28`,
+        `refine-wave-zero-yield-2026-07-02`): the run reads as a barren wave and the signal is
+        dropped instead of being saved for `generate --resume`. The flag is what run.py
+        (`run.py:1102`) reads to tell the two apart."""
+        logger.error(
+            f"Generation batch FAILED during {stage}: {exc}",
+            extra={"stage": stage, "error": str(exc), "batch_failed": True})
+        if diagnostics is not None:
+            with _DIAG_LOCK:
+                diagnostics["batch_failures"] = int(diagnostics.get("batch_failures", 0) or 0) + 1
+                diagnostics.setdefault("batch_errors", []).append(f"{stage}: {exc}")
+
     def _one_call(form: str, lens: str, audience: str, ask: int,
                    avoid: str, seed: str) -> list[Candidate]:
         # Persona bias (Part 16 principal upgrade)
@@ -489,9 +519,10 @@ def generate(
             _note_exhaustion(f"generation batch {seed}", e)
             return []
         except Exception as e:
-            logger.error(f"Generation batch {seed} failed: {e}", extra={"error": str(e)})
+            _note_batch_failure(f"generation batch {seed}", e)
             return []
-            
+
+
         if form:
             for c in cands:
                 # Categorical field (survives asdict() into the dossier), not a boolean tag.
@@ -706,13 +737,63 @@ def generate(
         def _fan_out(indices: range) -> list[tuple[str, str, list[Candidate]]]:
             # Cap concurrency at 4: 8 simultaneous MiniMax calls drove server-side latency into
             # 240s read-timeouts (proven 2026-07-01: 8 timeouts in one k=8 run). Fewer in-flight
-            # calls trade a little wall-clock for far fewer timeouts. ex.map still processes every
-            # index; only the number running at once is bounded.
-            with ThreadPoolExecutor(max_workers=min(4, max(1, len(indices)))) as ex:
+            # calls trade a little wall-clock for far fewer timeouts. Only the number running at
+            # once is bounded; every index is still submitted.
+            #
+            # BOUNDED WAIT, 2026-08-15. This was `list(ex.map(_go, indices))` inside a `with`
+            # block, and BOTH of those wait forever: `ex.map`'s iterator blocks until each result
+            # is ready, and `ThreadPoolExecutor.__exit__` calls `shutdown(wait=True)`. The
+            # generation time budget (`deadline_mono`) is only consulted BETWEEN waves
+            # (the `for wave in ...` loop above), so a wave that stalled could not be
+            # interrupted by it at all — the 63-minute budget was unreachable and the only
+            # thing that ever stopped the phase was the 3-HOUR process kill
+            # (`tick_hard_deadline: exceeded 10800s during generation`, three times between
+            # 2026-08-13 and 2026-08-14). A rail that can only fire between waves cannot bound
+            # a wave.
+            #
+            # What this does NOT do, stated plainly: abandoning a future does not kill the
+            # thread running it. The in-flight HTTP call keeps going until the adapter's own
+            # total deadline fires (`operator.py:_urlopen_read_bounded` / `_read_sse_bounded`).
+            # What changes is that generation stops WAITING, so vetting, artifacts and publish
+            # still get their share of the tick instead of being force-exited alongside it.
+            idx = list(indices)
+            if not idx:
+                return []
+            out: list[tuple[str, str, list[Candidate]]] = []
+            ex = ThreadPoolExecutor(max_workers=min(4, max(1, len(idx))))
+            try:
                 def _go(i: int) -> tuple[str, str, list[Candidate]]:
                     form, lens, aud = _assign(i)
                     return form, aud, _one_call(form, lens, aud, ask, avoid, f"{wave}.{i + 1}")
-                return list(ex.map(_go, indices))
+
+                futs = {ex.submit(_go, i): i for i in idx}
+                try:
+                    for fut in as_completed(futs, timeout=_budget_left(deadline_mono)):
+                        try:
+                            out.append(fut.result())
+                        except Exception as e:  # noqa: BLE001 — one call must not void the wave
+                            # `_one_call` already records batch_failures for a call that raised;
+                            # re-raising here would discard the siblings that DID return.
+                            logger.error(
+                                f"Generation call {futs[fut]} in wave {wave} FAILED: {e}",
+                                extra={"wave": wave, "call": futs[fut], "error": str(e),
+                                       "call_failed": True})
+                except FuturesTimeoutError:
+                    logger.error(
+                        f"Generation wave {wave} hit the phase time budget with "
+                        f"{len(out)}/{len(futs)} call(s) returned — abandoning the rest so "
+                        f"vetting still runs this tick",
+                        extra={"wave": wave, "returned": len(out), "submitted": len(futs),
+                               "gen_budget_exhausted": True})
+                    if diagnostics is not None:
+                        with _DIAG_LOCK:
+                            diagnostics["gen_budget_exhausted"] = True
+                            diagnostics["gen_calls_abandoned"] = (
+                                int(diagnostics.get("gen_calls_abandoned", 0) or 0)
+                                + len(futs) - len(out))
+            finally:
+                ex.shutdown(wait=False, cancel_futures=True)
+            return out
 
         # L4 canary: on the FIRST wave, make one call alone before fanning out the rest.
         # If the active brain is exhausted this single call trips its breaker / marks it
@@ -868,19 +949,58 @@ def generate_multilane(
             c.ambition_tier = tier
         return tier, cands
 
-    with ThreadPoolExecutor(max_workers=max(1, len(lane_list))) as pool:
+    # BOUNDED WAIT, 2026-08-15 — the outermost of the three nested unbounded joins that made
+    # the 3h `tick_hard_deadline` the engine's only real time bound. `as_completed(futures)`
+    # with no timeout waits for the slowest lane, and `with pool:` then calls
+    # `shutdown(wait=True)` and waits for it AGAIN. Lanes share ONE `deadline_mono`, so the
+    # correct bound is that same instant: past it, the lanes that answered are the batch.
+    pool = ThreadPoolExecutor(max_workers=max(1, len(lane_list)))
+    try:
         futures = {pool.submit(_run_lane, t): t for t in lane_list}
-        for fut in as_completed(futures):
-            tier = futures[fut]
-            try:
-                tier, cands = fut.result()
-            except Exception as e:  # noqa: BLE001 — one lane failing must not void the rest
-                logger.warning(f"Lane {tier!r} generation failed: {e}",
-                               extra={"lane": tier})
-                cands = []
-            results[tier] = cands
-            logger.info(f"Lane {tier!r}: generated {len(cands)} candidate(s)",
-                        extra={"lane": tier, "count": len(cands)})
+        _pending = set(futures)
+        try:
+            for fut in as_completed(futures, timeout=_budget_left(deadline_mono)):
+                _pending.discard(fut)
+                tier = futures[fut]
+                try:
+                    tier, cands = fut.result()
+                except Exception as e:  # noqa: BLE001 — one lane failing must not void the rest
+                    # The empty list stays (the other lanes' candidates are real and must ship),
+                    # but it is no longer SILENT to the caller: a lane that threw and a lane that
+                    # generated nothing are otherwise the same `[]` in `results[tier]`, and the
+                    # aggregate `if not candidates:` in run.py cannot see the difference when a
+                    # sibling lane produced survivors. run.py:1102 reads this sink and saves the
+                    # signal for `generate --resume`.
+                    logger.error(f"Lane {tier!r} generation FAILED: {e}",
+                                 extra={"lane": tier, "error": str(e), "lane_failed": True})
+                    if diagnostics is not None:
+                        with _DIAG_LOCK:
+                            diagnostics["lane_failures"] = (
+                                int(diagnostics.get("lane_failures", 0) or 0) + 1)
+                            diagnostics.setdefault("batch_errors", []).append(
+                                f"lane {tier}: {e}")
+                    cands = []
+                results[tier] = cands
+                logger.info(f"Lane {tier!r}: generated {len(cands)} candidate(s)",
+                            extra={"lane": tier, "count": len(cands)})
+        except FuturesTimeoutError:
+            # A lane that never answered is NOT a lane that generated nothing. It is absent
+            # from `results`, so `out` below carries only what actually returned, and the
+            # caller's diagnostics sink says how many lanes were dropped — the same
+            # distinction the `lane_failures` handler above exists to preserve.
+            stalled = sorted(futures[f] for f in _pending)
+            logger.error(
+                f"Generation phase time budget exhausted with {len(stalled)} lane(s) still "
+                f"running ({', '.join(stalled)}) — shipping the {len(results)} lane(s) that "
+                f"answered so vetting still runs this tick",
+                extra={"stalled_lanes": stalled, "answered_lanes": sorted(results),
+                       "gen_budget_exhausted": True})
+            if diagnostics is not None:
+                with _DIAG_LOCK:
+                    diagnostics["gen_budget_exhausted"] = True
+                    diagnostics["stalled_lanes"] = stalled
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
 
     out: list[Candidate] = []
     for tier in lane_list:

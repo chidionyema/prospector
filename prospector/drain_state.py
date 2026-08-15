@@ -73,7 +73,10 @@ def max_attempts(cfg) -> int:
     try:
         return max(0, int(raw))
     except (TypeError, ValueError):
-        logger.warning("schedule.max_resume_attempts=%r is not an integer — cap disabled", raw)
+        # ERROR, not warning: 0 is also a LEGITIMATE configured value ("cap off"), so the caller
+        # (`run.py:1868`) cannot tell a deliberate 0 from a garbled one. The log line is the only
+        # thing that distinguishes them, so it must be at the level an operator actually reads.
+        logger.error("schedule.max_resume_attempts=%r is not an integer — cap disabled", raw)
         return 0
 
 
@@ -128,13 +131,18 @@ def load(store_dir) -> dict[str, int]:
     try:
         raw = json.loads(p.read_text(encoding="utf-8"))
     except FileNotFoundError:
-        return {}
+        return {}                         # no ledger yet: nothing has been tried. A real value.
     except (OSError, ValueError) as exc:
-        logger.warning("Drain attempt ledger unreadable (%s) — treating every row as untried: %s",
-                       exc, p)
+        # `{}` here is INDISTINGUISHABLE from the line above, and every caller reads it as "every
+        # row has its full budget". That is the safe direction (keep working rows, never abandon
+        # them) so it stays — but silently resetting the counter re-engages the generation freeze
+        # that "gate on the rate, not the stock" exists to avoid, so it is an ERROR, not a note.
+        logger.error("Drain attempt ledger unreadable (%s) — treating every row as untried: %s",
+                     exc, p)
         return {}
     if not isinstance(raw, dict):
-        logger.warning("Drain attempt ledger is not an object — ignoring it: %s", p)
+        logger.error("Drain attempt ledger is not an object — ignoring it, so every row reads as "
+                     "untried: %s", p)
         return {}
     out: dict[str, int] = {}
     for cid, n in raw.items():
@@ -155,7 +163,12 @@ def _write(store_dir, data: dict[str, int]) -> None:
         tmp.write_text(json.dumps(data, sort_keys=True, indent=0), encoding="utf-8")
         os.replace(tmp, p)
     except OSError as exc:
-        logger.warning("Could not write drain attempt ledger %s: %s", p, exc)
+        # The increment is LOST, but `record_unresolved` still returns the in-memory total, so
+        # `run.py:2050-2055` goes on to tell the operator the row has been excluded and to `rm`
+        # the ledger to retry it — about a count that was never persisted. Nothing here can make
+        # that decision recoverable, so the requirement is that it is loud.
+        logger.error("Could not write drain attempt ledger %s — this attempt is NOT recorded and "
+                     "the row keeps its old count: %s", p, exc)
 
 
 class _LedgerLock:
@@ -189,7 +202,13 @@ class _LedgerLock:
             import fcntl
             fcntl.flock(self._fh.fileno(), fcntl.LOCK_EX)
         except (OSError, ImportError, AttributeError) as exc:
-            logger.debug("Drain ledger lock unavailable (%s); proceeding unlocked", exc)
+            # The `with` body then runs UNLOCKED — the lost-increment race this class exists to
+            # close is back, and the only trace was a debug line nobody reads. Degrading to the
+            # pre-existing racy behaviour is still right (a bookkeeping mutex must not be able to
+            # crash a drain), but a rail that has silently switched itself off is the exact shape
+            # of defect this repo keeps paying for.
+            logger.error("Drain ledger lock unavailable (%s); the attempt counter's "
+                         "read-modify-write is running UNLOCKED and may lose increments", exc)
             if self._fh is not None:
                 try:
                     self._fh.close()

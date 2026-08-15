@@ -6,12 +6,16 @@ for a given signal. Grades the output using a 'Professor' model.
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 from .config import Config, load_config
+from .errors import ProviderExhaustedError
 from .generate import generate
 from .operator import Operator
 from .paths import repo_path
+
+logger = logging.getLogger(__name__)
 
 
 def run_generative_golden(
@@ -22,16 +26,26 @@ def run_generative_golden(
     k: int = 5
 ) -> dict[str, Any]:
     """Execute the generative golden set and return quality scores.
-    
+
     Returns: {
-        "overall_alpha": 0.0,
+        "overall_alpha": 0.0 | None,   # None when NOTHING was graded — never a stand-in 0.0
+        "graded_n": 0, "failed_n": 0, "degraded": False,
         "cases": [{
             "signal": "...",
             "generated": [...],
-            "alpha_score": 0.0,
-            "rationale": "..."
+            "alpha_score": 0.0 | None, # None when the Professor did not return a grade
+            "rationale": "...",
+            "graded": True
         }]
     }
+
+    A FAILED GRADE IS NOT A ZERO. This harness is the promotion gate that decides whether a
+    second brain can be trusted, so a grader that errored and a generator that scored nothing
+    must never reduce to the same number. They did until 2026-08-15: `alpha = 0.0` under a
+    bare `except` averaged every outage straight into `overall_alpha`, which is how the gate
+    came to record that a model "answers without reasons" when we had thrown its answers away.
+    Ungraded cases are now excluded from the mean and counted in `failed_n`; the healthy path
+    (`failed_n == 0`) computes exactly the number it always did.
     """
     # Anchored on the repo, not the cwd: the cockpit calls this from wherever streamlit
     # was launched, so a relative default resolved to a missing file for every caller
@@ -42,6 +56,7 @@ def run_generative_golden(
 
     results = []
     total_alpha = 0.0
+    graded_n = 0
 
     for case in cases:
         signal = case["signal"]
@@ -62,25 +77,53 @@ def run_generative_golden(
                 f"Generated Batch:\n{batch_json}\n\n"
                 "Output ONLY JSON: {\"alpha_score\": 0.0 to 5.0, \"rationale\": \"...\"}")
         
+        alpha: float | None
         try:
             grade = prof_op.complete_json(system, user, temperature=0.0)
             alpha = float(grade.get("alpha_score", 0.0))
             rationale = grade.get("rationale", "No rationale.")
+            graded = True
+        except ProviderExhaustedError:
+            # Abort rather than grade the rest of the set on a brain that cannot answer. A
+            # partial run whose remaining cases are all "failures" is worse than no run: it
+            # still prints a number, and that number is a fact about our quota, not about the
+            # generator. `--resume` semantics belong to the caller; a benched Professor is
+            # exactly what ProviderExhaustedError exists to tell it.
+            logger.error("Generative golden aborted: the Professor operator is exhausted "
+                         "after %d graded case(s); no score is being reported", graded_n)
+            raise
         except Exception as e:
-            alpha = 0.0
+            # Everything else — a malformed grade, a missing alpha_score, an adapter crash —
+            # marks the case UNGRADED. It must not enter `total_alpha`: a 0.0 here is the
+            # lowest possible score the Professor can award, so an outage and a damning
+            # verdict were literally the same value.
+            logger.error("Generative golden: the Professor returned no usable grade for "
+                         "signal %r; this case is excluded from the mean: %s",
+                         str(signal)[:60], e, exc_info=True)
+            alpha = None
             rationale = f"Grading failed: {e}"
+            graded = False
 
         results.append({
             "signal": signal,
             "generated": [c.title for c in generated],
             "alpha_score": alpha,
-            "rationale": rationale
+            "rationale": rationale,
+            "graded": graded,
         })
-        total_alpha += alpha
+        if graded:
+            total_alpha += float(alpha or 0.0)
+            graded_n += 1
 
+    failed_n = len(results) - graded_n
     return {
-        "overall_alpha": round(total_alpha / len(cases), 2) if cases else 0.0,
-        "cases": results
+        # None, not 0.0, when nothing was graded: a caller that renders this cannot be handed
+        # a floor score for a measurement that never happened.
+        "overall_alpha": round(total_alpha / graded_n, 2) if graded_n else None,
+        "graded_n": graded_n,
+        "failed_n": failed_n,
+        "degraded": failed_n > 0,
+        "cases": results,
     }
 
 def _build_operator(kind: str, cfg: Config, fast: bool) -> Operator:

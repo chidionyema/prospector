@@ -1,12 +1,15 @@
 """Run Launcher — generate-first wizard with live / finished logs."""
 from __future__ import annotations
 
+import logging
 import re
 import sys as _sys
 import time
 from pathlib import Path
 
 import streamlit as st
+
+logger = logging.getLogger(__name__)
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 if str(_ROOT) not in _sys.path:
@@ -27,21 +30,42 @@ _ESTIMATED_CHECKS_PER_CANDIDATE = 6
 def render():
     from prospector.control_center import readers as _readers
 
+    # An empty job list is the normal state of a fresh install, so a swallowed read here
+    # renders "no runs" over a broken jobs.json and the operator launches a duplicate of a
+    # run that is already going. The read still may not raise (a dead Launch page cannot
+    # start anything either) — it reports instead. The old fallback that retried with the
+    # UNFILTERED list is gone: that path is how a pytest job gets shown as live.
+    jobs_error = ""
     active = None
     try:
         active = _get_active_job()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.exception("control_center: could not determine the active job")
+        jobs_error = f"{type(exc).__name__}: {exc}"
 
     jobs = []
     try:
         from prospector.control_center.runner import filter_production_jobs
         jobs = filter_production_jobs(_runner.load_jobs())
-    except Exception:
-        try:
-            jobs = _runner.load_jobs()
-        except Exception:
-            jobs = []
+    except Exception as exc:
+        logger.exception("control_center: job history unreadable")
+        jobs_error = f"{type(exc).__name__}: {exc}"
+
+    if jobs_error:
+        st.error(
+            f"Run history unavailable ({jobs_error}). The list below is what could be "
+            "read, not what has run — check `store/control_center/jobs.json`."
+        )
+
+    # The forms below take their operator / lane / profile choices from config.yaml. When
+    # it cannot be read those lists fall back to hardcoded defaults, which look exactly
+    # like a config that chose them — so say so before the operator launches a paid run.
+    cfg_error = _readers.config_load_error()
+    if cfg_error:
+        st.error(
+            f"config.yaml could not be loaded ({cfg_error}). The choices below are "
+            "built-in defaults, not your configuration."
+        )
 
     latest = None
     finished = [j for j in jobs if j.get("status") not in ("running", "queued")]

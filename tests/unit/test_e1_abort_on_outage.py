@@ -315,11 +315,22 @@ def test_the_fence_refuses_a_chain_a_provisional_brain_could_rule(e1, monkeypatc
     is not a weaker number, it is a number about a different brain.
     """
     from prospector.config import load_config
+    from prospector.operator import moat_primary
+
+    # The offending tail is DERIVED, never named. minimax was hardcoded here until 2026-08-15,
+    # when it was promoted into `moat_primary` — at which point the chain this test built was
+    # entirely trusted, the fence correctly did not fire, and the test failed for a promotion
+    # that is a founder decision, not a regression. Same lesson as the config-vs-fence note
+    # above, one level in: pin the RULE (an untrusted tail is refused, by name, before any
+    # constructor runs), and read the roster from the live fence.
+    trusted = sorted(moat_primary())[0]
+    untrusted = next(t for t in ("deepseek", "ollama", "mock", "minimax", "claude_cli")
+                     if t not in moat_primary())
 
     def _provisional(checks, hybrid):
         cfg = load_config()
         cfg.retrieval.hybrid_entity_checks = list(checks) if hybrid else []
-        cfg.operator = ["claude_cli", "minimax"]
+        cfg.operator = [trusted, untrusted]
         return cfg
 
     monkeypatch.setattr(e1, "_arm_config", _provisional)
@@ -327,6 +338,6 @@ def test_the_fence_refuses_a_chain_a_provisional_brain_could_rule(e1, monkeypatc
         e1._resolve_live_path(("payer_solvency",))
     msg = str(exc.value)
     assert "provisional provider" in msg, msg
-    assert "minimax" in msg, msg
+    assert untrusted in msg, msg
     # No credential is needed to reach this refusal: the fence precedes the constructors.
     assert "API_KEY" not in msg, f"fence ran after construction and reported a key instead: {msg}"

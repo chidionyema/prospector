@@ -50,14 +50,52 @@
 # PROMOTION GATE (to make a cheap model a TRUSTED primary, not just a fallback): see
 # specs/offline-moat-validation.md and run, recording a clearance:
 #   python -m prospector.golden --operator deepseek --fixtures fixtures/golden_fixtures.json --runs 3
-operator: [claude_cli, minimax]
-# standardcompute was the middle tier here from 2026-08-08. Its adapter was DELETED on 2026-08-15
-# (founder: "we should get rid of standard compute"), and `_build_operator` now RAISES on the kind,
-# so leaving the name on this line would have failed the engine at startup on a config it could not
-# build. minimax is the tail: it is NOT in MOAT_PRIMARY (`prospector/operator.py:1199`), so a ruling
-# it serves is stamped `provisional`, never publishes on PASS (run.py:528) and is auto re-vetted —
-# which is what makes a cheap tail safe. To promote a tail to trusted-final, the gate is the one
-# named above, run against that provider.
+#
+# MINIMAX LEADS 2026-08-15 (founder: "ship with MiniMax running the whole show and claude a
+# fallback"). Order IS call order, so this is the line that moves cost and latency: measured this
+# day, minimax rules a check in ~6s at ~$0.0004 against claude_cli's ~15s at ~$0.14. claude_cli
+# stays on the chain as the failover, not as the default payer.
+operator: [minimax, claude_cli]
+#
+# WHICH of those tiers may rule FINALLY. Anything on `operator:` but NOT here is stamped
+# `provisional` when it rules: it keeps throughput up during a moat outage, but never publishes on
+# PASS and is auto re-vetted. Blank/absent => operator.MOAT_PRIMARY_DEFAULT (`claude_cli`), the
+# single definition of the default. `PROSPECTOR_MOAT_PRIMARY=minimax` overrides for one process
+# without touching this file (an experiment, not a promotion).
+#
+# CONFIG-DECLARED 2026-08-15. It was a hardcoded frozenset in operator.py with no config key —
+# the only tier knob in the engine that needed a source edit and a daemon re-exec to move, while
+# `operator:` / `noncritical_operator:` / `artifact_operator:` / `marketing_operator:` were all
+# config lines. That is what made MiniMax's throughput unusable at any concurrency: widening the
+# cheap chain cannot help while everything it rules is unpublishable by construction.
+#
+# CHANGING THIS LINE DECIDES WHAT MAY BE SOLD. The gate for adding a cheap brain is the PROMOTION
+# GATE above (specs/offline-moat-validation.md), measured on the current parser — not a judgement
+# that it "looked good in a run".
+# PROMOTED 2026-08-15 (founder: "either we trust minimax or we don't, the aim is to replace
+# claude basically"). minimax's rulings now publish on PASS instead of being stamped
+# `provisional` and re-vetted by claude_cli — which is the whole point: its throughput was
+# unusable at any concurrency while everything it ruled was unpublishable by construction.
+# REVERT = delete `minimax` from this line. That stops FUTURE publishes immediately; packs
+# already listed under the looser fence stay listed until unlisted deliberately.
+moat_primary: [minimax, claude_cli]
+# standardcompute REMOVED from this chain 2026-08-15 (founder directive), along with its adapter.
+# It sat between claude_cli and minimax from 2026-08-08 ("fall back for claude ahead of minimax"),
+# but STANDARDCOMPUTE_API_KEY is unset here and the free trial is spent — the tier answered live
+# calls with an out-of-allowance upsell body instead of a completion, so it was a guaranteed
+# failure paid before every fall-through rather than a failover. `_build_operator` now raises an
+# explicit ValueError on the name; a stale plist or config fails at startup instead of quietly
+# building a shorter chain. The paid Anthropic API tier `claude` went the same day, for the same
+# reason (no ANTHROPIC_API_KEY) — `claude_cli`, the SUBSCRIPTION CLI, is a different tier and is
+# untouched.
+#
+# WHAT THE FENCE IS NOW, so this comment cannot be read against the line above it: MOAT_PRIMARY is
+# `[minimax, claude_cli]` — BOTH are trusted-final as of 2026-08-15, so neither stamps its rulings
+# `provisional`. The fence has not been removed, it has been moved: `is_provisional_provider`
+# (operator.py:1451) still stamps ANY ruler outside that list, and such a ruling never publishes on
+# PASS (run.py:864) and is auto re-vetted. That is what keeps a future cheap tail safe. To promote
+# a NEW cheap brain to trusted-final, the gate is the one named above
+# (specs/offline-moat-validation.md), run against that provider on the current parser.
 #
 # The CHEAP chain: divergent generation, prescreen, scoring. Never rules a verdict — anything of
 # its that reaches a ruling is stamped `provisional` (operator.py:1071), so the fence above does
@@ -65,7 +103,8 @@ operator: [claude_cli, minimax]
 # in `run.py` as a module constant until 2026-08-10, which made the one knob whose entire subject
 # is "what does the ancillary work cost" the only one that needed a source edit and a daemon
 # re-exec to move, while every throughput knob beside it was a config line. Its head changed
-# three times in two weeks (deepseek → claude_cli → standardcompute), each time by editing code
+# three times in two weeks (deepseek → claude_cli → standardcompute, all three since removed
+# from it), each time by editing code
 # to express a billing fact. Blank/absent => the historical default, byte for byte.
 # 2026-08-14 — claude_cli REMOVED, not demoted (founder: "we are over using claude cli and we
 # have Minimax, claude should never be used for non-critical"). This line had it at the HEAD as
@@ -74,12 +113,17 @@ operator: [claude_cli, minimax]
 # that never rules a verdict. `prospector/run.py::_noncritical_order` also STRIPS claude_cli when
 # it builds the chain, so editing this line back cannot quietly reinstate it.
 #
-# minimax is now the WHOLE chain. It headed it because standardcompute was out of allowance on
-# disk (store/provider_health_noncritical.json: strikes 6, last_error "You've used up your free
-# trial"), and on 2026-08-15 that adapter was deleted outright. A chain of one is not a chain, and
-# that is a real exposure: if minimax fails, non-critical work raises ProviderExhaustedError and
-# the signal is parked for `generate --resume` rather than silently promoting a trusted brain into
-# ancillary work. Adding a second cheap tier here is the fix; claude_cli is not eligible for it.
+# 2026-08-15 — standardcompute REMOVED too (founder directive), so this chain is minimax alone.
+# It had been kept as the failover tier on the reasoning that "a chain of one is not a chain", but
+# the tier was measurably out of allowance the whole time it sat here
+# (store/provider_health_noncritical.json: strikes 4, last_error "You've used up your free trial"),
+# so the chain was already one deep in practice and the second name only bought a guaranteed
+# failed call. A name that cannot serve is not depth. If a real second cheap tier is funded, add
+# it here — the key is config-driven precisely so that costs a config line, not a deploy.
+# The residual exposure, stated so it is not discovered during an outage: if minimax fails,
+# non-critical work raises ProviderExhaustedError and the signal is parked for `generate --resume`,
+# rather than silently promoting a trusted brain into ancillary work. That is the intended
+# behaviour, not a gap — but it does mean a minimax outage stops generation, not just slows it.
 # NOTE: the moat (`operator:`) and the pack prose (`artifact_operator:`) are UNCHANGED — this
 # directive is about ancillary work, and the £49 deliverable is not ancillary.
 noncritical_operator: [minimax]
@@ -125,24 +169,32 @@ marketing_operator: [minimax, claude_cli]
                                   # (bridge.py:820 content_ok, since 967457f): a weak minimax
                                   # pack fails currency/citation/completeness and stays UNLISTED
                                   # rather than reaching a buyer. Generation is non-critical by
-                                  # the standing rule; NO VERDICT moves here — minimax is
-                                  # outside MOAT_PRIMARY (operator.py:997) and anything it RULES
-                                  # is stamped provisional and refused publication (run.py:543).
-                                  # Regenerating a pack re-uses the stored trusted verdict and
-                                  # never re-rules, so nothing published this way is provisional.
+                                  # the standing rule; NO VERDICT moves here. Regenerating a pack
+                                  # re-uses the STORED verdict and never re-rules, so this chain
+                                  # cannot change what a pack was judged to be — that, not the
+                                  # identity of the brain, is why cheap copy is safe here.
+                                  #
+                                  # This clause used to read "safe because minimax is outside
+                                  # MOAT_PRIMARY, so anything it RULES is provisional". That
+                                  # became FALSE on 2026-08-15 when minimax was promoted into
+                                  # `moat_primary:` above — and the safety argument was never
+                                  # really about who minimax was. It is about this chain not
+                                  # being on the verdict path at all. Stated the old way, the
+                                  # comment would now read as "the fence is gone", which is the
+                                  # wrong lesson: the fence (operator.py:1451) is intact and
+                                  # still stamps every ruler outside the roster.
 
 # --- Model defaults (Part: HARDCODED_MODEL_AUDIT_TICKET) ---
 # Per-provider default model identifiers. Used as FALLBACK when model:/model_fast:
 # are empty or unset for a given provider context.
 model_defaults:
-  claude:       "claude-sonnet-4-5"     # ClaudeOperator default
+  # `claude` (the paid Anthropic API tier) removed 2026-08-15 with its adapter — see
+  # prospector/operator.py. `claude_cli` takes no model pin from here.
   deepseek:     "deepseek-v4-pro"       # DeepSeekOperator default
   minimax:      "MiniMax-M3"           # MiniMaxOperator (full reasoning)
   minimax_fast: "MiniMax-M3"           # MiniMaxOperator (fast — also M3 per standing order)
   ollama:       "qwen2.5-coder:7b"     # OllamaOperator default
-  # StandardCompute (api.stdcmpt.com) — OpenAI-compatible, key in .env as
-  # STANDARDCOMPUTE_API_KEY, base URL overridable via STANDARDCOMPUTE_BASE_URL.
-  # Wire format verified live 2026-08-08: /v1/chat/completions 200, /v1/messages 404.
+  # `standardcompute` removed 2026-08-15 with its adapter — see prospector/operator.py.
   search:
     deepseek:    "deepseek-v4-flash"
     minimax:     "MiniMax-M3"
@@ -276,6 +328,13 @@ retrieval:
   # the same outage at full price, and all 14 landed in a backlog the drain pays for AGAIN.
   # 3 = stop after three consecutive infra-gated defers. 0 disables.
   infra_defer_abort_streak: 3
+  # minimax_concurrency: the ceiling on the PRIMARY brain since 2026-08-15, so this is the knob
+  # that sets engine throughput — claude_concurrency below now only bounds the failover.
+  # MEASURED 2026-08-15 against the live endpoint, stepwise, counting 429s:
+  #   width 2 → 0.07 calls/s · 4 → 0.60 · 6 → 0.89 · 8 → 1.36 (16/16 clean, ZERO 429s at 8).
+  # The old default of 3 was scar tissue from a 429 storm on an UNKNOWN tier (2026-08-09) and had
+  # never been re-measured against MiniMax. `PROSPECTOR_MINIMAX_CONCURRENCY` overrides for ops.
+  minimax_concurrency: 8
   claude_concurrency: 4          # max concurrent claude CLI subprocesses (failover brain only
                                  # now that grounding resolves on ddg/exa — see chain above)
   # cursor_concurrency REMOVED 2026-08-06 with the cursor_cli adapter. claude_concurrency above
@@ -943,6 +1002,21 @@ generation:
   # d704595 took claude_cli off `noncritical_operator` (correctly — founder directive), then
   # standardcompute's free trial expired at 05:17Z, leaving MiniMax alone on generation with
   # a `max_tokens` ceiling its reasoning had outgrown. See prospector/operator.py.
+  #
+  # A BRANCH CUT THIS TO 20 ON 2026-08-14 AND THE CUT WAS REVERTED HERE ON MERGE (2026-08-15),
+  # because it was the same wrong diagnosis a second time. That branch's reasoning was "k=50 is
+  # unaffordable in TIME", citing real receipts:
+  #   store/scheduler/alerts.jsonl 2026-08-14T20:48:25Z  critical  tick_error
+  #     "tick_hard_deadline: exceeded 10800s during generation (batch=15); force-exited"
+  #   store/scheduler/alerts.jsonl 11:23-15:57Z          critical  barren_streak x18
+  #     "The generation chain has produced nothing for 21 ticks in a row"
+  # The receipts are real and the attribution is not: the tick that blew the 3h deadline was
+  # generating at k=`schedule.batch_size`, NOT at k=50, because `run_scheduled.py:908` passes
+  # `k=batch_size` explicitly and `generate.py:274` only reads this key `if k is None`. Editing
+  # this line could not have shortened that tick by one second. Re-verified on the merged tree
+  # 2026-08-15. Founder constraint stands: k stays 50 and the fix is to make generation FAST.
+  # `load_config` runs ONCE in run_scheduled.main — this value only takes effect on a daemon
+  # RESTART, never on the next tick.
   candidates_per_signal: 50
   max_per_call: 10      # max ideas requested per LLM call; generation batches to reach k
   # FLOOR on ideas requested per call (2026-08-14). The old wave formula floored the CALL
@@ -1460,12 +1534,65 @@ listing:
     # evidence behind them yet; that is what the price_comparables check (C3) and the
     # storefront events (D2) exist to produce. They are pinned here so the ladder is
     # deterministic and so moving one is a visible, reviewable act.
-    # Charm pricing (2026-08-09, founder: "round figure is not right, we should have pence,
-    # cents also"). Every rung now ends in 99p instead of a flat hundred so the storefront
-    # renders £19.99 / £49.99 / £199.99 instead of £19 / £49 / £199. The rung POSITIONS are
-    # unchanged (default_rung_index, tier_rung_index and market_rung_offset below all index
-    # into this same 7-element array), so only the numbers moved, not the ladder shape.
-    rungs: [1999, 2999, 4999, 7999, 9999, 14999, 19999]
+    # Charm pricing was introduced 2026-08-09 (founder: "round figure is not right, we should
+    # have pence, cents also"). On 2026-08-14 it was briefly flattened to £19/£29/£49/… on a
+    # MISREADING of the founder's ".00 everywhere" as an instruction; it was the complaint, not
+    # the request — "round figures make no sense" (2026-08-15). Restored to the 2026-08-09
+    # ladder. The rung POSITIONS never moved — default_rung_index, tier_rung_index and
+    # market_rung_offset all index into this same 7-element array — so no pack changed tier
+    # through either edit.
+    #
+    # The cosmetic argument is settled and it was never the real objection. The founder's
+    # standing complaint is that this array is "silly, predictable and unscientific", and a
+    # trailing 99p does not answer that: seven numbers typed by hand are a guess whichever
+    # digit they end on. Measured 2026-08-14, the evidence that would answer it exists and is
+    # not wired in — 16 of 24 recently-vetted ideas carry CITED willingness-to-pay anchors, and
+    # where they do the median job the buyer already pays for is £170, which makes the £199
+    # rung cost more than the problem it solves. `comparables.rung_adjust_enabled` (false) is
+    # the switch that would let that evidence move a rung. That is the fix; this line is not.
+    #
+    # Note what this edit does NOT do. It governs the price a pack is assigned at listing
+    # time; it does not touch a pack already on the shelf, because a catalogue row and its
+    # provider Price object are minted together by one PriceDecision (bridge.py) and rewriting
+    # either one alone charges a buyer an amount the fulfilment fence then rejects. Bringing
+    # the live shelf onto this ladder is a separate, deliberate repricing operation.
+    # Ceiling: £99.99 (founder, 2026-08-15 — "i dont think we should have inventory over
+    # 99.99"). The £149.99 and £199.99 rungs are GONE, not merely unused, so nothing can
+    # route back onto them. This shortens the array from 7 to 5, and every index below is
+    # an index into THIS array — see `tier_rung_index.venture`, which was 5 and had to move
+    # rather than be silently clamped by `pricing.py:176`.
+    rungs: [1999, 2999, 4999, 7999, 9999]
+
+    # ---- L2 DEPTH BANDS (2026-08-15) — which rung, and why a buyer can tell ----
+    # Lower edges, in CITED SOURCES, of rungs 2..5. A pack citing >= 25 sources lists at
+    # rung 2, >= 30 at rung 3, and so on; below 25 it sits on rung 1. Exactly
+    # len(rungs) - 1 strictly-increasing integers, or `pricing.py::_usable_bands` refuses
+    # them LOUDLY and the tier ladder takes over (it never silently half-applies).
+    #
+    # This replaces ambition_tier as the rung selector wherever the caller knows the count
+    # (the publish path always does; `verify._check_question` does not and still gets the
+    # tier ladder). The founder's constraint is the whole reason: "a user should be able to
+    # intuit why one pack is priced more or less than another." `ambition_tier` cannot
+    # satisfy it — it is not rendered anywhere a buyer can see. `sourceCount` is on every
+    # catalogue row already.
+    #
+    # MEASURED 2026-08-15 against the live shelf (59 rows, GET api.mumchimp.com/catalog),
+    # which is what makes these numbers a finding rather than seven more hand-typed ones:
+    #   * price ran BACKWARDS against sourceCount — £29.99 mean 36.5 sources, £49.99 mean
+    #     31.0, £149.99 mean 28.6. The dearest tier carried the FEWEST sources.
+    #   * 18 of 58 adjacent pairs, sorted by source count, had the dearer pack citing less.
+    #     Under these bands that count is 0, by construction, not by luck.
+    #   * distribution: min 17, p20 26, median 33, p80 42, max 51.
+    # The edges are the population quintiles (26/31/35/42) ROUNDED to multiples of 5, so
+    # the rule stays sayable out loud — "every five sources of extra depth moves a band" —
+    # while each rung still holds roughly a fifth of the shelf (9/11/15/15/9 packs).
+    #
+    # What this does NOT do: it prices what a pack is LISTED at from here on. It does not
+    # touch a live row — `bridge._resolve_money_rail` keeps a pack that is already on sale
+    # on the exact price it sells at, because the catalogue row and the Stripe Price object
+    # are minted together. Bringing the shelf onto these bands is a separate, deliberate
+    # repricing, and it is worth -£330 across the 59 live packs at today's counts.
+    source_count_bands: [25, 30, 35, 45]
 
     # The SAME ladder in US cents, for buyers billed in USD (founder decision 2026-08-14:
     # "as a us buyer you want to be charged in usd"; these rungs approved 2026-08-14).
@@ -1499,11 +1626,15 @@ listing:
     # proxy we have for the buyer's own scale — a side_hustle pack is bought by an
     # individual, a venture pack by someone raising against it. side_hustle sits at
     # 2900 because config already calls it "the £30-pack lane" (see lanes.side_hustle).
+    # venture moved 5 -> 4 when the ladder was capped at £99.99. `pricing.py:176/:178` clamps
+    # with min(last_idx, …), so leaving it at 5 would have produced the right price by accident
+    # while the config still claimed a rung that no longer exists — and the `us` offset below
+    # would have been silently swallowed by the same clamp. Stated, not clamped.
     tier_rung_index:
-      side_hustle: 1             # 2900
-      smb: 2                     # 4900
-      growth: 3                  # 7900
-      venture: 5                 # 14900
+      side_hustle: 1             # 2999
+      smb: 2                     # 4999
+      growth: 3                  # 7999
+      venture: 4                 # 9999 — the ceiling
 
     # `market` is the jurisdiction the OPPORTUNITY lives in, not the buyer's locale —
     # packs sell in GBP wherever they sell (models.py Candidate.market). A US-market
@@ -1863,7 +1994,15 @@ dedup_token_threshold: 0.34
 # past the deadline), and projected at commit time by scripts/gen_budget_guard.py against
 # the same fraction. 0 disables the rail.
 schedule: { cadence: daily, batch_size: 15, backlog_cap: 0, max_resume_attempts: 5,
-            revet_provisional_kills: false, gate_generation_on_grounding: true,
+            # revet_provisional_kills: false -> true, 2026-08-15. The 176 provisional KILLs the
+            # drain refused every cycle ("No backlogged candidate the drain can work on") were
+            # ruled under a confidence metric that scored citation VOLUME, not evidence
+            # (verify._calc_confidence, fixed this day) — so an unknown share of them are kills
+            # our own scorer manufactured, not judgements. They are also now cheap to re-ask:
+            # minimax leads the chain at ~$0.0004 a check, putting the whole 176-row sweep under
+            # a dollar. Set back to false once that backlog is worked off, so the drain's bound
+            # goes to rows that can still reach the publish gate.
+            revet_provisional_kills: true, gate_generation_on_grounding: true,
             reload_on_code_change: true, gen_budget_frac: 0.35,
             market_rotation: "us-tx,us-ca,us-fl,us-ny,uk,us-il,us-pa,us-oh,us-ga,uk" }
 

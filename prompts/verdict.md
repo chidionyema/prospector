@@ -72,3 +72,8 @@ USER: Candidate: {candidate_json}   Check — {check_name}: {check_question}
 Passages: {for each: [source_id] (url, published_at) text}
 Output ONLY: {"verdict":"supported|refuted|unverifiable","confidence":0.0,
  "rationale":"<=2 sentences, grounded strictly in cited passages","citations":["source_id",...]}
+`rationale` is REQUIRED and must be non-empty even when the verdict is "unverifiable" — in
+that case say what the passages failed to establish. A verdict with no reason is discarded
+as a failed call, so an empty string throws your answer away.
+Write `rationale` as ONE LINE. Escape any line break inside it as \n; never press Enter
+inside a JSON string.

@@ -232,8 +232,11 @@ def record_usage(*, input_tokens: int = 0, output_tokens: int = 0,
 
     `cfg` is optional and defaults to None, so every existing call site (none of which
     currently has a Config object in scope) is unaffected. Pass it when the caller does
-    have one (see StandardComputeOperator) so `get_price()` can read a real rate from
-    `cfg.pricing` instead of the module-level fallback.
+    have one, so `get_price()` can read a real rate from `cfg.pricing` instead of the
+    module-level fallback. Its only caller was StandardComputeOperator, removed 2026-08-15;
+    the path is kept because it is the mechanism by which a NEW metered provider's spend
+    reaches `daily_cap_usd` (ENGINE_AUDIT_2026-08-10 HIGH #4), and a mechanism deleted for
+    want of a caller is one the next provider silently does without.
     """
     phase = PHASE.get() or "main"
     stage = STAGE.get() or ""
@@ -268,13 +271,14 @@ def record_usage(*, input_tokens: int = 0, output_tokens: int = 0,
         # 3. Log a spend event. Routed through get_price() (not a direct PRICING.get())
         # so a caller that DOES pass `cfg` gets `cfg.pricing`'s real rate, not just the
         # module-level fallback (audit HIGH finding 4: this hardcoded lookup was the
-        # reason standardcompute, the head of run.py's _NONCRITICAL_ORDER, always
+        # reason standardcompute, then the head of run.py's _NONCRITICAL_ORDER, always
         # priced at $0/$0 and could never move daily_cap_usd's sum no matter how many
         # calls it made — the config-aware path existed but nothing here ever called it).
         #
-        # Only a caller that supplies `cfg` is asking for config-aware, audited pricing
-        # (today that's just StandardComputeOperator — see the class docstring and audit
-        # HIGH finding 4). For that caller, a provider missing from cfg.pricing must be
+        # Only a caller that supplies `cfg` is asking for config-aware, audited pricing.
+        # That was standardcompute, removed 2026-08-15, so today there is no such caller
+        # — the branch stays as the contract any NEW metered provider must use.
+        # For such a caller, a provider missing from cfg.pricing must be
         # LOUD: warn, and log the spend event even at cost=0, so a real rate entered later
         # under config.yaml's pricing: block is the only way to make it stop warning.
         # Every OTHER call site (the ~19 that don't pass cfg, unchanged by this fix) keeps
@@ -324,9 +328,9 @@ def reconcile(u: Dict[str, int]) -> Dict[str, int]:
     ledger is closed: every token in `total` is attributed to a priced dimension.
 
     WHY A RESIDUAL AND NOT AN ASSERTION. Providers do not agree on what `total_tokens` means.
-    `claude_cli.py:78` builds it from four parts we can name; MiniMax, DeepSeek, Ollama,
-    StandardCompute and OpenRouter each hand back their OWN `usage.total_tokens`
-    (`operator.py:459`, `:554`, `:1061`, `:677`, `:956`) which may include routing or padding
+    `claude_cli.py:78` builds it from four parts we can name; MiniMax, DeepSeek, Ollama and
+    OpenRouter each hand back their OWN `usage.total_tokens`
+    which may include routing or padding
     we never see. Raising would turn one provider's accounting quirk into a crashed batch;
     a non-zero residual makes it VISIBLE and attributable instead, which is the whole point —
     an unexplained 1.26M read as corruption for as long as nothing computed this number.

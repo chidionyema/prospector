@@ -20,8 +20,42 @@ from __future__ import annotations
 import types
 from pathlib import Path
 
+import pytest
+
 import prospector.health as H
+import prospector.operator as O
 from prospector import run as R
+
+
+@pytest.fixture(autouse=True)
+def _pin_the_roster():
+    """Every test in this file reasons about TRUSTED vs UNTRUSTED, so none of them may inherit
+    whichever roster the previous test happened to leave behind.
+
+    `moat_primary()` reads a module-global (`operator.py:1362`) that `config.load_config`
+    writes via `set_moat_primary`. That is correct for the daemon — one process, one config —
+    and it makes these tests order-dependent: they were written when the default
+    `{"claude_cli"}` was also the live roster, so "minimax" was untrusted by both accident and
+    intent. On 2026-08-15 minimax was promoted into `config.yaml moat_primary:`, and from then
+    on ANY earlier test in the session that loaded the real config.yaml flipped minimax to
+    trusted underneath this file. The result was the worst kind of red: green in isolation,
+    red in the full suite, and pointing at the drain rather than at test isolation.
+
+    Pinning here rather than in conftest on purpose — a global autouse reset would also hide
+    the config plumbing from the tests that exist to check it (`tests/unit/test_model_config.py`).
+    What this file needs is a KNOWN roster, not a suppressed one.
+    """
+    previous = O._MOAT_PRIMARY  # the RAW global, not moat_primary() — see below
+    O.set_moat_primary(["claude_cli"])
+    try:
+        yield
+    finally:
+        # Restore the raw value, including `None`. `moat_primary()` folds None into
+        # MOAT_PRIMARY_DEFAULT, so restoring what IT returns would leave the roster explicitly
+        # set where it had never been set — turning this fixture into the same order-dependence
+        # it exists to remove, one level down.
+        with O._MOAT_PRIMARY_LOCK:
+            O._MOAT_PRIMARY = previous
 
 
 class _Store:

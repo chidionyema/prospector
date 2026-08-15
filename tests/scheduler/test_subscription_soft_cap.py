@@ -96,10 +96,36 @@ def test_no_decision_is_a_no_op(tmp_path):
     assert rs._generation_suppressed(cfg) == ""
 
 
-def test_garbage_cap_disables_the_brake_and_does_not_crash(tmp_path):
-    """A brake that crashes the daemon is worse than no brake (same rule as backlog_cap)."""
+def test_garbage_cap_brakes_and_does_not_crash(tmp_path):
+    """A brake that crashes the daemon is worse than no brake — but NOT crashing and NOT
+    braking are two different things, and this test used to assert the second while its
+    docstring argued the first.
+
+    It was written as `... == ""` with $9,999 of subscription burn on the table: a config
+    typo silently removing the spend ceiling, which is precisely the failure that produced
+    $438.68 of ungoverned subscription burn in a single day. The "same rule as backlog_cap"
+    it cited does not transfer, and the difference is the cost of being wrong:
+
+      * `backlog_cap` is a default-OFF THROUGHPUT floor. Failing open resumes the normal
+        state of every deployment that never set it, and the drain works the queue off.
+        It fails open (loudly) — `test_an_unparseable_backlog_cap_fails_open_but_pages...`.
+      * this is a SPEND ceiling. Failing open spends money that cannot be un-spent, on an
+        unattended daemon, for as long as nobody notices the typo.
+
+    So: still no crash — the rail returns a reason string, it does not raise — but the
+    answer to "I cannot read the ceiling" is to stop, not to spend. Changed on the
+    2026-08-15 merge; the falsifiers below keep it from becoming "suppress always".
+    """
     cfg = _cfg(tmp_path, soft="not-a-number")
-    assert rs._generation_suppressed(cfg, _decision(subscription=9_999.0)) == ""
+    reason = rs._generation_suppressed(cfg, _decision(subscription=9_999.0))
+    assert reason, "an unreadable spend ceiling must not read as 'under the ceiling'"
+    assert "subscription soft cap" in reason and "UNREADABLE" in reason
+
+    # FALSIFIERS — a readable ceiling still behaves, so this is not a blanket stop.
+    assert rs._generation_suppressed(_cfg(tmp_path, soft=100.0),
+                                     _decision(subscription=1.0)) == "", "burn under a real cap"
+    assert rs._generation_suppressed(_cfg(tmp_path, soft=0.0),
+                                     _decision(subscription=9_999.0)) == "", "0.0 is OFF"
 
 
 def test_soft_above_hard_warns_that_the_drain_will_not_survive(tmp_path, caplog):

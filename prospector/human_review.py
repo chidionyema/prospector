@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -47,6 +48,8 @@ from typing import Any, Iterable, Mapping, Sequence
 #: Per-pack receipts. One file per pack so two reviewers (or a reviewer and the daemon) cannot lose
 #: each other's writes the way a single shared queue file would.
 DEFAULT_ROOT = Path("store") / "human_review"
+
+logger = logging.getLogger(__name__)
 
 #: What a reviewer may conclude about one flagged figure.
 ACTIONS: frozenset[str] = frozenset({
@@ -191,13 +194,26 @@ def receipt_path(pack_id: str, root: Path | str = DEFAULT_ROOT) -> Path:
 
 
 def load_receipt(pack_id: str, root: Path | str = DEFAULT_ROOT) -> Receipt | None:
-    """The receipt on disk, or None. A corrupt receipt reads as None — never as verification."""
+    """The receipt on disk, or None. A corrupt receipt reads as None — never as verification.
+
+    The fail-closed direction is right and unchanged. What changes is that it stops being
+    silent: `status()` (:287) turns None into `unreviewed`, which is the correct and honest
+    word for a pack nobody has looked at, and the WRONG one for a pack whose reviewer's
+    decisions are sitting in a file we can no longer parse. Only the second is a defect, and
+    only the file's existence tells them apart, so that case now logs at ERROR.
+    """
     p = receipt_path(pack_id, root)
     try:
         raw = json.loads(p.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    except (OSError, ValueError) as e:
+        if p.exists():
+            logger.error("human_review receipt %s exists but is unreadable (%s); pack %s "
+                         "will read as UNREVIEWED and any decisions it recorded are lost",
+                         p, e, pack_id)
         return None
     if not isinstance(raw, Mapping):
+        logger.error("human_review receipt %s is not a JSON object (%s); pack %s will read "
+                     "as UNREVIEWED", p, type(raw).__name__, pack_id)
         return None
     hist = []
     for d in raw.get("history") or []:

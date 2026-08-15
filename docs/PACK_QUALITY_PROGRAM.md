@@ -298,3 +298,95 @@ Until then the printable artefact is `First_Fortnight.html`, which prints to one
 over data already on disk: a model call cannot be replayed into a zip somebody bought last month.
 The backfill compares content rather than presence, so re-running it is a no-op
 (`rebuild_zip_with_index` returns `None` when nothing would change).
+
+---
+
+## The next ship item — P0 was fixed in the generator and never reached the shelf (2026-08-14)
+
+**One item, measured across the whole live shelf rather than one pack.** Everything else open in
+this document is either shipped (status ledger above), a founder decision (P5 PDF), or a separate
+branch of work (P3 → `docs/RETRIEVAL_PROGRAM.md`). This is the only open item that is a factual
+falsehood inside a product on sale, and it is the item the store's whole proposition rests on.
+
+### Two status lines above are stale, and correcting them is what exposes the gap
+
+| Stale line | What the tree says |
+|---|---|
+| §P0 `**Not yet decided. This is the founder's call and it blocks everything below.**` (this doc, line 58) | **Decided and shipped.** `prospector/dossier.py:326-345` `_pass_gloss` — "Fixed 2026-08-14 … the version the founder approved on sight (2026-08-13)". Option **(B)**, defend-on-page. |
+| Order of work item 1, `P0 decision from the founder … Blocks the rest` (line 232) | Unblocked; items 2–7 all carry receipts in the status ledger. |
+
+### The gap the correction exposes, measured
+
+The renderer stopped making the claim. **The shelf never did.**
+`tools/backfill_bundle_html.py:19-30` is explicit that it rewrites only the two GENERATED files
+(`index.html`, `manifest.jsonld`) and copies every `.md` deliverable **byte-identical**, with one
+deliberate one-line exception (the retired staleness footer). `QA_Report.md` is a deliverable.
+So the fix reaches packs generated after 2026-08-14 and no others.
+
+Census over all 74 live listings, `publish/bundles/<id>/*.zip` (BUILT, not necessarily SERVED —
+`tools/preview_packs.py:23-31`), reproducible by `python3 scripts/pack_banner_probe.py`:
+
+```
+live listings                         : 74
+  no bundle on this disk              : 0
+  bundle unreadable                   : 0
+  QA_Report carries retired banner    : 73
+  …and contradicts it in the same doc : 12
+```
+
+Verbatim from `publish/bundles/08b22037fc2afc07/prospector_pack_08b22037.zip → QA_Report.md`:
+
+> `## ✅ PASS` … `_This cleared every check we hold it to, on evidence we fetched and cited below._`
+
+and, in the same document:
+
+> `### ❌ Can the customer afford it?` … `**No — the sources contradict this.** Confidence 0.53.
+> *(check: `payer_solvency`)*`
+
+That is the founder's P0 defect — the one found by reading pack `8d5e24fbe6c1f5d3` — present on
+**12 of the 74 packs a buyer can pay for today**, and the retired sentence alone on 73 of 74.
+By the doc's own rule (*"a defect on 1 of 62 is a repair; a defect on 62 of 62 is a generator
+change"*) this is neither: the generator is already fixed. It is a **backfill**.
+
+### The re-render path exists and is currently broken — one defect, at a known line
+
+The pack is re-renderable without a model call: the stored record is
+`store/dossiers/<id>.pass.json` (**60 of the 74** live packs have one), and every pack's zip
+carries `manifest.jsonld` with each check, verdict and cited passage for the other 14.
+`pack_manifest.dossier_from_dict` → `dossier.render_markdown` is the whole path.
+
+It raises today:
+
+```
+File "prospector/dossier.py", line 671, in render_markdown
+    for ax, val in sc.scores.items():
+AttributeError: 'types.SimpleNamespace' object has no attribute 'items'
+```
+
+Cause, not symptom: `pack_manifest._ns` (`prospector/pack_manifest.py:351-355`) recursively turns
+every dict into a `SimpleNamespace` because `render_manifest` reads through `getattr` — which is
+correct for the manifest and wrong for `score.scores` / `score.justification`, whose keys are
+*data* (axis names), not fields. `dossier.py:308-317` `_verdict_of` already carries the same
+lesson for `verdict` ("one reader, both shapes"); the score maps never got it.
+
+### The work order
+
+1. **Make a stored dossier renderable.** `score.scores` and `score.justification` must round-trip
+   as mappings — either `_ns` stops descending into value-keyed maps, or `render_markdown` reads
+   them through one `_mapping()` helper the way `_verdict_of` reads verdicts. Test: render every
+   `store/dossiers/*.pass.json` and assert no exception + a banner that names the counts.
+2. **Extend the backfill to regenerate `QA_Report.md`** for a pack whose banner contradicts its
+   verdicts — a *narrow, second* deliberate exception to the byte-identical rule, documented in
+   `tools/backfill_bundle_html.py`'s docstring next to the first. Content-compared, so re-running
+   stays a no-op.
+3. **Re-upload and re-verify from R2**, not from disk. `tools/preview_packs.py --from r2` is the
+   only source that proves what a buyer receives.
+4. **Keep it from returning.** `scripts/pack_banner_probe.py` exits 1 while any live pack carries
+   the retired sentence; it belongs in the same gate as `scripts/site_spec_probe.py`.
+
+**Why this one and not the storefront v5 pass** (`docs/SITE_SPEC_PROGRAM.md:966`, NOT STARTED):
+v5's own "fix first" item — the header that did not mask what scrolled under it — is already
+fixed at `store_platform/src/Store.Web/src/components/marketing/MarketingLayout.tsx:142-157`
+(opaque `bg-bg`, dated 2026-08-14). v5 is a conversion improvement on a page; this is a false
+claim inside the thing that was already paid for, and it is the exact claim the kill log exists
+to make credible.

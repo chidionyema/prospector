@@ -17,6 +17,7 @@ Sources of truth (never recomputed):
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -26,6 +27,15 @@ import streamlit as st
 
 from prospector import paths
 from prospector.config import load_config
+
+logger = logging.getLogger(__name__)
+
+# Every reader below degrades to an empty value so a broken artifact cannot take the page
+# down (app.py:99 would render a traceback where a panel should be).  That is only honest
+# while the failure leaves a trace: a silent `{}` is how the cockpit once reported a KPI of
+# 0 that was really "the read threw".  So every degraded return logs at ERROR, and the
+# decision surfaces (config, provider health, Overview KPIs) also expose a companion
+# `*_error()` reader so a panel can render "unavailable" instead of a confident zero.
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -60,21 +70,55 @@ def _control_center_dir() -> Path:
 
 @st.cache_data(ttl=10)
 def load_config_typed():
-    """Load the engine Config object."""
+    """Load the engine Config object. ``None`` means it could not be loaded.
+
+    The except stays broad: `load_config` parses YAML, coerces types and validates, so the
+    failure modes are open-ended.  `config_load_error()` carries the reason, because "no
+    config" and "config unreadable" look identical to a caller that only sees ``None``.
+    """
     try:
         return load_config()
     except Exception:
+        logger.exception("control_center: load_config() failed — engine config unreadable")
         return None
 
 
 @st.cache_data(ttl=10)
+def config_load_error() -> str:
+    """Why the config readers came back empty — "" when config.yaml loaded both ways.
+
+    Covers `load_config_dict` (raw YAML) and `load_config_typed` (the Config object): both
+    degrade to a falsy value, and a page cannot otherwise tell that from a config that
+    genuinely says nothing.
+    """
+    import yaml
+    try:
+        with open("config.yaml", encoding="utf-8") as f:
+            yaml.safe_load(f)
+    except (OSError, UnicodeDecodeError, yaml.YAMLError) as exc:
+        return f"config.yaml unreadable — {type(exc).__name__}: {exc}"
+    try:
+        load_config()
+        return ""
+    except Exception as exc:  # reported, never raised: pages render a banner, not a crash
+        return f"{type(exc).__name__}: {exc}"
+
+
+@st.cache_data(ttl=10)
 def load_config_dict() -> dict[str, Any]:
-    """Load config.yaml as a raw dict (for the editor)."""
+    """Load config.yaml as a raw dict (for the editor).
+
+    ``{}`` is a legitimate answer (an empty config.yaml), so a swallowed read error here is
+    indistinguishable from one — it silently empties the Launch form's operator/lane/profile
+    choices.  Narrowed to the conditions actually expected and logged at ERROR;
+    `config_load_error()` is what a page shows the operator.
+    """
     import yaml
     try:
         with open("config.yaml", encoding="utf-8") as f:
             return yaml.safe_load(f) or {}
-    except Exception:
+    except (OSError, UnicodeDecodeError, yaml.YAMLError):
+        logger.exception("control_center: config.yaml unreadable — returning empty config")
         return {}
 
 
@@ -105,6 +149,9 @@ def catalogue_index(decision: Optional[str] = None) -> list[dict[str, Any]]:
         )
         rows = [dict(r) for r in cur.fetchall()]
     except sqlite3.Error:
+        # "the catalogue is empty" and "the index is locked/corrupt" render identically.
+        # The page cannot act on it, so the trace is the audit trail.
+        logger.exception("control_center: catalogue_index query failed (decision=%r)", decision)
         rows = []
     finally:
         conn.close()
@@ -169,6 +216,7 @@ def _count_listings() -> int:
     try:
         return sum(1 for p in listings.glob("*.json") if p.is_file())
     except OSError:
+        logger.exception("control_center: could not count store/listings — reporting 0")
         return 0
 
 
@@ -201,6 +249,9 @@ def load_dossier(candidate_id: str, decision: str) -> Optional[dict[str, Any]]:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
+        # The file exists (checked above), so this is corruption, not absence — and the
+        # caller reads ``None`` as "no dossier". Log it; the page cannot repair a dossier.
+        logger.exception("control_center: dossier %s.%s unreadable", candidate_id, decision)
         return None
 
 
@@ -213,6 +264,8 @@ def load_listing(candidate_id: str) -> Optional[dict[str, Any]]:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
+        # Exists but unreadable — "unlisted" is the wrong story to tell about a listing.
+        logger.exception("control_center: listing %s unreadable", candidate_id)
         return None
 
 
@@ -252,14 +305,19 @@ def load_jobs() -> list[dict[str, Any]]:
     try:
         jobs = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(jobs, list):
+            logger.error("control_center: %s is not a JSON list — reporting no jobs", path)
             return []
     except (json.JSONDecodeError, OSError):
+        logger.exception("control_center: %s unreadable — reporting no jobs", path)
         return []
     try:
         from prospector.control_center.runner import filter_production_jobs
-        return filter_production_jobs(jobs)
-    except Exception:
+    except ImportError:
+        # Returning the UNFILTERED list is how a pytest job gets rendered as a live run.
+        # Only an import failure may take that path, and it must not be silent.
+        logger.exception("control_center: filter_production_jobs unimportable — jobs unfiltered")
         return jobs
+    return filter_production_jobs(jobs)
 
 
 def summarize_job_command(argv: list[str] | None) -> str:
@@ -362,6 +420,8 @@ def read_job_log_tail(job: dict[str, Any], n: int = 80) -> str:
         lines = p.read_text(encoding="utf-8", errors="replace").splitlines()
         return "\n".join(lines[-n:])
     except OSError:
+        # "" also means "log not written yet", so an unreadable log reads as a quiet run.
+        logger.exception("control_center: job log %s unreadable", p)
         return ""
 
 
@@ -643,6 +703,7 @@ def recent_dossier_rows(limit: int = 8) -> list[dict[str, Any]]:
         )
         return [dict(r) for r in cur.fetchall()]
     except sqlite3.Error:
+        logger.exception("control_center: recent_dossier_rows query failed")
         return []
     finally:
         conn.close()
@@ -664,16 +725,34 @@ def stuck_paths() -> dict[str, str]:
 # Provider health
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=5)
-def load_provider_health() -> dict[str, Any]:
-    """Load circuit-breaker state from store/provider_health.json."""
+def _read_provider_health() -> tuple[dict[str, Any], str]:
+    """(health, error). ``error`` is non-empty only when the file exists and broke."""
     path = paths.store_path("provider_health.json")
     if not path.exists():
-        return {}
+        return {}, ""  # absence = no breaker ever tripped; a real answer, not a failure
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return {}
+        return json.loads(path.read_text(encoding="utf-8")), ""
+    except (json.JSONDecodeError, OSError) as exc:
+        logger.exception("control_center: %s unreadable — operator health unknown", path)
+        return {}, f"{type(exc).__name__}: {exc}"
+
+
+@st.cache_data(ttl=5)
+def load_provider_health() -> dict[str, Any]:
+    """Load circuit-breaker state from store/provider_health.json.
+
+    An empty dict is read downstream as "no breaker rows ⇒ every operator healthy"
+    (pages/_diagnostics.py:85, pages/_overview.py:280).  A corrupt health file therefore
+    paints the whole moat green — the loudest possible lie from the quietest failure.
+    Pair this with `provider_health_error()` before drawing anything reassuring.
+    """
+    return _read_provider_health()[0]
+
+
+@st.cache_data(ttl=5)
+def provider_health_error() -> str:
+    """Why `load_provider_health()` is empty — "" when the file is absent or fine."""
+    return _read_provider_health()[1]
 
 
 def moat_down(health: dict[str, Any]) -> bool:
@@ -882,9 +961,8 @@ def latest_golden() -> Optional[dict[str, Any]]:
 # Overview KPIs
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=15)
-def load_overview_kpis() -> dict[str, Any]:
-    """Lightweight Overview KPIs — never loads the full audit jsonl."""
+def _compute_overview_kpis() -> tuple[dict[str, Any], str]:
+    """(kpis, error). Every consumer reads a missing key as 0 — see the docstring below."""
     try:
         cfg = load_config_typed()
         stats = catalogue_stats()
@@ -917,9 +995,32 @@ def load_overview_kpis() -> dict[str, Any]:
             "moat_down": moat_down(health),
             "paused": scheduler_paused(),
             "health": health,
-        }
-    except Exception:
-        return {}
+        }, ""
+    except Exception as exc:
+        # Broad on purpose: this fans out over sqlite, the spend ledger, golden runs and
+        # the config, so anything can surface here. What may NOT happen is the page
+        # reading the resulting {} as a quiet estate.
+        logger.exception("control_center: Overview KPIs failed to compute")
+        return {}, f"{type(exc).__name__}: {exc}"
+
+
+@st.cache_data(ttl=15)
+def load_overview_kpis() -> dict[str, Any]:
+    """Lightweight Overview KPIs — never loads the full audit jsonl.
+
+    ``{}`` on failure is kept deliberately (pages/_overview.py:218 hides the KPI strip on a
+    falsy value), but ``{}`` is ALSO what a brand-new store returns, and every consumer
+    defaults a missing key to 0: `pages/_reports.py:11` would print
+    "Today $0.00 · PASS 0 · KILL 0 · 0 dossiers" from a read that threw.  A panel must call
+    `overview_kpis_error()` before showing any of these numbers.
+    """
+    return _compute_overview_kpis()[0]
+
+
+@st.cache_data(ttl=15)
+def overview_kpis_error() -> str:
+    """Why `load_overview_kpis()` is empty — "" when the numbers are real."""
+    return _compute_overview_kpis()[1]
 
 
 # ---------------------------------------------------------------------------

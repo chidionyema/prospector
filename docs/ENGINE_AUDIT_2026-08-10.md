@@ -34,7 +34,7 @@ x 12 increments = 72 expected, 22 recorded, 50 lost).
 | 1 | HIGH | `ClaudeOperator._raw` has no try/except, so the trusted tier never reaches the persisted dead-mark | **Fixed** | PR #173 (`20e008c`) |
 | 2 | HIGH | `_claim_probe`'s "exactly one caller machine-wide" is not cross-process safe | **Fixed** | PR #173 (`20e008c`) |
 | 3 | HIGH | `score_checks`-only checks can KILL on an outage with no DEFER | **Fixed** | PR #173 (`20e008c`) |
-| 4 | HIGH | Daily spend cap is blind to `standardcompute` | **Fixed** | PR #173 (`20e008c`) |
+| 4 | HIGH | Daily spend cap is blind to `standardcompute` | **Fixed** | PR #173 (`20e008c`); provider itself removed 2026-08-15, the `cfg=`-threading mechanism kept |
 | 5 | HIGH | A PASS whose publish step fails is indistinguishable from a published PASS | **Fixed** | this PR — `run.publish_and_record`, `Dossier.publish_status`/`publish_error` |
 | 6 | HIGH | Stripe idempotency key fingerprints a wall-clock field that changes every call | **Fixed** | this PR — `bridge._bundle_version` |
 | 7 | HIGH | `_one_call`/`_refine_wave` catch `ProviderExhaustedError` as bare `Exception` | **Fixed** | this PR — `generate(diagnostics=...)`, mid-run exhaustion reported by `run_signal` |
@@ -97,7 +97,8 @@ therefore never runs through `classify_exhaustion` / never reaches `_health.mark
 counts toward the in-process `CircuitBreaker` (default threshold 3, cooldown 60s, **reset on every
 process restart, never persisted**). Since `"claude"` is itself one of the two `MOAT_PRIMARY` names,
 the one operator kind singled out as trusted has none of the persisted-dead-mark protection every
-other adapter (MiniMax, DeepSeek, StandardCompute, Ollama) gets via `looks_exhausted`.
+other adapter (MiniMax, DeepSeek, Ollama) gets via `looks_exhausted`. (StandardCompute was in
+this list until its removal on 2026-08-15.)
 **Failure scenario:** claude_cli's Anthropic key hits a real 402 mid-run; the daemon retries it fresh
 on every subsequent tick instead of benching it for the documented 1h, paying the cost of a doomed
 call every time. — *Agent: operator/reliability audit.*
@@ -130,7 +131,9 @@ from a candidate killed on the merits, on the side_hustle lane specifically. Thi
 the cited incident dossier (`2102bacc6dd75cf9.kill.json`), surviving for the one class of check the
 original fix didn't cover. — *Agent: verify.py / the moat audit.*
 
-### HIGH — Daily spend cap is structurally blind to `standardcompute`, now the head of the non-critical chain
+### HIGH — Daily spend cap is structurally blind to `standardcompute`, then the head of the non-critical chain
+*(RESOLVED TWICE: fixed in PR #173, and the provider was removed entirely on 2026-08-15. The
+`cfg=`-threading mechanism stays — it is the contract any new metered provider must use.)*
 `run.py:317`: `_NONCRITICAL_ORDER = ("standardcompute", "claude_cli", "minimax")`. But
 `telemetry.py:173-179`'s `PRICING` dict has no `standardcompute` key, so `record_usage`'s `cost`
 computes to `0`, and `if cost > 0:` (`telemetry.py:248`) means **no `event:"spend"` ledger row is ever

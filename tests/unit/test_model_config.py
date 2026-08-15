@@ -26,6 +26,8 @@ import pytest
 # machine without a working anthropic/jiter install — this laptop skipped it, CI has the SDK
 # and ran it, which is why the suite was green locally and red on the PR.
 PROVIDERS = [
+    # ("claude", "ANTHROPIC_API_KEY") removed 2026-08-15 with the paid Anthropic API tier's
+    # adapter; `_build_operator("claude", ...)` now raises ValueError by design.
     ("deepseek", "DEEPSEEK_API_KEY"),
     ("minimax", "MINIMAX_API_KEY"),
 ]

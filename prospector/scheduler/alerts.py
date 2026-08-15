@@ -66,7 +66,16 @@ def _load_state(cfg) -> dict:
         return {}
     try:
         return json.loads(p.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError) as exc:
+        # `{}` here is not "nothing is wrong" — it is "we lost the record of what is wrong". The
+        # next `_mark_active`/`resolve_alert` writes the state back from this empty dict, so every
+        # UNRESOLVED alert silently drops out of `_active` and out of ALERT.txt, which is the same
+        # write-only failure `_rewrite_alert_txt` was written to fix, in the other direction.
+        # `_save_state` is a plain write_text (not atomic), so a torn tail is a live possibility.
+        # Recorded at ERROR because the conditions re-emit on the next tick and the watchdog
+        # re-raises `liveness` within ~15 min — the loss self-heals, but it must not be silent.
+        logger.error("Alert state at %s unreadable (%s) — the ACTIVE alert set is being reset; "
+                     "unresolved alerts will drop from ALERT.txt until they re-fire", p, exc)
         return {}
 
 
@@ -297,7 +306,15 @@ def _load_hermes_sender():
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         return getattr(mod, "send_operator_alert", None)
-    except Exception:  # noqa: BLE001 — a moved/broken estate degrades to the local sinks
+    except Exception:  # noqa: BLE001 — a broken estate degrades to the local sinks, never a crash
+        # Logged at ERROR with a traceback because the two callers (`_telegram_push`,
+        # `_emit_tick_digest`) both report None as "sink unavailable (no <path>)" at INFO — the
+        # message for an estate that ISN'T INSTALLED. The `_HERMES_ALERT_PATH.exists()` check
+        # above already covers that case, so reaching here means the file is present and BROKEN,
+        # and every CRITICAL in TELEGRAM_KEYS (liveness, stranded_passes, moat_blind) is being
+        # dropped on the floor. That must not be indistinguishable from "no estate here".
+        logger.exception("Hermes sender at %s is present but failed to load — Telegram alerts and "
+                         "tick digests are NOT being delivered", _HERMES_ALERT_PATH)
         return None
 
 

@@ -41,7 +41,11 @@ def test_gemini_transient_uses_full_retry_budget(monkeypatch):
 def test_claude_exhaustion_skips_remaining_retries(monkeypatch):
     calls = {"n": 0}
 
-    def fake_attempt(cmd, timeout, web, queue_timeout=None):
+    # `expect_structured` is passed by keyword from run_claude_cli since --json-schema landed
+    # (claude_cli.py:396). A double that omits it raises TypeError, which is NOT a
+    # ProviderExhaustedError — the test would then fail for a signature reason while claiming
+    # the fast-fail rail is broken.
+    def fake_attempt(cmd, timeout, web, queue_timeout=None, expect_structured=False):
         calls["n"] += 1
         raise RuntimeError("claude cli: 429 rate limit exceeded")
 

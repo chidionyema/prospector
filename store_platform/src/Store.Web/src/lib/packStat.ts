@@ -15,7 +15,8 @@ import { paybackEquation } from '@/lib/payback';
  * THE PRIORITY ORDER, and why each rung is where it is. Exactly one rung renders per pack; a rung
  * that cannot be stated honestly falls through to the next one.
  *
- *  1. THE MODELLED PRICE MULTIPLE -- `paybackEquation(pack.price, pack.financialSnapshot)`.
+ *  1. THE MODELLED PRICE MULTIPLE -- `paybackEquation(pack.price, pack.financialSnapshot)`,
+ *     BOUNDED ABOVE by `CREDIBLE_MULTIPLE_CEILING`.
  *     Month-1 revenue divided by the price on the same card, from the engine's own financial
  *     model. Measured over the live catalogue on 2026-08-15 (all 59 listed packs): 55 carry a
  *     `financialSnapshot`, 37 of those carry a readable `month1Revenue`, and 36 of those clear
@@ -65,6 +66,32 @@ import { paybackEquation } from '@/lib/payback';
  * card showing the same number. That is the determinism rule the deleted cover carried, kept.
  */
 
+/**
+ * The largest multiple this shop will SHOUT.
+ *
+ * Founder, 2026-08-15, on seeing 123x on the live shelf: "123x is the number that makes a buyer
+ * distrust the other 58 cards. exactly." That is the whole argument, and it is about the reader
+ * rather than the arithmetic -- the division is exact, and a card claiming the pack returns 123
+ * times its price inside thirty days is still read as a lie, which then retroactively prices
+ * every honest 6x on the same shelf as marketing. An implausible number is not a strong claim;
+ * it is a solvent applied to the credible ones next to it.
+ *
+ * Set at 20 because the live distribution and the plausibility argument break in the same place.
+ * The bulk of the catalogue ends at 17x (28 of 36, p75 = 17) and the remainder jumps 21, 22, 25,
+ * 30, 45, 76, 89, 123 -- a tail, not a continuation. And 20x of a 49.99 pack is a modelled £1,000
+ * in month one, which is the top of what a person starting from nothing reads as possible; above
+ * it the claim runs to £6,150 and stops being arguable.
+ *
+ * Falling THROUGH rather than clamping the display is deliberate. Printing "20x+" would still
+ * make the claim, just less precisely, and a capped figure invites the reader to wonder what was
+ * capped. Rung 2 is a fact about the research (a cited source count, populated on 59 of 59), so
+ * the eight loudest packs now lead with the number this shop can actually defend. Nothing is
+ * hidden: `pages/pack/[id].tsx` still shows the full equation -- price, modelled revenue, and the
+ * division -- next to the "Modelled economics" box, where the working is visible and the buyer
+ * judges it in context rather than meeting a bare 123x at display size on a shelf.
+ */
+const CREDIBLE_MULTIPLE_CEILING = 20;
+
 export type PackStatKind = 'price_multiple' | 'sources';
 
 export interface PackLeadStat {
@@ -88,7 +115,7 @@ export function packLeadStat(pack: Pack): PackLeadStat | null {
   // about which claims this shop will make. A rung that re-checked it here would be a second
   // ceiling to keep in step with the first.
   const payback = paybackEquation(pack.price, pack.financialSnapshot);
-  if (payback) {
+  if (payback && payback.multiple <= CREDIBLE_MULTIPLE_CEILING) {
     return {
       kind: 'price_multiple',
       figure: `${payback.multiple}×`,

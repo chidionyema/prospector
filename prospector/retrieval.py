@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     from nltk.stem import PorterStemmer
 import re
+import http.client
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -214,10 +215,21 @@ def _resolve(url: str, timeout: Optional[float] = None) -> Optional[str]:
             logger.warning("Dropping dead URL (HTTP %s)", e.code, extra={"url": url})
             return None
         return url
-    except Exception:
-        # No HTTP response at all (DNS failure, connection refused, timeout):
+    except (urllib.error.URLError, OSError, ValueError, http.client.HTTPException) as e:
+        # No HTTP response at all (DNS failure, connection refused, timeout, malformed URL):
         # the host is dead/fabricated. results_per_query redundancy covers the
         # rare real-but-slow host we drop here.
+        #
+        # NARROWED from a bare `except Exception` on 2026-08-15. Every network condition this
+        # is meant to catch is one of these four (`socket.timeout` and `ssl.SSLError` are both
+        # OSError subclasses). What the bare form ALSO caught was our own bugs: an
+        # `AttributeError` or `TypeError` from a refactor anywhere in the try block came back
+        # as `None`, which the callers read as "fabricated URL — drop this source". Sources
+        # would have gone on vanishing from dossiers, silently, with no error anywhere, and
+        # the visible symptom would have been thin grounding — a problem this engine has
+        # chased six times. An unexpected exception here is a code defect and must surface.
+        logger.debug("URL did not resolve, dropping as dead/fabricated",
+                     extra={"url": url, "error": str(e)})
         return None
 
 
@@ -504,7 +516,7 @@ def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
         import requests
         from lxml import etree
         from lxml import html as lxml_html
-    except Exception:                       # noqa: BLE001 — no requests/lxml => keep snippets
+    except ImportError:                     # no requests/lxml installed => keep snippets
         return None
 
     resp = None
@@ -530,13 +542,17 @@ def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
         if not buf:
             return None
         raw = bytes(buf).decode(resp.encoding or "utf-8", errors="replace")
-    except Exception:                       # noqa: BLE001 — network/decode: keep the snippet
+    except (requests.RequestException, OSError, UnicodeDecodeError, ValueError):
+        # network / decode: keep the snippet. NARROWED from `except Exception` 2026-08-15 —
+        # the bare form also caught our own bugs in the streaming loop above and returned the
+        # same `None` that a dead host returns, so a refactor could silently stop the engine
+        # ever reading a page and the only symptom would be thin grounding.
         return None
     finally:
         if resp is not None:
             try:
                 resp.close()
-            except Exception:               # noqa: BLE001
+            except (requests.RequestException, OSError):
                 pass
 
     try:
@@ -566,7 +582,9 @@ def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
                 break
         if not text:
             text = " ".join(doc.text_content().split())
-    except Exception:                       # noqa: BLE001 — unparseable markup
+    except (etree.ParserError, etree.XMLSyntaxError, ValueError, UnicodeDecodeError):
+        # unparseable markup. Narrowed for the same reason as the fetch above: an
+        # AttributeError from changing the xpath list read exactly like a broken page.
         return None
     # Select the passage that answers the query rather than the top of the page. `query=None`
     # (any caller predating 2026-08-14) still gets the head slice, byte for byte.
@@ -666,8 +684,14 @@ class GeminiGroundingProvider(SearchProvider):
                     temperature=0.0),
             )
         except Exception as e:
-            logger.warning(f"Grounding search failed: {e}", extra={"error": str(e)})
-            return []
+            # The API call itself failed — a transport error, a bad key, a quota. Returning
+            # `[]` told the chain "this provider is healthy and the web is empty", which is
+            # a lie in both halves: it books a breaker SUCCESS and clears the dead mark
+            # (FallbackSearchProvider.search, ~:1860), so a provider that is down stays in
+            # rotation and its outage is indistinguishable from a null result. Raise, and
+            # the chain fails over exactly as it was built to.
+            logger.error(f"Grounding search failed, failing over: {e}", extra={"error": str(e)})
+            raise
 
         sources: list[Source] = []
         try:
@@ -697,9 +721,16 @@ class GeminiGroundingProvider(SearchProvider):
                 logger.info("Search summary found but no resolvable chunks", extra={"query": query})
                 return []
         except Exception as e:
-            logger.warning(f"Failed to parse search results: {e}", extra={"error": str(e)})
-            return []
-            
+            # Same rule as the transport failure above, and the same reason. We received a
+            # response and could not read it; that is our problem, not the web's. `[]` here
+            # is the value a real "nothing found" returns, so no caller could ever tell them
+            # apart. Note this handler also catches OUR OWN bugs in the loop above — a
+            # `TypeError` after a refactor of `Source.make` looked identical to a null
+            # result, forever, in silence.
+            logger.error(f"Failed to parse search results, failing over: {e}",
+                         extra={"error": str(e)})
+            raise
+
         logger.info(f"Grounding search returned {len(sources)} sources", extra={"count": len(sources)})
         return sources
 
@@ -1716,7 +1747,7 @@ class DiskCache(SearchProvider):
         """
         try:
             raw = json.loads(p.read_text())
-        except Exception as e:
+        except (OSError, ValueError) as e:   # unreadable file / torn JSON -> one re-fetch
             logger.warning(f"Unreadable search cache entry, treating as miss: {e}",
                            extra={"path": str(p)})
             return None
@@ -1734,7 +1765,7 @@ class DiskCache(SearchProvider):
             return None
         try:
             sources = [Source(**d) for d in payload]
-        except Exception as e:
+        except (TypeError, ValueError) as e:   # entry written by an older Source schema
             logger.warning(f"Malformed search cache entry, treating as miss: {e}",
                            extra={"path": str(p)})
             return None
@@ -1968,7 +1999,11 @@ def _market_block(cfg) -> dict:
     """The active market's config block, or {} for a config predating Epic D."""
     try:
         return cfg.market_config() or {}
-    except Exception:  # noqa: BLE001 — a stubbed cfg in a test must never break search
+    except (AttributeError, TypeError):
+        # A stubbed cfg in a test, or a config predating Epic D, must never break search.
+        # Narrowed from `except Exception`: those two are the shapes a stub actually raises,
+        # and anything else here is a real config defect that must not present as "this
+        # market has no block" — which is a completely ordinary, unremarkable state.
         return {}
 
 
