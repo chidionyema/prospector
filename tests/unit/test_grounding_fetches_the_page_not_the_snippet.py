@@ -32,8 +32,12 @@ an outage that presented as a fully-reasoned kill.
 """
 from __future__ import annotations
 
+import sys
+
+import pytest
+
 from prospector.models import Source
-from prospector.retrieval import PageTextEnricher, SearchProvider, fetch_page_text
+from prospector.retrieval import _MIN_PAGE_TEXT, PageTextEnricher, SearchProvider, fetch_page_text
 
 
 class _Inner(SearchProvider):
@@ -178,13 +182,22 @@ def _patch_get(monkeypatch, resp):
 def test_script_and_style_are_stripped(monkeypatch):
     """Minified JS is not prose, and it would inflate the question/passage word overlap that
     `verify.py:138` scores confidence on — making grounding look better while making it worse.
+
+    The prose is deliberately longer than `_MIN_PAGE_TEXT` (`retrieval.py:489`): under that
+    floor the function returns None whatever it stripped, so a short fixture would pass this
+    test for a reason that has nothing to do with stripping. Staying over the floor also makes
+    the test deterministic about trafilatura — the fallback (`retrieval.py:597`) runs only
+    UNDER the floor, so this case never reaches it, installed or not.
     """
+    prose = (b"<p>The tenancy deposit must be protected within 30 days of receipt, and the "
+             b"prescribed information must then be served on the tenant by the landlord.</p>")
     html = (b"<html><head><style>.a{color:red}</style>"
             b"<script>var trackingPixel=1;function q(){}</script></head>"
-            b"<body><p>The tenancy deposit must be protected within 30 days.</p></body></html>")
+            b"<body>" + prose * 2 + b"</body></html>")
     _patch_get(monkeypatch, _Resp(html))
     text = fetch_page_text("https://example.invalid/x")
 
+    assert text is not None and len(text) >= _MIN_PAGE_TEXT, "fixture is under the passage floor"
     assert "tenancy deposit" in text
     assert "trackingPixel" not in text and "color:red" not in text
 
@@ -196,19 +209,96 @@ def test_navigation_chrome_is_not_mistaken_for_evidence(monkeypatch):
     would make grounding LOOK better while making it worse. Proven necessary on the first live
     run, where the longest "upgraded" passage of the batch was
     "Skip Navigation Personal Business Find a store Ver en español Shop Deals ...".
+
+    The body deliberately sits in a plain <div> and NOT in <main>: with a landmark present the
+    ladder would exclude the chrome by selecting <main>, and this test would then pass with
+    `strip_elements` deleted — i.e. it would stop measuring stripping at all. The document
+    fallback is the path where stripping is load-bearing, so that is the path pinned here.
+    It also carries more than `_MIN_PAGE_TEXT` (`retrieval.py:489`), so the assertions measure
+    stripping and not the passage floor, and the trafilatura fallback (which only fires under
+    that floor) is out of the picture whether or not it is installed.
     """
+    body = (b"<p>Deposits must be protected within 30 calendar days of receipt, and the "
+            b"prescribed information must be given to the tenant in that same window.</p>")
     html = (b"<html><body>"
             b"<nav>Skip Navigation Personal Business Find a store Ver en espanol Shop Deals</nav>"
             b"<header>Search site Your cart is empty</header>"
-            b"<main><p>Deposits must be protected within 30 calendar days of receipt.</p></main>"
+            b"<div>" + body * 2 + b"</div>"
             b"<footer>Copyright 2026 All rights reserved Privacy Terms</footer>"
             b"</body></html>")
     _patch_get(monkeypatch, _Resp(html))
     text = fetch_page_text("https://example.invalid/x")
 
+    assert text is not None and len(text) >= _MIN_PAGE_TEXT, "fixture is under the passage floor"
     assert "30 calendar days" in text
     for junk in ("Skip Navigation", "cart is empty", "All rights reserved", "Shop Deals"):
         assert junk not in text, f"page furniture {junk!r} was handed to the verdict brain"
+
+
+def test_an_extraction_under_the_floor_is_no_passage_at_all(monkeypatch):
+    """A title, a 404 body or a cookie wall is not a short passage — it is no passage.
+
+    Added 2026-08-15 with `_MIN_PAGE_TEXT` (`retrieval.py:489`, 597-608). The snippet this
+    function replaces averages 222 chars, so handing back 25 chars of "Page not found –
+    GeekWire" would be a DOWNGRADE that the enricher's gain floor cannot see as one. None is
+    the contract for "keep what you had".
+    """
+    html = b"<html><body><main><p>SOPPA Contracts</p></main></body></html>"
+    _patch_get(monkeypatch, _Resp(html))
+
+    assert fetch_page_text("https://example.invalid/x") is None
+    # And the caller does keep the snippet, which is the whole point of returning None.
+    monkeypatch.setattr("prospector.retrieval.fetch_page_text", lambda url, **k: None)
+    assert PageTextEnricher(_Inner([SNIPPET])).search("q")[0].text == SNIPPET
+
+
+# The .aspx shape that motivated the fallback: the whole body sits inside <form>, which the
+# lxml ladder strips as page furniture, so it extracts nothing at all. Measured on
+# isbe.net/Pages/SOPPA-Contracts.aspx, which the ladder reduced to 15 chars.
+_SENTENCES = [
+    "Deposits must be protected within 30 calendar days of receipt by the landlord.",
+    "The prescribed information must be served on the tenant within the same period.",
+    "A landlord who fails to comply may be ordered to pay up to three times the sum.",
+    "The scheme administrator publishes the statutory guidance on its own website.",
+    "Tenants may apply to the county court where the deposit was never protected.",
+    "The rules apply to assured shorthold tenancies granted on or after 6 April 2007.",
+]
+_FORM_WRAPPED_PAGE = (
+    "<html><head><title>SOPPA Contracts</title>"
+    "<script>var trackingPixel=1;function q(){}</script><style>.a{color:red}</style></head>"
+    "<body><nav>" + ("Skip Navigation Personal Business Find a store Shop Deals Sign in " * 6)
+    + "</nav><form id='form1'><div class='content'>"
+    + "".join(f"<p>{s}</p>" for s in _SENTENCES * 3)
+    + "</div></form><footer>Copyright 2026 All rights reserved Privacy Terms</footer>"
+      "</body></html>"
+).encode()
+
+
+def test_the_fallback_rescues_a_total_extraction_failure_without_readmitting_chrome(monkeypatch):
+    """The fallback's justification is rescuing a TOTAL extraction failure, not stripping
+    better — on boilerplate the two extractors tied. So it is only allowed to run where the
+    ladder returned nothing usable, and it must not hand back the nav bar that the ladder was
+    strict about: that would be the "looks better, is worse" outcome, arriving by the back door.
+    """
+    pytest.importorskip("trafilatura")
+    _patch_get(monkeypatch, _Resp(_FORM_WRAPPED_PAGE))
+    text = fetch_page_text("https://example.invalid/x")
+
+    assert text and "30 calendar days" in text, "the fallback did not rescue the page"
+    for junk in ("Skip Navigation", "Shop Deals", "All rights reserved", "trackingPixel",
+                 "color:red"):
+        assert junk not in text, f"the fallback readmitted page furniture {junk!r}"
+
+
+def test_the_fallback_being_absent_is_never_worse_than_not_having_it(monkeypatch):
+    """Determinism about the machine: trafilatura is an optional import, so the suite must say
+    what happens with AND without it. Without it the same page is simply no passage — the
+    caller keeps its snippet — and nothing raises.
+    """
+    monkeypatch.setitem(sys.modules, "trafilatura", None)   # `import trafilatura` -> ImportError
+    _patch_get(monkeypatch, _Resp(_FORM_WRAPPED_PAGE))
+
+    assert fetch_page_text("https://example.invalid/x") is None
 
 
 def test_a_page_with_no_landmarks_still_yields_its_text(monkeypatch):
