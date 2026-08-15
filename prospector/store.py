@@ -12,7 +12,6 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
-import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator, Optional
@@ -57,49 +56,6 @@ CREATE INDEX IF NOT EXISTS idx_market ON dossiers(market);
 CREATE INDEX IF NOT EXISTS idx_audience ON dossiers(audience);
 CREATE INDEX IF NOT EXISTS idx_seed_kind ON dossiers(seed_kind);
 """
-
-def _ensure_wal(conn: sqlite3.Connection) -> None:
-    """Put the FILE into WAL mode once, instead of every connection racing for it.
-
-    WAL is a property of the database FILE, recorded in its header, not of the connection
-    — so it needs setting once in the life of the file and is then inherited by every
-    opener. `_connect` nonetheless issued `PRAGMA journal_mode=WAL` unconditionally, and
-    the DELETE→WAL transition takes an EXCLUSIVE lock. `sqlite3.connect(timeout=10.0)`
-    does not save you: the busy handler is not honoured for this pragma, so a losing
-    process gets `sqlite3.OperationalError: database is locked` immediately.
-
-    That is not theoretical. It broke CI on 2026-08-15, three runs out of three, and it
-    broke it at COLLECTION time so the failure did not name a test:
-    `tests/integration/test_api.py` imports `prospector.api`, which builds `Store(cfg)` at
-    MODULE scope (`api.py:22`), so all four pytest-xdist workers construct a Store within
-    milliseconds of each other. Three workers raised at `store.py:123`, gw0 and gw1 then
-    disagreed about what they had collected, and xdist aborted the run. It only bites in
-    CI because `store/prospector.db` is untracked: a developer's copy already exists and
-    is already WAL, so the pragma is a no-op and the race never opens.
-
-    Measured on the mechanism alone (8 processes, one fresh db, 12 rounds): unguarded
-    3/96 processes died with "database is locked", guarded 0/96.
-
-    Failing to reach WAL is deliberately NOT fatal. Journal mode is a concurrency
-    property, not a correctness one — the store is fully usable in DELETE mode, and
-    crashing a run over a performance pragma is the bug this function exists to remove.
-    A give-up is logged rather than swallowed.
-    """
-    for attempt in range(3):
-        if (conn.execute("PRAGMA journal_mode").fetchone()[0] or "").lower() == "wal":
-            return
-        try:
-            conn.execute("PRAGMA journal_mode=WAL")
-            return
-        except sqlite3.OperationalError:
-            # Another opener holds the exclusive lock mid-transition. Whoever wins sets
-            # it for everyone, so the next read of the pragma above usually ends this.
-            time.sleep(0.05 * (attempt + 1))
-    logger.warning(
-        "sqlite journal_mode is still %s after 3 attempts; continuing without WAL",
-        conn.execute("PRAGMA journal_mode").fetchone()[0],
-    )
-
 
 _UPSERT = """
 INSERT OR REPLACE INTO dossiers
@@ -164,7 +120,33 @@ class Store:
         """
         conn = sqlite3.connect(str(self.db), timeout=10.0)
         conn.row_factory = sqlite3.Row
-        _ensure_wal(conn)
+        # Set WAL only when it is not already set, and survive losing the race to set it.
+        #
+        # `timeout=10.0` above does NOT cover this statement, which is the whole defect: SQLite
+        # documents that changing the journal mode while another connection has the database open
+        # "returns SQLITE_BUSY immediately without invoking the busy handler". So the one statement
+        # here that needs a retry is precisely the one the timeout cannot help, and under any
+        # concurrency it raised `sqlite3.OperationalError: database is locked` out of `_connect` —
+        # i.e. out of `Store.__init__`, i.e. out of `import prospector.api` (api.py:22 builds a
+        # module-level Store). Found 2026-08-15 when `pytest.ini` began running the suite under
+        # `-n auto`: four xdist workers importing `tests/integration/test_api.py` at once, two of
+        # them losing the WAL conversion, so two workers collected the file and two did not and
+        # xdist aborted the whole run with "Different tests were collected between gw2 and gw3".
+        # That reads as a broken test suite; it is a real concurrency defect in the store, and the
+        # live daemon, the CLI and the API all open this same database.
+        #
+        # Reading the mode first is safe (a shared lock) and makes the attempt a cold-start-only
+        # event: journal mode is a durable property of the FILE, so once any connection has
+        # converted it, every later connection reads "wal" and never contends again.
+        if str(conn.execute("PRAGMA journal_mode").fetchone()[0] or "").lower() != "wal":
+            try:
+                conn.execute("PRAGMA journal_mode=WAL")
+            except sqlite3.OperationalError:
+                # Someone else holds the database open. Narrow on purpose: the ONLY thing lost is
+                # an optimisation another connection is in the middle of applying anyway, and the
+                # connection this returns is fully usable in the meantime. Swallowing anything
+                # wider would hide a genuinely unopenable database behind a pragma.
+                pass
         try:
             with conn:
                 yield conn
