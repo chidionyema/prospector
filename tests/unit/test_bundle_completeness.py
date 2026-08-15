@@ -352,7 +352,11 @@ class TestIncompleteBundleCannotBeListed:
         assert call["content_key"] and call["content_hash"]
 
     def test_a_bundle_missing_a_file_is_registered_unlisted(self, publishing_bridge, monkeypatch):
-        def _deficient(self, dossier, artifacts, marketing):
+        # `sections_out` is the out-param the real `_create_bundle` fills with the assembled
+        # read so the caller can lint it (bridge.py, 2026-08-15). A stub that composes no
+        # sections leaves it untouched, which is the documented "the bundle failed to build"
+        # case and exactly what this test is staging.
+        def _deficient(self, dossier, artifacts, marketing, sections_out=None):
             path = Path("publish/bundles/deficient.zip")
             path.parent.mkdir(parents=True, exist_ok=True)
             with zipfile.ZipFile(path, "w") as zf:
@@ -382,7 +386,7 @@ class TestIncompleteBundleCannotBeListed:
         archive is short of every file in `BUNDLE_FILES` rather than five of eight, which is a
         stronger version of the same verdict: a bundle in the old shape is not sellable either.
         """
-        def _stubbed(self, dossier, artifacts, marketing):
+        def _stubbed(self, dossier, artifacts, marketing, sections_out=None):
             path = Path("publish/bundles/stubbed.zip")
             path.parent.mkdir(parents=True, exist_ok=True)
             with zipfile.ZipFile(path, "w") as zf:

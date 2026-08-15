@@ -1400,6 +1400,40 @@ listing:
   # Note the rate is least stable exactly where it bites hardest: the worst offenders are
   # 300-800 word packs where a handful of findings dominates the ratio.
   max_grammar_defects_per_1k: 6.0
+  # REPETITION (pack_linter.check_repetition, graded over the assembled 14-section read that
+  # `_create_bundle` hands back). The founder read a pack on 2026-08-15 and said "repititons
+  # occur"; measured on e698149e137fc164 the same sentence was printed in two or more sections
+  # 33 times. Five renderers were fixed and it is 0 blocking / 12 warnings now.
+  #
+  # OFF, on the same terms lint_grammar and title_block_on_breach were both introduced: the
+  # check runs, `repetition_findings` and `readability_grade` accrue in <id>.lint.json, and the
+  # actuator turns on against a number measured across live packs rather than the one pack that
+  # motivated it. Unlisting a paid pack over a repeated sentence is an expensive way to discover
+  # the threshold was wrong.
+  lint_repetition_block: false
+  # PAID-ARTIFACT CLAIM CHECK (artifacts.claim_check_blocks_listing). Added 2026-08-15.
+  #
+  # What it is: when build_spec / gtm_plan / ops_plan still carry claim-check violations after
+  # their repair turn (`artifacts.py::_gen_one_artifact`), the pack does not list. The
+  # documents are KEPT and the violations are recorded on `candidate.tags["unverified_claims"]`
+  # — deleting the document would trip the completeness gate as "generation produced nothing",
+  # which is an outage's signature, not an invention's, and would destroy the evidence.
+  #
+  # Why it is ON while every lint_* knob above is OFF: those grade STYLE, where a false
+  # positive unlists a good pack, so they wait for a corpus. This grades TRUTH. The same
+  # `verify_claims_detail` has DROPPED an unverified marketing piece since the beginning
+  # (`artifacts.py::_gen_one_content`) while the £49 documents shipped theirs merely logged —
+  # one gate, opposite consequences, and the lenient side was the side the buyer pays for.
+  # Measured on the same checker: the three paid artifacts fail attempt 1 at 88-92% vs 74% for
+  # marketing copy (so this is not a short-copy artefact), and sampled violations are real
+  # invention — a 90-day figure contradicting a cited 20-day statutory deadline, a citation
+  # naming `voxa.com` where the source is `voxamtd.com`. "Publish only on PASS" and "no
+  # unsourced numbers ship, ever" have no exception for the expensive document.
+  #
+  # Set false to restore the pre-2026-08-15 behaviour: violations recorded, pack still lists.
+  # This is NOT `artifacts.claim_check` (:1769), which decides whether the check runs at all —
+  # turning the gate off must not also turn off the measurement that justifies turning it back on.
+  claim_check_block: true
   # TITLE FORMAT (pack_linter.check_title). The title is the only string that reaches every
   # surface at once — shelf card, pack page H1, the <title> in search results, the OG image
   # on a shared link — and until 2026-08-09 nothing bounded it or shaped it. The declared
@@ -1760,6 +1794,14 @@ artifacts:
   words_per_evidence_word: 1.0 # the part that restates retrieved evidence
   floor_words: 600             # never collapse below the existing anti-stub gate
   ceiling_words: 3600          # binds only on the best-evidenced packs
+  # Added 2026-08-15 against the founder's "hurried and cryptic" reading. A flat per-artifact
+  # allowance for SIGNPOSTING — one sentence per section saying what that section decides.
+  # It is deliberately NOT folded into base_words: base buys operational judgement, which is
+  # claim-bearing, and this buys connective tissue, which is not. Keeping them separate is
+  # what lets a future sweep say which of the two the pack actually spent.
+  # This is a reallocation, not a cap lift: words_per_evidence_word is unchanged, so no extra
+  # room is created for asserting things, and the claim-check still governs what may be said.
+  narrative_words: 150
 
 pack_data:
   enabled: true              # founder 2026-08-07 — the data files now ship in the bundle

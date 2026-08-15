@@ -315,7 +315,13 @@ def _verdict_of(chk: Any) -> str:
     not render it at all, and any code that fell back to a default would silently grade
     every check as unknown. One reader, both shapes.
     """
-    return str(getattr(chk.verdict, "value", chk.verdict) or "").strip().lower()
+    # 2026-08-15: `chk.verdict` was still read bare here even though the docstring above is
+    # entirely about the second shape. A stored check whose JSON never carried a `"verdict"`
+    # key has no such attribute at all — `_ns` (pack_manifest.py:356) builds attributes from
+    # dict keys and nothing else — so this raised `AttributeError` and took the whole render
+    # with it rather than grading one check unknown.
+    raw = getattr(chk, "verdict", "")
+    return str(getattr(raw, "value", raw) or "").strip().lower()
 
 
 def check_label(name: str) -> str:
@@ -342,7 +348,7 @@ def _pass_gloss(dossier: Dossier) -> str:
     approved on sight (2026-08-13): "Two of eight checks came back against this idea. We
     are still selling you the kit."
     """
-    checks = list(dossier.checks or [])
+    checks = list(getattr(dossier, "checks", None) or [])
     if not checks:
         return _DECISION_GLOSS[Decision.PASS]
     total = len(checks)
@@ -354,7 +360,7 @@ def _pass_gloss(dossier: Dossier) -> str:
                 f"{total} checks we hold it to, on evidence we fetched and cited below.")
 
     def _names(items: list[Any]) -> str:
-        labels = [f"“{_CHECK_LABEL.get(c.check_name, c.check_name)}”" for c in items]
+        labels = [f"“{check_label(getattr(c, 'check_name', '') or '')}”" for c in items]
         if len(labels) == 1:
             return labels[0]
         return ", ".join(labels[:-1]) + " and " + labels[-1]
@@ -382,7 +388,7 @@ def _source_index(dossier: Dossier) -> dict[str, Any]:
     resolvable against the checks' passages.
     """
     index: dict[str, Any] = {}
-    for chk in (dossier.checks or []):
+    for chk in (getattr(dossier, "checks", None) or []):
         for src in (getattr(chk, "sources", None) or []):
             sid = getattr(src, "source_id", "")
             if sid and sid not in index:
@@ -392,8 +398,71 @@ def _source_index(dossier: Dossier) -> dict[str, Any]:
 
 def _host(url: str) -> str:
     from urllib.parse import urlsplit
-    host = (urlsplit(url).hostname or "").lower()
+    host = (urlsplit(str(url or "")).hostname or "").lower()
     return host[4:] if host.startswith("www.") else host
+
+
+# TWO OBJECT SHAPES REACH THIS RENDERER, AND ONLY ONE OF THEM HAS FIELDS — 2026-08-15
+# ----------------------------------------------------------------------------------
+# `run.py` hands `render_markdown` a live `models.Dossier`, where every field exists because
+# the dataclass declares it and a missing value is a declared default. The backfill hands it
+# `pack_manifest.dossier_from_dict`, whose `_ns` (pack_manifest.py:356) builds a
+# `SimpleNamespace` out of dict KEYS alone: a key that was never written to
+# `store/dossiers/<id>.json` is not a `None` field, it is an attribute that does not exist.
+#
+# The failure that produced these helpers: a stored source object with no `"url"` key made
+# `render_markdown` raise `AttributeError: 'types.SimpleNamespace' object has no attribute
+# 'url'` at the source appendix, and because a raise unwinds the whole function, the buyer's
+# pack lost all fourteen sections — not the one line that had nothing to print. A renderer
+# that cannot print a field should print less, never nothing.
+#
+# `all_sources` and `dense_reward` are the sharpest edge: they are PROPERTIES on the
+# dataclass, so `Dossier.to_dict` never wrote them and no stored dossier can ever carry
+# them. Reading `dossier.all_sources` was therefore not an edge case on the stored path, it
+# was guaranteed. `_all_sources` re-derives the same distinct-by-URL list the property
+# computes, so both shapes get the appendix.
+#
+# `scores` and `justification` are the other one: JSON objects become `SimpleNamespace`, not
+# `dict`, so `sc.scores.items()` raised on every stored dossier that had a score at all.
+
+
+def _mapping(obj: Any) -> dict:
+    """A JSON object as a dict, whether it arrived as one or as a `SimpleNamespace`."""
+    if isinstance(obj, dict):
+        return obj
+    if hasattr(obj, "__dict__"):
+        return dict(vars(obj))
+    return {}
+
+
+def _num(value: Any, default: float = 0.0) -> float:
+    """A stored number that arrived as a string, or as nothing at all, still formats."""
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+
+
+def _all_sources(dossier: Any) -> list[Any]:
+    """`Dossier.all_sources` when the object has it; the same list re-derived when it cannot.
+
+    Distinct by URL, first occurrence wins — the definition `models.distinct_sources` uses,
+    kept identical here so the appendix a backfilled pack renders is the appendix a freshly
+    generated one renders.
+    """
+    existing = getattr(dossier, "all_sources", None)
+    if existing:
+        return list(existing)
+    out: list[Any] = []
+    seen: set[str] = set()
+    for chk in (getattr(dossier, "checks", None) or []):
+        for src in (getattr(chk, "sources", None) or []):
+            url = str(getattr(src, "url", "") or "")
+            if not url or url in seen:
+                continue
+            seen.add(url)
+            out.append(src)
+    return out
 
 
 #: What the engine actually does, in the words a buyer reads. It lives here as a constant
@@ -490,20 +559,54 @@ def _cited(ids: list[str], index: dict[str, Any]) -> str:
 #: text with no prose pass at all — deterministic, zero model calls, which is what lets it be
 #: backfilled — so it has to turn the ids into links itself rather than inherit a strip that
 #: does not run on its path.
-_INLINE_IDS_RE = re.compile(r"\[((?:[0-9a-f]{16})(?:\s*,\s*[0-9a-f]{16})*)\]")
+_INLINE_ID_GROUP = r"\[(?:[0-9a-f]{16})(?:\s*,\s*[0-9a-f]{16})*\]"
+
+#: A RUN of adjacent groups, `[id][id][id]`, matched as ONE citation rather than three.
+#:
+#: The verdict brains write one bracket per passage, so a clause backed by three passages left
+#: this in the pack, rendered and read on /sample for 13d41ccee9e96e2d on 2026-08-15::
+#:
+#:     ...integrates with accounting/ERP systems (payapps.com)(pbctoday.co.uk)(capterra.com), and
+#:
+#: Three parenthesised hosts butted together read as a broken template, not as three citations —
+#: the same impression as a raw hex blob, arrived at from the other direction. Matching the run
+#: gives `_cited` all three ids at once and it joins them with its own ", ".
+_INLINE_IDS_RE = re.compile(rf"(?:{_INLINE_ID_GROUP})+")
+_INLINE_ID_ONE = re.compile(r"[0-9a-f]{16}")
+
+#: A citation cut off mid-id at the very end of the text: `[c33885f45` with no closing bracket
+#: and nothing after it.
+#:
+#: This is not a rendering fault — it is what the dossier holds. The `incumbency` rationale on
+#: 13d41ccee9e96e2d ends literally `...chasing retention on its due date in the UK [c33885f45`,
+#: a verdict truncated mid-citation upstream, and every renderer downstream printed it verbatim
+#: because the pattern above requires a full 16 hex digits and a closing bracket.
+#:
+#: `_cited`'s rule — "an ugly pointer beats a missing one" — is about an id that resolves to
+#: nothing YET; it is still a pointer, and someone auditing the run can look it up. Nine hex
+#: digits with no terminator is not a pointer to anything, and on a page whose argument is that
+#: every claim is traceable, a half-written citation is worse than none: it looks fabricated.
+#: The clause it was attached to is real and stays; only the stub goes, and the sentence gets
+#: the full stop the truncation took.
+_TRUNCATED_TAIL = re.compile(r"\s*\[[0-9a-f]{0,15}\s*$")
 
 
 def link_inline_citations(text: str, index: dict[str, Any]) -> str:
     """Rewrite inline passage-id brackets into links a buyer can open.
 
     An id that resolves to nothing keeps its raw form via `_cited`: this is an audit document,
-    and an ugly pointer beats a missing one.
+    and an ugly pointer beats a missing one. An id TRUNCATED mid-write is dropped instead — see
+    `_TRUNCATED_TAIL`, which is the one case where there is no pointer left to preserve.
     """
     def _sub(m: "re.Match[str]") -> str:
-        rendered = _cited([p.strip() for p in m.group(1).split(",")], index)
+        rendered = _cited(_INLINE_ID_ONE.findall(m.group(0)), index)
         return f"({rendered})" if rendered else ""
 
-    return _INLINE_IDS_RE.sub(_sub, str(text or ""))
+    body = str(text or "")
+    trimmed = _TRUNCATED_TAIL.sub("", body)
+    if trimmed != body and trimmed and trimmed[-1].isalnum():
+        trimmed += "."
+    return _INLINE_IDS_RE.sub(_sub, trimmed)
 
 
 def source_index(dossier: Any) -> dict[str, Any]:
@@ -519,33 +622,48 @@ def _labelled(name: str, labels: dict[str, str]) -> str:
     return f"{label} (`{name}`)" if label else f"`{name}`"
 
 
-def render_markdown(dossier: Dossier) -> str:
+def render_markdown(dossier: Any) -> str:
     """Render a human-readable audit document from a Dossier.
 
     Both PASS and KILL are first-class: a KILL renders its cited reason prominently.
+
+    Typed `Any` rather than `Dossier` since 2026-08-15, because that is what it has always
+    accepted: the backfill renders stored JSON through `pack_manifest.dossier_from_dict`, and
+    a signature that named only the dataclass was how the read-it-bare habit kept coming back.
+    See the shape note above `_mapping`.
     """
-    cand = dossier.candidate
+    cand = getattr(dossier, "candidate", None)
     src_index = _source_index(dossier)
     lines: list[str] = []
 
     # --- Header ---
-    lines.append(f"# {cand.title}")
-    if cand.one_liner:
-        lines.append(f"\n_{cand.one_liner}_")
+    #
+    # The one-liner used to be repeated here. In a bundle it is the pack's standfirst, printed
+    # under the title of section 1; this is section 14. Measured 2026-08-15 on pack
+    # e698149e137fc164, it was one of five sentences this document shared with the opening.
+    lines.append(f"# {getattr(cand, 'title', '') or 'Untitled'}")
     lines.append("")
 
     # --- Decision badge (prominent) ---
-    lines.append(_DECISION_BADGE[dossier.decision])
-    lines.append("")
-    gloss = (_pass_gloss(dossier) if dossier.decision == Decision.PASS
-             else _DECISION_GLOSS[dossier.decision])
-    lines.append(f"_{gloss}_")
-    lines.append("")
+    #
+    # An unrecognised or absent decision prints NO badge rather than a defaulted one. A
+    # missing verdict rendered as PASS or KILL would be the renderer inventing the one fact
+    # the document exists to report; silence is the only honest fallback here.
+    decision = getattr(dossier, "decision", None)
+    badge = _DECISION_BADGE.get(decision) if isinstance(decision, (str, Decision)) else None
+    if badge:
+        lines.append(badge)
+        lines.append("")
+    gloss = (_pass_gloss(dossier) if decision == Decision.PASS
+             else _DECISION_GLOSS.get(decision, "") if badge else "")
+    if gloss:
+        lines.append(f"_{gloss}_")
+        lines.append("")
 
     # Provisional banner: this verdict was reached by the cheap emergency fallback tail
     # because the trusted moat was exhausted. Real-but-untrusted — never publishes on
     # PASS, auto re-vetted by the moat on the next `vet --resume`.
-    if dossier.provisional:
+    if getattr(dossier, "provisional", False):
         lines.append("> ⚠️ **This verdict is not final.** The models we trust to judge "
                      "were unavailable, so a cheaper backup ruled instead. We don't "
                      "trust that enough to publish on. It gets judged again properly "
@@ -553,94 +671,99 @@ def render_markdown(dossier: Dossier) -> str:
         lines.append("")
 
     # KILL reason gets its own highlighted block
-    if dossier.decision == Decision.KILL:
+    if decision == Decision.KILL:
         lines.append("> **Why we stopped:**")
-        lines.append(f"> {_GATE_PREFIX.sub('', dossier.reason or '').strip()}")
-        if dossier.gate_fired:
+        lines.append(f"> {_GATE_PREFIX.sub('', str(getattr(dossier, 'reason', '') or '')).strip()}")
+        gate_fired = getattr(dossier, "gate_fired", "")
+        if gate_fired:
             lines.append(">")
-            lines.append(f"> It failed on: {_labelled(dossier.gate_fired, _CHECK_LABEL)}")
+            lines.append(f"> It failed on: {_labelled(str(gate_fired), _CHECK_LABEL)}")
         lines.append("")
 
-    # --- Candidate details ---
-    if cand.why_now:
-        lines.append("### Why this is possible now")
-        lines.append(cand.why_now)
-        lines.append("")
-    if cand.who_pays:
-        lines.append("### Who pays for it")
-        lines.append(cand.who_pays)
-        lines.append("")
-    if cand.hypothesis:
-        lines.append("### How it works")
-        lines.append(cand.hypothesis)
-        lines.append("")
-
-    # --- Generation Refinement (Diff) ---
-    if cand.refinement_history:
-        lines.append("---")
-        lines.append("## How the idea was sharpened")
-        lines.append("")
-        lines.append("> A second pass narrowed and toughened the first draft. "
-                     "Here's what changed.")
-        lines.append("")
-        for entry in cand.refinement_history:
-            before = entry.get("before", {})
-            lines.append("#### Changes:")
-            if before.get("title") != cand.title:
-                lines.append(f"- **Title**: ~~{before.get('title')}~~ → {cand.title}")
-            if before.get("one_liner") != cand.one_liner:
-                lines.append(f"- **One-liner**: ~~{before.get('one_liner')}~~ → {cand.one_liner}")
-            if before.get("hypothesis") != cand.hypothesis:
-                lines.append(f"- **How it works**: ~~{before.get('hypothesis')}~~ → {cand.hypothesis}")
-            if before.get("who_pays") != cand.who_pays:
-                lines.append(f"- **Who pays**: ~~{before.get('who_pays')}~~ → {cand.who_pays}")
-            if before.get("why_now") != cand.why_now:
-                lines.append(f"- **Why now**: ~~{before.get('why_now')}~~ → {cand.why_now}")
-        lines.append("")
+    # --- Candidate details and the refinement diff: BOTH REMOVED 2026-08-15 ---
+    #
+    # `why_now`, `who_pays` and `hypothesis` were reprinted here under their own headings.
+    # In a bundle those three fields ARE sections 1 and 2 of the pack — "Where this starts"
+    # and "What you would be selling" — so this document restated the opening a hundred pages
+    # later, word for word. `pack_linter.check_repetition` blocks on exactly that now.
+    #
+    # The refinement diff went for a different reason. It rendered our own generation history:
+    # the first draft of the title, the first draft of the one-liner, struck through, with an
+    # arrow to what we changed them to. It is a fact about our pipeline having a second pass,
+    # it tells a buyer nothing about their market, and it invites them to read a draft we
+    # ourselves rejected. The founder's words on 2026-08-15: "we ramble about composite
+    # scores, things our engine does that does not concern us". This was the clearest example
+    # of it in the pack. `refinement_history` is still on the Candidate and still in the JSON
+    # dossier and the audit log, where the record belongs; it is not buyer-facing copy.
 
     # --- Per-check verdicts ---
-    if dossier.checks:
+    checks = list(getattr(dossier, "checks", None) or [])
+    if checks:
         lines.append("---")
         lines.append("## What we checked")
         lines.append("")
-        for chk in dossier.checks:
+        for chk in checks:
             v = _verdict_of(chk)
             emoji = _VERDICT_EMOJI.get(v, "?")
-            label = _CHECK_LABEL.get(chk.check_name, chk.check_name)
+            label = check_label(str(getattr(chk, "check_name", "") or ""))
             verdict = _VERDICT_LABEL.get(v, v)
             lines.append(f"### {emoji} {label}")
             lines.append("")
-            lines.append(f"**{verdict}.** Confidence {chk.confidence:.2f}. "
-                         f"*(check: `{chk.check_name}`)*")
+            # `*(check: `pain_reality`)*` used to be appended here — our schema key, in the
+            # buyer's document, next to the answer. The heading above already asks the
+            # question in their words; the key only ever named the same thing in ours.
+            lines.append(f"**{verdict}.** Confidence {_num(getattr(chk, 'confidence', 0.0)):.2f}.")
             lines.append("")
-            if chk.degraded:
+            if getattr(chk, "degraded", False):
                 lines.append("> Some searches failed here, so this rests on thinner "
                              "evidence than usual.")
                 lines.append("")
-            lines.append(chk.rationale)
-            lines.append("")
-
-            if chk.citations:
-                lines.append("**Sources used:** " + _cited(chk.citations, src_index))
-                lines.append("")
+            # THE RATIONALE IS NOT PRINTED HERE. Removed 2026-08-15.
+            #
+            # It is the single most duplicated text in the pack: `pack_reference` argues the
+            # supported checks, `pack_bear_case` argues the refuted and unproven ones,
+            # `pack_field` argues incumbency, and `pack_floors` leads on the strongest few.
+            # Every one of those is a section a buyer reads for the argument. This section is
+            # the one they open to CHECK us, and it was printing all of it a second time —
+            # measured on pack e698149e137fc164, this document appeared in 15 of the 17
+            # duplicate-sentence pairs left in the pack after every other fix.
+            #
+            # What it keeps is what nothing else has: the verdict, the confidence, whether the
+            # evidence was degraded, and the passages themselves. That is the receipt. The
+            # argument is upstairs, and every check's argument has an owner — supported and
+            # refuted in the evidence section, unproven in the bear case — so nothing is lost
+            # by this document declining to be the fifth place it appears.
+            citations = list(getattr(chk, "citations", None) or [])
+            if citations:
+                rendered = _cited(citations, src_index)
+                if rendered:
+                    lines.append("**Sources used:** " + rendered)
+                    lines.append("")
 
             # --- Chain-of-Evidence (Contextual Snippets) ---
-            if chk.sources:
+            chk_sources = list(getattr(chk, "sources", None) or [])
+            if chk_sources:
                 lines.append("**What those sources said:**")
-                for src in chk.sources:
+                for src in chk_sources:
                     # `src.text[:300] + "..."` was a bare character slice, the exact defect
                     # `trimming` exists to end: it produced the QA report's "which still
                     # counts as demon", "which neither confi", "parents of autistic children
                     # spe". `clip_to_sentence` cuts where a human would and marks the cut.
                     snippet = trimming.clip_to_sentence(
-                        " ".join(str(src.text or "").split()), 300)
-                    host = _host(src.url) or src.url
-                    lines.append(f"- *“{snippet}”* — [{host}]({src.url})")
+                        " ".join(str(getattr(src, "text", "") or "").split()), 300)
+                    url = str(getattr(src, "url", "") or "")
+                    if not snippet:
+                        continue
+                    # A passage whose URL was never stored still gets quoted, unlinked. The
+                    # quote IS the evidence; dropping it because the pointer is missing would
+                    # lose the thing the reader came to check.
+                    lines.append(f"- *“{snippet}”* — [{_host(url) or url}]({url})" if url
+                                 else f"- *“{snippet}”*")
                 lines.append("")
 
     # --- Adversarial case ---
-    if dossier.adversarial:
-        adv = dossier.adversarial
+    adv = getattr(dossier, "adversarial", None)
+    if adv:
         lines.append("---")
         lines.append("## The case against")
         lines.append("")
@@ -648,45 +771,72 @@ def render_markdown(dossier: Dossier) -> str:
                      "case we could build for walking away.")
         lines.append("")
         lines.append("**Decisive on its own — this is enough to stop the idea.**"
-                     if adv.decisive else
+                     if getattr(adv, "decisive", False) else
                      "**Not decisive.** Worth knowing, but it doesn't sink the idea.")
         lines.append("")
-        lines.append(adv.kill_case)
-        if adv.citations:
-            lines.append("")
-            lines.append("**Sources used:** " + _cited(adv.citations, src_index))
-            lines.append("")
+        lines.append(str(getattr(adv, "kill_case", "") or ""))
+        adv_citations = list(getattr(adv, "citations", None) or [])
+        if adv_citations:
+            rendered = _cited(adv_citations, src_index)
+            if rendered:
+                lines.append("")
+                lines.append("**Sources used:** " + rendered)
+                lines.append("")
 
     # --- Scores table (PASS only, but render for KILLs that have a score too) ---
-    if dossier.score:
-        sc = dossier.score
+    sc = getattr(dossier, "score", None)
+    if sc:
         lines.append("---")
         lines.append("## How it scored")
         lines.append("")
-        lines.append(f"**Overall: {sc.composite:.4f}** (each line is rated out of 5, "
-                     f"then weighted)")
+        lines.append(f"**Overall: {_num(getattr(sc, 'composite', 0.0)):.4f}** "
+                     f"(each line is rated out of 5, then weighted)")
         lines.append("")
         lines.append("| What we rated | Score | Why |")
         lines.append("|---------------|------:|-----|")
-        for ax, val in sc.scores.items():
-            just = sc.justification.get(ax, "")
+        justification = _mapping(getattr(sc, "justification", None))
+        for ax, val in _mapping(getattr(sc, "scores", None)).items():
+            just = justification.get(ax, "")
             lines.append(f"| {_labelled(ax, _AXIS_LABEL)} | {val}/5 | {just} |")
         lines.append("")
 
     # PASS reason
-    if dossier.decision == Decision.PASS:
+    pass_reason = str(getattr(dossier, "reason", "") or "").strip()
+    if decision == Decision.PASS and pass_reason:
         lines.append("---")
         lines.append("## Why this passed")
         lines.append("")
-        lines.append(dossier.reason)
+        lines.append(pass_reason)
         lines.append("")
 
     # --- All sources ---
-    all_src = dossier.all_sources
+    all_src = _all_sources(dossier)
     if all_src:
         lines.append("---")
         lines.append("## Every source we used")
         lines.append("")
+        # Which questions each source was used to answer.
+        #
+        # This appendix used to reprint every source's passage a SECOND time, as a block quote
+        # under its heading, having already printed it in the "What those sources said" list of
+        # whichever check cited it. `all_sources` is `models.distinct_sources(checks)`, so that
+        # was true of every entry without exception — measured on pack e698149e137fc164 on
+        # 2026-08-15, the QA section alone was 5,082 words, 35.7% of the whole pack, and its
+        # own largest component was this appendix quoting text the reader had already read.
+        #
+        # A back-reference is what the appendix is actually for: the per-check lists answer
+        # "what does this check rest on", and this answers the other direction — "I have opened
+        # this page, what did you use it for". Neither is now a copy of the other.
+        used_by: dict = {}
+        for chk in checks:
+            label = check_label(getattr(chk, "check_name", "") or "")
+            for s in getattr(chk, "sources", None) or []:
+                s_url = str(getattr(s, "url", "") or "")
+                if not s_url:
+                    continue
+                seen_for = used_by.setdefault(s_url, [])
+                if label and label not in seen_for:
+                    seen_for.append(label)
         archived_any = any(getattr(s, "archived_url", None) for s in all_src)
         lines.append("Every claim above traces back to one of these. Follow any of "
                      "them and check us."
@@ -695,42 +845,44 @@ def render_markdown(dossier: Dossier) -> str:
                         if archived_any else ""))
         lines.append("")
         for n, src in enumerate(all_src, 1):
-            pub = f" ({src.published_at})" if src.published_at else ""
+            url = str(getattr(src, "url", "") or "")
+            published_at = getattr(src, "published_at", "")
+            pub = f" ({published_at})" if published_at else ""
             # What KIND of page this is, in the buyer's words. Every entry here was rendered
             # identically — same heading, same quote block — so a Pinterest board and a CDC
             # page read as equals, and `8d5e24fbe6c1f5d3` shipped exactly that pair. The tier
             # is already computed for the admissibility gate; printing it is free, and it is
             # the difference between "33 links" and "here is what each link is". Blank for the
             # unaudited `other` tier, because a label there would be a claim we cannot support.
-            provenance = admissibility.provenance_label(src.url or "")
-            # `src.text[:500] + "..."` was a bare slice with an unconditional ellipsis: it cut
-            # mid-word AND printed "…" on text that was never truncated, so a complete quote
-            # looked clipped. `clip_to_sentence` marks a cut only when it makes one.
-            snippet = trimming.clip_to_sentence(" ".join(str(src.text or "").split()), 500)
+            provenance = admissibility.provenance_label(url)
             # Headed by host, not `source_id`. The id is ours — a 16-hex internal key means
             # nothing to a buyer, and it is the same string that leaked into the prose above.
-            lines.append(f"### {n}. {_host(src.url) or src.url}"
+            lines.append(f"### {n}. {_host(url) or url or 'Source (no URL recorded)'}"
                          + (f" — {provenance}" if provenance else ""))
-            lines.append(f"**URL:** [{src.url}]({src.url}){pub}")
+            if url:
+                lines.append(f"**URL:** [{url}]({url}){pub}")
             # The second pointer. `url` is the part that rots (measured 2026-08-09: 12 of 14
             # dead citations were genuinely gone), `text` below is the evidence and never
             # does. Rendering the memento is what stops "follow any of them and check us"
             # from quietly becoming false a year after the sale.
             archived = getattr(src, "archived_url", None)
             if archived:
-                fetched = src.fetched_at if isinstance(src.fetched_at, str) else ""
+                fetched_at = getattr(src, "fetched_at", "")
+                fetched = fetched_at if isinstance(fetched_at, str) else ""
                 on = f", as retrieved {fetched[:10]}" if fetched else ""
                 lines.append(f"**Archived copy:** [permanent snapshot]({archived}){on}")
-            lines.append("")
-            lines.append(f"> {snippet}")
+            answers = used_by.get(url) or []
+            if answers:
+                lines.append("**Used to answer:** " + "  ".join(answers))
             lines.append("")
 
     # --- Metadata footer ---
     lines.append("---")
     lines.append("## Run details")
     lines.append("")
-    if dossier.persona:
-        lines.append(f"- **Persona:** {dossier.persona}")
+    persona = getattr(dossier, "persona", "")
+    if persona:
+        lines.append(f"- **Persona:** {persona}")
     # `Judged by:` is deliberately NOT rendered. It printed `dossier.model_version`, which for
     # a chained operator is `fallback(cursor_cli+claude_cli+minimax)` (`operator.py:1272`) —
     # so the buyer was shown our internal failover chain, told the judge was a "fallback",
@@ -739,8 +891,8 @@ def render_markdown(dossier: Dossier) -> str:
     # needs to know the evidence, not our provider routing.
     if getattr(cand, "market", ""):
         lines.append(f"- **Market:** {cand.market}")
-    lines.append(f"- **Pack reference:** `{cand.candidate_id}`")
-    lines.append(f"- **Created:** {dossier.created_at}")
+    lines.append(f"- **Pack reference:** `{getattr(cand, 'candidate_id', '') or 'unknown'}`")
+    lines.append(f"- **Created:** {getattr(dossier, 'created_at', '') or ''}")
     # This used to print `Evidence goes stale after: <date>`, which is `reverify_due_at`
     # (created_at + 30 days, `run.py:813`) — an INTERNAL scheduling stamp telling the decay
     # sweep when to look again. Printed in the buyer's copy it reads as a shelf life we never
@@ -749,7 +901,7 @@ def render_markdown(dossier: Dossier) -> str:
     # checks (`scheduler/run_scheduled.py:714` → `run.run_decay_sweep`), and a re-vet that
     # now fails a hard gate queues the pack for withdrawal (`decay.py::_queue_unlist`), while
     # a re-vet that could not look (DEFER) changes nothing.
-    lines.extend(shelf_life_lines(dossier.reverify_due_at or ""))
+    lines.extend(shelf_life_lines(getattr(dossier, "reverify_due_at", "") or ""))
     lines.append("")
 
     return "\n".join(lines)

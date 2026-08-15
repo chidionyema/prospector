@@ -483,6 +483,13 @@ _BLOCK_KEYS: dict[str, frozenset[str]] = {
     "artifacts": frozenset({
         "enforce_length_budget", "claim_check", "base_words",
         "words_per_evidence_word", "floor_words", "ceiling_words",
+        # The signposting allowance `evidence_budget.artifacts_cfg` reads (:219). It is listed
+        # here for the reason the block exists at all: this validator is strict, so a key the
+        # code reads but the schema does not know is not a soft default — `config.load_config`
+        # RAISES, and every caller that loads config.yaml dies at import-time-ish. Adding
+        # `narrative_words: 150` to config.yaml without this line took 12 unit tests down on
+        # 2026-08-15, in four files that have nothing to do with artifacts.
+        "narrative_words",
     }),
 }
 
