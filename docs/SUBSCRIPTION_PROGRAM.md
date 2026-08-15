@@ -1,6 +1,12 @@
 # Subscription & Commerce-Mode Programme — Design
 
 > Status: **DESIGN, not built.** No engine or store code changed by this document.
+>
+> **Implementing this? Start at §17 (Execution spec) and read §15 (edge cases) beside it.**
+> §17 is the frozen contract — config keys, routes, JSON shapes, entities, error codes, test names,
+> per-phase definition of done. §§1–16 are the reasoning behind it, and are what you consult when
+> §17 tells you *what* but you need *why*. **P1 and P2 are executable today; P3 hard-blocks on
+> §13.2 (VAT / Merchant of Record).**
 > Companion specs: `docs/PAYMENT_RAIL_INDEPENDENCE_SPEC.md` (the provider seam this extends),
 > `docs/SITE_SPEC_PROGRAM.md` (the copy this must reconcile with),
 > `docs/COMMERCIAL_READINESS_PROGRAM.md` (the yield baseline).
@@ -302,7 +308,8 @@ Store-side config (the store is .NET; `config.yaml` governs the engine, not the 
   "Mode": "direct",                    // "direct" | "subscription" | "both"
   "OnModeExit": "serve_to_period_end", // "serve_to_period_end" | "cancel_at_period_end"
   "Plans": [ /* code, interval, pricePence, priceUsdCents, providerPriceId per provider+currency,
-                packClaimsPerPeriod, maxClaimRungPence, briefsPerPeriod, watch, isAvailable */ ]
+                packClaimsPerPeriod, briefsPerPeriod, watch, isAvailable — see §17.4 for the
+                frozen shape. NO rung cap: claims are rung-agnostic (§3.2). */ ]
 }
 ```
 
@@ -609,8 +616,11 @@ supports Paddle. **This must be answered before P3, not after.** I have not veri
 tax setup and am not qualified to rule on it — flagging, not deciding.
 
 **13.3 — Is Desk allowed to undercut direct pay?**
-Desk at £99 covers 3 claims at any rung, up to £299.97 of shelf (§3.3). Brief is accretive; Desk is
-deliberately not. Confirm that trade, or cap Desk claims at the £49.99 rung.
+Desk at **£149/mo** covers 3 claims at any rung — up to **£299.97** of shelf if all three are taken
+at the top rung (§3.3). Brief (£49 vs a £49.99 mode) is accretive; Desk deliberately is not. Confirm
+that trade, or drop Desk to 2 claims. **Do not** answer it by capping Desk to a rung — §15.C-4 is
+why. Execution default if unanswered: **build it as specified (3 claims, any rung)**; the number is
+one config value and changing it later is a config edit, not a code change (§17.4).
 
 ---
 
@@ -956,5 +966,274 @@ stops being worth claiming), which joins §13 as decision **13.4**.
 
 ---
 
-*Design only. No engine or store code was changed. Measured 2026-08-15 against the live prod
-catalogue, `store/prospector.db`, and the working tree.*
+## 17. Execution spec — build from this section
+
+§§1–16 are the reasoning. **§17 is the contract.** Where the two appear to disagree, §17 wins and
+the disagreement is a bug — report it, do not resolve it by choosing.
+
+### 17.1 How to use this
+
+- **Frozen** (change only by asking): every name in §17.4–17.7 — config keys, route paths, JSON
+  field names, entity and column names, enum members, error `reason` strings, migration names.
+  These are the seams other work binds to.
+- **Yours** (implementer's call, no need to ask): internal structure, service/class decomposition,
+  LINQ vs SQL, naming inside a method, test file organisation, logging detail.
+- **Ask before proceeding**: anything in §17.11.
+
+The split exists because this is the money rail. A wrong internal abstraction is refactorable; a
+wrong column name or a wrong status code is a migration and a client break.
+
+### 17.2 Do not
+
+1. **Do not touch the engine.** Nothing in `prospector/`, `config.yaml`, `verify.py`, `score.py`,
+   `kill_filter.py`, or `bridge.py` changes for P1–P5. §10 is architectural: the store may not
+   become readable from the engine side. P6 (briefs) is the only phase that writes toward the
+   engine, and it writes a **signal file**, nothing else.
+2. **Do not let `bridge.py` mint recurring Prices.** It mints one-off Prices per pack. Plan Prices
+   are minted once, by hand or by a separate one-shot script, and their ids go in config (§17.4).
+3. **Do not read commerce mode in a webhook handler.** Ever. §4.2 I2 corollary.
+4. **Do not add a second delivery path.** Failures route to the existing `PendingDelivery` queue
+   (`FulfilmentService.cs:101`).
+5. **Do not implement I4** (the obtainability preflight). Under rung-agnostic claims it is satisfied
+   by construction. It is documented in §4.2 as a re-check trigger for whoever reintroduces a rung
+   cap. Building it now is dead code that will read as a live fence.
+6. **Do not `git add -A`.** `store/` and `storage/` are tracked runtime state that tests write to.
+7. **Do not run the full suite as a pre-commit gate** — it measures ~3185s against a 2400s ceiling
+   and the hook is deliberately disabled. Run the targeted tests named in §17.9.
+8. **Do not invent an endpoint and then report its absence as an outage.** If a route you expect is
+   not in `Program.cs`, it does not exist.
+
+### 17.3 Decision defaults — what unblocks now
+
+| § | Decision | Blocks | Default if unanswered |
+|---|---|---|---|
+| 13.1 | Build before the first sale? | P3+ | **Build P1+P2 now.** They commit nothing and are worth doing regardless (§12). |
+| 13.2 | VAT / Merchant of Record | **P3 hard-blocks** | **None. Do not start P3 without an answer.** Recurring supply compounds the place-of-supply question monthly. This is the one place where guessing is not allowed. |
+| 13.3 | Desk claim count | P4 config only | Build as specified: 3 claims, any rung. |
+| 13.4 | Catalogue-exhaustion credit policy (§15.B-13) | nothing in v1 | Not implemented. No code path. |
+
+**P1 and P2 are executable today.** P3 onward waits on 13.2.
+
+### 17.4 Config contract (frozen)
+
+`appsettings.json`, bound to `CommerceOptions` via `IOptionsMonitor` (§4.2 I3 — a value captured at
+startup makes "configurable" mean "configurable with a restart"):
+
+```jsonc
+"Commerce": {
+  "Mode": "direct",                     // "direct" | "subscription" | "both". Required.
+  "OnModeExit": "serve_to_period_end",  // "serve_to_period_end" | "cancel_at_period_end"
+  "Plans": [
+    {
+      "Code": "watch",                  // frozen id, referenced by Subscription.PlanCode
+      "DisplayName": "Watch",
+      "Interval": "month",              // "month" | "year"
+      "PricePence": 499,
+      "PriceUsdCents": null,            // null = not sellable in USD. NEVER a conversion (§7).
+      "ProviderPriceIds": { "stripe": { "GBP": "price_...", "USD": null } },
+      "PackClaimsPerPeriod": 0,
+      "BriefsPerPeriod": 0,
+      "Watch": true,
+      "IsAvailable": true
+    }
+    // brief:  £49/mo  PricePence 4900,  Claims 1, Briefs 2, Watch true
+    // desk:   £149/mo PricePence 14900, Claims 3, Briefs 8, Watch true
+    // annual twins: watch 4900, brief 49000, desk 149000, Interval "year" (§3.2, 10× monthly)
+  ]
+}
+```
+
+**Validation, at startup and on every hot reload. Each failure is fatal — log and refuse to serve,
+do not degrade:**
+
+| Rule | Why |
+|---|---|
+| `Mode` is one of the three literals | a typo must not silently mean `direct` |
+| `Mode != "direct"` ⇒ at least one plan with `IsAvailable: true` | §15.A-7 — a mode with nothing purchasable |
+| every available plan has a non-empty `ProviderPriceIds[provider]["GBP"]` | a plan that cannot be billed must not be advertised |
+| `Code` unique, non-empty, stable | it is a foreign key in the DB |
+| `PricePence > 0`, `PackClaimsPerPeriod >= 0`, `BriefsPerPeriod >= 0` | — |
+| a plan referenced by any live `Subscription` may not be **deleted** from config | §15.B-8 — but see the snapshot rule below |
+
+**Snapshot rule (§15.B-8).** On subscription creation, copy `PackClaimsPerPeriod`, `BriefsPerPeriod`
+and `Watch` onto the `Subscription` row. **All runtime allowance checks read the row, never the
+config.** Config governs new subscriptions only. This is the same reasoning as
+`Entitlement.ContentKey` snapshotting for deliver-as-sold.
+
+### 17.5 API contract (frozen)
+
+`GET /commerce` — anonymous, cacheable, no auth.
+
+```jsonc
+200 {
+  "mode": "direct",
+  "packsPurchasableDirectly": true,
+  "plans": [ { "code": "brief", "displayName": "Brief", "interval": "month",
+               "pricePence": 4900, "priceUsdCents": null,
+               "packClaimsPerPeriod": 1, "briefsPerPeriod": 2, "watch": true } ]
+}
+```
+`plans` is `[]` in `direct` mode. `providerPriceIds` is **never** exposed.
+
+| Route | Auth | Mode | Success | Refusals |
+|---|---|---|---|---|
+| `GET /commerce` | none | any | 200 | — |
+| `POST /packs/{id}/checkout` | none | `direct`,`both` | 200 (unchanged) | **409** `mode_disabled` in `subscription` |
+| `POST /checkout` | none | `direct`,`both` | 200 (unchanged) | **409** `mode_disabled` in `subscription` |
+| `POST /subscriptions/checkout` | **required** | `subscription`,`both` | 200 `{checkoutUrl}` | 409 `mode_disabled` in `direct` · 403 `email_not_confirmed` · 409 `plan_unavailable` · 409 `no_watchable_entitlements` (Watch plan, zero entitlements — §15.C-8) · 409 `already_subscribed` |
+| `GET /subscriptions/me` | **required** | any | 200 (`null` if none) | 403 `email_not_confirmed` |
+| `POST /subscriptions/portal` | **required** | any | 200 `{portalUrl}` | 404 if no subscription |
+| `POST /packs/{id}/claim` | **required** | **any** | 200 `{grantToken, alreadyOwned:bool}` | 403 `subscription_not_active` · 403 `plan_has_no_claims` · 403 `allowance_exhausted` · 409 `pack_not_listed` · 403 `email_not_confirmed` |
+| `GET /download/{token}` | none | **any** | 200 (unchanged) | unchanged |
+
+**Every refusal body is `{ "reason": "<code>", "message": "<buyer-readable sentence>" }`.** The
+`reason` strings above are frozen — the web app switches on them (§15.A-4 needs `mode_disabled`
+specifically, to re-render a stale ISR page in place instead of showing a generic error).
+
+**Consumption routes are never gated on mode** — note `POST /packs/{id}/claim` and
+`GET /download/{token}` say **any**. This is §4.2 I2 and it is the single most likely thing to be
+got wrong by pattern-matching the other rows.
+
+**`already_entitled` is not a refusal.** Claiming a pack the buyer already owns returns **200** with
+`alreadyOwned: true`, returns the existing `GrantToken`, and **consumes no allowance** (§15.C-2).
+
+### 17.6 Data contract (frozen)
+
+Entities exactly as §6. Additionally, frozen:
+
+| Object | Value |
+|---|---|
+| Migration 1 (P2) | `AddEntitlementGrantSource` |
+| Migration 2 (P3) | `AddSubscriptions` |
+| `SubscriptionStatus` | `Active=0, PastDue=1, Canceled=2, Expired=3` |
+| `InvoiceStatus` | `Paid=0, Refunded=1, Failed=2` |
+| `GrantSource` values | `"order"`, `"subscription"`, `"founder"` |
+| Unique: `Subscription` | `(PaymentProvider, ProviderSubscriptionId)` |
+| Unique: `SubscriptionInvoice` | `(PaymentProvider, ProviderInvoiceId)` — §15.B-2, the real dedup fence |
+| Unique: `Entitlement` | `(SubscriptionId, PackId)` where `SubscriptionId IS NOT NULL` — §15.C-1, stops a double-claim race regardless of transaction isolation |
+| CHECK: `Entitlement` | exactly one of `OrderId`, `SubscriptionId` is non-null |
+| Index | `Subscription(UserId)`, `SubscriptionInvoice(SubscriptionId, PeriodStart)` |
+
+**`Entitlement.OrderId` becomes nullable.** That is the whole structural change (§1.6b) and it is
+why P2 is worth doing on its own.
+
+**Allowance query, verbatim intent:** claims used in the current period =
+`COUNT(Entitlement WHERE SubscriptionId=@id AND GrantSource='subscription' AND CreatedAt >= @currentPeriodStart)`
+where `@currentPeriodStart` comes from **the latest paid `SubscriptionInvoice`**, not from
+`Subscription.CurrentPeriodStart` (§4.2 I5, §15.B-4).
+
+**SQLite:** enable WAL and a bounded busy-retry before P3 (§15.H-1). Subscription traffic multiplies
+webhook concurrency against a single-writer database.
+
+### 17.7 Webhook contract (frozen)
+
+Registered in the switch at `StripeProvider.cs:69` that currently returns `Ignored: true`.
+
+| Event | Behaviour |
+|---|---|
+| `customer.subscription.created` | **Upsert** on `(provider, ProviderSubscriptionId)`. Snapshot plan terms (§17.4). Resolve `PlanCode` from the price id. |
+| `customer.subscription.updated` | Re-resolve `PlanCode` from the price id. **Unknown price id ⇒ log at Error and freeze the allowance** — do not silently keep the old plan (§15.B-7). Period advance is **monotonic**: never move `CurrentPeriodStart` backwards (§15.B-3). |
+| `customer.subscription.deleted` | Status → `Expired`. **Revoke nothing.** |
+| `invoice.paid` | **Upsert** on `(provider, ProviderInvoiceId)`. Grants the period's allowance. Dedupe by `(SubscriptionId, PeriodStart)` so a £0/proration invoice cannot mint a second allowance (§15.B-6). May arrive **before** `customer.subscription.created` — must not assume ordering (§15.B-1). |
+| `invoice.payment_failed` | Status → `PastDue`. New claims/briefs stop. **Existing entitlements untouched.** |
+| `invoice.refunded` | **Full** refund revokes entitlements where `SourceInvoiceId` = that invoice, and nothing else. **Partial refund revokes nothing** (§15.B-9, B-10). |
+| `charge.dispute.created` on a subscription invoice | Revoke that invoice's grants **and** suspend the subscription (§15.B-11 — a dispute is a fraud signal, unlike a refund). |
+| everything else | `Ignored: true`, unchanged. |
+
+All handlers are idempotent and **none reads commerce mode**.
+
+### 17.8 Definition of done, per phase
+
+A phase is done when its command exits 0. **A phase is not done because it looks done** — this
+estate's standing rule is that state is a probe, not a sentence.
+
+| Phase | Done when |
+|---|---|
+| **P1** | `dotnet test store_platform/src/Store.Tests --filter Category=CommerceMode` passes, and it contains the full 3-mode matrix of §17.9 including the "API refuses even when the UI would not show it" case. `GET /commerce` returns the §17.5 shape in all three modes. **`Mode=direct` behaviour is byte-identical to today** — the existing checkout tests pass unmodified. |
+| **P2** | Migration `AddEntitlementGrantSource` applies and rolls back cleanly. Existing entitlements all read `GrantSource="order"` with `OrderId` intact. Full existing `Store.Tests` suite green with zero test-file edits. |
+| **P3** | **13.2 answered first.** Then: subscription created, renewed, failed, recovered, cancelled and refunded — each as a webhook-replay test against recorded fixtures, no live Stripe call. Out-of-order and duplicate delivery covered (§17.9 B-block). |
+| **P4** | Claim allowance tests green including the concurrency case (C-1) and the already-owned case (C-2). Delivery failure routes to `PendingDelivery`, verified by asserting the row exists — not by asserting an exception. |
+| **P5** | A re-vet delta on an owned pack produces exactly one email; a re-vet with no gate change produces none. |
+| **P6** | A brief becomes a signal file; a DEFER does **not** consume the allowance (§15.F-2); the brief budget is separate from `spend.daily_cap_usd` (§15.F-5 — **this is unresolved, raise it before starting P6**). |
+| **P7** | No "no subscription" string is reachable in `subscription` mode. `noHardcodedPrice.test.ts` still passes — plan prices come from `GET /commerce`, never typed. |
+
+### 17.9 Test matrix — named cases
+
+Test names are frozen so coverage is greppable. Every §15 case that has runtime behaviour gets one.
+
+```
+Category=CommerceMode                                                            (P1)
+  Mode_Direct_PackCheckout_200          Mode_Subscription_PackCheckout_409_ModeDisabled
+  Mode_Direct_SubCheckout_409           Mode_Subscription_SubCheckout_200
+  Mode_Both_BothCheckouts_200           Mode_Commerce_Endpoint_Shape_AllThreeModes
+  Mode_HotReload_TakesEffect_WithoutRestart                                      (A-6)
+  Mode_ApiRefuses_EvenWhenUiWouldHideIt                                          (I2)
+  Mode_NoAvailablePlan_FailsAtStartup                                            (A-7)
+
+Category=Subscription                                                            (P3)
+  Webhook_InvoicePaid_BeforeSubscriptionCreated_Upserts                          (B-1)
+  Webhook_DuplicateInvoice_GrantsOnce                                            (B-2)
+  Webhook_OutOfOrderPeriod_DoesNotRegress                                        (B-3)
+  Allowance_PastDueWithAdvancedPeriodField_GrantsNothing                         (B-4)
+  Allowance_DunningRecovery_GrantsExactlyOnce                                    (B-5)
+  Allowance_ZeroAmountProrationInvoice_GrantsNothing                             (B-6)
+  Webhook_UnknownPriceId_FreezesAllowance_AndLogsError                           (B-7)
+  Plan_TermsSnapshotted_ConfigEditDoesNotAffectExistingSubscriber                (B-8)
+  Refund_Partial_RevokesNothing                                                  (B-9)
+  Refund_Full_RevokesOnlyThatInvoicesGrants                                      (B-10)
+  Dispute_SuspendsSubscription_AndRevokesThatInvoice                             (B-11)
+  Webhook_NeverReadsCommerceMode                                                 (I2 corollary)
+  ModeFlip_LiveOneOffSession_StillFulfils                                        (A-2)
+  ModeFlip_SubscriptionCreatedInDirectMode_IsHonoured                            (A-5)
+
+Category=Claim                                                                   (P4)
+  Claim_ConcurrentLastSlot_GrantsOne                                             (C-1)
+  Claim_AlreadyOwned_ReturnsGrant_ConsumesNothing                                (C-2)
+  Claim_UnlistedPack_Refuses_ConsumesNothing                                     (C-3)
+  Claim_PackRetractedWithin14Days_RestoresAllowance                              (C-5)
+  Claim_UnusedAllowance_DoesNotAccrue                                            (C-6)
+  Claim_WatchPlan_403_PlanHasNoClaims                                            (C-7)
+  Claim_AfterModeFlipToDirect_StillSucceeds                                      (A-1)
+  Claim_UnconfirmedEmail_403                                                     (E-2)
+  Claim_DeliveryFailure_QueuesPendingDelivery_ConsumesNothing                    (D-2)
+  Claim_Grant_HasNullExpiresAt                                                   (D-1)
+```
+
+`Claim_AfterModeFlipToDirect_StillSucceeds` and `Webhook_NeverReadsCommerceMode` are the two tests
+that catch the defect the edge-case pass found in this design (§16.2). If they are cut for time,
+the design's main safety property is unproven.
+
+**Documented-only, no test** (policy or unsolvable, listed so their absence is deliberate rather
+than an oversight): A-3, B-12, B-13, D-4, D-6, E-1, E-4, E-5, F-6, G-1, G-5, H-2, H-3, H-4, I-4.
+
+### 17.10 Files, per phase
+
+| Phase | Create | Modify |
+|---|---|---|
+| P1 | `Store.Api/Commerce/CommerceOptions.cs`, `CommerceEndpoints.cs`, `Store.Tests/Endpoints/CommerceModeTests.cs` | `Program.cs` (bind options, map route), `Endpoints/CheckoutEndpoints.cs:24,40` (mode refusal) |
+| P2 | `Store.Catalog/Migrations/*_AddEntitlementGrantSource.cs` | `Domain/Entitlement.cs`, `Persistence/StoreDbContext.cs` |
+| P3 | `Domain/Subscription.cs`, `SubscriptionInvoice.cs`, `SubscriptionStatus.cs`, `InvoiceStatus.cs`, `Store.Api/Endpoints/SubscriptionEndpoints.cs`, `Migrations/*_AddSubscriptions.cs` | `Payments/StripeProvider.cs:69,418`, `Payments/IPaymentProvider.cs` (subscription methods, default-NotSupported so Paddle needs no change), `Program.cs` |
+| P4 | `Store.Api/Services/ClaimService.cs` | `Services/FulfilmentService.cs:115-133` (fence generalises, does not fork) |
+| P5–P7 | per §12 | — |
+
+`IPaymentProvider` additions must have **default implementations**, matching the existing file's own
+pattern (`CreateEmbeddedCheckoutAsync`, `ResolvePaidTransactionIdAsync` both default) — otherwise
+`PaddleProvider` breaks at compile time for a feature it does not have.
+
+### 17.11 When the spec is silent
+
+Stop and ask if: money moves in a way not described here; a fence would need to be weakened; a
+schema name in §17.4–17.7 does not fit; a §15 rule cannot be implemented as written; or the change
+would touch the engine.
+
+Decide yourself and note it in the PR if: it is internal structure, test organisation, logging, or
+anything in the "Yours" column of §17.1.
+
+**Never resolve a contradiction between §17 and §§1–16 by picking one.** Report it. Those sections
+were written by the same author on the same day and a disagreement means one of them is wrong —
+§13.3 already carried a stale £99 against §3.2's £149 until it was caught writing this section.
+
+---
+
+*Design and execution spec. No engine or store code was changed by this document. Measured
+2026-08-15 against the live prod catalogue, `store/prospector.db`, and the working tree.*
