@@ -109,10 +109,31 @@ def _calc_confidence(sources: list[Source], citations: list[str],
     DIVERSITY_WEIGHT = 0.40
     RELEVANCE_WEIGHT = 0.30
 
-    # --- 1. Citation fraction ---
+    # --- 1. Citation volume (saturating COUNT, not a fraction of what retrieval returned) ---
+    # Was `cited / total * CITED_WEIGHT` (2026-08-15). That measured the RETRIEVER's verbosity and
+    # the brain's willingness to pad, not the evidence: a check citing 1 of 10 retrieved sources
+    # scored 0.03 here while one citing 10 of 10 scored 0.30, though the first is often the better
+    # evidence. Measured over 1,629 production claude_cli checks, confidence tracked citation COUNT
+    # almost perfectly (1 cite p50 0.15 → 3 cites 0.56 → 6 cites 0.71), which is a fact about
+    # citation habits, not about grounding. It killed a golden PASS (`Construction Statutory
+    # Adjudication Arbitrage`, 2026-08-15 06:28) whose six checks were ALL `supported`: its two
+    # moat checks scored 0.238 and 0.23 against the 0.30 PASS floor purely for citing one source
+    # each, firing `moat_ungrounded` on a fully grounded candidate. Saturating at CITATION_TARGET
+    # keeps "cited nothing" at zero and stops paying for padding past the point it adds evidence.
+    # Two readings of "cited enough", and the check gets the BETTER of them:
+    #   fraction   — it cited everything retrieval actually found (1 of 1 is not thin evidence,
+    #                it is all there was; scoring it 0.10 was the regression this line replaced)
+    #   saturating — it cited CITATION_TARGET distinct sources in absolute terms, however much
+    #                noise the retriever returned alongside them
+    # Neither reading alone is right: fraction-only punished selectivity, saturating-only punished
+    # a check whose retrieval was thin. `max` never scores a check LOWER than the old formula did,
+    # so this cannot make a previously-grounded check ungrounded.
+    CITATION_TARGET = 3
     total = len(sources)
     cited = len(citations)
-    citation_score = (cited / total * CITED_WEIGHT) if total > 0 else 0.0
+    fraction = (cited / total) if total > 0 else 0.0
+    saturating = min(1.0, cited / CITATION_TARGET)
+    citation_score = max(fraction, saturating) * CITED_WEIGHT if cited else 0.0
 
     # --- 2. Source diversity (netloc of cited sources only) ---
     cited_netlocs: set[str] = set()
@@ -133,7 +154,18 @@ def _calc_confidence(sources: list[Source], citations: list[str],
     elif n_domains == 2:
         diversity_score = 0.25
     elif n_domains == 1:
-        diversity_score = 0.10
+        # 0.10 → 0.15 (2026-08-15). Going from ZERO admissible domains to ONE is the largest
+        # evidentiary step in the scale — the difference between an assertion and a cited fact —
+        # yet it earned a quarter of what 1→3 earned. That under-credit is why a check resting on
+        # one primary source (legislation, a regulator, an official statistic) could not clear the
+        # 0.30 PASS floor however relevant the passage was.
+        #
+        # DELIBERATELY 0.15 and not higher: with the saturating citation term above, one citation
+        # scores 0.10, so 0.10 + 0.15 = 0.25 must still be topped up by RELEVANCE to reach the 0.30
+        # floor. At 0.20 the sum hit 0.30 exactly and a single IRRELEVANT citation would have
+        # counted as grounded — relevance would stop mattering at precisely the margin that
+        # decides PASS. A lone source now has to be on-topic to ground a check.
+        diversity_score = 0.15
     else:
         diversity_score = 0.0
 

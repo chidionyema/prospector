@@ -50,7 +50,12 @@
 # PROMOTION GATE (to make a cheap model a TRUSTED primary, not just a fallback): see
 # specs/offline-moat-validation.md and run, recording a clearance:
 #   python -m prospector.golden --operator deepseek --fixtures fixtures/golden_fixtures.json --runs 3
-operator: [claude_cli, minimax]
+#
+# MINIMAX LEADS 2026-08-15 (founder: "ship with MiniMax running the whole show and claude a
+# fallback"). Order IS call order, so this is the line that moves cost and latency: measured this
+# day, minimax rules a check in ~6s at ~$0.0004 against claude_cli's ~15s at ~$0.14. claude_cli
+# stays on the chain as the failover, not as the default payer.
+operator: [minimax, claude_cli]
 #
 # WHICH of those tiers may rule FINALLY. Anything on `operator:` but NOT here is stamped
 # `provisional` when it rules: it keeps throughput up during a moat outage, but never publishes on
@@ -73,7 +78,7 @@ operator: [claude_cli, minimax]
 # unusable at any concurrency while everything it ruled was unpublishable by construction.
 # REVERT = delete `minimax` from this line. That stops FUTURE publishes immediately; packs
 # already listed under the looser fence stay listed until unlisted deliberately.
-moat_primary: [claude_cli, minimax]
+moat_primary: [minimax, claude_cli]
 # standardcompute REMOVED from this chain 2026-08-15 (founder directive), along with its adapter.
 # It sat between claude_cli and minimax from 2026-08-08 ("fall back for claude ahead of minimax"),
 # but STANDARDCOMPUTE_API_KEY is unset here and the free trial is spent — the tier answered live
@@ -307,6 +312,13 @@ retrieval:
   # the same outage at full price, and all 14 landed in a backlog the drain pays for AGAIN.
   # 3 = stop after three consecutive infra-gated defers. 0 disables.
   infra_defer_abort_streak: 3
+  # minimax_concurrency: the ceiling on the PRIMARY brain since 2026-08-15, so this is the knob
+  # that sets engine throughput — claude_concurrency below now only bounds the failover.
+  # MEASURED 2026-08-15 against the live endpoint, stepwise, counting 429s:
+  #   width 2 → 0.07 calls/s · 4 → 0.60 · 6 → 0.89 · 8 → 1.36 (16/16 clean, ZERO 429s at 8).
+  # The old default of 3 was scar tissue from a 429 storm on an UNKNOWN tier (2026-08-09) and had
+  # never been re-measured against MiniMax. `PROSPECTOR_MINIMAX_CONCURRENCY` overrides for ops.
+  minimax_concurrency: 8
   claude_concurrency: 4          # max concurrent claude CLI subprocesses (failover brain only
                                  # now that grounding resolves on ddg/exa — see chain above)
   # cursor_concurrency REMOVED 2026-08-06 with the cursor_cli adapter. claude_concurrency above
@@ -1935,7 +1947,15 @@ dedup_token_threshold: 0.34
 # past the deadline), and projected at commit time by scripts/gen_budget_guard.py against
 # the same fraction. 0 disables the rail.
 schedule: { cadence: daily, batch_size: 15, backlog_cap: 0, max_resume_attempts: 5,
-            revet_provisional_kills: false, gate_generation_on_grounding: true,
+            # revet_provisional_kills: false -> true, 2026-08-15. The 176 provisional KILLs the
+            # drain refused every cycle ("No backlogged candidate the drain can work on") were
+            # ruled under a confidence metric that scored citation VOLUME, not evidence
+            # (verify._calc_confidence, fixed this day) — so an unknown share of them are kills
+            # our own scorer manufactured, not judgements. They are also now cheap to re-ask:
+            # minimax leads the chain at ~$0.0004 a check, putting the whole 176-row sweep under
+            # a dollar. Set back to false once that backlog is worked off, so the drain's bound
+            # goes to rows that can still reach the publish gate.
+            revet_provisional_kills: true, gate_generation_on_grounding: true,
             reload_on_code_change: true, gen_budget_frac: 0.35,
             market_rotation: "us-tx,us-ca,us-fl,us-ny,uk,us-il,us-pa,us-oh,us-ga,uk" }
 

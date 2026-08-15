@@ -347,11 +347,18 @@ def _subscription_soft_cap_reason(cfg, decision) -> str:
             f"— generating {_batch_size(cfg, None)} more would dig, so this tick only drains")
 
 
-#: Wall-clock bound on the PER-TICK grounding probe. Deliberately far shorter than the startup
-#: probe's 120s: a tick that cannot get an answer this quickly is a tick that should not generate,
-#: and the next tick simply re-asks. Bounded at all because an unbounded probe on the tick path
-#: would wedge the daemon loop exactly the way it once wedged startup (`_startup_grounding_check`).
-_TICK_PROBE_TIMEOUT_S = 45
+#: Wall-clock bound on the PER-TICK grounding probe. Bounded at all because an unbounded probe on
+#: the tick path would wedge the daemon loop exactly the way it once wedged startup
+#: (`_startup_grounding_check`).
+#:
+#: 45 -> 120 on 2026-08-15, matching the startup probe. 45s was set as "a tick that cannot get an
+#: answer this quickly should not generate", but it was never checked against what the live chain
+#: actually costs: the audit log for the same period records a ddg search ANSWERING in 92,184 ms.
+#: So the budget sat below normal latency and condemned every tick — the daemon logged
+#: "Generation suppressed: grounding degraded" and generated ZERO candidates from 06:25Z onward
+#: while retrieval was slow but working. A degradation gate whose threshold is under the healthy
+#: latency is not a gate, it is an outage. Re-measure this against the ddg/exa p95 before lowering.
+_TICK_PROBE_TIMEOUT_S = 120
 
 
 def _probe_grounding_once(cfg, timeout_s: int) -> tuple[str, BaseException | None]:

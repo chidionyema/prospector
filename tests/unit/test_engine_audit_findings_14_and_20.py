@@ -97,9 +97,18 @@ def test_a_single_trusted_tier_is_not_provisional():
 
 
 def test_every_tier_outside_moat_primary_is_provisional_when_it_rules_alone():
+    # The roster is NOT pinned here. The trusted set is config-declared (`config.yaml
+    # moat_primary:`) and minimax joined it 2026-08-15, so a hardcoded list of "untrusted" names
+    # tests the config file, not the mechanism — and fails the day the founder promotes a brain,
+    # which is a decision, not a regression. Derive the untrusted tiers from the live fence and
+    # assert the RULE: whatever is outside it is stamped provisional when it rules alone.
     op = MockOperator()
-    for untrusted in ("minimax", "deepseek", "ollama", "mock"):
-        assert untrusted not in moat_primary()
+    untrusted_tiers = [t for t in ("claude_cli", "minimax", "deepseek", "ollama", "mock")
+                       if t not in moat_primary()]
+    assert untrusted_tiers, (
+        "every known tier is trusted, so this test can no longer discriminate — add a tier or "
+        "narrow moat_primary before relying on it")
+    for untrusted in untrusted_tiers:
         op.tier_name = untrusted
         assert op.served_is_provisional() is True, (
             f"{untrusted!r} ruling as a single-tier config must be stamped provisional")
@@ -108,10 +117,15 @@ def test_every_tier_outside_moat_primary_is_provisional_when_it_rules_alone():
 def test_the_chain_path_is_unchanged():
     """`FallbackOperator` still overrides the base and answers from the brain that actually
     served this thread's last call — not from a tier stamped at construction time."""
-    chain = FallbackOperator([("claude_cli", MockOperator()), ("minimax", MockOperator())])
+    # Same reason as above: pick the tiers from the live fence rather than naming them, so this
+    # keeps testing the chain path when the trusted set changes.
+    trusted = sorted(moat_primary())[0]
+    untrusted = next(t for t in ("deepseek", "ollama", "mock", "minimax")
+                     if t not in moat_primary())
+    chain = FallbackOperator([(trusted, MockOperator()), (untrusted, MockOperator())])
     assert chain.last_served() == ""
     assert chain.served_is_provisional() is False, "nothing has served yet"
-    chain._served.name = "minimax"
+    chain._served.name = untrusted
     assert chain.served_is_provisional() is True
     chain._served.name = "claude_cli"
     assert chain.served_is_provisional() is False

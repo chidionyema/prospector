@@ -263,7 +263,7 @@ def test_a_verdict_served_by_the_tail_is_stamped_provisional():
     (verify.py:52-56, :480). If that answered False for a minimax-served call, the ruling would
     be indistinguishable from a claude_cli one and would publish.
     """
-    from prospector.operator import FallbackOperator, Operator
+    from prospector.operator import FallbackOperator, Operator, moat_primary
 
     class _Op(Operator):
         def __init__(self, name):
@@ -272,17 +272,26 @@ def test_a_verdict_served_by_the_tail_is_stamped_provisional():
         def _raw(self, system, user, temperature):
             return "{}"
 
-    chain = FallbackOperator([("claude_cli", _Op("claude_cli")), ("minimax", _Op("minimax"))])
+    # Both names come from the live fence. `minimax` was hardcoded as "the tail" here until
+    # 2026-08-15, when it was promoted into `moat_primary` — the assertion then read "a minimax
+    # ruling must be provisional" against a config in which it is trusted, i.e. the test had
+    # become a test of config.yaml's roster. What must hold is the MECHANISM: whoever actually
+    # served decides, and membership of `moat_primary` is the only input.
+    trusted = sorted(moat_primary())[0]
+    untrusted = next(t for t in ("deepseek", "ollama", "mock", "minimax", "claude_cli")
+                     if t not in moat_primary())
+
+    chain = FallbackOperator([(trusted, _Op(trusted)), (untrusted, _Op(untrusted))])
 
     # Nothing served yet: provisional is False, so a chain that has never run cannot poison a
     # dossier by default.
     assert chain.served_is_provisional() is False
 
-    chain._served.name = "minimax"
-    assert chain.served_is_provisional() is True, "a minimax ruling must be provisional"
+    chain._served.name = untrusted
+    assert chain.served_is_provisional() is True, f"a {untrusted} ruling must be provisional"
 
-    chain._served.name = "claude_cli"
-    assert chain.served_is_provisional() is False, "a claude_cli ruling must be final"
+    chain._served.name = trusted
+    assert chain.served_is_provisional() is False, f"a {trusted} ruling must be final"
 
 
 def test_a_provisional_pass_is_refused_by_the_publish_gate():

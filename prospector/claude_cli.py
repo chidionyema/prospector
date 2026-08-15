@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -132,8 +133,54 @@ def _record_failed_call(stdout: str, web: bool) -> None:
         _safe_record(data, web)
 
 
+_MIN_JSON_SCHEMA_CLI = (2, 1, 205)
+_schema_support: Optional[bool] = None
+_schema_lock = threading.Lock()
+
+
+def _cli_version() -> tuple[int, ...]:
+    """`claude --version` -> (2, 1, 232). () when it cannot be read."""
+    try:
+        out = subprocess.run([CLAUDE_BIN, "--version"], capture_output=True, text=True,
+                             timeout=20, stdin=subprocess.DEVNULL,
+                             env=subscription_env()).stdout
+    except Exception:
+        return ()
+    m = re.search(r"(\d+)\.(\d+)\.(\d+)", out or "")
+    return tuple(int(g) for g in m.groups()) if m else ()
+
+
+def supports_json_schema() -> bool:
+    """Whether this machine's `claude` CLI can be trusted with `--json-schema`.
+
+    VERSION-GATED, and the gate is the whole point. `--json-schema` is validate-and-re-prompt,
+    not grammar-constrained, and before CLI **2.1.205** an invalid schema was *silently
+    ignored* — the call succeeds, bills, and returns free-form prose while the caller believes
+    it is holding validated JSON. That is the "swallowed outage returns data" shape: the worst
+    possible failure mode, because nothing anywhere reports it. On an older or unreadable CLI
+    we simply do not pass the flag and keep today's multi-strategy parsing, which is degraded
+    but honest.
+
+    Measured on this machine 2026-08-15: `claude --version` -> `2.1.232 (Claude Code)`, and
+    `claude --help` advertises `--json-schema <schema>  JSON Schema for structured output`.
+    """
+    global _schema_support
+    if _schema_support is None:
+        with _schema_lock:
+            if _schema_support is None:
+                v = _cli_version()
+                _schema_support = bool(v) and v >= _MIN_JSON_SCHEMA_CLI
+                logger.info(
+                    "claude CLI structured output: "
+                    + ("enabled" if _schema_support else "DISABLED"),
+                    extra={"cli_version": ".".join(map(str, v)) or "unreadable",
+                           "min_required": ".".join(map(str, _MIN_JSON_SCHEMA_CLI))})
+    return _schema_support
+
+
 def _attempt_claude_cli(cmd: list[str], timeout: int, web: bool,
-                        queue_timeout: Optional[float] = None) -> str:
+                        queue_timeout: Optional[float] = None,
+                        expect_structured: bool = False) -> str:
     """One CLI invocation under the concurrency cap. Raises on transient failure.
     The slot wait is BOUNDED by queue_timeout (None => block) so a saturated provider
     fails fast to failover instead of blocking a vet indefinitely."""
@@ -244,8 +291,36 @@ def _attempt_claude_cli(cmd: list[str], timeout: int, web: bool,
         _safe_record(data, web)
     # Headless JSON shape: {"type":"result","subtype":"success","result":"...","is_error":..}
     if isinstance(data, dict):
-        if data.get("is_error") or data.get("subtype") == "error_during_execution":
+        # ANY `error*` subtype, not just `error_during_execution`. The CLI's convention is that
+        # a failed run names itself in `subtype`, and structured output adds a new member to
+        # that family — `error_max_structured_output_retries`, emitted when the model could not
+        # produce a payload matching the schema within the CLI's own retry budget. Pinning the
+        # single old literal would have let that one through to `data.get("result")`, which on
+        # a failed structured run holds the last INVALID attempt: a partial answer returned as
+        # if it were a whole one. `error_max_turns` is caught by the same widening, and for the
+        # same reason — a run that stopped early has not answered, and this repo's expensive
+        # lesson is that a truncated result flowing on as data is indistinguishable downstream
+        # from a real one ("an exception is never evidence; a failed call DEFERS").
+        subtype = str(data.get("subtype") or "")
+        if data.get("is_error") or subtype.startswith("error"):
             raise RuntimeError(f"claude cli error result: {str(data)[:200]}")
+        if expect_structured:
+            # The docs are explicit that a `success` result can carry NO `structured_output`
+            # field, and that this must be treated as a failure rather than as an empty answer.
+            # Returning the free-form `result` here instead would silently reinstate exactly
+            # the unvalidated path the schema was added to remove — and it would do it only on
+            # the calls where validation failed, i.e. the ones that most need to fail loudly.
+            structured = data.get("structured_output")
+            if structured is None:
+                raise RuntimeError(
+                    "claude cli returned no structured_output for a --json-schema call "
+                    f"(subtype={subtype!r}, stop_reason={data.get('stop_reason')!r}): "
+                    f"{str(data.get('result'))[:200]}")
+            # Re-serialised rather than handed back as an object: every caller of this function
+            # is typed `-> str` and runs the result through `_extract_json`. Round-tripping a
+            # dict json.dumps produced is the one input that parser is guaranteed to read, so
+            # the strategies become dead code on this path without changing a single signature.
+            return json.dumps(structured)
         resp = data.get("result")
         if resp:
             return str(resp)
@@ -256,7 +331,8 @@ def _attempt_claude_cli(cmd: list[str], timeout: int, web: bool,
 def run_claude_cli(prompt: str, *, web: bool = False, model: Optional[str] = None,
                    timeout: int = 180, timeout_max: Optional[int] = None,
                    escalation: float = 1.0, retries: int = 1,
-                   queue_timeout: Optional[float] = None) -> str:
+                   queue_timeout: Optional[float] = None,
+                   json_schema: Optional[dict] = None) -> str:
     """Run the claude CLI headless and return the response text.
 
     Transient failures are retried with backoff; the per-attempt timeout is ADAPTIVE
@@ -288,19 +364,36 @@ def run_claude_cli(prompt: str, *, web: bool = False, model: Optional[str] = Non
             retry_after_s=usage_wall.blocked_for())
 
     cmd = [CLAUDE_BIN, "-p", prompt, "--output-format", "json"]
+    # STRUCTURED OUTPUT. When the caller knows the shape it expects, ask the CLI to VALIDATE it
+    # rather than parsing whatever prose comes back. This is the fix at source for the defect
+    # class `_extract_json`'s four strategies exist to survive — measured 2026-08-15, one
+    # literal newline inside a JSON string was enough to make it return the wrong array, and
+    # that parser defect arrived downstream wearing the costume of a search that found nothing.
+    #
+    # Two constraints, both established live on 2026-08-15 rather than read off the docs:
+    #  - the schema must be draft-07, and TOP-LEVEL ARRAYS ARE REJECTED. A bare
+    #    `{"type": "array"}` schema returns `is_error: true, terminal_reason: "api_error"` with
+    #    a zero-token, zero-cost result. Callers wanting a list must wrap it in an object.
+    #  - success carries the payload in BOTH `structured_output` (parsed) and `result` (the
+    #    same JSON as a clean string). We read the former; see `_attempt_claude_cli`.
+    expect_structured = bool(json_schema) and supports_json_schema()
+    if expect_structured:
+        cmd += ["--json-schema", json.dumps(json_schema)]
     if web:
         cmd += ["--allowedTools", "WebSearch"]
     if model:
         cmd += ["--model", model]
 
-    logger.info("Invoking Claude CLI", extra={"model": model, "web": web})
+    logger.info("Invoking Claude CLI",
+                extra={"model": model, "web": web, "structured": expect_structured})
 
     ceiling = timeout_max or timeout
     last_err: Optional[Exception] = None
     for attempt in range(retries + 1):
         attempt_timeout = min(ceiling, int(round(timeout * (escalation ** attempt))))
         try:
-            return _attempt_claude_cli(cmd, attempt_timeout, web, queue_timeout)
+            return _attempt_claude_cli(cmd, attempt_timeout, web, queue_timeout,
+                                       expect_structured=expect_structured)
         except (subprocess.TimeoutExpired, RuntimeError) as e:
             last_err = e
             # Exhaustion is persistent for this window — don't burn more attempts (each
@@ -341,6 +434,33 @@ class ClaudeCliOperator(Operator):
         return run_claude_cli(f"{system}\n\n{user}", web=False, model=self.model)
 
 
+# Draft-07, object-rooted, and deliberately NOT `additionalProperties: false` on the items:
+# the CLI re-prompts the model until the payload validates, so a schema that forbids a harmless
+# extra key spends real retries — and can end in `error_max_structured_output_retries` — over a
+# field `resolve_sources` would simply have ignored. `published_at` is optional for the same
+# reason: it is genuinely absent for plenty of real sources, and requiring it would turn "this
+# page has no date" into a failed call.
+_SEARCH_SCHEMA = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "results": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string"},
+                    "text": {"type": "string"},
+                    "published_at": {"type": ["string", "null"]},
+                },
+                "required": ["url", "text"],
+            },
+        }
+    },
+    "required": ["results"],
+}
+
+
 class ClaudeCliGroundingProvider(SearchProvider):
     """Live web-search grounding via the claude CLI. Returns resolvable URLs + passages."""
     def __init__(self, model: Optional[str] = None,
@@ -356,11 +476,18 @@ class ClaudeCliGroundingProvider(SearchProvider):
 
     @track_latency(name="claude_cli_search")
     def search(self, query: str, k: int = 4, max_chars: int = 1500) -> list[Source]:
+        # The prompt asks for the OBJECT shape (`{"results": [...]}`) unconditionally, whether
+        # or not the schema is passed, so that the two can never describe different payloads.
+        # A top-level array is not an option: the CLI rejects an array-rooted schema outright
+        # (proven 2026-08-15 — `is_error: true, terminal_reason: "api_error"`). Nothing
+        # downstream changes, because the parse below already unwrapped `results`/`passages`
+        # for dict replies long before this call had a schema.
         prompt = (
             f"Use web search to find evidence about: {query}\n"
-            f"Return ONLY a JSON array of up to {k} objects, each exactly "
-            f'{{"url": "<real resolvable source url>", "text": "<relevant passage, '
-            f'<= {max_chars} chars>", "published_at": "<date or null>"}}. '
+            f'Return ONLY a JSON object {{"results": [...]}} whose array holds up to {k} '
+            f'objects, each exactly {{"url": "<real resolvable source url>", '
+            f'"text": "<relevant passage, <= {max_chars} chars>", '
+            f'"published_at": "<date or null>"}}. '
             "Use only real source URLs you actually retrieved. No prose, no code fences."
         )
         logger.info(f"Claude CLI Search started: {query!r}")
@@ -369,7 +496,8 @@ class ClaudeCliGroundingProvider(SearchProvider):
         resp = run_claude_cli(prompt, web=True, model=self.model,
                               timeout=self.timeout, timeout_max=self.timeout_max,
                               escalation=self.escalation, retries=self.retries,
-                              queue_timeout=self.queue_timeout)
+                              queue_timeout=self.queue_timeout,
+                              json_schema=_SEARCH_SCHEMA)
         try:
             data = _extract_json(resp)
         except Exception as e:

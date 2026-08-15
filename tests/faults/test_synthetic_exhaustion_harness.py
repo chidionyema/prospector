@@ -216,12 +216,20 @@ def test_moat_blind_check_does_not_spend_the_half_open_probe(tmp_path):
 
 
 def test_a_non_moat_brain_going_dead_never_blinds_the_moat(tmp_path):
-    """The founder fence: a non-critical brain (minimax) is outside MOAT_PRIMARY, so its
-    exhaustion must not be able to stop a tick."""
-    assert "minimax" not in moat_primary()
-    cfg = _cfg(tmp_path, operators=("claude_cli", "minimax"))
-    chain = FallbackOperator([("minimax", _Exhausted("minimax", "HTTP 402 Payment Required")),
-                              ("claude_cli", _Alive("claude_cli"))])
+    """The founder fence: a brain outside MOAT_PRIMARY going dead must not stop a tick.
+
+    The non-moat brain is DERIVED, not named. This test hardcoded `minimax` until 2026-08-15,
+    when minimax was promoted into `moat_primary` — the first assertion then failed on a
+    founder decision rather than on a regression, and (worse) the scenario it built was no
+    longer the scenario it describes. The rule under test is about MEMBERSHIP, so read the
+    membership from the fence.
+    """
+    trusted = sorted(moat_primary())[0]
+    outsider = next(t for t in ("deepseek", "ollama", "mock", "minimax", "claude_cli")
+                    if t not in moat_primary())
+    cfg = _cfg(tmp_path, operators=(trusted, outsider))
+    chain = FallbackOperator([(outsider, _Exhausted(outsider, "HTTP 402 Payment Required")),
+                              (trusted, _Alive(trusted))])
     assert chain._raw("sys", "user", 0.0) == "ok"
     assert rs._moat_blind_reason(cfg) == ""
 
