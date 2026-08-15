@@ -30,12 +30,30 @@ primary_region = "lhr"                # match the API region
   # one arriving from a link, on a shop whose whole proposition is that it did the work already.
   # No amount of bundle trimming touches it -- the JS had not been asked for yet.
   #
-  # One warm machine costs ~$2/month at this size. `auto_stop_machines` stays on so the SECOND
-  # machine still parks itself when traffic is thin; `min_machines_running = 1` only forbids the
-  # last one from going down. Revert to 0 and the 9.2s comes straight back.
-  auto_stop_machines = "stop"
+  # One warm machine costs ~$2/month at this size. Revert to 0 and the 9.2s comes straight back.
+  #
+  # TWO warm machines, and `auto_stop_machines` OFF, as of 2026-08-15. The previous setting
+  # ("stop", min 1) was the arithmetic of a cold start only; it is also the arithmetic of a
+  # deploy. Measured on prod that afternoon: of the two web machines, 185d417f753d58 was STOPPED
+  # and only 28629d6b710128 was running -- so a "rolling" deploy had exactly one machine to roll,
+  # and replacing it IS the gap the founder watched. A rolling deploy needs somewhere to roll to.
+  # ~$4/month total, against a storefront that is unreachable for the length of every deploy.
+  auto_stop_machines = false
   auto_start_machines = true
-  min_machines_running = 1
+  min_machines_running = 2
+
+  # Fly had NO readiness signal for this app until now -- there was no checks block at all, so a
+  # machine was routed to the moment its port opened, before Next.js was serving. The check is the
+  # other half of the rolling deploy above: without it, "rolling" only means the machines are
+  # replaced one at a time, not that the replacement works before the old one goes.
+  #
+  # /api/health is intentionally local-only (it never calls the Store.Api) -- see the route.
+  [[http_service.checks]]
+    method = "get"
+    path = "/api/health"
+    interval = "15s"
+    timeout = "3s"
+    grace_period = "10s"
 
 [[vm]]
   size = "shared-cpu-1x"
