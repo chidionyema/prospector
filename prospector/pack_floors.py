@@ -420,22 +420,99 @@ def exec_summary_md(candidate: Any, checks: Sequence[Any] = ()) -> str:
 
 
 def first_week_checklist_md(candidate: Any) -> str:
+    """The generic first week, for a pack `pack_checklist` could not write a specific one for.
+
+    WHAT THIS USED TO BE, AND WHY IT CHANGED (2026-08-15)
+    ----------------------------------------------------
+    Six numbered lines addressed to somebody auditing the engine rather than to the person who
+    paid: "Re-read the QA report kill/pass gates and list every SUPPORTED citation URL",
+    "Confirm the buyer (`who_pays`) matches reality", "using only claims that survived
+    claim-check", "Log what you could not verify". A snake_case schema key in a code span, our
+    internal verdict words in capitals, and four of the six steps spent on our pipeline instead
+    of the reader's market.
+
+    `pack_checklist.render` was written to replace exactly this and does — for every pack it
+    can describe specifically. This is what still prints when it cannot, and `exec_summary_md`
+    now closes by naming this section as WHERE TO START. So the pack's opening promise pointed
+    at the one surface still speaking schema.
+
+    The ADVICE changed too, not only the vocabulary. `render` returns "" mainly when the
+    dossier carries no payer — "the buyer is the spine of week one" — so this template prints
+    for the packs with the LEAST established about them, and it was telling that reader to
+    confirm a buyer the pack never named and then start building. A first week spent building
+    on the least-verified pack in the catalogue is the wrong week. The one below spends it on
+    the cheapest thing that can prove the pack wrong, which is talking to people, and it says
+    plainly that stopping is a result rather than a failure.
+
+    No other section of the pack is named here, deliberately. Naming one is how the previous
+    generation of this copy broke: it sent buyers to `QA_Report.md`, a file the download had
+    stopped containing, inside the first five minutes — which is when a refund gets decided.
+    The two names this module can stand behind are `QA_SECTION` and `CHECKLIST_SECTION`, and
+    they are pinned to `bridge._SECTION_TITLES` by test. A generic template has no business
+    asserting more about a document it was reached from precisely because that document is thin.
+
+    Claim-safe by construction: `title` and `who_pays` are the only fields interpolated, and
+    nothing below asserts anything about the reader's market.
+    """
     title = (getattr(candidate, "title", None) or "this opportunity").strip()
-    who = (getattr(candidate, "who_pays", None) or "the stated buyer").strip()
-    return "\n".join([
+    who = (getattr(candidate, "who_pays", None) or "").strip()
+
+    lines = [
         f"# First-week checklist — {title}",
         "",
-        "Claim-safe starter steps. Adapt only where your own evidence supports it.",
+        "Nothing in this pack is worth building on until somebody who has the problem tells "
+        "you, in their own words, that they have it. That is this week: five conversations, a "
+        "few hours in total, and it is the one week that can save you the year.",
         "",
-        "1. Re-read the QA report kill/pass gates and list every SUPPORTED citation URL.",
-        "2. Confirm the buyer (`who_pays`) matches reality for your market — dossier says: "
-        f"{who}.",
-        "3. Sketch the smallest paid offer described in the build spec (no scope creep).",
-        "4. Pick one distribution channel from the GTM plan; ignore the rest for week one.",
-        "5. Write the first outreach / listing using only claims that survived claim-check.",
-        "6. Log what you could not verify; do not invent substitutes.",
+    ]
+    # The payer is a heading line when the dossier carries one, and FINDING them becomes the
+    # week's first job when it does not. The old default printed "the stated buyer" — filler
+    # standing exactly where the reader needed a name, inside the document that prints
+    # precisely when no name exists.
+    if who:
+        lines += [f"**Who you are looking for:** {as_phrase(who)}", ""]
+    else:
+        lines += [
+            "**Start by naming who you are looking for.** This pack could not settle it, which "
+            "is the honest reason you are reading the general plan and not a specific one. "
+            "Write down the narrowest group you can describe well enough to go and find five "
+            "of them by Wednesday. Narrow is not a limitation here; it is the only thing that "
+            "makes the rest of the week possible.",
+            "",
+        ]
+    lines += [
+        "## Monday and Tuesday — write down what you would be wrong about",
         "",
-    ])
+        "1. In one sentence, in their words rather than ours, write the problem you believe "
+        "these people have. If you cannot write it without reusing the title above, you do not "
+        "understand it yet — and day one is a good time to find that out.",
+        "2. Underneath it, write the single fact that would make this a bad idea. You are going "
+        "looking for that fact this week, not for encouragement. It is far cheaper to find now "
+        "than in month six.",
+        "",
+        "## Wednesday to Friday — five conversations",
+        "",
+        "3. Find five people who fit the description and ask each of them how they handle this "
+        "today. Not whether they would buy something — what they actually do on a Tuesday "
+        "morning, and what it costs them to do it.",
+        "4. Listen for what they already pay for: a tool, somebody's hours, a workaround they "
+        "built themselves. Money already moving is the only evidence of demand that costs you "
+        "nothing to collect, and it is worth more than any answer to a hypothetical.",
+        "5. Ask each one what would have to be true before they changed it. Write the answers "
+        "down word for word. That phrasing is your first outreach copy, and it will be better "
+        "than anything you would have written for yourself.",
+        "",
+        "## Friday — decide, and be willing to stop",
+        "",
+        "6. If nobody named a cost, in money or in hours, stop here. That is a real result and "
+        "it cost you a week instead of a year. The pack has done its job.",
+        "7. If two or more of them described the same workaround, you have found the thing to "
+        "build. Week two is one page and one price, offered to those same five people first — "
+        "not a product, an offer. The rest of this pack is the long version of what to do once "
+        "one of them says yes.",
+        "",
+    ]
+    return "\n".join(lines)
 
 
 def ensure_marketing_floor(
