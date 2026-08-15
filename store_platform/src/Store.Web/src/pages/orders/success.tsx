@@ -219,7 +219,14 @@ export default function OrderSuccess() {
                   }}
                   className={textLinkClass('font-medium')}
                 >
-                  {copied ? 'Copied ✓' : 'Copy link'}
+                  {copied ? (
+                    <span className="flex items-center gap-1">
+                      <Icon name="check" size={16} />
+                      Copied
+                    </span>
+                  ) : (
+                    'Copy link'
+                  )}
                 </button>
                 <PostPurchaseAccountNote className="mt-3 border-t border-border pt-3 text-caption leading-relaxed text-muted" />
               </div>

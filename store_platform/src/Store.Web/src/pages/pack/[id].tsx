@@ -1492,12 +1492,20 @@ function ShareRow({ title, path }: { title: string; path: string }) {
       {/* Copy link */}
       <button type="button" onClick={handleCopy} className={btnClass} aria-label="Copy link">
         {copied ? (
-     <span className="text-caption font-medium text-success">Copied ✓</span>
+          <span className="flex items-center gap-1 text-caption font-medium text-success">
+            <Icon name="check" size={16} />
+            Copied
+          </span>
         ) : (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <Icon name="link" size={16} />
         )}
       </button>
 
+      {/* X and LinkedIn stay hand-inlined, and are the ONE exception to the one-family rule
+          (brief 2026-08-15, Part Three). lucide-react 1.28 ships no brand marks -- `twitter.mjs`
+          and `linkedin.mjs` do not exist in the package -- and a brand mark is not a UI icon: it
+          is someone else's trademark, drawn to their spec, and redrawing it in a 2px outline hand
+          would make it wrong rather than consistent. Everything else on this page is `Icon`. */}
       {/* X (Twitter) */}
       <a
         href={`https://x.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`}
