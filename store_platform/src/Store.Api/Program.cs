@@ -527,10 +527,48 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
     {
         pack.ProviderProductId = sentProductId;
     }
+    // The price POINTER is as money-bearing as the price NUMBER, and until 2026-08-15 only one of
+    // them was defended here. PricePence is assigned on the INSERT branch above and nowhere else,
+    // precisely so a republish cannot re-price a live pack behind the floor drain —
+    // but the line below re-pointed checkout at whatever Price the publisher had just minted. A
+    // republish could therefore move what the buyer is CHARGED without moving what the shelf SAYS,
+    // and leave no trace: no PackPriceHistory row, no floor move, changeCount still 0.
+    //
+    // Measured live on 2026-08-15, that is exactly what had happened. `d6f72b9dc9a45c45` was
+    // inserted 2026-08-01 at 4900p and republished on 2026-08-13 when the price-engine decided
+    // 9999p: Stripe charged £99.99, the card read £49.00, history was empty. Eight more packs were
+    // in the same state, one of them £49.00 against £79.99.
+    //
+    // So on UPDATE the pointer only moves when there is nothing for it to contradict — the stored
+    // id is absent, or a `price_stub_*` that no checkout can bill anyway (which is what
+    // tools/reprice_live_packs.py repairs through this endpoint). A publish that carries a
+    // DIFFERENT real id keeps the one it already had, and says so in the log.
+    //
+    // Nothing legitimate loses: bridge.py's `_resolve_money_rail` deliberately reuses the pack's
+    // existing Price rather than minting per publish, so an ordinary republish sends the id
+    // already stored and takes the equality branch. Actually changing a price is what
+    // PATCH /internal/catalog/{id}/price is for, and it moves the number, the pointer, the floor
+    // and the history row in one transaction, which is the only combination that is ever correct.
     var sentPriceId = request.ProviderPriceId ?? request.PaddlePriceId;
     if (sentPriceId is not null)
     {
-        pack.ProviderPriceId = sentPriceId;
+        var storedPriceId = pack.ProviderPriceId;
+        var pointerIsUncontested = isNewPack
+            || string.IsNullOrEmpty(storedPriceId)
+            || storedPriceId.StartsWith("price_stub_", StringComparison.Ordinal)
+            || string.Equals(storedPriceId, sentPriceId, StringComparison.Ordinal);
+        if (pointerIsUncontested)
+        {
+            pack.ProviderPriceId = sentPriceId;
+        }
+        else
+        {
+            loggerFactory.CreateLogger("PublishPack").LogError(
+                "Refusing to re-point {PackId} from price {StoredPriceId} to {SentPriceId}: this "
+                + "endpoint cannot move PricePence ({PricePence}p), so moving the pointer alone "
+                + "would charge a number the shelf does not show. Use the price PATCH door instead.",
+                pack.Id, storedPriceId, sentPriceId, pack.PricePence);
+        }
     }
 
     // Content metadata (set by the engine after it uploads the deliverable to R2).
