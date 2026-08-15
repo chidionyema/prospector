@@ -43,6 +43,26 @@ WHAT IS PINNED HERE
 6. That a cancelled candidate is PARKED as DEFER rather than dropped. Without this the
    stop is a throughput lie: a k=50 batch pays a k=50 generation bill, bins ~32 already-
    selected candidates, and reports "18 vetted, 18 banked" with nothing amiss.
+7. That the BACKLOG DRAIN has a wall, and that the three rails above are fractions of what
+   the drain LEFT rather than of the whole deadline.
+
+THE SECOND MEASUREMENT (2026-08-15, after the first live k=50 proof run)
+
+The rails above were each individually correct and the tick still could not fit, because
+the drain runs FIRST, inside the same hard-deadline Timer, and had no ceiling of any kind.
+From the daemon's own log:
+
+    tick 2026-08-15T10:16:59Z   3 rows took 4197s of a 10800s tick (39%) before generation
+    tick 2026-08-15T13:23:07Z   row 1 alone took 4127s; row 2 still running at +5885s (55%)
+
+and per row the dominant cost is not the verdict but the CONTENT phase on a row that passes
+(1461s of 2844s = 51%; 2331s of 4127s = 56%). So every rail downstream was being handed a
+tick that had already been spent, and `run_signal` starting its vet clock when CALLED meant
+fractions of the full deadline promised `drain + 0.85 x D` of work inside a `D` fence.
+
+The drain's stop is a plain hard wall rather than a park-and-resume, and that asymmetry is
+deliberate: an unreached backlog row keeps its state and its place in the priority sort, so
+nothing is discarded. A cancelled vetting candidate had already been paid for.
 """
 from __future__ import annotations
 
@@ -301,8 +321,10 @@ def test_the_budgets_are_fractions_of_what_the_drain_left_not_of_the_whole_tick(
     it exists to prevent, and the tick would die by `os._exit(2)` with the batch unsaved —
     exactly the failure the rails were built for, re-entered through the back door.
 
-    Not a corner case: `_resume_per_tick` re-vets 3 rows at a measured ~1200s of wall clock per
-    candidate, i.e. up to a third of a 10800s tick spent before the first budget is computed.
+    Not a corner case, and the real figure is worse than the ~1200s/candidate generation
+    profile suggested: on the daemon's own log the 10:16:59Z tick spent 4197s of 10800s (39%)
+    on 3 drained rows before generation began, and the 13:23:07Z tick was still draining at
+    +5885s (55%). See `_DRAIN_BUDGET_FRAC` for the per-row breakdown.
     """
     tick = run_scheduled._TICK_HARD_DEADLINE_S
     drain = 0.30 * tick
@@ -514,3 +536,132 @@ def test_the_budget_gate_reads_as_defer_and_does_not_manufacture_an_outage():
     assert d.gate_fired is None, "no gate fired; recording one corrupts the kill stats"
     assert "budget" in d.reason.lower()
     assert "could not retrieve" not in d.reason.lower()
+
+
+# --------------------------------------------------------------------------- #
+# 6. The backlog drain's own wall — the tick's largest unbounded consumer
+# --------------------------------------------------------------------------- #
+def test_the_drain_budget_reader_is_bounded_and_defaulted():
+    frac = run_scheduled._drain_budget_frac
+    assert frac(types.SimpleNamespace(schedule={})) == 0.15
+    assert frac(types.SimpleNamespace(schedule={"drain_budget_frac": 0.5})) == 0.5
+    assert frac(types.SimpleNamespace(schedule={"drain_budget_frac": "loads"})) == 0.15
+    # Negative would be a deadline already in the past at t=0: every row skipped, a drain
+    # that reports it ran and re-vetted nothing.
+    assert frac(types.SimpleNamespace(schedule={"drain_budget_frac": -1})) == 0.0
+    # >1 would promise the drain more than the tick has.
+    assert frac(types.SimpleNamespace(schedule={"drain_budget_frac": 4})) == 1.0
+
+
+def _drain_pass_kwargs(monkeypatch, schedule: dict, n_resume: int = 3) -> dict:
+    seen: dict = {}
+
+    def fake_resume_deferred(_cfg, **kwargs):
+        seen.update(kwargs)
+        return {"resumed": 0}
+
+    monkeypatch.setattr("prospector.run.resume_deferred", fake_resume_deferred)
+    run_scheduled._drain_pass(types.SimpleNamespace(schedule=schedule), n_resume)
+    return seen
+
+
+def test_the_drain_receives_a_wall_and_a_per_row_artifact_ceiling(monkeypatch):
+    """The drain ran FIRST in every tick and was the one phase with no ceiling at all —
+    4197s of a 10800s tick (39%) on 2026-08-15T10:16:59Z, 5885s+ (55%) on the 13:23:07Z tick.
+
+    Both numbers are needed, not just the wall: 51-56% of a drained row's cost is the content
+    phase, so bounding the pass without bounding the phase inside it moves the overrun one
+    level down rather than removing it.
+    """
+    seen = _drain_pass_kwargs(monkeypatch, {})
+    tick = run_scheduled._TICK_HARD_DEADLINE_S
+    assert seen["budget_s"] == pytest.approx(0.15 * tick)
+    assert seen["artifact_time_budget_s"] == pytest.approx(0.40 * 0.15 * tick)
+    assert seen["publish"] is True, "a drained PASS must still be able to reach the shelf"
+
+
+def test_the_drain_wall_leaves_the_rest_of_the_tick_to_the_batch(monkeypatch):
+    """The property the whole change exists for, stated as the fence rather than arithmetic:
+    drain + vetting must land inside the force-exit timer, whatever the drain costs."""
+    seen = _drain_pass_kwargs(monkeypatch, {})
+    tick = run_scheduled._TICK_HARD_DEADLINE_S
+    left = tick - seen["budget_s"]
+    vet = run_scheduled._vet_budget_frac(types.SimpleNamespace(schedule={})) * left
+    assert seen["budget_s"] + vet < tick, (
+        "the tick would still be vetting when _force_exit_hung_tick fires")
+
+
+@pytest.mark.parametrize("frac", [0, -1])
+def test_frac_zero_or_negative_leaves_the_drain_unbounded_never_zero_second(monkeypatch, frac):
+    """0 must mean "wall off" (None). A zero-second wall would skip every row and report a
+    drain that ran — the counters-lie shape this file exists to keep out."""
+    seen = _drain_pass_kwargs(monkeypatch, {"drain_budget_frac": frac})
+    assert seen["budget_s"] is None
+    assert seen["artifact_time_budget_s"] is None
+
+
+def test_a_drain_with_no_rows_never_calls_resume_at_all(monkeypatch):
+    called = []
+    monkeypatch.setattr("prospector.run.resume_deferred",
+                        lambda *a, **k: called.append(1) or {})
+    assert run_scheduled._drain_pass(types.SimpleNamespace(schedule={}), 0) is None
+    assert not called
+
+
+def test_resume_deferred_turns_the_duration_into_a_deadline_for_the_loop(monkeypatch):
+    """`budget_s` is a DURATION at the scheduler boundary and an absolute instant inside the
+    loop. Taking the instant AFTER the operators are built keeps their network calls out of
+    the drain's budget — the same reason `run_signal` takes its deadlines where it does."""
+    seen: dict = {}
+
+    def fake_cmd_resume(_args, _cfg, _op, _fast, _search, _store, **kwargs):
+        seen.update(kwargs)
+        return {}
+
+    monkeypatch.setattr(run_mod, "_cmd_resume", fake_cmd_resume)
+    monkeypatch.setattr("prospector.operator.make_operator", lambda *a, **k: object())
+    monkeypatch.setattr(run_mod, "_make_search", lambda *a, **k: object())
+    monkeypatch.setattr(run_mod, "Store", lambda *a, **k: types.SimpleNamespace(
+        root="/tmp", get=lambda *a: None))
+
+    before = time.monotonic()
+    run_mod.resume_deferred(types.SimpleNamespace(store_dir=Path("/tmp")),
+                            limit=3, budget_s=600.0, artifact_time_budget_s=99.0)
+    assert seen["artifact_time_budget_s"] == 99.0
+    assert before + 600.0 <= seen["deadline_mono"] <= time.monotonic() + 600.0
+
+    seen.clear()
+    run_mod.resume_deferred(types.SimpleNamespace(store_dir=Path("/tmp")), limit=3)
+    assert seen["deadline_mono"] is None, "no budget must mean no wall, not a wall at t=0"
+
+
+def test_the_live_config_declares_the_drain_wall():
+    import yaml
+    schedule = yaml.safe_load((REPO / "config.yaml").read_text())["schedule"]
+    assert schedule["drain_budget_frac"] == 0.15
+    # The drain is the FIRST phase; whatever it takes comes off the top of everything else.
+    # This is the arithmetic that must hold for the tick to end by decision.
+    assert schedule["drain_budget_frac"] + (
+        1 - schedule["drain_budget_frac"]) * schedule["vet_budget_frac"] < 1.0
+
+
+def test_the_drain_loop_actually_consults_the_deadline_and_forwards_both_budgets():
+    """Source-level, because the defect class here is an inert rail: `artifact_budget_frac`
+    shipped wired-to-nothing for several hours on 2026-08-15, and the drain's call to
+    `vet_candidate` was the one call site in the file that passed neither budget."""
+    tree = ast.parse((REPO / "prospector" / "run.py").read_text())
+    fn = next(n for n in ast.walk(tree)
+              if isinstance(n, ast.FunctionDef) and n.name == "_cmd_resume")
+    args = {a.arg for a in fn.args.args + fn.args.kwonlyargs}
+    assert {"deadline_mono", "artifact_time_budget_s"} <= args
+
+    calls = [n for n in ast.walk(fn)
+             if isinstance(n, ast.Call) and getattr(n.func, "id", "") == "vet_candidate"]
+    assert calls, "the drain no longer calls vet_candidate — this test is pinning nothing"
+    kw = {k.arg for k in calls[0].keywords}
+    assert {"artifact_time_budget_s", "vet_deadline_mono"} <= kw, (
+        "the drain's vet is unbounded again; its content phase was 51-56% of a row's cost")
+
+    # And the wall must be READ, not merely accepted as a parameter.
+    src = ast.dump(fn)
+    assert "deadline_mono" in src and "monotonic" in src

@@ -51,7 +51,7 @@ def test_the_tick_drains_the_backlog_before_it_generates(monkeypatch):
     """The regression is 'nothing ever calls resume'. This fails if the call is removed."""
     calls: list[tuple[str, object]] = []
 
-    def fake_resume(cfg, *, limit=None, publish=False):
+    def fake_resume(cfg, *, limit=None, publish=False, **_budgets):
         calls.append(("resume", limit))
         return {"backlog": 113, "attempted": limit, "resumed": limit,
                 "passes": 0, "kills": limit, "defers": 0}
@@ -77,7 +77,7 @@ def test_the_tick_drains_the_backlog_before_it_generates(monkeypatch):
 
 
 def test_a_drain_failure_does_not_cost_the_tick_its_generation(monkeypatch):
-    def boom(cfg, *, limit=None, publish=False):
+    def boom(cfg, *, limit=None, publish=False, **_budgets):
         raise RuntimeError("moat still down")
 
     generated: list[int] = []
@@ -195,7 +195,8 @@ def test_the_drain_outcome_lands_on_the_stream_that_is_the_daemon_log(monkeypatc
     instead relocates the invisibility rather than fixing it.
     """
     monkeypatch.setattr("prospector.run.resume_deferred",
-                        lambda cfg, *, limit=None, publish=False: {"backlog": 411, "resumed": 3})
+                        lambda cfg, *, limit=None, publish=False, **_b: {"backlog": 411,
+                                                                        "resumed": 3})
     monkeypatch.setattr("prospector.run.run_signal", lambda _t, **k: [])
     monkeypatch.setattr("prospector.run._resolve_lanes", lambda *a, **k: None)
 
@@ -206,7 +207,7 @@ def test_the_drain_outcome_lands_on_the_stream_that_is_the_daemon_log(monkeypatc
         "stdout is launchd.out.log, a file no probe and no operator reads"
     )
 
-    def boom(cfg, *, limit=None, publish=False):
+    def boom(cfg, *, limit=None, publish=False, **_budgets):
         raise RuntimeError("moat still down")
 
     monkeypatch.setattr("prospector.run.resume_deferred", boom)
@@ -320,7 +321,8 @@ def test_the_drain_reports_its_cost_against_the_real_ledger(tmp_path, monkeypatc
 
     seen: dict = {}
 
-    def fake_cmd_resume(args, cfg, op, fast_op, search, store, log_path=None):
+    def fake_cmd_resume(args, cfg, op, fast_op, search, store, log_path=None,
+                        **_budgets):
         seen["log_path"] = log_path
         return {"backlog": 0, "attempted": 0, "resumed": 0,
                 "passes": 0, "kills": 0, "defers": 0}

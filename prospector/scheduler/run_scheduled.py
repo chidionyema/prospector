@@ -700,6 +700,36 @@ def _moat_blind_reason(cfg) -> str:
     return moat_blind_reason(cfg, trusted_only=False)
 
 
+#: Share of the tick's hard deadline the backlog drain may spend. 0 disables the wall.
+#:
+#: MEASURED, not chosen by feel. The drain runs FIRST in a tick, inside the hard-deadline
+#: Timer, and until 2026-08-15 it had no budget of any kind. On the daemon's own log:
+#:   tick 2026-08-15T10:16:59Z — 3 rows took 4197s of a 10800s tick (39%) before generation;
+#:   tick 2026-08-15T13:23:07Z — row 1 alone took 4127s, row 2 was still running at +5885s (55%).
+#: So the tick's largest single consumer was the one phase nothing bounded, and the vetting
+#: rails downstream were being handed a tick that had already been spent.
+#:
+#: 0.15 x 10800s = 1620s, against a measured 122s for a KILL that gates out early and ~2800-4100s
+#: for a row that passes and generates artifacts. The wall therefore binds on exactly the rows it
+#: should: it will not interrupt a cheap re-vet, and it stops the drain from spending a whole
+#: tick on one expensive one. Stopping is lossless — an unreached row keeps its state and its
+#: place in the backlog — which is why a hard wall is the right instrument here and a parked
+#: DEFER row is the right one in the vetting batch.
+_DRAIN_BUDGET_FRAC = 0.15
+
+
+def _drain_budget_frac(cfg) -> float:
+    """`schedule.drain_budget_frac`, bounded to [0, 1]. Junk or missing -> the default."""
+    raw = _sched(cfg, "drain_budget_frac", _DRAIN_BUDGET_FRAC)
+    try:
+        val = float(raw)
+    except (TypeError, ValueError):
+        return _DRAIN_BUDGET_FRAC
+    # Negative can never become a deadline already in the past at t=0, which would skip every
+    # row and report a drain that ran; >1 can never promise more than the tick has.
+    return min(1.0, max(0.0, val))
+
+
 def _drain_pass(cfg, n_resume: int) -> dict | None:
     """Re-vet up to `n_resume` backlogged candidates. Never raises. None if the drain is off.
 
@@ -713,8 +743,25 @@ def _drain_pass(cfg, n_resume: int) -> dict | None:
     if not n_resume:
         return None
     from prospector.run import resume_deferred
+    d_frac = _drain_budget_frac(cfg)
+    drain_budget = (d_frac * _TICK_HARD_DEADLINE_S) if d_frac > 0 else None
+    # The per-row artifact ceiling, from the SAME key the vetting batch uses, applied to the
+    # drain's own budget rather than the tick's: a drained row's content phase measured 51-56%
+    # of its total cost, so bounding the pass without bounding the phase inside it would just
+    # move the overrun one level down.
+    a_frac = _artifact_budget_frac(cfg)
+    drain_art_budget = (a_frac * drain_budget) if (a_frac > 0 and drain_budget) else None
+    logger.critical(
+        "Drain budget: %s for %d row(s), artifacts/row %s (tick hard deadline %ds)",
+        f"{drain_budget:.0f}s" if drain_budget else "unbounded", n_resume,
+        f"{drain_art_budget:.0f}s" if drain_art_budget else "unbounded",
+        _TICK_HARD_DEADLINE_S,
+        extra={"drain_budget_s": drain_budget, "drain_artifact_budget_s": drain_art_budget,
+               "n_resume": n_resume, "tick_deadline_s": _TICK_HARD_DEADLINE_S})
     try:
-        resumed = resume_deferred(cfg, limit=n_resume, publish=True)
+        resumed = resume_deferred(cfg, limit=n_resume, publish=True,
+                                  budget_s=drain_budget,
+                                  artifact_time_budget_s=drain_art_budget)
         logger.info("Tick resume pass: %s", resumed)
         # STDERR, not stdout. Under launchd the two streams land in DIFFERENT files
         # (`StandardOutPath`=launchd.out.log, `StandardErrorPath`=launchd.err.log) and

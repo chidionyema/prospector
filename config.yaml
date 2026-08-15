@@ -2042,8 +2042,25 @@ dedup_token_threshold: 0.34
 # follows run_signal in the same tick and has no budget of its own. Deliberately BELOW the
 # force-exit timer, not equal to it: a rail firing at the same instant as the thing it
 # pre-empts is a coin toss. 0 disables it and the force-exit becomes the only stop again.
+#
+# `drain_budget_frac: 0.15` — the share of the tick deadline the BACKLOG DRAIN may spend.
+# Added 2026-08-15, and it is the largest of the four by measured effect, because the drain
+# runs FIRST and was the only phase with no ceiling at all. From the daemon's own log:
+#   tick 10:16:59Z — 3 rows took 4197s of a 10800s tick (39%) before generation started;
+#   tick 13:23:07Z — row 1 alone took 4127s and row 2 was still running at +5885s (55%).
+# Every rail downstream was therefore being handed a tick that had already been spent, which
+# is why the three above could be individually correct and the tick still force-exit.
+# Per row the dominant cost is not the verdict but the CONTENT phase on a row that passes:
+# 1461s of row 1's 2844s (51%) on the first tick, 2331s of 4127s (56%) on the second — so the
+# pass gets this wall AND each row gets `artifact_budget_frac` of it, or bounding the pass
+# would just push the overrun one level down.
+# 0.15 x 10800s = 1620s, against a measured 122s for a KILL that gates out early. The wall
+# binds on the expensive rows and never interrupts a cheap one. Stopping is LOSSLESS: an
+# unreached row keeps its state and its place in the priority sort and is picked up next
+# tick, so unlike the vetting batch there is nothing to park and nothing paid for to lose.
+# 0 disables the wall and the drain becomes unbounded again.
 schedule: { cadence: daily, batch_size: 50, backlog_cap: 0, max_resume_attempts: 5,
-            artifact_budget_frac: 0.40, vet_budget_frac: 0.85,
+            artifact_budget_frac: 0.40, vet_budget_frac: 0.85, drain_budget_frac: 0.15,
             # revet_provisional_kills: false -> true, 2026-08-15. The 176 provisional KILLs the
             # drain refused every cycle ("No backlogged candidate the drain can work on") were
             # ruled under a confidence metric that scored citation VOLUME, not evidence

@@ -2071,7 +2071,9 @@ def _with_exclusions(summary: dict, survey: DrainSurvey) -> dict:
 
 def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
                 fast_op: Operator, search: SearchProvider, store: Store,
-                log_path: Optional[Path] = None) -> dict:
+                log_path: Optional[Path] = None,
+                deadline_mono: Optional[float] = None,
+                artifact_time_budget_s: Optional[float] = None) -> dict:
     """Re-vet all moat-deferred candidates.
 
     Called when `vet --resume` is used or when the moat comes back online after an outage.
@@ -2226,13 +2228,42 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     print(f"Found {backlog} deferred + provisional candidate(s); re-vetting "
           f"{len(pending)} of them with the moat ({mix}; highest-value population "
           f"first)...{excluded}")
+    import time as _time
+
     from . import progress
     from .models import Candidate
     from .telemetry import get_usage_summary
 
     n_pass = n_kill = n_defer = 0
+    n_unreached = 0
     resumed_dossiers = []
-    for row in pending:
+    for _idx, row in enumerate(pending):
+        # THE DRAIN'S OWN WALL. Measured 2026-08-15 on the daemon's own log, and it is the
+        # reason this exists: the drain ran BEFORE generation, inside the tick's hard-deadline
+        # Timer, with no budget of any kind — and it ate the tick.
+        #   tick 10:16:59Z — 3 rows took 4197s of a 10800s tick (39%) before generation began;
+        #   tick 13:23:07Z — row 1 alone took 4127s and row 2 was still running at +5885s (55%).
+        # Per-row it is not the verdict that dominates but the CONTENT phase on a row that
+        # passes: 1461s of row 1's 2844s (51%) on the first tick, 2331s of 4127s (56%) on the
+        # second. Hence both rails — this wall, and `artifact_time_budget_s` below.
+        #
+        # STOPPING HERE IS LOSSLESS, which is what makes a hard wall the right instrument. A
+        # row not reached keeps the exact state it had: it is already a DEFER or provisional
+        # row in the backlog, `drainable()` still counts it, and the next tick's drain picks it
+        # up from the same priority sort. Nothing was generated for it, nothing is discarded,
+        # and no attempt is recorded against its cap — unlike the vetting batch, where a
+        # cancelled candidate had already been paid for and must be parked deliberately.
+        # Counted off the loop INDEX, not off `len(resumed_dossiers)`: a row whose dossier JSON
+        # is missing `continue`s below without producing a result, so the two differ, and the
+        # difference would be silently attributed to the budget — a rail blamed for a store
+        # inconsistency it had nothing to do with.
+        if deadline_mono is not None and _time.monotonic() >= deadline_mono:
+            n_unreached = len(pending) - _idx
+            progress.note(
+                f"Drain budget spent: stopping after {len(resumed_dossiers)} of {len(pending)} "
+                f"row(s). The {n_unreached} not reached keep their state and their place in the "
+                f"backlog — nothing is discarded — and the tick gets its generation batch back.")
+            break
         cid = row.get("candidate_id", "")
         # Load the full dossier JSON to reconstruct the candidate fields.
         full = store.get(cid)
@@ -2255,7 +2286,15 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
                               query_op=fast_op,
                               publish=getattr(args, "publish", False),
                               show_checks=True,
-                              board_personas=_resolve_board(args))
+                              board_personas=_resolve_board(args),
+                              # THE TWO BUDGETS THE DRAIN NEVER RECEIVED. `run_signal` has
+                              # passed both into every vet since 2026-08-15; this call site was
+                              # missed, so the one path that runs FIRST in a tick was the one
+                              # path with no ceiling on its most expensive phase. `vet_candidate`
+                              # clamps the artifact ceiling to `vet_deadline_mono` internally,
+                              # so a single long row can never outlive the drain's own wall.
+                              artifact_time_budget_s=artifact_time_budget_s,
+                              vet_deadline_mono=deadline_mono)
         except ProviderExhaustedError as e:
             # Moat still exhausted — stop here. Remaining candidates keep their prior
             # state (deferred, or provisional verdict); re-run --resume when moat recovers.
@@ -2318,6 +2357,12 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
                # `today_subscription_usd` (scheduler/guard.py:161). Two legs, two names —
                # guard.py:21-45 has the full measurement of why they must never be added up.
                "metered_usd": round(usage.get("total_cost_usd", 0.0), 4)}
+    if n_unreached:
+        # NAMED in the tick row. A drain that stops on its budget otherwise reads exactly like
+        # a drain that had less work than it was given — `attempted: 3, resumed: 1` with no
+        # third number is the "counters lie" shape, and it would hide the one fact an operator
+        # needs to size `drain_budget_frac`: that the wall is binding.
+        summary["unreached_budget"] = n_unreached
     # Excluded counts surfaced into the tick row, so a store inconsistency or an exhausted attempt
     # budget is visible in ticks.jsonl and the state probe instead of showing up as an
     # inexplicable `attempted: 3, resumed: 0` — or, once the brake is engaged, as a generation
@@ -2326,7 +2371,9 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
 
 
 def resume_deferred(cfg: Config, *, limit: int | None = None,
-                    publish: bool = False) -> dict:
+                    publish: bool = False,
+                    budget_s: float | None = None,
+                    artifact_time_budget_s: float | None = None) -> dict:
     """Run one bounded re-vet pass over the DEFER + provisional backlog, in-process.
 
     THE GAP THIS CLOSES. `vet --resume` has always existed and always worked, but nothing
@@ -2353,8 +2400,16 @@ def resume_deferred(cfg: Config, *, limit: int | None = None,
     # cfg.store_dir). Omitting it made the daemon's drain the one caller with no log path, so
     # its last line printed "No audit log at ." — the pass spends real money re-vetting and
     # the operator got no cost line for it, on the only run nobody is watching.
+    # `budget_s` is a DURATION and becomes an absolute instant here, at the last moment before
+    # the pass starts — the house pattern for a phase bound (see `_gen_deadline`/`_vet_deadline`
+    # in `run_signal`). Taking the instant here rather than in the caller keeps the operator
+    # construction above (which makes network calls) out of the drain's own budget.
+    import time as _time
+    deadline = (_time.monotonic() + budget_s) if budget_s else None
     return _cmd_resume(args, cfg, op, fast_op, search, store,
-                       log_path=cfg.store_dir / "prospector.jsonl")
+                       log_path=cfg.store_dir / "prospector.jsonl",
+                       deadline_mono=deadline,
+                       artifact_time_budget_s=artifact_time_budget_s)
 
 
 def run_decay_sweep(cfg: Config, *, limit: int | None = None) -> dict:
