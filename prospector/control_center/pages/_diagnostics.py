@@ -1,6 +1,7 @@
 """Diagnostics — calibration alarms, golden set, operator health."""
 from __future__ import annotations
 
+import logging
 import subprocess
 import time
 from pathlib import Path
@@ -11,19 +12,27 @@ from prospector.control_center import readers
 from prospector.control_center.components.chrome import go_page, page_hero
 from prospector.control_center.components.gate_badge import st_severity_badge
 
+logger = logging.getLogger(__name__)
+
 
 def render():
     cfg = readers.load_config_typed()
     if cfg is None:
         page_hero("Diagnostics", "Config unloadable", tone="fail")
-        st.error("Could not load engine config.")
+        st.error(f"Could not load engine config. {readers.config_load_error()}")
         return
 
     latest_g = readers.latest_golden()
     health = readers.load_provider_health()
+    health_error = readers.provider_health_error()
     moat = readers.moat_down(health)
     disc = latest_g.get("discrimination_score") if latest_g else None
-    if moat:
+    if health_error:
+        # `moat_down({})` is False, so an unreadable health file would otherwise headline
+        # the page as if the moat were up.
+        glance = "Operator health unreadable · moat state unknown"
+        tone = "fail"
+    elif moat:
         glance = "Moat down · check operator health"
         tone = "fail"
     elif disc is not None:
@@ -47,6 +56,14 @@ def render():
         load_alarms = st.button("Load calibration alarms", use_container_width=True)
 
     st.markdown("**Operator health**")
+    # An empty health dict is rendered as "healthy" by _render_operator_health (no breaker
+    # row = never tripped). That is right when the file is absent and a lie when it is
+    # corrupt, and the two are the same `{}` — so the reason has to be shown, not inferred.
+    if health_error:
+        st.error(
+            f"store/provider_health.json could not be read ({health_error}). "
+            "Operator states below are unknown, NOT healthy."
+        )
     _render_operator_health(health)
 
     if load_alarms or st.session_state.get("_diag_alarms_loaded"):
@@ -129,6 +146,9 @@ def _render_alarms(cfg):
         alarms = data.get("alarms", [])
         st.session_state["_diag_data"] = data
     except Exception as e:
+        # Broad because this runs arbitrary engine code. The operator already sees the
+        # message; the traceback has to reach the log or the cause is gone with the rerun.
+        logger.exception("control_center: calibration alarms failed")
         st.error(f"Diagnostics failed: {e}")
         return
 

@@ -15,7 +15,7 @@ import { cx } from './cx';
  * the whole site was wearing. Black on safety orange is hazard livery; it reads as a warning, not
  * as an invitation to pay. #171717 on white is 17.93:1.
  */
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'buy';
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: cx(
@@ -34,6 +34,18 @@ const VARIANTS: Record<ButtonVariant, string> = {
   ghost: cx(
     'bg-transparent text-muted',
     'hover:bg-surface2 hover:text-text',
+    'disabled:opacity-40 disabled:cursor-not-allowed',
+  ),
+  /*
+   * The ONE button that takes money, and the only control allowed to wear --azure (tokens.css
+   * records why that exception exists). It is a separate VARIANT rather than a className override
+   * on `primary` because both would emit `bg-*` and which one wins is decided by the order Tailwind
+   * happens to write the two rules, not by the order they appear in the class attribute -- a
+   * coin-flip on the buy button's fill at every build. White on #0B3D91 is 10.04:1.
+   */
+  buy: cx(
+    'bg-azure text-on-azure',
+    'hover:bg-azure-hover',
     'disabled:opacity-40 disabled:cursor-not-allowed',
   ),
   // White on #DC2626 is 4.83:1, which clears AA for this label (14px/500).

@@ -210,6 +210,39 @@ def _sample_excerpts(build_spec: str, proof_point: str, max_items: int = 3) -> L
     return out[:max_items]
 
 
+#: The one key the storefront's card ladder can actually lead with. `Store.Web
+#: src/lib/packStat.ts` ranks month-1 revenue against the pack's own price to print a
+#: price-back multiple, and falls through to the cited source count when it cannot. `ltvCac`
+#: and `paybackMonths` are deliberately NOT in this set: the founder deleted both from the
+#: product page on 2026-08-13 as engine language, so their presence does not save a card.
+_SNAPSHOT_LEAD_KEY = "month1Revenue"
+
+
+def _snapshot_gap(snapshot: Optional[Dict[str, str]]) -> Optional[str]:
+    """Why this pack's card cannot lead with a number, or None if it can.
+
+    Extracted as a pure function so the condition is testable without standing up a publish.
+
+    THE FAILURE THIS EXISTS TO CATCH. `_financial_snapshot` is REGEX extraction over rendered
+    prose and returns `{}` on anything it does not recognise — by design, since inventing a
+    figure is worse. But the publish path then drops empty values from the payload before it is
+    sent, so an unparsed model left no trace anywhere: the pack listed, the API stored nothing,
+    the card silently fell back to its source count, and no test went red. Measured against
+    production on 2026-08-14, 4 of 59 live packs carried no snapshot at all and 18 more carried
+    one with no `month1Revenue` — 22 of 59 cards leading with the same class of fact, none of it
+    reported at publish time.
+
+    It returns a REASON rather than a bool because the two gaps have different fixes: nothing
+    parsed at all points at the financial model's shape, a partial parse points at the money
+    regex. A caller that only needs a yes/no can still test truthiness.
+    """
+    if not snapshot:
+        return "no financial snapshot parsed from the model at all"
+    if not snapshot.get(_SNAPSHOT_LEAD_KEY):
+        return (f"snapshot parsed {sorted(snapshot)} but no {_SNAPSHOT_LEAD_KEY}")
+    return None
+
+
 def _financial_snapshot(fin_text: str) -> Dict[str, str]:
     """Pull the Python-computed headline economics (Month 1 revenue, LTV:CAC, payback) from
     the rendered financial model. These are arithmetically exact, so they are safe to surface
@@ -478,13 +511,25 @@ def _held_back_md(artifact_label: str) -> str:
     )
 
 
+def _source_count(dossier: Dossier) -> int:
+    """The one definition of "how many sources this pack cites".
+
+    Two things read it and they must never disagree: the ``sourceCount`` the buyer sees on
+    the row, and — since 2026-08-15 — the rung that number prices the pack at
+    (``pricing.price_for``). A price justified by a count the page does not show is exactly
+    the un-intuitable pricing the depth ladder exists to end, so both callers come through
+    here rather than each writing ``len(dossier.all_sources)`` and drifting later.
+    """
+    return len(dossier.all_sources)
+
+
 def _trust_fields(dossier: Dossier) -> Dict[str, Any]:
     """Trust signals from the moat-verified dossier: how many checks cleared and how many
     distinct sources were cited. This is real, not a marketing number."""
     checks = dossier.checks or []
     total = len(checks)
     cleared = sum(1 for c in checks if c.verdict.value in ("supported", "unverifiable"))
-    sources = len(dossier.all_sources)
+    sources = _source_count(dossier)
     out: Dict[str, Any] = {"sourceCount": sources}
     if total:
         out["qaVerdictSummary"] = f"{cleared}/{total} checks cleared · {sources} sources cited"
@@ -947,6 +992,28 @@ class EngineBridge:
                 extra={"candidate_id": candidate_id, "absent_facets": absent},
             )
         catalog_meta.update(_trust_fields(dossier))
+        # A pack whose card cannot lead with a number is publishable — the same rule as the
+        # sector warning above, and for a stronger reason: the figure is extracted by regex from
+        # rendered prose, so its absence is a fact about the TEXT, never about the idea. Killing
+        # a validated, sellable pack over a failed match would be the engine punishing a buyer
+        # for its own parser.
+        #
+        # But silence here is what let it spread. The comprehension on the next line drops empty
+        # values, so an unparsed snapshot vanished from the payload with nothing said, and the
+        # storefront's fallback made the result look intentional: the card printed its source
+        # count and read as a design choice rather than a miss. This makes the omission visible
+        # in the run log on the day it happens, which is the only window in which the financial
+        # model that produced it is still the current one.
+        _gap = _snapshot_gap(catalog_meta.get("financialSnapshot"))
+        if _gap:
+            logger.warning(
+                f"EngineBridge: {candidate_id} ({candidate.title}) is being registered with no "
+                f"lead figure — {_gap}. Its card will fall back to the cited source count, the "
+                f"same fact every other card shows. This does NOT block the listing. Fix the "
+                f"financial model's shape or the money pattern in _financial_snapshot "
+                f"(bridge.py), never by typing a number in here.",
+                extra={"candidate_id": candidate_id, "snapshot_gap": _gap},
+            )
         # Drop empties so the payload (and the Store API) only ever see populated fields.
         catalog_meta = {k: v for k, v in catalog_meta.items() if v not in ("", [], {}, None)}
 
@@ -1179,6 +1246,12 @@ class EngineBridge:
             getattr(dossier, "score", None) or ScoreResult(scores={}, justification={}),
             self.cfg,
             anchors=anchors_from_tags(candidate),
+            # The SAME integer the row publishes as `sourceCount` (via `_trust_fields`,
+            # which reads this helper too). Passing it here is what makes the price
+            # derivable from the page: a buyer comparing two rows sees the number that
+            # chose the rung. Where config declares no bands this is inert and the tier
+            # ladder decides, exactly as before.
+            source_count=_source_count(dossier),
         )
         logger.info(
             f"EngineBridge: {candidate_id} priced at {price.price_pence}p — {price.rationale}",

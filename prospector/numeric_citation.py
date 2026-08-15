@@ -705,7 +705,13 @@ def record_shadow(
         append_jsonl(resolve_log_path(cfg, s), row)
         return row
     except Exception as e:
-        logger.warning(f"numeric citation shadow record failed: {e}")
+        # Stays broad: §25.6 forbids an observability feature failing a moat check, and the
+        # caller (`verify.run_check`) discards the return, so nothing here can be raised. What
+        # changes is the trace: `None` is also the disabled-feature answer, and a shadow log
+        # that quietly stops appending would make the §25.5 untraceable-rate read as clean on
+        # a sample that was never written. ERROR + traceback.
+        logger.exception(f"numeric citation shadow record FAILED, no row appended: {e}",
+                         extra={"error": str(e)})
         return None
 
 

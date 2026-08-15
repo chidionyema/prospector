@@ -11,6 +11,7 @@ case E6) and a formal config schema (G4).
 from __future__ import annotations
 
 import hashlib
+import logging
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,6 +20,8 @@ from typing import Any
 import yaml
 
 from prospector import paths
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -67,15 +70,28 @@ def _config_history() -> Path:
 # Config loader (always reads from disk)
 # ---------------------------------------------------------------------------
 
-def load_config_raw() -> dict[str, Any]:
-    """Load config.yaml as a raw dict (never cached)."""
+def _read_config_raw() -> tuple[dict[str, Any], bool]:
+    """(cfg, ok). ``ok=False`` means config.yaml is on disk and could not be parsed.
+
+    The editor stages whatever this returns and offers to SAVE it back
+    (pages/_parameters.py:28 → :365), so a swallowed parse error stages an empty config and
+    the next Save writes `{}` over the engine's entire configuration. `write_config` refuses
+    that; this is the half that lets it tell.
+    """
     if not _config_path().exists():
-        return {}
+        return {}, True
     try:
         with open(_config_path(), encoding="utf-8") as f:
-            return yaml.safe_load(f) or {}
-    except (yaml.YAMLError, OSError):
-        return {}
+            return (yaml.safe_load(f) or {}), True
+    except (yaml.YAMLError, OSError) as exc:
+        logger.error("control_center: %s unparseable (%s: %s)",
+                     _config_path(), type(exc).__name__, exc)
+        return {}, False
+
+
+def load_config_raw() -> dict[str, Any]:
+    """Load config.yaml as a raw dict (never cached). ``{}`` may mean unreadable."""
+    return _read_config_raw()[0]
 
 
 def config_hash(cfg: dict[str, Any]) -> str:
@@ -280,6 +296,19 @@ def write_config(new_cfg: dict[str, Any], moat_affecting: bool,
                        "Your staged changes were based on an older version. "
                        "Reload and re-apply your changes.")
 
+    # ── Never write a config that came from a failed read ───────────────────
+    # `load_config_raw` degrades to `{}` (it must — a Streamlit page that raises is a dead
+    # page), and the editor stages that `{}` as if the operator had emptied the file. Two
+    # fences, because either one alone leaves the wipe reachable: nothing empty is writable,
+    # and nothing is written on top of a config we could not read in the first place.
+    if not isinstance(new_cfg, dict) or not new_cfg:
+        return False, ("Refusing to write an empty config.yaml — this is what a failed "
+                       "read looks like, not a configuration.")
+    _, readable = _read_config_raw()
+    if not readable:
+        return False, ("config.yaml on disk cannot be parsed, so the staged config was not "
+                       "built from it. Fix or restore the file before saving.")
+
     # ── Backup ─────────────────────────────────────────────────────────────
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
     _backup_dir().mkdir(parents=True, exist_ok=True)
@@ -303,6 +332,7 @@ def write_config(new_cfg: dict[str, Any], moat_affecting: bool,
     from prospector.control_center import readers as _r
     _r.load_config_dict.clear()
     _r.load_config_typed.clear()
+    _r.config_load_error.clear()
 
     entry = {
         "ts": datetime.now(timezone.utc).isoformat(),
@@ -420,4 +450,5 @@ def restore_backup(filename: str) -> tuple[bool, str]:
     from prospector.control_center import readers as _r
     _r.load_config_dict.clear()
     _r.load_config_typed.clear()
+    _r.config_load_error.clear()
     return True, f"Restored from {filename} (safety backup: {safety_bak.name})"

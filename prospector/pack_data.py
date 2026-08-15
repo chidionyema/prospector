@@ -654,8 +654,12 @@ def financial_xlsx(model: Mapping[str, Any], out_path: str,
         wb.save(out_path)
         return out_path
     except Exception as exc:  # never break the bundle over a spreadsheet
-        logger.warning("pack_data: xlsx generation failed",
-                       extra={"error": str(exc), "path": out_path})
+        # Broad on purpose (this runs on the publish path), but NOT at the same volume as the
+        # expected `openpyxl not importable` above: both return None, so the log level is the
+        # only thing that separates "this install has no xlsx support" from "the sheet
+        # builder threw". ERROR + traceback.
+        logger.exception("pack_data: xlsx generation FAILED",
+                         extra={"error": str(exc), "path": out_path})
         return None
 
 
@@ -744,8 +748,12 @@ def render_pdf(html: str, out_path: str, *,
                 return None
         return out_path
     except Exception as exc:
-        logger.warning("pack_data: pdf generation failed",
-                       extra={"error": str(exc), "path": out_path})
+        # Broad on purpose — "an exception escaping would turn 'no PDF' into 'no pack'" — but
+        # every EXPECTED no-PDF path above (no HTML, no Chrome, Chrome wrote nothing) logs at
+        # WARNING and returns the same None. ERROR + traceback is what distinguishes a
+        # rendering environment that is absent from one that is broken.
+        logger.exception("pack_data: pdf generation FAILED",
+                         extra={"error": str(exc), "path": out_path})
         return None
     finally:
         if tmp_dir:
@@ -761,21 +769,32 @@ def render_pdf(html: str, out_path: str, *,
 # ---------------------------------------------------------------------------
 
 def _anchors_for(candidate: Any) -> List[Any]:
-    """Rehydrate the price anchors verify() stashed on the candidate's tags."""
+    """Rehydrate the price anchors verify() stashed on the candidate's tags.
+
+    "No price anchor on the open web" is a real, publishable finding (`price_comparables` can
+    never kill for exactly that reason), and it is the SAME `[]` a crash in `anchors_from_tags`
+    used to return — so a broken read shipped the buyer a comparables file asserting that no
+    one was found. Only the optional import is answered with an empty list now; anything else
+    propagates to `artifacts.py:675`, which drops the data artifacts and logs, rather than
+    minting a confident negative.
+    """
     try:
         from .price_comparables import anchors_from_tags
-        return list(anchors_from_tags(candidate))
-    except Exception as exc:  # pragma: no cover - defensive
-        logger.warning("pack_data: could not read price comparables",
-                       extra={"error": str(exc)})
+    except ImportError as exc:
+        logger.error("pack_data: price_comparables unavailable, no anchors read",
+                     extra={"error": str(exc)})
         return []
+    return list(anchors_from_tags(candidate))
 
 
 def _sources_for(dossier: Any) -> List[Any]:
-    try:
-        return list(getattr(dossier, "all_sources", None) or [])
-    except Exception:  # pragma: no cover - defensive
-        return []
+    """The dossier's sources, or `[]` when it carries none.
+
+    `all_sources` is a property on some dossier shapes, so it can raise — and `[]` is also
+    what a sourceless dossier looks like. Unlike the true-empty case, a raise means the
+    citations the comparables file quotes were never read, so it is not answered here.
+    """
+    return list(getattr(dossier, "all_sources", None) or [])
 
 
 def build_text_artifacts(dossier: Any, cfg: Any = None, *,

@@ -100,11 +100,16 @@ def bridge(cfg: Config, monkeypatch):
     return b
 
 
-def _publish_and_capture(b: EngineBridge, dossier) -> tuple[int, int]:
-    """Publish once; return (minted_price_pence, catalogue_price_pence).
+def _publish_and_capture(b: EngineBridge, dossier) -> tuple[int, int, int]:
+    """Publish once; return (minted_price_pence, catalogue_price_pence, catalogue_sourceCount).
 
     The provisioner is stubbed rather than the whole publish path, so the number captured
     is the one the real code hands to the real `create_price` argument.
+
+    `sourceCount` joined the tuple with the L2 depth ladder (2026-08-15): it is now an input
+    to the price, so it is no longer just a trust badge — it is the number a buyer would
+    have to reproduce the price from, and the drift it can suffer is the same class of bug
+    as a minted/catalogued mismatch.
     """
     prov = MagicMock()
     prov.create_product.return_value = "prod_test"
@@ -125,31 +130,57 @@ def _publish_and_capture(b: EngineBridge, dossier) -> tuple[int, int]:
         assert catalogue is not None, "no catalogue registration POST was made"
 
     minted = prov.create_price.call_args.kwargs["amount_pence"]
-    return int(minted), int(catalogue["pricePence"])
+    return int(minted), int(catalogue["pricePence"]), int(catalogue["sourceCount"])
 
 
 def test_the_minted_price_and_the_catalogue_row_are_the_same_number(bridge, cfg):
     """The drift guard. If these two ever disagree, the pack charges and refuses delivery."""
-    minted, catalogued = _publish_and_capture(bridge, _dossier("c2-drift", "venture", "us"))
+    minted, catalogued, _ = _publish_and_capture(
+        bridge, _dossier("c2-drift", "venture", "us"))
     assert minted == catalogued
 
 
-def test_an_unclassified_pack_still_publishes_at_the_flat_catalogue_price(bridge, cfg):
-    """C2 is a NO-OP on today's catalogue. Every live pack carries `ambition_tier=""`, so
-    repointing the money rail onto the ladder must change nothing until lanes start tagging
-    candidates. A repoint that silently re-priced 61 live packs on merge is the incident
-    this asserts against."""
-    minted, catalogued = _publish_and_capture(bridge, _dossier("c2-flat"))
-    assert minted == catalogued == 4999
+def test_the_published_price_is_derivable_from_the_published_source_count(bridge, cfg):
+    """L2's load-bearing property, and the reason `bridge._source_count` exists.
+
+    A buyer can only intuit the price if the number that CHOSE the rung is the number
+    printed on the row. Two `len(dossier.all_sources)` call sites would satisfy that by
+    coincidence today and diverge the first time one of them learned to dedupe; this
+    re-derives the price from the published count and demands the same answer."""
+    minted, catalogued, sources = _publish_and_capture(
+        bridge, _dossier("c2-depth", "venture", "us"))
+    expected = price_for(Candidate(title="x", ambition_tier="venture", market="us"),
+                         None, cfg, source_count=sources).price_pence
+    assert minted == catalogued == expected, (
+        f"row publishes {sources} sources at {catalogued}p, but {sources} sources price "
+        f"at {expected}p")
 
 
-def test_a_classified_pack_publishes_at_its_ladder_rung_not_the_constant(bridge, cfg):
-    """...and the constant really is gone: a tiered pack must NOT come out at 4900."""
-    dossier = _dossier("c2-ladder", "venture", "us")
-    expected = price_for(dossier.candidate, dossier.score, cfg).price_pence
-    minted, catalogued = _publish_and_capture(bridge, dossier)
-    assert minted == catalogued == expected
-    assert expected != 4999, "sanity: the ladder must actually move a venture/us pack"
+def test_an_unclassified_pack_publishes_at_its_depth_band(bridge, cfg):
+    """Superseded C2's flat-price assertion on 2026-08-15.
+
+    The old test pinned 4999 for `ambition_tier=""` and its reasoning was sound at the
+    time: the ladder must not silently re-price the live catalogue on merge. That property
+    is now held where it belongs — `_resolve_money_rail` keeps a pack that is already on
+    sale on the exact price it sells at — rather than by the unclassified rung, which is
+    unreachable whenever the caller knows the source count.
+
+    This fixture's dossier cites nothing (`MagicMock.__len__` is 0), so it lands in band 1.
+    Asserting the derived number rather than a literal is deliberate: the bands are config,
+    and a test that re-typed them would fail on every legitimate edit."""
+    minted, catalogued, sources = _publish_and_capture(bridge, _dossier("c2-flat"))
+    assert sources == 0
+    assert minted == catalogued == cfg.listing["pricing"]["rungs"][0]
+
+
+def test_tier_and_market_do_not_move_a_depth_priced_pack(bridge, cfg):
+    """The inversion this ladder exists to remove came from pricing on fields the buyer
+    cannot see. A `venture`/`us` pack and an unclassified `uk` pack citing the same number
+    of sources must publish at the same price."""
+    _, venture_us, n1 = _publish_and_capture(bridge, _dossier("c2-vus", "venture", "us"))
+    _, unclassified, n2 = _publish_and_capture(bridge, _dossier("c2-unc"))
+    assert n1 == n2, "fixtures must cite the same depth for this comparison to mean anything"
+    assert venture_us == unclassified
 
 
 def test_the_price_decision_is_recorded_on_the_candidate(bridge, cfg):
@@ -158,9 +189,12 @@ def test_the_price_decision_is_recorded_on_the_candidate(bridge, cfg):
     dossier = _dossier("c2-record", "growth", "uk")
     _publish_and_capture(bridge, dossier)
     rec = dossier.candidate.tags.get("price_decision")
-    assert rec and rec["price_pence"] == 7999
-    assert "growth" in rec["rationale"]
-    assert rec["segment"] == {"ambition_tier": "growth", "market": "uk"}
+    assert rec and rec["price_pence"] == cfg.listing["pricing"]["rungs"][0]
+    assert "0 distinct sources" in rec["rationale"], rec["rationale"]
+    # The segment still carries the tier and market for audit — recorded, never arithmetic —
+    # plus what actually decided the rung.
+    assert rec["segment"] == {"ambition_tier": "growth", "market": "uk",
+                              "priced_by": "source_count", "source_count": "0"}
 
 
 def test_publishing_writes_a_rationale_record_and_the_ref_resolves(bridge, cfg):
@@ -172,7 +206,7 @@ def test_publishing_writes_a_rationale_record_and_the_ref_resolves(bridge, cfg):
     The ref is resolved and parsed, not merely asserted non-empty: a ref that points at
     nothing reads exactly like provenance until someone follows it."""
     dossier = _dossier("c2-rationale", "growth", "uk")
-    minted, catalogued = _publish_and_capture(bridge, dossier)
+    minted, catalogued, _ = _publish_and_capture(bridge, dossier)
 
     ref = dossier.candidate.tags.get("price_rationale_ref")
     assert ref, "publish took a price decision and left no rationale record"

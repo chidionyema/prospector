@@ -224,6 +224,15 @@ def write_receipt(
             f"mean_overlap={report['mean_pairwise_overlap']:.2f}"
         )
         return record
-    except Exception as e:
-        logger.warning(f"diversity meter failed, skipping: {e}")
+    except Exception as e:  # noqa: BLE001 — see below; deliberately total
+        # The except stays TOTAL, per this function's own contract above: a meter must never
+        # break the generation path it is measuring. The defect was that it was also QUIET.
+        # None is what the gate-off path returns too, and the metrics file records absence
+        # the same way whether the meter was switched off, the batch was empty, or the meter
+        # has been dead since some refactor — so a broken meter reads in the data as "the
+        # experiment showed nothing", which is the measurement lying about itself. ERROR with
+        # a traceback names the bug without letting it reach generation.
+        logger.error(f"diversity meter failed, no row written for stage={stage} "
+                     f"(this stage will be ABSENT from generation_metrics.jsonl): {e}",
+                     exc_info=True)
         return None

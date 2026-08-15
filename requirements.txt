@@ -3,7 +3,13 @@ google-genai>=0.3
 pyyaml>=6.0
 pydantic>=2.6
 requests>=2.31
-tenacity>=8.2
+# Last-resort JSON repair for `operator._extract_json` Strategy 5. MIT, zero transitive
+# dependencies. Removed alongside it: `tenacity>=8.2`, which was declared here and imported by
+# NOTHING — `rg -c "tenacity" --glob '*.py' .` returned no match anywhere in the tree on
+# 2026-08-15. A declared dependency nothing imports is not free: it is installed, audited and
+# version-resolved on every provision, and it reads as a retry policy this engine does not have
+# (the real one is hand-rolled in errors.py/health.py, which no library was found to match).
+json_repair>=0.63
 pytest>=8.0
 # The linter, declared so a lint receipt is reproducible rather than a property of whichever
 # machine happens to have it. Rule set is pinned in ruff.toml; without it ruff's own defaults

@@ -36,13 +36,26 @@ from .models import (
     Verdict,
 )
 from .numeric_citation import record_shadow as record_numeric_shadow
-from .operator import Operator
+from .operator import Operator, ParseError
 from .pricing import price_for
 from .prompts import ALL_MARKET_KEYS, MOAT_MARKET_KEYS, market_kwargs, render
 from .retrieval import SearchProvider, market_retrieval
 from .telemetry import logger, track_latency
 from .telemetry import stage as telemetry_stage
 from .trimming import RATIONALE_MAX, clip_to_sentence
+
+# The rationale stamped on a check whose brain returned a verdict with no reason at all.
+# A SENTINEL, not prose: it is the only way a downstream reader can tell the two causes of
+# a DEFER apart, and they mean opposite things about whose fault it is —
+#   * provider exhausted / transport failed  = WE could not ask.  Nothing was measured
+#     about the brain, so nothing may be concluded about it.
+#   * verdict returned with an empty rationale = the brain ANSWERED, unusably.  That is a
+#     measurement, and a bad one.
+# The golden promotion gate reads this constant for exactly that split (golden.py).  Before
+# it existed, a brain that emitted empty rationales made every run it appeared in
+# "inconclusive", which protected it from its own defect and left the gate unable ever to
+# reach a verdict on it — measured 2026-08-15: minimax deferred 2 of 9 cases this way.
+NO_RATIONALE_RATIONALE = "Verdict returned without a rationale; fail-safe."
 
 
 def _served_provider(op: Operator) -> str:
@@ -96,10 +109,31 @@ def _calc_confidence(sources: list[Source], citations: list[str],
     DIVERSITY_WEIGHT = 0.40
     RELEVANCE_WEIGHT = 0.30
 
-    # --- 1. Citation fraction ---
+    # --- 1. Citation volume (saturating COUNT, not a fraction of what retrieval returned) ---
+    # Was `cited / total * CITED_WEIGHT` (2026-08-15). That measured the RETRIEVER's verbosity and
+    # the brain's willingness to pad, not the evidence: a check citing 1 of 10 retrieved sources
+    # scored 0.03 here while one citing 10 of 10 scored 0.30, though the first is often the better
+    # evidence. Measured over 1,629 production claude_cli checks, confidence tracked citation COUNT
+    # almost perfectly (1 cite p50 0.15 → 3 cites 0.56 → 6 cites 0.71), which is a fact about
+    # citation habits, not about grounding. It killed a golden PASS (`Construction Statutory
+    # Adjudication Arbitrage`, 2026-08-15 06:28) whose six checks were ALL `supported`: its two
+    # moat checks scored 0.238 and 0.23 against the 0.30 PASS floor purely for citing one source
+    # each, firing `moat_ungrounded` on a fully grounded candidate. Saturating at CITATION_TARGET
+    # keeps "cited nothing" at zero and stops paying for padding past the point it adds evidence.
+    # Two readings of "cited enough", and the check gets the BETTER of them:
+    #   fraction   — it cited everything retrieval actually found (1 of 1 is not thin evidence,
+    #                it is all there was; scoring it 0.10 was the regression this line replaced)
+    #   saturating — it cited CITATION_TARGET distinct sources in absolute terms, however much
+    #                noise the retriever returned alongside them
+    # Neither reading alone is right: fraction-only punished selectivity, saturating-only punished
+    # a check whose retrieval was thin. `max` never scores a check LOWER than the old formula did,
+    # so this cannot make a previously-grounded check ungrounded.
+    CITATION_TARGET = 3
     total = len(sources)
     cited = len(citations)
-    citation_score = (cited / total * CITED_WEIGHT) if total > 0 else 0.0
+    fraction = (cited / total) if total > 0 else 0.0
+    saturating = min(1.0, cited / CITATION_TARGET)
+    citation_score = max(fraction, saturating) * CITED_WEIGHT if cited else 0.0
 
     # --- 2. Source diversity (netloc of cited sources only) ---
     cited_netlocs: set[str] = set()
@@ -120,7 +154,18 @@ def _calc_confidence(sources: list[Source], citations: list[str],
     elif n_domains == 2:
         diversity_score = 0.25
     elif n_domains == 1:
-        diversity_score = 0.10
+        # 0.10 → 0.15 (2026-08-15). Going from ZERO admissible domains to ONE is the largest
+        # evidentiary step in the scale — the difference between an assertion and a cited fact —
+        # yet it earned a quarter of what 1→3 earned. That under-credit is why a check resting on
+        # one primary source (legislation, a regulator, an official statistic) could not clear the
+        # 0.30 PASS floor however relevant the passage was.
+        #
+        # DELIBERATELY 0.15 and not higher: with the saturating citation term above, one citation
+        # scores 0.10, so 0.10 + 0.15 = 0.25 must still be topped up by RELEVANCE to reach the 0.30
+        # floor. At 0.20 the sum hit 0.30 exactly and a single IRRELEVANT citation would have
+        # counted as grounded — relevance would stop mattering at precisely the margin that
+        # decides PASS. A lone source now has to be on-topic to ground a check.
+        diversity_score = 0.15
     else:
         diversity_score = 0.0
 
@@ -370,17 +415,33 @@ def gen_queries_batched(op: Operator, cand: Candidate,
     fast chain is down).
     """
     checks_block = "\n".join(f"- {c}: {CHECKS[c]}" for c in check_names if c in CHECKS)
+    # OUTSIDE the try, deliberately (2026-08-15). Rendering the prompt is our code, not the
+    # provider's: a renamed template, a missing `**_market_vars` key or a Candidate field
+    # change raises here, and under the old blanket `except Exception` that landed in the
+    # SAME `{}` a dead provider produces. The engine would then run every check on `_keywords`
+    # templates — the measured ~93%-unverifiable junk-query mode this function exists to
+    # replace — with one WARNING line and no other symptom. A broken prompt must be loud.
+    system, user = render("query_gen_batched",
+                          candidate_json=json.dumps(cand.to_dict()),
+                          checks_block=checks_block,
+                          **_market_vars(cfg))
     try:
-        system, user = render("query_gen_batched",
-                              candidate_json=json.dumps(cand.to_dict()),
-                              checks_block=checks_block,
-                              **_market_vars(cfg))
         # retries=0: total failure → {} → every check uses its template; hanging
         # Cursor/CLI retries here wedged candidates for 6+ minutes per batch.
         with telemetry_stage("query_gen"):
             data = op.complete_json(system, user, temperature=0.5, retries=0)
     except Exception as e:
-        logger.warning(f"Batched query gen failed (falling back to templates): {e}")
+        # Still broad, and still `{}`: the fast chain being down is a provider fact, and
+        # templates are the documented degraded mode (no hard-fail). ERROR, not warning —
+        # degrading EVERY query in the batch to a template is the difference between a
+        # grounded run and an all-unverifiable one, so it must be findable in the log.
+        logger.error(f"Batched query gen failed (ALL {len(check_names)} checks fall back to "
+                     f"templates, grounding quality degraded): {e}",
+                     extra={"checks": len(check_names), "error": str(e)})
+        # swallow-ok: templates are the DOCUMENTED degraded mode here and both callers treat a
+        # missing check identically to a failed batch, so there is no caller decision this
+        # could inform; the prompt-render bug class that DID need to be loud now raises above
+        # the try, and the provider-down case is logged at ERROR with the blast radius.
         return {}
     if not isinstance(data, dict):
         logger.warning("Batched query gen returned non-dict; falling back to templates")
@@ -450,6 +511,33 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
     try:
         with telemetry_stage("verdict"):
             data = op.complete_json(system, user, temperature=0.0)
+        # Cheap-tail models sometimes wrap the object in a one-element list or emit a bare
+        # list of claims. Coerce before .get — otherwise vetting crashes mid-batch
+        # ('list' object has no attribute 'get') and burns the rest of the run.
+        #
+        # This coercion runs INSIDE the try, and a shape with no dict in it RAISES, because
+        # of what the old version did instead. It sat below the except and read
+        # `data = next((x for x in data if isinstance(x, dict)), {}) if data else {}` — so a
+        # reply we could not read became an EMPTY DICT, which flowed on to produce
+        # `unverifiable, conf 0.0, rationale ""` with `degraded=False`. That is not a
+        # coercion, it is a fabricated finding: the check reads as evaluated-and-inconclusive
+        # when in truth it was never read at all.
+        #
+        # MEASURED 2026-08-15, the full chain, all three defects in one call: minimax
+        # returned a complete verdict whose rationale contained a literal newline;
+        # `_extract_json` parsed strict, failed, and its `[`-before-`{` scan returned the
+        # CITATIONS ARRAY `['a1b2c3d4e5f6a7b8']`; this line found no dict inside it and
+        # produced `{}`; the check came out empty; and the golden promotion gate then
+        # recorded that MINIMAX had answered without a reason — evidence against the brain,
+        # manufactured by three of our own layers in sequence. Raising here is the last of
+        # the three fixes: an unreadable reply is a FAILED CALL, and the handler below is
+        # what turns a failed call into a DEFER rather than into a finding.
+        if isinstance(data, list):
+            data = next((x for x in data if isinstance(x, dict)), None)
+        if not isinstance(data, dict):
+            raise ParseError(
+                f"verdict reply for {check_name} parsed to {type(data).__name__}, not an "
+                f"object: {str(data)[:200]!r}")
     except ProviderExhaustedError:
         # Every brain (incl. the cheap tail) is out of quota/credit — an outage, not a
         # weak idea. Let it propagate so run_check defers the candidate (re-vet) instead
@@ -472,13 +560,6 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
                            confidence=0.0, rationale="Verdict call failed; fail-safe.",
                            sources=sources, degraded=True, retrieval_failed=True,
                            provider=_served_provider(op))
-    # Cheap-tail models sometimes wrap the object in a one-element list or emit a bare
-    # list of claims. Coerce before .get — otherwise vetting crashes mid-batch
-    # ('list' object has no attribute 'get') and burns the rest of the run.
-    if isinstance(data, list):
-        data = next((x for x in data if isinstance(x, dict)), {}) if data else {}
-    if not isinstance(data, dict):
-        data = {}
     # Who ACTUALLY ruled, and was it the guardrailed cheap tail (-> provisional)?
     _provider_used = _served_provider(op)
     _provisional = _served_is_provisional(op)
@@ -578,7 +659,7 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
             extra={"check": check_name, "provider": _provider_used})
         return CheckResult(check_name=check_name, verdict=Verdict.UNVERIFIABLE,
                            confidence=0.0,
-                           rationale="Verdict returned without a rationale; fail-safe.",
+                           rationale=NO_RATIONALE_RATIONALE,
                            sources=sources, degraded=True, retrieval_failed=True,
                            provider=_provider_used, provisional=_provisional)
     # Programme doc §33: does every claim-bearing number in the rationale come from a passage the

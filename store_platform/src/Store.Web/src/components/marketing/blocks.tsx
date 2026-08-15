@@ -21,10 +21,25 @@ import type { IconName, ButtonVariant } from '@/components/ui';
  * `band` and `vault-wash` are kept in the map as aliases so the ~20 call sites do not all have to
  * change in the same commit; both resolve to the off-white wash.
  */
-type BandBg = 'surface' | 'surface2' | 'band' | 'vault-wash' | 'white' | 'bg';
+type BandBg = 'surface' | 'surface2' | 'surface3' | 'band' | 'vault-wash' | 'white' | 'bg';
 const BAND_BG: Record<BandBg, string> = {
   surface: 'bg-surface',
   surface2: 'bg-surface2',
+  /*
+   * THE GUTTER, added 2026-08-15. Founder, on the live shelf: "the cards have the same header and
+   * colour as the page, bland."
+   *
+   * That was literally true rather than a matter of taste -- `--bg` and `--surface` are both
+   * #FFFFFF (tokens.css), so a pack card was separated from the page it sits on by one #E4E4E7
+   * hairline and nothing else. `--surface3` is declared in that same file as "the shelf gutter
+   * behind cards" and no shelf was using it.
+   *
+   * The fix is under the cards, not on them: tinting the card would make it a grey box, while a
+   * tinted GROUND makes the same white card read as paper. This codebase already proves the move
+   * on the specimen plinth -- `PackSpecimen.tsx`: "--surface3 behind white paper is what makes
+   * the paper read as paper; on the page's own white it would read as a bordered div."
+   */
+  surface3: 'bg-surface3',
   band: 'bg-surface2',
   'vault-wash': 'bg-surface2',
   white: 'bg-surface',

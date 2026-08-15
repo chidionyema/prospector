@@ -22,6 +22,7 @@ public class StoreDbContext(DbContextOptions<StoreDbContext> options)
     public DbSet<SalesAudit> SalesAudits => Set<SalesAudit>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<Entitlement> Entitlements => Set<Entitlement>();
+    public DbSet<PendingDelivery> PendingDeliveries => Set<PendingDelivery>();
     public DbSet<IdempotencyJournalEntry> IdempotencyJournal => Set<IdempotencyJournalEntry>();
     public DbSet<WebhookEvent> WebhookEvents => Set<WebhookEvent>();
     public DbSet<WaitlistSignup> WaitlistSignups => Set<WaitlistSignup>();
@@ -44,6 +45,30 @@ public class StoreDbContext(DbContextOptions<StoreDbContext> options)
         ConfigureIdentity(builder);
         ConfigureCatalogTables(builder);
         ConfigureEventTables(builder);
+        ConfigureDeliveryOutbox(builder);
+    }
+
+    // The outbox is configured on its own rather than folded into ConfigureCatalogTables, which
+    // is already within a few lines of the 60-line analyzer limit.
+    private static void ConfigureDeliveryOutbox(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<PendingDelivery>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            // UNIQUE, and load-bearing: it is what makes enqueueing idempotent. A duplicate
+            // webhook that somehow reached fulfilment twice would otherwise queue the same link
+            // twice, and the database is the only thing that can see a concurrent insert.
+            entity.HasIndex(e => e.EntitlementId).IsUnique();
+            // The sweeper's only query is "what is still owed", so the index is on the send
+            // state rather than on CreatedAt.
+            entity.HasIndex(e => e.SentAt);
+            entity.Property(e => e.BuyerEmail).HasMaxLength(320);   // RFC 5321 max address length
+            entity.Property(e => e.LastError).HasMaxLength(500);
+            entity.HasOne(e => e.Entitlement)
+                  .WithMany()
+                  .HasForeignKey(e => e.EntitlementId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 
     private static void ConfigureCatalogTables(ModelBuilder modelBuilder)

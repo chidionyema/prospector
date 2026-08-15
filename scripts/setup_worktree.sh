@@ -35,6 +35,23 @@
 #      never `git add -A` in a worktree — you will commit test pollution. This script
 #      does not fix that; it just tells you, because there is nothing to fix.
 #
+#   5. .env and the ENGINE'S OWN STATE are gitignored, so a worktree gets neither — and both
+#      fail as something else. Measured 2026-08-14, two dead publish runs:
+#        .gitignore:34  .env             -> "ERROR: PROSPECTOR_ENTITLEMENTS_API_KEY unset
+#                                           after .env load; EngineBridge will refuse publish."
+#                                           which reads as a revoked/missing credential, not
+#                                           as an absent file.
+#        .gitignore:43  store/dossiers/  -> the pass exists in the main checkout and the
+#                                           worktree finds nothing, so a republish reads as
+#                                           "that pack is not a PASS" rather than "wrong tree".
+#      .env is SYMLINKED (one source of truth; a rotated key must propagate, and secrets
+#      should not be copied around the disk). The store dirs are CoW CLONES, not links, so a
+#      pytest run in the worktree cannot write into production state — which is the whole
+#      reason trap 4 exists.
+#
+#      That said: a PRODUCTION publish belongs in the main checkout. A cloned store diverges
+#      the moment either tree writes, so the worktree's copy is for tests and dry runs.
+#
 # USAGE
 #   git worktree add --detach ../my-worktree <ref>
 #   ./scripts/setup_worktree.sh ../my-worktree
@@ -103,10 +120,47 @@ else
   echo "[venv] WARNING: no .venv in the main checkout; every commit here will be BLOCKED"
 fi
 
-# ------------------------------------------------------------------- 4. the warnings
+# ------------------------------------------------------------------- 4. .env
+# Symlinked, never copied: it is the only place the API keys live, and a copy silently
+# outlives a rotation. Every loader in the repo reads ./.env relative to cwd.
+if [ -e "$TARGET/.env" ]; then
+  echo "[env]  already present"
+elif [ -f "$MAIN_CHECKOUT/.env" ]; then
+  ln -sfn "$MAIN_CHECKOUT/.env" "$TARGET/.env"
+  echo "[env]  symlinked to the main checkout (.env is gitignored, so worktrees never get it)"
+else
+  echo "[env]  WARNING: no .env in the main checkout; anything touching the store API will"
+  echo "[env]           die with 'PROSPECTOR_ENTITLEMENTS_API_KEY unset after .env load'"
+fi
+
+# ------------------------------------------------------------------- 5. engine state
+# CoW clones, NOT symlinks: a worktree pytest run must not be able to write into production
+# dossiers/listings. Cheap on APFS (115M of dossiers costs seconds and almost no disk).
+# store/_cache/ is deliberately excluded — 22k files, and a cold cache costs latency and
+# provider quota, not correctness. Clone it by hand if a run would otherwise re-fetch:
+#   cp -Rc <main>/store/_cache <worktree>/store/_cache
+for REL in store/dossiers store/listings store/runs store/golden_runs; do
+  if [ -d "$TARGET/$REL" ] && [ -n "$(ls -A "$TARGET/$REL" 2>/dev/null)" ]; then
+    echo "[state] $REL already populated ($(ls "$TARGET/$REL" | wc -l | tr -d ' ') entries)"
+  elif [ -d "$MAIN_CHECKOUT/$REL" ]; then
+    mkdir -p "$(dirname "$TARGET/$REL")"
+    rm -rf "$TARGET/$REL"
+    cp -Rc "$MAIN_CHECKOUT/$REL" "$TARGET/$REL"
+    echo "[state] cloned $REL ($(ls "$TARGET/$REL" | wc -l | tr -d ' ') entries, copy-on-write)"
+  else
+    echo "[state] no $REL in the main checkout; skipping"
+  fi
+done
+
+# ------------------------------------------------------------------- 6. the warnings
 cat <<'NOTE'
 
-[note] Two things this script deliberately does NOT do, because they are not fixable here:
+[note] Things this script deliberately does NOT do, because they are not fixable here:
+
+  * A PRODUCTION publish belongs in the MAIN checkout. store/ here is a clone taken at
+    setup time; it diverges the moment either tree writes, and a publish run from a
+    worktree writes the catalogue row somewhere the daemon will never read.
+
 
   * NEVER `git add -A` in a worktree. store/ and storage/ are tracked runtime state and
     pytest writes to them. Stage explicit paths, and check `git status` before committing.

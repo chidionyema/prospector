@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     from nltk.stem import PorterStemmer
 import re
+import http.client
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -214,10 +215,21 @@ def _resolve(url: str, timeout: Optional[float] = None) -> Optional[str]:
             logger.warning("Dropping dead URL (HTTP %s)", e.code, extra={"url": url})
             return None
         return url
-    except Exception:
-        # No HTTP response at all (DNS failure, connection refused, timeout):
+    except (urllib.error.URLError, OSError, ValueError, http.client.HTTPException) as e:
+        # No HTTP response at all (DNS failure, connection refused, timeout, malformed URL):
         # the host is dead/fabricated. results_per_query redundancy covers the
         # rare real-but-slow host we drop here.
+        #
+        # NARROWED from a bare `except Exception` on 2026-08-15. Every network condition this
+        # is meant to catch is one of these four (`socket.timeout` and `ssl.SSLError` are both
+        # OSError subclasses). What the bare form ALSO caught was our own bugs: an
+        # `AttributeError` or `TypeError` from a refactor anywhere in the try block came back
+        # as `None`, which the callers read as "fabricated URL — drop this source". Sources
+        # would have gone on vanishing from dossiers, silently, with no error anywhere, and
+        # the visible symptom would have been thin grounding — a problem this engine has
+        # chased six times. An unexpected exception here is a code defect and must surface.
+        logger.debug("URL did not resolve, dropping as dead/fabricated",
+                     extra={"url": url, "error": str(e)})
         return None
 
 
@@ -510,7 +522,7 @@ def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
         import requests
         from lxml import etree
         from lxml import html as lxml_html
-    except Exception:                       # noqa: BLE001 — no requests/lxml => keep snippets
+    except ImportError:                     # no requests/lxml installed => keep snippets
         return None
 
     resp = None
@@ -536,13 +548,17 @@ def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
         if not buf:
             return None
         raw = bytes(buf).decode(resp.encoding or "utf-8", errors="replace")
-    except Exception:                       # noqa: BLE001 — network/decode: keep the snippet
+    except (requests.RequestException, OSError, UnicodeDecodeError, ValueError):
+        # network / decode: keep the snippet. NARROWED from `except Exception` 2026-08-15 —
+        # the bare form also caught our own bugs in the streaming loop above and returned the
+        # same `None` that a dead host returns, so a refactor could silently stop the engine
+        # ever reading a page and the only symptom would be thin grounding.
         return None
     finally:
         if resp is not None:
             try:
                 resp.close()
-            except Exception:               # noqa: BLE001
+            except (requests.RequestException, OSError):
                 pass
 
     try:
@@ -572,7 +588,15 @@ def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
                 break
         if not text:
             text = " ".join(doc.text_content().split())
-    except Exception:                       # noqa: BLE001 — unparseable markup
+    except (etree.ParserError, etree.XMLSyntaxError, ValueError, UnicodeDecodeError):
+        # unparseable markup. Narrowed for the same reason as the fetch above: an
+        # AttributeError from changing the xpath list read exactly like a broken page.
+        #
+        # MERGE 2026-08-15: origin/main narrowed this handler and this branch changed its
+        # BODY from `return None` to `text = ""`. Both, not either — the narrowing is about
+        # which exceptions may be swallowed, the body is about what happens after one is.
+        # Falling through rather than returning is what gives the fallback below its turn:
+        # trafilatura is a different parser and routinely reads a page lxml could not.
         text = ""
 
     # TRAFILATURA IS THE FALLBACK, NOT THE PRIMARY (2026-08-15, and the sizing is measured).
@@ -595,15 +619,25 @@ def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
     # This is also what stops a 404 body ("Page not found – GeekWire", 25 chars) being handed
     # to a verdict brain as the evidence for a check.
     if len(text) < _MIN_PAGE_TEXT:
+        # Two handlers, not one, on origin/main's rule (2026-08-15): the absent optional
+        # dependency and a parser failure are different facts, and a bare `except Exception`
+        # over both would also swallow an AttributeError or NameError from a refactor of this
+        # very block — which would present as "no page on the open web has a passage", in
+        # silence, forever. That is the failure mode main's narrowing pass exists to end.
         try:
             import trafilatura  # declared in requirements.txt; lazy, same as requests above
-            better = trafilatura.extract(raw, include_comments=False, include_tables=True,
-                                         favor_precision=True) or ""
+        except ImportError:     # not installed: keep whatever the ladder found
+            trafilatura = None  # type: ignore[assignment]
+        if trafilatura is not None:
+            try:
+                better = trafilatura.extract(raw, include_comments=False, include_tables=True,
+                                             favor_precision=True) or ""
+            except (etree.ParserError, etree.XMLSyntaxError, ValueError, TypeError,
+                    UnicodeDecodeError):
+                better = ""     # a third-party parser on hostile markup: keep what we have
             better = " ".join(better.split())
             if len(better) > len(text):
                 text = better
-        except Exception:           # noqa: BLE001 — not installed, or unparseable: keep what we have
-            pass
     if len(text) < _MIN_PAGE_TEXT:
         return None
     # Select the passage that answers the query rather than the top of the page. `query=None`
@@ -704,8 +738,14 @@ class GeminiGroundingProvider(SearchProvider):
                     temperature=0.0),
             )
         except Exception as e:
-            logger.warning(f"Grounding search failed: {e}", extra={"error": str(e)})
-            return []
+            # The API call itself failed — a transport error, a bad key, a quota. Returning
+            # `[]` told the chain "this provider is healthy and the web is empty", which is
+            # a lie in both halves: it books a breaker SUCCESS and clears the dead mark
+            # (FallbackSearchProvider.search, ~:1860), so a provider that is down stays in
+            # rotation and its outage is indistinguishable from a null result. Raise, and
+            # the chain fails over exactly as it was built to.
+            logger.error(f"Grounding search failed, failing over: {e}", extra={"error": str(e)})
+            raise
 
         sources: list[Source] = []
         try:
@@ -735,9 +775,16 @@ class GeminiGroundingProvider(SearchProvider):
                 logger.info("Search summary found but no resolvable chunks", extra={"query": query})
                 return []
         except Exception as e:
-            logger.warning(f"Failed to parse search results: {e}", extra={"error": str(e)})
-            return []
-            
+            # Same rule as the transport failure above, and the same reason. We received a
+            # response and could not read it; that is our problem, not the web's. `[]` here
+            # is the value a real "nothing found" returns, so no caller could ever tell them
+            # apart. Note this handler also catches OUR OWN bugs in the loop above — a
+            # `TypeError` after a refactor of `Source.make` looked identical to a null
+            # result, forever, in silence.
+            logger.error(f"Failed to parse search results, failing over: {e}",
+                         extra={"error": str(e)})
+            raise
+
         logger.info(f"Grounding search returned {len(sources)} sources", extra={"count": len(sources)})
         return sources
 
@@ -1754,7 +1801,7 @@ class DiskCache(SearchProvider):
         """
         try:
             raw = json.loads(p.read_text())
-        except Exception as e:
+        except (OSError, ValueError) as e:   # unreadable file / torn JSON -> one re-fetch
             logger.warning(f"Unreadable search cache entry, treating as miss: {e}",
                            extra={"path": str(p)})
             return None
@@ -1772,7 +1819,7 @@ class DiskCache(SearchProvider):
             return None
         try:
             sources = [Source(**d) for d in payload]
-        except Exception as e:
+        except (TypeError, ValueError) as e:   # entry written by an older Source schema
             logger.warning(f"Malformed search cache entry, treating as miss: {e}",
                            extra={"path": str(p)})
             return None
@@ -2006,7 +2053,11 @@ def _market_block(cfg) -> dict:
     """The active market's config block, or {} for a config predating Epic D."""
     try:
         return cfg.market_config() or {}
-    except Exception:  # noqa: BLE001 — a stubbed cfg in a test must never break search
+    except (AttributeError, TypeError):
+        # A stubbed cfg in a test, or a config predating Epic D, must never break search.
+        # Narrowed from `except Exception`: those two are the shapes a stub actually raises,
+        # and anything else here is a real config defect that must not present as "this
+        # market has no block" — which is a completely ordinary, unremarkable state.
         return {}
 
 

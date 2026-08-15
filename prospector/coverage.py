@@ -277,7 +277,12 @@ def _table_columns(conn: sqlite3.Connection) -> set[str]:
     """
     try:
         return {str(r[1]) for r in conn.execute("PRAGMA table_info(dossiers)").fetchall()}
-    except sqlite3.Error:
+    except sqlite3.Error as exc:
+        # An empty set reads as "this index predates every elite column", which is a legitimate
+        # state — so a PRAGMA that FAILED silently disables the enrichment on a DB that has the
+        # columns. Costing the enrichment is still right; doing it without a word is not.
+        logger.error(f"coverage: PRAGMA table_info(dossiers) failed ({exc}); the elite "
+                     "enrichment is disabled for this measurement")
         return set()
 
 
@@ -588,11 +593,26 @@ def cell_directive(cell: Mapping[str, str]) -> str:
 
 
 def db_path_for(cfg: Any) -> Optional[Path]:
+    """The dossier index behind `cfg`, or None when there is provably no usable one.
+
+    The blanket `except Exception` this replaces returned the same None for "a test stub has no
+    store_dir" and for any bug in the caller's config object, and `plan_cells` then reported
+    "no dossier index found" for a store that exists. Only the two conditions actually expected
+    are absorbed; `plan_cells` guards its own call site so an unexpected one still cannot break
+    generation, it just stops being invisible.
+    """
     try:
         p = Path(cfg.store_dir) / "prospector.db"
-    except Exception:  # noqa: BLE001 — a stub Config in a test has no store_dir
+    except (AttributeError, TypeError) as exc:
+        logger.warning(f"coverage: no usable store_dir on {type(cfg).__name__} ({exc}); "
+                       "sampler stays inert")
         return None
-    return p if p.exists() else None
+    try:
+        return p if p.exists() else None
+    except OSError as exc:
+        logger.error(f"coverage: cannot stat the dossier index at {p} ({exc}); sampler stays "
+                     "inert, which is NOT evidence the index is missing")
+        return None
 
 
 def plan_cells(
@@ -612,19 +632,36 @@ def plan_cells(
     try:
         scfg = SamplerConfig.from_config(cfg)
     except ValueError as e:
-        logger.warning(f"coverage sampler config invalid, staying inert: {e}")
+        # ERROR: [] is also what a DISABLED sampler returns, so a config the operator wrote and
+        # believes is on is being ignored, and the log line is the only thing that says so.
+        logger.error(f"coverage sampler config invalid, staying inert: {e}")
         return []
     if not scfg.enabled:
         return []
-    path = Path(db_path) if db_path else db_path_for(cfg)
+    try:
+        path = Path(db_path) if db_path else db_path_for(cfg)
+    except Exception:  # noqa: BLE001 — steering must never break generation
+        logger.exception("coverage sampler could not resolve the dossier index; staying inert")
+        return []
     if path is None or not Path(path).exists():
         logger.warning("coverage sampler enabled but no dossier index found; staying inert")
         return []
     try:
         report = measure(path, scfg, context=context)
         cells = select_cells(report, scfg, k, domains=domains)
-    except Exception as e:  # noqa: BLE001 — steering must never break generation
-        logger.warning(f"coverage sampler failed, falling back to rotation: {e}")
+    except (sqlite3.Error, KeyError, ValueError, OSError) as e:
+        logger.error(f"coverage sampler failed on the index, falling back to rotation: "
+                     f"{type(e).__name__}: {e}")
+        return []
+    except Exception:  # noqa: BLE001 — steering must never break generation
+        # Still swallowed, deliberately: this feature must never be able to stop the daemon
+        # generating, so narrowing to the line above and letting the rest crash would trade one
+        # silent failure for a louder outage. What was missing is the DISTINCTION — an
+        # unexpected type here is our own bug and now arrives with a traceback, where the old
+        # single `logger.warning(f"...: {e}")` printed a refactor's TypeError as one grey line
+        # identical to a locked sqlite file.
+        logger.exception("coverage sampler raised an UNEXPECTED error, falling back to rotation; "
+                         "this is a bug in the sampler, not a property of the index")
         return []
     if not cells:
         logger.info(

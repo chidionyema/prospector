@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import errno
 import json
+import logging
 import os
 import signal
 import subprocess
@@ -34,6 +35,8 @@ from pathlib import Path
 from typing import Any
 
 from prospector import paths
+
+logger = logging.getLogger(__name__)
 
 # Module-level singleton: in-memory ring buffers keyed by job_id
 _RING_BUFFERS: dict[str, list[str]] = {}
@@ -154,14 +157,31 @@ def _looks_like_pytest_path(path: Path) -> bool:
 # Job persistence (merge-safe)
 # ---------------------------------------------------------------------------
 
-def _load_jobs_from(path: Path) -> list[dict[str, Any]]:
+def _read_jobs_file(path: Path) -> tuple[list[dict[str, Any]], bool]:
+    """(jobs, ok). ``ok=False`` means the file is THERE and we could not read it.
+
+    Readers can live with the empty list; the WRITER cannot. `_save_jobs_to` merges the
+    on-disk jobs into the list it is about to persist, so an unreadable read that returns a
+    bare `[]` makes the merge drop every job recorded on disk — the run history erases
+    itself and the cockpit shows "no runs", which is also what a fresh install shows.
+    """
     if not path.exists():
-        return []
+        return [], True
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-        return data if isinstance(data, list) else []
-    except (json.JSONDecodeError, OSError):
-        return []
+    except (json.JSONDecodeError, OSError) as exc:
+        logger.error("control_center: jobs file %s unreadable (%s: %s)",
+                     path, type(exc).__name__, exc)
+        return [], False
+    if not isinstance(data, list):
+        logger.error("control_center: jobs file %s holds %s, expected a list",
+                     path, type(data).__name__)
+        return [], False
+    return data, True
+
+
+def _load_jobs_from(path: Path) -> list[dict[str, Any]]:
+    return _read_jobs_file(path)[0]
 
 
 def _load_jobs() -> list[dict[str, Any]]:
@@ -180,7 +200,18 @@ def _save_jobs_to(path: Path, jobs: list[dict[str, Any]]) -> None:
     if resolved == prod:
         if _looks_like_pytest_path(path):
             return
-        on_disk = _load_jobs_from(path)
+        on_disk, readable = _read_jobs_file(path)
+        if not readable:
+            # We are about to os.replace() this file. Merging against an empty list would
+            # silently delete whatever it still holds, so keep the bytes: a corrupt jobs.json
+            # is recoverable by hand, a replaced one is not.
+            quarantine = path.with_name(f"{path.name}.corrupt.{int(time.time())}")
+            try:
+                os.replace(path, quarantine)
+                logger.error("control_center: preserved unreadable %s as %s before rewrite",
+                             path, quarantine.name)
+            except OSError:
+                logger.exception("control_center: could not preserve unreadable %s", path)
         by_id = {j["job_id"]: j for j in filter_production_jobs(on_disk) if j.get("job_id")}
         for j in filter_production_jobs(jobs):
             jid = j.get("job_id")
@@ -260,6 +291,10 @@ def _read_exit_code(exit_file: Path) -> int | None:
     try:
         return int(exit_file.read_text(encoding="utf-8").strip())
     except (OSError, ValueError):
+        # The sidecar exists, so the run DID end — `None` here means "still running" to
+        # `_finalize_job`, which is the opposite of the truth. Nothing to act on, but it
+        # must not be silent.
+        logger.exception("control_center: exit sidecar %s unreadable", exit_file)
         return None
 
 
@@ -656,6 +691,9 @@ def _watch_job(
             time.sleep(0.25)
     except Exception:
         # Watcher death must never be coupled to the child. Finalize on next poll.
+        # It still has to be findable: a watcher that dies here leaves the job at
+        # "running" until something else polls, and there is no other symptom.
+        logger.exception("control_center: job watcher for %s died", job_id)
         return
 
 
@@ -826,8 +864,9 @@ def _reap_if_child(pid: int) -> int | None:
     try:
         wpid, status = os.waitpid(int(pid), os.WNOHANG)
     except ChildProcessError:
-        return None
+        return None  # not our child (the common case) — a value, not a failure
     except OSError:
+        logger.exception("control_center: waitpid(%s) failed", pid)
         return None
     if wpid == 0:
         return None

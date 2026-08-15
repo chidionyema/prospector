@@ -31,11 +31,11 @@ import prospector.pricing as pricing_mod
 from prospector.config import LISTING_DEFAULTS, Config, load_config
 from prospector.models import Candidate
 from prospector.operator import (
-    MOAT_PRIMARY,
     FallbackOperator,
     MockOperator,
     is_provisional_provider,
     make_operator,
+    moat_primary,
 )
 from prospector.pricing import price_for
 from prospector.verify import _served_is_provisional
@@ -80,13 +80,16 @@ def test_a_single_untrusted_tier_now_rules_provisional():
 def test_a_single_trusted_tier_is_not_provisional():
     """The test that distinguishes tier-name keying from `op.name` keying.
 
-    `ClaudeOperator.name` is `"claude/<model>"`, which is NOT in MOAT_PRIMARY — an
-    implementation that asked the instance name would mark this trusted config provisional
-    and stop it publishing. Asserted without credentials by stamping the tier directly,
-    exactly as `make_operator` does.
+    `ClaudeCliOperator.name` carries the model (e.g. `"claude-cli/default"`), which is NOT in
+    MOAT_PRIMARY — an implementation that asked the instance name would mark this trusted config
+    provisional and stop it publishing. Asserted without credentials by stamping the tier
+    directly, exactly as `make_operator` does. (The original example was `ClaudeOperator`, the
+    paid API tier, removed 2026-08-15; MOAT_PRIMARY is now the single name `claude_cli`, which
+    makes this test's distinction between TIER-keying and NAME-keying more load-bearing, not
+    less — there is no second trusted tier to mask a regression.)
     """
     op = MockOperator()
-    for trusted in sorted(MOAT_PRIMARY):
+    for trusted in sorted(moat_primary()):
         op.tier_name = trusted
         assert op.served_is_provisional() is False, (
             f"{trusted!r} is in MOAT_PRIMARY and must never be stamped provisional")
@@ -94,9 +97,18 @@ def test_a_single_trusted_tier_is_not_provisional():
 
 
 def test_every_tier_outside_moat_primary_is_provisional_when_it_rules_alone():
+    # The roster is NOT pinned here. The trusted set is config-declared (`config.yaml
+    # moat_primary:`) and minimax joined it 2026-08-15, so a hardcoded list of "untrusted" names
+    # tests the config file, not the mechanism — and fails the day the founder promotes a brain,
+    # which is a decision, not a regression. Derive the untrusted tiers from the live fence and
+    # assert the RULE: whatever is outside it is stamped provisional when it rules alone.
     op = MockOperator()
-    for untrusted in ("minimax", "deepseek", "standardcompute", "ollama", "mock"):
-        assert untrusted not in MOAT_PRIMARY
+    untrusted_tiers = [t for t in ("claude_cli", "minimax", "deepseek", "ollama", "mock")
+                       if t not in moat_primary()]
+    assert untrusted_tiers, (
+        "every known tier is trusted, so this test can no longer discriminate — add a tier or "
+        "narrow moat_primary before relying on it")
+    for untrusted in untrusted_tiers:
         op.tier_name = untrusted
         assert op.served_is_provisional() is True, (
             f"{untrusted!r} ruling as a single-tier config must be stamped provisional")
@@ -105,10 +117,15 @@ def test_every_tier_outside_moat_primary_is_provisional_when_it_rules_alone():
 def test_the_chain_path_is_unchanged():
     """`FallbackOperator` still overrides the base and answers from the brain that actually
     served this thread's last call — not from a tier stamped at construction time."""
-    chain = FallbackOperator([("claude_cli", MockOperator()), ("minimax", MockOperator())])
+    # Same reason as above: pick the tiers from the live fence rather than naming them, so this
+    # keeps testing the chain path when the trusted set changes.
+    trusted = sorted(moat_primary())[0]
+    untrusted = next(t for t in ("deepseek", "ollama", "mock", "minimax")
+                     if t not in moat_primary())
+    chain = FallbackOperator([(trusted, MockOperator()), (untrusted, MockOperator())])
     assert chain.last_served() == ""
     assert chain.served_is_provisional() is False, "nothing has served yet"
-    chain._served.name = "minimax"
+    chain._served.name = untrusted
     assert chain.served_is_provisional() is True
     chain._served.name = "claude_cli"
     assert chain.served_is_provisional() is False
@@ -116,10 +133,11 @@ def test_the_chain_path_is_unchanged():
 
 def test_the_shipped_verdict_chain_is_multi_tier_so_production_is_unaffected():
     """Recorded so the change's blast radius is a fact, not a claim: the finding was
-    structural, not live — config.yaml declares three tiers, which took the chain path."""
+    structural, not live — config.yaml declares more than one tier, which took the chain path.
+    (Three tiers until 2026-08-15, two since standardcompute was removed.)"""
     ops = load_config(str(REPO_CONFIG)).operator
     assert isinstance(ops, list) and len(ops) > 1
-    assert ops[0] in MOAT_PRIMARY, "the chain must stay LED by a trusted brain"
+    assert ops[0] in moat_primary(), "the chain must stay LED by a trusted brain"
 
 
 # --------------------------------------------------------------------------

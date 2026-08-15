@@ -7,14 +7,35 @@ ladder's clothes is how a £63.41 sneaks onto the money path.
 
 The default (unclassified) rung is the existing catalogue price: a ladder that silently
 moves legacy packs the moment it lands is a catalogue-wide incident, not a feature.
+
+WHICH rung is chosen changed on 2026-08-15. The founder's standing objection to this
+module was never the trailing digit — it was "a user should be able to intuit why one
+pack is priced more or less than another". Measured that day against the live catalogue
+(59 rows, ``GET https://api.mumchimp.com/catalog``), price ran BACKWARDS against the only
+quantitative field a buyer can see on a row, ``sourceCount``:
+
+    £29.99 -> 36.5 mean sources    £79.99 -> 40.7
+    £49.99 -> 31.0                 £149.99 -> 28.6   <- dearest tier, fewest sources
+
+18 of 58 adjacent pairs sorted by sourceCount had the dearer pack carrying fewer sources.
+So the rung is now selected by ``listing.pricing.source_count_bands`` whenever the caller
+knows the count, and price is a non-decreasing step function of it BY CONSTRUCTION. The
+tier ladder remains, unchanged, as the fallback for every caller that does not know the
+count (``verify._check_question`` asks during the moat, before a dossier exists).
+
+``ambition_tier`` was rejected as the primary selector for one reason: it is invisible to
+the buyer, so no price it produces can be intuited from the page.
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any, Optional
 
 from prospector.config import LISTING_DEFAULTS, Config
 from prospector.models import Candidate, PriceAnchor, ScoreResult
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -94,6 +115,48 @@ def _anchor_adjustment(rung_idx: int, rungs: list[int],
     return new_idx, ev, suffix
 
 
+def _usable_bands(pricing: dict[str, Any], rungs: list[int]) -> Optional[list[int]]:
+    """The declared ``source_count_bands``, or None with a LOUD log if they are unusable.
+
+    Silence is the failure mode this guards: a malformed band list that quietly fell back
+    to the tier ladder would re-introduce the inversion while every rationale still read
+    as though depth had priced the pack. So each rejection says which rule it broke.
+
+    The contract is exactly ``len(rungs) - 1`` strictly-increasing lower edges — edge *i*
+    is the smallest source count that reaches rung *i+1*. Fewer or more edges than rungs
+    can hold is a config edit that cannot be interpreted, not one to guess at.
+    """
+    raw = pricing.get("source_count_bands")
+    if not raw:
+        return None
+    try:
+        bands = [int(b) for b in raw]
+    except (TypeError, ValueError):
+        logger.error(
+            f"listing.pricing.source_count_bands is not a list of integers ({raw!r}); "
+            f"falling back to the tier ladder — packs will NOT be priced by cited depth.")
+        return None
+    if len(bands) != len(rungs) - 1:
+        logger.error(
+            f"listing.pricing.source_count_bands has {len(bands)} edge(s) but there are "
+            f"{len(rungs)} rung(s); it must have exactly {len(rungs) - 1}. Falling back to "
+            f"the tier ladder — packs will NOT be priced by cited depth.")
+        return None
+    if any(b2 <= b1 for b1, b2 in zip(bands, bands[1:])):
+        logger.error(
+            f"listing.pricing.source_count_bands is not strictly increasing ({bands!r}), so "
+            f"it cannot define a monotonic ladder; falling back to the tier ladder.")
+        return None
+    return bands
+
+
+def _band_index(source_count: int, bands: list[int]) -> int:
+    """How many band edges this source count has cleared. Non-decreasing in ``source_count``
+    by construction — that property is the entire point of this function, and
+    ``tests/unit/test_pricing_monotonic.py`` pins it over the full live range."""
+    return sum(1 for edge in bands if source_count >= edge)
+
+
 def _usd_at(pricing: dict[str, Any], rung_idx: int) -> Optional[int]:
     """The USD cents at the same rung POSITION, or None if the USD ladder cannot answer.
 
@@ -111,7 +174,8 @@ def _usd_at(pricing: dict[str, Any], rung_idx: int) -> Optional[int]:
 
 
 def price_for(candidate: Candidate, score: Optional[ScoreResult], cfg: Config,
-              anchors: Optional[list[PriceAnchor]] = None) -> PriceDecision:
+              anchors: Optional[list[PriceAnchor]] = None,
+              source_count: Optional[int] = None) -> PriceDecision:
     """Resolve a Candidate to a rung on the L1 ladder.
 
     The tier sets the base rung; a ``us``-market opportunity earns exactly one rung of
@@ -127,6 +191,18 @@ def price_for(candidate: Candidate, score: Optional[ScoreResult], cfg: Config,
     because that unconsultedness has a second caller now: ``verify._check_question`` needs
     the rung DURING the moat, which runs long before ``run.py:465`` scores anything. Passing
     ``None`` is honest; fabricating a zeroed ``ScoreResult`` to satisfy a type would not be.
+
+    ``source_count`` is the number of distinct cited sources behind the pack — the same
+    integer ``bridge._trust_fields`` publishes as the row's ``sourceCount``, taken from the
+    same helper so the price and the number the buyer reads next to it cannot drift. When
+    it is supplied AND ``listing.pricing.source_count_bands`` is declared, it selects the
+    rung outright and neither tier nor market is consulted. That exclusivity is not an
+    oversight: any second input breaks monotonicity, because two packs with the same count
+    would then sit on different rungs and some pair sorted by depth would run backwards
+    again. Tier and market stay in the rationale as context, never as arithmetic.
+
+    Bands apply to UNCLASSIFIED packs too, unlike the tier ladder's market offset. A tier
+    is a judgement we may not have made; a source count is a fact about the pack in hand.
 
     ``anchors`` are the C3 ``price_comparables`` results for this candidate. They can move
     the rung by at most one step, and ONLY when config sets
@@ -171,6 +247,55 @@ def price_for(candidate: Candidate, score: Optional[ScoreResult], cfg: Config,
     default_idx: int = int(pricing["default_rung_index"])
 
     last_idx = len(rungs) - 1
+
+    # ---- Depth ladder (2026-08-15). The rung the BUYER can derive from the page. ----
+    # This runs before the tier ladder and returns outright, so when a caller knows the
+    # source count there is exactly one selector and price is a non-decreasing step
+    # function of the one number on the row. `_anchor_adjustment` is deliberately NOT
+    # reachable from here: a per-pack nudge of ±1 rung is precisely what re-introduces the
+    # inversion this ladder exists to remove — a 30-source pack nudged up would outprice a
+    # 45-source one. Anchors keep their evidentiary job (they are retrieved, cited and
+    # recorded); they no longer get a vote on the rung.
+    bands = _usable_bands(pricing, rungs)
+    if source_count is not None and bands is not None:
+        rung_idx = max(0, min(last_idx, _band_index(int(source_count), bands)))
+        price_pence = rungs[rung_idx]
+        lower = ([0] + bands)[rung_idx]
+        upper = (bands + [None])[rung_idx]  # type: ignore[list-item]
+        span = f"{lower}+" if upper is None else f"{lower}–{upper - 1}"
+        if anchors and bool((pricing.get("comparables") or {}).get("rung_adjust_enabled",
+                                                                   False)):
+            logger.info(
+                f"pricing: {len(list(anchors))} anchor(s) present and rung_adjust_enabled is "
+                f"on, but this pack was priced by cited depth; anchors do not move a depth "
+                f"rung (monotonicity). They remain recorded as evidence.",
+                extra={"candidate_id": getattr(candidate, "candidate_id", None)})
+        return PriceDecision(
+            price_pence=price_pence,
+            # THE USD RUNG IS NOT OPTIONAL ON ANY PATH THAT CAN REACH A BUYER. This branch
+            # omitted it until 2026-08-15, and the omission was invisible because it is a
+            # default (`price_usd_cents: Optional[int] = None`, :69) rather than a required
+            # field — so it failed by silently pricing in one currency, not by raising.
+            # `bridge.py` always passes `source_count`, so this is the branch MOST packs take
+            # at publish: every one of them would have been minted with no USD price at all,
+            # against the standing decision that US buyers are billed in USD. The two tier
+            # paths below (:308, :342) always set it; a third path that quietly did not is the
+            # drift `bridge.py` exists to prevent — one PriceDecision mints the provider Price
+            # AND the catalogue row, so a field missing here is missing in both.
+            price_usd_cents=_usd_at(pricing, rung_idx),
+            rung=f"depth band {rung_idx + 1} of {len(rungs)} ({span} sources)",
+            segment={**segment, "priced_by": "source_count",
+                     "source_count": str(int(source_count))},
+            rationale=(
+                f"Priced by cited depth: this pack cites {int(source_count)} distinct "
+                f"sources, which falls in band {rung_idx + 1} of {len(rungs)} "
+                f"({span} sources), so it lists at {price_pence}p. Band edges are "
+                f"{bands} sources (config listing.pricing.source_count_bands). Every pack "
+                f"citing more sources costs the same or more; tier {tier!r} and market "
+                f"{market!r} are recorded but do not move the price, because a buyer "
+                f"cannot see either one."
+            ),
+        )
 
     # Unclassified: empty tier, or one the ladder has not been told about. We hold at the
     # default rung rather than guessing, because guessing silently re-prices the back

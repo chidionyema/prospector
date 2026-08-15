@@ -29,10 +29,13 @@ Severity contract is `pack_linter`'s: "error" blocks listing, "warning" is recor
 from __future__ import annotations
 
 import dataclasses
+import logging
 import re
 import shutil
 import subprocess
 from typing import Dict, List, Optional, Set
+
+logger = logging.getLogger(__name__)
 
 Problem = Dict[str, str]  # mirrors pack_linter.Problem; defined here to avoid an import cycle
 
@@ -402,7 +405,15 @@ def grammar_findings(texts: Dict[str, str], *, timeout_s: float = 120.0,
                 if rule in HARPER_GRAMMAR_RULES:
                     counts[rule] = counts.get(rule, 0) + n
             return counts
-    except Exception:
+    except (OSError, subprocess.SubprocessError, UnicodeError) as e:
+        # The fail-open contract above is about HARPER failing — absent, hung, or writing an
+        # output shape we cannot read. It was never a licence to swallow OUR bugs: a broad
+        # `except Exception` here turned a TypeError from a refactor into the identical
+        # "grammar_check_unavailable" warning as a missing binary, so a permanently-dead
+        # check would read as an unremarkable tool gap on every pack forever. These three are
+        # the conditions harper-cli can actually produce; anything else is ours and must
+        # surface. The log is ERROR because "we can no longer grade prose" is not a detail.
+        logger.error("harper grammar check failed, reporting unavailable: %s", e, exc_info=True)
         return None
 
 

@@ -7,8 +7,8 @@
   },
   "corpus": {
     "n_dossiers": 2011,
-    "newest_mtime_utc": "2026-08-13T09:17:08.917161+00:00",
-    "sha256": "0e2d78c426ec0cef",
+    "newest_mtime_utc": "2026-08-13T11:05:10.622755+00:00",
+    "sha256": "4d2e5a1bf9186036",
     "frozen": false,
     "corpus_dir": "/Users/chidionyema/Documents/code/prospector/store/dossiers",
     "note": "sampling is deterministic against a frozen corpus; the store is live, so two runs with different fingerprints are different samples, not a repeat. frozen=true means this run read a snapshot, so a matched pair is guaranteed rather than hoped for; frozen=false means the daemon could move underneath it."
@@ -18,17 +18,16 @@
     "dossiers_in_window": 577,
     "undated": 86,
     "by_decision": {
-      "kill": 545,
-      "defer": 14,
+      "kill": 559,
       "pass": 18
     },
     "gates_fired": {
-      "moat_ungrounded": 222,
-      "min_composite": 123,
-      "incumbency": 53,
+      "moat_ungrounded": 228,
+      "min_composite": 124,
+      "incumbency": 58,
       "source_or_die": 45,
       "value_durability": 41,
-      "payer_solvency": 21,
+      "payer_solvency": 23,
       "distribution": 13,
       "legality": 11,
       "route_to_market": 5,
@@ -48,29 +47,29 @@
     ]
   },
   "unverifiable": {
-    "checks": 2704,
-    "unverifiable": 1722,
-    "rate": 0.6368,
+    "checks": 2743,
+    "unverifiable": 1742,
+    "rate": 0.6351,
     "ci95": [
-      0.6185,
-      0.6548
+      0.6169,
+      0.6529
     ],
     "by_verdict": {
-      "supported": 758,
-      "unverifiable": 1722,
-      "refuted": 224
+      "supported": 770,
+      "unverifiable": 1742,
+      "refuted": 231
     },
-    "retrieval_failed": 19,
-    "degraded": 19,
+    "retrieval_failed": 0,
+    "degraded": 0,
     "note": "retrieval_failed and degraded are printed beside the rate because an unverifiable check means either the web has no passage or OUR retrieval broke, and those call for opposite responses.",
     "per_check": {
       "buyer_intent": {
-        "n": 277,
-        "unverifiable": 151,
-        "unverifiable_rate": 0.5451,
+        "n": 274,
+        "unverifiable": 148,
+        "unverifiable_rate": 0.5401,
         "ci95": [
-          0.4863,
-          0.6028
+          0.481,
+          0.5982
         ],
         "supported": 121,
         "refuted": 5
@@ -98,59 +97,59 @@
         "refuted": 12
       },
       "distribution": {
-        "n": 390,
-        "unverifiable": 258,
-        "unverifiable_rate": 0.6615,
+        "n": 396,
+        "unverifiable": 259,
+        "unverifiable_rate": 0.654,
         "ci95": [
-          0.6132,
-          0.7067
+          0.6059,
+          0.6992
         ],
-        "supported": 117,
+        "supported": 122,
         "refuted": 15
       },
       "incumbency": {
-        "n": 256,
-        "unverifiable": 159,
-        "unverifiable_rate": 0.6211,
+        "n": 269,
+        "unverifiable": 167,
+        "unverifiable_rate": 0.6208,
         "ci95": [
-          0.5603,
-          0.6783
+          0.5615,
+          0.6767
         ],
         "supported": 20,
-        "refuted": 77
+        "refuted": 82
       },
       "legality": {
-        "n": 425,
-        "unverifiable": 317,
-        "unverifiable_rate": 0.7459,
+        "n": 431,
+        "unverifiable": 322,
+        "unverifiable_rate": 0.7471,
         "ci95": [
-          0.7024,
-          0.7849
+          0.704,
+          0.7858
         ],
-        "supported": 94,
+        "supported": 95,
         "refuted": 14
       },
       "pain_reality": {
         "n": 283,
-        "unverifiable": 151,
-        "unverifiable_rate": 0.5336,
+        "unverifiable": 149,
+        "unverifiable_rate": 0.5265,
         "ci95": [
-          0.4754,
-          0.5909
+          0.4684,
+          0.5839
         ],
-        "supported": 127,
+        "supported": 129,
         "refuted": 5
       },
       "payer_solvency": {
-        "n": 411,
-        "unverifiable": 324,
-        "unverifiable_rate": 0.7883,
+        "n": 419,
+        "unverifiable": 329,
+        "unverifiable_rate": 0.7852,
         "ci95": [
-          0.7463,
-          0.8251
+          0.7434,
+          0.8218
         ],
-        "supported": 57,
-        "refuted": 30
+        "supported": 58,
+        "refuted": 32
       },
       "route_to_market": {
         "n": 102,
@@ -164,14 +163,14 @@
         "refuted": 6
       },
       "value_durability": {
-        "n": 301,
-        "unverifiable": 170,
-        "unverifiable_rate": 0.5648,
+        "n": 310,
+        "unverifiable": 176,
+        "unverifiable_rate": 0.5677,
         "ci95": [
-          0.5083,
-          0.6196
+          0.5121,
+          0.6217
         ],
-        "supported": 77,
+        "supported": 80,
         "refuted": 54
       }
     }
@@ -179,8 +178,8 @@
   "confidence_separation": {
     "by_verdict": {
       "supported": {
-        "n": 758,
-        "mean": 0.5768,
+        "n": 770,
+        "mean": 0.5777,
         "median": 0.6,
         "p10": 0.38,
         "p90": 0.712,
@@ -188,25 +187,25 @@
         "max": 0.767
       },
       "refuted": {
-        "n": 224,
-        "mean": 0.5638,
+        "n": 231,
+        "mean": 0.5651,
         "median": 0.588,
-        "p10": 0.35,
+        "p10": 0.362,
         "p90": 0.712,
         "min": 0.0,
         "max": 0.74
       },
       "unverifiable": {
-        "n": 1722,
-        "mean": 0.6069,
+        "n": 1742,
+        "mean": 0.6153,
         "median": 0.7,
-        "p10": 0.37,
+        "p10": 0.38,
         "p90": 0.73,
         "min": 0.0,
         "max": 0.79
       }
     },
-    "ruled_minus_unverifiable_mean": -0.033,
+    "ruled_minus_unverifiable_mean": -0.0405,
     "note": "if this gap is ~0 the confidence field carries no polarity information and no threshold on it can discriminate."
   },
   "composite": {
@@ -220,8 +219,8 @@
     },
     "min_composite_to_pass": 2.5,
     "distribution": {
-      "n": 141,
-      "mean": 2.0617,
+      "n": 142,
+      "mean": 2.0606,
       "median": 2.1,
       "p10": 1.55,
       "p90": 2.6,
@@ -253,19 +252,19 @@
     ],
     "days_unknown_dropped_by_checkpoint": [],
     "scan_span_oldest_day": "2026-06-27",
-    "metered_usd": 5.091443,
-    "subscription_usd": 1628.045775,
+    "metered_usd": 5.091444,
+    "subscription_usd": 1643.551725,
     "complete": true,
     "note": "metered is billed money and is what daily_cap_usd enforces; subscription is Claude Code CLI burn (cost_usd, no event key), API-equivalent and not invoiced. They differ by orders of magnitude \u2014 report both or neither."
   },
   "per_vetted": {
     "metered_usd_per_vetted": 0.008824,
-    "subscription_usd_per_vetted": 2.82157
+    "subscription_usd_per_vetted": 2.848443
   },
   "_meta": {
     "experiment": "W02",
     "module": "w02_standing_receipt.py",
-    "run_at_utc": "2026-08-13T09:23:05+00:00",
+    "run_at_utc": "2026-08-13T11:05:53+00:00",
     "argv": [
       "--days",
       "7"

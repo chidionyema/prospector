@@ -90,6 +90,21 @@ public sealed class FulfilmentService(StoreDbContext db, ITokenGenerator tokens)
         };
         db.Entitlements.Add(entitlement);
         created.Add(entitlement);
+
+        // The delivery obligation is committed by the SAME SaveChangesAsync as the entitlement
+        // (CommitAsync below). That is the whole point: the email used to be dispatched inline
+        // in the webhook handler AFTER this commit and outside it, so anything between the two --
+        // a deploy SIGTERM, a crash, a Mailjet blip -- lost the link for good, because the
+        // provider's retry hits the dedup short-circuit and returns ALREADY_PROCESSED without
+        // ever reaching the send. Enqueued here, "this buyer is owed a link" is exactly as
+        // durable as "this buyer owns this pack", and DeliveryDrain is the only sender.
+        db.PendingDeliveries.Add(new PendingDelivery
+        {
+            Entitlement = entitlement,   // navigation: EntitlementId does not exist until insert
+            PackId = pack.Id,
+            BuyerEmail = txn.BuyerEmail,
+            GrantToken = entitlement.GrantToken,
+        });
     }
 
     /// <summary>

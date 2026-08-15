@@ -776,6 +776,51 @@ namespace Store.Catalog.Migrations
                     b.ToTable("PackPriceHistory");
                 });
 
+            modelBuilder.Entity("Store.Catalog.Domain.PendingDelivery", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("BuyerEmail")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("EntitlementId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("GrantToken")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PackId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EntitlementId")
+                        .IsUnique();
+
+                    b.HasIndex("SentAt");
+
+                    b.ToTable("PendingDeliveries");
+                });
+
             modelBuilder.Entity("Store.Catalog.Domain.SalesAudit", b =>
                 {
                     b.Property<long>("Id")
@@ -967,6 +1012,17 @@ namespace Store.Catalog.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Store.Catalog.Domain.PendingDelivery", b =>
+                {
+                    b.HasOne("Store.Catalog.Domain.Entitlement", "Entitlement")
+                        .WithMany()
+                        .HasForeignKey("EntitlementId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Entitlement");
                 });
 #pragma warning restore 612, 618
         }

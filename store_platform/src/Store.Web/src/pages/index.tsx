@@ -36,6 +36,8 @@ import { EvidenceBar } from '@/components/ui/EvidenceBar';
 
 import { ShelfEndCapture } from '@/components/discovery/ShelfEndCapture';
 import { fetchCatalog, fetchCatalogStats, freshnessLabel, marketLabel, Pack, CatalogStats } from '@/lib/api/client';
+// Last-known-good catalogue. A failed fetch must never render as "nothing is for sale".
+import { lastKnownCatalog, rememberCatalog } from '@/lib/catalogCache';
 import { formatPriceForMarket, currencyForCountry, type Currency } from '@/lib/fx';
 import { repairTruncation } from '@/lib/copy';
 import { track } from '@/lib/analytics';
@@ -94,6 +96,12 @@ interface HomeProps {
    *  COOKIE (`pages/pack/[id].tsx:1071`, asserted by `__tests__/nTwoPersonalised.test.ts`), so
    *  that key was never set and the fallback row has never once rendered. */
   viewedIds: string[];
+  /** True only when the catalogue could not be reached AND this server has never held one, so
+   *  `packs` is empty because of OUR outage rather than because nothing is for sale. The shelf
+   *  branches on it: an empty catalogue we actually fetched still says "No packs are live right
+   *  now", which is a true statement about the business; an empty one we failed to fetch must
+   *  not, and used to (see `lib/catalogCache.ts`). */
+  catalogUnavailable: boolean;
 }
 
 /*
@@ -428,7 +436,10 @@ function PackCard({
         href={`/pack/${pack.id}`}
         className={cx(
           'group flex items-center gap-4 px-3 py-4 sm:gap-5 sm:px-4',
-          'transition-colors hover:bg-surface3',
+          // Hover LIFTS to paper (`--surface`) rather than sinking to `--surface3`, which is now
+          // the shelf's own ground -- a hover state painted the same colour as the surface under
+          // it is not a hover state. Same direction as the cards: white = a thing you can pick up.
+          'transition-colors hover:bg-surface',
           focusRing,
         )}
       >
@@ -536,7 +547,7 @@ function PackCard({
         </span>
 
         <span className="flex flex-none items-center gap-3 sm:gap-4">
-          <PriceText className="text-body font-semibold text-text">{price}</PriceText>
+          <PriceText className="text-body font-semibold text-azure">{price}</PriceText>
           {/* THE ARROW IS A HOVER AFFORDANCE, so it costs 32px on the one device that cannot
               hover. Its whole job is `group-hover:translate-x-0.5` -- on touch that never fires,
               and the entire row is already a link, so at 390px it is 32px (glyph + `gap-3`) spent
@@ -663,7 +674,7 @@ function PackCard({
             <EvidenceBar count={pack.sourceCount} size="lg" label={evidenceLabel} />
           </span>
           <span className="mt-auto flex items-end justify-between gap-4 pt-6 lg:mt-0 lg:flex-none lg:flex-col lg:items-end lg:gap-5 lg:pt-0">
-            <PriceText className="text-h1 font-semibold text-text">{price}</PriceText>
+            <PriceText className="text-h1 font-semibold text-azure">{price}</PriceText>
             <span
               className={cx(
                 'inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2.5',
@@ -831,7 +842,7 @@ function PackCard({
               inherited body size with only `font-semibold` distinguishing it. Mono because a price
               is a checkable quantity, which is exactly the rule the house style already states,
               and `tabular-nums` so £49 and £149 align on the decimal down a column. */}
-          <PriceText className="text-h2 font-semibold text-text">{price}</PriceText>
+          <PriceText className="text-h2 font-semibold text-azure">{price}</PriceText>
           <span
             className={cx(
               'inline-flex items-center gap-1.5 rounded-md bg-primary px-3.5 py-2',
@@ -1098,6 +1109,7 @@ function CatalogBrowser({
   personalised,
   viewedIds,
   featuredId,
+  catalogUnavailable,
 }: {
   packs: Pack[];
   initialState: DiscoveryState;
@@ -1105,6 +1117,8 @@ function CatalogBrowser({
   currency: Currency;
   personalised: Pack[];
   viewedIds: string[];
+  /* Only distinguishes the two empty states below; it never changes a non-empty shelf. */
+  catalogUnavailable: boolean;
   /* The pack the hero is already showing in its desktop-only featured slot, so the shelf can
      avoid printing the same product twice on the same screen. Undefined on any render where the
      hero has no featured card, in which case the shelf behaves exactly as it did before. */
@@ -1352,14 +1366,24 @@ function CatalogBrowser({
   );
 
   if (packs.length === 0) {
+    /* Two different facts, and they were rendered as one sentence until 2026-08-15. An empty
+       catalogue we SUCCESSFULLY fetched means nothing is live; an empty one we failed to fetch
+       means our own API is unreachable, and saying "no packs are live" there is a false claim
+       about the business caused by our outage. See `lib/catalogCache.ts`. */
     return (
       <div className="rounded-md border border-dashed border-border bg-surface py-16 text-center">
         <div className="mx-auto mb-3 flex items-center justify-center text-faint">
-          <Icon name="search" size={24} />
+          <Icon name={catalogUnavailable ? 'warning' : 'search'} size={24} />
         </div>
-        <p className="text-body font-semibold text-text">No packs are live right now.</p>
+        <p className="text-body font-semibold text-text">
+          {catalogUnavailable
+            ? "We can't reach the catalogue right now."
+            : 'No packs are live right now.'}
+        </p>
         <p className="mx-auto mt-1 max-w-sm text-meta text-muted">
-          We publish an opportunity the moment it clears every check. Check back shortly.
+          {catalogUnavailable
+            ? 'This is on our side, not yours. Nothing has sold out. Refresh in a moment.'
+            : 'We publish an opportunity the moment it clears every check. Check back shortly.'}
         </p>
       </div>
     );
@@ -1883,7 +1907,7 @@ function CatalogBrowser({
  * show the product.
  */
 
-export default function Home({ packs, stats, initialState, market, currency, personalised, viewedIds }: HomeProps) {
+export default function Home({ packs, stats, initialState, market, currency, personalised, viewedIds, catalogUnavailable }: HomeProps) {
   // The live "N live now" figure is rendered by <Heartbeat>, which takes `stats` directly, so the
   // duplicate `stats?.listed ?? packs.length` that used to sit here was computed and dropped.
   const { variant } = useCopyVariant();
@@ -2261,7 +2285,10 @@ export default function Home({ packs, stats, initialState, market, currency, per
           between the shelf and the section below, on every viewport, as a side effect of a
           mobile-only fold fix. `:last-child` is DOM order, not flex order, so this holds at
           both breakpoints. */}
-      <Section bg="bg" width="7xl" outerClassName="!border-b" className="!pt-2 !pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:!pt-3 md:!pb-20">
+      {/* `bg="surface3"` (was `bg`): the shelf's ground, so 57 white cards read as paper on a
+          gutter instead of as hairline outlines on the same white as the page. See the tone's
+          note in blocks.tsx for why the tint goes UNDER the cards rather than on them. */}
+      <Section bg="surface3" width="7xl" outerClassName="!border-b" className="!pt-2 !pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:!pt-3 md:!pb-20">
         {/* THE SHELF HAS A NAME AT EVERY WIDTH NOW.
             This block was `hidden sm:block` outright, to buy fold budget on a phone. What that
             actually bought was a phone reader going from the hero's last line straight into a
@@ -2303,7 +2330,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
               say each thing once, sitewide. Twice on ONE screen is the loudest version of it. */}
         </div>
 
-        <CatalogBrowser packs={packs} initialState={initialState} market={market} currency={currency} personalised={personalised} viewedIds={viewedIds} featuredId={featured?.id} />
+        <CatalogBrowser packs={packs} initialState={initialState} market={market} currency={currency} personalised={personalised} viewedIds={viewedIds} featuredId={featured?.id} catalogUnavailable={catalogUnavailable} />
       </Section>
       </div>
 
@@ -2594,26 +2621,70 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (context)
     typeof countryHeader === 'string' ? countryHeader : null,
   );
 
+  // N2: derive the personalised row. The most recently viewed pack anchors the similarity. If
+  // the cookie is empty or the anchor pack is no longer in the catalogue, the row is hidden and
+  // `RecentlyViewed` is rendered instead. Hoisted out of the try so the cached catalogue served
+  // on the failure path below gets the same row, rather than silently losing personalisation
+  // during an outage.
+  const personalisedFor = (available: Pack[]): Pack[] => {
+    if (recentlyViewedIds.length === 0) return [];
+    const anchor = available.find((p) => p.id === recentlyViewedIds[0]);
+    if (!anchor) return [];
+    return similarPacks(anchor, available);
+  };
+
   try {
     const [packs, stats] = await Promise.all([fetchCatalog(), fetchCatalogStats()]);
-    // N2: derive the personalised row. The most recently viewed pack anchors
-    // the similarity. If the cookie is empty or the anchor pack is no
-    // longer in the catalogue, the row is hidden and `RecentlyViewed` is
-    // rendered instead.
-    const personalised: Pack[] = (() => {
-      if (recentlyViewedIds.length === 0) return [];
-      const anchorId = recentlyViewedIds[0];
-      const anchor = packs.find((p) => p.id === anchorId);
-      if (!anchor) return [];
-      return similarPacks(anchor, packs);
-    })();
+    // Only a SUCCESSFUL fetch is remembered -- that is what makes the fallback below "the last
+    // catalogue we actually saw" rather than a guess.
+    rememberCatalog(packs, stats);
     return {
-      props: { packs, stats, initialState, market, currency, personalised, viewedIds: recentlyViewedIds },
+      props: {
+        packs,
+        stats,
+        initialState,
+        market,
+        currency,
+        personalised: personalisedFor(packs),
+        viewedIds: recentlyViewedIds,
+        catalogUnavailable: false,
+      },
     };
   } catch (error) {
     console.error('Error fetching catalog:', error);
+
+    // A failed fetch is not evidence that nothing is for sale. Serving the last catalogue this
+    // server actually held keeps the shelf honest through an API restart; only a process that
+    // has never held one falls through to saying so out loud. Before this, ANY catalogue
+    // failure rendered "No packs are live right now." -- a sold-out claim manufactured by our
+    // own outage, on the one page the whole business runs through.
+    const cached = lastKnownCatalog();
+    if (cached) {
+      return {
+        props: {
+          packs: cached.packs,
+          stats: cached.stats,
+          initialState,
+          market,
+          currency,
+          personalised: personalisedFor(cached.packs),
+          viewedIds: recentlyViewedIds,
+          catalogUnavailable: false,
+        },
+      };
+    }
+
     return {
-      props: { packs: [], stats: null, initialState, market, currency, personalised: [], viewedIds: recentlyViewedIds },
+      props: {
+        packs: [],
+        stats: null,
+        initialState,
+        market,
+        currency,
+        personalised: [],
+        viewedIds: recentlyViewedIds,
+        catalogUnavailable: true,
+      },
     };
   }
 };

@@ -22,6 +22,7 @@ from .models import (
     Dossier,
     ScoreResult,
     Verdict,
+    distinct_sources,
 )
 from .score import passes_composite
 
@@ -322,6 +323,25 @@ def _verdict_of(chk: Any) -> str:
     # with it rather than grading one check unknown.
     raw = getattr(chk, "verdict", "")
     return str(getattr(raw, "value", raw) or "").strip().lower()
+
+
+def _mapping(obj: Any) -> dict:
+    """A dict-shaped field as a real dict, whichever shape it arrived in.
+
+    The same lesson as `_verdict_of`, on the other kind of field. `pack_manifest._ns`
+    (`pack_manifest.py:354`) descends into every dict it meets, so a field whose KEYS are
+    data rather than field names — `score.scores`, `score.justification`, a refinement
+    entry's `before` — comes back from a stored dossier as a `SimpleNamespace`, and
+    `.items()` / `.get()` on it raise. That is why every stored PASS dossier was
+    unrenderable, and so unreachable for a re-render of the pack it was sold with.
+
+    Read it here rather than teaching `_ns` which dicts are data: `_ns` sees only a dict
+    and cannot tell the two apart, while the renderer knows exactly which fields are maps.
+    One reader, both shapes.
+    """
+    if isinstance(obj, dict):
+        return obj
+    return dict(vars(obj)) if hasattr(obj, "__dict__") else {}
 
 
 def check_label(name: str) -> str:
@@ -695,6 +715,13 @@ def render_markdown(dossier: Any) -> str:
     # scores, things our engine does that does not concern us". This was the clearest example
     # of it in the pack. `refinement_history` is still on the Candidate and still in the JSON
     # dossier and the audit log, where the record belongs; it is not buyer-facing copy.
+    #
+    # MERGE NOTE (origin/main, 2026-08-15): main fixed the refinement loop's
+    # `entry.get("before", {})` to `_mapping(_mapping(entry).get("before", {}))`, for the same
+    # stored-dossier `SimpleNamespace` reason as `_mapping` exists at all. That fix is correct
+    # and is deliberately dropped here only because the code it repairs is the code this
+    # section removes. If the diff is ever restored, restore it through `_mapping`, twice, as
+    # main wrote it — a stored `refinement_history` entry is a namespace and `.get` raises.
 
     # --- Per-check verdicts ---
     checks = list(getattr(dossier, "checks", None) or [])
@@ -810,6 +837,11 @@ def render_markdown(dossier: Any) -> str:
         lines.append("")
 
     # --- All sources ---
+    # The module function, not the `Dossier.all_sources` property: a stored record arrives
+    # here as a `pack_manifest._ns` tree with no properties at all, and `distinct_sources`
+    # exists (models.py:396) precisely so both shapes yield the same dedup. Reached through
+    # `_all_sources` so `checks` is read with a default too — a stored dossier whose JSON
+    # never carried the key has no such attribute at all, and `dossier.checks` raises.
     all_src = _all_sources(dossier)
     if all_src:
         lines.append("---")

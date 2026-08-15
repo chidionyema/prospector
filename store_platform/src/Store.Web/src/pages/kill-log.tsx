@@ -9,6 +9,7 @@ import killLog from '@/data/kill-log.json';
 import { tightDecimal } from '@/components/ui/Money';
 import { RESEARCH_STATS } from '@/lib/stats';
 import { fetchCatalogStats } from '@/lib/api/client';
+import { track } from '@/lib/analytics';
 import type { GetStaticProps } from 'next';
 
 /*
@@ -583,15 +584,38 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
             Same checks, same sourcing, opposite outcome. One full report is free to read, no card and
             no email.
           </p>
+          {/* INSTRUMENTED 2026-08-15. The claim this page exists to test is "a reader who finds the
+              kill log is likelier to buy", and it was untestable: `page_view` counts arrivals here
+              but nothing counted departures TOWARDS the shelf, so the funnel had a denominator and
+              no numerator.
+
+              These are the two event names the allowlist already carries
+              (`AnalyticsEndpoints.cs`), not new ones, because `track()` sends
+              `window.location.pathname` with every beacon -- so a `catalog_cta_clicked` at
+              `/kill-log` is already distinguishable from the same event fired on the home page. No
+              schema change, no server deploy.
+
+              What this canNOT answer, and no amount of client code here will: whether the SAME
+              visitor later bought. `analytics.ts` deliberately stores nothing on the device (PECR
+              reg 6(1)), so there is no per-visitor join, only page-level rates. Read it as "does
+              the kill log route people to the shelf", never as "kill-log readers convert at X%". */}
           <div className="mt-6 flex flex-wrap items-center gap-3">
-            <Link href="/sample" className={buttonClasses({ size: 'lg' })}>
+            <Link
+              href="/sample"
+              className={buttonClasses({ size: 'lg' })}
+              onClick={() => track('sample_cta_clicked')}
+            >
               Read a full report free
             </Link>
             {/* WAS "Browse the 145 that survived", which landed the reader on a smaller grid. The
                 button now names the number it actually delivers, read live from /catalog, and
                 falls back to no number at all if the catalogue is unreachable, rather than
                 asserting a stale one. */}
-            <Link href="/#catalog" className={buttonClasses({ variant: 'secondary', size: 'lg' })}>
+            <Link
+              href="/#catalog"
+              className={buttonClasses({ variant: 'secondary', size: 'lg' })}
+              onClick={() => track('catalog_cta_clicked')}
+            >
               {listed ? `Browse the ${listed} on the shelf` : 'Browse the packs on the shelf'}
             </Link>
           </div>

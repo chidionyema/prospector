@@ -417,10 +417,58 @@ describe('Design contract — primary CTAs', () => {
   it('the buy button IS a Button, not a look-alike', () => {
     // The money control specifically. If this ever goes back to a literal class string, the day
     // `SIZES.lg` changes every CTA on the site follows it except the one that takes the payment.
+    // Loosened 2026-08-15: it pinned the ARGUMENTS (`{ size: 'lg' }`) when the contract is the
+    // CALL. The buy button moved to `variant: 'buy'` (the azure money colour, tokens.css), which
+    // is the shape being sourced from Button.tsx exactly as this test demands -- yet the old
+    // regex failed it. A test that fails on a change it was not written to catch teaches people
+    // to edit the test, which is how the real contract gets deleted by hand one day. `size: 'lg'`
+    // is still required: it is the part that keeps the money control on the shared scale.
     const buy = readSource('../components/checkout/PackBuyButton.tsx');
-    expect(buy, 'PackBuyButton must call buttonClasses').toMatch(
-      /const shapeClasses = buttonClasses\(\{ size: 'lg' \}\)/,
+    expect(buy, 'PackBuyButton must call buttonClasses at size lg').toMatch(
+      /const shapeClasses = buttonClasses\(\{[^}]*\bsize: 'lg'[^}]*\}\)/,
     );
+  });
+
+  it('every price on the site is the money colour', () => {
+    /*
+     * FOUND BY THE FOUNDER, 2026-08-15, on the live landing page: "why the inconsistency in price
+     * colour, some have azure and the later ones don't". The shelf renders THREE card variants
+     * (row, lead, mid) and each has its own `<PriceText>` call. Azure was applied to one of them,
+     * because the search that located "the price" answered with a single line and I treated one
+     * answer as the whole population. The page then read as a half-finished repaint, which is
+     * worse than the ink it replaced -- inconsistent emphasis tells a reader the difference means
+     * something when it means nothing.
+     *
+     * So the rule is enforced over the TREE, not per file: `--azure` has exactly two sanctioned
+     * consumers (the price and the buy button, tokens.css), and "the price" means all of them.
+     * A fourth card variant added tomorrow fails here rather than shipping grey.
+     */
+    /*
+     * Comments are BLANKED before the scan, not merely skipped. The first cut of this test read
+     * raw lines and immediately failed on a docblock that says the words `<PriceText>` while
+     * explaining this very rule -- a test that cannot survive being described in prose next to
+     * the code it guards. Blanking preserves newlines, so the line numbers in a failure still
+     * point at the real call site.
+     */
+    const blankComments = (src: string) =>
+      src
+        .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+        .replace(/\/\/[^\n]*/g, (m) => ' '.repeat(m.length));
+
+    const offenders: string[] = [];
+    for (const file of walkTsx()) {
+      blankComments(file.src)
+        .split('\n')
+        .forEach((line, i) => {
+          if (/<PriceText\b/.test(line) && !line.includes('text-azure')) {
+            offenders.push(`${file.path}:${i + 1}  ${line.trim().slice(0, 100)}`);
+          }
+        });
+    }
+    expect(
+      offenders,
+      `every <PriceText> must carry text-azure:\n${offenders.join('\n')}`,
+    ).toEqual([]);
   });
 
   it('nowhere in the tree declares the filter-chip SHAPE except Button.tsx', () => {

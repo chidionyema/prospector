@@ -146,7 +146,7 @@ pinned:
   (`test_a_preset_reorders_and_never_drops_a_tier`).
 - **The MOAT_PRIMARY fence is in the WRITER, not the keyboard** — the D4 lesson applied before it
   could repeat: a selection-time fence misses a runtime substitution. Refusal is parametrized over
-  `["minimax", "standardcompute", "deepseek", ""]`; the empty head is refused too.
+  `["minimax", "deepseek", ""]`; the empty head is refused too.
 - **A write touches one key.** `test_setting_nodes_moves_only_the_generation_chain` re-reads with
   `yaml.safe_load` and asserts `operator` and `artifact_operator` are byte-identical after a
   generation-chain write; the trailing comment on the edited line survives.
@@ -163,11 +163,11 @@ Prerequisite (a) from the plan below is **done**: `config.yaml:70 noncritical_op
 Ground truth gathered 2026-08-09 (verify before building — another session is actively editing
 `prospector/operator.py`):
 
-- Chains that **are** config-driven: `config.yaml:53 operator: [claude_cli, standardcompute,
+- Chains that **are** config-driven: `config.yaml operator: [claude_cli,
   minimax]` (verdict/moat), `config.yaml:69 artifact_operator: [claude_cli, minimax]`,
   `config.yaml:141 provider: [ddg, exa, claude_cli]` (retrieval).
 - The chain that is **hardcoded in Python**: `prospector/run.py:317`
-  `_NONCRITICAL_ORDER = ("standardcompute", "claude_cli", "minimax")`, consumed at
+  `_NONCRITICAL_ORDER = ("minimax",)` (standardcompute removed 2026-08-15), consumed at
   `run.py:655,658` for generation / prescreen / score. **Making this config-driven is a
   prerequisite** — there is no per-step chain declaration in config.yaml at all today.
 - Step → chain: generate/prescreen/content_gen → non-critical; query_gen/score → non-critical
