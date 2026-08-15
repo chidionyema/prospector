@@ -73,16 +73,6 @@ function findExample(check: Check, titleFragment: string): KillExample | undefin
 }
 
 /**
- * The gate id to print under the heading. When the curated example died on one of this check's
- * ids, print THAT one, so the identifier on screen is the identifier that actually fired for the
- * kill shown directly beneath it. Otherwise print the check's primary id.
- */
-function gateIdFor(check: Check, example: KillExample | undefined): string {
-  if (example && idsFor(check).includes(example.gate)) return example.gate;
-  return check.id;
-}
-
-/**
  * The example's reason, cut at a SENTENCE boundary, never mid-word.
  *
  * This used to be `slice(0, 160)` with the tail word trimmed and an ellipsis bolted on, so the six
@@ -248,16 +238,16 @@ export default function HowItWorks() {
                   <h2 className="text-h2 font-semibold text-text leading-tight">
                     {check.name}
                   </h2>
-         <p className="mt-1 text-caption font-medium text-muted">
-                    {/* The engine's gate id, with the underscores taken out. It was set in a mono
-                        `<code>` chip reading `pain_reality`, directly under the heading that
-                        already says "Real pain" -- founder, 2026-08-15: "why do we have labels
-                        like pain_reality, why the underscore?" It is a machine identifier, and a
-                        buyer-facing page that prints one raw reads as a leak. The WORDS are
-                        unchanged, so the tie between this line and the kill log's own gate labels
-                        survives; only the snake_case and the code chip go. */}
-                    {gateIdFor(check, example).replace(/_/g, ' ')}
-                  </p>
+                  {/* THE GATE ID IS GONE FROM THIS PAGE. It was a mono `<code>` chip reading
+                      `pain_reality` sitting directly under the heading that already says "Real
+                      pain"; de-underscoring it to "pain reality" was the first attempt and the
+                      founder read the same complaint back off the page a second time
+                      (2026-08-15: "still seeing ... payer_solvency, value_durability ... why am I
+                      repeating myself"). A machine identifier restated as a label is still a
+                      machine identifier, and it told a buyer nothing the heading had not already
+                      said. Nothing is lost: the kill-log example directly below prints that gate's
+                      real verdict wording in `example.gateLabel`, which is the phrase a reader
+                      will meet again on /kill-log. */}
 
                   {example && (
                     <div className="mt-5 rounded-md border border-border bg-bg/40 p-6">
