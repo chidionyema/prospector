@@ -164,7 +164,16 @@ def readability_grades(sections: Optional[Mapping[str, str]]) -> Dict[str, float
         return {}
     try:
         import textstat  # declared in requirements.txt; pure Python, no build
-    except Exception:                  # noqa: BLE001 — an optional metric never fails a publish
+    except ImportError:
+        # The optional metric is absent. NARROWED from `except Exception` on merging
+        # origin/main 2026-08-15, which brought the tier-1 swallow ratchet
+        # (`tools/audit_swallow_sites.py`) that flagged this line: `{}` here is the SAME value
+        # the success path returns for a pack with nothing long enough to score, so a broad
+        # handler made "textstat is not installed" and "this pack has no scoreable section"
+        # the same fact to every caller — and the whole point of this function is that the
+        # numbers accrue in `<id>.lint.json` until there are enough of them to say something.
+        # Accruing nothing, silently, because of an unrelated exception is how that never
+        # happens. ImportError is the one condition this handler is actually for.
         return {}
     out: Dict[str, float] = {}
     for title, body in sections.items():
@@ -174,6 +183,11 @@ def readability_grades(sections: Optional[Mapping[str, str]]) -> Dict[str, float
         try:
             out[title] = round(float(textstat.flesch_kincaid_grade(plain)), 1)
         except Exception:              # noqa: BLE001 — one unscoreable section, not the pack
+            # Deliberately still broad, and NOT the same defect as the import above: this
+            # skips ONE section of fourteen and the other thirteen still record their grade,
+            # so a caller can see that a number is missing. `textstat` is a third party
+            # scoring arbitrary prose and its failure modes are not enumerable from here;
+            # widening a metric's blast radius to the whole publish would be the worse trade.
             continue
     return out
 
