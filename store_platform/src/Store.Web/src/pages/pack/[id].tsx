@@ -663,7 +663,20 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                     exactly this slot, and the full description is in the sections below.
                   - There is no `subhead`: dropping it would leave the title with no sentence
                     under it at all, so the cut is repaired back to a word boundary instead. */}
-            {!(isTruncated(pack.oneLine) && pack.subhead) && (
+            {/* ONE LEAD PARAGRAPH, NEVER TWO (2026-08-15, brief item 8). The guard was
+                `!(isTruncated(pack.oneLine) && pack.subhead)`, which drops `oneLine` only when it
+                is BOTH cut AND has a subhead to fall back on. On a pack with a subhead whose
+                `oneLine` came through intact -- the ones the publish path did not cut at
+                150 chars -- both branches were true, so the page printed two lead
+                paragraphs in the same slot, same size, same colour, one under the other. That is
+                the founder's "the pack detail page prints its intro paragraph twice".
+
+                The rule the docblock above already states is the fix: "There is a `subhead`: the
+                cut sentence is dropped outright and the subhead is the lead." Truncation was
+                never the condition -- it was the reason the rule was WRITTEN. The subhead is a
+                complete sentence written for exactly this slot and the full description is in the
+                sections below, so dropping `oneLine` whenever a subhead exists loses nothing. */}
+            {!pack.subhead && (
               <p className="mt-4 max-w-[60ch] text-body text-muted">
                 {repairTruncation(pack.oneLine)}
               </p>
