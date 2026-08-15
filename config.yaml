@@ -347,17 +347,27 @@ retrieval:
   minimax_concurrency: 8
   claude_concurrency: 4          # max concurrent claude CLI subprocesses (failover brain only
                                  # now that grounding resolves on ddg/exa — see chain above)
-  # cursor_concurrency REMOVED 2026-08-06 with the cursor_cli adapter. claude_concurrency above
-  # is now the only CLI ceiling, and it is what vet_workers must respect.
-  vet_workers: 3                 # parallel candidates. Must stay <= claude_concurrency (4): each
-                                 # vet holds at most one CLI slot at a time (checks run
-                                 # sequentially for kill-fast), so 3 workers draw 3 of the 4
-                                 # slots and leave headroom for a concurrent `vet --resume`
-                                 # drain. It was 5 against a cursor_concurrency of 8; with
-                                 # cursor_cli gone, 5 workers would oversubscribe the 4 claude
-                                 # slots and queue against the daemon — the contention that
-                                 # produced the ~3s HTTP-429 failures and the moat flap on
-                                 # 2026-08-06 (nine dead-marks in 70 minutes).
+  # cursor_concurrency REMOVED 2026-08-06 with the cursor_cli adapter.
+  vet_workers: 8                 # parallel candidates. RAISED 3 -> 8 (2026-08-15). The old 3 was
+                                 # pinned to claude_concurrency (4) from when claude_cli was the
+                                 # moat's PRIMARY. It no longer is: `moat_primary: [minimax,
+                                 # claude_cli]` (:81) puts MiniMax at the head, and in the
+                                 # 16:09Z tick MiniMax led 385 of 433 completion calls against
+                                 # claude_cli's 48 (11%). The binding ceiling is therefore
+                                 # minimax_concurrency (8, measured 16/16 clean, ZERO 429s at
+                                 # :344), not the CLI's 4. Both limits are SEMAPHORES
+                                 # (operator.py:1490 minimax, :1732 claude), so a vet that does
+                                 # fall through to claude_cli QUEUES for a slot — it does not
+                                 # error. The 2026-08-06 429 storm the old value guarded against
+                                 # was measured when every vet hit the CLI; that premise is gone.
+                                 #
+                                 # WHY IT WAS COSTING: at 3 workers and ~251s/candidate
+                                 # (measured — 16 vet completions over 3765s in the 16:09Z tick)
+                                 # a tick finishes ~22 of a `schedule.batch_size` of 50. The
+                                 # remainder is cancelled by the vet budget and parked as DEFER:
+                                 # that one tick banked 13 verdicts and dumped 30 rows into a
+                                 # backlog the drain clears 3 at a time. Generation was scaled
+                                 # 15 -> 50 and the half that does the work was left behind.
   # Sized from the observed SUCCESS distribution, not a guess (317 logged run_cursor_cli
   # successes as of 2026-07-31: mean 46.9s, p50 41.7s, max 279.3s; run_claude_cli n=63,
   # p50 76.8s, max 283.0s). The old 120/180 pair sat *inside* that distribution, so long-but-
