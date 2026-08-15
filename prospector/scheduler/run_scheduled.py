@@ -1012,6 +1012,10 @@ def _default_generate(cfg, batch_size: int) -> dict:
     """
     from prospector.run import _resolve_lanes, run_signal
 
+    # THE CLOCK THE BUDGETS BELOW ARE FRACTIONS OF. The caller arms the hard-deadline Timer
+    # immediately before calling this function (`threading.Timer(_TICK_HARD_DEADLINE_S, ...)`,
+    # ~line 1424), so this instant is the tick's T0 to within the cost of one log line.
+    _tick_started_mono = time.monotonic()
     resumed = _drain_pass(cfg, _resume_per_tick(cfg))
     # Multi-lane by default (Part 14). Until 2026-08-01 this call passed no `lanes=`, so
     # run_signal took its no-lane default branch (run.py:604) and every unattended batch ran
@@ -1035,8 +1039,22 @@ def _default_generate(cfg, batch_size: int) -> dict:
     # 0.35 x 10800s = 63 min, against a measured healthy generation phase of ~3 min
     # (launchd.err.log 2026-08-11 ticks: 2.9 min for k=15) — the budget only bites when
     # the chain is degraded, which is exactly when the old behaviour ate the whole tick.
+    #
+    # ALL THREE ARE FRACTIONS OF THE TIME THAT IS LEFT, NOT OF THE WHOLE DEADLINE.
+    # This was the hole the first live k=50 proof run opened, 2026-08-15, before it reached
+    # vetting at all: the drain above runs INSIDE the hard-deadline Timer but has no budget of
+    # its own, and `run_signal` starts its vet clock when it is called. Fractions of the FULL
+    # deadline therefore promised `drain + 0.85 x D` of work inside a `D` fence — the rail
+    # would have been overrun by the force-exit it exists to prevent whenever the drain took
+    # more than 15% of the tick. That is not a corner: `_resume_per_tick` re-vets 3 rows at a
+    # measured ~1200s of wall clock per candidate (2026-08-15 profile of the 10:17:56Z tick),
+    # i.e. up to a third of a 10800s tick spent before the first budget is even computed.
+    # Measuring the remainder makes the rails a guarantee again — whatever the drain costs,
+    # vetting stops at 85% of what survives it and 15% of that remainder is left as headroom.
+    _spent = time.monotonic() - _tick_started_mono
+    _left = max(0.0, _TICK_HARD_DEADLINE_S - _spent)
     frac = _gen_budget_frac(cfg)
-    budget = (frac * _TICK_HARD_DEADLINE_S) if frac > 0 else None
+    budget = (frac * _left) if frac > 0 else None
     # THE OTHER TWO RAILS, added 2026-08-15 (see `_artifact_budget_frac` and
     # `_vet_budget_frac` for the measurements). `gen_budget_frac` alone bounded ~3 minutes of
     # a 180-minute tick; the artifact/content phase spanned 152 of those minutes with no
@@ -1045,18 +1063,19 @@ def _default_generate(cfg, batch_size: int) -> dict:
     #   vet_budget — ceiling on the WHOLE batch; past it the loop cancels un-started vets and
     #                returns what it banked, so the tick ends by decision, not by force-exit.
     art_frac = _artifact_budget_frac(cfg)
-    art_budget = (art_frac * _TICK_HARD_DEADLINE_S) if art_frac > 0 else None
+    art_budget = (art_frac * _left) if art_frac > 0 else None
     vet_frac = _vet_budget_frac(cfg)
-    vet_budget = (vet_frac * _TICK_HARD_DEADLINE_S) if vet_frac > 0 else None
+    vet_budget = (vet_frac * _left) if vet_frac > 0 else None
     logger.critical(
         "Tick budgets: generation %s, artifacts/candidate %s, vetting batch %s "
-        "(tick hard deadline %ds, batch=%s)",
+        "(tick hard deadline %ds, %.0fs already spent on the drain, %.0fs left, batch=%s)",
         f"{budget:.0f}s" if budget else "unbounded",
         f"{art_budget:.0f}s" if art_budget else "unbounded",
         f"{vet_budget:.0f}s" if vet_budget else "unbounded",
-        _TICK_HARD_DEADLINE_S, batch_size,
+        _TICK_HARD_DEADLINE_S, _spent, _left, batch_size,
         extra={"gen_budget_s": budget, "artifact_budget_s": art_budget,
                "vet_budget_s": vet_budget, "tick_deadline_s": _TICK_HARD_DEADLINE_S,
+               "drain_spent_s": _spent, "tick_remaining_s": _left,
                "batch_size": batch_size})
     dossiers = run_signal("", cfg=cfg, k=batch_size, publish=True, lanes=lanes,
                           gen_time_budget_s=budget,

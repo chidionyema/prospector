@@ -243,13 +243,39 @@ def test_the_batch_deadline_alone_still_bounds_the_content_phase(deadline_spy):
 # --------------------------------------------------------------------------- #
 # 3. The daemon actually passes them
 # --------------------------------------------------------------------------- #
-def _default_generate_kwargs(monkeypatch, schedule: dict) -> dict:
+class _FrozenClock:
+    """A `time` stand-in whose monotonic only moves when a test moves it.
+
+    Everything except `monotonic` falls through to the real module, so code under test that
+    calls `time.sleep`/`time.time` behaves normally. Used instead of `time.sleep` because a
+    budget assertion that measures the wall clock is a load detector, not a regression
+    detector — two such assertions went red on unchanged code under `-n auto` on 2026-08-15.
+    """
+
+    def __init__(self, t0: float = 10_000.0):
+        self.t = t0
+
+    def monotonic(self) -> float:
+        return self.t
+
+    def __getattr__(self, name):  # only reached for attributes not defined above
+        return getattr(time, name)
+
+
+def _default_generate_kwargs(monkeypatch, schedule: dict, drain_seconds: float = 0.0) -> dict:
     seen: dict = {}
+    clock = _FrozenClock()
 
     def fake_run_signal(_text, **kwargs):
         seen.update(kwargs)
         return []
 
+    def fake_drain(_cfg, _n):
+        clock.t += drain_seconds  # the drain is unbudgeted; it just burns tick time
+        return None
+
+    monkeypatch.setattr(run_scheduled, "time", clock)
+    monkeypatch.setattr(run_scheduled, "_drain_pass", fake_drain)
     monkeypatch.setattr("prospector.run.run_signal", fake_run_signal)
     monkeypatch.setattr("prospector.run._resolve_lanes", lambda *a, **k: None)
     run_scheduled._default_generate(types.SimpleNamespace(schedule=schedule), 50)
@@ -262,6 +288,46 @@ def test_the_tick_hands_down_all_three_budgets(monkeypatch):
     assert seen.get("gen_time_budget_s") == pytest.approx(0.35 * tick)
     assert seen.get("artifact_time_budget_s") == pytest.approx(0.40 * tick)
     assert seen.get("vet_time_budget_s") == pytest.approx(0.85 * tick)
+
+
+def test_the_budgets_are_fractions_of_what_the_drain_left_not_of_the_whole_tick(monkeypatch):
+    """The hole the first live k=50 proof run opened on 2026-08-15, before it ever reached
+    vetting.
+
+    `_default_generate` re-vets backlog BEFORE it generates, and that drain runs inside the
+    hard-deadline Timer with no budget of its own. `run_signal` then starts its vet clock when
+    it is CALLED. So fractions of the full deadline promised `drain + 0.85 x D` seconds of work
+    inside a `D`-second fence: the clean stop would itself have been overrun by the force-exit
+    it exists to prevent, and the tick would die by `os._exit(2)` with the batch unsaved —
+    exactly the failure the rails were built for, re-entered through the back door.
+
+    Not a corner case: `_resume_per_tick` re-vets 3 rows at a measured ~1200s of wall clock per
+    candidate, i.e. up to a third of a 10800s tick spent before the first budget is computed.
+    """
+    tick = run_scheduled._TICK_HARD_DEADLINE_S
+    drain = 0.30 * tick
+    seen = _default_generate_kwargs(monkeypatch, {"resume_per_tick": 3}, drain_seconds=drain)
+    left = tick - drain
+
+    assert seen["vet_time_budget_s"] == pytest.approx(0.85 * left), (
+        "the vetting rail was sized off the whole deadline, so it would have kept vetting "
+        f"until {drain + 0.85 * tick:.0f}s into a {tick}s tick")
+    assert seen["gen_time_budget_s"] == pytest.approx(0.35 * left)
+    assert seen["artifact_time_budget_s"] == pytest.approx(0.40 * left)
+
+    # The property that actually matters, stated as the fence rather than as arithmetic.
+    assert drain + seen["vet_time_budget_s"] < tick, (
+        "the tick would still be vetting when the force-exit timer fires")
+
+
+def test_a_drain_that_eats_the_whole_tick_yields_no_negative_budget(monkeypatch):
+    """A budget that has gone negative is a deadline already in the past, which cancels every
+    vet before it starts — a tick that looks busy and rules nothing. Clamp at zero-left."""
+    tick = run_scheduled._TICK_HARD_DEADLINE_S
+    seen = _default_generate_kwargs(monkeypatch, {"resume_per_tick": 3},
+                                    drain_seconds=2.0 * tick)
+    for kwarg in ("gen_time_budget_s", "artifact_time_budget_s", "vet_time_budget_s"):
+        assert seen[kwarg] >= 0.0, f"{kwarg} went negative: {seen[kwarg]}"
 
 
 def test_the_batch_budget_lands_below_the_force_exit_timer(monkeypatch):
