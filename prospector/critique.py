@@ -47,7 +47,23 @@ from .telemetry import stage as telemetry_stage
 # because a new axis appearing in config must not silently vanish from the critique brief.
 _AXIS_HINTS = {
     "pain_acuity": "how sharp and how frequent the pain is for a specifically named sufferer",
-    "money_provability": "whether money already provably changes hands for this job today",
+    # JOB-LEVEL, not product-level. Read the corpus before widening this back: of 161
+    # money_provability scores <=1 since 2026-08-01, 117 justify themselves with some form of
+    # "no passage prices this", and the scorer twice rejected money it had FOUND for being the
+    # wrong artifact — "same buyer, different service" (a £825 probate fee against a lease
+    # buyout) and "quote-on-request only, no figure" (ResearchManager, Medidata). Both are
+    # facts about what the open web publishes, not about whether the buyer spends. That is the
+    # exact principle `price_comparables` is already built on: it may never kill, because "no
+    # price page on the open web" is a fact about the web. The scorer was applying the
+    # opposite rule, so a genuinely new solution to a job people already pay to get done
+    # scored as if nobody paid for anything.
+    "money_provability": (
+        "whether this BUYER already spends on this OUTCOME today — an adjacent invoice, staff "
+        "hours, an agency or professional fee, a fine, or a paid workaround. A new solution to "
+        "a job that is already funded scores HIGH; a job nobody spends anything to get done "
+        "scores LOW. No public price page, quote-on-request pricing, and no direct competitor "
+        "are facts about the market's disclosure, not evidence that the money is absent"
+    ),
     "defensibility": "what accumulates here that a competitor starting tomorrow would not have",
     "distribution": "whether a beginner can actually reach the buyer through an open channel",
     "automatability": "how much of the work real tooling can do TODAY, not aspirationally",
