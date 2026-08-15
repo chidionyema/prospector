@@ -36,17 +36,30 @@ not a tick.
 | P4b | Diagram 2 — the 8-check pipeline | **ALREADY SERVED, in a stronger form** | `components/marketing/CheckSequence.tsx`, on `/how-it-works:172`. It is not a diagram: it is one real idea entering at the top and each of the eight checks firing on it in order, with the verdict, the confidence and the opening sources on each, all read from `data/sample-report.json` — the same file `/sample` renders in full, so it cannot drift from the record it claims to show. A drawn pipeline beside it would be a second, thinner copy of the page's strongest asset, and the brief's own density rule ("one image per section, maximum") forbids it. **No change; say so rather than build a duplicate.** |
 | P4c | Glyph family — checks passed/refuted, price multiple | TODO | The two existing originals are `PopulationField` (1,444 marks, home page) and `Glyph` (verdict marks, used on /sample, /kill-log and the pack page). Extending the bar language to a verdict count and a price multiple is unstarted. |
 | P4d | Document previews | TODO | Real crops of pack pages, 4:3 or 3:2, 1px border, no shadow, lazy with a placeholder at final dimensions. Unstarted; needs real renders, not CSS. |
+| F1 | "New this week" was broken at every desktop width | **DONE** | Founder, looking at the live server: *"New this week is broke style"*. `PackSpotlight`'s internal breakpoints were **viewport** queries (`sm:`/`lg:`) on a card whose width comes from its **container**, and the hero's featured slot is a 420px column. Measured at 1440x900 before the fix: `lg:` was true, so `lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto]` fired inside a **388px** card, the claim track resolved to **~71px**, and the title was clipped mid-word by the card's own `overflow-hidden` — "Condo due diligen / packet / for Florida / real estate / agents" — beside ~200px of empty white, the card **894px tall in a 900px viewport**. Fix is `@container` on the card plus `@lg:` on all five internal breakpoints (`index.tsx`, `PackSpotlight`), so the card reads its own inline size: hero copy stacks at 388px, shelf copy keeps three tracks at ~1200px. **Measured after: 894px → 518px, no clipping, at both 1440 and 1280.** The shelf's copy of the same component was always correct, which is why this shipped — one component, two widths, only one of them ever looked at. |
+| F2 | "US rules" → "US market" | **DONE** | Founder: *"US rules shouldbe US market"*. Two render sites, both changed so the shelf says one thing: the row chip `PackRow.tsx:144` (`{marketLabel(pack.market)} market`) and the group divider `index.tsx` (`Built for the {group.label} market`). The divider's own subtitle already argues the wider reading — "the buyers, numbers and legal steps in these are US" — and only the last of those three is a rule. `usTwoPackArt.test.ts:169` pinned the old noun; it now pins `market`, and the rule it actually exists to enforce (**in words, never a flag emoji or a bare country code**) is unchanged. |
 
 ### Open conflict to resolve before touching colour
 
-Part Two sets `--action: #1B3F8B` (navy) and "Blue fills every interactive element". On
-2026-08-15 the founder chose **Option B, teal + charcoal**, and `--action` shipped as **`#2D3436`
-charcoal** with `--bg: #FAF9F7`, on the stated grounds that "the teal logo and navy buttons feel
-like they're from two different websites". The brief also says "Three primaries currently coexist:
-filled charcoal (`View pack`), filled navy, and teal outline — pick one."
+**RESOLVED 2026-08-15: charcoal `#2D3436` stays. The brief's navy `#1B3F8B` is withdrawn.**
+Founder, having seen both rendered side by side on a live server: *"charcoal 12.68:1, is
+preferrable"*. Contrast on white text, both AAA: charcoal **12.68:1**, navy **9.86:1**.
+`tokens.css:200-207` is already correct and needs no edit; the brief's Part Two `--action` line
+(`:207`) is now dead and must not be re-applied. Part Two is unblocked for everything except the
+`--cat-*` question below.
 
-Both readings are self-consistent; they pick different winners. **Ask before implementing Part
-Two.** Do not silently revert the charcoal decision, and do not silently ignore the navy token.
+The comparison was made on `http://localhost:3131` with a throwaway `:root` override, not with
+screenshots, so what was judged was the whole button system moving together (`--primary:
+var(--action)`, `tokens.css:217`) rather than one crop. The harness was
+`src/components/dev/VariantSwitch.tsx` plus a four-line mount in `_app.tsx`, both deliberately
+uncommitted.
+
+The history, kept because it is the argument and not just the outcome: Part Two set `--action:
+#1B3F8B` and "Blue fills every interactive element". On 2026-08-15 the founder chose Option B,
+teal + charcoal, on the grounds that "the teal logo and navy buttons feel like they're from two
+different websites", and `Button.tsx:16-23` records the same reading ("the navy read as an orphan
+beside the teal identity"). The brief's own "pick one" instruction is now answered: the remaining
+pair is filled charcoal `primary` + teal-outline `secondary`.
 
 Second contradiction, same section: rule 5 says "drop category colour-coding entirely", but
 `docs/SITE_SPEC_PROGRAM.md` §3 records the 12 `--cat-*` hues as one of two **deliberate documented

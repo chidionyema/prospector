@@ -316,6 +316,22 @@ function PackSpotlight({
            columns at `lg`. It had to be the card while the mark column was the card's first
            child; with the mark gone, a header that stops 34% short of the right edge is not a
            header. */
+        /* THE CARD'S BREAKPOINTS ARE ITS OWN WIDTH, NOT THE WINDOW'S (2026-08-15).
+           Every `sm:`/`lg:` below was a VIEWPORT query on a card whose width is set by its
+           CONTAINER, and the two disagree wherever this card is not full-bleed. Measured at
+           1440x900 on the hero's "New this week" slot, which is a 420px column: `lg:` was true,
+           so the three-track grid fired inside a 388px card and the claim track resolved to
+           ~71px. The title rendered one word per line and was CLIPPED mid-word by this element's
+           own `overflow-hidden` -- "Condo due diligen / packet / for Florida / real estate /
+           agents" -- with ~200px of empty white beside it and the card 894px tall in a 900px
+           viewport. The shelf's copy of the same component, at ~1200px, was correct, which is
+           why this survived review: one component, two widths, only one of them ever looked at.
+
+           `@container` makes the queries below read this card's inline size, so the hero copy
+           stacks (388px < the 512px `@lg` threshold) and the shelf copy keeps its three tracks.
+           A `lg:hidden` on the hero slot would have hidden the bug rather than fixed it, and
+           the next narrow slot would have reintroduced it. */
+        '@container',
         'group flex w-full flex-col overflow-hidden rounded-md border border-border bg-surface',
         'transition-[border-color,box-shadow] duration-[180ms] ease-[cubic-bezier(0.2,0,0,1)]',
         'hover:border-border-strong',
@@ -341,14 +357,15 @@ function PackSpotlight({
           NOTHING THE COLUMN STATED IS DROPPED. The sector is in the header band, in the same
           mono caption at the same size as every other card on the site; the evidence run is in
           the body a few lines below, at `size="lg"`, drawn for a light surface. */}
-      {/* `sm:px-8` because THIS card's body opens to `p-8` from `sm` (:552) while every other
-          card stays at `p-6`. The header's inset is not a constant, it is the card's own left
-          edge -- a shared component that hardcoded one inset would put a 8px step inside the
-          widest card on the shelf. */}
+      {/* `@lg:px-8` because THIS card's body opens to `p-8` at the same container width while
+          every other card stays at `p-6`. The header's inset is not a constant, it is the card's
+          own left edge -- a shared component that hardcoded one inset would put an 8px step
+          inside the widest card on the shelf. It was `sm:px-8`, a viewport query; see the
+          container note on the Link above for why every breakpoint here is now `@`. */}
       <PackCardHeader
         label={cat.tagged ? cat.label : null}
         labelClassName={cat.ink}
-        className="sm:px-8"
+        className="@lg:px-8"
       />
 
       {/* TWO COLUMNS AT `lg`: what it is / what it costs. (It was three; the mark column is
@@ -370,8 +387,8 @@ function PackSpotlight({
           that fights the layout. Below `lg` nothing changes: one column, in reading order. */}
       <span
         className={cx(
-          'flex flex-1 flex-col p-6 sm:p-8',
-          'lg:grid lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] lg:items-center lg:gap-10',
+          'flex flex-1 flex-col p-6 @lg:p-8',
+          '@lg:grid @lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] @lg:items-center @lg:gap-10',
         )}
       >
         <span className="flex min-w-0 flex-col">
@@ -392,11 +409,11 @@ function PackSpotlight({
             above the other weights, because this is the one card whose number is allowed to be
             the biggest type in the band. Neither is above the heading: a figure about a thing
             means nothing until the heading has said what the thing is. */}
-        <span className="mt-6 flex min-w-0 flex-col gap-4 lg:mt-0">
+        <span className="mt-6 flex min-w-0 flex-col gap-4 @lg:mt-0">
           {stat && <PackFigure stat={stat} weight="spotlight" />}
           <EvidenceBar count={pack.sourceCount} size="lg" label={evidenceLabel} />
         </span>
-        <span className="mt-auto flex items-end justify-between gap-4 pt-6 lg:mt-0 lg:flex-none lg:flex-col lg:items-end lg:gap-5 lg:pt-0">
+        <span className="mt-auto flex items-end justify-between gap-4 pt-6 @lg:mt-0 @lg:flex-none @lg:flex-col @lg:items-end @lg:gap-5 @lg:pt-0">
           <PriceText className="text-h1">{price}</PriceText>
           <span
             className={buttonClasses({ className: 'group-hover:bg-primary-hover' })}
@@ -1323,12 +1340,18 @@ function CatalogBrowser({
                    looks exactly like a data bug. The divider carries the same weight as the
                    distinction it is making now. */
                 <div key={group.market} className="mt-16 border-t border-text pt-8">
-                  {/* US PACKS DIVIDER (email §1). The label is now "Built for US rules" -- the
-                      divider is about what the buyer would be BUILDING, not what the page has
-                      written, and the subtitle states the consequence plainly: the research is
-                      American, and the package cannot be transplanted. */}
+                  {/* US PACKS DIVIDER (email §1). The divider is about what the buyer would be
+                      BUILDING, not what the page has written, and the subtitle states the
+                      consequence plainly: the research is American, and the package cannot be
+                      transplanted.
+
+                      "market", not "rules" (founder, 2026-08-15). The subtitle directly under it
+                      already says what travels with the country -- "the buyers, numbers and legal
+                      steps" -- and only the last of those three is a rule, so the heading was
+                      naming the smallest part of its own argument. Same change on the row chip
+                      (`PackRow.tsx:144`), so the shelf says one thing. */}
                   <h3 className="text-body font-semibold text-text">
-                    Built for {group.label} rules
+                    Built for the {group.label} market
                   </h3>
                   <p className="mt-1 max-w-[60ch] text-caption text-subtle">
                     The buyers, numbers and legal steps in these are {group.label}. Read them

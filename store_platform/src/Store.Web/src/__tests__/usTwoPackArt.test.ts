@@ -164,10 +164,12 @@ describe('US-2 — Pack cards with pack art', () => {
     );
 
     // The flag renders on the Row, which moved to `components/discovery/PackRow.tsx` on
-    // 2026-08-15. Same spelling, same rule -- "<market> rules" in words, never a flag emoji or a
-    // country code -- read from the file that now draws it.
+    // 2026-08-15. The rule this pins is "in WORDS, never a flag emoji or a bare country code",
+    // and that is unchanged. The noun is not the rule: the founder changed it from "rules" to
+    // "market" the same day, because the subtitle beside it already argues that the buyers and
+    // the numbers travel with the country too, not only its statute book.
     expect(readSource('../components/discovery/PackRow.tsx'), 'the market chip must still be stated in words').toMatch(
-      /\{marketLabel\(pack\.market\)\} rules/,
+      /\{marketLabel\(pack\.market\)\} market/,
     );
     expect(page, 'the market chip must render only when it differs from the reader\'s').toMatch(
       /pack\.market !== viewerMarket/,

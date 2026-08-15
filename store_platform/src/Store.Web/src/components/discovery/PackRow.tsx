@@ -141,7 +141,11 @@ export function PackRow({
               field stays: a pack carrying no market makes no claim about jurisdiction. */}
           {pack.market && packMarket(pack) !== viewerMarket && (
             <span className="flex-none font-mono text-caption text-warning">
-              {marketLabel(pack.market)} rules
+              {/* "market", not "rules" (founder, 2026-08-15). The flag warns that this pack is
+                  for somewhere else, and somewhere else is the whole market -- the buyers, the
+                  prices and the numbers -- not only its statute book. "US rules" also reads as a
+                  claim that the pack is a compliance document, which it is not. */}
+              {marketLabel(pack.market)} market
             </span>
           )}
         </span>
