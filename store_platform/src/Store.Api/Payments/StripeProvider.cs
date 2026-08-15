@@ -354,6 +354,32 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
     }
 
     /// <summary>
+    /// The one currency this session bills in, as Stripe wants it (lower case).
+    /// </summary>
+    /// <remarks>
+    /// One session, one currency. Stripe would accept a mixed list and bill the whole session in
+    /// the session's currency, so taking <c>lines[0]</c> would charge a buyer the USD amount for
+    /// one pack and the dollar figure of the PENCE amount for the next. Refusing is the only safe
+    /// reading: the caller resolves one buyer currency for the whole basket
+    /// (<c>CheckoutEndpoints.ResolveBuyerCurrency</c>), so more than one arriving here is a bug
+    /// upstream — and a bug upstream on the money path must not open a session.
+    /// </remarks>
+    private static string SingleCurrency(IReadOnlyList<CheckoutLine> lines)
+    {
+        var currencies = lines
+            .Select(line => (line.Currency ?? "GBP").ToUpperInvariant())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (currencies.Length > 1)
+        {
+            throw new ArgumentException(
+                $"A checkout is billed in exactly one currency; got [{string.Join(", ", currencies)}].",
+                nameof(lines));
+        }
+        return currencies[0].ToLowerInvariant();
+    }
+
+    /// <summary>
     /// Everything about a checkout session that is not the surface it renders on. Shared by the
     /// hosted and embedded paths so a change to tax, metadata or the statement descriptor cannot
     /// apply to one and not the other.
@@ -372,6 +398,7 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
                 $"A checkout carries at most {MaxCheckoutLines} packs; got {lines.Count}.", nameof(lines));
         }
 
+        var currency = SingleCurrency(lines);
         var metadata = BuildCheckoutMetadata(lines);
 
         return new SessionCreateOptions
@@ -381,6 +408,13 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
                 Price = line.ProviderPriceId,
                 Quantity = 1,
             })],
+            // The buyer's currency, not the Price object's. A Price carries its base currency
+            // plus `currency_options` for the others it can be sold in (minted together in
+            // bridge.py), and this is what selects between them. It is only ever set to a
+            // non-GBP value when the caller has verified every pack in the basket carries that
+            // currency's amount — Stripe rejects a session in a currency the Price has no
+            // option for, which is a refusal to sell, not a mispriced sale.
+            Currency = currency,
             Mode = "payment",
             CustomerEmail = buyerEmail,
             // P0-1 — stamp the pack ids so the inbound webhook (ExtractItemsAsync) can resolve

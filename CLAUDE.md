@@ -74,6 +74,28 @@ Pluggable modules:
 
 ## Working in a git worktree
 
+**The pre-commit gate is DISABLED (founder decision, 2026-08-14).** `.git/hooks/pre-commit` is
+moved aside to `pre-commit.DISABLED-2026-08-14`; because that lives in the shared git dir, it is
+off for every worktree at once. Re-enable with
+`ln -s ../../.lux/hooks/pre-commit .git/hooks/pre-commit`.
+
+The reason is arithmetic, not preference: the suite measures ~3185s serially against a 2400s
+ceiling, so the gate could not pass — every commit paid ~40 minutes to be refused. It also runs
+inside the hook, so `git commit` holds `.git/index.lock` for the whole run and one wedged gate
+blocked every session in the checkout (2026-08-14: 49 minutes, three sessions, zero commits,
+cleared by a human killing a PID). **Nothing now blocks a bad commit locally — CI is the only
+net.** Run the suite yourself when a change deserves it: `.venv/bin/python scripts/popdd_verify.py
+--staged`.
+
+**One session, one worktree** still stands, for the index rather than the gate: sessions sharing
+this checkout share one `.git/index`, and `git worktree add` succeeds even while that index is
+locked, which is exactly the point. `scripts/popdd_verify.py::single_flight` still refuses a
+second gate run in the same tree in under a second when you invoke it by hand
+(pinned by `tests/unit/test_popdd_gate_cannot_wedge.py`).
+
+For a Python-only change, skip `node_modules`: the `cp -Rc` clone is the slow part of setup
+(>5 min) and the web lane never runs on a diff that contains no web files.
+
 This checkout is often shared by two concurrent sessions, so a worktree is how you merge, build or test without touching another session's tree and index. But `git worktree add` produces a tree that **looks** complete and is not, and each gap fails by accusing something else. Always run:
 
 ```bash

@@ -491,6 +491,12 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
             // a stored floor of 0 reads as "any payment fulfils" to a direct reader.
             MinBillablePence = initialPrice,
             MinBillableEffectiveAt = DateTime.UtcNow,
+            // No default twin here, unlike PricePence above. An absent USD price must stay
+            // absent: Money.DefaultPackPricePence is a GBP number, and defaulting a USD column
+            // from it would put a price on the rail that nobody declared. Null keeps the pack
+            // unbillable in USD, which the fulfilment fence already enforces.
+            PriceUsdCents = request.PriceUsdCents,
+            MinBillableUsdCents = request.PriceUsdCents,
         };
         db.Packs.Add(pack);
     }
@@ -521,10 +527,48 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
     {
         pack.ProviderProductId = sentProductId;
     }
+    // The price POINTER is as money-bearing as the price NUMBER, and until 2026-08-15 only one of
+    // them was defended here. PricePence is assigned on the INSERT branch above and nowhere else,
+    // precisely so a republish cannot re-price a live pack behind the floor drain —
+    // but the line below re-pointed checkout at whatever Price the publisher had just minted. A
+    // republish could therefore move what the buyer is CHARGED without moving what the shelf SAYS,
+    // and leave no trace: no PackPriceHistory row, no floor move, changeCount still 0.
+    //
+    // Measured live on 2026-08-15, that is exactly what had happened. `d6f72b9dc9a45c45` was
+    // inserted 2026-08-01 at 4900p and republished on 2026-08-13 when the price-engine decided
+    // 9999p: Stripe charged £99.99, the card read £49.00, history was empty. Eight more packs were
+    // in the same state, one of them £49.00 against £79.99.
+    //
+    // So on UPDATE the pointer only moves when there is nothing for it to contradict — the stored
+    // id is absent, or a `price_stub_*` that no checkout can bill anyway (which is what
+    // tools/reprice_live_packs.py repairs through this endpoint). A publish that carries a
+    // DIFFERENT real id keeps the one it already had, and says so in the log.
+    //
+    // Nothing legitimate loses: bridge.py's `_resolve_money_rail` deliberately reuses the pack's
+    // existing Price rather than minting per publish, so an ordinary republish sends the id
+    // already stored and takes the equality branch. Actually changing a price is what
+    // PATCH /internal/catalog/{id}/price is for, and it moves the number, the pointer, the floor
+    // and the history row in one transaction, which is the only combination that is ever correct.
     var sentPriceId = request.ProviderPriceId ?? request.PaddlePriceId;
     if (sentPriceId is not null)
     {
-        pack.ProviderPriceId = sentPriceId;
+        var storedPriceId = pack.ProviderPriceId;
+        var pointerIsUncontested = isNewPack
+            || string.IsNullOrEmpty(storedPriceId)
+            || storedPriceId.StartsWith("price_stub_", StringComparison.Ordinal)
+            || string.Equals(storedPriceId, sentPriceId, StringComparison.Ordinal);
+        if (pointerIsUncontested)
+        {
+            pack.ProviderPriceId = sentPriceId;
+        }
+        else
+        {
+            loggerFactory.CreateLogger("PublishPack").LogError(
+                "Refusing to re-point {PackId} from price {StoredPriceId} to {SentPriceId}: this "
+                + "endpoint cannot move PricePence ({PricePence}p), so moving the pointer alone "
+                + "would charge a number the shelf does not show. Use the price PATCH door instead.",
+                pack.Id, storedPriceId, sentPriceId, pack.PricePence);
+        }
     }
 
     // Content metadata (set by the engine after it uploads the deliverable to R2).
@@ -667,6 +711,14 @@ app.MapPatch("/internal/catalog/{id}/facets", async (
         return Results.BadRequest(new { error = facetError });
     }
 
+    // Market rides this endpoint but keeps its own validator: it is a shape, not a closed set
+    // (PackFacets.TryValidateMarket explains why). Checked here, before the lookup, so a bad
+    // code gets the same 400 as a bad facet and nothing is half-written.
+    if (!PackFacets.TryValidateMarket(request.Market, out var marketError))
+    {
+        return Results.BadRequest(new { error = marketError });
+    }
+
     var pack = await db.Packs.FindAsync(id).ConfigureAwait(false);
     if (pack is null) return Results.NotFound();
 
@@ -684,6 +736,7 @@ app.MapPatch("/internal/catalog/{id}/facets", async (
     pack.Effort = Applied(request.Effort, pack.Effort);
     pack.Commitment = Applied(request.Commitment, pack.Commitment);
     pack.Mechanism = Applied(request.Mechanism, pack.Mechanism);
+    pack.Market = Applied(request.Market, pack.Market);
     if (request.Advantages is not null)
     {
         pack.AdvantagesJson = request.Advantages.Length == 0
@@ -701,6 +754,7 @@ app.MapPatch("/internal/catalog/{id}/facets", async (
         pack.Effort,
         pack.Commitment,
         pack.Mechanism,
+        pack.Market,
         Advantages = RehydrateStringArray(pack.AdvantagesJson)
     });
 })
@@ -1082,6 +1136,32 @@ app.MapPatch("/internal/catalog/{id}/price", async (
     if (!string.IsNullOrEmpty(request.ProviderPriceId))
     {
         pack.ProviderPriceId = request.ProviderPriceId;
+    }
+
+    // The USD rung moves under exactly the same drain rule, for exactly the same reason: a live
+    // USD Checkout Session minted at the old rung is still payable for up to 24h, and gating it
+    // on the new one refuses money already taken.
+    //
+    // Omission leaves the USD price untouched rather than clearing it. Clearing on omission would
+    // make every existing GBP-only re-pricing caller silently strip USD billability off a pack the
+    // moment this field shipped — the same omission-nulls-it defect the ProviderProductId comment
+    // above records, on a column that decides whether a US buyer can be served at all.
+    if (request.PriceUsdCents is { } usd)
+    {
+        if (usd <= 0)
+        {
+            return Results.BadRequest(new { error = "priceUsdCents must be positive when present" });
+        }
+        var currentUsdFloor = pack.EffectiveFloorMinorUnits("USD", now) ?? usd;
+        pack.MinBillableUsdCents = Math.Min(currentUsdFloor, usd);
+        // One drain clock covers both ladders. They are moved together by one decision
+        // (PriceDecision mints both), so a second timestamp could only ever disagree with this
+        // one — and a disagreement here is a paying buyer refused.
+        if (usd > currentUsdFloor && pack.MinBillableEffectiveAt <= now)
+        {
+            pack.MinBillableEffectiveAt = now + CheckoutSessionDrain;
+        }
+        pack.PriceUsdCents = usd;
     }
 
     // Same transaction as the change, deliberately: a history row written afterwards is a row

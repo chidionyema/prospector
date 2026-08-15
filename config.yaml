@@ -929,20 +929,20 @@ generation:
   # UNPROVEN either way — prescreen-rejected candidates never get a dossier, so the retro
   # corpus cannot answer it. The measurement is forward: pass rate per VETTED candidate
   # before vs after this change, at fixed batch_size.
-  # CUT 50 -> 20 on 2026-08-14. The paragraph above is unchanged and still true — k=50 vs k=20
-  # is unproven on YIELD — but k=50 turned out to be unaffordable in TIME, which is a separate
-  # measurement and a decisive one:
-  #   store/scheduler/alerts.jsonl 2026-08-14T20:48:25Z  critical  tick_error
-  #     "tick_hard_deadline: exceeded 10800s during generation (batch=15); force-exited"
-  #   store/scheduler/alerts.jsonl 11:23-15:57Z          critical  barren_streak x18
-  #     "The generation chain has produced nothing for 21 ticks in a row"
-  # Generation was not returning empty; it was never returning. A tick force-exited at the 3h
-  # deadline mid-generation vets nothing, so the pool k widens is a pool nothing ever selects
-  # from: measured yield at k=50 is 0 passes across 21 consecutive ticks. k=20 still exceeds
-  # `schedule.batch_size` (15), so prescreen keeps a real choice to make.
-  # `load_config` runs ONCE in run_scheduled.main (:1944) — this value only takes effect on a
-  # daemon RESTART, never on the next tick.
-  candidates_per_signal: 20
+  #
+  # THIS KEY IS INERT ON THE DAEMON PATH, and reading it as the daemon's k has already cost
+  # one wrong diagnosis. `run_scheduled.py` calls `run_signal(..., k=batch_size, ...)` and
+  # `generate.py` only falls back to this value `if k is None`, so the scheduler never reads
+  # it — raising it 5 -> 50 (9089ebc, 2026-08-13) changed nothing about what the daemon
+  # generated, and neither did cutting it back. The daemon's real k is `schedule.batch_size`
+  # below. This value still governs `vet`/`generate` invoked directly from the CLI, which is
+  # why it is left at 50 rather than deleted.
+  #
+  # The 2026-08-14 barren streak (21 ticks, 0 dossiers) was NOT caused by this number. Cause:
+  # d704595 took claude_cli off `noncritical_operator` (correctly — founder directive), then
+  # standardcompute's free trial expired at 05:17Z, leaving MiniMax alone on generation with
+  # a `max_tokens` ceiling its reasoning had outgrown. See prospector/operator.py.
+  candidates_per_signal: 50
   max_per_call: 10      # max ideas requested per LLM call; generation batches to reach k
   # FLOOR on ideas requested per call (2026-08-14). The old wave formula floored the CALL
   # count at the lens count instead, so the daemon's per-lane remainder (batch_size 15 over
@@ -1472,6 +1472,22 @@ listing:
     # either one alone charges a buyer an amount the fulfilment fence then rejects. Bringing
     # the live shelf onto this ladder is a separate, deliberate repricing operation.
     rungs: [1900, 2900, 4900, 7900, 9900, 14900, 19900]
+
+    # The SAME ladder in US cents, for buyers billed in USD (founder decision 2026-08-14:
+    # "as a us buyer you want to be charged in usd"; these rungs approved 2026-08-14).
+    # Element i is the same rung POSITION as rungs[i], so every index above and below
+    # (default_rung_index, tier_rung_index, market_rung_offset) selects into both arrays
+    # identically: a US buyer and a UK buyer of the same pack sit on the same rung, each
+    # priced in their own currency.
+    #
+    # DECLARED, NOT CONVERTED. These are charm-ended figures within ±7% of the repo's own
+    # declared rate (comparables.fx_to_gbp.USD = 0.74085, US Federal Reserve H.10 released
+    # 2026-08-12, i.e. GBP→USD 1.3498) — but the rate is how they were CHOSEN, not how they
+    # are computed. A price converted at charge time makes the charged amount depend on which
+    # rate the process happened to read, so a buyer who paid exactly the price they were shown
+    # gets refused by the fulfilment fence whenever the rate moved in between. Moving a rung
+    # is a deliberate edit here, exactly like the GBP ladder.
+    usd_rungs: [2499, 3999, 6999, 10999, 13999, 19999, 26999]
 
     # A human-readable label for the ladder below, recorded on every D3 rationale record
     # (prospector/price_rationale.py). It is a LABEL, not the truth: a stale label that
