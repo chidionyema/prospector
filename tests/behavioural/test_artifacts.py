@@ -6,6 +6,7 @@ Proofs:
 """
 from __future__ import annotations
 
+import threading
 from typing import Any
 
 import pytest
@@ -103,44 +104,62 @@ def test_claim_check_rejects_unsupported_statement(cand, checks):
 
 
 def test_marketing_content_regeneration_on_fail(cand, checks):
-    """Proof: A piece that fails claim-check is regenerated (attempted twice)."""
-    
+    """Proof: the repair turn belongs to listing_page, and ONLY to listing_page.
+
+    `_gen_one_content` sets ``attempts = 3 if t == "listing_page" else 1``: the copy a
+    buyer reads before paying gets its rewrite, the three optional pieces are dropped on
+    the first claim-check failure (measured 2026-08-15 — the ancillary repair turn rescued
+    ~26% of drafts and burned ~1,200 model calls doing it).
+
+    The old version of this test asserted the pre-2026-08-15 contract, where every type
+    was regenerated. It also keyed its router on the GLOBAL call ordinal, so which piece
+    received the planted hallucination depended on which of the four threads got there
+    first — the assertion passed or failed on a thread race. The router below keys on the
+    piece TYPE (`Type: {type}` in the content_gen user prompt, prompts/content_gen.md:40),
+    so every piece gets the same treatment and the counts are exact, not `>=`.
+    """
+    from prospector.marketing_assets import ASSET_TYPES
+
+    lock = threading.Lock()
+    per_type_gen: dict[str, int] = {}
     call_counts = {"content_gen": 0, "claim_check": 0}
-    
+
     def router(system: str, user: str) -> Any:
         if "write listing and marketing copy" in system:
-            call_counts["content_gen"] += 1
-            # Return a hallucination on the first attempt
-            if call_counts["content_gen"] == 1:
-                return {"type": "listing_page", "copy": "Hallucinated claim."}
-            # Return clean copy on the second attempt
-            return {"type": "listing_page", "copy": "Grounded claim: 100k users."}
-            
+            t = next((a for a in ASSET_TYPES if f"Type: {a}" in user), "unknown")
+            with lock:
+                call_counts["content_gen"] += 1
+                per_type_gen[t] = per_type_gen.get(t, 0) + 1
+                n = per_type_gen[t]
+            # Every type hallucinates on its FIRST draft and is clean thereafter, so the
+            # only thing that varies between pieces is whether a second draft is asked for.
+            if n == 1:
+                return {"type": t, "copy": "Hallucinated claim."}
+            return {"type": t, "copy": "Grounded claim: 100k users."}
+
         if "check marketing/listing copy" in system:
-            call_counts["claim_check"] += 1
+            with lock:
+                call_counts["claim_check"] += 1
             if "Hallucinated" in user:
                 return {"pass": False, "violations": [{"text": "Hallucinated", "issue": "bad"}]}
             return {"pass": True, "violations": []}
         return {}
 
     op = MockOperator(router=router)
-    # Filter to just listing_page for this test to keep call counts simple
-    # Patch types temporarily or just check counts
     content = generate_marketing_content(op, cand, checks)
-    
-    # Each content type is generated. For 'listing_page', it should have taken 2 attempts.
-    # Total content_gen calls = (3 types * 1 attempt) + (1 type * 2 attempts) = 5
-    # (actually 4 types total in generate_marketing_content)
-    # If all 4 types are run:
-    # listing_page: 2 attempts
-    # teaser_social: 1 attempt
-    # seo_preview: 1 attempt
-    # launch_email: 1 attempt
-    # Total = 5 calls to content_gen
-    assert call_counts["content_gen"] >= 5
-    assert call_counts["claim_check"] >= 5
-    
-    # Find the listing_page result
+
+    ancillary = [t for t in ASSET_TYPES if t != "listing_page"]
+    # listing_page: draft 1 fails, draft 2 clears -> 2 calls. Each ancillary piece: one
+    # draft, one check, dropped. Exact, because the router no longer depends on ordering.
+    assert per_type_gen["listing_page"] == 2, per_type_gen
+    for t in ancillary:
+        assert per_type_gen[t] == 1, per_type_gen
+    assert call_counts["content_gen"] == len(ancillary) + 2
+    assert call_counts["claim_check"] == len(ancillary) + 2
+
+    # The rewritten listing_page is what ships...
     listing = next(c for c in content if c["type"] == "listing_page")
-    assert "Grounded" in listing["copy"]
-    assert "Hallucinated" not in listing["copy"]
+    assert "Grounded" in str(listing)
+    assert "Hallucinated" not in str(listing)
+    # ...and a piece that failed its only claim-check is DROPPED, never shipped unverified.
+    assert {c["type"] for c in content}.isdisjoint(ancillary), content

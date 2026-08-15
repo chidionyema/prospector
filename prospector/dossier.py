@@ -109,12 +109,23 @@ def build_dossier(
     The caller is responsible for computing `score` whenever gate_fired is None
     (i.e., the candidate survived all hard gates and needs ranking).
     """
-    if gate_fired in (DEFER_GATE, "moat_exhausted"):
-        # Not a kill: a decisive check could not be retrieved or the moat was unavailable.
+    if gate_fired in (DEFER_GATE, "moat_exhausted", "vet_budget_spent"):
+        # Not a kill: a decisive check could not be retrieved, the moat was unavailable, or
+        # the tick ran out of vetting budget before this candidate started.
         # Park the candidate for re-vet — never publish, never count as an evidentiary kill.
         decision = Decision.DEFER
         failed = next((c for c in checks if getattr(c, "retrieval_failed", False)), None)
-        if gate_fired == "moat_exhausted":
+        if gate_fired == "vet_budget_spent":
+            # The honest reason, and deliberately NOT the retrieval one below. Nothing was
+            # retrieved, nothing failed, and no gate was consulted: the batch hit its time
+            # ceiling first. Saying "could not retrieve evidence" here would manufacture an
+            # outage that did not happen — the defect `2102bacc6dd75cf9.kill.json` records,
+            # where a dossier read as fully reasoned because the fail-safe wore a verdict's
+            # clothes. The candidate is intact and costs a normal vet to finish.
+            reason = ("Deferred — the tick's vetting budget was spent before this candidate "
+                      "was started. NOT an evidentiary kill and NOT an outage: no check ran. "
+                      "It resumes on the next `vet --resume` at full cost.")
+        elif gate_fired == "moat_exhausted":
             reason = ("Deferred — moat (verdict / adversarial pass) was unavailable "
                       "(Claude + Gemini exhausted).  NOT an evidentiary kill; re-vet when "
                       "moat recovers.  Candidate will auto-resume on next `vet --resume`.")

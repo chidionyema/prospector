@@ -93,6 +93,41 @@ def test_initialisms_a_stranger_already_knows_are_never_flagged():
         assert not _errors({"title": text}), f"false positive on: {text!r}"
 
 
+def test_a_us_state_code_never_unlists_a_pack():
+    """The strings below are the ACTUAL titles of two packs that PASSED the moat on
+    2026-08-15 and were then published UNLISTED — unbuyable — because `PA` tripped the
+    initialism rule (launchd.err.log 12:37:13Z c11b6439feb3384d, 12:56:14Z 4f1fdd37b84da131).
+
+    This is the money case, not a style case: a shelf-copy error ANDs into the content gate,
+    which skips Stripe provisioning entirely, so the pack cannot be sold at any price. Ten
+    packs were stranded this way. The trigger was `schedule.market_rotation` (config.yaml)
+    moving to eight US states on 2026-08-14 while this list still knew only `US`/`USA`."""
+    for text in (
+        "PA transfer tax forms filled for closing software",
+        "AI hearing binders for PA workers comp",
+    ):
+        assert not _errors({"title": text}), f"a PASS would be unsellable over: {text!r}"
+
+
+def test_every_state_in_the_rotation_is_known_not_just_the_one_that_broke():
+    """A partial list rebuilds the trap: the defect was a rotation edit this file did not
+    know about, so fixing only `PA` would strand the next state instead. Any code the
+    rotation can name must lint clean without another source change."""
+    for code in ("TX", "CA", "FL", "NY", "IL", "PA", "OH", "GA"):
+        text = f"Filing pack for {code} construction firms"
+        assert not _errors({"title": text}), f"rotation state {code} would unlist a pack"
+
+
+def test_the_state_codes_did_not_blanket_disable_the_rule():
+    """Soundness guard on the addition above: trade jargon must still error. If a future
+    edit widens this list until nothing fires, this test is what notices."""
+    problems = _errors({"cardLine": "IEP and COSHH binders for PA assessors"})
+    assert problems, "the initialism rule must still catch real jargon"
+    detail = problems[0]["detail"]
+    assert "IEP" in detail and "COSHH" in detail
+    assert "PA" not in detail.split("—")[0], "the state code must not be reported as unknown"
+
+
 def test_second_person_errors_in_either_direction():
     """18 of 19 live instances were aimed at the service's end customer, who never sees this
     shop. The 19th addressed the buyer and was still better in the third person, which is

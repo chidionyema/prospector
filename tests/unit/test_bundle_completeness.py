@@ -18,6 +18,7 @@ buyer as an honest placeholder INSIDE the reader, and the marketing floor is mea
 """
 from __future__ import annotations
 
+import os
 import zipfile
 from pathlib import Path
 
@@ -33,16 +34,48 @@ from prospector.marketing_assets import heading_for
 from prospector.models import Candidate, CheckResult, Decision, Dossier, Verdict
 
 
+class _Cfg:
+    entitlements_api_key = ""
+    store_payments = {"active_provider": "stripe"}
+
+
 @pytest.fixture
 def bridge(monkeypatch, tmp_path):
     """_create_bundle writes to a relative publish/bundles path — keep it out of the repo."""
     monkeypatch.chdir(tmp_path)
-
-    class _Cfg:
-        entitlements_api_key = ""
-        store_payments = {"active_provider": "stripe"}
-
     return EngineBridge(_Cfg())
+
+
+@pytest.fixture(scope="module")
+def complete_bundle(tmp_path_factory) -> Path:
+    """ONE bundle, built once, for every test whose input is the unmodified happy path.
+
+    Four tests called `_create_bundle(_dossier(), _full_artifacts(), [])` with byte-identical
+    arguments — `_dossier()` and `_full_artifacts()` take no parameters and are pure — and each
+    call re-rendered the whole pack: `pack_html.render_pack_html` (bridge.py:1822) and
+    `pack_pdf.render_pack_pdf` (bridge.py:1835). That is the same PDF produced four times to
+    ask four different questions about it, and this file was 92.7s of the suite's slowest 30.
+
+    Module scope is safe here for a checkable reason, not a hopeful one: every consumer only
+    READS the zip (`_entries`, `audit_bundle`). Any future test that mutates the archive must
+    take the function-scoped `bridge` fixture and build its own — sharing a mutable artefact
+    across tests is how a suite starts depending on its own order, which this repo has already
+    paid for once (see `tests/test_drain_moat_preflight.py`).
+
+    `os.chdir` rather than `monkeypatch.chdir` because monkeypatch is function-scoped and would
+    tear down under a module-scoped fixture. The path is resolved to an ABSOLUTE one before the
+    cwd is restored — `_create_bundle` returns a path relative to the directory it ran in, so
+    yielding it unresolved would hand every test a path that no longer points anywhere.
+    """
+    root = tmp_path_factory.mktemp("complete-bundle")
+    cwd = Path.cwd()
+    os.chdir(root)
+    try:
+        built = EngineBridge(_Cfg())._create_bundle(_dossier(), _full_artifacts(), [])
+        assert built is not None, "the happy path produced no bundle at all"
+        return Path(built).resolve()
+    finally:
+        os.chdir(cwd)
 
 
 def _dossier():
@@ -113,20 +146,22 @@ def _entries(zip_path):
 
 
 class TestCompleteBundle:
-    def test_every_contract_file_is_present(self, bridge):
+    def test_every_contract_file_is_present(self, complete_bundle):
         """Renamed 2026-08-15 from `test_all_eight_files_present`: the contract is no longer
         eight markdown documents, it is the five rendered artefacts of `BUNDLE_FILES`. The name
         stated a count that had become false, which is worse than no name at all.
         """
-        path = bridge._create_bundle(_dossier(), _full_artifacts(), [])
-        assert path is not None
+        path = complete_bundle
+        # `path is not None` used to be asserted here; it now lives in the fixture, which is
+        # where the build happens. Losing it entirely would have let a None bundle fail as a
+        # confusing TypeError inside `_entries` instead of as "no bundle was produced".
         # `<=` not `==`: the bundle also ships manifest.jsonld, a declared bonus that is
         # deliberately NOT part of the BUNDLE_FILES sellability contract. The exact-set
         # assertion lives in test_bundle_declared_entries.py, which owns that question.
         assert set(BUNDLE_FILES) <= set(_entries(path))
 
-    def test_no_entry_is_a_stub(self, bridge):
-        path = bridge._create_bundle(_dossier(), _full_artifacts(), [])
+    def test_no_entry_is_a_stub(self, complete_bundle):
+        path = complete_bundle
         for name, size in _entries(path).items():
             assert size >= _MIN_BUNDLE_ENTRY_BYTES, f"{name} is {size}b"
 
@@ -182,10 +217,14 @@ class TestMarketingAssetsNeverAStub:
     (`marketing_assets.heading_for`), which is strictly the thing that must not appear.
     """
 
-    def test_empty_marketing_list_is_filled_by_the_floor(self, bridge):
-        """REGRESSION: this is the exact input that produced the 20-byte file."""
-        path = bridge._create_bundle(_dossier(), _full_artifacts(), [])
-        size = _entries(path)["Marketing_Assets.txt"]
+    def test_empty_marketing_list_is_filled_by_the_floor(self, complete_bundle):
+        """REGRESSION: this is the exact input that produced the 20-byte file.
+
+        The empty marketing list IS the regression input, and `complete_bundle` is built with
+        exactly `[]` — so sharing it keeps the input this test exists for, rather than
+        approximating it.
+        """
+        size = _entries(complete_bundle)["Marketing_Assets.txt"]
         assert size > 20, "20 bytes is the bare '# Marketing Assets' header"
         assert size >= _MIN_BUNDLE_ENTRY_BYTES
 
@@ -225,9 +264,8 @@ class TestAuditBundle:
     artefact instead, and `publish_pass` ANDs it into `is_listed`.
     """
 
-    def test_complete_bundle_audits_clean(self, bridge):
-        path = bridge._create_bundle(_dossier(), _full_artifacts(), [])
-        assert audit_bundle(path) == ([], [])
+    def test_complete_bundle_audits_clean(self, complete_bundle):
+        assert audit_bundle(complete_bundle) == ([], [])
 
     def test_missing_file_is_reported(self, tmp_path):
         """The dropped file is `Complete_Pack.pdf` since 2026-08-15 (was

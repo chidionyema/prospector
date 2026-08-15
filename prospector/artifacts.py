@@ -16,7 +16,9 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from typing import Any, Dict, List, Optional
 
 from . import evidence_budget, facets
@@ -611,6 +613,68 @@ def _gen_one_artifact(op: Operator, cand_json: str, claims_json: str,
     return t, content, None, violations
 
 
+# ---------------------------------------------------------------------------
+# ARTIFACT / CONTENT PHASE TIME BUDGET (2026-08-15)
+#
+# WHAT WAS BROKEN. `generate_artifacts` and `generate_marketing_content` each ran their
+# 4-way `ThreadPoolExecutor` batch inside `with ThreadPoolExecutor(...) as ex:` /
+# `as_completed(futures)` with NO timeout — the identical shape `generate.py` had before
+# its 2026-08-15 fix (generate.py:771 and the "BOUNDED WAIT" comment above it), and the
+# identical failure: `as_completed(timeout=None)` blocks until every future is done, and
+# `ThreadPoolExecutor.__exit__` calls `shutdown(wait=True)`, which ALSO blocks until every
+# future is done. Neither can be interrupted by a caller. Measured on the 2026-08-15
+# 10:17->13:17 tick breach: artifact/content markers in store/scheduler/launchd.err.log
+# span 10:40 -> 13:12 — 152 of the tick's 180 minutes (84%) — while `schedule.gen_budget_frac`
+# (run_scheduled.py) bounded generation alone. Three of the five `_TICK_HARD_DEADLINE_S`
+# breaches recorded in store/scheduler/ticks.jsonl landed in the 48h before this fix.
+#
+# THE FIX mirrors generate.py:771 exactly: an explicit `deadline_mono` (an absolute
+# `time.monotonic()` value) threaded in by the caller, consulted via `_budget_left` as
+# the `timeout=` for `as_completed`, with `TimeoutError` caught and logged loudly rather
+# than propagated. `ex.shutdown(wait=False, cancel_futures=True)` replaces the `with`
+# block for the same reason generate.py's comment gives: abandoning a future does not
+# kill the thread running it (Python's ThreadPoolExecutor has no thread-kill), so what
+# changes is that this function stops WAITING for it, so vetting/publish/the next
+# candidate still gets its share of the tick.
+#
+# `deadline_mono=None` (every caller today — see `run_scheduled._artifact_budget_frac`
+# for why this is not yet wired end-to-end from `schedule.artifact_budget_frac`) makes
+# `_budget_left` return `None`, `as_completed(..., timeout=None)` blocks exactly as it
+# did before this parameter existed, and the `except FuturesTimeoutError` branch below
+# is unreachable — byte-for-byte the prior behaviour.
+# ---------------------------------------------------------------------------
+
+def _budget_left(deadline_mono: Optional[float]) -> Optional[float]:
+    """Seconds left before an artifact/content batch must stop WAITING, or None if
+    unbounded. Identical shape to `generate.py:_budget_left` (generate.py:216) for the
+    identical reason: never returns <= 0, since a 0 timeout to `as_completed` means
+    "check once and give up" — correct exactly AT the deadline, wrong once it has
+    already passed, where it would raise instead of collecting an already-finished
+    future. The floor is a small positive value instead.
+    """
+    if deadline_mono is None:
+        return None
+    return max(0.05, deadline_mono - time.monotonic())
+
+
+#: Fraction of `generate_marketing_content`'s time budget spent waiting on the full
+#: 4-way parallel batch before listing_page (if it is still the one running) gets the
+#: LAST slice of the budget to itself, alone. listing_page is REQUIRED for publish
+#: (`pack_validation.validate_pack`); the other three (teaser_social, seo_preview,
+#: launch_email) are explicitly optional (`_gen_one_content`'s comment above, measured
+#: 2026-08-15: 450 ancillary pieces drafted+rewritten to rescue 153, i.e. dropping one
+#: costs nothing a buyer sees). Under a single SHARED deadline, listing_page is also the
+#: piece MOST likely to still be running when time runs out, not least: it does
+#: structurally more work than any ancillary piece (`attempts = 3 if t == "listing_page"
+#: else 1`, `_gen_one_content:1001`, plus `_salvage_listing`'s field-by-field re-check),
+#: so a naive shared timeout would drop the one piece the pack cannot ship without,
+#: first. Reserving it the last `1 - _MARKETING_BATCH_SHARE` of the budget, exclusively,
+#: is how "prefer listing_page" is achieved without giving up FIX #13's four-way
+#: parallelism in the common (healthy, well-under-budget) case — a healthy batch never
+#: reaches the split at all.
+_MARKETING_BATCH_SHARE = 0.9
+
+
 def generate_artifacts(
     op: Operator,
     cand: Candidate,
@@ -621,6 +685,7 @@ def generate_artifacts(
     cfg: Optional[Any] = None,
     dossier: Optional[Dossier] = None,
     score: Optional[Any] = None,
+    deadline_mono: Optional[float] = None,
 ) -> Dict[str, str]:
     """Generate build_spec, gtm_plan, ops_plan, financial_model in parallel.
 
@@ -642,6 +707,15 @@ def generate_artifacts(
     hang it on. Passing it here puts the six axes into the stand-in, which is the difference
     between a scorecard and a `score_available: false` placeholder in a bundle the buyer
     paid for. Ignored when ``dossier`` is supplied — the real one already carries its score.
+
+    ``deadline_mono``: an absolute `time.monotonic()` deadline bounding the 4-way
+    ThreadPoolExecutor batch below (see the module comment above `_budget_left` for the
+    2026-08-15 outage this closes). None — every caller today, since `run.py` does not
+    yet resolve `schedule.artifact_budget_frac` into seconds and thread it down (see
+    `run_scheduled._artifact_budget_frac`) — leaves the batch unbounded, byte-for-byte
+    the behaviour before this parameter existed. On breach, whatever piece(s) already
+    completed are kept and the rest come back as `results[t] = ""` — the SAME shape a
+    per-piece exception already produces a few lines below, not a new failure mode.
     """
     cheap_op = fast_op or op
     prose_op = quality_op or op
@@ -687,7 +761,8 @@ def generate_artifacts(
     market_vars = (market_kwargs(cfg, market=getattr(cand, "market", "") or "")
                    if cfg is not None else {k: "" for k in ALL_MARKET_KEYS})
 
-    with ThreadPoolExecutor(max_workers=len(types)) as ex:
+    ex = ThreadPoolExecutor(max_workers=len(types))
+    try:
         futures = {
             ex.submit(_gen_one_artifact,
                       cheap_op if t == "financial_model" else prose_op,
@@ -695,19 +770,41 @@ def generate_artifacts(
                       op if claim_check_on else None, claims): t
             for t in types
         }
-        for future in as_completed(futures):
-            t = futures[future]
-            try:
-                _, content, raw, violations = future.result()
-                results[t] = content
-                if violations:
-                    unverified[t] = violations
-                if t == "financial_model" and isinstance(raw, dict):
-                    financial_assumptions = raw
-            except Exception as e:
-                logger.error(f"Artifact generation failed for {t}: {e}",
-                             extra={"type": t, "error": str(e)})
+        try:
+            for future in as_completed(futures, timeout=_budget_left(deadline_mono)):
+                t = futures[future]
+                try:
+                    _, content, raw, violations = future.result()
+                    results[t] = content
+                    if violations:
+                        unverified[t] = violations
+                    if t == "financial_model" and isinstance(raw, dict):
+                        financial_assumptions = raw
+                except Exception as e:
+                    logger.error(f"Artifact generation failed for {t}: {e}",
+                                 extra={"type": t, "error": str(e)})
+                    results[t] = ""
+        except FuturesTimeoutError:
+            missing = [t for t in types if t not in results]
+            # LOUD, at WARNING, with the piece names: the whole point of this rail is
+            # that a stuck batch used to be invisible until the 3h tick kill, and even
+            # then the tick ROW was lost (`_TICK_HARD_DEADLINE_S`, run_scheduled.py:970).
+            # Measured basis: the 2026-08-15 breach spent 152 of the tick's 180 minutes
+            # (launchd.err.log 10:40->13:12) unboundedly inside exactly this phase.
+            logger.warning(
+                "Artifact batch hit its phase time budget with %d/%d piece(s) returned "
+                "before the deadline; missing (treated as a failed piece, results[t]="
+                "''): %s", len(results), len(types), missing,
+                extra={"missing": missing, "returned": sorted(results),
+                       "artifact_budget_exhausted": True,
+                       "candidate_id": getattr(cand, "candidate_id", "")})
+            for t in missing:
                 results[t] = ""
+    finally:
+        # `wait=False`: abandoning a future does not kill the thread running it (Python's
+        # ThreadPoolExecutor has no thread-kill) — what changes is that THIS function
+        # stops waiting for it, exactly as generate.py:_go's finally block does.
+        ex.shutdown(wait=False, cancel_futures=True)
 
     # One artifact empty while its three siblings generated is not "the model had nothing to
     # say" — it is the CHEAP chain failing where the prose chain did not. `financial_model` is
@@ -720,23 +817,36 @@ def generate_artifacts(
     # Retried on the prose chain, and LOUDLY: a fallback that works in silence hides its own
     # degradation, so the cheap chain would go on failing this artifact forever with nothing in
     # the log to say a pack was rescued rather than generated.
+    #
+    # Skipped once the phase deadline has already passed: this retry is a single direct
+    # call, not a batch behind `as_completed`, so it has no timeout of its own — paying
+    # for it past the deadline would just re-create, in miniature, the exact unbounded
+    # wait this rail exists to stop.
     if not results.get("financial_model") and prose_op is not cheap_op:
-        logger.warning(
-            "financial_model came back empty on the cheap chain; retrying on the prose chain",
-            extra={"candidate_id": getattr(cand, "candidate_id", ""),
-                   "type": "financial_model"})
-        try:
-            _, content, raw, _ = _gen_one_artifact(
-                prose_op, cand_json, claims_json, "financial_model", market_vars,
-                length_rule, op if claim_check_on else None, claims)
-            results["financial_model"] = content
-            if isinstance(raw, dict):
-                financial_assumptions = raw
-        except Exception as e:
-            # Still fatal to the pack — the completeness gate refuses an empty artifact — but
-            # the reason is now on the record instead of a silent zero-byte file.
-            logger.error(f"financial_model prose-chain retry also failed: {e}",
-                         extra={"type": "financial_model", "error": str(e)})
+        if deadline_mono is not None and time.monotonic() >= deadline_mono:
+            logger.warning(
+                "financial_model empty and the phase time budget is already exhausted; "
+                "skipping the prose-chain retry rather than extending the overrun",
+                extra={"candidate_id": getattr(cand, "candidate_id", ""),
+                       "type": "financial_model"})
+        else:
+            logger.warning(
+                "financial_model came back empty on the cheap chain; retrying on the "
+                "prose chain",
+                extra={"candidate_id": getattr(cand, "candidate_id", ""),
+                       "type": "financial_model"})
+            try:
+                _, content, raw, _ = _gen_one_artifact(
+                    prose_op, cand_json, claims_json, "financial_model", market_vars,
+                    length_rule, op if claim_check_on else None, claims)
+                results["financial_model"] = content
+                if isinstance(raw, dict):
+                    financial_assumptions = raw
+            except Exception as e:
+                # Still fatal to the pack — the completeness gate refuses an empty artifact — but
+                # the reason is now on the record instead of a silent zero-byte file.
+                logger.error(f"financial_model prose-chain retry also failed: {e}",
+                             extra={"type": "financial_model", "error": str(e)})
 
     # THE TRUTH GATE ON THE DOCUMENTS THE BUYER PAYS FOR (founder decision 2026-08-15).
     #
@@ -1065,7 +1175,33 @@ def _gen_one_content(gen_op: Operator, check_op: Operator, cand_json: str, claim
     """
     feedback = ""
     # listing_page is required for publish; give it one extra repair turn with violations.
-    attempts = 3 if t == "listing_page" else 2
+    #
+    # The ancillary pieces get NO repair turn, measured 2026-08-15 over the daemon's whole
+    # 255,676-line log. The repair turn was not buying what it cost:
+    #
+    #   piece           failed 1st   failed 2nd   DROPPED   rescued by the rewrite
+    #   launch_email       202          149         149        53  (26%)
+    #   teaser_social      203          159         159        44  (22%)
+    #   seo_preview        198          142         142        56  (28%)
+    #
+    # Every piece that failed the second check was dropped — the drop counts equal the
+    # second-attempt failures exactly. So 450 pieces were drafted, rewritten, claim-checked
+    # twice and thrown away, and ~603 rewrite+recheck pairs (~1,200 model calls at 30-100s
+    # each) bought ~153 optional pieces. That work is what pushed the tick into its 3h hard
+    # deadline: 152 of the breached tick's 180 minutes sat inside artifact/content generation
+    # (launchd.err.log 2026-08-15, artifact/content markers 10:40 -> 13:12).
+    #
+    # These three are OPTIONAL — publish proceeds without them, which is exactly why 450
+    # could be dropped without anyone noticing. listing_page keeps all three attempts AND its
+    # field-by-field salvage, because it is the copy the buyer reads before paying.
+    #
+    # This does NOT loosen the claim-check. The gate rules the same way on the same drafts;
+    # it just stops paying for a second draft of an optional piece that is discarded 74% of
+    # the time. HYPOTHESIS not acted on here: a claim-check calibrated for long-form prose may
+    # be structurally unfair to a tweet or an email subject line, which would explain a 74%
+    # failure rate on short copy alone. Settling that means grading the gate, not the copy —
+    # and loosening a grounding gate is a truth-metric decision, never a throughput one.
+    attempts = 3 if t == "listing_page" else 1
     last_listing: Optional[Dict[str, Any]] = None
     copy_supplied = False
     for attempt in range(attempts):
@@ -1090,8 +1226,15 @@ def _gen_one_content(gen_op: Operator, check_op: Operator, cand_json: str, claim
         ok, violations = verify_claims_detail(check_op, check_text, claims)
         if ok:
             return piece
+        # Say which of the two actually happens. Since the ancillary pieces lost their
+        # repair turn (`attempts` above), this line logged "regenerating (attempt 1/1)"
+        # on every dropped piece — a retry that the loop then never performs, which reads
+        # in the log as a rewrite that silently produced nothing.
+        last_attempt = attempt + 1 >= attempts
         logger.info(
-            f"Content {t} failed claim-check, regenerating (attempt {attempt + 1}/{attempts})",
+            f"Content {t} failed claim-check, "
+            f"{'no repair turn left' if last_attempt else 'regenerating'} "
+            f"(attempt {attempt + 1}/{attempts})",
             extra={"type": t, "violations_n": len(violations)})
         feedback = (
             "Your previous draft FAILED claim-check. Rewrite so every factual statement "
@@ -1121,6 +1264,7 @@ def generate_marketing_content(
     quality_op: Optional[Operator] = None,
     check_op: Optional[Operator] = None,
     cfg: Optional[Any] = None,
+    deadline_mono: Optional[float] = None,
 ) -> List[Dict[str, Any]]:
     """Generate and claim-check listing_page, teaser_social, seo_preview, launch_email.
 
@@ -1132,6 +1276,15 @@ def generate_marketing_content(
     ``quality_op`` (the Gemini CLI -> Claude CLI chain); the ancillary pieces stay on the
     cheap ``fast_op``. The claim-check gate always runs on ``check_op`` (the moat) — never the
     drafting model. All three fall back to ``op`` when their preferred operator isn't supplied.
+
+    ``deadline_mono``: mirrors `generate_artifacts`' parameter of the same name (see the
+    module comment above `_budget_left`). None — every caller today, see
+    `run_scheduled._artifact_budget_frac` — is unbounded, byte-for-byte prior behaviour.
+    On breach, an unfinished piece is OMITTED from the returned list — the same shape
+    `_gen_one_content` already produces for a piece that fails claim-check after every
+    attempt (`_gen_one_content`'s final `return None`), not a new failure mode.
+    listing_page is REQUIRED for publish and gets first claim on what is left of the
+    budget when it is still running at the shared deadline; see `_MARKETING_BATCH_SHARE`.
     """
     cheap_op = fast_op or op
     quality = quality_op or op
@@ -1157,23 +1310,74 @@ def generate_marketing_content(
     # substitutes to nothing rather than instructing the model in a currency nobody declared.
     currency_rule = _currency_rule(cfg, cand)
 
-    with ThreadPoolExecutor(max_workers=len(types)) as ex:
+    results: List[Dict[str, Any]] = []
+    done_types: set = set()
+
+    ex = ThreadPoolExecutor(max_workers=len(types))
+    try:
         futures = {
             ex.submit(_gen_one_content,
                       quality if t == "listing_page" else cheap_op,
                       checker, cand_json, claims_json, claims, t, currency_rule): t
             for t in types
         }
-        results: List[Dict[str, Any]] = []
-        for future in as_completed(futures):
+        listing_future = next((f for f, t in futures.items() if t == "listing_page"), None)
+
+        def _collect(future, *, timeout: Optional[float] = None) -> None:
+            """Record one future's result into `results`/`done_types`, or leave it
+            un-recorded (still pending, per the caller's own bookkeeping) on timeout —
+            never raises past this point, matching the batch's existing per-piece
+            exception handling below.
+            """
             t = futures[future]
             try:
-                piece = future.result()
+                piece = future.result(timeout=timeout)
                 if piece:
                     results.append(piece)
+                done_types.add(t)
+            except FuturesTimeoutError:
+                pass
             except Exception as e:
                 logger.error(f"Marketing content generation failed for {t}: {e}",
                              extra={"type": t, "error": str(e)})
+                done_types.add(t)
+
+        # `_MARKETING_BATCH_SHARE` (0.9) of what's left is spent waiting on all four in
+        # parallel, exactly like `generate_artifacts` above; futures yielded by
+        # `as_completed` are already done, so `_collect`'s own timeout is irrelevant here.
+        batch_timeout = (_budget_left(deadline_mono) * _MARKETING_BATCH_SHARE
+                         if deadline_mono is not None else None)
+        try:
+            for future in as_completed(futures, timeout=batch_timeout):
+                _collect(future)
+        except FuturesTimeoutError:
+            # PREFER LISTING_PAGE (see `_MARKETING_BATCH_SHARE`'s docstring): if it is
+            # the one still running, give it the last slice of the SAME deadline_mono —
+            # never beyond it — before giving up on it too.
+            if listing_future is not None and "listing_page" not in done_types:
+                logger.info(
+                    "Marketing batch hit its shared time slice with listing_page still "
+                    "running; giving it the last %.0f%% of the budget alone",
+                    (1 - _MARKETING_BATCH_SHARE) * 100,
+                    extra={"candidate_id": getattr(cand, "candidate_id", "")})
+                _collect(listing_future, timeout=_budget_left(deadline_mono))
+            missing = [t for t in types if t not in done_types]
+            if missing:
+                # LOUD, at WARNING, with the piece names — see `generate_artifacts`'
+                # matching branch for the same measured basis (2026-08-15 breach, 152 of
+                # 180 minutes, launchd.err.log 10:40->13:12).
+                logger.warning(
+                    "Marketing content batch hit its phase time budget with %d/%d "
+                    "piece(s) returned before the deadline; missing (OMITTED from the "
+                    "pack, the same shape a piece that fails claim-check after every "
+                    "attempt already produces): %s",
+                    len(types) - len(missing), len(types), missing,
+                    extra={"missing": missing,
+                           "returned": [r.get("type") for r in results],
+                           "artifact_budget_exhausted": True,
+                           "candidate_id": getattr(cand, "candidate_id", "")})
+    finally:
+        ex.shutdown(wait=False, cancel_futures=True)
 
     type_order = {t: i for i, t in enumerate(types)}
     results.sort(key=lambda p: type_order.get(p.get("type", ""), 99))

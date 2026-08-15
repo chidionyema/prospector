@@ -290,8 +290,24 @@ class Store:
         # upserted by candidate_id, but the JSON filename encodes the decision, so an old
         # verdict's file would linger and be double-counted. Remove any stale-decision
         # files for this candidate (keep only the one we just wrote).
+        #
+        # ONLY decision files. This swept `{cid}.*.json`, which also matched the publish
+        # receipt `{cid}.lint.json` (bridge.py:1102) — so every re-vet after a publish
+        # silently destroyed the record of WHY that pack was held off the shelf, and
+        # tools/verify_pass_shelf_coverage.py then reported the pack as "never published".
+        # Measured 2026-08-15: 3 of 11 stranded passes were mislabelled this way; each had
+        # a listing receipt written BEFORE the dossier its re-vet rewrote.
+        #
+        # The suffix set comes from the Decision enum rather than a literal tuple, so a new
+        # decision value cannot silently reintroduce the wide sweep — nor a narrow one that
+        # leaks a stale verdict, which is the failure this loop exists to prevent.
+        decision_suffixes = {d.value for d in type(dossier.decision)}
         for stale in self._dossier_dir.glob(f"{cid}.*.json"):
-            if stale != path:
+            if stale == path:
+                continue
+            # "<cid>.<decision>.json" -> the middle segment; anything else is not ours.
+            parts = stale.name.split(".")
+            if len(parts) == 3 and parts[1] in decision_suffixes:
                 stale.unlink(missing_ok=True)
 
         composite = dossier.score.composite if dossier.score else None

@@ -521,8 +521,16 @@ active_lanes: [side_hustle, smb, growth, venture]
 # holds at 3 rather than rising: it has never produced a PASS, so buying more of it would buy
 # more kills, not more startups; it stays funded only so the 0% stays measured rather than
 # assumed. Revisit when venture records its first PASS.
-# NOTE these totals sum to exactly `schedule.batch_size` (15), so `_lane_counts` distributes them
-# 1:1 with no rounding nudge (run.py::_lane_counts). Changing batch_size re-proportions them.
+# NOTE these numbers are WEIGHTS, not counts, whenever a total is passed explicitly — and the
+# daemon always passes one (`run_scheduled.py:932` calls `run_signal(..., k=batch_size, ...)`).
+# `run.py::_lane_counts` only returns this block verbatim when `k is None`; with a k it scales
+# every lane by `k * quota[t] / sum(quota)`. Until 2026-08-15 the two readings coincided because
+# the totals happened to sum to exactly `schedule.batch_size` (15), which is why this note used
+# to claim a 1:1 distribution — that coincidence is gone.
+# At `batch_size: 50` (2026-08-15, founder) the 3/5/4/3 ratio scales to side_hustle 10, smb 17,
+# growth 13, venture 10, summing to 50 with no rounding nudge. Note this carries venture from 3
+# to 10 despite the "do not over-buy" reasoning above: proportional scaling has no opinion about
+# a lane's PASS rate. To hold venture down, change the WEIGHT here, not batch_size.
 # Until 2026-08-01 this whole block was DEAD CONFIG for the daemon — see the comment in
 # scheduler/run_scheduled.py::_default_generate.
 lane_quota:                        # candidates generated per tier per multi-lane run
@@ -2035,7 +2043,85 @@ dedup_token_threshold: 0.34
 # time by run_scheduled._default_generate -> generate()'s wave loop (no new wave starts
 # past the deadline), and projected at commit time by scripts/gen_budget_guard.py against
 # the same fraction. 0 disables the rail.
-schedule: { cadence: daily, batch_size: 15, backlog_cap: 0, max_resume_attempts: 5,
+# `artifact_budget_frac: 0.40` — the ARTIFACT + MARKETING-CONTENT phase's share of the
+# same tick hard deadline. Added 2026-08-15: `gen_budget_frac` bounds generation but
+# nothing bounded what runs after it, and that phase (prospector/artifacts.py
+# generate_artifacts + generate_marketing_content, called from run.py's
+# _generate_pack_content on every PASS) is what actually ate the 2026-08-15 breach —
+# store/scheduler/launchd.err.log artifact/content markers span 10:40 -> 13:12, i.e.
+# 152 of that tick's 180 minutes (84%), and three of the five breaches recorded in
+# store/scheduler/ticks.jsonl landed in the 48h before this key was added. Arithmetic:
+# 0.35 (gen_budget_frac) + 0.40 = 0.75 of the 10800s tick, leaving 0.25 (45 min) for
+# verify/publish/drain, which carry no budget rail of their own — so the two rails
+# together can never alone exceed the tick deadline. 0.40 x 10800s = 4320s (72 min) is
+# still generous against a healthy call — each artifact call measures ~90s of wall-clock
+# (run.py:462, "each artifact call was ~90s of claude_cli wall-clock") with four running
+# in parallel per batch — so, like gen_budget_frac, this only bites once the chain is
+# degraded. Enforced inside prospector/artifacts.py: generate_artifacts and
+# generate_marketing_content each take a `deadline_mono` parameter bounding their
+# ThreadPoolExecutor batch's `as_completed(..., timeout=...)` wait (mirrors
+# generate.py:771 exactly). WIRED end-to-end later the same day: run_signal ->
+# vet_candidate -> _generate_pack_content, which converts it once into an absolute
+# monotonic deadline shared by all three regeneration attempts. It is a PER-CANDIDATE
+# ceiling, not a tick-absolute one — a tick-absolute artifact deadline would let the first
+# survivors spend the whole allowance and hand every later survivor an empty build_spec /
+# gtm_plan / ops_plan, which publishes UNLISTED and unsellable (run.py
+# _generate_pack_content: 12 of 24 off-shelf passes are exactly that fossil). 0 disables
+# the rail (same convention as gen_budget_frac).
+# `vet_budget_frac: 0.85` — the share of the tick deadline the WHOLE vetting loop
+# (run.py run_signal's ThreadPoolExecutor over every prescreened candidate, artifacts and
+# publish included) may spend before it stops taking new work. The other two bound a
+# PHASE; this one bounds the BATCH, and it is the only one that answers what k=50 asks.
+# Measured on the tick force-exited at 2026-08-15T13:17:56Z: 3 hours at batch=15 bought 18
+# vets, 9 survivors, 3 publishes, 528 LLM calls and $2.31 — 1200s of wall clock PER
+# SURVIVING CANDIDATE. At batch_size 50 a full batch is ~10h of work inside a 3h deadline
+# on a 2h interval, so no budget can make it fit and any number claiming to is a lie about
+# throughput. What this rail buys is which failure we get: without it _force_exit_hung_tick
+# SIGKILLs mid-candidate and banks nothing (five recorded breaches 2026-08-13..15, all at
+# batch=15); with it the loop cancels un-started vets, keeps every verdict already paid for
+# (store.save runs inside vet_candidate), says how many it declined to start, and returns.
+# 0.85 x 10800s = 9180s, leaving 1620s (27 min) for the publish/telemetry/drain work that
+# follows run_signal in the same tick and has no budget of its own. Deliberately BELOW the
+# force-exit timer, not equal to it: a rail firing at the same instant as the thing it
+# pre-empts is a coin toss. 0 disables it and the force-exit becomes the only stop again.
+#
+# `drain_budget_frac: 0.15` — the share of the tick deadline the BACKLOG DRAIN may spend.
+# Added 2026-08-15, and it is the largest of the four by measured effect, because the drain
+# runs FIRST and was the only phase with no ceiling at all. From the daemon's own log:
+#   tick 10:16:59Z — 3 rows took 4197s of a 10800s tick (39%) before generation started;
+#   tick 13:23:07Z — row 1 alone took 4127s and row 2 was still running at +5885s (55%).
+# Every rail downstream was therefore being handed a tick that had already been spent, which
+# is why the three above could be individually correct and the tick still force-exit.
+# Per row the dominant cost is not the verdict but the CONTENT phase on a row that passes:
+# 1461s of row 1's 2844s (51%) on the first tick, 2331s of 4127s (56%) on the second — so the
+# pass gets this wall AND each row gets `artifact_budget_frac` of it, or bounding the pass
+# would just push the overrun one level down.
+# 0.15 x 10800s = 1620s, against a measured 122s for a KILL that gates out early. The wall
+# binds on the expensive rows and never interrupts a cheap one. Stopping is LOSSLESS: an
+# unreached row keeps its state and its place in the priority sort and is picked up next
+# tick, so unlike the vetting batch there is nothing to park and nothing paid for to lose.
+# 0 disables the wall and the drain becomes unbounded again.
+#
+# `artifact_budget_floor_s: 1200` — the LEAST time a PASS's content phase may get, whatever
+# `artifact_budget_frac` works out to. This closes a trap we set for ourselves.
+# A share shrinks when some OTHER phase runs long, and on 2026-08-15 it shrank to nothing:
+# candidate f2ac7df9995c334e cleared all seven checks and then published UNLISTED with
+# build_spec, gtm_plan and ops_plan all empty. Its three retries logged in the SAME second
+# (15:36:08Z) because the share was already spent before the phase began — and the error
+# read "generation produced nothing", which points at the operator, when the operator was
+# healthy (store/provider_health_noncritical.json was `{}`).
+# The content phase is the WORST thing to cut. Generation, prescreen, dedup, retrieval,
+# seven verdict calls and adversarial review are all paid for by the time it runs; it is the
+# step that turns that spend into something sellable, and it is the cheapest thing in the
+# tick (~90s/call). Cutting it strands everything upstream to save almost nothing. When a
+# tick cannot afford everything, the phase to cut is GENERATION — fewer candidates costs
+# nothing already spent — never the finishing of a candidate that already passed.
+# 1200s is ~13x a healthy call, so it only ever bites a chain that is actually hung, and it
+# cannot overrun the tick: run.py:559-561 clamps it against the batch's vet deadline, which
+# stops the batch regardless. 0 disables the floor and restores the pure-share behaviour.
+schedule: { cadence: daily, batch_size: 50, backlog_cap: 0, max_resume_attempts: 5,
+            artifact_budget_frac: 0.40, vet_budget_frac: 0.85, drain_budget_frac: 0.15,
+            artifact_budget_floor_s: 1200,
             # revet_provisional_kills: false -> true, 2026-08-15. The 176 provisional KILLs the
             # drain refused every cycle ("No backlogged candidate the drain can work on") were
             # ruled under a confidence metric that scored citation VOLUME, not evidence

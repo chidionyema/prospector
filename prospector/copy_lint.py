@@ -354,6 +354,14 @@ _HARPER_FALLBACK_PATHS = (
     "/opt/homebrew/bin/harper-cli",
 )
 
+#: Hard ceiling on one harper invocation, however many files it is handed. `timeout_s` is
+#: scaled per-file in `grammar_findings` (see the comment there), and a per-file budget with
+#: no cap would let a pathological pack hold the tick for as long as it liked -- which is the
+#: exact failure the timeout exists to prevent. 600s is chosen against the caller that has a
+#: real deadline: the scheduler's generation phase gets `gen_budget_frac: 0.35` of
+#: `_TICK_HARD_DEADLINE_S` (10800s) = 3780s, so a worst-case lint spends under a sixth of it.
+_HARPER_TIMEOUT_CEILING_S = 600.0
+
 
 def harper_path() -> Optional[str]:
     found = shutil.which("harper-cli")
@@ -396,8 +404,18 @@ def grammar_findings(texts: Dict[str, str], *, timeout_s: float = 120.0,
                 paths.append(str(p))
             if not paths:
                 return {}
+            # `timeout_s` is ONE budget for the whole invocation, but the invocation is
+            # variable-sized: every piece of copy over 60 chars becomes another file argument.
+            # So the budget was per-CALL for a per-FILE workload, and a pack simply having more
+            # pieces exhausted it — 2026-08-15T12:55:44Z timed out on a 4-file lint at the flat
+            # 120s. That is not a hang detector firing; it is size. And because this function is
+            # fail-open, the only symptom is grammar quietly reported "unavailable" on the
+            # LONGEST copy in the catalogue, which is the copy most in need of grading.
+            # Give each file the budget the caller actually intended, and keep a hard ceiling so
+            # a genuinely hung harper-cli is still bounded (the fail-open contract above).
+            effective_timeout = min(timeout_s * len(paths), _HARPER_TIMEOUT_CEILING_S)
             r = subprocess.run([exe, "lint", "--no-color", *paths],
-                               capture_output=True, text=True, timeout=timeout_s)
+                               capture_output=True, text=True, timeout=effective_timeout)
             out = (r.stdout or "") + (r.stderr or "")
             counts: Dict[str, int] = {}
             for m in _HARPER_RULE_RE.finditer(out):
