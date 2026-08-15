@@ -4,13 +4,13 @@ from __future__ import annotations
 import re
 
 from prospector.models import Candidate, CheckResult, Verdict
-from prospector.plain_text import publish_pass_document
 from prospector.pack_floors import (
     claim_safe_marketing,
     ensure_marketing_floor,
     exec_summary_md,
     first_week_checklist_md,
 )
+from prospector.plain_text import publish_pass_document
 
 
 def test_claim_safe_marketing_uses_only_dossier_fields():

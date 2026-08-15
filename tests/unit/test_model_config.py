@@ -16,7 +16,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # Each (kind, default_env_var) pair needs its API key set for the operator
 # to construct. We use patch.dict to set the env var at test time.
 #

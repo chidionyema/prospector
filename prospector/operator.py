@@ -1587,7 +1587,6 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
     prefixes = _PROVIDER_MODEL_PREFIX.get(kind, ())
     model_matches = bool(cfg_model) and any(cfg_model.lower().startswith(p.lower()) for p in prefixes)
     model = cfg_model if model_matches else None
-    has_cfg_model = model_matches
     if kind == "claude_cli":
         # cfg.model is an API pin; don't leak it to the claude CLI.
         from .claude_cli import ClaudeCliOperator

@@ -188,11 +188,11 @@ def test_the_vet_deadline_bounds_the_CHECKS_and_defers_rather_than_kills():
         which is the documented honest verdict — "an exception is never evidence; a failed
         call DEFERS" — applied to running out of time instead of out of quota.
     """
+    from prospector import verify as V
     from prospector.config import load_config as _load
     from prospector.models import DEFER_GATE, Candidate, Verdict
     from prospector.operator import MockOperator
     from prospector.retrieval import SearchProvider
-    from prospector import verify as V
 
     class _NeverSearched(SearchProvider):
         def search(self, query: str, k: int = 4, max_chars: int = 1500):
