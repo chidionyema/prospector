@@ -26,8 +26,8 @@ from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from nltk.stem import PorterStemmer
-import re
 import http.client
+import re
 import urllib.error
 import urllib.parse
 import urllib.request

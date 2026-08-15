@@ -466,23 +466,21 @@ def _num(value: Any, default: float = 0.0) -> float:
 def _all_sources(dossier: Any) -> list[Any]:
     """`Dossier.all_sources` when the object has it; the same list re-derived when it cannot.
 
-    Distinct by URL, first occurrence wins — the definition `models.distinct_sources` uses,
-    kept identical here so the appendix a backfilled pack renders is the appendix a freshly
-    generated one renders.
+    Distinct by URL, first occurrence wins. DELEGATED to `models.distinct_sources` rather
+    than re-implemented (origin/main, 2026-08-15): this function first shipped with its own
+    copy of the dedup loop, which is precisely how the pack cover's source count and this
+    appendix's source count come to disagree about the same pack while both look correct.
+    One definition, two shapes.
+
+    What is left here is the only part `distinct_sources` cannot do: reading `checks` with a
+    default. A stored dossier arrives through `pack_manifest._ns`, which builds attributes
+    from dict KEYS alone, so a record whose JSON never carried the key has no attribute at
+    all and `dossier.checks` raises — taking all fourteen sections down over an appendix.
     """
     existing = getattr(dossier, "all_sources", None)
     if existing:
         return list(existing)
-    out: list[Any] = []
-    seen: set[str] = set()
-    for chk in (getattr(dossier, "checks", None) or []):
-        for src in (getattr(chk, "sources", None) or []):
-            url = str(getattr(src, "url", "") or "")
-            if not url or url in seen:
-                continue
-            seen.add(url)
-            out.append(src)
-    return out
+    return distinct_sources(getattr(dossier, "checks", None) or [])
 
 
 #: What the engine actually does, in the words a buyer reads. It lives here as a constant
