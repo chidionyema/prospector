@@ -67,7 +67,13 @@ operator: [claude_cli, minimax]
 # CHANGING THIS LINE DECIDES WHAT MAY BE SOLD. The gate for adding a cheap brain is the PROMOTION
 # GATE above (specs/offline-moat-validation.md), measured on the current parser — not a judgement
 # that it "looked good in a run".
-moat_primary: [claude_cli]
+# PROMOTED 2026-08-15 (founder: "either we trust minimax or we don't, the aim is to replace
+# claude basically"). minimax's rulings now publish on PASS instead of being stamped
+# `provisional` and re-vetted by claude_cli — which is the whole point: its throughput was
+# unusable at any concurrency while everything it ruled was unpublishable by construction.
+# REVERT = delete `minimax` from this line. That stops FUTURE publishes immediately; packs
+# already listed under the looser fence stay listed until unlisted deliberately.
+moat_primary: [claude_cli, minimax]
 # standardcompute REMOVED from this chain 2026-08-15 (founder directive), along with its adapter.
 # It sat between claude_cli and minimax from 2026-08-08 ("fall back for claude ahead of minimax"),
 # but STANDARDCOMPUTE_API_KEY is unset here and the free trial is spent — the tier answered live
