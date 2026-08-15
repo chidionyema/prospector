@@ -9,6 +9,7 @@ import json
 from typing import Optional
 
 from .config import Config
+from .critique import _axes_brief
 from .models import SCORE_AXES, Candidate, CheckResult, ScoreResult
 from .operator import Operator
 from .prompts import render
@@ -30,8 +31,17 @@ def score_candidate(op: Operator, cfg: Config, cand: Candidate,
                "citations": c.citations} for c in checks]
     # FIX #12: scoring is a 0-5 rubric classification — flash-lite handles it identically.
     _scorer = scorer_op or op
+    # The scorer was the ONLY one of the three readers of these axes that had never been given
+    # their definitions — prompts/score.md listed six bare names and left the meaning to the
+    # model. That is where `money_provability` drifted to a product-level reading: measured
+    # 2026-08-15, it rejected money it had actually FOUND for being the wrong artifact ("same
+    # buyer, different service"; "quote-on-request only, no figure"). Rendering the same
+    # `_axes_brief` the generator and critic get makes one definition serve all three, and a
+    # re-weighting or a re-wording moves them together. Safe as a {placeholder}: score.py:33 is
+    # the sole caller of render("score"), so no path can ship the token unsubstituted.
     system, user = render("score", candidate_json=json.dumps(cand.to_dict()),
-                          claims_json=json.dumps(claims))
+                          claims_json=json.dumps(claims),
+                          score_axes=_axes_brief(cfg))
     score_failed = False
     try:
         with telemetry_stage("score"):

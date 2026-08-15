@@ -32,9 +32,26 @@ def test_it_names_the_two_axes_the_corpus_actually_dies_on():
     assert "money_provability" in out
     assert "defensibility" in out
     # Naming them is not enough: the whole finding is that ideas are BUILDABLE and unfundable,
-    # so the directive has to demand an existing budget line, not a hypothetical willingness.
-    assert "ALREADY pays from today" in out
+    # so the directive has to demand real existing spend, not a hypothetical willingness.
+    assert "ALREADY spends to get this OUTCOME today" in out
     assert "ACCUMULATES" in out
+
+
+def test_money_provability_is_asked_at_the_JOB_level_not_the_product_level():
+    """The founder's objection, and the corpus agrees with it.
+
+    Of 161 `money_provability` scores <=1 since 2026-08-01, the scorer twice rejected money it
+    had actually FOUND for being attached to the wrong artifact: a £825 solicitor's probate fee
+    dismissed as "same buyer, different service", and enterprise tools dismissed as
+    "quote-on-request only ... no figure". Under that reading a genuinely new solution to an
+    already-funded job is unscoreable by construction, which biases the whole engine toward
+    me-too products and directly against `defensibility`, the heaviest axis.
+
+    So the directive must say, in terms, that the spend does not have to be on a product like
+    this one."""
+    out = _scoring_directive(load_config())
+    assert "does NOT have to be a product like yours" in out
+    assert "already-funded job" in out
 
 
 def test_it_is_rendered_from_cfg_weights_not_hardcoded():
