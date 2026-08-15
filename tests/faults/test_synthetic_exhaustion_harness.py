@@ -143,20 +143,35 @@ class _RaisesValueError(Operator):
 @pytest.mark.parametrize("label,text,kind,window_s", SHAPES, ids=SHAPE_IDS)
 def test_failover_serves_from_the_live_brain_and_marks_only_the_dead_one(label, text, kind,
                                                                         window_s):
+    """The tail brain serves, and what it serves is PROVISIONAL.
+
+    This used to pair a dead `claude_cli` with a live `claude` and assert
+    `served_is_provisional() is False`. `MOAT_PRIMARY` was narrowed to `{"claude_cli"}` on
+    2026-08-15 (`prospector/operator.py:1189`) when the paid Anthropic tier was deleted with its
+    adapter, so the scenario the assertion described -- one trusted brain failing over to another
+    trusted brain -- no longer exists anywhere in this estate. Re-pointing the old assertion at
+    `minimax` would have been the real regression: it would assert that a cheap tail brain rules
+    as trusted-final, which is the exact thing `is_provisional_provider` exists to prevent.
+
+    So the test now pins the shape the chain actually has: claude_cli dies, minimax serves, the
+    answer is stamped provisional (founder directive 2026-08-08 -- provisional first, DEFER only
+    when the tail is down too), and only the dead brain is benched.
+    """
     dead = _Exhausted("claude_cli", text)
-    alive = _Alive("claude")
-    chain = FallbackOperator([("claude_cli", dead), ("claude", alive)])
+    alive = _Alive("minimax")
+    chain = FallbackOperator([("claude_cli", dead), ("minimax", alive)])
 
     assert chain._raw("sys", "user", 0.0) == "ok"
-    assert chain.last_served() == "claude"
-    assert chain.served_is_provisional() is False, "'claude' is a MOAT_PRIMARY brain"
+    assert chain.last_served() == "minimax"
+    assert chain.served_is_provisional() is True, (
+        "'minimax' is outside MOAT_PRIMARY, so anything it rules must be stamped provisional")
     assert H.get_health().dead_until("claude_cli") is not None
-    assert H.get_health().dead_until("claude") is None, "a live brain must never be benched"
+    assert H.get_health().dead_until("minimax") is None, "a live brain must never be benched"
 
 
 def test_every_brain_exhausted_raises_so_the_caller_defers():
     chain = FallbackOperator([("claude_cli", _Exhausted("claude_cli", "HTTP 402 Payment Required")),
-                              ("claude", _Exhausted("claude", "HTTP 429 Too Many Requests"))])
+                              ("minimax", _Exhausted("minimax", "HTTP 429 Too Many Requests"))])
     with pytest.raises(ProviderExhaustedError) as ei:
         chain._raw("sys", "user", 0.0)
     assert "all brains exhausted" in str(ei.value)

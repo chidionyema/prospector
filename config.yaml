@@ -50,14 +50,14 @@
 # PROMOTION GATE (to make a cheap model a TRUSTED primary, not just a fallback): see
 # specs/offline-moat-validation.md and run, recording a clearance:
 #   python -m prospector.golden --operator deepseek --fixtures fixtures/golden_fixtures.json --runs 3
-operator: [claude_cli, standardcompute, minimax]
-# standardcompute inserted ahead of minimax 2026-08-08 (founder directive: "fall back for claude
-# ahead of minimax"). It is a TAIL, not a head — claude_cli still leads, per the standing rule that
-# the chain must stay led by a trusted brain. It is NOT in MOAT_PRIMARY (`prospector/operator.py`), so a
-# ruling it serves is stamped `provisional`, never publishes on PASS (run.py:528) and is auto
-# re-vetted — the same posture minimax already had, which is what makes a cheap tail safe.
-# To promote it to trusted-final, the gate is the one named below:
-#   python -m prospector.golden --operator standardcompute --fixtures fixtures/golden_fixtures.json --runs 3
+operator: [claude_cli, minimax]
+# standardcompute was the middle tier here from 2026-08-08. Its adapter was DELETED on 2026-08-15
+# (founder: "we should get rid of standard compute"), and `_build_operator` now RAISES on the kind,
+# so leaving the name on this line would have failed the engine at startup on a config it could not
+# build. minimax is the tail: it is NOT in MOAT_PRIMARY (`prospector/operator.py:1199`), so a ruling
+# it serves is stamped `provisional`, never publishes on PASS (run.py:528) and is auto re-vetted —
+# which is what makes a cheap tail safe. To promote a tail to trusted-final, the gate is the one
+# named above, run against that provider.
 #
 # The CHEAP chain: divergent generation, prescreen, scoring. Never rules a verdict — anything of
 # its that reaches a ruling is stamped `provisional` (operator.py:1071), so the fence above does
@@ -74,13 +74,15 @@ operator: [claude_cli, standardcompute, minimax]
 # that never rules a verdict. `prospector/run.py::_noncritical_order` also STRIPS claude_cli when
 # it builds the chain, so editing this line back cannot quietly reinstate it.
 #
-# minimax heads it because standardcompute is out of allowance on disk right now —
-# store/provider_health_noncritical.json: strikes 6, last_error "You've used up your free trial".
-# standardcompute stays as the failover tier: a chain of one is not a chain, and it is the
-# cheapest tier again the day the account is funded.
+# minimax is now the WHOLE chain. It headed it because standardcompute was out of allowance on
+# disk (store/provider_health_noncritical.json: strikes 6, last_error "You've used up your free
+# trial"), and on 2026-08-15 that adapter was deleted outright. A chain of one is not a chain, and
+# that is a real exposure: if minimax fails, non-critical work raises ProviderExhaustedError and
+# the signal is parked for `generate --resume` rather than silently promoting a trusted brain into
+# ancillary work. Adding a second cheap tier here is the fix; claude_cli is not eligible for it.
 # NOTE: the moat (`operator:`) and the pack prose (`artifact_operator:`) are UNCHANGED — this
 # directive is about ancillary work, and the £49 deliverable is not ancillary.
-noncritical_operator: [minimax, standardcompute]
+noncritical_operator: [minimax]
 model: ""                            # verdict brain model pin (blank = each CLI's default).
 model_fast: ""                   # cheap model for query-gen/prescreen; blank = each provider's
                                  # own fast default (model_defaults.fast). Was deepseek-v4-flash.
@@ -141,7 +143,6 @@ model_defaults:
   # StandardCompute (api.stdcmpt.com) — OpenAI-compatible, key in .env as
   # STANDARDCOMPUTE_API_KEY, base URL overridable via STANDARDCOMPUTE_BASE_URL.
   # Wire format verified live 2026-08-08: /v1/chat/completions 200, /v1/messages 404.
-  standardcompute: "standardcompute"    # StandardComputeOperator default
   search:
     deepseek:    "deepseek-v4-flash"
     minimax:     "MiniMax-M3"
@@ -1459,19 +1460,12 @@ listing:
     # evidence behind them yet; that is what the price_comparables check (C3) and the
     # storefront events (D2) exist to produce. They are pinned here so the ladder is
     # deterministic and so moving one is a visible, reviewable act.
-    # Charm pricing was introduced 2026-08-09 (founder: "round figure is not right, we should
-    # have pence, cents also") and REVERSED 2026-08-14 (founder: ".00 everywhere", "not
-    # realistic at all"). Every rung ends in a flat pound again: £19 / £29 / £49 / £79 / £99 /
-    # £149 / £199. The rung POSITIONS are unchanged — default_rung_index, tier_rung_index and
-    # market_rung_offset below all index into this same 7-element array — so only the numbers
-    # moved, not the ladder shape, and no pack changes tier as a result of this edit.
-    #
-    # Note what this edit does NOT do. It governs the price a pack is assigned at listing
-    # time; it does not touch a pack already on the shelf, because a catalogue row and its
-    # provider Price object are minted together by one PriceDecision (bridge.py) and rewriting
-    # either one alone charges a buyer an amount the fulfilment fence then rejects. Bringing
-    # the live shelf onto this ladder is a separate, deliberate repricing operation.
-    rungs: [1900, 2900, 4900, 7900, 9900, 14900, 19900]
+    # Charm pricing (2026-08-09, founder: "round figure is not right, we should have pence,
+    # cents also"). Every rung now ends in 99p instead of a flat hundred so the storefront
+    # renders £19.99 / £49.99 / £199.99 instead of £19 / £49 / £199. The rung POSITIONS are
+    # unchanged (default_rung_index, tier_rung_index and market_rung_offset below all index
+    # into this same 7-element array), so only the numbers moved, not the ladder shape.
+    rungs: [1999, 2999, 4999, 7999, 9999, 14999, 19999]
 
     # The SAME ladder in US cents, for buyers billed in USD (founder decision 2026-08-14:
     # "as a us buyer you want to be charged in usd"; these rungs approved 2026-08-14).
@@ -1494,9 +1488,9 @@ listing:
     # nobody bumped after editing `rungs` would misattribute a price. The record also
     # carries the rung numbers themselves plus a `fingerprint` digest over them, and the
     # fingerprint is what proves which ladder actually ran.
-    ladder_version: L1-ladder-2026-08-14-flat
+    ladder_version: L1-ladder-2026-08-09-charm
 
-    # Index into `rungs` for a pack with no ambition tier. MUST resolve to 4900: an
+    # Index into `rungs` for a pack with no ambition tier. MUST resolve to 4999: an
     # unclassified pack is one we know nothing about, and guessing at its price is
     # strictly worse than holding the price the whole catalogue already sells at.
     default_rung_index: 2

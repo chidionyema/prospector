@@ -203,9 +203,10 @@ export default function HowItWorks() {
             One sentence, before the first check, because a reader who learns this after reading
             six verdicts has been told late. */}
         <p className="mb-10 max-w-3xl text-body leading-relaxed text-muted">
-          Every check below is run by an AI agent rather than by a person forming an opinion: it is
-          instructed to rule only on passages it fetched from the open web, and the sources it used
-          are published with the verdict so you can hold the reasoning against them yourself.
+          The research is AI-led and automated: the checks below are run by AI agents, each
+          instructed to rule only on passages it fetched from the open web, and the sources they
+          used are published with the verdict so you can hold the reasoning against them yourself.
+          A person reviews that record before the pack reaches the shelf.
         </p>
         {/* No `mt-12`: the lede moved into the heading block, whose `mb-10` is now the gap to the
             content. Keeping both stacked 88px between the lede and step 1. */}
@@ -248,7 +249,14 @@ export default function HowItWorks() {
                     {check.name}
                   </h2>
          <p className="mt-1 text-caption font-medium text-muted">
-                    <code className="bg-bg px-1.5 py-0.5 rounded-md text-caption">{gateIdFor(check, example)}</code>
+                    {/* The engine's gate id, with the underscores taken out. It was set in a mono
+                        `<code>` chip reading `pain_reality`, directly under the heading that
+                        already says "Real pain" -- founder, 2026-08-15: "why do we have labels
+                        like pain_reality, why the underscore?" It is a machine identifier, and a
+                        buyer-facing page that prints one raw reads as a leak. The WORDS are
+                        unchanged, so the tie between this line and the kill log's own gate labels
+                        survives; only the snake_case and the code chip go. */}
+                    {gateIdFor(check, example).replace(/_/g, ' ')}
                   </p>
 
                   {example && (
@@ -284,21 +292,57 @@ export default function HowItWorks() {
         </div>
       </Section>
 
-      {/* C. The adversarial pass */}
+      {/* C. The adversarial pass.
+          PLURAL, here and everywhere (founder, 2026-08-15: "an agent should be agents, also across
+          the site, plural not singular agent"). The work is a fleet, and the singular undersold it
+          as one model having a think. */}
       <Section
         bg="white"
         width="6xl"
-        title="Then a second agent attacks the survivor."
+        title="Then a second wave of agents attacks the survivor."
       >
         <div className="max-w-3xl space-y-4">
           <p className="text-body font-normal leading-relaxed text-muted">
-            It hunts for contradictions, weak citations, and gaps the first pass missed. The
+            They hunt for contradictions, weak citations, and gaps the first pass missed. The
             evidence record survives only if every objection is answered by evidence already on file.
             No new research, no hand-waving.
           </p>
           <p className="text-meta leading-relaxed text-muted">
-            Silence in the record means <em>unverifiable</em>, never <em>false</em>. The agent only
-            rules on pages it actually fetched.
+            Silence in the record means <em>unverifiable</em>, never <em>false</em>. The agents only
+            rule on pages they actually fetched.
+          </p>
+        </div>
+      </Section>
+
+      {/* C2. THE HUMAN PASS, and it was missing entirely.
+          Founder, 2026-08-15: "we need to be firm on our messaging, AI and automation led, human
+          review and verification", and on this page specifically "no mention of human reviewer and
+          researcher". `rg -i 'human|review|researcher|analyst|by hand|manual'` over this file
+          returned NOTHING: the page described two agents and went straight to the kill log, so the
+          step a buyer most wants to hear about was the one step never stated.
+
+          It sits AFTER the adversarial pass because that is where it happens -- a person reviewing
+          an unchallenged record is reviewing less than the machine already did.
+
+          The claim is deliberately narrow. "A person reviews the record and can reject it" is true
+          and checkable; "every pack is hand-researched" would not be, and this is the page that
+          exists to not overclaim. */}
+      <Section
+        bg="bg"
+        width="6xl"
+        title="Then a person reviews it."
+      >
+        <div className="max-w-3xl space-y-4">
+          <p className="text-body font-normal leading-relaxed text-muted">
+            The finding, the checking and the sourcing are automated, and that is the point: it is
+            how every idea gets the same treatment instead of the handful a person could read. But
+            nothing reaches the shelf on its own. A person reads the verdict, opens the sources and
+            checks that the argument holds before a pack is published.
+          </p>
+          <p className="text-meta leading-relaxed text-muted">
+            The reviewer can send a pack back or kill it outright. What they cannot do is add
+            evidence the record does not have, which is why the verdict you read is the one the
+            published sources support.
           </p>
         </div>
       </Section>
@@ -306,9 +350,12 @@ export default function HowItWorks() {
       {/* D. The graveyard -- now collapsed: the stat already lives at position 2 of this
           page, so what stood here is a duplicate of the page's thesis, and the "auditable, not
           a black box" line above already says what the kill-log link is for. A single link to
-          the log is the only thing missing. */}
+          the log is the only thing missing.
+
+          `bg="white"`: C2 took the `bg` slot above, so D and E each shift one step along to keep
+          the page alternating. */}
       <Section
-        bg="bg"
+        bg="white"
         width="6xl"
         title="The kill log"
       >
@@ -338,7 +385,7 @@ export default function HowItWorks() {
           price they qualify, which is where a buyer is actually deciding. A second, softer account
           of the same limits here meant the honest bit was said twice and in full nowhere. */}
       <Section
-        bg="white"
+        bg="bg"
         width="6xl"
         title="The honest limits"
       >
