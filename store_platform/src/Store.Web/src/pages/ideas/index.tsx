@@ -166,10 +166,19 @@ export default function IdeasHub({ categories, total, variant }: Props) {
         width="7xl"
         eyebrow="Categories"
         title="Business ideas, by category."
+        /*
+         * THE WORDS ARE THE FOUNDER'S AND THEY STAY (2026-08-15).
+         *
+         * I rewrote this lead to stop it naming the six axes that `CategoryGraph.tsx:80-85` renders
+         * as six group headings below. Founder's ruling on reading it: "there is nothing that wrong
+         * with it, its just the format and presentation." So the defect here is not the sentence,
+         * it is that a 34-word enumeration is being drawn as one undifferentiated paragraph of lead
+         * type. Fix the setting, not the words -- see `PageHero`.
+         */
         lead={
           total > 0
             ? `${total} researched packs, sorted six ways: who pays for it, the hours it needs, how much of it is automated, the skills it suits, how it makes money, and the sector it sits in.`
-            : 'Researched packs, grouped by who pays for them, the hours they need, and the skills they suit.'
+            : 'Researched packs, sorted six ways.'
         }
       />
 

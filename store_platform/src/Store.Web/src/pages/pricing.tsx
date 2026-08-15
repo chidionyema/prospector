@@ -168,7 +168,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
 
         {/* Trust + refund */}
         <div className="mt-12 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-md border border-border bg-surface p-5">
+          <div className="rounded-md border border-border bg-surface p-6">
             <div className="flex items-center gap-2">
               <Icon name="shield" size={16} className="text-success" />
               <h3 className="text-meta font-semibold text-text">14 day money back</h3>
@@ -186,7 +186,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
               .
             </p>
           </div>
-          <div className="rounded-md border border-border bg-surface p-5">
+          <div className="rounded-md border border-border bg-surface p-6">
             <div className="flex items-center gap-2">
               <Icon name="verified" size={16} className="text-success" />
               <h3 className="text-meta font-semibold text-text">Every claim cited</h3>

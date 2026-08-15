@@ -331,7 +331,7 @@ export function PackContentsSection({
           is what the founder was asking for when the objection was "we are not selling to
           developers". The count beside the words counts DOCUMENTS, which is why the noun is
           "documents"; the files are counted in the tree above, where they are listed. */}
-      <div className="mt-4 flex flex-col gap-3 rounded-md border border-border bg-surface2 p-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-4 flex flex-col gap-3 rounded-md border border-border bg-surface2 p-6 sm:flex-row sm:items-center sm:justify-between">
         <p className="max-w-[62ch] text-meta text-muted">
           <span className="font-medium text-text">{PACK_DOCUMENTS.length} documents, 5,000+ words,
           as a web page you can read, a PDF you can print and a spreadsheet you can open.</span>{' '}

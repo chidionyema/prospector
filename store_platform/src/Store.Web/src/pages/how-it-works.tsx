@@ -252,7 +252,7 @@ export default function HowItWorks() {
                   </p>
 
                   {example && (
-                    <div className="mt-5 rounded-md border border-border bg-bg/40 p-5">
+                    <div className="mt-5 rounded-md border border-border bg-bg/40 p-6">
            <p className="text-caption font-medium text-muted">
                         {example.gateLabel}
                       </p>

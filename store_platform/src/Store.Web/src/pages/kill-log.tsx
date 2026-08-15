@@ -320,7 +320,7 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
             The chart is the page's thesis in one object, and it is placed above the table because
             it is what makes the table legible: a reader who knows incumbency is the largest
             publishable cause reads 188 incumbency rows as a pattern rather than as repetition. */}
-        <section aria-labelledby="distribution-heading" className="rounded-md border border-border bg-surface p-5 md:p-7">
+        <section aria-labelledby="distribution-heading" className="rounded-md border border-border bg-surface p-6 md:p-7">
           <h2 id="distribution-heading" className="text-h2 font-semibold text-text">
             How ideas die
           </h2>

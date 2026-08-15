@@ -244,7 +244,7 @@ export default function SamplePage() {
           <DocRail sections={SECTIONS} eyebrow="Report #00 · contents" />
           <div className="min-w-0">
         {/* The idea */}
-        <div id="opportunity" className="scroll-mt-24 rounded-md border border-border bg-surface p-7 md:p-9">
+        <div id="opportunity" className="scroll-mt-24 rounded-md border border-border bg-surface p-8 md:p-9">
      <span className="text-caption font-medium text-muted">
             The opportunity
           </span>

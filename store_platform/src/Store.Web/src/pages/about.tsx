@@ -108,7 +108,7 @@ export default function AboutPage() {
         <div className="mt-10 grid gap-3 sm:grid-cols-2">
           <Link
             href="/how-it-works"
-            className="rounded-md border border-border bg-surface p-5 transition-colors hover:border-border-strong"
+            className="rounded-md border border-border bg-surface p-6 transition-colors hover:border-border-strong"
           >
             <p className="text-meta font-semibold text-text">How it works</p>
             <p className="mt-1 text-meta leading-relaxed text-muted">
@@ -128,7 +128,7 @@ export default function AboutPage() {
           */}
           <Link
             href="/kill-log"
-            className="rounded-md border border-border bg-surface p-5 transition-colors hover:border-border-strong"
+            className="rounded-md border border-border bg-surface p-6 transition-colors hover:border-border-strong"
           >
             <p className="text-meta font-semibold text-text">The kill log</p>
             <p className="mt-1 text-meta leading-relaxed text-muted">

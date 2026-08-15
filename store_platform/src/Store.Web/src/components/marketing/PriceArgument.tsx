@@ -53,7 +53,7 @@ export function MethodCostAnchor({ range }: { range: PriceRange | null }) {
           cell to signal "this is the good one", which is the shape of a pricing table trying to
           steer rather than a comparison trying to inform. The numbers make the point unaided. */}
       <dl className="mt-6 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-md border border-border bg-surface2 p-5">
+        <div className="rounded-md border border-border bg-surface2 p-6">
           <dt className="text-caption font-medium text-subtle">
             {documentary.publisher},{' '}
             {new Date(documentary.publishedOn ?? documentary.checkedOn).getFullYear()} price list
@@ -63,7 +63,7 @@ export function MethodCostAnchor({ range }: { range: PriceRange | null }) {
             <span className="mt-1 block text-caption text-subtle">for {documentary.of}</span>
           </dd>
         </div>
-        <div className="rounded-md border border-border bg-surface2 p-5">
+        <div className="rounded-md border border-border bg-surface2 p-6">
           <dt className="text-caption font-medium text-subtle">A pack, already run</dt>
           <dd className="mt-2 text-meta text-text">
             <span className="font-mono font-semibold text-text">{range ? range.label : 'One payment'}</span>
