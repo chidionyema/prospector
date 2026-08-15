@@ -171,7 +171,19 @@ test('the free sample opens without giving an email', async ({ page }) => {
   await expect(page).toHaveURL(/\/sample/);
   // The report itself, not just a 200: a gate that renders a capture panel at /sample would
   // still be a page load. The evidence section is the thing being given away.
-  const evidence = page.getByRole('heading', { name: /Every check, every source/i });
+  //
+  // THE ANCHOR MOVED, AND THAT IS THE FIX, NOT A WORKAROUND (2026-08-15).
+  //
+  // This pinned a heading over a table of our own gate results. That table is what the founder
+  // read as "we ramble about composite scores, things our engine does that does not concern
+  // us", and the page now gives away three whole sections of the pack's PROSE instead: the
+  // situation, the offer, and the field with its quoted competitor passages. Pinning the
+  // scorecard would hold the page to the shape it was rewritten to escape.
+  //
+  // So the anchor is the last section actually handed over. It is the strongest form of the
+  // same claim -- a capture panel cannot be mistaken for it, and it is the section the source
+  // quotes hang under, so the external-link assertion below has something to be true about.
+  const evidence = page.getByRole('heading', { name: /The field: who is already there/i });
   await expect(evidence).toBeVisible();
   await expect(page.locator('a[href^="http"]').first()).toBeVisible();
 
@@ -185,7 +197,7 @@ test('the free sample opens without giving an email', async ({ page }) => {
   if (await asks.count()) {
     const askIsAfterEvidence = await page.evaluate(() => {
       const heading = [...document.querySelectorAll('h2')].find((h) =>
-        /Every check, every source/i.test(h.textContent || ''),
+        /The field: who is already there/i.test(h.textContent || ''),
       );
       const input = document.querySelector('input[type="email"]');
       if (!heading || !input) return false;
