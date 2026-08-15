@@ -159,6 +159,46 @@ def test_an_unexpected_error_in_the_grammar_check_propagates(monkeypatch):
         copy_lint.grammar_findings({"body": _LONG})
 
 
+def test_the_harper_deadline_scales_with_the_files_it_is_handed(monkeypatch):
+    """`timeout_s` was one flat budget for a variable number of file arguments, so a pack
+    timed out for being LARGE rather than for hanging — 2026-08-15T12:55:44Z, a 4-file lint
+    against the flat 120s. Fail-open means the only symptom is grammar silently reported
+    "unavailable" on the longest copy in the catalogue."""
+    monkeypatch.setattr(copy_lint, "harper_path", lambda: "/bin/true")
+    seen = {}
+
+    def _spy(argv, **kw):
+        seen["files"] = len([a for a in argv if a.endswith(".md")])
+        seen["timeout"] = kw["timeout"]
+        return SimpleNamespace(stdout="", stderr="")
+
+    monkeypatch.setattr(copy_lint.subprocess, "run", _spy)
+
+    copy_lint.grammar_findings({"a": _LONG}, timeout_s=30.0)
+    assert (seen["files"], seen["timeout"]) == (1, 30.0), "one file must get exactly what the caller asked for"
+
+    copy_lint.grammar_findings({k: _LONG for k in "abcd"}, timeout_s=30.0)
+    assert seen["files"] == 4
+    assert seen["timeout"] == 120.0, "four files must get four budgets, not one"
+
+
+def test_the_scaled_deadline_is_still_bounded(monkeypatch):
+    """A per-file budget with no cap is not a timeout: it hands an arbitrarily large pack an
+    arbitrarily long hold on the tick, which is the failure the deadline exists to prevent."""
+    monkeypatch.setattr(copy_lint, "harper_path", lambda: "/bin/true")
+    seen = {}
+
+    def _spy(argv, **kw):
+        seen["timeout"] = kw["timeout"]
+        return SimpleNamespace(stdout="", stderr="")
+
+    monkeypatch.setattr(copy_lint.subprocess, "run", _spy)
+    copy_lint.grammar_findings({str(i): _LONG for i in range(200)}, timeout_s=120.0)
+    assert seen["timeout"] == copy_lint._HARPER_TIMEOUT_CEILING_S
+    assert copy_lint._HARPER_TIMEOUT_CEILING_S <= 0.35 * 10800, \
+        "the ceiling must fit inside the scheduler's generation budget"
+
+
 # --------------------------------------------------------------------------- #
 # landscape.incumbent_brief — "" also means "the gate is off / no topic"
 # --------------------------------------------------------------------------- #

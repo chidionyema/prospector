@@ -655,11 +655,31 @@ SHELF_FIELDS = frozenset({
 #: was a real defect (IEP, ADA, COSHH, ICB, CIS, STRS, DVSA, FOI, IFA) and none was a false
 #: positive. LED, UV and API are here because they are everyday words to a general reader,
 #: which is the only test that matters — not because they are short.
+#: US STATE POSTAL CODES, added 2026-08-15. These are the same CATEGORY as the `UK`/`US`/`EU`
+#: already above — a geography a stranger reads without effort — not sector jargon, so they pass
+#: the "costs the reader nothing" test this list is written against.
+#: They are here because their absence was silently unsellable. `schedule.market_rotation`
+#: (config.yaml:2015) was changed on 2026-08-14 to `us-tx,us-ca,us-fl,us-ny,uk,us-il,us-pa,
+#: us-oh,us-ga,uk` — eight US states, each of which the generator names by its code. Every such
+#: pack then FAILED this rule, and a shelf-copy failure is not a copy warning: it fails the
+#: content gate, which skips Stripe provisioning and publishes the pack UNLISTED (bridge.py, and
+#: launchd.err.log 2026-08-15T12:56:14Z for id 4f1fdd37b84da131). A validated PASS became
+#: unbuyable over a two-letter state abbreviation. Ten packs went that way before this line.
+#: ALL FIFTY are listed, deliberately, rather than only the eight in today's rotation: the defect
+#: was a rotation edit that this file did not know about, and a partial list rebuilds that exact
+#: trap the next time a state is added. The price is that a title SHOUTING an ordinary word that
+#: happens to be a state code — IN, OR, OK, ME, HI, DE — no longer trips the initialism rule.
+#: That is a style miss; the alternative was an unsellable pack.
+_US_STATE_CODES = """
+AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO
+MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC
+"""
+
 KNOWN_INITIALISMS = frozenset("""
 NHS HMRC DWP DVLA MOT PAYE VAT ISA GP GPS CV DIY PDF CSV TV CCTV PPE LED UV
 UK US USA EU EEA IRS DMV FBI FDA CDC EPA USDA
 AI IT HR API CEO CFO CTO MP MPs PhD BBC
-""".split())
+""".split()) | frozenset(_US_STATE_CODES.split())
 
 #: Words, for the lexicon tests. Apostrophes stay inside the token so "you're" survives as
 #: one word; hyphens split, so "unpaid-hours" tests as "unpaid" and "hours".

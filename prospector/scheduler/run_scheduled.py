@@ -233,6 +233,114 @@ def _gen_budget_frac(cfg) -> float:
         return 0.35
 
 
+def _artifact_budget_frac(cfg) -> float:
+    """`schedule.artifact_budget_frac` — the share of the tick deadline the ARTIFACT +
+    MARKETING-CONTENT phase (prospector/artifacts.py: `generate_artifacts`,
+    `generate_marketing_content`, invoked from run.py's `_generate_pack_content` on
+    every PASS) may spend, mirroring `_gen_budget_frac` above for the phase generation's
+    rail never covered.
+
+    PROVEN, not hypothetical: on the 2026-08-15 10:17->13:17 breach, artifact/content
+    markers in store/scheduler/launchd.err.log span 10:40 -> 13:12 — 152 of the tick's
+    180 minutes (84%) — spent with NO budget at all, while `gen_budget_frac` bounded
+    generation alone. Three of the five `_TICK_HARD_DEADLINE_S` breaches recorded in
+    store/scheduler/ticks.jsonl landed in the 48h before this reader was added.
+
+    Default 0.40: with `gen_budget_frac` at 0.35, 0.35 + 0.40 = 0.75 of the 10800s tick,
+    leaving 0.25 (45 min) for verify/publish/drain, which carry no budget of their own —
+    the two rails together can never alone exceed the tick deadline. 0.40 x 10800s =
+    4320s (72 min) is still generous against a healthy call — each artifact call
+    measures ~90s of wall-clock (run.py:462) with four running in parallel per batch —
+    so, like `gen_budget_frac`, this only ever bites once the chain is degraded. 0
+    disables the rail (same convention as `gen_budget_frac`).
+
+    WIRED AND LIVE since 2026-08-15 (this paragraph replaces the "NOT YET CONSUMED" note that
+    stood here for the hours between the rail being built and `run.py` being able to receive
+    it — an unconsumed budget is an inert rail, and an inert rail that reads as installed is
+    worse than none). The three-hop path is now:
+      `_default_generate` -> `run_signal(artifact_time_budget_s=)`
+      -> `vet_candidate(artifact_time_budget_s=)`
+      -> `_generate_pack_content`, which converts it ONCE into an absolute
+         `time.monotonic()` deadline shared by all `_MAX_PACK_GEN_ATTEMPTS` retries and
+         forwards it as `deadline_mono=` to both `generate_artifacts` and
+         `generate_marketing_content`.
+    It is a PER-CANDIDATE ceiling, not a tick-absolute one. A tick-absolute artifact deadline
+    would let the first survivors spend the whole allowance and hand every later survivor an
+    empty build_spec/gtm_plan/ops_plan, which publishes UNLISTED and unsellable — see
+    `run.py::_generate_pack_content`, where 12 of 24 off-shelf passes are exactly that fossil.
+
+    HISTORICAL, kept because it names the parameter shapes: `generate_artifacts` and
+    `generate_marketing_content` both already accept and enforce a `deadline_mono`
+    parameter (a `time.monotonic()` absolute deadline, bounding their ThreadPoolExecutor
+    batch's `as_completed(..., timeout=...)` wait exactly like generate.py:771), but
+    `run_signal` (prospector/run.py — owned by a different session this file's changes
+    were made alongside, and out of scope here) has no `artifact_time_budget_s`
+    parameter to receive the seconds this function resolves, so nothing in this daemon
+    calls it outside its own unit tests today. The three-hop wire-up run.py needs,
+    mirroring exactly how `gen_time_budget_s` reaches `generate.py`'s wave loop
+    (run.py:1071, :1089, :1102, :1114):
+      1. `run_signal(..., artifact_time_budget_s: Optional[float] = None)` — new kwarg,
+         converted once near `_gen_deadline` (run.py:1071) into an absolute deadline:
+         `_artifact_deadline = (_time.monotonic() + artifact_time_budget_s)
+          if artifact_time_budget_s else None`.
+      2. Thread `_artifact_deadline` into every `vet_candidate(...)` call inside the
+         per-candidate `executor.submit(...)` (run.py:~1294) as a new
+         `artifact_deadline_mono=` kwarg; `vet_candidate`'s own signature (run.py:663)
+         needs the matching parameter.
+      3. Forward it from `vet_candidate` into `_generate_pack_content(...,
+         deadline_mono=artifact_deadline_mono)` (run.py:~838), and `_generate_pack_content`
+         (run.py:418) forwards the SAME `deadline_mono` into both
+         `generate_artifacts(...)` and `generate_marketing_content(...)` (run.py:465,
+         :467-468) — reused across all `_MAX_PACK_GEN_ATTEMPTS` (3) retry attempts, since
+         it is one wall-clock ceiling for the whole phase, not per-attempt.
+    Once wired, `_default_generate` (this module, ~line 930) should resolve this the same
+    way `_gen_budget_frac` is resolved just below it:
+        art_frac = _artifact_budget_frac(cfg)
+        artifact_budget = (art_frac * _TICK_HARD_DEADLINE_S) if art_frac > 0 else None
+        ... run_signal(..., artifact_time_budget_s=artifact_budget)
+    """
+    try:
+        return max(0.0, float(_sched(cfg, "artifact_budget_frac", 0.40)))
+    except (TypeError, ValueError):
+        return 0.40
+
+
+def _vet_budget_frac(cfg) -> float:
+    """`schedule.vet_budget_frac` — the share of the tick deadline the WHOLE vetting loop
+    (`run.py::run_signal`'s ThreadPoolExecutor over every prescreened candidate, artifacts
+    and publish included) may spend before it stops taking new work.
+
+    This is the rail that makes a tick terminate on its own decision. The other two budgets
+    bound a PHASE; this one bounds the batch, and it is the only one that can answer the
+    question k=50 actually poses.
+
+    THE ARITHMETIC, measured rather than assumed. The tick that force-exited at
+    2026-08-15T13:17:56Z ran batch=15 for the full 10800s and produced: 18 vets completed, 9
+    survivors, 3 EngineBridge publishes, 528 LLM calls, $2.31 of minimax spend — 1200s of wall
+    clock per surviving candidate. `batch_size` is 50 as of 2026-08-15, so a full batch is
+    ~10 hours of work inside a 3h deadline on a 2h interval. NO budget makes that fit, and any
+    number claiming to is a lie about throughput. What this rail buys is the difference
+    between the two available failures:
+      - without it: `_force_exit_hung_tick` SIGKILLs the process mid-candidate. Nothing is
+        banked from the in-flight vet, no tick row is written, and the daemon relaunches
+        knowing nothing. Five recorded breaches, 2026-08-13 to 2026-08-15, all at batch=15.
+      - with it: the loop cancels un-started vets, banks every verdict already paid for
+        (`store.save` runs inside `vet_candidate`), logs how many it declined to start, and
+        returns. The next tick picks the work back up.
+
+    Default 0.85: 9180s of the 10800s deadline, leaving 1620s (27 min) for the publish,
+    telemetry and drain work that follows `run_signal` inside the same tick and carries no
+    budget of its own. It is deliberately BELOW the force-exit timer rather than equal to it —
+    a rail that fires at the same instant as the thing it exists to pre-empt is a coin toss.
+    0 disables it and restores the pre-2026-08-15 behaviour, in which the force-exit timer is
+    the only stop. Same convention as `gen_budget_frac` and `artifact_budget_frac`.
+    """
+    try:
+        return max(0.0, float(_sched(cfg, "vet_budget_frac", 0.85)))
+    except (TypeError, ValueError):
+        return 0.85
+
+
 def _backlog_size(cfg) -> int | None:
     """How many rows a drain could work on right now, or None if it cannot be counted.
 
@@ -929,8 +1037,31 @@ def _default_generate(cfg, batch_size: int) -> dict:
     # the chain is degraded, which is exactly when the old behaviour ate the whole tick.
     frac = _gen_budget_frac(cfg)
     budget = (frac * _TICK_HARD_DEADLINE_S) if frac > 0 else None
+    # THE OTHER TWO RAILS, added 2026-08-15 (see `_artifact_budget_frac` and
+    # `_vet_budget_frac` for the measurements). `gen_budget_frac` alone bounded ~3 minutes of
+    # a 180-minute tick; the artifact/content phase spanned 152 of those minutes with no
+    # budget at all, and the batch as a whole had no stop except a SIGKILL.
+    #   art_budget — PER-CANDIDATE ceiling on artifacts + marketing copy.
+    #   vet_budget — ceiling on the WHOLE batch; past it the loop cancels un-started vets and
+    #                returns what it banked, so the tick ends by decision, not by force-exit.
+    art_frac = _artifact_budget_frac(cfg)
+    art_budget = (art_frac * _TICK_HARD_DEADLINE_S) if art_frac > 0 else None
+    vet_frac = _vet_budget_frac(cfg)
+    vet_budget = (vet_frac * _TICK_HARD_DEADLINE_S) if vet_frac > 0 else None
+    logger.critical(
+        "Tick budgets: generation %s, artifacts/candidate %s, vetting batch %s "
+        "(tick hard deadline %ds, batch=%s)",
+        f"{budget:.0f}s" if budget else "unbounded",
+        f"{art_budget:.0f}s" if art_budget else "unbounded",
+        f"{vet_budget:.0f}s" if vet_budget else "unbounded",
+        _TICK_HARD_DEADLINE_S, batch_size,
+        extra={"gen_budget_s": budget, "artifact_budget_s": art_budget,
+               "vet_budget_s": vet_budget, "tick_deadline_s": _TICK_HARD_DEADLINE_S,
+               "batch_size": batch_size})
     dossiers = run_signal("", cfg=cfg, k=batch_size, publish=True, lanes=lanes,
-                          gen_time_budget_s=budget)
+                          gen_time_budget_s=budget,
+                          artifact_time_budget_s=art_budget,
+                          vet_time_budget_s=vet_budget)
 
     def _decision(d) -> str:
         # Dossier carries `.decision` (a Decision enum) — NOT `.verdict`. Reading the wrong
@@ -1073,8 +1204,38 @@ def _force_exit_hung_tick(batch_size: int, cfg=None, tick: dict | None = None,
     # hung, so writing from this timer thread is safe; any bookkeeping failure must still exit.
     if cfg is not None and tick is not None:
         try:
+            # ELAPSED + COUNTS, not just the constant deadline (founder, 2026-08-15: "the
+            # one event we most need evidence about leaves the least evidence"). Before
+            # this, the row recorded only `_TICK_HARD_DEADLINE_S` — a FIXED number, true
+            # of every breach that ever has or ever will happen — and the configured
+            # `batch_size`, neither of which says how FAR the hung phase got before it
+            # hung. `elapsed_s` is real wall-clock since THIS tick's own `tick["ts"]`
+            # (stamped at the top of `run_tick`), not the constant. `breach_heartbeat` is
+            # a snapshot of the liveness file `_beating` has been re-stamping every
+            # `_WORK_HEARTBEAT_REFRESH_S` (60s) for the life of the phase — the one
+            # channel a periodically-live loop keeps fresh even though its OWN return
+            # value is what never came back, so it is the freshest available answer to
+            # "how far did it get" without waiting on the very call that is hung. A torn
+            # or missing heartbeat read must not block the force-exit itself (same
+            # reasoning as the outer `except Exception` below) — it degrades to `{}`.
+            elapsed_s = None
+            try:
+                started = datetime.fromisoformat(tick["ts"])
+                elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+            except (KeyError, ValueError, TypeError):
+                pass
+            breach_heartbeat: dict = {}
+            try:
+                hb_path = _heartbeat_path(cfg)
+                if hb_path.exists():
+                    breach_heartbeat = json.loads(hb_path.read_text())
+            except (OSError, json.JSONDecodeError):
+                pass
             tick["error"] = (f"tick_hard_deadline: exceeded {_TICK_HARD_DEADLINE_S}s during "
                              f"{phase} (batch={batch_size}); force-exited for relaunch")
+            tick["breach_phase"] = phase
+            tick["elapsed_s"] = elapsed_s
+            tick["breach_heartbeat"] = breach_heartbeat
             _append_tick(cfg, tick)
             _emit_tick_alerts(cfg, tick)
             _emit_tick_digest(cfg, tick)

@@ -74,6 +74,79 @@ def _infra_abort_check(dossier, streak: int, threshold: int, pending) -> tuple:
     return streak, sum(1 for f in pending if f.cancel())
 
 
+def _vet_budget_cancel(deadline_mono: Optional[float], pending) -> Optional[int]:
+    """Cancel every vet that has not started once the vetting phase's wall clock is spent.
+
+    Returns the number cancelled, or ``None`` while budget remains (and always when no budget
+    was set, which is every CLI caller). 0 is a real answer — "the budget is spent and nothing
+    was left to cancel" — and must NOT read as "keep going", which is why the sentinel is None.
+
+    Deliberately built on `Future.cancel()`, the same primitive as `_infra_abort_check` above,
+    for the same reason: cancel() refuses a vet that is already running, so this can only
+    decline to buy more work. Every verdict already paid for is banked and persisted
+    (`store.save` lives inside `vet_candidate`), so the rail costs no evidence.
+
+    THE FAILURE THIS REPLACES. `_TICK_HARD_DEADLINE_S` is enforced by a `threading.Timer` that
+    calls `os._exit` — five recorded breaches, 2026-08-13 to 2026-08-15, every one at
+    batch=15. A SIGKILL mid-candidate cannot bank anything, cannot write a tick row, and
+    cannot say what it was doing, so the one event most worth measuring left the least
+    evidence. A deadline the loop checks itself turns that into an ordinary, logged decision.
+    The force-exit timer stays as the true last resort, for a hang this check cannot reach
+    (a wedged single call inside one vet); it is not the normal path any more.
+    """
+    if deadline_mono is None:
+        return None
+    import time as _t
+    if _t.monotonic() < deadline_mono:
+        return None
+    return sum(1 for f in pending if f.cancel())
+
+
+def _defer_unstarted_candidates(fut_meta, kept, already_cancelled, *,
+                                store, cfg, op, dossiers) -> int:
+    """Park every vet the budget stop just cancelled as a DEFER row, and return how many.
+
+    WHY THIS EXISTS. `_vet_budget_cancel` above buys the tick its clean stop, but a cancelled
+    future is a candidate that has already been generated, prescreened, deduped and diversity-
+    selected — the expensive half of the funnel, paid for. Dropping it on the floor makes a
+    k=50 batch pay a k=50 generation bill for a k≈18 yield and report nothing amiss, which is
+    the "counters lie" failure mode: the tick summary would show 18 vetted out of 18 banked.
+
+    DEFER is not a new concept invented for this rail; it is what the house already means by
+    "we did not evaluate this, come back to it" (moat exhaustion and retrieval failure both
+    land here). Writing that row is therefore the whole integration: `drainable()` sees it,
+    `vet --resume` finishes it, and the backlog counters count it as the real backlog it is.
+
+    `already_cancelled` is the set of futures cancelled BEFORE this stop (by the infra rails),
+    diffed out so this function reports and parks only its own work rather than inheriting
+    another rail's cancellations.
+
+    A failed save is logged and skipped, never raised: losing one parked candidate is a cost,
+    losing the batch's banked verdicts to an exception on the way out is a much larger one.
+    """
+    parked = 0
+    for fut, idx in list(fut_meta.items()):
+        if not fut.cancelled() or fut in already_cancelled:
+            continue
+        try:
+            cand = kept[idx - 1]
+            now = datetime.datetime.now(datetime.timezone.utc)
+            d = build_dossier(
+                cand=cand, checks=[], adversarial=None,
+                gate_fired="vet_budget_spent", score=None, cfg=cfg,
+                op_model_version=getattr(op, "model_version", ""),
+                provider_chain="", created_at=now.isoformat(),
+                reverify_due_at=(now + datetime.timedelta(days=30)).isoformat())
+            if store is not None:
+                store.save(d)
+            dossiers.append(d)
+            parked += 1
+        except Exception as e:  # noqa: BLE001 - see docstring: never lose the batch
+            logger.error("Could not park budget-cancelled candidate %s as DEFER: %s",
+                         idx, e, extra={"candidate_index": idx, "error": str(e)})
+    return parked
+
+
 def _infra_exception_action(streak: int, threshold: int) -> str:
     """What to do when a vet RAISES GroundingInfrastructureError, rather than returning a
     defer. Takes the streak ALREADY incremented for this failure.
@@ -416,7 +489,8 @@ def _shelf_copy_breaches(cand, marketing, cfg) -> list[str]:
 
 
 def _generate_pack_content(op, cand, checks, *, query_op, quality_op, cfg, score,
-                           marketing_op=None):
+                           marketing_op=None, artifact_time_budget_s=None,
+                           vet_deadline_mono=None):
     """The pack's prose and marketing copy, generated until it is actually sellable.
 
     Generate, then CHECK, then retry. `generate_artifacts` reports an operator outage as an
@@ -451,6 +525,41 @@ def _generate_pack_content(op, cand, checks, *, query_op, quality_op, cfg, score
     copy_op = marketing_op or quality_op
     escalated = copy_op is quality_op
 
+    # THE ARTIFACT/MARKETING PHASE'S WALL-CLOCK CEILING, consumed by `generate_artifacts` and
+    # `generate_marketing_content` (both take `deadline_mono`, an absolute `time.monotonic()`
+    # instant, and bound their ThreadPoolExecutor's `as_completed(..., timeout=)` with it
+    # exactly as generate.py:771 bounds the generation wave).
+    #
+    # MEASURED, which is why this exists at all. Profiling the tick that force-exited at
+    # 2026-08-15T13:17:56Z (window 10:17:56 -> 13:17:56, batch=15, every inter-line gap in
+    # store/scheduler/launchd.err.log attributed to the line before it, all 10800s accounted):
+    # 9 candidates survived all gates and the artifact/content markers span 10:40 -> 13:12 —
+    # 152 of the tick's 180 minutes. `gen_budget_frac` bounded GENERATION alone, so the phase
+    # that actually consumed the tick was the one phase with no budget at all. All five
+    # recorded `_TICK_HARD_DEADLINE_S` breaches say "exceeded 10800s during generation", which
+    # is the label `run_scheduled` puts on the whole `run_signal` call, not on drafting.
+    #
+    # Converted ONCE here rather than per attempt, deliberately: this is one ceiling for the
+    # candidate's whole content phase, and `_MAX_PACK_GEN_ATTEMPTS` (3) retries share it. A
+    # per-attempt budget would let a degraded chain spend 3x the number config declares — the
+    # unbounded behaviour this replaces, in smaller instalments.
+    #
+    # None (every CLI caller, and the daemon when `schedule.artifact_budget_frac` is 0) leaves
+    # the phase unbounded, byte-for-byte as before.
+    #
+    # CLAMPED TO THE BATCH DEADLINE, which is what makes the batch rail an actual guarantee
+    # rather than a good intention. `_vet_budget_cancel` can only cancel vets that have NOT
+    # started; every vet already running keeps going, and with `_vet_workers` of them in
+    # flight, each holding a per-candidate artifact ceiling of 4320s (0.40 x 10800), the
+    # batch could sail past the tick deadline having "stopped". Whichever instant comes
+    # first wins, so no content call outlives the batch it belongs to.
+    import time as _time
+    _art_deadline = ((_time.monotonic() + artifact_time_budget_s)
+                     if artifact_time_budget_s else None)
+    if vet_deadline_mono is not None:
+        _art_deadline = (min(_art_deadline, vet_deadline_mono)
+                         if _art_deadline is not None else vet_deadline_mono)
+
     artifacts: dict = {}
     marketing: list = []
     problems: list = []
@@ -463,9 +572,11 @@ def _generate_pack_content(op, cand, checks, *, query_op, quality_op, cfg, score
         # prefix (`pack_validation.py:63/86`), which is what makes the attribution safe.
         if not artifacts or any(str(pb).startswith("artifact '") for pb in problems):
             artifacts = generate_artifacts(
-                op, cand, checks, fast_op=query_op, quality_op=quality_op, cfg=cfg, score=score)
+                op, cand, checks, fast_op=query_op, quality_op=quality_op, cfg=cfg, score=score,
+                deadline_mono=_art_deadline)
         marketing = generate_marketing_content(
-            op, cand, checks, fast_op=query_op, quality_op=copy_op, check_op=op, cfg=cfg)
+            op, cand, checks, fast_op=query_op, quality_op=copy_op, check_op=op, cfg=cfg,
+            deadline_mono=_art_deadline)
         complete, problems = validate_pack(artifacts, marketing)
         breaches = _shelf_copy_breaches(cand, marketing, cfg)
         if complete and not breaches:
@@ -674,6 +785,8 @@ def vet_candidate(
     full_vet: bool = False,
     experimental_op: Optional[Operator] = None,
     board_personas: Optional[list[str]] = None,
+    artifact_time_budget_s: Optional[float] = None,
+    vet_deadline_mono: Optional[float] = None,
 ) -> Dossier:
     """Run the full verification pipeline for a single candidate.
 
@@ -693,8 +806,16 @@ def vet_candidate(
         full_vet: When True, bypasses kill-fast and runs ALL checks (Stochastic Full-Vetting).
         experimental_op: Optional operator to run verification against in parallel
             (Shadow Moat). Findings are logged but do not change the dossier decision.
-        board_personas: Optional list of persona names to run as 'Advisory Board'. 
+        board_personas: Optional list of persona names to run as 'Advisory Board'.
             Each persona runs verification in parallel and findings are logged.
+        artifact_time_budget_s: Wall-clock ceiling on THIS candidate's publish-time artifact
+            + marketing phase (`_generate_pack_content`, and only when ``publish``). Forwarded
+            untouched; see that function for the measurement that produced the rail. Ignored
+            on a plain vet, which generates no content. None leaves the phase unbounded.
+        vet_deadline_mono: Absolute `time.monotonic()` instant the whole BATCH stops at, used
+            here only to clamp the artifact ceiling above. A vet already running when the
+            batch budget is spent cannot be cancelled, so without this clamp it could still
+            spend its full per-candidate allowance past the tick's hard deadline.
     """
     set_context(candidate_id=cand.candidate_id, phase="vetting")
     logger.info(f"Vetting candidate: {cand.title!r} (full_vet={full_vet}, persona={cfg.active_persona})")
@@ -838,7 +959,8 @@ def vet_candidate(
             cand.tags["artifacts"], cand.tags["marketing"] = _generate_pack_content(
                 op, cand, checks, query_op=query_op, quality_op=quality_op,
                 marketing_op=marketing_op, cfg=cfg,
-                score=score)
+                score=score, artifact_time_budget_s=artifact_time_budget_s,
+                vet_deadline_mono=vet_deadline_mono)
 
     now = datetime.datetime.now(datetime.timezone.utc)
 
@@ -910,6 +1032,8 @@ def run_signal(
     focus: Optional[str] = None,
     board_personas: Optional[list[str]] = None,
     gen_time_budget_s: Optional[float] = None,
+    artifact_time_budget_s: Optional[float] = None,
+    vet_time_budget_s: Optional[float] = None,
 ) -> list[Dossier]:
     """Generate candidates from a signal, dedup, prescreen, vet each, return dossiers.
 
@@ -924,6 +1048,29 @@ def run_signal(
     PROSPECTOR_TICK_DEADLINE_S) so a degraded generation chain can never spend the whole
     tick generating and force-exit before vetting runs (the 2026-08-14 failure). None (the
     CLI default) leaves generation unbounded, exactly as before.
+
+    ``artifact_time_budget_s``: per-candidate ceiling on the publish-time artifact + marketing
+    phase, forwarded to every `vet_candidate` and consumed in `_generate_pack_content`. Named
+    per-CANDIDATE, not per-tick, on purpose: a tick-absolute artifact deadline would let the
+    first survivors spend the whole allowance and leave every later survivor with an empty
+    build_spec/gtm_plan/ops_plan — which publishes UNLISTED and unsellable
+    (`_generate_pack_content`'s docstring: 12 of 24 off-shelf passes are exactly that).
+
+    ``vet_time_budget_s``: ceiling on the WHOLE vetting loop below. When it is spent the loop
+    cancels every vet that has not started and returns what it has. This is the rail that
+    makes a tick end by its own decision instead of by `_force_exit_hung_tick`'s SIGKILL.
+
+    Why the second rail is not optional arithmetic: profiling the tick that force-exited at
+    2026-08-15T13:17:56Z (batch=15) measured 1200s of wall clock PER SURVIVING CANDIDATE —
+    3 hours bought 18 vets, 9 survivors, 3 publishes and 528 LLM calls. At `batch_size: 50`
+    that is ~10 hours of work inside a 10800s deadline on a 7200s interval, so NO budget can
+    make the batch fit. What a budget can do is change the failure from "the process is killed
+    mid-candidate and the tick row is lost" to "the tick banks every verdict it paid for, says
+    how many it declined to start, and hands the rest to the next tick". Partial and honest
+    beats complete and dead.
+
+    Both default to None, which is byte-for-byte the pre-2026-08-15 behaviour for every CLI
+    caller; only the daemon passes them.
 
     ``lanes`` (Part 14 — multi-lane-by-default): the ambition tiers this run spans.
       - None         => no lane engaged; byte-for-byte today's single-default behaviour.
@@ -1069,6 +1216,9 @@ def run_signal(
     # (concurrent lanes) and single-lane paths share the same wall-clock bound.
     import time as _time
     _gen_deadline = (_time.monotonic() + gen_time_budget_s) if gen_time_budget_s else None
+    # The vetting loop's own absolute bound, taken from the SAME instant so the two phases
+    # are measured against one clock and their fractions are comparable.
+    _vet_deadline = (_time.monotonic() + vet_time_budget_s) if vet_time_budget_s else None
 
     # FIX: MiniMax generation — gen_op (MiniMax) for generation; op (Claude/Gemini) stays
     # for verification.  gen_op falls back to op if MINIMAX_API_KEY is not configured.
@@ -1298,7 +1448,9 @@ def run_signal(
                 label=_label(idx, len(kept), cand.title),
                 full_vet=should_full_vet,
                 experimental_op=experimental_op,
-                board_personas=board_personas)
+                board_personas=board_personas,
+                artifact_time_budget_s=artifact_time_budget_s,
+                vet_deadline_mono=_vet_deadline)
             fut_meta[fut] = idx
             # Rough cost estimate increment
             guard.add(0.01)
@@ -1311,8 +1463,45 @@ def run_signal(
         infra_aborted = False
         infra_halt: Optional[BaseException] = None
         n_cancelled = 0
+        budget_stopped = False
         for future in as_completed(fut_meta):
             idx = fut_meta[future]
+            # THE TICK'S OWN STOP. Checked before banking this result rather than after, so a
+            # breach is acted on at the first completion past the deadline instead of one
+            # candidate later. Fires at most once: `_vet_budget_cancel` is idempotent in
+            # effect (already-cancelled futures return False) but the announcement is not.
+            if not budget_stopped:
+                already_cancelled = {f for f in fut_meta if f.cancelled()}
+                n_over = _vet_budget_cancel(_vet_deadline, fut_meta)
+                if n_over is not None:
+                    budget_stopped = True
+                    n_cancelled += n_over
+                    # THE CANDIDATES ARE NOT DROPPED. An earlier draft of this rail told the
+                    # log they "were never started", which is comfortable and wrong in the way
+                    # that matters: each one was already generated, prescreened and diversity-
+                    # selected — paid for — so discarding it would make k=50 spend a k=50
+                    # generation bill for a k≈18 yield, silently. Each gets a DEFER row, the
+                    # decision the house already uses for "unevaluated, come back to it", which
+                    # puts it in `drainable()` and the existing `vet --resume` drain with no
+                    # new machinery. Written INSIDE the stop so a crash later in this loop
+                    # cannot lose them.
+                    n_parked = _defer_unstarted_candidates(
+                        fut_meta, kept, already_cancelled,
+                        store=store, cfg=cfg, op=op, dossiers=dossiers)
+                    msg = (f"VET BUDGET SPENT after {vet_time_budget_s:.0f}s: banking the "
+                           f"{len(dossiers) - n_parked} verdict(s) already paid for and "
+                           f"cancelling {n_over} un-started vet(s) of {total_submitted}; "
+                           f"{n_parked} parked as DEFER for the drain. This is the tick "
+                           f"stopping on its own terms with nothing thrown away.")
+                    # CRITICAL because launchd.err.log drops info/warning (measured
+                    # 2026-08-05), and a rail nobody can see fire is a rail nobody trusts.
+                    logger.critical(msg, extra={"vet_budget_s": vet_time_budget_s,
+                                                "cancelled": n_over,
+                                                "parked_defer": n_parked,
+                                                "submitted": total_submitted,
+                                                "banked": len(dossiers) - n_parked})
+                    print(f"⏱ {msg}", file=sys.stderr, flush=True)
+                    progress.note(f"⏱ {msg}")
             try:
                 d = future.result()
                 gate_str = f" [gate={d.gate_fired}]" if d.gate_fired else ""

@@ -275,9 +275,27 @@ class TestSelectingThePassage:
 
         from prospector.retrieval import select_passage
         huge = (_NAV * 200) + _ANSWER_TEXT + (_FOOTER * 200)
-        t0 = time.monotonic()
+        # CPU time, not wall clock, and a budget with room in it. Measured 2026-08-15 on this
+        # 606,111-char input, inside pytest, warm: wall 0.476-0.503s, CPU 0.371-0.391s.
+        #
+        # The old assertion was `monotonic() < 0.5` — a 22% margin over a 0.39s cost, on the
+        # WALL clock. That is not a regression detector, it is a load detector, and it had two
+        # ways to go red on unchanged code: run this test ALONE and the first call pays warmup
+        # nothing has amortised (it fails); run the suite at `-n auto` and 12-way memory
+        # contention inflates the cost past the margin (it fails). Both happened on 2026-08-15.
+        # It only ever looked stable because it ran mid-file on an idle machine.
+        #
+        # So: `process_time`, because the claim in the docstring is about WORK and wall clock
+        # cannot measure work; and 2.0s, because the defect this guards is "seconds of CPU per
+        # source" — an O(n^2) window scan re-tokenising at every offset, which regresses by
+        # multiples, not by 25%. A budget that trips on a busy machine trains people to rerun
+        # the suite until it is green, which is how a real regression gets waved through.
+        t0 = time.process_time()
         out = select_passage(huge, 1500, query=_PAGE_QUERY)
-        assert time.monotonic() - t0 < 0.5, "window scan is too slow for the grounding path"
+        cpu = time.process_time() - t0
+        assert cpu < 2.0, (
+            f"window scan took {cpu:.2f}s CPU on {len(huge):,} chars; the grounding path pays "
+            "this per source. Baseline is ~0.39s — this is a multiple, not measurement noise")
         assert "prior express written consent" in out
 
 
