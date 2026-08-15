@@ -20,9 +20,12 @@ import { Button, Icon, SourceChip, sourceHost } from '@/components/ui';
  * fabricates a flaw in their own product, so a visible failure is the cheapest credibility this
  * shop will ever buy -- and it costs nothing, because `sample-report.json` already ships with
  * `claims_verifiable: "refuted"` in it. The choice is not hardcoded: `FAILED` is the first
- * non-`supported` check the data contains, and every line of copy that mentions a failure is
- * gated on `SHOWS_A_FAILURE`. Re-generate the sample with eight clean checks and this section
- * degrades to an honest specimen with no flaw claim, rather than to a lie.
+ * non-`supported` check the data contains. No COPY asserts the failure -- the sheet's own verdict
+ * chip is the only thing that says it, so re-generating the sample with eight clean checks
+ * degrades this section to an honest specimen rather than to a lie, with no gate to maintain.
+ * Selling the failure in prose was cut 2026-08-15: "why say this at all? how does it help
+ * conversion and sales" -- telling a reader we are honest is the seller's voice, and the free
+ * sample button below is what lets them check it.
  *
  * WHY IT REPLACES `EvidenceRecordPanel`. That component rendered these same eight verdicts, in
  * this same section, under the eyebrow "A real page from a real pack" -- while looking like a web
@@ -83,13 +86,12 @@ type Check = {
 const CHECKS = report.checks as Check[];
 
 /**
- * The failed check, found rather than named. `?? at()` keeps the component renderable against a
- * sample where everything passed; `SHOWS_A_FAILURE` is what every claim about a failure is gated
- * on, so that case degrades the COPY instead of leaving it false.
+ * The failed check, found rather than named. The fallback to the last check keeps the component
+ * renderable against a sample where everything passed; nothing in the copy claims a failure, so
+ * that case needs no gate to stay true.
  */
 const FAILED_INDEX = CHECKS.findIndex((check) => check.verdict !== 'supported');
 const FAILED = FAILED_INDEX >= 0 ? CHECKS[FAILED_INDEX] : CHECKS[CHECKS.length - 1];
-const SHOWS_A_FAILURE = FAILED?.verdict !== 'supported';
 const PAGE_NUMBER = (FAILED_INDEX >= 0 ? FAILED_INDEX : CHECKS.length - 1) + 1;
 
 /** The check printed immediately above this one, for the mid-sentence opening. */
@@ -145,21 +147,6 @@ export function PackSpecimen({ className }: { className?: string }) {
           <h2 className="mt-2 text-h2 font-semibold text-text">
             {PACK_DOCUMENTS.length} documents. Here is one page of one of them.
           </h2>
-          <p className="mt-4 max-w-[46ch] text-body text-muted">
-            {SHOWS_A_FAILURE ? (
-              <>
-                Unretouched, from the pack you can read for nothing. We picked the page with the
-                failed check on it, because a flaw is the one thing nobody puts in their own product
-                by accident.
-              </>
-            ) : (
-              <>
-                Unretouched, from the pack you can read for nothing. Every claim on it carries the
-                source it came from, and those sources open.
-              </>
-            )}
-          </p>
-
           {/* THE MEASUREMENTS. In the ARGUMENT column, not under the object, because they are the
               numeric half of the same answer: the page beside them settles "is this real writing?"
               and the word count settles "is there enough of it?". Mono, because every one of these
