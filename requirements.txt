@@ -11,6 +11,14 @@ requests>=2.31
 # (the real one is hand-rolled in errors.py/health.py, which no library was found to match).
 json_repair>=0.63
 pytest>=8.0
+# Declared 2026-08-15 because `pytest.ini` now passes `-n auto --dist loadfile` on EVERY
+# invocation, and an addopts naming a plugin that is not installed is not a slow suite: pytest
+# exits 4 with `error: unrecognized arguments: -n --dist` before collecting a single test. It
+# had been sitting in this estate's .venv undeclared, so the config passed locally and took
+# BOTH Python CI jobs down on the first push — .github/workflows/ci.yml:60 and :107 install
+# from this file and nothing else. A plugin the config REQUIRES belongs in the file the
+# environment is built from.
+pytest-xdist>=3.5
 # The linter, declared so a lint receipt is reproducible rather than a property of whichever
 # machine happens to have it. Rule set is pinned in ruff.toml; without it ruff's own defaults
 # drift between versions and two checkouts disagree about whether the tree is clean.
