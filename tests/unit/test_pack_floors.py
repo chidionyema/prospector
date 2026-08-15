@@ -266,16 +266,28 @@ class TestTheHeadingCountsTheBulletsTheBuyerCanSee:
 
     @staticmethod
     def _counted_and_printed(md: str) -> tuple:
-        """`(number in the heading, bullets actually under it)`, either as None/0 if absent."""
+        """`(number in the heading, bullets actually under it)`, either as None/0 if absent.
+
+        Scoped to the section, not to the whole document. "What we could not settle" prints
+        its own `- **<question>** <finding>` list as of 2026-08-15, so counting every bold
+        bullet in the markdown counts that list too, and this helper would then report a
+        heading as truthful on exactly the drift it exists to catch. The stop is the next `##`.
+
+        The heading has two shapes -- `— 4 things that hold up` when every supported check is
+        printed, and `— 4 of the 6 things that hold up` when the list is a subset. The number
+        under test is the count of bullets promised, which is the first one in both.
+        """
         promised = None
         printed = 0
+        counting = False
         for line in md.splitlines():
-            match = re.match(r"^## What we found — (\d+) thing", line)
+            match = re.match(r"^## What we found — (\d+)(?: of the \d+)? thing", line)
             if match:
                 promised = int(match.group(1))
-            elif line.startswith("- **"):
-                # `- **<question>** <finding>`. The "could not settle" list below is `- <q>`
-                # with no bold, so it cannot be counted here by accident.
+                counting = True
+            elif line.startswith("## "):
+                counting = False
+            elif counting and line.startswith("- **"):
                 printed += 1
         return promised, printed
 
@@ -328,3 +340,98 @@ class TestTheHeadingCountsTheBulletsTheBuyerCanSee:
         assert "Nothing here came back confirmed" not in md
         assert "2 of the checks behind this pack came back supported" in md
         assert self._counted_and_printed(md) == (None, 0)
+
+
+class TestTheOpeningReadsLikeProseAndNotLikeOurSearch:
+    """The three defects the founder read off the live free-sample page, 2026-08-15.
+
+    All three are the same class: a renderer that was right about the sentence in front of it
+    and wrong about the one the reader would see next. Each test below is written from the
+    text that actually shipped, not from a constructed case.
+    """
+
+    PAIN = ("The passages show that main contractors in the UK routinely withhold a percentage "
+            "of subcontractors' money until milestones are met, that unpaid subcontractors "
+            "cause serious cash flow problems, and that Carillion's 2018 collapse left a trail "
+            "of unpaid retentions.")
+
+    def test_the_clauses_the_stripped_verb_governed_do_not_keep_their_that(self):
+        """The first bullet of the first section of the free sample, verbatim.
+
+        "The passages show THAT a, THAT b and THAT c" is one verb with three complements.
+        Removing four words left the other two complementisers reporting to a verb that was no
+        longer in the sentence.
+        """
+        md = exec_summary_md(
+            Candidate(title="Pack", one_liner="One"),
+            [CheckResult("pain_reality", Verdict.SUPPORTED, 0.9, self.PAIN)])
+        assert "The passages show" not in md
+        assert ", that unpaid subcontractors" not in md
+        assert ", and that Carillion's" not in md
+        assert ", unpaid subcontractors cause serious cash flow problems," in md
+        assert ", and Carillion's 2018 collapse left a trail" in md
+
+    def test_a_that_the_opener_never_governed_is_left_alone(self):
+        """The guard on the rule above: only an opener that ATE a `that` licenses the rewrite.
+
+        Without it this would delete a complementiser belonging to a verb still in the
+        sentence, which changes what the pack claims -- the one thing a cosmetic fix may
+        never do.
+        """
+        kept = ("The Federation of Master Builders reports, and its own survey confirms, that "
+                "small firms carry the cost.")
+        md = exec_summary_md(
+            Candidate(title="Pack", one_liner="One"),
+            [CheckResult("distribution", Verdict.SUPPORTED, 0.9, kept)])
+        assert "confirms, that small firms carry the cost." in md
+
+    def test_a_capped_list_names_the_number_it_is_capped_from(self):
+        """Four bullets under a heading saying four, beside a storefront badge saying six.
+
+        Both numbers were true and the pair was not: `sample.tsx` prints "6 checks cleared"
+        over the same pack. The denominator is what reconciles them.
+        """
+        checks = [CheckResult(name, Verdict.SUPPORTED, 0.9, f"Finding {i} holds.")
+                  for i, name in enumerate(("pain_reality", "value_durability", "incumbency",
+                                            "payer_solvency", "distribution", "legality"))]
+        md = exec_summary_md(Candidate(title="Pack", one_liner="One"), checks)
+        assert "## What we found — 4 of the 6 things that hold up" in md
+
+    def test_an_open_question_carries_what_we_did_find(self):
+        """"Could not settle" meant the evidence did not CLOSE it, never that we found nothing.
+
+        It shipped as a bare list of three questions, which reads as three dead ends and is
+        the founder's "we talk down the opportunity" in its purest form.
+        """
+        rationale = ("The passages show that construction payment software exists in the UK, "
+                     "but none of it chases overdue retention.")
+        md = exec_summary_md(
+            Candidate(title="Pack", one_liner="One"),
+            [CheckResult("pain_reality", Verdict.SUPPORTED, 0.9, "Retention is withheld."),
+             CheckResult("incumbency", Verdict.UNVERIFIABLE, 0.2, rationale)])
+        assert "## What we could not settle" in md
+        assert "Construction payment software exists in the UK" in md
+        assert "The passages" not in md
+
+    def test_a_rationale_still_talking_about_our_search_is_dropped_to_the_question(self):
+        """The precision half. "The passages DO confirm ..." carries an auxiliary the opener
+        cannot take off without leaving a subject with no predicate, so the finding is not
+        printed at all rather than printed in our voice."""
+        rationale = ("The passages do confirm the basic mechanics the pitch rests on, but they "
+                     "contradict the central claim about who holds the money.")
+        md = exec_summary_md(
+            Candidate(title="Pack", one_liner="One"),
+            [CheckResult("pain_reality", Verdict.SUPPORTED, 0.9, "Retention is withheld."),
+             CheckResult("incumbency", Verdict.UNVERIFIABLE, 0.2, rationale)])
+        assert "## What we could not settle" in md
+        assert "The passages do confirm" not in md
+        assert "- **Is someone already doing this well?**" in md
+
+    def test_the_guarantee_does_not_splice_a_section_title_mid_clause(self):
+        """A section name is a noun phrase, and this one ends in a comma and a preposition.
+        Spliced mid-sentence it read "Every check, in full at the end has each check with its
+        sources", which stutters the word `check` three times in nine words."""
+        md = exec_summary_md(Candidate(title="Pack", one_liner="One"),
+                             [CheckResult("legality", Verdict.SUPPORTED, 0.9, "It is legal.")])
+        assert "at the end has each check with its sources" not in md
+        assert "that is a refund, not an argument." in md

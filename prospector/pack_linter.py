@@ -31,7 +31,9 @@ from .copy_lint import (
     extract_urls,
     is_prose_artifact,
 )
+from .house_style import check_house_style, house_style_metrics
 from .marketing_assets import BUSINESS_VOICE_TYPES, PACK_VOICE_RE, has_subject_line
+from .register_lint import check_register, register_metrics
 
 Problem = Dict[str, str]  # {"check", "severity", "where", "detail"}
 
@@ -1496,7 +1498,15 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
               grammar_enabled: bool = False,
               max_grammar_defects_per_1k: float = 0.0,
               pack_sections: Optional[Mapping[str, str]] = None,
-              repetition_block: bool = False) -> Dict[str, Any]:
+              repetition_block: bool = False,
+              register_block: bool = False,
+              max_register_per_1k: float = 0.0,
+              max_long_sentence_rate: float = 0.0,
+              max_clause_load_rate: float = 0.0,
+              house_block_predictions: bool = False,
+              house_block_quotes: bool = False,
+              max_four_item_list_rate: float = 0.0,
+              max_unsourced_figure_rate: float = 0.0) -> Dict[str, Any]:
     """Run every lint check; return the machine-readable report.
 
     `report["ok"]` is False iff any problem has severity "error" — that is the half the
@@ -1576,6 +1586,35 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
              if isinstance(v, str) and is_prose_artifact(k, v)}
     problems += check_identifier_leak({**prose, **house})
 
+    # --- the house writing spec -------------------------------------------------------
+    # `docs/HOUSE_WRITING_SPEC.md`, on the corpus the buyer actually reads. Both checks run
+    # unconditionally and both are ACTUATED by thresholds that default to off, which is a
+    # deliberate choice over an `enabled` flag: `check_register` shipped fully tested in
+    # 2026-08 with a rate actuator, no caller, and nothing measuring it, so nobody could ever
+    # say what threshold to set. A check that always measures accrues the baseline that earns
+    # its own threshold; a check behind a default-off flag accrues nothing.
+    #
+    # Graded on `pack_sections` when the caller has assembled the read, because that is what
+    # a buyer opens, and on the prose artifacts otherwise so a caller that predates
+    # `pack_sections` is still graded rather than silently exempt.
+    style_corpus: Mapping[str, str] = pack_sections or prose
+    register_metrics_ = register_metrics(style_corpus)
+    problems += check_register(
+        style_corpus, block=register_block, max_per_1k=max_register_per_1k,
+        long_sentence_max_rate=max_long_sentence_rate,
+        clause_load_max_rate=max_clause_load_rate, metrics=register_metrics_)
+    house_metrics = house_style_metrics(style_corpus)
+    problems += check_house_style(
+        style_corpus, metrics=house_metrics,
+        block_predictions=house_block_predictions, block_quotes=house_block_quotes,
+        # R1 has ONE actuator, and it is `check_register`'s at 25 words. `house_style`
+        # measures the spec's own 28-word ceiling and never blocks on it, so a pack cannot
+        # be failed twice for one sentence under two limits, and so the report can still say
+        # what the rate looks like at the number the spec actually writes down.
+        max_over_28_rate=0.0,
+        max_four_item_list_rate=max_four_item_list_rate,
+        max_unsourced_figure_rate=max_unsourced_figure_rate)
+
     grammar_rate: Optional[float] = None
     if grammar_enabled:
         gp = check_grammar(prose, max_per_1k=max_grammar_defects_per_1k)
@@ -1609,5 +1648,25 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
         "repetition_findings": sum(1 for p in problems if p.get("check") == "repetition"),
         "sections_graded": len(pack_sections or {}),
         "readability_grade": readability_grades(pack_sections),
+        # The house-spec baseline, recorded on every pack whether or not any actuator is on.
+        # This is the receipt the LEDGER in docs/HOUSE_WRITING_SPEC.md gets filled from: a
+        # threshold is only allowed to be set from a number seen on live packs, and 43.9% of
+        # corpus sentences broke R1 on 2026-08-15, so a ceiling switched on today would fail
+        # every pack rather than improve one.
+        "house_spec": {
+            "sentences": house_metrics["sentences"],
+            "words": house_metrics["words"],
+            "R1_over_25_rate": register_metrics_["long_sentence_rate"],
+            "R1_over_28_rate": house_metrics["over_28_rate"],
+            "R2_clause_load_rate": register_metrics_["clause_load_rate"],
+            "R4_four_item_list_rate": house_metrics["four_item_list_rate"],
+            "R5_unsourced_figures": house_metrics["unsourced_figures"],
+            "R6_vague_quantities": house_metrics["vague_quantities"],
+            "R8_orphan_openers": house_metrics["orphan_openers"],
+            "R9_register_per_1k": register_metrics_["register_per_1k"],
+            "R10_flat_predictions": house_metrics["flat_predictions"],
+            "quotes": house_metrics["quotes"],
+            "Q_bad_quotes": house_metrics["bad_quotes"],
+        },
         "problems": problems,
     }

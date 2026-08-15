@@ -1162,6 +1162,25 @@ class EngineBridge:
             # corpus and unlisting a paid pack over a repeated sentence is the expensive way
             # to find that out. Flip `listing.lint_repetition_block` once the baseline is in.
             repetition_block=bool(listing_cfg.get("lint_repetition_block", False)),
+            # HOUSE WRITING SPEC (docs/HOUSE_WRITING_SPEC.md). Every knob below is off in
+            # config.yaml and the checks run regardless — `lint_pack` returns the `house_spec`
+            # baseline on every pack, pass or fail, which is the number a threshold is
+            # eventually allowed to be set from. The code-side default is "measure only" for
+            # a harder reason than symmetry with the knobs above: the measured baseline says
+            # 43.9% of engine sentences already break R1, so a style knob that defaulted ON
+            # would unlist the catalogue the first time someone deployed without this block.
+            register_block=bool(listing_cfg.get("house_spec_block_register", False)),
+            max_register_per_1k=float(listing_cfg.get("max_register_per_1k", 0.0) or 0.0),
+            max_long_sentence_rate=float(
+                listing_cfg.get("max_long_sentence_rate", 0.0) or 0.0),
+            max_clause_load_rate=float(listing_cfg.get("max_clause_load_rate", 0.0) or 0.0),
+            house_block_predictions=bool(
+                listing_cfg.get("house_spec_block_predictions", False)),
+            house_block_quotes=bool(listing_cfg.get("house_spec_block_quotes", False)),
+            max_four_item_list_rate=float(
+                listing_cfg.get("max_four_item_list_rate", 0.0) or 0.0),
+            max_unsourced_figure_rate=float(
+                listing_cfg.get("max_unsourced_figure_rate", 0.0) or 0.0),
         )
         lint_ok = bool(lint_report.get("ok"))
         if not lint_ok:

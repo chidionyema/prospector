@@ -1,0 +1,12 @@
+# R1 -- maximum 28 words per sentence, target average 16-18.
+#
+# HOUSE_WRITING_SPEC.md Part Two. Measured basis for why this matters here: the mean
+# sentence across 2,187 dossiers is 28.2 words, so the corpus average sits ON the
+# ceiling rather than under it.
+extends: occurrence
+message: "Sentence over 28 words (R1). Split it."
+link: docs/HOUSE_WRITING_SPEC.md
+level: error
+scope: sentence
+token: '\b\w+\b'
+max: 28

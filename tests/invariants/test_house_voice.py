@@ -103,6 +103,37 @@ def test_the_voice_forbids_our_internal_vocabulary():
     assert "internal machinery" in rationale
 
 
+def test_the_voice_carries_the_house_writing_spec():
+    """docs/HOUSE_WRITING_SPEC.md is enforced in TWO places and only one of them writes.
+
+    `pack_linter` catches a violation after the prose exists; this file is what stops the
+    prose being written that way. The lint side is the backstop — measured 2026-08-15 over
+    2,187 dossiers, 43.9% of engine sentences broke R1, so a blocking linter with no change
+    here would stop the line rather than fix a sentence. Each assertion names the rule whose
+    instruction has to survive an edit to the voice file.
+    """
+    # Whitespace-normalised, because the file is hard-wrapped at 90 columns and a phrase
+    # can straddle a newline — "at least eight words" wrapped between "at" and "least" and
+    # the first run of this test failed on Q1 for that reason alone.
+    voice = " ".join(prompts.style_kwargs()["style_guide"].lower().split())
+    for rule, phrase in (
+            ("R1", "never over 28"),
+            ("R2", "no semicolons"),
+            ("R3", "one claim, one"),
+            ("R4", "never more than three items"),
+            ("R5", "the source rides with the fact"),
+            ("R6", "no quantity word without a quantity"),
+            ("R8", 'never open a sentence with "that"'),
+            ("R10", "a prediction is sourced or it is labelled"),
+            ("R11", "once per document"),
+            ("Q1", "at least eight words"),
+            ("Q2", "never join two retrieved fragments"),
+            ("Q3", "cookie banners"),
+            ("Q5", "in its own words"),
+    ):
+        assert phrase in voice, f"{rule} dropped out of prompts/style/voice.md"
+
+
 def test_evidence_rules_survive_the_restyle():
     """A tone change must not have quietly displaced the rules that make a verdict
     worth anything."""
