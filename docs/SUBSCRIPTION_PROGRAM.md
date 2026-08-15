@@ -6,8 +6,9 @@
 > §17 is the frozen contract — config keys, routes, JSON shapes, entities, error codes, test names,
 > per-phase definition of done. §§1–16 are the reasoning behind it, and are what you consult when
 > §17 tells you *what* but you need *why*. **P1, P2 and P3 are all executable today.** §13.2
-> (VAT / Merchant of Record) was the one hard block; **§18 resolves it** into a config fence plus a
-> single yes/no for the founder (§18.4), whose default is safe in every branch.
+> (VAT / Merchant of Record) was the one hard block; **§18 resolves it and the founder answered it
+> on 2026-08-15** — UK-registered company, not VAT registered, so `SellableCountries: ["GB"]` and no
+> VAT is charged (§18.4). **No decision in this document is outstanding.**
 > Companion specs: `docs/PAYMENT_RAIL_INDEPENDENCE_SPEC.md` (the provider seam this extends),
 > `docs/SITE_SPEC_PROGRAM.md` (the copy this must reconcile with),
 > `docs/COMMERCIAL_READINESS_PROGRAM.md` (the yield baseline).
@@ -48,8 +49,10 @@ three options. It is not one — **61 of 61 live packs already bill through Stri
 seller-of-record option, so the liability it creates exists on the direct rail today and
 subscriptions multiply it rather than create it. §18 bounds it with one config key
 (`Commerce.SellableCountries`, default `["GB"]`, enforced server-side at acquisition only, built in
-P1) and reduces the founder's part to a single question: **which tax registrations already exist in
-the Stripe dashboard.** No phase now waits on a research task.
+P1) and reduced the founder's part to a single question, **now answered (2026-08-15): a
+UK-registered company, not VAT registered.** So: `SellableCountries: ["GB"]`, no VAT charged
+(turnover £0 against a £90,000 threshold), no Stripe Tax registrations, EU and US not sold to.
+**§13.2 is closed and no phase waits on anything.**
 
 ---
 
@@ -623,8 +626,9 @@ This was written as an open choice between the three options in
 bill through Stripe (`paymentProvider: stripe`, 61/61 on the live catalogue), which is Option B —
 Stripe-direct, seller-of-record, VAT liability ours. §18 establishes what that means, what is
 actually owed today, and the one config fence that unblocks P3 without pretending to answer a tax
-question. **Founder confirmation still required, but it is now a single yes/no (§18.4), not a
-research task.**
+question. **ANSWERED 2026-08-15 — UK-registered company, NOT VAT registered (§18.4). This decision
+is closed:** `SellableCountries: ["GB"]`, no VAT charged, no registrations, P3 proceeds. §18.5 is the
+checklist for the day that changes.
 
 **13.3 — Is Desk allowed to undercut direct pay?**
 Desk at **£149/mo** covers 3 claims at any rung — up to **£299.97** of shelf if all three are taken
@@ -640,9 +644,11 @@ one config value and changing it later is a config edit, not a code change (§17
 - **USD.** 0 of 61 live packs carry a USD price (§1.1), so the declared US-billed-in-USD decision is
   not in effect on the shelf. Subscription USD pricing inherits this. Separate from this programme
   but it lands in the same rail.
-- **Tax.** No longer a blocker — §18 bounds it. What is still genuinely open: whether any Stripe Tax
-  registration exists today (§18.4 — a dashboard fact I cannot read from here), and whether to take a
-  non-Union OSS registration before the first EU consumer sale rather than after.
+- **Tax.** Closed, not open — §18. UK company, not VAT registered, `SellableCountries: ["GB"]`. What
+  remains is a *future* judgement rather than an open item: when revenue approaches £90,000, or when
+  EU demand justifies a non-Union OSS registration. **§18.5 lists the three pre-conditions** that
+  must be met before either happens — chiefly that no price in this estate declares whether it is
+  gross or net of VAT.
 - **`GET /commerce` caching.** ISR at 300s (`pricing.tsx:279`) means a mode switch takes up to five
   minutes to appear. Acceptable; stated so nobody reads it as a bug.
 - **Auth at load.** The identity stack is built (§1.6a) but has never carried a real user. P3 is the
@@ -1021,7 +1027,7 @@ wrong column name or a wrong status code is a migration and a client break.
 | § | Decision | Blocks | Default if unanswered |
 |---|---|---|---|
 | 13.1 | Build before the first sale? | P3+ | **Build P1+P2 now.** They commit nothing and are worth doing regardless (§12). |
-| 13.2 | VAT / Merchant of Record | **nothing — unblocked 2026-08-15, see §18** | **`Commerce.SellableCountries: ["GB"]`, built in P1.** The seller-of-record choice was already made in code (61/61 live packs bill through Stripe). The founder's answer (§18.4) sets that array's contents; it does not decide whether work starts. |
+| 13.2 | VAT / Merchant of Record | **nothing — answered 2026-08-15, see §18** | **`Commerce.SellableCountries: ["GB"]`, built in P1. Not a default — the settled value.** UK-registered company, not VAT registered, so no VAT is charged and no Stripe Tax registration exists. §18.5 is the checklist for the day that changes. |
 | 13.3 | Desk claim count | P4 config only | Build as specified: 3 claims, any rung. |
 | 13.4 | Catalogue-exhaustion credit policy (§15.B-13) | nothing in v1 | Not implemented. No code path. |
 
@@ -1343,19 +1349,47 @@ exactly the mechanism §17.4 already establishes:
 - Costs nothing to reverse and nothing to widen. It is the cheapest possible expression of "we sell
   where we are registered."
 
-**What the founder confirms — one question, not a project:** *are there any tax registrations
-currently added in the Stripe dashboard, and is the business UK VAT registered?*
+**ANSWERED by the founder, 2026-08-15: the business is a UK-registered company and is NOT VAT
+registered.** §13.2 is closed. The settled position:
 
-| Answer | Consequence |
+| | Settled |
 |---|---|
-| No registrations, not VAT registered | `SellableCountries: ["GB"]`, no VAT charged (below the £90k threshold), **P3 proceeds.** Revisit when revenue approaches the threshold or when EU demand justifies an OSS registration. |
-| UK VAT registered | Add the UK registration in Stripe so `automatic_tax` actually calculates; still `["GB"]`; **P3 proceeds.** |
-| Registrations exist for other countries | Add those ISO codes to the list; **P3 proceeds.** |
+| `Commerce.SellableCountries` | **`["GB"]`** — the default, unchanged |
+| UK VAT | **None charged.** Turnover £0 against a £90,000 threshold; no registration exists to charge against. |
+| Stripe Tax registrations | **None.** `automatic_tax` stays enabled and calculates nothing, which is the correct behaviour for an unregistered seller (§18.2). |
+| EU / US | **Not sold to.** The fence, not a tax filing, is what makes that true. |
+| P3 | **Proceeds.** |
 
-**In every branch P3 proceeds.** That is what unblocked means. What the answer changes is the
-contents of one config array, not whether work can start.
+Two things this answer *does* pin down, both worth stating because they are easy to get backwards:
 
-### 18.5 If the answer later becomes "we don't want to own VAT ops"
+- **UK-registered is what makes the EU rule bite.** From the EU's point of view a UK company is
+  **not established in the EU**, which is exactly the case that carries **no threshold** (§18.3).
+  Being a UK company is the reason `["GB"]` is a fence and not a formality.
+- **Below the threshold is a fact about turnover, not a permanent state.** The trigger is a rolling
+  12-month total, so the review point is revenue, not the calendar. §18.5 is the checklist.
+
+### 18.5 Before any of this changes — the pre-conditions
+
+Do not treat "add a registration" as a one-line change. Each of these must be true *before* a
+registration is added to Stripe or a country is added to `SellableCountries`:
+
+1. **Declare whether shelf prices are gross or net.** Nothing in the code says. `PriceCreateOptions`
+   (`StripeProvider.cs:291-297`) sets `UnitAmount` and `Currency` and **no `TaxBehavior`** — there
+   is no `TaxBehavior` anywhere in `store_platform/src` (`rg -nw 'TaxBehavior|tax_behavior'` → no
+   matches). So the moment a registration exists, `£49.99` becomes ambiguous: charged as-is with VAT
+   carved out of it, or £49.99 + 20% at checkout. That is a **£10 swing on a live price**, and
+   `price-change-breaks-fulfilment` is already a known failure mode in this estate.
+2. **Re-check that checkout still builds a session.** `AutomaticTax.Enabled` is on today
+   (`StripeProvider.cs:439-442`) and the storefront has taken **zero sales, ever** (§1.4) — so the
+   combination of automatic tax with tax-behaviour-unspecified prices has never been exercised
+   against real Stripe. Prove it with one test-mode session before it matters, not after.
+3. **No VAT copy exists on the storefront.** `rg -rni -w 'VAT|inclusive'` over the web source
+   returns nothing, so a registration also creates a copy task (§9), not just a config change.
+
+None of the three blocks anything today, precisely because there is no registration. They are listed
+so that the day one is added, this is a checklist rather than an incident.
+
+### 18.6 If the answer later becomes "we don't want to own VAT ops"
 
 The escape hatch is already built and costs no new architecture: **Paddle is a Merchant of Record**
 and is already behind `IPaymentProvider` (`Program.cs:103-104`), which is precisely why
@@ -1365,7 +1399,7 @@ Stripe's ~1.5–2.9% (`PAYMENT_RAIL_INDEPENDENCE_SPEC.md §2`). **Do not build f
 recorded so that the decision stays reversible, which is the only property that matters while
 revenue is zero.
 
-### 18.6 What this changed in the execution spec
+### 18.7 What this changed in the execution spec
 
 **Already applied above** — this table is the index, so a reviewer can see the delta without
 re-reading §17.
