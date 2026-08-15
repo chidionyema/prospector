@@ -240,7 +240,12 @@ export function PackContentsSection({
       <div className="mt-6 overflow-hidden rounded-md bg-surface">
         <div className="flex items-center gap-2 border-b border-border bg-surface2 px-5 py-3">
           <Icon name="download" size={14} className="flex-none text-subtle" />
-          <span className="font-mono text-caption text-text">your pack/</span>
+          {/* Sans, and words. This read `your pack/` in mono -- a directory name, drawn with
+              box-drawing glyphs below it, on a page selling finished documents to a non-developer.
+              The falsifiable half of that design (the real filenames, second group) is kept; the
+              costume around it is not. Founder, 2026-08-15: "the full contents styling and design
+              is poor". */}
+          <span className="text-caption font-medium text-text">Inside the pack</span>
           {/* "documents", not "files", and the two are now DIFFERENT NUMBERS rather than the same
               number under a careful noun. Nine documents arrive as five files. Until 2026-08-15
               this count read `PACK_CONTENTS.length` and the noun had to do the work of hiding that
@@ -256,9 +261,6 @@ export function PackContentsSection({
           {PACK_DOCUMENTS.map((item, i) => (
             <li key={item.section} className="border-b border-border/60 px-5 py-4">
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-                <span aria-hidden className="flex-none font-mono text-caption text-faint">
-                  {i === PACK_DOCUMENTS.length - 1 ? '└──' : '├──'}
-                </span>
                 <span className="min-w-0 text-meta font-semibold leading-snug text-text">
                   {item.title}
                 </span>
@@ -268,10 +270,9 @@ export function PackContentsSection({
                   </span>
                 )}
               </div>
-              {/* Indented to the width of the glyph plus its gap, so the prose hangs off the
-                  branch rather than restarting the line. `pl-[3.25rem]` is that measurement at
-                  the caption size, not a round number chosen by eye. */}
-              <div className="pl-[3.25rem]">
+              {/* Flush left. This was `pl-[3.25rem]`, hanging the prose off the tree glyph that no
+                  longer exists; with the glyph gone the indent was decoration measuring nothing. */}
+              <div className="mt-1">
                 <span className="block max-w-[70ch] text-meta leading-relaxed text-muted">
                   {item.desc}
                 </span>
@@ -280,7 +281,7 @@ export function PackContentsSection({
           ))}
         </ul>
 
-        {/* The files, in the same tree rather than a second box: they are one archive, and giving
+        {/* The files, in the same card rather than a second box: they are one archive, and giving
             them their own bordered card would say "a separate thing you may also get". The label is
             what separates them, because the difference is real and a buyer is entitled to it --
             above is what the pack SAYS, here is what lands in the folder. Every entry in the first
@@ -294,9 +295,6 @@ export function PackContentsSection({
           {[...PACK_CONTENTS, ...PACK_EXTRAS].map((item, i, all) => (
             <li key={item.filename} className="border-b border-border/60 px-5 py-4 last:border-b-0">
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-                <span aria-hidden className="flex-none font-mono text-caption text-faint">
-                  {i === all.length - 1 ? '└──' : '├──'}
-                </span>
                 <span className="min-w-0 text-meta font-semibold leading-snug text-text">
                   {item.title}
                 </span>
@@ -304,7 +302,7 @@ export function PackContentsSection({
                   {item.filename}
                 </span>
               </div>
-              <div className="pl-[3.25rem]">
+              <div className="mt-1">
                 <span className="block max-w-[70ch] text-meta leading-relaxed text-muted">
                   {item.desc}
                 </span>
