@@ -87,8 +87,8 @@ export default function TermsPage() {
       <LegalHeading>4. Prices and payment</LegalHeading>
       <LegalText>
         All prices are shown in GBP (£) and are inclusive of VAT where applicable. Payment is
-        processed by our third-party payment processor (currently Paddle or Stripe, see the
-        checkout page for the active processor). We do not store your full card details.
+        processed by our third-party payment processor, Stripe. We do not store your full
+        card details.
         A transaction is complete when you receive an order-confirmation email.
       </LegalText>
 

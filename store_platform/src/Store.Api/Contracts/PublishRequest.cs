@@ -2,7 +2,7 @@ namespace Store.Api.Contracts;
 
 /// <summary>
 /// Contract for the engine→store publish call (POST /internal/catalog).
-/// For backward compatibility, the legacy fields (PaddleProductId, PaddlePriceId)
+/// The provider-agnostic fields (ProviderProductId, ProviderPriceId)
 /// are accepted as fallbacks when the provider-agnostic fields are absent.
 /// </summary>
 public record PublishRequest(
@@ -37,10 +37,6 @@ public record PublishRequest(
     // pack sells in: currency follows the BUYER (see PriceUsdCents below), not the pack, so a
     // US buyer of a UK-market pack is billed in USD and a UK buyer of a US-market pack in GBP.
     string? Market = null,
-    // Legacy fields — accepted for backward compatibility when the provider-agnostic
-    // fields above are not present.
-    string? PaddleProductId = null,
-    string? PaddlePriceId = null,
     // Discovery facets (closed vocabulary — Store.Catalog.Domain.PackFacets). Appended at the
     // end because positional record parameters are append-only for back-compat: existing
     // callers such as Store.Tests/Domain/PackMarketTests.cs:29-31, which construct

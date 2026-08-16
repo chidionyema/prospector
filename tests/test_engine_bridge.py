@@ -9,7 +9,6 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from prospector.bridge import (
     EngineBridge,
-    PaddleClient,
     ProductProvisioner,
     ProvisioningError,
     StripeProvisioner,
@@ -162,7 +161,7 @@ class TestEngineBridge(unittest.TestCase):
 
 class TestProductProvisionerProtocol(unittest.TestCase):
     """ProductProvisioner is the seam for provider-agnostic product creation
-    (P3 — replaces the hardcoded Paddle-only path).
+    (P3 — replaces the hardcoded single-provider path).
     """
 
     def test_protocol_has_required_methods(self):
@@ -172,19 +171,6 @@ class TestProductProvisionerProtocol(unittest.TestCase):
                 hasattr(ProductProvisioner, method),
                 f"ProductProvisioner must declare {method!r}"
             )
-
-    def test_paddleclient_satisfies_protocol(self):
-        # PaddleClient is the legacy provider — must still satisfy the seam.
-        self.assertTrue(hasattr(PaddleClient, "create_product"))
-        self.assertTrue(hasattr(PaddleClient, "create_price"))
-        # Both accept (name/description) / (product_id/amount_pence)
-        import inspect
-        ps = inspect.signature(PaddleClient.create_product).parameters
-        self.assertIn("name", ps)
-        self.assertIn("description", ps)
-        ps = inspect.signature(PaddleClient.create_price).parameters
-        self.assertIn("product_id", ps)
-        self.assertIn("amount_pence", ps)
 
     def test_stripeprovisioner_satisfies_protocol(self):
         self.assertTrue(hasattr(StripeProvisioner, "create_product"))
@@ -201,41 +187,39 @@ class TestProductProvisionerProtocol(unittest.TestCase):
 class TestProviderSelection(unittest.TestCase):
     """EngineBridge.provisioner must select by active_provider config."""
 
-    def _make_bridge(self, active_provider="paddle",
-                     paddle_key="paddle-test", stripe_key=None):
+    def _make_bridge(self, active_provider=None, stripe_key=None):
         cfg = MagicMock()
-        cfg.store_payments = {"active_provider": active_provider}
-        with patch.dict(os.environ, {"PADDLE_API_KEY": paddle_key}, clear=False):
-            if stripe_key:
-                with patch.dict(os.environ, {"STRIPE_API_KEY": stripe_key}):
-                    return EngineBridge(cfg)
+        if active_provider is None:
+            del cfg.store_payments  # no config key at all -> the env/default path
+        else:
+            cfg.store_payments = {"active_provider": active_provider}
+        env = {"STRIPE_API_KEY": stripe_key} if stripe_key else {}
+        with patch.dict(os.environ, env, clear=not stripe_key):
             return EngineBridge(cfg)
 
-    def test_default_provider_is_paddle(self):
+    def test_default_provider_is_stripe(self):
+        # The default must match the Store's own default (MoneyRailConfigGate). If the two
+        # ends of the money rail disagree about who is billing, a pack lists with ids the
+        # Store cannot charge.
         b = self._make_bridge()
-        self.assertEqual(b.active_provider, "paddle")
-        self.assertIs(b.provisioner, b.paddle)
+        self.assertEqual(b.active_provider, "stripe")
 
     def test_stripe_provider_selected_via_config(self):
         b = self._make_bridge(active_provider="stripe", stripe_key="sk_test_abc")
         self.assertEqual(b.active_provider, "stripe")
         self.assertIs(b.provisioner, b.stripe)
 
-    def test_paddle_provider_selected_via_config(self):
-        b = self._make_bridge(active_provider="paddle")
-        self.assertEqual(b.active_provider, "paddle")
-        self.assertIs(b.provisioner, b.paddle)
+    def test_unknown_provider_yields_none_provisioner(self):
+        # A provider we hold no key for must mint nothing. None makes the pack publish
+        # UNLISTED; anything else would list it against a price id nobody can bill.
+        b = self._make_bridge(active_provider="paddle", stripe_key="sk_test_abc")
+        self.assertIsNone(b.provisioner)
 
     def test_no_api_key_yields_none_provisioner(self):
         # No keys set at all — provisioner must be None (no crash, no fake).
-        cfg = MagicMock()
-        cfg.store_payments = {"active_provider": "paddle"}
-        with patch.dict(os.environ, {}, clear=True):
-            # Patched env with no PADDLE_API_KEY / STRIPE_API_KEY
-            b = EngineBridge(cfg)
-            # Paddle is None because no key
-            self.assertIsNone(b.paddle)
-            self.assertIsNone(b.provisioner)
+        b = self._make_bridge(active_provider="stripe")
+        self.assertIsNone(b.stripe)
+        self.assertIsNone(b.provisioner)
 
 
 class TestStripeKeySelection(unittest.TestCase):

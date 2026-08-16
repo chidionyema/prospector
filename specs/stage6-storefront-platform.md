@@ -1,5 +1,9 @@
 # Stage 6 — Storefront Spec (Paddle delivering-MoR; thin shop window)
 
+> **Superseded 2026-08-16:** Paddle is gone. Stripe is the only payment provider; the
+> `PaddleProvider`, its web loader and its config were deleted. Read every Paddle passage
+> below as history, not as the current design.
+
 **Status:** spec (manager-authored). **Supersedes the prior modular-monolith version of this file.**
 **Author role:** manager (Claude). **Implements:** delegate (Gemini/DeepSeek) against this spec; the two money-adjacent slices (webhook signature verify, EngineBridge upload provenance) reviewed by Claude.
 **Date:** 2026-06-15.

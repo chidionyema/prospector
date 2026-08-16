@@ -248,7 +248,7 @@ public static class CheckoutEndpoints
     /// </summary>
     /// <remarks>
     /// Embedded first when requested; hosted otherwise, and hosted ALSO when the provider has no
-    /// embedded surface (the ordinary case for Paddle, and the failure case for a Stripe account
+    /// embedded surface (the failure case for a Stripe account
     /// without it). The fallback is not an error path — a buyer must never be unable to pay
     /// because the nicer surface was unavailable.
     /// </remarks>
@@ -342,7 +342,7 @@ public static class CheckoutEndpoints
         }
 
         var stored = packs
-            .Select(p => string.IsNullOrEmpty(p.PaymentProvider) ? "paddle" : p.PaymentProvider)
+            .Select(p => string.IsNullOrEmpty(p.PaymentProvider) ? "stripe" : p.PaymentProvider)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
         return stored.Length == 1 ? stored[0] : null;
