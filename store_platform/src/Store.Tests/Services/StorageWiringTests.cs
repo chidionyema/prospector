@@ -140,21 +140,26 @@ public sealed class StorageWiringTests
     // ---- helpers ----------------------------------------------------------------------------
 
     /// <summary>
-    /// Asserts the presigned URL's lifetime is the requested one, allowing a one-second shortfall.
+    /// Asserts the presigned URL's lifetime is the requested one, allowing a small shortfall.
     /// </summary>
     /// <remarks>
     /// Exact equality here was flaky: measured 1 run in 6 of the full suite, and captured as
     /// <c>X-Amz-Expires=599</c> for a 10-minute request. The TTL crosses two clock reads — an
     /// absolute expiry instant is derived from the first, and the signer then re-derives
-    /// seconds-from-now against a later one — so any millisecond boundary between them costs a
-    /// second. It only shows under load (300 uncontended presigns in a row all gave exactly 600),
-    /// which is what made it look like cross-test interference rather than a timing artifact.
+    /// seconds-from-now against a later one — so whatever time passes between them is taken off
+    /// the TTL. Under load that gap is not a rounding boundary: on the self-hosted CI Mac running
+    /// four runner instances at once, the same test produced <c>X-Amz-Expires=596</c>, a four
+    /// second gap. A one-second tolerance therefore measures how busy the machine is.
     /// <para>
-    /// A URL that expires a second early is not a defect, so the tolerance is the correct
-    /// assertion. It stays tight (1s) because a real regression here — the TTL argument being
-    /// ignored, or a unit mix-up between minutes and seconds — is off by minutes, not seconds.
+    /// A URL that expires a few seconds early is not a defect, so the tolerance is the correct
+    /// assertion. <see cref="ExpiresSlackSeconds"/> is the whole budget: it is far larger than any
+    /// scheduling delay we have measured, and far smaller than a real regression here — the TTL
+    /// argument being ignored (which gives the 3600s default) or a unit mix-up between minutes and
+    /// seconds — which is off by minutes.
     /// </para>
     /// </remarks>
+    private const int ExpiresSlackSeconds = 30;
+
     private static void AssertExpiresApprox(int expectedSeconds, string url)
     {
         var marker = url.IndexOf("X-Amz-Expires=", StringComparison.Ordinal);
@@ -165,8 +170,9 @@ public sealed class StorageWiringTests
             int.TryParse(raw, System.Globalization.CultureInfo.InvariantCulture, out var actual),
             $"X-Amz-Expires was not a number: '{raw}' in {url}");
         Assert.True(
-            actual == expectedSeconds || actual == expectedSeconds - 1,
-            $"X-Amz-Expires was {actual}, expected {expectedSeconds} (or {expectedSeconds - 1}). URL: {url}");
+            actual <= expectedSeconds && actual >= expectedSeconds - ExpiresSlackSeconds,
+            $"X-Amz-Expires was {actual}, expected {expectedSeconds} "
+                + $"(down to {expectedSeconds - ExpiresSlackSeconds} under load). URL: {url}");
     }
 
     private static IConfiguration BuildR2Config() =>
