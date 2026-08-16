@@ -118,6 +118,17 @@ These are the rules that actually decide whether it reads clearly:
     history", "£180 a day, underwritten solo, fixed payout", "Rota plus timesheet
     against contract terms". If a line has no verb, or uses a word the trade says to
     itself, spend the characters rather than the reader.
+  - A STANDALONE LINE NAMES ITS OWN SUBJECT. A title, a one-line summary and a card
+    line are read BESIDE the title, never after it, so they cannot borrow an
+    antecedent from it. Never open one on a bare pronoun: "It takes a published NHS
+    rota and timesheet…" points at nothing the sentence has named, and spends the two
+    words the reader is most likely to actually read. Name the thing, the buyer, or
+    the trigger instead: "A rota audit that…", "NHS doctors owed unsocial hours pay
+    get…", "Every published rota carries…".
+    And vary that opening. Of 75 live one-liners on 2026-08-16, 55 began "A" and 4
+    began "An", so four packs in five opened identically on the shelf; the reader
+    scanning a grid sees one idea repeated. Open on whichever of the buyer, the
+    trigger, the artefact or the outcome carries the most information for THIS idea.
   - CLARITY NEVER COSTS ACCURACY. Numbers, dates and named entities stay exactly as
     the evidence gives them. Simplifying the language must never round a figure,
     soften a caveat, widen a specific finding, or drop a source.

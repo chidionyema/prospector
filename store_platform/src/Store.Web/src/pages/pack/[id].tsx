@@ -683,11 +683,18 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 would be the first unsourced claim on the money page. This one asserts nothing
                 about the pack: it describes what the product category is, in the second person,
                 and every word of it is already backed by the sections below. Also carries no
-                number, so there is nothing here for `source-or-die` to demand a citation for. */}
+                number, so there is nothing here for `source-or-die` to demand a citation for.
+
+                REWRITTEN 2026-08-16. The previous wording ("is NOT having it. IT IS the time...")
+                defined the product by what it is not, which is the exact antithesis construction
+                `prompts/style/voice.md` now bans in generated prose; a hardcoded line on every
+                pack page is the one place a style rule cannot be enforced by the linter, so it
+                is enforced here by hand. It also opened on a negation, which read as zero
+                content. Say what the buyer GETS, in the affirmative, naming only things that
+                literally appear in the sections below. */}
             <p className="mt-4 max-w-[60ch] text-meta leading-relaxed text-muted">
-              The expensive part of a business idea is not having it. It is the time you spend
-              finding out it does not work. This pack is that work, already done, with its sources
-              left open.
+              You get the checking already done: the evidence behind the idea, the sources it came
+              from, and the objections it survived, all open below so you can judge them yourself.
             </p>
 
             {/* The evidence line: what stands behind the listing, in mono because every item on it

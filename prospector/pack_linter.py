@@ -966,6 +966,17 @@ handles prepares drafts submits appeals spots catches stops starts keeps holds
 lets helps needs wants gets puts sits comes goes means counts
 """.split())
 
+#: Pronouns that carry no antecedent when a shelf line is read on its own. A shelf line is
+#: shown beside the title, never inside a paragraph, so "It takes a published NHS rota..."
+#: (the live `b94760e86e62585a` one-liner the founder rejected on 2026-08-16 as "zero
+#: content") points at nothing the sentence itself has named.
+#:
+#: Fires ONLY when the pronoun is followed immediately by a finite verb, which is what
+#: makes it BARE. "This service reads your rota" names its subject and stays quiet; "It
+#: takes" and "They read" do not. That pairing is why the check needs no exception list:
+#: measured over the 75 live one-liners on 2026-08-16 it named exactly one, the founder's.
+_BARE_PRONOUN_OPENERS = frozenset({"it", "they", "this", "that", "these", "those"})
+
 #: Dedup attribution order: the title is the canonical line, so when a headline or card
 #: line repeats it the finding is reported against the REPEAT, not against the title. Any
 #: field not named here sorts after these, alphabetically.
@@ -1160,7 +1171,21 @@ def check_shelf_copy(fields: Dict[str, str], *, block: bool = False,
                                   f"reads as a fragment, with no finite verb — a short line is still a "
                                   f"sentence: {text!r}"))
 
-    # 6. The same line twice. The shelf shows title and card line together and the pack page
+        # 6. A bare pronoun opener. The title is not a sentence the line can continue from,
+        #    so a shelf line that starts "It takes ..." spends its first two words pointing
+        #    at nothing. `title` is exempt: it is a noun phrase by contract
+        #    (`prompts/retitle.md`), so it cannot open on a pronoun-plus-verb anyway.
+        if name != "title":
+            opener_words = _SHELF_WORD_RE.findall(lowered)
+            if (len(opener_words) >= 2
+                    and opener_words[0] in _BARE_PRONOUN_OPENERS
+                    and opener_words[1] in _FINITE_VERBS):
+                problems.append(mk("shelf_copy", name,
+                                   f"opens on the bare pronoun {opener_words[0]!r}, which has no "
+                                   f"antecedent when the line is read beside the title rather than "
+                                   f"after it; name the subject: {text!r}"))
+
+    # 7. The same line twice. The shelf shows title and card line together and the pack page
     #    shows title and headline together, so a repeat spends the page's most valuable line
     #    saying nothing new. 13 of 48 live packs repeated their title as their headline.
     keys: Dict[str, str] = {}
