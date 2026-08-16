@@ -317,6 +317,38 @@ def _parsed(m: "re.Match[str]") -> list[tuple[str, str, float, str, int, int]]:
     return [p for p in out if p is not None]
 
 
+_TOKEN_CHAR = re.compile(r"[0-9A-Za-z]")
+
+# Kinds whose match can END flush against the rest of a longer token. A percent,
+# a currency amount and a multiplier all consume their own trailing symbol, so
+# only these two can run straight into the next character.
+_GLUEABLE = (KIND_COUNT, KIND_MAGNITUDE)
+
+
+def _glued_to_token(text: str, start: int, end: int) -> bool:
+    """Is this run of digits part of a longer alphanumeric token?
+
+    True when the character immediately before or after it is a letter or a
+    digit. A claim figure is followed by a space, a unit word or punctuation;
+    an identifier is followed by more of itself.
+
+    `_FIGURE_RE` already guards the START of a match with `(?<![\\w.,])`. Nothing
+    guarded the END, and that is where our own citation markers got in: a
+    rationale writes `(459782dc95f977cf, adbc554c247b7413)` and the bare-count
+    branch lifted "459782" out of the first id as a numeric claim. No source can
+    ever contain it, so every rationale that cited its evidence was recorded as
+    asserting numbers it never asserted.
+
+    Measured 2026-08-16 over the 87 published packs: 205 of 698 extracted
+    figures were fragments of source ids, and the untraceable rate fell from
+    36.1% to 3.7% once they were excluded. The shadow log written before this
+    date carries that inflation and must not be read as a fabrication rate.
+    """
+    before = text[start - 1] if start > 0 else ""
+    after = text[end] if end < len(text) else ""
+    return bool(_TOKEN_CHAR.match(before) or _TOKEN_CHAR.match(after))
+
+
 def extract_figures(
     text: str,
     *,
@@ -328,7 +360,8 @@ def extract_figures(
 
     Deliberately UNDER-reaches on bare numbers (module docstring, rule 1): a
     number with no currency symbol, percent sign, multiplier or magnitude word
-    survives only if it carries a thousands separator or is >= `bare_min_value`.
+    survives only if it carries a thousands separator or is >= `bare_min_value`,
+    and never when it is glued to a longer token (`_glued_to_token`).
     """
     src = str(text or "")
     out: list[Figure] = []
@@ -343,6 +376,8 @@ def extract_figures(
                 had_separator = "," in src[start:end]
                 if not had_separator and value < bare_min_value:
                     continue                               # prose counting, not evidence
+            if kind in _GLUEABLE and _glued_to_token(src, start, end):
+                continue                                   # an identifier, not a claim
             key = (kind, round(value, 6))
             if key in seen:
                 continue
