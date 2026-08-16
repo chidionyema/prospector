@@ -1,5 +1,22 @@
 name: CI
 
+# WHERE CI RUNS IS AN OPS SETTING, NOT A CODE CHANGE.
+#
+# Every job's `runs-on` reads the repo variable CI_RUNS_ON and falls back to GitHub's hosted
+# Ubuntu runners when it is unset. Point it at `self-hosted` and all five jobs move to our own
+# machine; unset it and they go straight back. One `gh variable set`, no commit, no review.
+#
+# It exists because on 2026-08-16 GitHub stopped starting jobs at all: "The job was not started
+# because recent account payments have failed or your spending limit needs to be increased."
+# Five jobs, zero steps, no logs, conclusion `failure`. A red PR that says nothing about the
+# code, on every PR at once. Hosted runner minutes are metered; self-hosted minutes are not, so
+# our own runner is the free path, and this variable is how we take it without rewriting the
+# workflow under pressure.
+#
+# The jobs are OS-portable already: no apt-get, no sudo, no docker, no service containers. They
+# use checkout, setup-python, setup-uv, setup-node, setup-dotnet and cache, every one of which
+# supports macOS, so the same five jobs run unchanged wherever CI_RUNS_ON points.
+
 on:
   push:
     branches: [main]
@@ -18,7 +35,7 @@ jobs:
   # Born from: account/social-login deleted unannounced inside a logo commit.
   # ──────────────────────────────────────────────────────────────────
   guard:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
@@ -33,7 +50,7 @@ jobs:
   # Python — full test suite + golden-set hard gate
   # ──────────────────────────────────────────────────────────────────
   python:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -90,7 +107,7 @@ jobs:
   # about which files steer the daemon — and the job is ~1 minute.
   # ──────────────────────────────────────────────────────────────────
   engine:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -121,7 +138,7 @@ jobs:
   # .NET — Store tests
   # ──────────────────────────────────────────────────────────────────
   dotnet:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -147,7 +164,7 @@ jobs:
   # Next.js — build check on store platform
   # ──────────────────────────────────────────────────────────────────
   nextjs:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
 
     defaults:
       run:
