@@ -64,6 +64,17 @@ class Retrieval:
     # overwrite a genuinely informative snippet with less than it replaced.
     fetch_min_gain_chars: int = 400
     fetch_max_bytes: int = 400_000      # stop reading; some pages are tens of MB
+    # DROP THE COOKIE BANNER BEFORE THE BRAIN READS IT (2026-08-16).
+    # `select_passage` anchors on query terms, a consent banner has none, so on a page whose
+    # banner survives extraction the anchor finds nothing and returns the head slice -- the
+    # banner itself. MEASURED over 43,673 stored passages: 76 hand the verdict a banner inside
+    # the 600 chars it reads, concentrated in the sources that matter most (12.3% of
+    # ons.gov.uk, 2.2% of legislation.gov.uk). One reached buyers: the live landing page said
+    # the ASHE earnings tables "contain only cookie consent screens with no actual wage data".
+    # Default OFF so fixtures, golden-set runs and any directly constructed Retrieval() stay
+    # byte-for-byte; config.yaml turns it on for the live engine, and the ops console toggles
+    # it there. Same pattern as `fetch_pages` and `relevance_overfetch` above.
+    strip_consent_banners: bool = False
     # RANK WHAT SEARCH RETURNED (2026-08-14). Every provider asks for exactly
     # `results_per_query` results and keeps the search engine's own first k, so relevance
     # was measured at the verdict (as `unverifiable`) and never enforced at the source.
