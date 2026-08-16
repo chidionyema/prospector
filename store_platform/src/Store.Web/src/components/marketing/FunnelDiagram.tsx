@@ -140,9 +140,36 @@ export function FunnelDiagram({ className }: { className?: string }) {
             ideas researched
           </text>
 
+          {/* TWO LINES, and the reason is geometry rather than taste (2026-08-16, founder:
+              "killed on cited evidence is almost spilling out of container").
+
+              The funnel NARROWS, so a caption's budget depends on the y it sits at, and only this
+              one outgrew its slab. Set as one line the label's baseline was `midY(SLAB_2) + 22` =
+              203.4, where `halfWidthAt` returns 76.4 -- a 152.9-unit slab -- and the phrase measures
+              about 169 units (getBBox on the two halves gives 59.2 + 105.2 plus the space). So it
+              hung roughly 8 units past each sloped edge. Nothing was clipped, the SVG is 440 wide
+              and the text never left the box; it was simply wider than the shape it labels, on a
+              shape whose whole job is to narrow. The slab above measures 313.7 units at its
+              caption's y against 126.2 of text, which is why "ideas researched" never had this
+              problem and stays one line.
+
+              The two fixes that do NOT work here are worth recording so they are not retried. Type
+              cannot shrink: this file's own measurement puts fontSize 16 at 12.4px on a 390
+              viewport, already a fraction over the brief's 12px floor. And the copy cannot lose
+              "cited" -- evidence being CITED is the site's whole claim, and "killed on evidence"
+              would still clear the slab by only a few units.
+
+              So the block splits and lifts. The figure moves up 10 units and the caption becomes two
+              lines at 189.5 and 207.5. MEASURED THERE, in the browser, after the change: slab 172.6
+              against text 59.2, and slab 147.3 against text 105.2 -- 113.4 and 42.1 units of
+              clearance. The second line's descenders land near 211, inside the slab's bottom edge at
+              219.6. The break falls after "killed on" because "cited evidence" is the phrase;
+              splitting a noun off its adjective to even up two line lengths reads as a wrap rather
+              than as a decision. The `aria-label` is untouched and still reads as one sentence -- the
+              split is visual, and a screen reader must not hear it. */}
           <text
             x={CENTRE_X}
-            y={midY(SLAB_2) - 2}
+            y={midY(SLAB_2) - 12}
             fontSize={30}
             fontWeight={600}
             className="tabular-nums"
@@ -151,11 +178,19 @@ export function FunnelDiagram({ className }: { className?: string }) {
           </text>
           <text
             x={CENTRE_X}
-            y={midY(SLAB_2) + 22}
+            y={midY(SLAB_2) + 8}
             fontSize={16}
             className="fill-muted"
           >
-            killed on cited evidence
+            killed on
+          </text>
+          <text
+            x={CENTRE_X}
+            y={midY(SLAB_2) + 26}
+            fontSize={16}
+            className="fill-muted"
+          >
+            cited evidence
           </text>
         </g>
       </svg>
