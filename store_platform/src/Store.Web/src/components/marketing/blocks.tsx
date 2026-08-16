@@ -119,6 +119,33 @@ export function PageHero({
   lead,
   primary,
   secondary,
+  /**
+   * A SECOND COLUMN, beside the headline, on large screens only.
+   *
+   * WHY THIS EXISTS (2026-08-16, founder on /ideas and /kill-log: "right first row/ish empty no
+   * content, looks odd on desktop", and "the empty hero only happens on desktop... its the right
+   * section only"). Both halves of that report are exactly right, and the second half is the
+   * diagnosis. The measure below is `max-w-[46rem]` and every page that reported this sets the
+   * BAND to 6xl or 7xl -- 72rem or 80rem. So on a desktop viewport the hero is a 46rem column of
+   * text with 26 to 34rem of nothing to its right, and on a phone the band is narrower than the
+   * measure and the two numbers coincide, which is why it is desktop-only. The measure is not the
+   * bug: 46rem is the line length, and `width` deliberately does not lengthen a line (see its own
+   * note). The bug is that there was never anywhere for a second column to go.
+   *
+   * So this is a SLOT, not content. It is deliberately not a default graphic: the pages that
+   * reported the gap each have their own material that was already sitting below the fold or
+   * stacked under the lead, and filling the column with decoration would be the thing this site
+   * spends the rest of its code refusing to do. `children` is not that slot and cannot be -- it
+   * renders full width UNDER the whole hero (`mt-12`), which is where a page puts a strip that
+   * spans both columns.
+   *
+   * The grid appears only when an aside is passed, so every hero without one emits the same DOM it
+   * emitted before, and the breakpoint is `lg` rather than `md`: at md the band is already close
+   * to the measure and splitting it there would squeeze the headline to win back space that is not
+   * empty at that width. `items-start` because the aside is a list beside a heading, not a thing
+   * to centre against it.
+   */
+  aside,
   children,
 }: {
   bg?: BandBg;
@@ -128,6 +155,7 @@ export function PageHero({
   lead?: React.ReactNode;
   primary?: { href: string; label: string; onClick?: () => void; variant?: ButtonVariant };
   secondary?: { href: string; label: string; variant?: ButtonVariant };
+  aside?: React.ReactNode;
   children?: React.ReactNode;
 }) {
   // `animate-settle`, not `animate-rise`. A page hero is by definition the largest thing above
@@ -145,6 +173,13 @@ export function PageHero({
       outerClassName="page-hero"
       className="pt-10 pb-10 md:pt-14 md:pb-12 animate-settle"
     >
+      <div
+        className={
+          aside
+            ? 'grid gap-10 lg:grid-cols-[minmax(0,46rem)_minmax(0,1fr)] lg:items-start lg:gap-16'
+            : undefined
+        }
+      >
       <div className="max-w-[46rem]">
         {eyebrow && (
           <p className="mb-3 text-caption font-medium text-subtle">{eyebrow}</p>
@@ -170,8 +205,57 @@ export function PageHero({
           </div>
         )}
       </div>
+        {aside}
+      </div>
       {children && <div className="mt-12 w-full md:mt-16">{children}</div>}
     </SectionBand>
+  );
+}
+
+/**
+ * The hero aside's one setting: a labelled list, beside the headline.
+ *
+ * All three pages that reported an empty right column have the same thing to put in it -- a short
+ * enumeration the left column either names without showing (the six checks on /how-it-works) or
+ * states as an undifferentiated run-on (the six sort axes on /ideas, which a previous pass already
+ * diagnosed as "not the sentence, it is that a 34-word enumeration is being drawn as one
+ * paragraph of lead type. Fix the setting, not the words"). One component so the three cannot
+ * drift into three treatments of the same object.
+ *
+ * `text-meta` and `text-muted`, not lead type: this is the subordinate column. The rule on the
+ * left edge is what makes it read as a list rather than as a second paragraph, and it is
+ * `border-l` on the items rather than a `<ul>` marker because the site sets no bullets anywhere
+ * else. Ordered only where the order is real -- the checks run in a sequence and stop at the first
+ * failure, the sort axes do not -- which is `storefrontDesignContract`'s own rule about numbering
+ * encoding something true rather than decorating.
+ */
+export function HeroList({
+  label,
+  items,
+  ordered = false,
+}: {
+  label: string;
+  items: readonly string[];
+  ordered?: boolean;
+}) {
+  const List = ordered ? 'ol' : 'ul';
+  return (
+    <div className="lg:pt-1">
+      <p className="text-caption font-medium text-subtle">{label}</p>
+      <List className="mt-4 space-y-2.5">
+        {items.map((item, i) => (
+          <li
+            key={item}
+            className="flex gap-3 border-l border-border pl-4 text-meta leading-relaxed text-muted"
+          >
+            {ordered && (
+              <span className="shrink-0 font-mono tabular-nums text-subtle">{i + 1}</span>
+            )}
+            <span>{item}</span>
+          </li>
+        ))}
+      </List>
+    </div>
   );
 }
 
@@ -195,7 +279,17 @@ export function Section({
   outerClassName?: string;
 }) {
   return (
-    <SectionBand bg={bg} width={width} outerClassName={outerClassName} className={`py-16 md:py-24 scroll-mt-16 ${className ?? ''}`}>
+  /* MOBILE SECTION RHYTHM, CAPPED (brief 2026-08-15, item 7: "cap section gaps").
+     `py-16` on both sides of a band means two adjacent bands put 64 + 64 = 128px of pure
+     whitespace between the last line of one and the first line of the next. MEASURED at a 390
+     viewport before this change: the six largest whitespace bands on /how-it-works were 178, 149,
+     129, 129, 129, 129px, and the 129s are exactly that stack. On a phone that is most of a
+     screen of nothing between two paragraphs, which is the founder's complaint.
+
+     `py-10` is 40px, on the brief's 8/16/24/40/64 scale, and takes the stacked gap to 80px. The
+     desktop `md:py-24` is untouched: at 1280px a 96px band reads as composition, and the defect
+     is specific to the width where the content column is 350px wide. */
+    <SectionBand bg={bg} width={width} outerClassName={outerClassName} className={`py-10 md:py-24 scroll-mt-16 ${className ?? ''}`}>
       {(title || intro) && (
         <div className="mb-10">
           {title && <h2 className="text-h2 font-semibold text-text md:text-h1">{title}</h2>}
@@ -270,7 +364,7 @@ export function CtaBand({
   secondary?: { href: string; label: string };
 }) {
   return (
-    <SectionBand bg="surface2" width={width} className="scroll-mt-16 py-16 md:py-24">
+    <SectionBand bg="surface2" width={width} className="scroll-mt-16 py-10 md:py-24">
       <h2 className="max-w-[20ch] text-balance text-h1 font-semibold text-text">{title}</h2>
       {lead && <p className="mt-3 max-w-[60ch] text-body text-muted">{lead}</p>}
       <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">

@@ -286,7 +286,12 @@ export function PackContentsSection({
               is poor". */}
           <span className="text-caption font-medium text-text">Inside the pack</span>
           {/* "documents", not "files", and the two are now DIFFERENT NUMBERS rather than the same
-              number under a careful noun. Nine documents arrive as five files. Until 2026-08-15
+              number under a careful noun: `PACK_DOCUMENTS.length` documents arrive as
+              `PACK_CONTENTS.length` files -- 14 and 5 as counted on 2026-08-15, and written as the
+              expressions rather than the digits because the last version of this note said "Nine
+              documents arrive as five files" while the code beside it rendered 14. A comment that
+              hardcodes what the line below derives goes stale silently and then misinforms the
+              next reader about which number is load-bearing. Until 2026-08-15
               this count read `PACK_CONTENTS.length` and the noun had to do the work of hiding that
               the archive held more entries than the list showed (measured 2026-08-08 across the 45
               packs then live: 8 entries on 12 packs, 9 on 14, 10 on 19, against a stated eight).

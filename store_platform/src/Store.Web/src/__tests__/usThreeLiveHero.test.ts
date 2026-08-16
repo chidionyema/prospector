@@ -173,7 +173,12 @@ describe('US-3 - Hero with a demonstration of the moat', () => {
   it('hero copy remains on the left of the live card (2-column layout)', () => {
     // The hero must be 2-column: copy + live card side by side. The class
     // `lg:grid-cols-2` is the canonical 2-column grid on Tailwind.
-    const hasTwoColumns = /lg:grid-cols-2/.test(page) || /grid-cols-2/.test(page);
+    // MEASURED AGAINST THE HERO, not against any two-column grid on the page (2026-08-15). The
+    // old regex was `/lg:grid-cols-2/`, which the hero has never carried -- it was matching the
+    // SHELF's deleted `mid` band, so this assertion passed for four months on an element three
+    // screens below the one it names. The hero's grid is `lg:grid-cols-[1fr_420px]`: copy left,
+    // live card right, at a fixed card width.
+    const hasTwoColumns = /lg:grid-cols-\[1fr_420px\]/.test(page);
     expect(
       hasTwoColumns,
       'index.tsx hero must use a 2-column grid (lg:grid-cols-2)',

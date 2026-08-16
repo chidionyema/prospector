@@ -1,13 +1,16 @@
 import React from 'react';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
-import { PageHero, Section, CtaBand } from '@/components/marketing/blocks';
+import { PageHero, Section, CtaBand, HeroList } from '@/components/marketing/blocks';
 import { Seo } from '@/components/Seo';
 import { buttonClasses, Icon } from '@/components/ui';
 import { useCopyVariant } from '@/lib/useCopyVariant';
 import { COMMON_CHECKS, idsFor, type Check } from '@/lib/checks';
 import { RESEARCH_STATS, killsSummary } from '@/lib/stats';
+import { plainEnglish } from '@/lib/plainEnglish';
+import { PACK_DISCLAIMER, PACK_SCOPE } from '@/lib/disclaimer';
 import CheckSequence from '@/components/marketing/CheckSequence';
+import FunnelDiagram from '@/components/marketing/FunnelDiagram';
 /* `kill-log-examples.json`, NOT the full `kill-log.json`. This page draws ONE illustrative kill per
    check and needs the whole record (reason, citations), so the names file is not enough. The
    examples file is `entries[:60]` with every field intact -- byte-for-byte what `kill-log.json`
@@ -112,11 +115,28 @@ export default function HowItWorks() {
         description={variant.howItWorksSeoDescription}
       />
 
+      {/* THE ASIDE IS THE ATTACK LIST, and it is `refutation`, not `name`, on purpose.
+          The headline says every idea faces checks built to kill it, and until now the reader had
+          to scroll past a stat, a worked example and a disclosure before learning what any of them
+          were. `name` would have been a table of contents for the timeline below and would read as
+          the same list printed twice. `refutation` is the other face of each check -- the thing the
+          agent is trying to PROVE -- so the column states what the headline asserts, in the
+          headline's own register, while the timeline below keeps the names, the questions and the
+          worked kills. One vocabulary source either way: `COMMON_CHECKS`, which exists because this
+          page once carried its own and gave one gate three names across the site. Ordered, because
+          the run really is a sequence and it stops at the first hard failure. */}
       <PageHero
         width="6xl"
         eyebrow={variant.howItWorksEyebrow}
         title={variant.howItWorksTitle}
         lead={variant.howItWorksLead}
+        aside={
+          <HeroList
+            label="What each agent tries to prove"
+            ordered
+            items={COMMON_CHECKS.map((c) => c.refutation)}
+          />
+        }
       />
 
       {/*
@@ -138,18 +158,27 @@ export default function HowItWorks() {
         width="6xl"
         className="!py-10 md:!py-12"
       >
-        <div className="max-w-3xl">
-          <p className="text-body font-semibold leading-relaxed text-text">
-            {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas in.{' '}
-            {RESEARCH_STATS.killed.toLocaleString('en-GB')} killed.
-          </p>
+        {/* THE STAT NOW HAS ITS PICTURE BESIDE IT (brief 2026-08-15, Part Four: "there is a funnel
+            in the logo mark and a funnel in the proposition, and it currently appears as
+            neither"). `FunnelDiagram` reads the SAME `RESEARCH_STATS` this paragraph reads, so the
+            two cannot drift, and it prints no third figure -- the taper is to scale and the stub
+            is unlabelled, for the reason its docblock gives at length. One diagram in this
+            section and no other, per the brief's density rule. */}
+        <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-12">
+          <div className="max-w-3xl">
+            <p className="text-body font-semibold leading-relaxed text-text">
+              {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas in.{' '}
+              {RESEARCH_STATS.killed.toLocaleString('en-GB')} killed.
+            </p>
           {/* This line promised that EVERY kill ships published with the evidence behind it, which
               was false about a number this page reads from the same JSON as the page that states it
               correctly: 400 of the 1,364, per /kill-log. The replacement claims no quantity at all,
               and `numbersReconcile.test.ts` scans every page for the absolute form. */}
-          <p className="mt-2 max-w-[60ch] text-meta leading-relaxed text-muted">
-            {RESEARCH_STATS.rejectRateLabel} died on cited evidence. {killsSummary()}.
-          </p>
+            <p className="mt-2 max-w-[60ch] text-meta leading-relaxed text-muted">
+              {RESEARCH_STATS.rejectRateLabel} died on cited evidence. {killsSummary()}.
+            </p>
+          </div>
+          <FunnelDiagram className="w-full md:w-[340px]" />
         </div>
       </Section>
 
@@ -170,7 +199,7 @@ export default function HowItWorks() {
         bg="white"
         width="6xl"
         title="One idea, all the way through"
-        intro="Every pack on the shelf carries an evidence record like this. The one below is real, it is the free sample, and every source in it opens."
+        intro="Every pack carries an evidence record like this one. It is the free sample, and every source in it opens."
       >
         <CheckSequence />
       </Section>
@@ -193,13 +222,13 @@ export default function HowItWorks() {
             paragraph on /about that told the same fact in different words. Inconsistent disclosure
             across a site reads as evasive, so it is stated ONCE, here, on the page that explains
             the mechanism, and the home page and /about say nothing about mechanism and link here.
-            One sentence, before the first check, because a reader who learns this after reading
-            six verdicts has been told late. */}
+            Before the first check, because a reader who learns this after reading six verdicts has
+            been told late. The 52-word single sentence it started as was three claims sharing one
+            spine; three short sentences say the same thing and can each be read on its own. */}
         <p className="mb-10 max-w-3xl text-body leading-relaxed text-muted">
-          The research is AI-led and automated: the checks below are run by AI agents, each
-          instructed to rule only on passages it fetched from the open web, and the sources they
-          used are published with the verdict so you can hold the reasoning against them yourself.
-          A person reviews that record before the pack reaches the shelf.
+          AI agents run the checks below. Each may only rule on passages it fetched from the open
+          web, and those sources are published with the verdict, so you can hold the reasoning
+          against them yourself. A person reads that record before a pack reaches the shelf.
         </p>
         {/* No `mt-12`: the lede moved into the heading block, whose `mb-10` is now the gap to the
             content. Keeping both stacked 88px between the lede and step 1. */}
@@ -261,7 +290,7 @@ export default function HowItWorks() {
                         {example.title}
                       </h3>
                       <p className="mt-2 text-meta leading-relaxed text-muted">
-                        {firstSentences(example.reason, 160)}
+                        {firstSentences(plainEnglish(example.reason), 160)}
                       </p>
                       <Link
                         href="/kill-log"
@@ -327,15 +356,15 @@ export default function HowItWorks() {
       >
         <div className="max-w-3xl space-y-4">
           <p className="text-body font-normal leading-relaxed text-muted">
-            The finding, the checking and the sourcing are automated, and that is the point: it is
-            how every idea gets the same treatment instead of the handful a person could read. But
-            nothing reaches the shelf on its own. A person reads the verdict, opens the sources and
-            checks that the argument holds before a pack is published.
+            Automating the finding, the checking and the sourcing is what lets every idea get the
+            same treatment, instead of the handful a person could read. But nothing reaches the
+            shelf on its own: a person reads the verdict, opens the sources, and checks the
+            argument holds before a pack is published.
           </p>
           <p className="text-meta leading-relaxed text-muted">
             The reviewer can send a pack back or kill it outright. What they cannot do is add
-            evidence the record does not have, which is why the verdict you read is the one the
-            published sources support.
+            evidence the record does not have. The verdict you read is the one the published
+            sources support.
           </p>
         </div>
       </Section>
@@ -359,8 +388,8 @@ export default function HowItWorks() {
               What is left describes what a published kill CONTAINS, which is what this section is
               for. */}
           <p className="text-body leading-relaxed text-muted">
-            Each published kill carries the check that fired and the argument that killed it, with
-            the sources where the kill had them.
+            Every published kill names the check it failed and the argument that killed it, with
+            the sources behind that argument where there were any.
           </p>
           <Link
             href="/kill-log"
@@ -384,8 +413,7 @@ export default function HowItWorks() {
       >
         <div className="max-w-3xl">
           <p className="text-body font-normal leading-relaxed text-muted">
-            A pack is evidence-backed research, not a guarantee. The finding, vetting and sourcing
-            is done. The execution is yours. No analysis can promise a business outcome.
+            {`${PACK_DISCLAIMER} ${PACK_SCOPE} No analysis can promise a business outcome.`}
           </p>
         </div>
       </Section>

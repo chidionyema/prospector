@@ -2,7 +2,7 @@ import React from 'react';
 
 import { type Pack } from '@/lib/api/client';
 
-import { DossierCard } from './DossierCard';
+import { PackRowList } from './PackRow';
 
 /**
  * "More like this" keyed on **mechanism**, not sector (spec Part 9).
@@ -26,13 +26,10 @@ export function SimilarPacks({ items }: { items: Pack[] }) {
         Like how this one makes money but not the industry it sits in? These work the same way somewhere
         else.
       </p>
-      <ul className="mt-5 grid gap-3 sm:grid-cols-3">
-        {items.map((candidate) => (
-          <li key={candidate.id}>
-            <DossierCard pack={candidate} />
-          </li>
-        ))}
-      </ul>
+      {/* Rows, was a three-up `DossierCard` grid. Same reason as everywhere else on the site
+          (2026-08-15 brief): two card formats never share a page, and this row sat under a pack
+          page that is itself one long single-pack presentation. */}
+      <PackRowList className="mt-5" packs={items} />
     </section>
   );
 }

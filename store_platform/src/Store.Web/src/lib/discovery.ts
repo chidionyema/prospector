@@ -273,7 +273,7 @@ export function activeFacetValues(state: DiscoveryState, kind: FacetKind): strin
  * `activeConstraintCount` counts `advantage` as one constraint however many values are in it,
  * because the near-miss rule asks "how many AND-ed constraints did this pack fail". A "Filters"
  * badge answers a different question, how many controls did I switch on, and a buyer who lit
- * "Suits builders" and "Suits sellers" and reads "Filters 1" has been told something they can
+ * "I can build" and "I can sell" and reads "Filters 1" has been told something they can
  * see is false.
  */
 export function activeFacetSelectionCount(state: DiscoveryState): number {
@@ -853,4 +853,78 @@ export function matchReasons(pack: FacetedPack, intent: DiscoveryState): string[
   }
 
   return reasons.slice(0, 2);
+}
+
+/**
+ * The card's one-line description, hard-capped.
+ *
+ * MOVED HERE FROM `pages/index.tsx` (2026-08-15) and otherwise UNCHANGED -- same three boundaries,
+ * same 30-word cap, same dangling-word list, same behaviour on every input. It moved because the
+ * shelf row became a shared component (`components/discovery/PackRow`), and a component cannot
+ * import a helper from the page that renders it without a cycle. `pages/index.tsx` re-exports it,
+ * so `lib/__tests__/cardLine.test.ts` and its import path are untouched.
+ *
+ * `repairTruncation` already repairs the publish path's character-150 cut, but repairing a cut is
+ * not the same as not making one: measured in the served HTML on 2026-08-07, 32 card descriptions
+ * still ended mid-clause on a lowercase word followed by an ellipsis ("...fixes the knee, neck
+ * and wrist pain…", "...and the approved contractor booking, so a…"). A sentence that stops in
+ * the middle of a clause reads as a broken string, not as a summary, and it is the LAST thing the
+ * eye sees before the price.
+ *
+ * A WORD BOUNDARY WAS NEVER THE THING THAT MATTERED (2026-08-15, founder: this is "the worst
+ * thing on the shelf"). This function used to cut at 20 words and append nothing, on the
+ * argument that "at a clean word boundary the line reads as a complete short summary". Measured
+ * against the live catalogue (all 59 packs, GET api.mumchimp.com/catalog): SIXTEEN of them ended
+ * on a dangling function word -- "...and the approved contractor booking, so a", "...exactly
+ * which permit, licence and", "...the contractor must withhold part of". Word 20 is not a
+ * meaning boundary, so cutting there lands mid-clause about a quarter of the time, and no
+ * ellipsis is what makes it read as broken DATA rather than as an elision.
+ *
+ * The engine is not at fault and was wrongly blamed for this: the same fetch shows all 59
+ * `oneLine` values arriving whole, every one ending in terminal punctuation, longest 268 chars
+ * against `bridge.py`'s 280 cap. The shelf was cutting its own copy.
+ *
+ * THREE BOUNDARIES, IN DESCENDING ORDER OF MEANING. The first sentence, because these strings
+ * are one sentence by construction and a second one is a restatement of the purchase terms.
+ * Then a clause boundary inside the window, because a line ending on a comma's clause is a
+ * finished thought. Only then a word boundary -- and there, back off over any trailing function
+ * word, which is the specific defect: a line may not end on "so", "the", "which", "part of".
+ *
+ * 30 words rather than 20 because the cap now costs something. At 30, 44 of 59 pass through
+ * WHOLE (median 155 chars, max 203) against 6 of 59 at 20, and the dangling count is 0 at both
+ * -- so the lower cap was mutilating three quarters of the shelf to buy nothing. Still capped
+ * rather than unbounded because the card clamps in CSS, and a clamp reached mid-word puts the
+ * browser's own ellipsis back on the card.
+ */
+const DANGLING_TAIL = new Set([
+  'the', 'a', 'an', 'and', 'or', 'but', 'so', 'to', 'of', 'in', 'on', 'at', 'for', 'with',
+  'that', 'which', 'what', 'they', 'by', 'from', 'its', 'their', 'as', 'into', 'per', 'up',
+  'out', 'over', 'under', 'is', 'are', 'was', 'were', 'be', 'been', 'when', 'while', 'after',
+  'before', 'than', 'then', 'if', 'this', 'these', 'those', 'part', 'each', 'every', 'both',
+]);
+
+export function cardLine(text: string | null | undefined, maxWords = 30): string {
+  if (!text) return '';
+  let clean = text.replace(/\s*[…]\s*$/, '').replace(/\s*\.\.\.\s*$/, '').trim();
+  // The first sentence only. Split on `. ` rather than `.` so a decimal or an abbreviation
+  // mid-sentence cannot cut the line short -- the same rule `ideas/index.tsx`'s `firstSentence`
+  // uses on landing descriptions.
+  const stop = clean.search(/\.\s/);
+  if (stop !== -1) clean = clean.slice(0, stop);
+  clean = clean.replace(/\.$/, '').trim();
+
+  const words = clean.split(/\s+/);
+  if (words.length <= maxWords) return clean;
+
+  const head = words.slice(0, maxWords);
+  // A clause boundary inside the window beats a word boundary at the end of it. Bounded to the
+  // last 8 words so a comma near the start cannot amputate the line to three words.
+  for (let i = head.length - 1; i >= Math.max(head.length - 8, 0); i -= 1) {
+    if (/[,;:]$/.test(head[i])) return head.slice(0, i + 1).join(' ').replace(/[,;:]+$/, '');
+  }
+  // Otherwise back off over trailing function words, so the line cannot end on "so the".
+  while (head.length > 0 && DANGLING_TAIL.has(head[head.length - 1].replace(/[,;:]$/, '').toLowerCase())) {
+    head.pop();
+  }
+  return head.join(' ').replace(/[,;:]+$/, '');
 }

@@ -9,6 +9,7 @@ import { PACK_DOCUMENTS } from '@/components/marketing/PackContents';
 import { fetchCatalog, type Pack } from '@/lib/api/client';
 import { checksSentence } from '@/lib/checks';
 import { priceRange, formatGbp } from '@/lib/priceRange';
+import { PACK_DISCLAIMER, PACK_SCOPE } from '@/lib/disclaimer';
 
 /**
  * `/llms.txt`, a curated, plain-Markdown map of this site for large language models.
@@ -117,8 +118,8 @@ a page that may since have changed. Verdicts are supported, refuted, or unverifi
 unverifiable is a finding (retrieval ran and no passage settled it), not a missing value.
 
 What a pack is NOT, stated so it is not inferred wrongly: it is not financial, legal, or investment
-advice, and it is not a guarantee that the business will succeed. The guarantee is that the
-analysis is evidence-backed and sourced. Execution is the buyer's.
+advice. ${PACK_DISCLAIMER} What IS promised is that the analysis is evidence-backed and sourced.
+${PACK_SCOPE}
 
 Ideas that FAIL the checks are published too, with the sourced reason they were killed, that is
 the kill log, and it is the evidence the checks are real rather than a marketing claim.

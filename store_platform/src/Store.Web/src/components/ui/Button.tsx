@@ -10,10 +10,17 @@ import { cx } from './cx';
  *    button is not a feature: it guarantees the pair drifts the first time either is edited, and
  *    it makes "which button is the most important one on this page?" unanswerable from the code.
  *
- * The fill is --action, the one blue that means "do something" (founder directive 2026-08-15,
- * tokens.css carries the whole system). It replaced INK, which replaced vermillion #FF5A1F --
- * that one scored 3.12:1 against white, below the AA floor for its label size, which is what
- * forced the black-on-orange pairing the whole site was wearing. White on #1B3F8B is 9.86:1.
+ * The fill is --action, the ONE colour that means "do something" (tokens.css carries the whole
+ * system and every measurement). Its literal has moved three times and the rule has not: ink,
+ * then the navy #1B3F8B, and since the founder's palette review on 2026-08-15 the charcoal
+ * #2D3436 -- the navy read as an orphan beside the teal identity. Before all of those it was
+ * vermillion #FF5A1F, which scored 3.12:1 against white, below the AA floor for this label size,
+ * and that is what forced the black-on-orange pairing the whole site used to wear.
+ * White on #2D3436 is 12.68:1.
+ *
+ * The PAIR is what to read here, not either variant alone: charcoal fill, teal outline. `primary`
+ * and `secondary` separate on hue as well as on weight, which is what stops "the second button"
+ * from being the first one with its fill removed.
  */
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
@@ -38,12 +45,28 @@ const VARIANTS: Record<ButtonVariant, string> = {
     'active:bg-action-active',
     'disabled:opacity-40 disabled:cursor-not-allowed',
   ),
-  // The hairline button. `border-strong` (#D4D4D8) rather than `border` (#E4E4E7) because a
-  // control has to read as a control: at the lighter value the edge disappears once the button
-  // sits on a card, which is exactly where secondary buttons live.
+  /* The hairline button, and since 2026-08-15 it is the TEAL half of the pair.
+   *
+   * It was `border-border-strong` + `text-text`: a grey outline round ink, i.e. the same two
+   * neutrals the page is already made of. That was survivable while the primary button was navy,
+   * because the pair separated on the primary's hue alone. Option B moves the primary to charcoal
+   * #2D3436, which is close enough to --text #171717 that a grey-outlined ink button beside it
+   * would be the same object twice -- one filled, one not -- and "black buttons disappear" is a
+   * failure this palette has already shipped once (see --action in tokens.css).
+   *
+   * So the secondary now carries the brand: teal edge, teal label. That is what makes the two
+   * buttons read as a designed PAIR rather than as a button and its ghost, and it is where the
+   * founder's "teal for the logo, charts and key highlights" lands on a control.
+   *
+   * MEASURED: --brand-mark #0F766E is 5.32:1 on the warm canvas #FAF9F7 and 5.47:1 on --surface
+   * #FFFFFF -- AA for the label at both. The EDGE clears WCAG 1.4.11's 3:1 for non-text UI by the
+   * same numbers, which the old --border-strong (1.48:1) never did; that token's own comment in
+   * tokens.css records it as "DECORATION ONLY ... not legal on a control", so this swap also
+   * retires a documented violation rather than merely restyling one.
+   */
   secondary: cx(
-    'bg-surface text-text border border-border-strong',
-    'hover:border-text hover:bg-surface2',
+    'bg-surface text-brand-mark border border-brand-mark',
+    'hover:bg-brand-mark hover:text-white',
     'disabled:opacity-40 disabled:cursor-not-allowed',
   ),
   ghost: cx(
@@ -151,8 +174,24 @@ export function chipClasses({
    * wins depends on the order Tailwind happens to emit them, not on the order they are listed.
    */
   removable = false,
+  /**
+   * Let the label wrap and the chip grow, instead of holding one line at a fixed height.
+   *
+   * For a chip in a `flex-wrap` rail this is wrong -- it shrink-wraps its label, so there is
+   * nothing to wrap against. It is for a chip in a GRID cell, where the column width is fixed by
+   * the grid and a long label has nowhere to go. Measured 2026-08-15 on the StepFlow tiles at
+   * 320px: "I can run operations" pushed its trailing count 45px PAST the tile's padding edge and
+   * put four elements off-screen; at 390px the overshoot was 10px. A count cannot sit in a
+   * right-aligned column when its own sibling is shoving it out of the box.
+   *
+   * Modelled here rather than passed as a `className`, for the reason `removable` gives above:
+   * `h-11` and `h-auto` have equal specificity, so which one won would depend on the order
+   * Tailwind happened to emit them. `min-h` keeps the 44px touch floor as a FLOOR, which is what
+   * it was always meant to be, and `py-2` stops a two-line label sitting hard against the border.
+   */
+  wrap = false,
   className,
-}: { selected?: boolean; removable?: boolean; className?: string } = {}) {
+}: { selected?: boolean; removable?: boolean; wrap?: boolean; className?: string } = {}) {
   return cx(
     /*
      * 44px on touch, 32px from `sm` up. `h-8` everywhere put the shelf's facet chips, the kill
@@ -164,7 +203,10 @@ export function chipClasses({
      * a pointer does not need the target and a 44px chip rail would dominate a page it only
      * qualifies.
      */
-    'inline-flex h-11 items-center rounded-sm border text-meta font-medium sm:h-8',
+    'inline-flex items-center rounded-sm border text-meta font-medium',
+    // `sm:py-0` matters: the desktop chip must stay exactly 32px. `py-2` + a 20px line box is
+    // 36px, so without it every wizard chip would grow 4px on a breakpoint where nothing wraps.
+    wrap ? 'min-h-11 py-2 sm:min-h-8 sm:py-0' : 'h-11 sm:h-8',
     removable ? 'gap-1.5 pl-3 pr-2' : 'px-3',
     'transition-colors duration-[120ms] ease-[cubic-bezier(0.2,0,0,1)]',
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',

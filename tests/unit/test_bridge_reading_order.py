@@ -30,9 +30,9 @@ from prospector import (
     pack_toolkit,
 )
 from prospector.bridge import (
+    _SECTION_TITLES,
     BUNDLE_READING_ORDER,
     EngineBridge,
-    _SECTION_TITLES,
 )
 from prospector.models import Candidate, CheckResult, Decision, Dossier, Verdict
 

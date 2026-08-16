@@ -96,8 +96,24 @@ _CUT_NOTE = "[passage cut here; the rest is on the page linked above.]"
 # lot in one "sentence", so these are boundaries too. Measured on `e698149e137fc164`, adding
 # them is what separates "National Data Privacy Agreement – Student Data Privacy Consortium
 # (SDPC) Close Student Data Privacy Consortium (SDPC) ..." from the paragraph after it.
+#
+# The last alternative is a ZERO-WIDTH break on a full stop with no space after it. That is a
+# scrape artifact, not punctuation: it is where a page's title element ended and its body began
+# with nothing between them. It matters because the sentence-end rule above requires whitespace,
+# so without this the title and the prose stay ONE segment -- and the prose then carries the
+# title past the lower-case ratio test that exists to reject titles. Shipped on `/sample`,
+# attributed to capterra.com, as the fourth quote in the section that proves we quote:
+#
+#     "Payapps Logo Payapps Software Review 2026: Features, Integrations, Pros & Cons.Payapps
+#      includes invoice management, purchase order management, and accounting integration ..."
+#
+# Split rather than rejected, so the real sentence after the glue survives and only the title is
+# dropped. Two lower-case letters on the left and a capital plus two lower-case on the right
+# keeps initials and abbreviations ("U.S. Bank", "e.g.Foo" is not a shape prose produces) and
+# every decimal, since digits are excluded on both sides.
 _SEGMENT_BREAK = re.compile(
-    r"(?<=[.!?])\s+|\s+[—–]\s*|\s*\|\s*|\s*#{1,6}\s+|\s*»\s*|\s*-{3,}\s*|\s*\n+")
+    r"(?<=[.!?])\s+|\s+[—–]\s*|\s*\|\s*|\s*#{1,6}\s+|\s*»\s*|\s*-{3,}\s*|\s*\n+"
+    r"|(?<=[a-z]{2}\.)(?=[A-Z][a-z]{2})")
 _LOWER_WORD = re.compile(r"\b[a-z][a-z'\-]{1,}\b")
 _ANY_WORD = re.compile(r"\b[A-Za-z][A-Za-z'\-]*\b")
 # `workflowResourceReport` — a nav list concatenated without spaces. Two lower-case letters,
@@ -134,6 +150,23 @@ _FURNITURE = re.compile(
 # buyer one quote under a link they can still click. An accepted one puts a cookie banner in a
 # £30 product as evidence. Sources with nothing quotable are listed with their link alone.
 _MIN_LOWER_RATIO = 0.55
+# A QUOTE HAS TO START WHERE A SENTENCE STARTS (2026-08-15, founder on the live sample page).
+#
+# The segment splitter cuts on sentence ends AND on page furniture, so a passage whose first
+# real prose is preceded by a heading can leave a run beginning in the middle of somebody's
+# clause. Shipped on `/sample` under "Quoted rather than summarised", attributed to
+# researchgate.net:
+#
+#     "retention and their effects on construction subcontractors in the UK. chasing the final
+#      retention on its due date."
+#
+# Every other filter here passes it: it is long enough, it is lower-case-heavy, it is prose. It
+# is also two halves of two different sentences, and it is the third thing a buyer reads in the
+# section that exists to prove we quote rather than paraphrase.
+#
+# A leading digit is a sentence start (`3.9% of...`), and so is a lower-case-then-capital brand
+# (`eBay`, `iKeepSafe`) -- the same shapes `_RUN_TOGETHER` was written to protect.
+_SENTENCE_START = re.compile(r"^[\"'“‘(\[]?(?:[A-Z0-9£$€]|[a-z][A-Z])")
 
 
 def _verdict(chk: Any) -> str:
@@ -168,6 +201,11 @@ def _readable_excerpt(text: str) -> str:
         if _RUN_TOGETHER.search(seg) or _GLUED_CELLS.search(seg):
             continue
         if len(_LOWER_WORD.findall(seg)) / len(words) < _MIN_LOWER_RATIO:
+            continue
+        # Only for the FIRST segment kept. A later one may legitimately continue the quote
+        # across a break the splitter made, and rejecting those would shorten every excerpt
+        # that runs past one sentence. What must not happen is the quote OPENING mid-clause.
+        if not kept and not _SENTENCE_START.match(seg):
             continue
         kept.append(seg if seg[-1] in ".!?" else seg + ".")
         if len(" ".join(kept)) >= 200:

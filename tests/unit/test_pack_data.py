@@ -61,7 +61,18 @@ ASSUMPTIONS = {
 
 
 def _cfg(**pack_data_block):
-    return SimpleNamespace(weights=dict(WEIGHTS), pack_data=dict(pack_data_block))
+    """A `pack_data` config for the generator tests, WITH the scorecard switched on.
+
+    `include_scorecard` defaults to False in production from 2026-08-15 — the buyer does not
+    receive our grade of the idea (`pack_data.DEFAULT_INCLUDE_SCORECARD`, and the founder
+    report behind it). Every test in this module is about whether the scorecard is BUILT
+    correctly, which is a separate question from whether it ships, so they opt in here and
+    stay meaningful. Whether it ships is pinned in `test_engine_info_leaves_the_pack.py`,
+    including the case where a caller passes no config at all.
+    """
+    block = {"include_scorecard": True}
+    block.update(pack_data_block)
+    return SimpleNamespace(weights=dict(WEIGHTS), pack_data=block)
 
 
 @pytest.fixture

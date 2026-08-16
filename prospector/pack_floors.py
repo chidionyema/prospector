@@ -108,7 +108,27 @@ def _whole_sentences(text: str, budget: int = 280) -> str:
 _REPORTING_OPENER = re.compile(
     r"^(?:the\s+)?(?:passages?|sources?|retrieved\s+\w+)\s+"
     r"(?:show|describe|discuss|indicate|say|state|suggest|confirm|establish)"
-    r"(?:\s+that)?\s+", re.I)
+    r"(?:\s+(?P<that>that))?\s+", re.I)
+# THE OPENER GOVERNED MORE THAN ITS OWN CLAUSE (2026-08-15, founder on the live sample page).
+#
+# "The passages show THAT a, THAT b, and THAT c" is one verb with three complements. Deleting
+# only the first four words leaves the other two `that`s reporting to a verb that is no longer
+# there, and the first bullet of the first section of the free sample shipped as:
+#
+#     "Main contractors in the UK routinely withhold a percentage ... until milestones are met,
+#      that unpaid subcontractors cause serious cash flow problems, and that Carillion's 2018
+#      collapse left a trail ..."
+#
+# which is not a sentence. This removes the stranded conjunctions along with the verb that
+# licensed them, and ONLY when the opener actually consumed a `that` -- "The passages show the
+# Federation of Master Builders is ..." has no complementiser to strip and is left alone.
+_ORPHAN_THAT = re.compile(r"([,;])(\s+)(and\s+|or\s+|but\s+)?that\s+", re.I)
+# Some rationales are reporting voice in a shape the opener cannot take off cleanly ("The
+# passages DO confirm the basic mechanics ... But they also contradict ..."): the verb carries
+# an auxiliary, and stripping through it leaves a subject with no predicate. Detecting the
+# residue is cheap and lets callers who can afford to say nothing say nothing, rather than
+# print a sentence about our own retrieval to a reader who paid for a sentence about theirs.
+_REPORTING_RESIDUE = re.compile(r"^(?:the\s+)?(?:passages?|sources?|retrieved)\b", re.I)
 
 
 def _finding(rationale: str) -> str:
@@ -119,9 +139,15 @@ def _finding(rationale: str) -> str:
     defect the heading arithmetic in `exec_summary_md` was shipping.
     """
     body = _whole_sentences(rationale)
-    stripped = _REPORTING_OPENER.sub("", body, count=1)
-    if stripped == body or not stripped:
+    match = _REPORTING_OPENER.match(body)
+    if not match:
         return body
+    stripped = body[match.end():]
+    if not stripped:
+        return body
+    if match.group("that"):
+        stripped = _ORPHAN_THAT.sub(
+            lambda m: f"{m.group(1)}{m.group(2)}{m.group(3) or ''}", stripped)
     # The opener carried the sentence's capital letter with it.
     return stripped[0].upper() + stripped[1:]
 
@@ -361,9 +387,19 @@ def exec_summary_md(candidate: Any, checks: Sequence[Any] = ()) -> str:
     #
     # `bullets` is now the single source of both, so the two cannot drift again, whatever
     # thins the list — the cap, an empty rationale, or a line the publish pass would delete.
+    #
+    # AND IT SAYS SO WHEN IT IS A SUBSET (2026-08-15). The count above was made honest against
+    # the list; it was still read against the STOREFRONT, which prints "6 checks cleared" over
+    # the same pack. Four bullets under a heading that says four, beside a badge that says six,
+    # is the same arithmetic failing one surface later. Naming the denominator costs three words
+    # and turns a contradiction into a promise the rest of the pack keeps.
     if bullets:
-        noun = "thing that holds" if len(bullets) == 1 else "things that hold"
-        lines += [f"## What we found — {len(bullets)} {noun} up", ""]
+        if len(settled) > len(bullets):
+            head = f"## What we found — {len(bullets)} of the {len(settled)} things that hold up"
+        else:
+            noun = "thing that holds" if len(bullets) == 1 else "things that hold"
+            head = f"## What we found — {len(bullets)} {noun} up"
+        lines += [head, ""]
         lines += bullets + [""]
     elif settled:
         # Supported checks exist but none of them is quotable here. Saying "nothing came back
@@ -389,11 +425,42 @@ def exec_summary_md(candidate: Any, checks: Sequence[Any] = ()) -> str:
         # They are set as a list rather than a comma run because `check_label` returns
         # QUESTIONS: "Is it legal?, Can the customer afford it?" is not a sentence, and reading
         # them as a list is also how a buyer would use them.
-        questions = sorted({check_label(getattr(c, "check_name", "") or "")
-                            for c in open_checks if getattr(c, "check_name", "")})
-        if questions:
-            lines += ["## What we could not settle", ""]
-            lines += [f"- {q}" for q in questions]
+        #
+        # A BARE QUESTION IS NOT INFORMATION (2026-08-15, founder on the live sample page).
+        #
+        # This shipped as three questions with nothing under them -- "Can the claims be
+        # checked? / Is someone already doing this well? / Will this still be worth money
+        # later?" -- which reads as three dead ends and tells the buyer only that we gave up.
+        # It is also the founder's "we talk down the opportunity" in its purest form, because
+        # what we actually HELD for two of those three was substantive: that retention is
+        # still standard practice at the 3-5% level as of February 2025, and that the
+        # incumbents we found handle applications for payment rather than retention release.
+        # Both belong to the reader. "Could not settle" means the evidence did not CLOSE the
+        # question, never that the search came back empty.
+        #
+        # The finding is printed only when `_finding` produced one in the buyer's voice.
+        # A rationale that is still talking about our retrieval after that is dropped to the
+        # bare question rather than published, because the alternative is a sentence about our
+        # search where the reader is owed a sentence about their market.
+        seen_labels: set = set()
+        items: List[str] = []
+        for chk in open_checks:
+            label = check_label(getattr(chk, "check_name", "") or "")
+            if not label or label in seen_labels:
+                continue
+            seen_labels.add(label)
+            finding = _finding((getattr(chk, "rationale", None) or "").strip())
+            if finding and not _REPORTING_RESIDUE.match(finding):
+                line = f"- **{label}** {finding}"
+            else:
+                line = f"- **{label}**"
+            if publish_pass(line):
+                items.append(line)
+        if items:
+            lines += ["## What we could not settle", "",
+                      "The evidence points, but it does not close these. What we did find is "
+                      "under each one.", ""]
+            lines += sorted(items)
             lines += ["", "These are not omissions. Each one is argued at full strength further "
                           "down, because the case against is the half that decides whether you "
                           "spend a year on this.", ""]
@@ -411,31 +478,114 @@ def exec_summary_md(candidate: Any, checks: Sequence[Any] = ()) -> str:
     # The guarantee survives, stated as our commitment rather than their homework, and the
     # sources it refers to are cited inline throughout and listed in full at the end for
     # anyone who wants them. Nobody is asked to go and look.
+    # The guarantee is ONE sentence, and the pointer is a second one. Written as a single
+    # sentence it read "...that is a refund, not an argument — **Every check, in full** at the
+    # end has each check with its sources", which stutters "each check" straight after a
+    # section title that already contains the word: a section name is a noun phrase, and
+    # splicing one mid-clause makes the sentence around it ungrammatical wherever the title
+    # happens to end in a preposition or a comma.
     lines += ["---", "",
               "Every claim in this pack names the page it came from. If one of them does not "
-              f"say what we say it says, that is a refund, not an argument — **{QA_SECTION}** "
-              "at the end has each check with its sources, for anyone who wants to look.", "",
+              "say what we say it says, that is a refund, not an argument.", "",
+              f"The page behind every claim is at the end, in **{QA_SECTION}**. "
               f"**{CHECKLIST_SECTION}** is where to start.", ""]
     return "\n".join(lines)
 
 
 def first_week_checklist_md(candidate: Any) -> str:
+    """The generic first week, for a pack `pack_checklist` could not write a specific one for.
+
+    WHAT THIS USED TO BE, AND WHY IT CHANGED (2026-08-15)
+    ----------------------------------------------------
+    Six numbered lines addressed to somebody auditing the engine rather than to the person who
+    paid: "Re-read the QA report kill/pass gates and list every SUPPORTED citation URL",
+    "Confirm the buyer (`who_pays`) matches reality", "using only claims that survived
+    claim-check", "Log what you could not verify". A snake_case schema key in a code span, our
+    internal verdict words in capitals, and four of the six steps spent on our pipeline instead
+    of the reader's market.
+
+    `pack_checklist.render` was written to replace exactly this and does — for every pack it
+    can describe specifically. This is what still prints when it cannot, and `exec_summary_md`
+    now closes by naming this section as WHERE TO START. So the pack's opening promise pointed
+    at the one surface still speaking schema.
+
+    The ADVICE changed too, not only the vocabulary. `render` returns "" mainly when the
+    dossier carries no payer — "the buyer is the spine of week one" — so this template prints
+    for the packs with the LEAST established about them, and it was telling that reader to
+    confirm a buyer the pack never named and then start building. A first week spent building
+    on the least-verified pack in the catalogue is the wrong week. The one below spends it on
+    the cheapest thing that can prove the pack wrong, which is talking to people, and it says
+    plainly that stopping is a result rather than a failure.
+
+    No other section of the pack is named here, deliberately. Naming one is how the previous
+    generation of this copy broke: it sent buyers to `QA_Report.md`, a file the download had
+    stopped containing, inside the first five minutes — which is when a refund gets decided.
+    The two names this module can stand behind are `QA_SECTION` and `CHECKLIST_SECTION`, and
+    they are pinned to `bridge._SECTION_TITLES` by test. A generic template has no business
+    asserting more about a document it was reached from precisely because that document is thin.
+
+    Claim-safe by construction: `title` and `who_pays` are the only fields interpolated, and
+    nothing below asserts anything about the reader's market.
+    """
     title = (getattr(candidate, "title", None) or "this opportunity").strip()
-    who = (getattr(candidate, "who_pays", None) or "the stated buyer").strip()
-    return "\n".join([
+    who = (getattr(candidate, "who_pays", None) or "").strip()
+
+    lines = [
         f"# First-week checklist — {title}",
         "",
-        "Claim-safe starter steps. Adapt only where your own evidence supports it.",
+        "Nothing in this pack is worth building on until somebody who has the problem tells "
+        "you, in their own words, that they have it. That is this week: five conversations, a "
+        "few hours in total, and it is the one week that can save you the year.",
         "",
-        "1. Re-read the QA report kill/pass gates and list every SUPPORTED citation URL.",
-        "2. Confirm the buyer (`who_pays`) matches reality for your market — dossier says: "
-        f"{who}.",
-        "3. Sketch the smallest paid offer described in the build spec (no scope creep).",
-        "4. Pick one distribution channel from the GTM plan; ignore the rest for week one.",
-        "5. Write the first outreach / listing using only claims that survived claim-check.",
-        "6. Log what you could not verify; do not invent substitutes.",
+    ]
+    # The payer is a heading line when the dossier carries one, and FINDING them becomes the
+    # week's first job when it does not. The old default printed "the stated buyer" — filler
+    # standing exactly where the reader needed a name, inside the document that prints
+    # precisely when no name exists.
+    if who:
+        lines += [f"**Who you are looking for:** {as_phrase(who)}", ""]
+    else:
+        lines += [
+            "**Start by naming who you are looking for.** This pack could not settle it, which "
+            "is the honest reason you are reading the general plan and not a specific one. "
+            "Write down the narrowest group you can describe well enough to go and find five "
+            "of them by Wednesday. Narrow is not a limitation here; it is the only thing that "
+            "makes the rest of the week possible.",
+            "",
+        ]
+    lines += [
+        "## Monday and Tuesday — write down what you would be wrong about",
         "",
-    ])
+        "1. In one sentence, in their words rather than ours, write the problem you believe "
+        "these people have. If you cannot write it without reusing the title above, you do not "
+        "understand it yet — and day one is a good time to find that out.",
+        "2. Underneath it, write the single fact that would make this a bad idea. You are going "
+        "looking for that fact this week, not for encouragement. It is far cheaper to find now "
+        "than in month six.",
+        "",
+        "## Wednesday to Friday — five conversations",
+        "",
+        "3. Find five people who fit the description and ask each of them how they handle this "
+        "today. Not whether they would buy something — what they actually do on a Tuesday "
+        "morning, and what it costs them to do it.",
+        "4. Listen for what they already pay for: a tool, somebody's hours, a workaround they "
+        "built themselves. Money already moving is the only evidence of demand that costs you "
+        "nothing to collect, and it is worth more than any answer to a hypothetical.",
+        "5. Ask each one what would have to be true before they changed it. Write the answers "
+        "down word for word. That phrasing is your first outreach copy, and it will be better "
+        "than anything you would have written for yourself.",
+        "",
+        "## Friday — decide, and be willing to stop",
+        "",
+        "6. If nobody named a cost, in money or in hours, stop here. That is a real result and "
+        "it cost you a week instead of a year. The pack has done its job.",
+        "7. If two or more of them described the same workaround, you have found the thing to "
+        "build. Week two is one page and one price, offered to those same five people first — "
+        "not a product, an offer. The rest of this pack is the long version of what to do once "
+        "one of them says yes.",
+        "",
+    ]
+    return "\n".join(lines)
 
 
 def ensure_marketing_floor(

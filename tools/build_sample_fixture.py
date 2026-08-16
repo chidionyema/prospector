@@ -111,6 +111,37 @@ _ATTRIB = re.compile(r"^\*\*(?P<host>[^*]+)\*\*(?:,\s*(?P<year>\d{4}))?"
                      r"(?:\s*—\s*(?P<label>.+?))?\s*$")
 _LINK_ONLY = re.compile(r"^\[(?P<url>https?://[^\]]+)\]\((?P=url)\)$")
 
+# URLs whose attribution line survived but whose excerpt did not -- see the drop in `_blocks`.
+# Module-level because `_blocks` is called once per shown section and `main` reports the total.
+_DROPPED_SOURCES: List[str] = []
+# Anything else this tool removed on the way through, printed by `main`. A build that trims
+# quietly reads as "we published everything we had" to the next person who runs it.
+_NOTES: List[str] = []
+
+
+def _block_text(block: Any) -> str:
+    """Every string inside one typed block, in order, joined with single spaces.
+
+    Blocks nest two ways -- `nodes` for block-level children, `children` for inline ones -- so
+    this walks whatever it is given rather than knowing the schema. Used to compare a rendered
+    block against a plain dossier field.
+    """
+    out: List[str] = []
+
+    def walk(node: Any) -> None:
+        if isinstance(node, str):
+            out.append(node)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+        elif isinstance(node, dict):
+            for key in ("nodes", "children", "text", "items"):
+                if key in node:
+                    walk(node[key])
+
+    walk(block)
+    return " ".join(" ".join(out).split())
+
 
 class _InlineTree(HTMLParser):
     """mistune's inline HTML to a nested node tree, refusing anything off the whitelist.
@@ -224,6 +255,27 @@ def _blocks(markdown: str) -> List[Dict[str, Any]]:
             if i < len(lines) and lines[i].strip().startswith("> "):
                 quote = lines[i].strip()[2:]
                 i += 1
+            # A SOURCE WITH NO QUOTE IS NOT A CARD (2026-08-15).
+            #
+            # `pack_field._passage_block` (`prospector/pack_field.py:263`) deliberately withholds
+            # an excerpt it has already printed in this section: two URLs on one site routinely
+            # return byte-identical body text, and the same paragraph under two links makes the
+            # evidence look padded rather than corroborated. In markdown the result is fine — an
+            # attribution line and a link, which reads as a second reference.
+            #
+            # Rendered as a CARD it is not fine. The section says "Excerpts from the pages the
+            # search returned ... Quoted rather than summarised", and a card whose entire purpose
+            # is the quote arrives empty underneath that sentence. Measured on the shipped sample
+            # fixture: `host='getyooz.com' quote_len=0`, the first card the reader meets.
+            #
+            # So the quoteless source is dropped from the excerpt rather than rendered hollow, and
+            # the drop is REPORTED by `main` below. A cap that trims silently reads as "we showed
+            # you everything" when it did not; this one has to say so out loud. The source itself
+            # is not lost — the pack's own sources section lists every URL, and `sourceCount` on
+            # this fixture still counts it.
+            if not quote:
+                _DROPPED_SOURCES.append(link.group("url"))
+                continue
             out.append({
                 "type": "source",
                 "host": attrib.group("host"),
@@ -274,6 +326,26 @@ def build(pack_id: str, dossier_dir: Path) -> Dict[str, Any]:
             "blocks": _blocks(md),
         })
 
+    # THE PAGE ALREADY SAID THAT (2026-08-15, founder on the live sample page).
+    #
+    # `sample.tsx` prints the one-liner as the standfirst, directly under the pack's title,
+    # because that is where a newspaper puts it -- and `exec_summary_md` opens its own section
+    # with the same sentence for exactly the same reason. Both are right in isolation. Rendered
+    # together they put one sentence twice on a reader's screen with a section number between
+    # them, which is the first thing anybody sees on the free sample.
+    #
+    # Dropped HERE rather than in the renderer: the pack is a standalone document and its
+    # opening section must still carry its own standfirst. It is this page that says it twice.
+    # Compared as normalised text, so a bolded copy still matches the plain field.
+    one_liner = " ".join(str(getattr(cand, "one_liner", "") or "").split()).strip().rstrip(".")
+    first_blocks = excerpt[0]["blocks"] if excerpt else []
+    if one_liner and first_blocks:
+        head = _block_text(first_blocks[0]).strip().rstrip(".")
+        if head.casefold() == one_liner.casefold():
+            first_blocks.pop(0)
+            _NOTES.append("dropped the repeated one-liner from the first excerpt section "
+                          "(the page prints it as the standfirst)")
+
     withheld = []
     for name in order[3:]:
         blurb = WITHHELD_BLURB.get(name)
@@ -313,6 +385,10 @@ def main() -> None:
         for s in fixture["excerpt"]:
             print(f"  {s['title']:<38} {len(s['blocks']):>3} blocks")
         print(f"  withheld: {len(fixture['withheld'])} sections")
+        for url in _DROPPED_SOURCES:
+            print(f"  dropped (no excerpt to quote): {url}")
+        for note in _NOTES:
+            print(f"  {note}")
         print(f"  block types: {sorted(counts)}")
         print(f"  legacy fields: {fixture['supported']}/{fixture['total']} supported, "
               f"{fixture['sourceCount']} sources, {len(fixture['checks'])} checks, "

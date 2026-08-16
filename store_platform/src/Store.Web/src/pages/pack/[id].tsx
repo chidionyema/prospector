@@ -17,6 +17,7 @@ import { Section } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_DOCUMENTS } from '@/components/marketing/PackContents';
 import { ApiError, fetchCatalog, fetchPackDetails, freshnessLabel, marketLabel, parseCheckCounts, scoreAxes, splitVerdict, Pack, PackDetails, FinancialSnapshot } from '@/lib/api/client';
 import { RESEARCH_STATS } from '@/lib/stats';
+import { PACK_DISCLAIMER } from '@/lib/disclaimer';
 import { paybackEquation } from '@/lib/payback';
 import { formatPriceForMarket, formatChargeNote, formatApproxNote, currencyForCountry, type Currency } from '@/lib/fx';
 import { isTruncated, repairTruncation } from '@/lib/copy';
@@ -520,8 +521,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
       <p className="mt-6 text-caption leading-relaxed text-subtle">
         {/* Secure checkout named where it is relevant, in a sentence, instead of as a third
             icon row. */}
-        Secure checkout via {providerLabel}. A pack is evidence-backed research, not a promise of business
-        success. See our{' '}
+        Secure checkout via {providerLabel}. {PACK_DISCLAIMER} See our{' '}
         <Link href="/refund" className={textLinkClass()}>
           refund policy
         </Link>
@@ -529,6 +529,13 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
       </p>
     </>
   );
+
+  // The one sentence under the h1. See the docblock at its render site for why it is `oneLine`
+  // and not `subhead`: the shelf can only show `oneLine`, so it is the string the buyer clicked.
+  const lead =
+    pack.subhead && (!pack.oneLine || isTruncated(pack.oneLine))
+      ? pack.subhead
+      : repairTruncation(pack.oneLine);
 
   return (
     <MarketingLayout>
@@ -663,14 +670,31 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                     exactly this slot, and the full description is in the sections below.
                   - There is no `subhead`: dropping it would leave the title with no sentence
                     under it at all, so the cut is repaired back to a word boundary instead. */}
-            {!(isTruncated(pack.oneLine) && pack.subhead) && (
-              <p className="mt-4 max-w-[60ch] text-body text-muted">
-                {repairTruncation(pack.oneLine)}
-              </p>
-            )}
-            {pack.subhead && (
-              <p className="mt-4 max-w-[60ch] text-body text-muted">{pack.subhead}</p>
-            )}
+            {/* ONE LEAD PARAGRAPH, NEVER TWO (2026-08-15, brief item 8) -- BUT IT IS THE SENTENCE
+                THE BUYER CLICKED (2026-08-16, founder: the cards carry a description that is
+                missing on the pack page, "very confusing").
+
+                #225 resolved the double paragraph by keeping `subhead` whenever one exists, on the
+                reasoning in the docblock above: `oneLine` was cut at 150 characters on 34 of 63
+                packs, so the complete sentence won. That premise has expired at the source.
+                Measured against the live catalogue on 2026-08-16 (61 packs, `api.mumchimp.com`):
+                61 of 61 `oneLine` values end in a full stop, none carries a truncation mark, and
+                the longest is 268 characters. The publish path is no longer cutting them, so what
+                the rule does today is swap an intact sentence for a different one on the 52 packs
+                that carry a subhead.
+
+                The shelf cannot absorb that swap. `PackRow` heads every card with
+                `cardLine(repairTruncation(pack.oneLine))`, and `oneLine` is the ONLY description
+                `/catalog` returns -- there is no `subhead` in the catalog payload at all -- so the
+                line a buyer clicks is by construction the opening of `oneLine`, and the page they
+                landed on did not contain it. Measured before this change: the card's sentence was
+                absent from 45 of 60 live pack pages.
+
+                So the rule stands and the winner flips. The subhead leads only when `oneLine` is
+                missing or comes through cut, which is the case the docblock above was written for.
+                Nothing is lost when it stands down: its audience framing is the `whoPays` row
+                below, and the full description is in the sections under that. */}
+            {lead && <p className="mt-4 max-w-[60ch] text-body text-muted">{lead}</p>}
 
             {/* WHY THIS IS WORTH MONEY, STATED ONCE, AND THE SAME ON EVERY PACK.
                 The page argues rigour from the first screen (checks, sources, survival) and never
@@ -683,11 +707,18 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 would be the first unsourced claim on the money page. This one asserts nothing
                 about the pack: it describes what the product category is, in the second person,
                 and every word of it is already backed by the sections below. Also carries no
-                number, so there is nothing here for `source-or-die` to demand a citation for. */}
+                number, so there is nothing here for `source-or-die` to demand a citation for.
+
+                REWRITTEN 2026-08-16. The previous wording ("is NOT having it. IT IS the time...")
+                defined the product by what it is not, which is the exact antithesis construction
+                `prompts/style/voice.md` now bans in generated prose; a hardcoded line on every
+                pack page is the one place a style rule cannot be enforced by the linter, so it
+                is enforced here by hand. It also opened on a negation, which read as zero
+                content. Say what the buyer GETS, in the affirmative, naming only things that
+                literally appear in the sections below. */}
             <p className="mt-4 max-w-[60ch] text-meta leading-relaxed text-muted">
-              The expensive part of a business idea is not having it. It is the time you spend
-              finding out it does not work. This pack is that work, already done, with its sources
-              left open.
+              You get the checking already done: the evidence behind the idea, the sources it came
+              from, and the objections it survived, all open below so you can judge them yourself.
             </p>
 
             {/* The evidence line: what stands behind the listing, in mono because every item on it
@@ -1479,12 +1510,20 @@ function ShareRow({ title, path }: { title: string; path: string }) {
       {/* Copy link */}
       <button type="button" onClick={handleCopy} className={btnClass} aria-label="Copy link">
         {copied ? (
-     <span className="text-caption font-medium text-success">Copied ✓</span>
+          <span className="flex items-center gap-1 text-caption font-medium text-success">
+            <Icon name="check" size={16} />
+            Copied
+          </span>
         ) : (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <Icon name="link" size={16} />
         )}
       </button>
 
+      {/* X and LinkedIn stay hand-inlined, and are the ONE exception to the one-family rule
+          (brief 2026-08-15, Part Three). lucide-react 1.28 ships no brand marks -- `twitter.mjs`
+          and `linkedin.mjs` do not exist in the package -- and a brand mark is not a UI icon: it
+          is someone else's trademark, drawn to their spec, and redrawing it in a 2px outline hand
+          would make it wrong rather than consistent. Everything else on this page is `Icon`. */}
       {/* X (Twitter) */}
       <a
         href={`https://x.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`}

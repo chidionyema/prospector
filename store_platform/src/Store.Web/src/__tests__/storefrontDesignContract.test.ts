@@ -58,7 +58,9 @@ describe('Design contract — global tokens (globals.css)', () => {
     // Brand v3 (2026-08-06): a neutral grey scale. The v2 values pinned here were
     // #0A0A0A text and #E5E5E5 border; v3 moves to the Zinc-derived ramp so text, muted,
     // subtle and border are steps of ONE scale rather than four separately-chosen greys.
-    assertContains('page bg', css, /--bg:\s*#FFFFFF/i);
+    // 2026-08-15 (founder directive): the ground goes warm and SPLITS from the surface. Both are
+    // pinned so a later edit cannot re-flatten them to one colour without failing here.
+    assertContains('page bg', css, /--bg:\s*#FAF9F7/i);
     assertContains('surface', css, /--surface:\s*#FFFFFF/i);
     assertContains('text', css, /--text:\s*#171717/i);
     assertContains('muted', css, /--muted:\s*#52525B/i);
@@ -80,8 +82,12 @@ describe('Design contract — global tokens (globals.css)', () => {
     // token file instead of a thing twelve components have to agree about.
     assertContains('primary', css, /--primary:\s*var\(--action\)/i);
     assertContains('primary-hover', css, /--primary-hover:\s*var\(--action-hover\)/i);
-    assertContains('action', css, /--action:\s*#1B3F8B/i);
-    assertContains('action-hover', css, /--action-hover:\s*#143069/i);
+    // 2026-08-15, LATER: the navy is out. It was a visual orphan beside the teal identity -- the
+    // founder read it as a placeholder -- so the fill is charcoal and the teal moved onto the
+    // secondary's outline. The contract above is unchanged and is the load-bearing half: one
+    // action colour, reached through an alias. Only the literal moved.
+    assertContains('action', css, /--action:\s*#2D3436/i);
+    assertContains('action-hover', css, /--action-hover:\s*#1F2426/i);
 
     // The money colour is GONE, not merely unused. In Tailwind v4 an unmapped colour utility
     // emits no rule at all, so a surviving `--azure` mapping is how a half-finished repaint
@@ -205,10 +211,19 @@ describe('Design contract — catalogue blueprint cards (pages/index.tsx)', () =
    * with the card reverted to its old look, which is the same as no test at all.
    */
   const packCard = (() => {
-    const start = page.indexOf('function PackCard(');
-    expect(start, 'function PackCard not found in index.tsx').toBeGreaterThan(-1);
+    const start = page.indexOf('function PackSpotlight(');
+    expect(start, 'function PackSpotlight not found in index.tsx').toBeGreaterThan(-1);
     const end = page.indexOf('\nfunction ', start + 1);
-    return page.slice(start, end === -1 ? undefined : end);
+    /* BOTH FORMATS, TWO FILES (2026-08-15). The shelf's card code is no longer all in this page:
+       the dense Row moved to `components/discovery/PackRow.tsx` so eight surfaces could share it,
+       and the `mid` weight was deleted. This slice is still "the shelf's cards and nothing else"
+       -- the scoping the docblock above is about -- it just spans the two files that now hold
+       them. Reading only the page would silently stop checking the format that renders most of
+       the shelf. */
+    return (
+      page.slice(start, end === -1 ? undefined : end)
+      + readSource('../components/discovery/PackRow.tsx')
+    );
   })();
 
   /** Every card variant's outermost visual container — the elements carrying surface, border,
@@ -263,8 +278,13 @@ describe('Design contract — catalogue blueprint cards (pages/index.tsx)', () =
     // edge text"; which step of the spacing scale draws that gutter is a look decision, and
     // pinning one of them made a 16px-to-20px gutter change register as a contract breach. The
     // body now runs `p-5`, so the assertion asks for a padding utility on the 4 or 5 step.
-    expect(packCard, 'card body must carry a padding utility (p-4/p-5/px-4/px-5)').toMatch(
-      /\b(p|px)-[45]\b/,
+    // The step widened again with the two-format system: the Spotlight runs `p-6`/`p-8` (it is a
+    // poster and the only card left), the Row runs `px-4 py-4`. The guard is unchanged -- "the
+    // card body is not edge to edge text" -- so it asks for a padding utility on the 4 step or
+    // above rather than naming one, which is what stopped a 16px-to-20px change reading as a
+    // contract breach the last time this was touched.
+    expect(packCard, 'card body must carry a padding utility (p-4 or wider)').toMatch(
+      /\b(p|px|py)-([4-9]|1[0-2])\b/,
     );
   });
 
@@ -277,14 +297,14 @@ describe('Design contract — catalogue blueprint cards (pages/index.tsx)', () =
         /hover:bg-(?!transparent)/,
       );
     });
-    // The lift is asserted on the shelf as a whole rather than on every variant: the standard card
-    // carries `hover:-translate-y-px`, the full-width lead card does not. A 1px rise reads on a
-    // 300px card in a grid of them and does not on a card that spans the band with nothing beside
-    // it to rise against. The universal half of the rule is the edge, above, and that IS pinned per
-    // variant.
-    expect(packCard, 'the shelf card must still answer hover with a 1px lift').toMatch(
-      /hover:-translate-y-px/,
-    );
+    // THE LIFT ASSERTION IS RETIRED, not relaxed (2026-08-15). Its own note explained the scope:
+    // "the standard card carries `hover:-translate-y-px`, the full-width lead card does not ... a
+    // 1px rise reads on a 300px card in a grid of them and does not on a card that spans the
+    // band". The standard card IS the `mid` weight, and the founder's mobile brief deletes it --
+    // so the only shapes left are the two the rule already exempted or never covered: the
+    // full-width Spotlight and a Row in a divided list, which lifts nothing because it has no
+    // edge of its own to lift. The universal half of the rule, the border darkening, is pinned
+    // per variant above and still binds.
   });
 
   /**

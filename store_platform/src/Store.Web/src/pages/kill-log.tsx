@@ -5,9 +5,12 @@ import { Seo } from '@/components/Seo';
 import { buttonClasses, chipClasses, Glyph, SearchInput, SourceChip, textLinkClass } from '@/components/ui';
 import { Section, SectionBand } from '@/components/marketing/blocks';
 import { WaitlistCallout } from '@/components/waitlist/WaitlistCallout';
-import killLog from '@/data/kill-log.json';
 import { tightDecimal } from '@/components/ui/Money';
 import { RESEARCH_STATS } from '@/lib/stats';
+// Types only in the client bundle; `buildKillIndex` is referenced solely inside `getStaticProps`,
+// which Next removes from the page's client JS along with everything only it imports. That is what
+// keeps `data/kill-log.json` (456 KB) out of the browser -- see `lib/killLog.server.ts`.
+import { buildKillIndex, type KillDetail, type KillIndex, type KillSummary } from '@/lib/killLog.server';
 import { fetchCatalogStats } from '@/lib/api/client';
 import { track } from '@/lib/analytics';
 import type { GetStaticProps } from 'next';
@@ -39,126 +42,16 @@ import type { GetStaticProps } from 'next';
   It excludes kills whose only reason is a score below the bar. See that file.
 */
 
-type Citation = { url: string; domain: string };
-type Entry = {
-  title: string;
-  oneLiner: string;
-  gate: string;
-  gateLabel: string;
-  reason: string;
-  citations: Citation[];
-  date: string;
-};
-
-const entries = killLog.entries as Entry[];
-/* Read through `RESEARCH_STATS`, not off the JSON. This page used to compute its rejection rate itself
-   and then describe its denominator as `killed`, so the meta description shipped "We researched
-   1168 business ideas" while /how-it-works said 1,313 from the identical file. `researched` is now
-   an invariant (killed + survived) that no page can restate wrongly. See lib/stats.ts. */
+/* Read through `RESEARCH_STATS`, not off the JSON. This page used to compute its rejection rate
+   itself and then describe its denominator as `killed`, so the meta description shipped "We
+   researched 1168 business ideas" while /how-it-works said 1,313 from the identical file.
+   `researched` is now an invariant (killed + survived) that no page can restate wrongly. */
 const { killed, researched, rejectRateLabel } = RESEARCH_STATS;
-// How many of the kills are published here, as opposed to how many happened. These are different
-// numbers (400 vs 1,330) and the page has to be straight about which one it is showing.
-const publishedKills = entries.length;
-const withSource = entries.filter((e) => e.citations.length > 0).length;
 
-/*
-  A STABLE ANCHOR PER KILL.
-
-  Every row is individually linkable, which is the whole reason to publish a dataset rather than an
-  article: a single rejection is the thing a reader actually wants to send to someone ("they killed
-  this exact idea, and here is why"). It is also the only SEO surface a page like this has, because
-  400 records under one URL is one document to a crawler and 400 addressable claims to a reader.
-
-  The slug is derived from the TITLE, not from the array index, so adding kills to the top of the
-  log (which `make_kill_log.py` does on every run, newest first) cannot silently repoint a link
-  someone already shared at a different idea. Collisions get a numeric suffix in encounter order,
-  which is stable for the same reason.
-*/
-const slugCounts = new Map<string, number>();
-function slugFor(title: string): string {
-  const base =
-    title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 60) || 'kill';
-  const seen = slugCounts.get(base) ?? 0;
-  slugCounts.set(base, seen + 1);
-  return seen === 0 ? base : `${base}-${seen + 1}`;
-}
-const rows = entries.map((entry) => ({ ...entry, slug: slugFor(entry.title) }));
-
-// Every REASON present in what we publish, ordered by how many kills it accounts for, so the
-// filter reads as a map of how ideas actually die rather than an alphabetical list.
-//
-// Grouped by `gateLabel`, not by `gate`. The engine has emitted two keys for one check --
-// `distribution` and `route_to_market` -- and both carry the identical label "There is no route to
-// reach buyers". Keyed by `gate`, the filter row rendered that sentence twice, side by side, with
-// different counts (desktop-kill-log-fold.png, 2026-08-06): a reader clicking the first is told
-// there are two such kills when there are three, and the second chip is indistinguishable from the
-// first. The label is the right identity here because it is the claim being filtered on, the buyer
-// is choosing a reason, not a database key.
-const gateCounts = rows.reduce<Record<string, number>>((acc, e) => {
-  acc[e.gateLabel] = (acc[e.gateLabel] ?? 0) + 1;
-  return acc;
-}, {});
-const gates = Object.keys(gateCounts).sort((a, b) => gateCounts[b] - gateCounts[a]);
-
-/*
-  THE DISTRIBUTION, OVER ALL 1,330 KILLS AND NOT JUST THE PUBLISHED 400.
-
-  This is the one chart on the site that answers "how do ideas actually die", and answering it from
-  the published subset would be sampling bias baked into a picture: the subset deliberately EXCLUDES
-  the three score-only gates, and those are the largest causes of death by a wide margin. A chart of
-  the published rows would therefore show `incumbency` as the number one killer when the real number
-  one is a composite score below the bar, which is a false claim rendered as a bar chart, and harder
-  to argue with than a false sentence.
-
-  So the chart plots the true totals and marks the bars whose kills carry no publishable argument.
-  `make_kill_log.py` drops those because their reason reads "Composite 0.0000 below threshold 3.2",
-  which is true and tells a reader nothing.
-*/
-const BY_GATE = (killLog.totals as { byGate: Record<string, number> }).byGate;
-// Labels for the gates that never appear in a published row, so the chart can name every bar it
-// draws. The published rows carry their own `gateLabel` from the engine.
-const EXTRA_LABELS: Record<string, string> = {
-  min_composite: 'Scored below the bar overall',
-  moat_ungrounded: 'The defensibility claim was not evidence-backed',
-  source_or_die: 'Its own claims could not be sourced',
-  buyer_intent: 'No sign anyone is trying to buy it',
-};
-const LABEL_FOR: Record<string, string> = { ...EXTRA_LABELS };
-rows.forEach((r) => {
-  LABEL_FOR[r.gate] = r.gateLabel;
-});
-const PUBLISHED_GATES = new Set(rows.map((r) => r.gate));
-// Grouped by label, same reason as `gateCounts` above: `BY_GATE` is keyed by the engine's internal
-// gate, and the engine has emitted two keys -- `distribution` and `route_to_market` -- for the
-// identical claim "There is no route to reach buyers". Built straight from `Object.entries(BY_GATE)`
-// this chart drew two bars for that one claim (8 and 6, on both breakpoints) sitting side by side
-// under the same label, which is the histogram equivalent of the filter-chip bug the comment above
-// already fixed -- this aggregation just never got it. A reader comparing bar lengths was comparing
-// a real cause against half of itself.
-const distribution = Object.values(
-  Object.entries(BY_GATE)
-    .map(([gate, count]) => ({
-      gate,
-      count,
-      label: LABEL_FOR[gate] ?? gate.replace(/_/g, ' '),
-      published: PUBLISHED_GATES.has(gate),
-    }))
-    .reduce<Record<string, { gate: string; count: number; label: string; published: boolean }>>((acc, d) => {
-      const existing = acc[d.label];
-      if (existing) {
-        existing.count += d.count;
-        existing.published = existing.published || d.published;
-      } else {
-        acc[d.label] = { ...d };
-      }
-      return acc;
-    }, {}),
-).sort((a, b) => b.count - a.count);
-const distributionMax = Math.max(...distribution.map((d) => d.count), 1);
+/* The corpus itself is read at build time in `lib/killLog.server.ts`; everything that used to be
+   computed here at module scope -- the slugs, the cause counts, the distribution chart -- arrives
+   as props. Nothing in this file may reach for `data/kill-log.json` again: a single static import
+   of it puts all 456 KB back in the client bundle, which is the defect this split fixed. */
 
 type Sort = 'newest' | 'cause' | 'sources';
 const SORTS: { key: Sort; label: string }[] = [
@@ -175,11 +68,55 @@ function formatDate(iso: string) {
     : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 }
 
-export default function KillLogPage({ listed }: { listed: number | null }) {
+type Props = KillIndex & { listed: number | null };
+
+export default function KillLogPage({
+  listed,
+  summaries,
+  gates,
+  gateCounts,
+  distribution,
+  publishedKills,
+  withSource,
+}: Props) {
   const [active, setActive] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState('');
   const [sort, setSort] = React.useState<Sort>('newest');
   const [open, setOpen] = React.useState<Set<string>>(() => new Set());
+  /* The arguments, fetched once. `null` until something needs them: an expanded row or a search.
+     A reader who scrolls the table and leaves never downloads them at all. */
+  const [details, setDetails] = React.useState<Record<string, KillDetail> | null>(null);
+  const wanted = open.size > 0 || search.trim().length > 0;
+
+  React.useEffect(() => {
+    if (!wanted || details) return;
+    let live = true;
+    fetch('/api/kill-log-detail')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (live && d) setDetails(d as Record<string, KillDetail>);
+      })
+      // Best effort. A failed fetch leaves the table, the filters and the sort working; only the
+      // expanded prose is missing, and the row says so rather than rendering an empty panel.
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [wanted, details]);
+
+  /* One lowercase haystack per kill, built once when the detail arrives instead of on every
+     keystroke. The old filter ran `plainEnglish` over both prose fields of all 400 rows for each
+     character typed; the prose now arrives already translated, and this reduces a keystroke to 400
+     `includes` calls on strings that already exist. */
+  const haystacks = React.useMemo(() => {
+    if (!details) return null;
+    const map = new Map<string, string>();
+    for (const s of summaries) {
+      const d = details[s.slug];
+      map.set(s.slug, `${s.title} ${d?.oneLiner ?? ''} ${d?.reason ?? ''}`.toLowerCase());
+    }
+    return map;
+  }, [details, summaries]);
 
   /*
     A DEEP LINK MUST SURVIVE THE FILTERS.
@@ -214,20 +151,21 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
 
   const shown = React.useMemo(() => {
     // `active` holds a gateLabel, matching how the chips above are keyed.
-    let items = active ? rows.filter((e) => e.gateLabel === active) : rows.slice();
+    let items = active ? summaries.filter((e) => e.gateLabel === active) : summaries.slice();
     if (search.trim()) {
       const q = search.toLowerCase();
-      items = items.filter(
-        (e) =>
-          e.title.toLowerCase().includes(q) ||
-          e.oneLiner.toLowerCase().includes(q) ||
-          e.reason.toLowerCase().includes(q),
+      // Searched in the words the reader can SEE: the haystack is built from the translated prose,
+      // so a query matches the word 104 of these rows now display rather than the engine's own.
+      // Until the prose lands, the title is what there is to search -- one round trip, and only on
+      // the first keystroke of the session.
+      items = items.filter((e) =>
+        haystacks ? (haystacks.get(e.slug) ?? '').includes(q) : e.title.toLowerCase().includes(q),
       );
     }
     // Every sort falls back to date descending, so the order is total and a re-sort never
     // reshuffles rows that tie. Without the tiebreak, sorting by cause would return the ties in
     // whatever order the previous sort happened to leave them, which reads as the table jittering.
-    const byDate = (a: Entry, b: Entry) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
+    const byDate = (a: KillSummary, b: KillSummary) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
     if (sort === 'cause') {
       items.sort((a, b) => {
         const d = gateCounts[b.gateLabel] - gateCounts[a.gateLabel];
@@ -236,12 +174,16 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
         return l !== 0 ? l : byDate(a, b);
       });
     } else if (sort === 'sources') {
-      items.sort((a, b) => b.citations.length - a.citations.length || byDate(a, b));
+      items.sort((a, b) => b.sources - a.sources || byDate(a, b));
     } else {
       items.sort(byDate);
     }
     return items;
-  }, [active, search, sort]);
+  }, [active, search, sort, summaries, gateCounts, haystacks]);
+
+  // The bar is drawn against the LARGEST cause, not the total: against the total every bar but one
+  // is a sliver and the chart shows nothing.
+  const distributionMax = Math.max(...distribution.map((d) => d.count), 1);
 
   const toggle = (slug: string) =>
     setOpen((prev) => {
@@ -264,7 +206,25 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
       {/* Left-aligned, one column, no centred hero (spec §7.4). A centred 22ch headline over a
           centred 62ch paragraph over a centred stat row gives the reader three different left
           edges to find in the first screen of a page that is otherwise a table. */}
+      {/* TWO COLUMNS ON DESKTOP (2026-08-16, founder: "right first row/ish empty no content, looks
+          odd on desktop"). Same diagnosis as /ideas and /how-it-works -- a 3xl measure inside a 6xl
+          band leaves about 24rem of nothing to the right of the headline, and only above `lg`,
+          which is why the report was desktop-only. This page does not use `PageHero`, so it takes
+          the same grid by hand rather than adopting the component: the hero here is four blocks in
+          two registers, not a headline with a lead, and routing it through `PageHero` would mean
+          bending that component to a fifth shape for one caller.
+
+          WHAT MOVES IS THE CAVEAT, and nothing is written to fill the space. It is the one block
+          here in a different register -- a correction, in `text-meta`, qualifying the count above it
+          -- and it was set as a fourth paragraph in the same column, which is what buried it below
+          all three claims it corrects. Beside them it is read with them.
+
+          The mobile order changes slightly and deliberately: the caveat now falls after the chip row
+          instead of before it. Its own docblock's requirement is that the correction arrive before
+          the CLAIM IT CORRECTS -- the implied 1,364-row page -- and it still does, by a whole
+          screen, since the table is far below. */}
       <SectionBand bg="white" width="6xl" className="pt-14 pb-8 md:pt-20 md:pb-10">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,46rem)_minmax(0,1fr)] lg:items-start lg:gap-16">
         <div className="max-w-3xl">
           <p className="text-caption font-medium text-subtle">The kill log</p>
           {/* THE HERO: ONE COUNT. It read "1,364 killed. 80 survived.", and the second half was
@@ -281,17 +241,6 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
           <p className="mt-5 max-w-[60ch] text-body text-muted">
             Most ideas do not survive. Here is what we rejected, the reason each one failed, and
             the sources, so you can check the reasoning yourself.
-          </p>
-          {/* THE CAVEAT, AT THE TOP.
-              It used to sit below all the entries, under a homepage line promising the log "has
-              every one". A reader met an implied 1,330-row page, scrolled, and only then learned
-              what they were actually looking at. On the one page whose job is to prove we do not
-              overclaim, the correction has to arrive before the claim it corrects. */}
-          <p className="mt-4 max-w-[68ch] text-meta text-muted">
-            This page publishes {publishedKills} of those kills, not all {killed.toLocaleString('en-GB')}.
-            The rest were rejected on a low overall score, with no single finding behind it, so
-            there would be nothing here for you to read. Every kill below names the check it
-            failed and why, and{` ${withSource}`} of them link the source.
           </p>
           {/* Mono: both are counts, and the pair is the one place on the site where the rejection
               rate is stated as a measured quantity rather than a boast. */}
@@ -316,6 +265,25 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
               </span>
             ) : null}
           </div>
+        </div>
+
+        {/* THE CAVEAT. It used to sit below all the entries, under a homepage line promising the log
+            "has every one": a reader met an implied 1,330-row page, scrolled, and only then learned
+            what they were actually looking at. On the one page whose job is to prove we do not
+            overclaim, the correction has to arrive before the claim it corrects, so it came to the
+            top -- and then sat as a fourth paragraph in the same column, under the three claims it
+            qualifies. It is a different register from all of them. Here it is beside them.
+            `border-l` and `text-meta` are `HeroList`'s grammar, so the three heroes that gained a
+            right-hand column on 2026-08-16 read as one treatment. */}
+        <aside className="lg:pt-1">
+          <p className="text-caption font-medium text-subtle">What this page publishes</p>
+          <p className="mt-4 border-l border-border pl-4 text-meta leading-relaxed text-muted">
+            This page publishes {publishedKills} of those kills, not all {killed.toLocaleString('en-GB')}.
+            The rest were rejected on a low overall score, with no single finding behind it, so
+            there would be nothing here for you to read. Every kill below names the check it
+            failed and why, and{` ${withSource}`} of them link the source.
+          </p>
+        </aside>
         </div>
       </SectionBand>
 
@@ -479,6 +447,7 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
             </thead>
             {shown.map((entry) => {
               const isOpen = open.has(entry.slug);
+              const detail = details?.[entry.slug];
               return (
                 /* One <tbody> per record, so the summary row and its detail row are one group to
                    assistive tech rather than two unrelated rows that happen to be adjacent. */
@@ -509,8 +478,10 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
                     <td className="py-2.5 pr-4 text-right font-mono text-caption tabular-nums text-subtle">
                       {/* A literal 0, not a blank or a placeholder glyph. This column is
                           sortable, so an empty cell would read as missing data in a table that is
-                          about evidence; 0 is the actual, stated fact. */}
-                      {entry.citations.length}
+                          about evidence; 0 is the actual, stated fact. The COUNT is in the page's
+                          own HTML even though the source list is not: it is a column of the table
+                          and a sort key, so it cannot wait on a fetch. */}
+                      {entry.sources}
                     </td>
                     <td className="py-2.5 text-right font-mono text-caption tabular-nums text-subtle">
                       {formatDate(entry.date)}
@@ -519,10 +490,27 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
                   {isOpen && (
                     <tr>
                       <td colSpan={4} className="bg-surface3 px-3 py-4">
-                        {entry.oneLiner && (
-                          <p className="max-w-[80ch] text-meta text-muted">{entry.oneLiner}</p>
+                        {/* The argument arrives from /api/kill-log-detail, once per session. Until
+                            it does the row says what it is waiting for: an empty panel under a
+                            row a reader just opened reads as a broken page, and this is the page
+                            whose subject is our own honesty. */}
+                        {!detail ? (
+                          <p className="text-meta text-subtle">
+                            {details ? 'This argument could not be loaded. Reload the page to try again.' : 'Loading the argument…'}
+                          </p>
+                        ) : (
+                        <>
+                        {detail.oneLiner && (
+                          <p className="max-w-[80ch] text-meta text-muted">{detail.oneLiner}</p>
                         )}
-                        <p className="mt-3 max-w-[80ch] text-meta text-text">{entry.reason}</p>
+                        {/* THE ENGINE'S OWN WORDS, TRANSLATED ON THE WAY OUT. This paragraph is
+                            written by the verdict brain for an audit trail and rendered verbatim
+                            to a buyer, and on 2026-08-15 that meant 104 of these 400 reasons said
+                            "the candidate" and 32 named a gate as `payer_solvency`. The JSON keeps
+                            the engine's words; `plainEnglish` is the last step before a reader --
+                            now applied once at build time in `lib/killLog.server.ts` rather than
+                            on every render. See lib/plainEnglish.ts for what it does NOT translate. */}
+                        <p className="mt-3 max-w-[80ch] text-meta text-text">{detail.reason}</p>
                         <div className="mt-3 flex flex-wrap items-center gap-2">
                           {/* Kills with no resolvable source are BADGED, not left blank. The page
                               promises "the sourced reason why", so an entry with nothing to link
@@ -530,7 +518,7 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
                               not shown. `make_kill_log.py` drops references it cannot resolve to a
                               real URL rather than rendering a dead hash, which is why these are
                               empty. */}
-                          {entry.citations.length === 0 && (
+                          {detail.citations.length === 0 && (
                             <span className="inline-flex items-center gap-1 rounded-md border border-dashed border-border px-1.5 py-0.5 font-mono text-caption text-subtle">
                               argument recorded, no source published
                             </span>
@@ -539,7 +527,7 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
                               is the sixth such copy the source-chip consolidation found, and the
                               only one an agent survey of the tree missed -- `sourceChipIsTheOnlyOne`
                               caught it on its first run. */}
-                          {entry.citations.map((c, j) => (
+                          {detail.citations.map((c, j) => (
                             <SourceChip key={j} url={c.url} host={c.domain} />
                           ))}
                           {/* The per-kill permalink. This is the share mechanic: the interesting
@@ -551,6 +539,8 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
                             link to this kill
                           </a>
                         </div>
+                        </>
+                        )}
                       </td>
                     </tr>
                   )}
@@ -651,7 +641,11 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
  * subject is our own honesty. On failure `listed` is null and every surface that would name a
  * number omits it.
  */
-export const getStaticProps: GetStaticProps = async () => {
+export const getStaticProps: GetStaticProps<Props> = async () => {
   const stats = await fetchCatalogStats();
-  return { props: { listed: stats?.listed ?? null }, revalidate: 300 };
+  // The corpus is read HERE and nowhere a component can see, which is what keeps 456 KB of JSON
+  // out of the browser. What crosses is the summary of each kill (~50 KB, and all 400 rows stay in
+  // the HTML because each one is a deep-link anchor); the arguments are fetched on demand from
+  // /api/kill-log-detail.
+  return { props: { listed: stats?.listed ?? null, ...buildKillIndex() }, revalidate: 300 };
 };

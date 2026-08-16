@@ -1,58 +1,98 @@
 {
-  "id": "0f2109fb198341a4",
-  "title": "The Solo Builder's Warranty Audit",
-  "oneLiner": "A solo operator in the UK offers a fixed-price, pre-completion inspection and snagging service specifically for self-build homeowners, using a proprietary checklist and thermal camera to identify defects before the builder's warranty expires, charging per property.",
-  "whoPays": "Self-build homeowners in the UK (approx. 15,000-20,000 completions/year) who have a 10-year warranty (e.g., LABC, NHBC) and a deadline for inspection.",
-  "whyNow": "The UK self-build market is booming (Rightmove data), and warranty providers are tightening defect detection. Homeowners are often first-time builders with no construction expertise, making them vulnerable to hidden issues that become expensive later.",
-  "verifiedAt": "2026-06-15T23:35:04.303416+00:00",
-  "supported": 7,
-  "total": 8,
-  "sourceCount": 8,
+  "id": "13d41ccee9e96e2d",
+  "title": "Retention chasing service for building subcontractors",
+  "oneLiner": "RetainRelease tracks every retention balance across every contract, sends the chase letters proven to release the cash, and files construction adjudication if a main contractor refuses.",
+  "whoPays": "UK subcontracting firms (typically 1-50 staff electricians, plumbers, bricklayers, joiners, groundworkers, plasterers, roofers) working on construction projects where main contractors hold retention. They are paid less per job than main contractors, are squeezed on margin, and have multiple live contracts with held-back cash they rarely chase.",
+  "whyNow": "The collapse of large main contractors since 2018 (Carillion, Berkeley, ISG, numerous mid-tier firms) has left retention money trapped in insolvent estates, with subbies waiting years for a fraction of what they are owed. The Construction Industry Fairness Charter (2024) and the Procurement Act 2023 are pushing the industry toward audited, faster release. Adjudication is the only statutory route that forces release in 28 days and is enforceable as a court order, so the value of an automated chase-and-adjudicate tool rises as more main contractors use insolvency to delay payment.",
+  "verifiedAt": "2026-08-05T20:44:54.968034+00:00",
+  "supported": 6,
+  "total": 9,
+  "sourceCount": 47,
   "scores": {
     "pain_acuity": 4,
-    "money_provability": 4,
-    "automatability": 1,
-    "distribution": 3,
+    "money_provability": 3,
+    "automatability": 4,
+    "distribution": 4,
     "defensibility": 2,
-    "build_feasibility": 4
+    "build_feasibility": 3
   },
   "premortem": {
-    "strongestAlternative": "The homeowner can hire a structural engineer (e.g., £500-1000 per inspection) or rely on the warranty provider's own surveyor (often free but superficial).",
+    "strongestAlternative": "A construction solicitor or quantity surveyor, charging £500 to £2,000 per individual chase or adjudication.",
     "whyDurable": "",
     "sources": [
       {
-        "url": "https://snagged.co.uk/",
-        "domain": "snagged.co.uk",
-        "label": "Snagged, Independent Snagging Surveys for New-Build Homes"
-      },
-      {
-        "url": "https://www.nhqb.org.uk/wp-content/uploads/2026/02/NHQB-PCI-Checklist-house-V2-March-2026.pdf",
-        "domain": "nhqb.org.uk",
+        "url": "https://en.wikipedia.org/wiki/Housing_Grants,_Construction_and_Regeneration_Act_1996",
+        "domain": "en.wikipedia.org",
         "label": ""
       },
       {
-        "url": "https://snagbusterz.co.uk/packages/",
-        "domain": "snagbusterz.co.uk",
-        "label": "Snagging Inspection Cost | UK | Snagbusterz"
+        "url": "https://www.fenwickelliott.com/sites/default/files/construction_adjudication_practice_guideline_28dec2015.pdf",
+        "domain": "fenwickelliott.com",
+        "label": ""
+      },
+      {
+        "url": "https://www.payapps.com/uk/",
+        "domain": "payapps.com",
+        "label": ""
+      },
+      {
+        "url": "https://www.capterra.com/p/238884/Payapps/",
+        "domain": "capterra.com",
+        "label": ""
+      },
+      {
+        "url": "https://www.dentons.com/en/insights/articles/2026/june/2/the-proposed-retention-ban-and-other-new-payment-legislation/",
+        "domain": "dentons.com",
+        "label": ""
+      },
+      {
+        "url": "https://www.mills-reeve.com/publications/retentions-reform-and-the-uk-new-late-payment-crackdown-what-this-means-for-construction-projects/",
+        "domain": "mills-reeve.com",
+        "label": ""
+      },
+      {
+        "url": "https://gowlingwlg.com/en-gb/insights-resources/articles/2026/uk-government-proposes-ban-on-retention-payments-in-construction-contracts",
+        "domain": "gowlingwlg.com",
+        "label": ""
       }
     ]
   },
   "adversarial": {
-    "killCase": "The market for new-build snagging inspections is already highly commoditized and served by established, accredited firms that provide the exact services proposed (thermal imaging, fixed-fee reports, drone inspections). The core value proposition of a 'proprietary checklist' is invalidated, as competitors already align their inspections with industry-standard benchmarks like NHQB and NHBC guidelines. Furthermore, potential customers prioritize RPSA accreditation and insurance, creating high barriers to entry for a new solo operator attempting to compete on price alone in an already fixed-price, transparently-marketed landscape.",
+    "killCase": "Nothing in the passages makes this service unlawful, UK law itself creates the 28-day adjudication route the product uses, no passage compares the cost of winning a customer against what that customer could pay, and no passage shows any single provider holding most of this market (Payapps is named but with no share or customer figures). The one grounded risk is to demand rather than legality: a Commercial Payments Bill introduced in Parliament on 19 May 2026 would ban held-back retention money under construction contracts outright, and if it passes there is eventually no held-back cash left to chase.",
     "decisive": false
   },
   "checks": [
     {
-      "name": "Is anyone actually trying to buy this?",
-      "key": "buyer_intent",
+      "name": "Is the pain real, or imagined?",
+      "key": "pain_reality",
       "verdict": "supported",
-      "confidence": 0.41,
-      "rationale": "The passage confirms the existence of specialized snagging inspection services in the UK, demonstrating that there is an active market where homeowners pay for these checks to identify defects.",
+      "confidence": 0.68,
+      "rationale": "The passages show that main contractors in the UK routinely withhold a percentage of subcontractors' money, commonly 5% of the subcontract sum, until milestones are met, that unpaid subcontractors cause serious cash flow problems, and that Carillion's 2018 collapse left a trail of unpaid retentions with money outstanding across the UK.",
       "sources": [
         {
-          "url": "https://snagging-inspections.co.uk/",
-          "domain": "snagging-inspections.co.uk",
-          "label": "Snagging Inspections for New Build Properties, Best Snagging Inspections UK"
+          "url": "https://www.facebook.com/albanybusinessreview/posts/the-collapse-of-the-hodorowski-group-has-left-many-suppliers-and-subcontractors-/1181770580625860/",
+          "domain": "facebook.com",
+          "label": ""
+        },
+        {
+          "url": "https://www.retentiondepositscheme.org/insights/the-history-of-retentions",
+          "domain": "retentiondepositscheme.org",
+          "label": ""
+        },
+        {
+          "url": "https://www.lazyqs.co.uk/blog/construction-retention-explained",
+          "domain": "lazyqs.co.uk",
+          "label": ""
+        },
+        {
+          "url": "https://invoicedataextraction.com/blog/track-subcontractor-retention-release-uk",
+          "domain": "invoicedataextraction.com",
+          "label": ""
+        },
+        {
+          "url": "https://mjdsolicitors.co.uk/retention-disputes-defect-clauses-in-construction-industry/",
+          "domain": "mjdsolicitors.co.uk",
+          "label": ""
         }
       ]
     },
@@ -60,13 +100,33 @@
       "name": "Can the payer actually pay?",
       "key": "payer_solvency",
       "verdict": "supported",
-      "confidence": 0.43,
-      "rationale": "The passage confirms the existence of professional new-build snagging inspection services in the UK with established, transparent pricing packages, indicating a market where homeowners pay for these quality inspections.",
+      "confidence": 0.65,
+      "rationale": "The FMB/CIOB State of Trade Survey shows UK construction SMEs are still growing, though momentum is slowing, so these firms are trading businesses rather than failing ones; and with the UK sector reported at the world's lowest average margin of 3.9%, a 3-5% sum held back is worth more than a typical job's entire profit, which gives owners a strong reason to chase it.",
       "sources": [
         {
-          "url": "https://snagbusterz.co.uk/packages/",
-          "domain": "snagbusterz.co.uk",
-          "label": "Snagging Inspection Cost | UK | Snagbusterz"
+          "url": "https://bricks-bytes.com/news/uk-construction-growth-is-slowing/",
+          "domain": "bricks-bytes.com",
+          "label": ""
+        },
+        {
+          "url": "https://www.theaccessgroup.com/en-gb/construction/resources/construction-profit-margins-uk/",
+          "domain": "theaccessgroup.com",
+          "label": ""
+        },
+        {
+          "url": "https://www.gov.uk/search-bankruptcy-insolvency-register",
+          "domain": "gov.uk",
+          "label": ""
+        },
+        {
+          "url": "https://www.companydebt.com/insolvency/",
+          "domain": "companydebt.com",
+          "label": ""
+        },
+        {
+          "url": "https://www.investopedia.com/terms/i/insolvency.asp",
+          "domain": "investopedia.com",
+          "label": "Insolvency, Investopedia Insolvency is a term for when an individual or..."
         }
       ]
     },
@@ -74,13 +134,28 @@
       "name": "Is there a route to reach the market?",
       "key": "distribution",
       "verdict": "supported",
-      "confidence": 0.43,
-      "rationale": "The passage demonstrates that independent snagging services successfully utilize low-friction distribution routes, specifically website-based booking and WhatsApp, to reach and acquire customers.",
+      "confidence": 0.63,
+      "rationale": "The passages show the Federation of Master Builders is the UK's largest trade association for small and medium construction firms, with a vetted membership it already reaches through business-support services and time-saving tools for day-to-day admin, a ready-made, concentrated audience of exactly the small firms this product targets.",
       "sources": [
         {
-          "url": "https://nwsnagsurveys.com/new-build-snagging-surveys/",
-          "domain": "nwsnagsurveys.com",
-          "label": "New Build Snagging Surveys, NW Snag Survey, NW Snag Surveys"
+          "url": "https://www.fmb.org.uk/",
+          "domain": "fmb.org.uk",
+          "label": ""
+        },
+        {
+          "url": "https://www.fmb.org.uk/become-a-master-builder.html",
+          "domain": "fmb.org.uk",
+          "label": ""
+        },
+        {
+          "url": "https://squote.app/knowledge/general/fmb-membership",
+          "domain": "squote.app",
+          "label": ""
+        },
+        {
+          "url": "https://www.capterra.com/sem-compare-b/contract-management-software/?account_campaign_id=698134894&account_adgroup_id=1251245534443880&utm_source=ps-bing&utm_medium=ppc&utm_campaign=:1:CAP:2:COM:3:All:4:INTL:5:BAU:6:SOF:7:Desktop:8:BR:9:Contract_Management&network=o&msclkid=1ce77adaff121a52859610a958c14edb",
+          "domain": "capterra.com",
+          "label": ""
         }
       ]
     },
@@ -88,27 +163,106 @@
       "name": "Is there a legal landmine?",
       "key": "legality",
       "verdict": "supported",
-      "confidence": 0.4,
-      "rationale": "The passage explicitly notes that the guidance is provided for a 'customer' to carry out a pre-completion inspection, indicating the activity is not legally restricted to professional surveyors. While it advises that a qualified professional should conduct the inspection to avoid misinterpreting requirements, it does not prohibit others from performing the service.",
+      "confidence": 0.64,
+      "rationale": "The passages show that UK law itself creates the mechanism this business relies on: the Housing Grants, Construction and Regeneration Act 1996 amended the law on construction contracts, its Section 108 gives a construction adjudicator jurisdiction to decide disputes, and the 2009 Act amendments to it took effect on 1 October.",
       "sources": [
         {
-          "url": "https://www.nhqb.org.uk/wp-content/uploads/2026/02/NHQB-PCI-Checklist-house-V2-March-2026.pdf",
-          "domain": "nhqb.org.uk",
+          "url": "https://en.wikipedia.org/wiki/Housing_Grants,_Construction_and_Regeneration_Act_1996",
+          "domain": "en.wikipedia.org",
+          "label": ""
+        },
+        {
+          "url": "https://www.fenwickelliott.com/sites/default/files/construction_adjudication_practice_guideline_28dec2015.pdf",
+          "domain": "fenwickelliott.com",
+          "label": ""
+        },
+        {
+          "url": "https://www.buildinglawmonthly.com/legislation/amendments-to-housing-grants-construction-and-regeneration-act-1996-brought-into-force-52462.htm",
+          "domain": "buildinglawmonthly.com",
+          "label": ""
+        },
+        {
+          "url": "https://www.sra.org.uk/garfield-ai",
+          "domain": "sra.org.uk",
           "label": ""
         }
       ]
     },
     {
-      "name": "Is the pain real, or imagined?",
-      "key": "pain_reality",
-      "verdict": "supported",
-      "confidence": 0.46,
-      "rationale": "The existence of professional pre-completion inspection and snagging services, as shown in the passage, confirms that homeowners pay to solve the problem of identifying building defects before finalizing property purchases. This demonstrates that the need to mitigate hidden defects is a real, paid-for service in the current market.",
+      "name": "Will the value last, or evaporate?",
+      "key": "value_durability",
+      "verdict": "unverifiable",
+      "confidence": 0.0,
+      "rationale": "The passages confirm that holding back retention money is still standard practice in UK construction contracts as of February 2025, at the 3-5% level the candidate describes, so the cash the tool would chase genuinely exists and no free or bundled alternative is shown to have taken it.",
       "sources": [
         {
-          "url": "https://snaglistpro.co.uk/pre-completion-inspection/",
-          "domain": "snaglistpro.co.uk",
-          "label": "Sample Report"
+          "url": "https://gowlingwlg.com/en/insights-resources/articles/2024/new-secondary-legislation-to-mandate-reporting-on-retentions-in-the-construction-market",
+          "domain": "gowlingwlg.com",
+          "label": ""
+        },
+        {
+          "url": "https://kjmltd.co.uk/knowledge-bank/retention-in-construction-contracts-a-fair-practice-or-an-unnecessary-burden",
+          "domain": "kjmltd.co.uk",
+          "label": ""
+        },
+        {
+          "url": "https://www.designingbuildings.co.uk/wiki/Retention+in+construction+contracts",
+          "domain": "designingbuildings.co.uk",
+          "label": ""
+        },
+        {
+          "url": "https://gowlingwlg.com/en-gb/insights-resources/articles/2026/uk-government-proposes-ban-on-retention-payments-in-construction-contracts",
+          "domain": "gowlingwlg.com",
+          "label": ""
+        },
+        {
+          "url": "https://www.mills-reeve.com/publications/retentions-reform-and-the-uk-new-late-payment-crackdown-what-this-means-for-construction-projects/",
+          "domain": "mills-reeve.com",
+          "label": ""
+        },
+        {
+          "url": "https://www.osborneclarke.com/insights/uk-government-ban-construction-retentions-and-tighten-late-payment-rules",
+          "domain": "osborneclarke.com",
+          "label": ""
+        }
+      ]
+    },
+    {
+      "name": "Do incumbents already own the space?",
+      "key": "incumbency",
+      "verdict": "unverifiable",
+      "confidence": 0.7,
+      "rationale": "The passages show that construction payment software exists in the UK, Payapps handles subcontractor applications for payment and integrates with accounting/ERP systems, and another product processes progress billings and pays subcontractors with retention deducted, but none of them is described as chasing overdue retention for subcontractors or filing adjudication, and no passage gives any market-share or customer-count figure.",
+      "sources": [
+        {
+          "url": "https://www.getyooz.com/en-gb/blog/construction-accounts-payable",
+          "domain": "getyooz.com",
+          "label": ""
+        },
+        {
+          "url": "https://fynex.ai/construction/",
+          "domain": "fynex.ai",
+          "label": ""
+        },
+        {
+          "url": "https://www.researchgate.net/publication/360963312_Late_payment_to_subcontractors_in_the_construction_industry",
+          "domain": "researchgate.net",
+          "label": ""
+        },
+        {
+          "url": "https://www.payapps.com/uk/",
+          "domain": "payapps.com",
+          "label": ""
+        },
+        {
+          "url": "https://www.pbctoday.co.uk/news/digital-construction-news/construction-software-news/access-coins-payapps-integration-transform-construction-industry-payments/157872/",
+          "domain": "pbctoday.co.uk",
+          "label": ""
+        },
+        {
+          "url": "https://www.capterra.com/p/238884/Payapps/",
+          "domain": "capterra.com",
+          "label": ""
         }
       ]
     },
@@ -116,27 +270,72 @@
       "name": "Is real money flowing here today?",
       "key": "currency",
       "verdict": "supported",
-      "confidence": 0.42,
-      "rationale": "The passage documents an active business providing independent snagging surveys with calls to action to 'Book My Snagging Survey', confirming that this type of service is currently operating.",
+      "confidence": 0.65,
+      "rationale": "The passages show the underlying practice is current, retention is described as commonly used in construction contracts today, and that the rules governing payment down the supply chain are actively changing, with the Procurement Act 2023 taking effect in October 2024 and commentary on supplier-to-subcontractor payment terms dated November 2025.",
       "sources": [
         {
-          "url": "https://nwsnagsurveys.com/new-build-snagging-surveys/",
-          "domain": "nwsnagsurveys.com",
-          "label": "New Build Snagging Surveys, NW Snag Survey, NW Snag Surveys"
+          "url": "https://www.designingbuildings.co.uk/wiki/Retention_in_construction_contracts",
+          "domain": "designingbuildings.co.uk",
+          "label": ""
+        },
+        {
+          "url": "https://www.dacbeachcroft.com/en/What-we-think/Is-retention-reform-really-on-the-way",
+          "domain": "dacbeachcroft.com",
+          "label": ""
+        },
+        {
+          "url": "https://www.gov.uk/government/collections/procurement-act-2023-guidance-documents",
+          "domain": "gov.uk",
+          "label": ""
+        },
+        {
+          "url": "https://www.wardhadaway.com/insights/procurement-in-a-nutshell/procurement-in-a-nutshell-supply-chain-payment-terms/",
+          "domain": "wardhadaway.com",
+          "label": ""
+        },
+        {
+          "url": "https://www.brownejacobson.com/insights/the-evolution-of-sub-contracting-under-the-procurement-act-2023",
+          "domain": "brownejacobson.com",
+          "label": ""
         }
       ]
     },
     {
-      "name": "Can it actually reach buyers?",
-      "key": "route_to_market",
+      "name": "Is anyone actually trying to buy this?",
+      "key": "buyer_intent",
       "verdict": "supported",
-      "confidence": 0.42,
-      "rationale": "The passage confirms that companies already provide snagging inspections for new homes in the UK, demonstrating that a route to market exists and is executable by businesses.",
+      "confidence": 0.72,
+      "rationale": "The passages are how-to material written for people trying to get retention money back, a dated guide telling them to submit a formal request for release, advice on keeping per-contract records to improve their chances, and step-by-step guides to using the statutory 28-day adjudication process to recover retention when disputes arise.",
       "sources": [
         {
-          "url": "https://snagging-inspections.co.uk/",
-          "domain": "snagging-inspections.co.uk",
-          "label": "Snagging Inspections for New Build Properties, Best Snagging Inspections UK"
+          "url": "https://hklegal.co.uk/newsroom/the-problem-with-retention-and-how-it-can-be-solved/",
+          "domain": "hklegal.co.uk",
+          "label": ""
+        },
+        {
+          "url": "https://go-legal.co.uk/understanding-retention-in-construction-projects/?srsltid=AfmBOorveapVcR3WGtNCIrwHtdID1qNDzlPQ0p2uYDWObI6tYgYMPL7K",
+          "domain": "go-legal.co.uk",
+          "label": ""
+        },
+        {
+          "url": "https://www.theaccessgroup.com/en-gb/construction/resources/retention-in-construction/",
+          "domain": "theaccessgroup.com",
+          "label": ""
+        },
+        {
+          "url": "https://hayhills.com/retention-disputes-a-complete-guide/",
+          "domain": "hayhills.com",
+          "label": ""
+        },
+        {
+          "url": "https://hayhills.com/construction-adjudication/",
+          "domain": "hayhills.com",
+          "label": ""
+        },
+        {
+          "url": "https://sitekiln.co.uk/guide/adjudication-step-by-step",
+          "domain": "sitekiln.co.uk",
+          "label": ""
         }
       ]
     },
@@ -144,15 +343,398 @@
       "name": "Do its own claims hold up to checking?",
       "key": "claims_verifiable",
       "verdict": "refuted",
-      "confidence": 0.42,
-      "rationale": "The passage demonstrates the existence of independent snagging survey services for new-build homes, contradicting the hypothesis's implicit claim that there is no existing solution for snagging-level defects in the UK market.",
+      "confidence": 0.7,
+      "rationale": "The passages do confirm the basic mechanics the pitch rests on, main contractors hold retention money under standard JCT and NEC building contracts, disputes over it are common, and adjudication is a recognised way to recover it.",
       "sources": [
         {
-          "url": "https://snagged.co.uk/",
-          "domain": "snagged.co.uk",
-          "label": "Snagged, Independent Snagging Surveys for New-Build Homes"
+          "url": "https://www.ons.gov.uk/businessindustryandtrade/constructionindustry/articles/constructionstatistics/latest",
+          "domain": "ons.gov.uk",
+          "label": ""
+        },
+        {
+          "url": "https://www.ons.gov.uk/businessindustryandtrade/constructionindustry",
+          "domain": "ons.gov.uk",
+          "label": ""
+        },
+        {
+          "url": "https://www.gov.uk/government/statistics/construction-statistics-great-britain-2024",
+          "domain": "gov.uk",
+          "label": ""
+        },
+        {
+          "url": "https://www.dentons.com/en/insights/articles/2026/june/2/the-proposed-retention-ban-and-other-new-payment-legislation/",
+          "domain": "dentons.com",
+          "label": ""
+        },
+        {
+          "url": "https://hayhills.com/retention-disputes-a-complete-guide/",
+          "domain": "hayhills.com",
+          "label": ""
+        },
+        {
+          "url": "https://www.mills-reeve.com/publications/retentions-reform-and-the-uk-new-late-payment-crackdown-what-this-means-for-construction-projects/",
+          "domain": "mills-reeve.com",
+          "label": ""
         }
       ]
+    }
+  ],
+  "sectionsTotal": 14,
+  "sectionsShown": 3,
+  "excerpt": [
+    {
+      "id": "executive-summary",
+      "title": "Where this starts",
+      "blocks": [
+        {
+          "type": "p",
+          "nodes": [
+            "The person already paying for this problem, in time if not in money:"
+          ]
+        },
+        {
+          "type": "callout",
+          "nodes": [
+            "UK subcontracting firms (typically 1-50 staff electricians, plumbers, bricklayers, joiners, groundworkers, plasterers, roofers) working on construction projects where main contractors hold retention. They are paid less per job than main contractors, are squeezed on margin, and have multiple live contracts with held-back cash they rarely chase"
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "They are not waiting for a product. They are working around it today, with whatever is to hand."
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "What changed:"
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "The collapse of large main contractors since 2018 (Carillion, Berkeley, ISG, numerous mid-tier firms) has left retention money trapped in insolvent estates, with subbies waiting years for a fraction of what they are owed. The Construction Industry Fairness Charter (2024) and the Procurement Act 2023 are pushing the industry toward audited, faster release. Adjudication is the only statutory route that forces release in 28 days and is enforceable as a court order, so the value of an automated chase-and-adjudicate tool rises as more main contractors use insolvency to delay payment."
+          ]
+        },
+        {
+          "type": "hr"
+        },
+        {
+          "type": "h2",
+          "nodes": [
+            "What we found — 4 of the 6 things that hold up"
+          ]
+        },
+        {
+          "type": "ul",
+          "items": [
+            [
+              {
+                "tag": "strong",
+                "children": [
+                  "Is the problem real?"
+                ]
+              },
+              " Main contractors in the UK routinely withhold a percentage of subcontractors' money — commonly 5% of the subcontract sum — until milestones are met, unpaid subcontractors cause serious cash flow problems, and Carillion's 2018 collapse left a trail of unpaid retentions with money outstanding across the UK."
+            ],
+            [
+              {
+                "tag": "strong",
+                "children": [
+                  "Can the customer afford it?"
+                ]
+              },
+              " The FMB/CIOB State of Trade Survey shows UK construction SMEs are still growing, though momentum is slowing, so these firms are trading businesses rather than failing ones; and with the UK sector reported at the world's lowest average margin of 3.9%, a 3-5% sum held back is worth more than a typical job's entire profit, which gives owners a strong reason to chase it."
+            ],
+            [
+              {
+                "tag": "strong",
+                "children": [
+                  "Can you actually reach the customer?"
+                ]
+              },
+              " The Federation of Master Builders is the UK's largest trade association for small and medium construction firms, with a vetted membership it already reaches through business-support services and time-saving tools for day-to-day admin — a ready-made, concentrated audience of exactly the small firms this product targets."
+            ],
+            [
+              {
+                "tag": "strong",
+                "children": [
+                  "Is it legal?"
+                ]
+              },
+              " UK law itself creates the mechanism this business relies on: the Housing Grants, Construction and Regeneration Act 1996 amended the law on construction contracts, its Section 108 gives a construction adjudicator jurisdiction to decide disputes, and the 2009 Act amendments to it took effect on 1 October."
+            ]
+          ]
+        },
+        {
+          "type": "h2",
+          "nodes": [
+            "What we could not settle"
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "The evidence points, but it does not close these. What we did find is under each one."
+          ]
+        },
+        {
+          "type": "ul",
+          "items": [
+            [
+              {
+                "tag": "strong",
+                "children": [
+                  "Can the claims be checked?"
+                ]
+              }
+            ],
+            [
+              {
+                "tag": "strong",
+                "children": [
+                  "Is someone already doing this well?"
+                ]
+              },
+              " Construction payment software exists in the UK — Payapps handles subcontractor applications for payment and integrates with accounting/ERP systems, and another product processes progress billings and pays subcontractors with retention deducted — but none of them is described as chasing overdue retention for subcontractors or filing adjudication, and no passage gives any market-share or customer-count figure."
+            ],
+            [
+              {
+                "tag": "strong",
+                "children": [
+                  "Will this still be worth money later?"
+                ]
+              },
+              " Holding back retention money is still standard practice in UK construction contracts as of February 2025, at the 3–5% level the candidate describes, so the cash the tool would chase genuinely exists and no free or bundled alternative is shown to have taken it."
+            ]
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "These are not omissions. Each one is argued at full strength further down, because the case against is the half that decides whether you spend a year on this."
+          ]
+        },
+        {
+          "type": "hr"
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "Every claim in this pack names the page it came from. If one of them does not say what we say it says, that is a refund, not an argument."
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "The page behind every claim is at the end, in ",
+            {
+              "tag": "strong",
+              "children": [
+                "Every check, in full"
+              ]
+            },
+            ". ",
+            {
+              "tag": "strong",
+              "children": [
+                "Your first fortnight"
+              ]
+            },
+            " is where to start."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "the-offer",
+      "title": "What you would be selling",
+      "blocks": [
+        {
+          "type": "h2",
+          "nodes": [
+            "The bet"
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "Stated plainly, so you can disagree with it:"
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "UK construction holds between £3bn and £5bn of retention money at any time. When a sub-contractor (electrician, plumber, bricklayer, joiner) sends an invoice, the main contractor typically holds back 3-5% until practical completion and the end of the defects period, usually 12 to 24 months later. The subbie is owed the money but rarely chases it, because the process is admin-heavy and they fear losing future work with the main contractor."
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "The subbie does have a legal right to release. The Construction Act (Housing Grants, Construction and Regeneration Act 1996, as amended by the Local Democracy, Economic Development and Construction Act 2009) gives them the right to enforce payment through a fast-track 28-day binding decision called adjudication. A court will enforce the adjudicator's ruling, and the adjudicator's decision is binding even if the main contractor disputes it. The catch is that the subbie must follow the contract's exact notice procedure, build the right evidence pack, and file the adjudication correctly. Most subbies do not bother, so the main contractor keeps the cash for free."
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "RetainRelease does the chasing automatically. The subbie enters each contract (main contractor name, contract value, retention percentage, defects period end date) and the tool tracks the release date for every job. As the date approaches, it sends the contractually-required chase letter with the evidence pack attached: architect's certificate or practical completion statement, snagging list signed off, any contractual notices already served. If the main contractor disputes or simply does not respond within the contractual window, the tool files the 28-day adjudication with a partner construction lawyer who specialises in the route."
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "The value compounds as enforcement gets more aggressive. Since 2018, the collapse of Carillion, ISG, and dozens of mid-tier main contractors has left retention money trapped in insolvent estates where insolvency practitioners distribute to secured creditors first and subbies last. The government's Construction Industry Fairness Charter (launched 2024) and HMRC's increased scrutiny of retention practices are pushing the industry toward faster, audited release. Adjudication is increasingly the only way to recover retention before the insolvency practitioner distributes assets. The courts and the regulator can publish guidance and run free first-party templates, but they cannot run a commercial retention chaser, cannot take a commercial side against a main contractor, cannot hold the cross-main-contractor dataset that RetainRelease builds, and cannot serve the subbie adversarially to the duty-imposer."
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "The durable wedge is the proprietary dataset of main contractor retention release behaviour. Each release adds a data point: which main contractors release on time, which dispute, which require adjudication, which pay after the adjudicator's ruling. New subbies use the dataset to choose which main contractors to work for before signing. Insurers and quantity surveyors use it to price credit risk. Late copiers cannot catch up because the data compounds with every contract."
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "Everything below is written on the assumption that the person named at the start of this pack is who you are selling to. If you cannot picture reaching them, that is the objection to raise now, not after the build."
+          ]
+        },
+        {
+          "type": "h2",
+          "nodes": [
+            "The shape of it"
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "This is a prosumer tool. The market it was checked against is the UK."
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "That shape decides more than it looks like it does. It sets who you have to convince, how long you wait to be paid, and what you are still doing in year two."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "the-field",
+      "title": "The field: who is already there",
+      "blocks": [
+        {
+          "type": "p",
+          "nodes": [
+            "We searched for who is already serving this market and could not settle it. What follows is what we actually read, so you can pick up where the search stopped rather than start it again."
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "What the reading of the field concluded, and why, is set out in ",
+            {
+              "tag": "strong",
+              "children": [
+                "What would sink this"
+              ]
+            },
+            " with everything else that argues against starting. What follows here is the evidence itself."
+          ]
+        },
+        {
+          "type": "hr"
+        },
+        {
+          "type": "h2",
+          "nodes": [
+            "What we read, in their words"
+          ]
+        },
+        {
+          "type": "p",
+          "nodes": [
+            "Excerpts from the pages the search returned, each with its link and its date where the page carries one. Quoted rather than summarised: a summary of a competitor is a claim about a competitor, and nothing we retrieved supports one."
+          ]
+        },
+        {
+          "type": "source",
+          "host": "fynex.ai",
+          "year": "",
+          "label": "",
+          "url": "https://fynex.ai/construction/",
+          "quote": "The money layer for construction platforms and contractors. Collect progress billings, pay subcontractors and suppliers with retention and … [passage cut here; the rest is on the page linked above.]"
+        },
+        {
+          "type": "source",
+          "host": "payapps.com",
+          "year": "",
+          "label": "",
+          "url": "https://www.payapps.com/uk/",
+          "quote": "Discover why construction professionals in the UK and globally are using Payapps to streamline their management of subcontractor applications for payment. Construction software for easy management of subcontractor applications for payment."
+        },
+        {
+          "type": "source",
+          "host": "pbctoday.co.uk",
+          "year": "",
+          "label": "",
+          "url": "https://www.pbctoday.co.uk/news/digital-construction-news/construction-software-news/access-coins-payapps-integration-transform-construction-industry-payments/157872/",
+          "quote": "Payapps are thrilled to announce a game-changing partnership with Access Construction, integrating award-winning solutions Payapps and Access Coins ERP software. This strategic partnership marks a new era in financial management for all sizes of Coins customers."
+        },
+        {
+          "type": "source",
+          "host": "capterra.com",
+          "year": "",
+          "label": "",
+          "url": "https://www.capterra.com/p/238884/Payapps/",
+          "quote": "Payapps includes invoice management, purchase order management, and accounting integration for financial tracking, along with contractor, subcontractor, and supplier management."
+        }
+      ]
+    }
+  ],
+  "withheld": [
+    {
+      "title": "The numbers",
+      "blurb": "What it costs to run, what it has to charge, and the figure it breaks even at — with the assumptions listed separately so you can change ours for yours."
+    },
+    {
+      "title": "What would sink this",
+      "blurb": "The case against, at full strength: every check the evidence went against, every question the desk could not settle, and the searches we ran before giving up on it."
+    },
+    {
+      "title": "What you build",
+      "blurb": "The smallest thing worth charging for, specified — what it does, what it does not do, and what you can leave until it sells."
+    },
+    {
+      "title": "How the first customers find you",
+      "blurb": "Where the first ten customers come from, in order of how cheaply you can test each one."
+    },
+    {
+      "title": "How it runs once it works",
+      "blurb": "What a week looks like once it works: the recurring jobs, the ones to automate first, and the point at which it stops fitting around a day job."
+    },
+    {
+      "title": "Your first fortnight",
+      "blurb": "Fourteen days of specific work, sequenced so the cheapest thing that could kill the idea happens first."
+    },
+    {
+      "title": "The toolkit",
+      "blurb": "The questions to ask, drawn from the checks this pack could not close — plus a first outreach message and a one-page decision memo with a kill line on it."
+    },
+    {
+      "title": "Copy you can paste",
+      "blurb": "Copy you can paste: the listing, the pitch, the outreach — written only from claims that survived checking."
+    },
+    {
+      "title": "How to know in 30 days",
+      "blurb": "One test. The single thing that can come back false soonest, with what counts as a no decided before you start."
+    },
+    {
+      "title": "Everything we read, once",
+      "blurb": "Every source behind every claim, in one place, each one a link you can open."
+    },
+    {
+      "title": "Every check, in full",
+      "blurb": "The full record of every check: the queries we ran, the passages we read, the verdict, and the confidence we put on it."
     }
   ]
 }

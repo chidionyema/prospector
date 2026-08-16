@@ -11,6 +11,7 @@ import { priceRange, priceLadder, priceSentence, formatGbp, type PriceRange, typ
 import PriceLadder from '@/components/marketing/PriceLadder';
 import { ComparisonBlock, MethodCostAnchor } from '@/components/marketing/PriceArgument';
 import killTotals from '@/data/kill-log-totals.json';
+import { PACK_DISCLAIMER } from '@/lib/disclaimer';
 
 /**
  * L4 - The pricing page.
@@ -156,7 +157,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
           </p>
           <ul className="mt-6 space-y-3">
             {[
-              'A guarantee that the business will succeed. A pack is evidence-backed research, not a promise of outcome.',
+              `A guarantee that the business will succeed. ${PACK_DISCLAIMER}`,
               'Live updates. Packs are a one-time artefact, dated at publish. The kill log is the live surface.',
               'Personal coaching. The pack is the deliverable. If you want a person, that is a different product, sold elsewhere.',
               'A subscription, dashboard, or seat. The pack is a file you own.',

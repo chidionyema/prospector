@@ -79,18 +79,47 @@ Pluggable modules:
 
 ## Working in a git worktree
 
-**The pre-commit gate is DISABLED (founder decision, 2026-08-14).** `.git/hooks/pre-commit` is
-moved aside to `pre-commit.DISABLED-2026-08-14`; because that lives in the shared git dir, it is
-off for every worktree at once. Re-enable with
-`ln -s ../../.lux/hooks/pre-commit .git/hooks/pre-commit`.
+**The pre-commit gate is ON again (founder directive, 2026-08-15: "we need to enable the pre
+commit gate, with the parallel runs, ci failures getting out of hand").** It was off from
+2026-08-14 for one reason, and that reason has been removed by measurement rather than by
+decision: the suite ran ~3185s serially against a `TEST_TIMEOUT_SECONDS` of 2400
+(`scripts/popdd_verify.py:85`), so the gate could not pass — every commit paid ~40 minutes to be
+refused. `pytest.ini` now passes `-n auto --dist loadfile` on every invocation, and the gate's own
+python-lane commands, timed on clean `main` (`0e1e939`), measure **1.7s of ruff plus 445.5s of
+pytest — 3925 passed, 3 skipped — 7m25s against the 2400s ceiling, 19% of it.** The arithmetic
+that disabled it no longer holds.
 
-The reason is arithmetic, not preference: the suite measures ~3185s serially against a 2400s
-ceiling, so the gate could not pass — every commit paid ~40 minutes to be refused. It also runs
-inside the hook, so `git commit` holds `.git/index.lock` for the whole run and one wedged gate
-blocked every session in the checkout (2026-08-14: 49 minutes, three sessions, zero commits,
-cleared by a human killing a PID). **Nothing now blocks a bad commit locally — CI is the only
-net.** Run the suite yourself when a change deserves it: `.venv/bin/python scripts/popdd_verify.py
---staged`.
+**Install it where git actually LOOKS.** `core.hooksPath` is set in `.git/config` to
+`.git/hooks-active`, which makes `.git/hooks/` inert as a DIRECTORY — anything written there is
+never read, so the re-enable line this file carried until 2026-08-15
+(`ln -s ../../.lux/hooks/pre-commit .git/hooks/pre-commit`) was silently a no-op. The live
+control point is:
+
+```bash
+# ON. Two deliberate choices. The target is ABSOLUTE, because the link lives in
+# .git/hooks-active/ and a relative target would resolve against THAT directory. And it is the
+# MAIN checkout's copy, not `--show-toplevel`, because hooks-active sits in the COMMON git dir
+# and is shared by every worktree — one link, so the gate cannot be half-on.
+ln -sfn "$(dirname "$(cd "$(git rev-parse --git-common-dir)" && pwd -P)")/.lux/hooks/pre-commit" \
+        "$(git rev-parse --git-path hooks)/pre-commit"
+# OFF
+rm "$(git rev-parse --git-path hooks)/pre-commit"
+```
+
+Two things the gate now depends on, both of which fail by accusing something else. **`ruff` runs
+REPO-WIDE** (`scripts/popdd_verify.py:166`), so one unformatted file anywhere walls every commit
+in every worktree — `main` itself carried 12 such errors until they were cleared for this
+(2b38ca3), and a worktree still sitting on an older base will fail ruff until it rebases. And
+**every worktree needs `.venv` and `.lux/keys/agent.pem`**, neither of which `git worktree add`
+creates; without them the gate is BLOCKED over a missing interpreter or an unsigned receipt.
+`./scripts/setup_worktree.sh <path>` is the only correct way to make a worktree, and now it is
+load-bearing rather than a convenience.
+
+The wedge risk is smaller but not gone: the gate runs INSIDE the hook, so `git commit` holds
+`.git/index.lock` for the whole run — now bounded at ~7.5 minutes rather than the 49 minutes that
+blocked three sessions on 2026-08-14. `_run_step` kills the process GROUP and drains the pipes,
+which is what fixed that specific hang. Preflight a change without committing:
+`.venv/bin/python scripts/popdd_verify.py --staged`.
 
 **One session, one worktree** still stands, for the index rather than the gate: sessions sharing
 this checkout share one `.git/index`, and `git worktree add` succeeds even while that index is

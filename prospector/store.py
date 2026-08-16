@@ -162,7 +162,33 @@ class Store:
             conn.execute(_CREATE_TABLE)
             # Migration: add any new columns that an old DB is missing.
             cols = {r[1] for r in conn.execute("PRAGMA table_info(dossiers)")}
-            for col, typ in [("one_liner", "TEXT"),
+            self._add_missing_columns(conn, cols)
+
+            # Create indexes AFTER columns are guaranteed to exist
+            conn.executescript(_CREATE_INDEXES)
+
+    def _add_missing_columns(self, conn: sqlite3.Connection, cols: set[str]) -> None:
+        """Bring the `dossiers` table up to date, tolerating a LOST migration race.
+
+        SQLite has no `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, so this is a check-then-act:
+        read the current columns, then alter. That is only safe if nothing else migrates in
+        between, and something does. `api.py` builds a module-level `Store` at import, so every
+        xdist worker opens this file at once — and in production the daemon, the CLI and the API
+        all do. Two openers that both read `cols` before either alters will both alter, and the
+        loser gets
+
+            sqlite3.OperationalError: duplicate column name: tombstone
+
+        out of `Store.__init__`, therefore out of `import prospector.api`. In CI that surfaced as
+        xdist aborting with "Different tests were collected between gw3 and gw1" — a message
+        naming neither the column nor the race, which is why this deserves its own handler rather
+        than a retry somewhere further out. (Same file, same import, same shape as the
+        `PRAGMA journal_mode=WAL` contention fixed in ba08b24; different statement.)
+
+        Losing the race is SUCCESS, not failure: the winner ran the identical DDL, so the
+        post-condition this method exists for — the column is there — holds either way.
+        """
+        for col, typ in [("one_liner", "TEXT"),
                                ("ambition_tier", "TEXT"),
                                ("structural_form", "TEXT"),
                                ("provisional", "INTEGER DEFAULT 0"),
@@ -215,11 +241,16 @@ class Store:
                                # whole tick, at per-row grain.
                                ("lease_owner", "TEXT"),
                                ("lease_until", "REAL")]:
-                if col not in cols:
-                    conn.execute(f"ALTER TABLE dossiers ADD COLUMN {col} {typ}")
-            
-            # Create indexes AFTER columns are guaranteed to exist
-            conn.executescript(_CREATE_INDEXES)
+            if col in cols:
+                continue
+            try:
+                conn.execute(f"ALTER TABLE dossiers ADD COLUMN {col} {typ}")
+            except sqlite3.OperationalError as e:
+                # Narrow on purpose. Only the lost race is tolerable; a typo in the DDL, a
+                # missing table or a locked database must still raise, or this handler quietly
+                # becomes "ignore schema errors" and the next migration fails silently.
+                if "duplicate column name" not in str(e).lower():
+                    raise
 
     # ------------------------------------------------------------------
     # Public API
