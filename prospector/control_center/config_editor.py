@@ -11,7 +11,9 @@ case E6) and a formal config schema (G4).
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
+import re
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,7 +21,9 @@ from typing import Any
 
 import yaml
 
+from prospector import models as _models
 from prospector import paths
+from prospector.control_center import yaml_surgery as _surgery
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +68,53 @@ def _cert_path() -> Path:
 
 def _config_history() -> Path:
     return _CONFIG_HISTORY or _cc_dir() / "config_history.jsonl"
+
+
+def read_history(limit: int = 100) -> list[dict[str, Any]]:
+    """Every recorded save, newest last — JSON lines AND the legacy four-line YAML blocks.
+
+    233 of the existing records were written as YAML into a file named `.jsonl` (T0-5). They are
+    real history and are not being rewritten, so the reader accepts both: a line that parses as
+    JSON is a record; anything else accumulates until it parses as a YAML mapping. A reader that
+    only handled the new format would report the estate's own change log as empty.
+    """
+    path = _config_history()
+    if not path.exists():
+        return []
+    out: list[dict[str, Any]] = []
+    block: list[str] = []
+
+    def _flush() -> None:
+        if not block:
+            return
+        try:
+            parsed = yaml.safe_load("".join(block))
+            if isinstance(parsed, dict):
+                out.append(parsed)
+        except yaml.YAMLError:
+            pass
+        block.clear()
+
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines(keepends=True):
+            if not line.strip():
+                continue
+            try:
+                parsed = json.loads(line)
+                _flush()
+                if isinstance(parsed, dict):
+                    out.append(parsed)
+                continue
+            except json.JSONDecodeError:
+                pass
+            if block and re.match(r"^\S", line) and line.split(":", 1)[0] in {
+                    k.split(":", 1)[0] for k in block}:
+                _flush()      # a repeated top-level key means the previous block ended
+            block.append(line)
+        _flush()
+    except OSError:
+        return out
+    return out[-limit:]
 
 
 # ---------------------------------------------------------------------------
@@ -159,21 +210,23 @@ def _diff_nested(old: dict, new: dict, prefix: str = "") -> str:
 # Moat-affecting key set
 # ---------------------------------------------------------------------------
 
+# KEYED TO KEYS THAT EXIST (T0-6). The previous set named `moat_order`, `adversarial_decisive`
+# and `adversarial` as TOP-LEVEL paths; none of the three is a top-level key in config.yaml, so
+# the fence was pointed at nothing and fired 0 times in 233 recorded saves. Meanwhile the keys
+# that actually decide what may be SOLD were uncovered. Every entry below was verified present
+# on disk before being added — a fence keyed to an absent path reads as protection and is inert.
 MOAT_AFFECTING_KEYS: set[tuple[str, ...]] = {
-    # Top-level moat gates
-    ("hard_gates",),
-    ("adversarial_decisive",),
-    # Thresholds
-    ("thresholds", "confidence_floor"),
-    ("thresholds", "min_composite_to_pass"),
-    # Operator routing into the moat
-    ("operator",),
-    ("moat_order",),
-    ("retrieval", "provider"),
-    # Adversarial settings
-    ("adversarial",),
-    # Lane-specific moat overrides
-    ("lanes",),  # any lane-level gate/threshold change
+    ("hard_gates",),                 # config.yaml:474 — the kill filter itself
+    ("moat_primary",),               # :81  — which brains may rule FINALLY, i.e. what publishes
+    ("operator",),                   # :58  — the verdict chain
+    ("noncritical_operator",),       # :70  — never rules, but generates what gets ruled on
+    ("thresholds",),                 # :460 — confidence_floor / min_composite_to_pass
+    ("weights",),                    # :504 — the composite every PASS is scored against
+    ("lanes",),                      # per-lane gate and threshold overrides
+    ("admissibility",),              # what is allowed to be generated at all
+    ("retrieval", "provider"),       # the grounding chain a verdict is retrieved through
+    ("listing", "pricing"),          # :1555 — every price the buyer sees
+    ("schedule",),                   # cadence, batch size, backlog cap, market rotation
 }
 
 
@@ -236,13 +289,77 @@ def validate_config(cfg: dict[str, Any]) -> tuple[bool, list[str]]:
                 errors.append(f"Weight '{k}' must be a number in [0.0, 1.0]")
 
     # ── Hard gates ─────────────────────────────────────────────────────────
+    # THE KEYS ARE THE POINT (T0-1). "list, of dicts" waved through
+    # `[{"k": True}, {"k": True}, ...]` — six gates whose names had been replaced by the literal
+    # string "k", so not one of them matched a check name and the kill filter that decides what
+    # may be sold silently stopped firing. A shape check that cannot tell that from the real
+    # value is not validating the thing that matters.
     gates = cfg.get("hard_gates", [])
+    known = set(_models.DEFAULT_CHECKS) | {"adversarial_decisive"}
     if not isinstance(gates, list):
         errors.append("hard_gates must be a list")
     else:
         for g in gates:
-            if not isinstance(g, dict):
-                errors.append("Each hard_gate entry must be a dict")
+            if not isinstance(g, dict) or len(g) != 1:
+                errors.append("Each hard_gate entry must be a single-key dict "
+                              "(e.g. {legality: [refuted]})")
+                continue
+            (name, verdicts), = g.items()
+            if name not in known:
+                errors.append(
+                    f"hard_gate '{name}' is not a check name — the gate would never fire. "
+                    f"Known: {', '.join(sorted(known))}")
+            elif name != "adversarial_decisive" and not (
+                    isinstance(verdicts, list) and verdicts):
+                errors.append(f"hard_gate '{name}' must list the verdicts that fail it, "
+                              f"e.g. [refuted] — got {verdicts!r}")
+
+    # ── Operator chains (T0-2) ─────────────────────────────────────────────
+    # An empty or unbuildable chain is not a configuration; it is what a broken widget stages.
+    # The engine fails LOUDLY on it at startup (`_build_operator` raises), which means the
+    # damage lands on the daemon's next re-exec rather than on the person who clicked Save.
+    from prospector.operator import BUILDABLE_TIERS
+    for field in ("operator", "noncritical_operator", "artifact_operator", "moat_primary"):
+        if field not in cfg:
+            continue
+        raw = cfg[field]
+        chain = [raw] if isinstance(raw, str) else list(raw or [])
+        if not chain or any(not str(t).strip() for t in chain):
+            errors.append(f"{field} must name at least one operator tier (got {raw!r}) — "
+                          "an empty chain is what a broken save looks like, not a setting")
+            continue
+        unknown = [t for t in chain if t not in BUILDABLE_TIERS]
+        if unknown:
+            errors.append(f"{field} names {unknown}, which no adapter can build. "
+                          f"Buildable: {', '.join(BUILDABLE_TIERS)}")
+
+    # ── The verdict roster (R20) ───────────────────────────────────────────
+    # ONE fence, called from here and from `prospector.ops.routing.set_moat_primary`, so the
+    # Streamlit save, the CLI and the Telegram tap refuse the same rosters. Imported inside the
+    # function because `ops.routing` imports this module for the writer.
+    if "moat_primary" in cfg or "operator" in cfg:
+        from prospector.ops.routing import routing_problems
+
+        problems = routing_problems(cfg.get("operator"), cfg.get("moat_primary"))
+        # A FENCE CATCHES WHAT THE WRITE INTRODUCES. Judged against the whole incoming config,
+        # a roster gap that was ALREADY on disk blocks every unrelated edit — an operator could
+        # not move `confidence_floor` until they had first fixed a roster this write does not
+        # touch, and the pause/threshold controls go down with it. So subtract the problems the
+        # config on disk already has: a write that leaves the roster no worse is not the write
+        # that broke it. `set_moat_primary` still applies the UNFILTERED fence (routing.py:198),
+        # which is the path that actually changes the roster.
+        try:
+            current = load_config_raw()
+        except Exception:  # noqa: BLE001
+            # swallow-ok: unreadable on-disk config means we subtract NOTHING and the full fence
+            # applies — the strict direction. The read itself is diagnosed by the mtime/parse
+            # fences in `write_config`, which refuse the write outright.
+            current = {}
+        if current:
+            already = set(routing_problems(current.get("operator"),
+                                           current.get("moat_primary")))
+            problems = [p for p in problems if p not in already]
+        errors.extend(problems)
 
     # ── Lanes ──────────────────────────────────────────────────────────────
     lanes = cfg.get("lanes", {})
@@ -320,19 +437,45 @@ def write_config(new_cfg: dict[str, Any], moat_affecting: bool,
     if not ok:
         return False, "Config validation failed:\n" + "\n".join(f"  - {e}" for e in errs)
 
-    # ── Write ─────────────────────────────────────────────────────────────
+    # ── Write, SURGICALLY (T0-3) ───────────────────────────────────────────
+    # `yaml.safe_dump` used to write this file. Measured: 2034 lines in, 981 out, 1173 comment
+    # lines destroyed — the estate's entire calibration record, including a revenue decision
+    # parked in a comment. The console re-serialising a hand-annotated config is the defect;
+    # editing only the lines whose values changed is the fix. Anything the surgeon cannot place
+    # is REFUSED here rather than serialised, because a save an operator can retry beats a write
+    # that silently eats 1,173 lines of why.
     try:
-        with open(_config_path(), "w", encoding="utf-8") as f:
-            yaml.safe_dump(new_cfg, f, default_flow_style=False, sort_keys=False)
+        original_text = _config_path().read_text(encoding="utf-8")
+    except OSError as e:
+        return False, f"Could not read config.yaml before writing: {e}"
+
+    edited, problems = _surgery.rewrite(original_text, _read_config_raw()[0], new_cfg)
+    if problems:
+        return False, ("Refusing to save — these changes cannot be made without re-serialising "
+                       "config.yaml, which would destroy its comments:\n"
+                       + "\n".join(f"  - {p}" for p in problems)
+                       + "\nEdit config.yaml directly for these, or narrow the change.")
+    try:
+        _config_path().write_text(edited, encoding="utf-8")
     except OSError as e:
         return False, f"Could not write config.yaml: {e}"
 
     # ── Log history ─────────────────────────────────────────────────────────
     _cc_dir().mkdir(parents=True, exist_ok=True)
-    from prospector.control_center import readers as _r
-    _r.load_config_dict.clear()
-    _r.load_config_typed.clear()
-    _r.config_load_error.clear()
+    # CACHE INVALIDATION MUST NOT DECIDE WHETHER THE WRITE SUCCEEDED. `readers` imports
+    # streamlit; this writer is now also reached headlessly (`python -m prospector.ops.routing`,
+    # and through it the Telegram surface). A hard import here would raise AFTER config.yaml had
+    # already been rewritten, reporting failure for a write that happened — the worst possible
+    # answer for an actuator. There is no Streamlit cache to clear in that process anyway.
+    try:
+        from prospector.control_center import readers as _r
+        _r.load_config_dict.clear()
+        _r.load_config_typed.clear()
+        _r.config_load_error.clear()
+    except (ImportError, AttributeError):
+        # Exactly the two conditions the comment above describes: no streamlit in this
+        # process, or a reader without a cache to clear. Neither is a failed write.
+        _r = None
 
     entry = {
         "ts": datetime.now(timezone.utc).isoformat(),
@@ -340,9 +483,13 @@ def write_config(new_cfg: dict[str, Any], moat_affecting: bool,
         "moat_affecting": moat_affecting,
         "backup": str(bak),
     }
+    # ONE JSON OBJECT PER LINE (T0-5). This file is named `.jsonl` and was written as four-line
+    # YAML blocks — 932 lines / 233 records, every one of which fails a JSONL reader on line 1.
+    # A recon pass this session read it and reported the file "malformed", which is what an audit
+    # surface would do too. Legacy YAML records stay on disk; `read_history` tolerates both.
     try:
         with open(_config_history(), "a", encoding="utf-8") as f:
-            f.write(yaml.safe_dump(entry, default_flow_style=False))
+            f.write(json.dumps(entry, sort_keys=True) + "\n")
     except OSError:
         pass
 
@@ -351,8 +498,9 @@ def write_config(new_cfg: dict[str, Any], moat_affecting: bool,
         _write_certification(certified=False,
                            reason="moat-affecting change",
                            config_hash=config_hash(new_cfg))
-        # Invalidate cert cache
-        _r.load_certification.clear()
+        # Invalidate cert cache (absent in a headless caller — see the import above)
+        if _r is not None:
+            _r.load_certification.clear()
     else:
         # Mark certified only if golden set has passed with this hash
         cert = load_certification()
@@ -363,7 +511,8 @@ def write_config(new_cfg: dict[str, Any], moat_affecting: bool,
                 certified_by=cert.get("certified_by", ""),
                 golden_run=cert.get("golden_run", ""),
             )
-        _r.load_certification.clear()
+        if _r is not None:
+            _r.load_certification.clear()
 
     return True, f"Config saved → {_config_path()} (backup: {bak.name})"
 

@@ -1619,6 +1619,20 @@ class FallbackOperator(Operator):
             provider="+".join(n for n, _ in self.operators))
 
 
+#: The tier names `_build_operator` can actually construct, in the order it tries them.
+#:
+#: THIS EXISTS SO A UI CANNOT OFFER A TIER THAT DOES NOT EXIST. The Control Center's operator
+#: selector offered `["", "mock", "claude"]` — one blank, one test double, and one adapter that
+#: was DELETED on 2026-08-15 and now raises here. The live value (`[minimax, claude_cli]`) was in
+#: none of them, so the widget fell to index 0 and staged the empty string on every render, with
+#: no interaction required. Any list of tier names written somewhere else drifts from this
+#: function; read this instead. Removed tiers stay absent deliberately — they raise below with
+#: the reason and the date, which is the message an operator needs.
+BUILDABLE_TIERS: tuple[str, ...] = (
+    "claude_cli", "minimax", "minimax_m27", "deepseek", "ollama", "mock",
+)
+
+
 def _build_operator(kind: str, cfg, fast: bool) -> Operator:
     # fast=True selects the lighter model for mechanical calls (query-gen,
     # prescreen); falls back to the main model when model_fast is unset.
@@ -1717,7 +1731,7 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
             "measured at its usage limit and every call paid a guaranteed failure first). "
             "Use claude_cli. Update config.yaml `operator:`/`artifact_operator:`.")
     raise ValueError(f"unknown operator: {kind!r} "
-                     "(expected claude_cli|minimax|minimax_m27|deepseek|ollama|mock). "
+                     f"(expected {'|'.join(BUILDABLE_TIERS)}). "
                      "Note `minimax_fast` is NOT an operator name — it is a `model_defaults` "
                      "field consumed by the `minimax` branch above.")
 

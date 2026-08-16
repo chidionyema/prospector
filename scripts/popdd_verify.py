@@ -66,6 +66,7 @@ if TYPE_CHECKING:
 
 ROOT = Path(__file__).parent.parent
 WEB_DIR = ROOT / "store_platform" / "src" / "Store.Web"
+OPS_DIR = ROOT / "store_platform" / "src" / "Ops.Console"
 DOTNET_TEST_PROJ = "store_platform/src/Store.Tests/Store.Tests.csproj"
 
 # Wall-clock ceiling per lane. This is a HANG detector, not a performance budget — set it
@@ -111,6 +112,7 @@ SOURCE_EXTS = {".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".cs", ".csp
 WEB_EXTS = {".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".json", ".css"}
 
 WEB_REL = "store_platform/src/Store.Web/"
+OPS_REL = "store_platform/src/Ops.Console/"
 
 # ── the engine lane's catchment ───────────────────────────────────────────────
 # The daemon is steered by two kinds of file, and until 2026-08-14 one of them was proven by
@@ -274,6 +276,23 @@ LANES: dict[str, Lane] = {
         parser=_parse_engine,
         preflight=(ROOT / "scripts" / "verify_engine_change.sh",),
     ),
+    # The admin console is a SECOND Next.js app, with its own package.json, tsconfig,
+    # vitest config and node_modules. The `web` lane cannot prove it — different cwd,
+    # different tsconfig — so without this lane every console file staged came back as
+    # "source no lane covers", which is exactly what blocked the app's first commit on
+    # 2026-08-16. Same two steps as `web`, pointed at the other directory.
+    "ops": Lane(
+        key="ops",
+        label="ops — tsc --noEmit + vitest (Ops.Console)",
+        target="ops-console:web-suite",
+        steps=(
+            ("typecheck", ["npm", "run", "--silent", "typecheck"]),
+            ("vitest", ["npm", "test", "--silent"]),
+        ),
+        parser=_parse_vitest,
+        cwd=OPS_DIR,
+        preflight=(OPS_DIR / "node_modules",),
+    ),
     "dotnet": Lane(
         key="dotnet",
         label="dotnet — Store.Tests",
@@ -285,7 +304,7 @@ LANES: dict[str, Lane] = {
 
 # cheapest first, so a fast failure comes back fast. `engine` (~15s) leads: a change that
 # stops the daemon completing a tick should be reported before anything spends 175s.
-LANE_ORDER = ("engine", "web", "dotnet", "python")
+LANE_ORDER = ("engine", "web", "ops", "dotnet", "python")
 
 
 def lanes_for(paths: list[str]) -> tuple[list[str], list[str]]:
@@ -308,6 +327,8 @@ def lanes_for(paths: list[str]) -> tuple[list[str], list[str]]:
             lanes.add("engine")
         if path.startswith(WEB_REL) and ext in WEB_EXTS:
             lanes.add("web")
+        elif path.startswith(OPS_REL) and ext in WEB_EXTS:
+            lanes.add("ops")
         elif ext == ".py":
             lanes.add("python")
         elif ext in (".cs", ".csproj"):
