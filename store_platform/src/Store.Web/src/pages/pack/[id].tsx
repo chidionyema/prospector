@@ -18,18 +18,17 @@ import { PackContentsSection, PACK_DOCUMENTS } from '@/components/marketing/Pack
 import { ApiError, fetchCatalog, fetchPackDetails, freshnessLabel, marketLabel, parseCheckCounts, scoreAxes, splitVerdict, Pack, PackDetails, FinancialSnapshot } from '@/lib/api/client';
 import { RESEARCH_STATS } from '@/lib/stats';
 import { PACK_DISCLAIMER } from '@/lib/disclaimer';
-import { paybackEquation } from '@/lib/payback';
 import { formatPriceForMarket, formatChargeNote, formatApproxNote, currencyForCountry, type Currency } from '@/lib/fx';
 import { isTruncated, repairTruncation } from '@/lib/copy';
 import { track, trackPriceEvent } from '@/lib/analytics';
 import { BuyerIdentityNote } from '@/components/checkout/BuyerIdentityNote';
-import EvidenceExcerptPlate from '@/components/marketing/EvidenceExcerptPlate';
+import EvidenceExcerptPlate, { firstCitedIndex } from '@/components/marketing/EvidenceExcerptPlate';
 import PackBuyButton from '@/components/checkout/PackBuyButton';
 import { usePackCheckout } from '@/lib/checkout/usePackCheckout';
 import { PREOPENED_CHECKOUT_PARAM, preopenedClientSecret } from '@/lib/preopenedCheckout';
 import { FacetChips } from '@/components/discovery/FacetChips';
 import { SimilarPacks } from '@/components/discovery/SimilarPacks';
-import { LEGAL } from '@/lib/config';
+import { LEGAL, FOUNDER, BRAND, hasFounder, RESEARCH_RATE_ANCHOR } from '@/lib/config';
 import { AddToCartButton } from '@/components/cart/AddToCartButton';
 import { FounderPreviewLink } from '@/components/founder/FounderPreviewLink';
 import { similarPacks } from '@/lib/discovery';
@@ -47,6 +46,31 @@ const EmbeddedCheckoutPanel = dynamic(
 );
 
 const subscribeToNothing = () => () => {};
+
+/**
+ * "Same mechanics, different world", with the cheaper packs taken out of it.
+ *
+ * FOUNDER, 2026-08-16: the row read as a discount anchor. It did. `similarPacks` scores on
+ * MECHANISM and is indifferent to price, so a £199 pack routinely showed three £29 matches, in a
+ * row sitting between the buy rail and the footer -- a reader at the moment of commitment being
+ * shown the same mechanics for a fifth of the money, by us. Whatever they then buy, the £199 sale
+ * is the one we talked them out of.
+ *
+ * THE PLACEMENT WAS THE OTHER CANDIDATE FIX AND IS NOT THIS ONE. Moving the row up the page keeps
+ * every cheaper pack in it and just shows them sooner; the anchoring is in the price gap, not the
+ * scroll position. (Baymard's 50-site study is the evidence that cross-sells at the moment of
+ * commitment "can distract users from initiating the checkout process" -- it does NOT prescribe a
+ * placement, and this comment does not claim it does.)
+ *
+ * Same price or dearer, so the row can only ever trade up. It keeps its own empty-state contract:
+ * `SimilarPacks` renders nothing on an empty list, and filtering to nothing is a normal outcome
+ * for the dearest pack on the shelf. A pack with no `pricePence` is treated as 0 and dropped
+ * rather than guessed at -- a missing price is not evidence that it is dearer.
+ */
+function sameOrDearer(pack: PackDetails, similar: Pack[]): Pack[] {
+  const floor = pack.pricePence ?? 0;
+  return similar.filter((p) => (p.pricePence ?? 0) >= floor);
+}
 
 interface PackPageProps {
   pack: PackDetails | null;
@@ -196,9 +220,22 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
   // Distinct from `pack.sourceCount` (51 on some packs), which counts what is INSIDE the pack.
   // The two numbers must never be presented as one: claiming "51 sources" on a page that lets
   // you open three is precisely the unearned-assertion move the six checks exist to kill.
+  //
+  // THE PULL-QUOTE'S SOURCE GOES LAST, NOT FIRST (founder, 2026-08-16: the same source four
+  // times). This list is deduped by URL and was built in extract order, so its first chip was
+  // always the citation on the line `EvidenceExcerptPlate` quotes at the top of the page -- the
+  // one source the reader has already been shown, offered again under a heading promising more of
+  // them. Rotating the hero's line to the back changes what is offered first and nothing else: the
+  // set is identical, every source is still here, and a pack with exactly one source still shows
+  // it. `firstCitedIndex` is the plate's own function, so the two cannot disagree about which line
+  // is the hero.
   const openSources = React.useMemo(() => {
+    const lines = pack.sampleExtract ?? [];
+    const hero = firstCitedIndex(lines);
+    const ordered =
+      hero >= 0 ? [...lines.slice(hero + 1), ...lines.slice(0, hero + 1)] : lines;
     const seen = new Set<string>();
-    return (pack.sampleExtract ?? []).flatMap((line) =>
+    return ordered.flatMap((line) =>
       parseCitations(line).citations.filter((c) => !seen.has(c.url) && seen.add(c.url)),
     );
   }, [pack.sampleExtract]);
@@ -261,10 +298,16 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
   const providerLabel = provider === 'stripe' ? 'Stripe' : 'Paddle';
   const priceLabel = formatPriceForMarket(pack.price, currency);
 
-  // The one number that answers "is this worth it", as a RATIO. See the note at its render site.
-  // `paybackEquation` returns null unless the snapshot carries a single unambiguous month-1
-  // figure that at least covers the price, so this can never appear only when it flatters.
-  const payback = paybackEquation(pack.price, pack.financialSnapshot);
+  // WHAT THE PRICE BUYS, PER UNIT. See the note at its render site for why this replaced the
+  // modelled multiple. Stated in GBP for every buyer because GBP is what is actually debited
+  // (`formatChargeNote` tells a non-GBP buyer the same thing against the button), so this is one
+  // figure that does not move with the display currency and cannot drift from the charge.
+  const perSource =
+    typeof pack.pricePence === 'number' &&
+    typeof pack.sourceCount === 'number' &&
+    pack.sourceCount > 0
+      ? `£${(pack.pricePence / pack.sourceCount / 100).toFixed(2)}`
+      : null;
 
   const notifyHref =
     `mailto:${LEGAL.supportEmail}` +
@@ -328,7 +371,27 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
           words, on the most scrutinised element of the page. Saying a thing twice does not make
           a nervous buyer more confident that there is no subscription; it makes them re-read the
           sentence looking for the catch. */}
-      <span className="text-caption text-subtle">One-time price</span>
+      {/* THE ANCHOR, ABOVE THE PRICE. What it costs to have this work done, before what it costs
+          to buy it done. The figure, its source and the reason a day rate is the right comparison
+          all live in `RESEARCH_RATE_ANCHOR` (lib/config.ts) -- including why the modelled multiple
+          that used to carry this job is deleted rather than retuned.
+          No number of days is stated. How long a contractor would take to reproduce this pack is
+          not a fact we have, and the anchor does not need it: the reader compares a day to a pack
+          and reaches their own answer. */}
+      <p className="text-caption leading-relaxed text-subtle">
+        Having this researched for you starts at{' '}
+        <span className="font-medium text-text">{RESEARCH_RATE_ANCHOR.dayRateLabel} a day</span>{' '}
+        <a
+          href={RESEARCH_RATE_ANCHOR.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={textLinkClass()}
+        >
+          ({RESEARCH_RATE_ANCHOR.source})
+        </a>
+        . This is it already done.
+      </p>
+      <span className="mt-4 block text-caption text-subtle">One-time price</span>
       <div className="mt-1">
         <PriceText className="text-h2">{priceLabel}</PriceText>
       </div>
@@ -338,6 +401,33 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
           price. */}
       {currency !== 'GBP' && (
         <p className="mt-1 text-caption text-subtle">{formatApproxNote(currency)}</p>
+      )}
+
+      {/*
+       * THE PRICE, DIVIDED BY THE WORK. (Founder, 2026-08-16: the price sits there naked.)
+       *
+       * A figure alone is not expensive or cheap, it is unreadable, and this rail gave the reader
+       * nothing to read it against. What was there instead is the reason this is careful: the rail
+       * printed "the pack's own model puts month one at 13x what the pack costs". That number is
+       * not too big, it is the wrong KIND of number -- a modelled month of TURNOVER set against a
+       * one-off PRICE, two things that are not comparable, so retuning the bound that let it
+       * through (`CREDIBLE_MULTIPLE_CEILING`) would not have fixed it. It is gone.
+       *
+       * What replaces it is arithmetic on two numbers already printed on this page: the price, and
+       * the source count in the evidence row under the title. The reader can multiply it back and
+       * get the price, which is the only test a sceptic actually runs, and it is a claim about what
+       * they are buying rather than a forecast of what they might earn. It invents nothing, it
+       * cannot flatter (there is no branch where it appears only when the figure is pretty), and it
+       * renders nothing at all when either input is missing.
+       *
+       * GBP for every buyer, on purpose: GBP is the currency debited, `formatChargeNote` says so
+       * against the button, and a per-unit figure derived from a converted display price would move
+       * with the FX table while the charge did not.
+       */}
+      {perSource && (
+        <p className="mt-2 text-caption leading-relaxed text-subtle">
+          {pack.sourceCount} cited sources behind it, <span className="font-medium text-text">{perSource} each</span>.
+        </p>
       )}
 
       {/*
@@ -439,6 +529,24 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
               and putting an account-shaped sentence in front of the price is how a storefront
               teaches guests that they need an account. They do not. */}
           <BuyerIdentityNote className="mt-3 text-caption leading-relaxed text-subtle" />
+          {/* THE FREE SAMPLE, AT THE MOMENT OF THE DECISION (founder, 2026-08-16: "the free
+              sample is buried"). It was one link inside "The receipts", ~1,000px below the buy
+              button and after the sources list, so the only reader who found it was one already
+              convinced enough to read that far -- the opposite of the reader it is for. It MOVED
+              here rather than being duplicated: two live entry points to the same sample is how a
+              page ends up arguing with itself about which one is the offer.
+              Deliberately a text link under the button, not a second button: this is
+              objection-handling for the buyer who is not ready, and giving it equal weight to Buy
+              turns one decision into two. No lift figure is claimed for the placement -- the trial
+              literature to hand benchmarks free trials, not link position, and inventing a number
+              on the page that sells sourced numbers is the one thing this rail may not do. */}
+          <p className="mt-3 text-caption leading-relaxed text-subtle">
+            Not ready?{' '}
+            <Link href="/sample" className={textLinkClass()}>
+              Read a full pack free
+            </Link>{' '}
+            and see the depth before you pay.
+          </p>
         </>
       ) : (
         <>
@@ -492,19 +600,15 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
        * The sentence points at `04_Financial_Model.md` rather than elaborating, because the rail
        * is the wrong place to argue economics at length -- that document IS the argument.
        */}
-      {payback && (
-        <p className="mt-6 text-caption leading-relaxed text-subtle">
-          <span className="font-medium text-text">
-            The pack&rsquo;s own model puts month one at {payback.multiple}× what the pack costs
-            {payback.paybackMonths ? `, and payback at ${tidyMonths(payback.paybackMonths)}` : ''}.
-          </span>{' '}
-          {/* Was "Every input behind that is sourced". It is not: `_render_financial_model`
-              (artifacts.py:152) receives the `claims` list and never reads it, and the inputs are
-              rendered as bare numbers (artifacts.py:190, 227-228). The workings ARE exact and ARE
-              in the pack -- that is the claim worth making, and it is the one we can prove. */}
-          The workings are the fourth document, and its arithmetic is computed rather than written.
-        </p>
-      )}
+      {/* THE MODELLED MULTIPLE IS GONE (founder, 2026-08-16). It rendered "month one at 13x what
+          the pack costs" -- a modelled month of turnover divided by a one-off price, which is a
+          category error rather than an overstatement, so the ceiling in `lib/payback.ts` that let
+          13 through was never the defect. The rail still answers "why this number": the per-source
+          line sits against the price above, and the financial model is still sold as a document
+          rather than quoted as a promise, which is the sentence below. */}
+      <p className="mt-6 text-caption leading-relaxed text-subtle">
+        The workings are the fourth document, and its arithmetic is computed rather than written.
+      </p>
 
       <p className="mt-6 text-caption leading-relaxed text-subtle">
         {/* WAS "What couldn't be verified is marked absent, never invented." Same fact, stated as
@@ -812,18 +916,27 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 decoration on a big number; it is the difference between a 94.5% pass rate and a
                 94.5% kill rate, and the second one is the argument. */}
             <div className="mt-8 flex flex-col gap-x-6 gap-y-3 rounded-md border border-border bg-surface p-6 sm:flex-row sm:items-center">
+              {/* FLIPPED TO THE SURVIVOR END (founder, 2026-08-16: the scarcity is never used).
+                  The plate led with the kill rate and then spent its second paragraph turning it
+                  round -- and the docblock above had already worked out why that was wrong: "94%
+                  were killed" and "this is one of the survivors" are one number read from either
+                  end, and only the second is an argument for buying. It printed the first anyway.
+                  A reader scanning a rail of figures gets the headline and not the correction.
+                  The bound, not a rate to one decimal: see `survivorBoundLabel` in lib/stats.ts
+                  for why rounding UP is what keeps the 2026-08-13 directive intact. The survivor
+                  COUNT is still nowhere on this page and still cannot be derived from it. */}
               <p className="flex-none">
                 <span className="block font-mono text-h1 font-semibold leading-none text-text">
-                  {RESEARCH_STATS.rejectRateLabel}
+                  {RESEARCH_STATS.survivorBoundLabel}
                 </span>
                 <span className="mt-2 block font-mono text-caption text-subtle">
-                  killed on evidence
+                  or fewer get through
                 </span>
               </p>
               <p className="max-w-[52ch] text-meta leading-relaxed text-muted">
-                <span className="font-medium text-text">This one came through the filter.</span>{' '}
-                {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas went through it and the
-                rest died on cited evidence.{' '}
+                <span className="font-medium text-text">This is one of them.</span>{' '}
+                {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas went through the filter
+                and {RESEARCH_STATS.rejectRateLabel} of them died on cited evidence.{' '}
                 <Link
                   href="/kill-log"
                   className={textLinkClass()}
@@ -1269,13 +1382,30 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                   )}
                 </div>
               )}
-              <Link
-                href="/sample"
-                className="mt-4 inline-flex items-center gap-1.5 py-3 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
-              >
-                Want to see the depth first? Read the free sample report
-                <Icon name="arrowRight" size={14} />
-              </Link>
+              {/* The free-sample link that used to sit here now sits under the buy button, where
+                  the reader deciding whether to pay can see it. See the note at its new site. */}
+
+              {/* A NAMED HUMAN, HERE AND NOT ON THE BUY RAIL (founder, 2026-08-16: "nobody is
+                  named", then, when it first shipped beside the button: "unnecessary when the
+                  buyer is about to make a purchase decision"). Both are right, and they resolve to
+                  a placement rather than a trade-off. Anonymity is a credibility liability, so the
+                  name belongs in the block whose subject IS credibility -- this one, under the
+                  sources a reader can open. It is not an objection to overcome at the moment of
+                  commitment, where every extra line is something between the reader and the
+                  button.
+                  The NAME ONLY, and a link. §5.3: a fact renders on exactly one page, and the
+                  founder's story is /about's (see where `bio` was deleted from `FOUNDER`). A
+                  second telling here would drift from it. `hasFounder()` is the switch: with the
+                  field empty this renders nothing at all, never a placeholder. */}
+              {hasFounder() && (
+                <p className="mt-4 border-t border-border pt-4 text-caption leading-relaxed text-subtle">
+                  Researched and published by {FOUNDER.name}, who built {BRAND.name}.{' '}
+                  <Link href="/about" className={textLinkClass()}>
+                    Who that is
+                  </Link>
+                  .
+                </p>
+              )}
             </div>
 
             {/* Hides itself unless at least two packs genuinely score (AC-21). Scoring already
@@ -1408,7 +1538,14 @@ function tidyMonths(value: string): string {
 
 function PreviewDocument({ pack }: { pack: PackDetails }) {
   const headings = pack.whatYouGet ?? [];
-  const body = pack.sampleExtract ?? [];
+  // NOT the same lines the pull-quote at the top of the page is already showing. This slice
+  // started at index 0 and so did `EvidenceExcerptPlate`, which is two of the four surfaces that
+  // opened on one source (founder, 2026-08-16). Dropping the hero line and keeping the order is
+  // the whole fix; the preview is blurred and aria-hidden, so WHICH lines it shows only ever
+  // mattered for the repetition a sighted reader sees down the page.
+  const extract = pack.sampleExtract ?? [];
+  const heroLine = firstCitedIndex(extract);
+  const body = extract.filter((_, i) => i !== heroLine);
   const figures = previewFigures(pack.financialSnapshot);
   const hasRealContent = headings.length > 0 || body.length > 0;
 
@@ -1596,7 +1733,7 @@ export const getServerSideProps: GetServerSideProps = async ({ params, req, res 
     // 2026-08-14: this was serialising the whole catalogue into every pack page's `__NEXT_DATA__`
     // to render a 3-card row). See the `similar` field's note on `PackPageProps`.
     return {
-      props: { pack, similar: similarPacks(pack, catalog), currency },
+      props: { pack, similar: sameOrDearer(pack, similarPacks(pack, catalog)), currency },
     };
   } catch (error) {
     console.error('Error fetching pack details:', error);
