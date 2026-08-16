@@ -59,7 +59,7 @@ public sealed class StoreApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Email:WebBaseUrl", "http://localhost:3000");
 
         // MoneyRailConfigGate refuses to start when the active provider is missing a required
-        // key, and since Paddle was removed the active provider defaults to stripe. Same reason
+        // key, and the active provider now defaults to stripe. Same reason
         // as the signing key above: the test host supplies its own rather than the repo carrying
         // a committed secret. These values never reach Stripe — ConfigureServices below replaces
         // the "stripe" rail with FakePaymentProvider — but they must pass the shape guard, so the
