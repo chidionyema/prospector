@@ -186,8 +186,17 @@ function SourcePassage({ block }: { block: SourceBlock }) {
 }
 
 export default function SamplePage() {
+  /* `6xl` to match `LegalDoc.tsx:108`, the site's other document-with-a-rail page, so the trail
+     starts on the same left edge as the prose under it rather than the 3xl default.
+     This page reached main WITHOUT a trail: the rule that every visual route offers a way back
+     landed on the branch (`backNavigation.test.ts`) at the same time as this page was rewritten
+     on main, and a textual merge keeps both without noticing that the new page breaks the new
+     rule. The test is what caught it. */
   return (
-    <MarketingLayout>
+    <MarketingLayout
+      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Sample' }]}
+      breadcrumbsWidth="6xl"
+    >
       {/* Its own description, not the site default, and no longer the word "unredacted". The
           previous copy promised "a complete Mumchimp report free, unredacted" -- a search snippet
           that the page below it could not honour once the boundary went in. A snippet that

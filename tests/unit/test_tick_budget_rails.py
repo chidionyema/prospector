@@ -662,6 +662,14 @@ def test_the_drain_loop_actually_consults_the_deadline_and_forwards_both_budgets
     assert {"artifact_time_budget_s", "vet_deadline_mono"} <= kw, (
         "the drain's vet is unbounded again; its content phase was 51-56% of a row's cost")
 
-    # And the wall must be READ, not merely accepted as a parameter.
+    # And the wall must be READ, not merely accepted as a parameter. Either spelling counts: a
+    # direct `monotonic()` comparison — what the serial loop did — or a call to
+    # `_vet_budget_cancel`, the ONE shared definition of "this budget is spent" that the vetting
+    # batch already uses (run.py:77). When the drain became a pool on 2026-08-15 the direct read
+    # moved inside that helper. Pinning the literal `monotonic` would force the drain to keep a
+    # second, private copy of the very check the helper exists to centralise, which is how two
+    # phases end up disagreeing about whether the same budget is spent.
     src = ast.dump(fn)
-    assert "deadline_mono" in src and "monotonic" in src
+    assert "deadline_mono" in src, "the drain no longer reads its wall"
+    assert "monotonic" in src or "_vet_budget_cancel" in src, (
+        "the drain accepts a deadline it never consults")

@@ -77,6 +77,7 @@ from prospector.errors import ProviderExhaustedError  # noqa: E402
 from prospector.pack_linter import (  # noqa: E402
     TITLE_MAX_CHARS,
     check_claims,
+    check_shelf_copy,
     check_title,
     check_title_claims,
 )
@@ -206,6 +207,22 @@ def _is_title_echo(headline: str, title: str) -> bool:
     return h == t or t.startswith(h) or h.startswith(t)
 
 
+def _voice(kind: str, value: str) -> List[str]:
+    """The shelf-voice breaches on one line: second person, and an opener that points at a
+    sentence the reader has not read.
+
+    `check_title` grades length, shape and claims; it says nothing about who the line is
+    addressed to. So this tool could accept "Turn your Cal/OSHA citation into a defence"
+    as a clean title while `check_shelf_copy` — the publish gate — calls it an error. 38 of
+    the 39 defects left on the live shelf on 2026-08-16 were titles, and none of them were
+    visible to the function this tool validates with."""
+    if not value:
+        return []
+    return [p["detail"] for p in check_shelf_copy({kind: value}, block=True)
+            if p.get("severity") == "error"
+            and ("second person" in p["detail"] or "opens on" in p["detail"])]
+
+
 def assess(row: Dict[str, Any], *, max_chars: int = TITLE_MAX_CHARS) -> Dict[str, List[str]]:
     """Which buyer-visible lines on this row are defective, and why. {} means leave it alone."""
     title = (row.get("title") or "").strip()
@@ -217,6 +234,7 @@ def assess(row: Dict[str, Any], *, max_chars: int = TITLE_MAX_CHARS) -> Dict[str
 
     why = [p["detail"] for p in check_title(title, max_chars=max_chars)]
     why += _hard(check_title_claims(title, src, market=market))
+    why += _voice("title", title)
     if why:
         needs["title"] = why
 
@@ -231,6 +249,7 @@ def assess(row: Dict[str, Any], *, max_chars: int = TITLE_MAX_CHARS) -> Dict[str
         if _DASH.search(headline):
             why.append("carries a raw dash")
         why += _hard(check_claims(headline, src, market=market, where="headline"))
+        why += _voice("headline", headline)
     if why:
         needs["headline"] = why
 
@@ -245,6 +264,7 @@ def assess(row: Dict[str, Any], *, max_chars: int = TITLE_MAX_CHARS) -> Dict[str
         if _norm(card) == _norm(title):
             why.append("repeats the title")
         why += _hard(check_claims(card, src, market=market, where="card_line"))
+        why += _voice("cardLine", card)
     if why:
         needs["cardLine"] = why
     return needs
@@ -272,7 +292,8 @@ def _validate(kind: str, value: str, row: Dict[str, Any], *, max_chars: int
             return ["`title` was empty"], []
         problems = check_title(value, max_chars=max_chars)
         claims = check_title_claims(value, src, market=market)
-        return [p["detail"] for p in problems] + _hard(claims), _soft(claims)
+        return ([p["detail"] for p in problems] + _hard(claims)
+                + _voice("title", value)), _soft(claims)
     if not value:
         return [f"`{kind}` was empty"], []
     breaches: List[str] = []

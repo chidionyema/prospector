@@ -907,7 +907,19 @@ KNOWN_INITIALISMS = frozenset("""
 NHS HMRC DWP DVLA MOT PAYE VAT ISA GP GPS CV DIY PDF CSV TV CCTV PPE LED UV
 UK US USA EU EEA IRS DMV FBI FDA CDC EPA USDA
 AI IT HR API CEO CFO CTO MP MPs PhD BBC
+OSHA
 """.split()) | frozenset(_US_STATE_CODES.split())
+
+#: OSHA, added 2026-08-16, is a deliberate claim under the rule this list states: a capable
+#: adult outside the sector already knows it. "OSHA violation" is ordinary American speech,
+#: the same register as MOT or NHS here, and the California agency's own name is `Cal/OSHA`
+#: — an expansion ("California Division of Occupational Safety and Health") is longer than
+#: the 60-character title budget and names a body no one searches for. It was the single
+#: remaining initialism hit across the 61 live rows, on
+#: `d6f72b9dc9a45c45 Cal/OSHA citation contest tool for California employers`, and spelling
+#: it out would have made that title worse to satisfy a rule aimed at trade shorthand.
+#: The neighbours it does NOT license stay out: COSHH, DVSA, IHT, DLA and PAH remain
+#: defects, because each is a term only the trade says.
 
 #: Words, for the lexicon tests. Apostrophes stay inside the token so "you're" survives as
 #: one word; hyphens split, so "unpaid-hours" tests as "unpaid" and "hours".
@@ -948,6 +960,18 @@ thereby ceases cease aforementioned herein utilise utilises heretofore
 #: who can buy". The 19th ("setting yourself up to certify other electricians' wiring")
 #: did address the buyer, and was still shorter and better in the third person.
 _SECOND_PERSON_RE = re.compile(r"\b(you|your|yours|you're|yourself|yourselves)\b", re.I)
+
+#: A shelf line that OPENS on a bare pronoun. The reader meets the line cold, with no
+#: antecedent anywhere on the page, so "It takes a published NHS rota…" and "We handle your
+#: stolen tool claim…" both start by naming nothing: the first word is a promise that the
+#: previous sentence said what this is, and there is no previous sentence. The house shape
+#: opens on the thing itself — "A tool for UK freelance designers, developers and writers
+#: that turns every out-of-scope client request into a priced, dated change note" (founder,
+#: 2026-08-16, naming this the line to copy). Matched on the FIRST word only: the same
+#: pronoun mid-sentence has an antecedent and is fine.
+_BARE_OPENER_RE = re.compile(
+    r"^[\s\"'“‘(]*(it|its|it's|we|our|ours|us|they|them|their|theirs|this|that|these|those|i)\b",
+    re.I)
 
 #: Finite verbs, for the residue check only. THE BARE INFINITIVES ARE DELIBERATELY ABSENT
 #: and this is the whole precision of the check: `cover`, `claim`, `check`, `file`, `pay`,
@@ -1151,7 +1175,15 @@ def check_shelf_copy(fields: Dict[str, str], *, block: bool = False,
                                f"the business in the third person, and copy written to the service's "
                                f"end customer is aimed at nobody who can buy: {text!r}"))
 
-        # 5. Trade shorthand, and the residue. Both advisory under either setting.
+        # 5. Opens on a pronoun with nothing behind it (see `_BARE_OPENER_RE`).
+        opener = _BARE_OPENER_RE.match(text)
+        if opener:
+            problems.append(mk("shelf_copy", name,
+                               f"opens on {opener.group(1)!r}, a word that points back at a sentence the "
+                               f"reader has not read — name the thing first ('A tool for …', 'A fixed-fee "
+                               f"service that …'): {text!r}"))
+
+        # 6. Trade shorthand, and the residue. Both advisory under either setting.
         shorthand = sorted({w for w in _SHELF_WORD_RE.findall(lowered) if w in TRADE_SHORTHAND})
         if shorthand:
             problems.append(_warn("shelf_copy", name,
@@ -1180,8 +1212,24 @@ def check_shelf_copy(fields: Dict[str, str], *, block: bool = False,
             if (len(opener_words) >= 2
                     and opener_words[0] in _BARE_PRONOUN_OPENERS
                     and opener_words[1] in _FINITE_VERBS):
+                # WORDED TO AVOID "opens on", and that is load-bearing rather than stylistic.
+                # Check 5 above (`_BARE_OPENER_RE`) and this check were added independently on
+                # 2026-08-16 — one on this branch, one on main — for the same rule, and both
+                # phrased their finding "opens on ...". Every caller that filters findings does
+                # so BY SUBSTRING (`tools/sweep_shelf_copy.py:102`,
+                # `tools/retitle_catalogue.py:223`, and the tests), so a line that trips both
+                # was reported twice under one name and
+                # `test_it_errors_under_the_actuator_and_warns_without_it` counted two errors
+                # where it asserts one.
+                #
+                # Neither check can simply be deleted: check 5 catches "We handle ..." (a line
+                # the founder rejected, and `handle` is a bare infinitive absent from
+                # `_FINITE_VERBS` by design), while this one is the only check that stays quiet
+                # on "This service reads ..." and exempts `title` — both pinned by
+                # `tests/unit/test_shelf_copy.py:275-292`. Distinct wording keeps both findings
+                # and gives each filter exactly one thing to match.
                 problems.append(mk("shelf_copy", name,
-                                   f"opens on the bare pronoun {opener_words[0]!r}, which has no "
+                                   f"starts on the bare pronoun {opener_words[0]!r}, which has no "
                                    f"antecedent when the line is read beside the title rather than "
                                    f"after it; name the subject: {text!r}"))
 

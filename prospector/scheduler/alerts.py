@@ -415,6 +415,8 @@ def alerts_for_tick(tick: dict, consecutive_barren: int = 0) -> list[dict]:
       - moat degraded (provisional > 0)    -> CRITICAL (trusted moat down; cheap tail ruled)
       - zero yield (dossiers>0, passes==0) -> WARNING  (factory ran but stocked nothing)
     A guard-skipped tick (PAUSE / spend cap) is NOT an alert — that is intended, controlled idle.
+    Neither is a PRODUCER tick (`result.mode == "producer"`) that produced rows: it does not vet,
+    so all-DEFER and zero-PASS are its NORMAL output, not an outage. Only barren still alerts.
     `consecutive_barren` is the number of ticks in the CURRENT barren streak BEFORE this one
     (the caller counts trailing dossiers==0 rows in ticks.jsonl).
     Returns a list of dicts ready to splat into emit_alert(**spec).
@@ -464,6 +466,21 @@ def alerts_for_tick(tick: dict, consecutive_barren: int = 0) -> list[dict]:
                  "title": "Generation produced 0 candidates",
                  "message": "A real batch ran but generated nothing to vet (dedup/generation DEFER?).",
                  "ts_tick": tick.get("ts")}]
+    if str(res.get("mode") or "") == "producer":
+        # A PRODUCER tick did not vet, by design — it generated and parked every survivor in the
+        # queue as a DEFER row for a consumer to rule (`run_scheduled.producer_mode`). So every
+        # verdict-shaped check below reads a healthy factory as an outage: `defers == dossiers`
+        # ALWAYS holds, which is the exact trigger of the CRITICAL "Moat outage: all N candidates
+        # DEFERRED" page, and `passes == 0` always holds, which is `zero_yield`. Both would fire
+        # every single tick — and a channel that always pages is a channel the founder stops
+        # reading, which costs the REAL outage its alert.
+        #
+        # The barren check above still applies and deliberately runs FIRST: "generated nothing"
+        # is a producer failure whatever the mode, and it is the only failure this half can have.
+        # Whether the queue is being DRAINED is the consumer's alert to raise, not this one's —
+        # attributing a consumer outage to the producer's tick would point the founder at the
+        # process that is working.
+        return []
     if defers >= dossiers and defers > 0:
         # Every candidate deferred — the moat (Claude AND Gemini) is exhausted or grounding is
         # down. This is an infra OUTAGE, not a calibration result; flag it distinctly + loudly.

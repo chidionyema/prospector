@@ -70,6 +70,7 @@ class _FakeStore:
 
     def __init__(self, rows, on_disk, root="/nonexistent-fake-store"):
         self._rows, self._on_disk, self._root = rows, on_disk, root
+        self._leases: dict = {}
 
     @property
     def root(self):
@@ -89,8 +90,34 @@ class _FakeStore:
     def has_dossier(self, cid):
         return self.get(cid) is not None
 
+    # The queue lease. This double is single-consumer by construction — one `_cmd_resume` call,
+    # no peer process — so it grants every claim and merely records the owner. Contention is not
+    # fakeable and is not faked: it is pinned in tests/unit/test_queue_lease.py against the real
+    # sqlite compare-and-swap, which is the only place the property can actually be proven.
+    def claim(self, cid, owner, ttl_s):
+        self._leases[cid] = owner
+        return True
+
+    def release(self, cid, owner):
+        return self._leases.pop(cid, None) == owner
+
 
 def _stub_vetting(monkeypatch, seen):
+    # `_cmd_resume` became a ThreadPoolExecutor on 2026-08-15, so rows are SUBMITTED in the
+    # rank-then-age order these tests assert but COMPLETE in whatever order they finish. Every
+    # `seen == [...]` below is therefore an assertion about a pool's completion order — a
+    # scheduler artefact — unless the pool is a single worker. It passed only because an idle
+    # box happens to finish three trivial stubs in submission order: run this file's
+    # `test_age_still_decides_within_one_population` in eight concurrent processes and 3 of 8
+    # fail with `['old', 'new', 'mid'] == ['old', 'mid', 'new']` (measured 2026-08-15, serially
+    # under `-n 0` — CPU contention, not xdist). Making the suite parallel by default is what
+    # surfaced it; the flake was already there.
+    #
+    # This double was copied from tests/unit/test_scheduler_resume_drain.py:157 and left this
+    # one line behind (:172, with the same reasoning). Fixed here rather than by sharing the
+    # helper, because the file states its own fixture on purpose.
+    monkeypatch.setenv("PROSPECTOR_VET_WORKERS", "1")
+
     from prospector.models import Decision
 
     def fake_vet(cand, *_a, **_k):
@@ -169,6 +196,58 @@ def test_age_still_decides_within_one_population(monkeypatch):
         store=_FakeStore(rows, on_disk={"new", "old", "mid"}),
     )
     assert seen == ["old", "mid", "new"]
+
+
+def test_a_row_that_keeps_failing_stops_blocking_the_rows_behind_it(monkeypatch, tmp_path):
+    """Age alone hands every pass to the least resolvable rows in the store.
+
+    Measured on the live index 2026-08-15, the DEFER population is a barbell: 62 rows created
+    that day and 45 older than 30 days, with NOTHING in between. The old cohort has survived
+    two months of drains — it is old *because* it keeps failing. Under `(rank, age)` a
+    candidate the producer wrote a minute ago waits behind all 45 of them, every pass, which
+    is head-of-line blocking by the group least likely to produce a verdict.
+
+    Attempts sit between rank and age, so a row that has already burned a re-vet yields to one
+    that has never been tried. This cannot starve the old row: `attempts` only rises when the
+    row is actually WORKED, so a row that is never reached never sinks further.
+    """
+    rows = [
+        {"candidate_id": "june", "decision": "defer", "provisional": 0,
+         "created_at": "2026-06-14T09:02:41+00:00"},
+        {"candidate_id": "fresh", "decision": "defer", "provisional": 0,
+         "created_at": "2026-08-15T21:57:24+00:00"},
+    ]
+    # The June row has been picked up before and left unresolved; the fresh one never has.
+    assert drain_state.record_unresolved(tmp_path, "june") == 1
+
+    seen: list[str] = []
+    _stub_vetting(monkeypatch, seen)
+    run_mod._cmd_resume(
+        argparse.Namespace(limit=1, publish=False, board=None),
+        cfg=None, op=None, fast_op=None, search=None,
+        store=_FakeStore(rows, on_disk={"june", "fresh"}, root=str(tmp_path)),
+    )
+    assert seen == ["fresh"], "the bounded pass went to the row that has never been tried"
+
+
+def test_age_still_decides_when_the_attempts_are_equal(monkeypatch, tmp_path):
+    """The attempts term must not become the whole sort. Two rows nobody has tried are ordered
+    by age exactly as before — otherwise the fix for one starvation shape introduces another,
+    and the June cohort could never be worked at all."""
+    rows = [
+        {"candidate_id": "june", "decision": "defer", "provisional": 0,
+         "created_at": "2026-06-14T09:02:41+00:00"},
+        {"candidate_id": "fresh", "decision": "defer", "provisional": 0,
+         "created_at": "2026-08-15T21:57:24+00:00"},
+    ]
+    seen: list[str] = []
+    _stub_vetting(monkeypatch, seen)
+    run_mod._cmd_resume(
+        argparse.Namespace(limit=2, publish=False, board=None),
+        cfg=None, op=None, fast_op=None, search=None,
+        store=_FakeStore(rows, on_disk={"june", "fresh"}, root=str(tmp_path)),
+    )
+    assert seen == ["june", "fresh"], "no attempts recorded — oldest first, unchanged"
 
 
 def test_the_printed_line_names_the_mix_not_just_the_count(monkeypatch, capsys):

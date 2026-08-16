@@ -95,7 +95,14 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
 export default function IdeasLanding({ landing, packs, siblings, unavailable, variant }: Props) {
   if (unavailable) {
     return (
-      <MarketingLayout>
+      <MarketingLayout
+        breadcrumbs={[
+          { href: '/', label: 'Catalogue' },
+          { href: '/ideas', label: 'Categories' },
+          { href: '#', label: landing.h1 },
+        ]}
+        breadcrumbsWidth="7xl"
+      >
         <Seo title={landing.metaTitle} description={landing.metaDescription} noindex />
         <PageHero
         width="7xl"
@@ -120,7 +127,14 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
   }
 
   return (
-    <MarketingLayout>
+    <MarketingLayout
+      breadcrumbs={[
+        { href: '/', label: 'Catalogue' },
+        { href: '/ideas', label: 'Categories' },
+        { href: '#', label: landingH1(landing.slug, variant) },
+      ]}
+      breadcrumbsWidth="7xl"
+    >
       <Seo
         title={landingMetaTitle(landing.slug, variant)}
         description={landing.metaDescription}

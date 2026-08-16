@@ -330,12 +330,12 @@ def rebuild_zip_with_index(
     if not documents:
         return None
 
-    # Six entries are rewritten from scratch every run rather than copied — index.html, the
-    # manifest, the PDF, the card, the table and Marketing_Assets.txt. Each is written into
-    # `archive` explicitly below, so this is the enumeration, not a filter. The PDF is one of
-    # them because it is BINARY: `patched_md` decodes every other entry to look for the retired
-    # shelf-life line, and a binary file taken through a lossy decode/encode round trip is a
-    # corrupted file.
+    # The set of "rewritten from scratch, never copied" names used to be enumerated here. It had
+    # no reader, and the concern it documented — never take a BINARY through `patched_md`, which
+    # decodes every entry looking for the retired shelf-life line, because a lossy decode/encode
+    # round trip corrupts it — is enforced structurally four lines up: `documents` comprehends
+    # only `n.endswith(".md")`, so a binary cannot reach the patcher in the first place. A dead
+    # set restating a filter is a second place for the rule to drift away from the code.
 
     # What the OUTPUT archive will hold. Built once and then used for the manifest digests, the
     # idempotency check and the write — three consumers that must agree.

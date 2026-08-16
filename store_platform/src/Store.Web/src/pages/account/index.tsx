@@ -57,7 +57,10 @@ export default function AccountPage() {
   const returnTo = typeof window === 'undefined' ? '' : `${window.location.origin}/auth/callback`;
 
   return (
-    <MarketingLayout>
+    <MarketingLayout
+      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Your account' }]}
+      breadcrumbsWidth="3xl"
+    >
       <Head>
         <meta name="robots" content="noindex, nofollow" />
       </Head>

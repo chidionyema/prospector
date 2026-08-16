@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { Icon, Skeleton, buttonClasses, textLinkClass } from '@/components/ui';
+import { Breadcrumbs, Icon, Skeleton, buttonClasses, textLinkClass } from '@/components/ui';
 import { API_BASE_URL, LEGAL } from '@/lib/config';
 import { fetchOrderBySession, fetchPackDetails, fetchCatalog, type SessionOrderItem, type Pack, type PackDetails } from '@/lib/api/client';
 import { PostPurchaseAccountNote } from '@/components/checkout/BuyerIdentityNote';
@@ -159,9 +159,20 @@ export default function OrderSuccess() {
         .slice(0, 3)
     : [];
 
+  // The page does not use MarketingLayout (audit: post-purchase, no global nav), so the trail
+  // is rendered via the Breadcrumbs component directly. Same data shape as MarketingLayout's
+  // `breadcrumbs` prop, named the same, so the source-level test that scans for breadcrumbs
+  // does not have to special-case this route.
+  // breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Order complete' }]}
+  const breadcrumbs = [{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Order complete' }];
+
   return (
     <main id="main" className="min-h-dvh bg-bg">
       <Seo title="Order confirmed, your pack is ready" />
+
+      <div className="mx-auto max-w-3xl px-6 pt-6 md:px-8 lg:px-10">
+        <Breadcrumbs items={breadcrumbs} />
+      </div>
 
       <div className="mx-auto max-w-3xl px-6 py-12 md:py-16">
         {/* 1. Cover plate (16:9 hero). Use a colour-coded gradient as the placeholder until

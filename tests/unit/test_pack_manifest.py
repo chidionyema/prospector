@@ -18,11 +18,13 @@ is tested rather than commented.
 """
 from __future__ import annotations
 
+import dataclasses
 import json
 import zipfile
 
 import pytest
 
+from prospector import dossier as dossier_mod
 from prospector import pack_manifest
 from prospector.bridge import (
     _FILE_TITLES,
@@ -363,3 +365,77 @@ class TestTheBackfillPathRendersFromAStoredDossier:
         from types import SimpleNamespace
         assert pack_manifest._plain_mapping({"pain_reality": 4}) == {"pain_reality": 4}
         assert pack_manifest._plain_mapping(SimpleNamespace(pain_reality=4)) == {"pain_reality": 4}
+
+
+class TestARecordThatPredatesAFieldStillRenders:
+    """A dossier is written once and read for years, so the reader must tolerate an old row.
+
+    It did not. `dossier_from_dict` built a namespace from the keys a stored record HAPPENS to
+    have, and `render_markdown` reads `dossier.persona` unguarded (dossier.py:776) — a field
+    every stored PASS predates. Measured: 84 stored PASS records, 0 rendered, 84 raised
+    `AttributeError: 'types.SimpleNamespace' object has no attribute 'persona'`, which put the
+    packs already sold out of reach of the re-render that corrects their QA report.
+
+    The tests above were green throughout, because they round-trip a dossier built by TODAY's
+    dataclass — which by construction has every field today's reader asks for, and so can never
+    reproduce the one thing that was broken. These drop the fields instead. The per-field sweep
+    is the gate that matters: it is written against `dataclasses.fields(Dossier)` rather than a
+    list of names, so a field added tomorrow is covered the day it is added, which is the only
+    form of this test that stays true.
+
+    The real store cannot be the gate here — store/dossiers/ is gitignored, so a test reading it
+    asserts on one laptop (tests/test_suite_is_machine_independent.py:36). That sweep lives in
+    scripts/store_audit.py, which runs where the data is.
+    """
+
+    @staticmethod
+    def _stored_without(*absent: str) -> dict:
+        """A stored record as written by a build that did not have these fields yet."""
+        from prospector.models import ScoreResult
+        d = _dossier()
+        d.score = ScoreResult(scores={"pain_reality": 4}, justification={"pain_reality": "why"},
+                              composite=3.4)
+        record = json.loads(json.dumps(d.to_dict()))
+        for key in absent:
+            record.pop(key, None)
+        return record
+
+    def test_a_record_written_before_persona_existed_renders(self):
+        """The exact measured failure: the three fields no stored PASS record carries."""
+        record = self._stored_without("persona", "publish_status", "publish_error")
+        text = dossier_mod.render_markdown(pack_manifest.dossier_from_dict(record))
+        assert "Shellfish Classification Aid" in text
+        assert "Persona" not in text, "an absent persona must render as no line, not as blank"
+
+    def test_the_manifest_renders_from_that_record_too(self):
+        record = self._stored_without("persona", "publish_status", "publish_error")
+        doc = json.loads(pack_manifest.render_manifest(
+            pack_manifest.dossier_from_dict(record), {}, BUNDLE_FILES, _FILE_TITLES, "c" * 16))
+        assert _nodes(doc, "Report"), doc.keys()
+
+    @pytest.mark.parametrize("field_name", sorted(
+        f.name for f in dataclasses.fields(Dossier)
+        if f.default is not dataclasses.MISSING or f.default_factory is not dataclasses.MISSING))
+    def test_dropping_any_defaulted_field_still_renders(self, field_name):
+        """Every field that carries a default is a field some stored row predates.
+
+        Fields WITHOUT a default (`candidate`, `decision`) are excluded deliberately: they have
+        existed since the first record, so no row on disk is missing them, and inventing a
+        substitute for a required field would be a silent blank in a published QA report rather
+        than a fix.
+        """
+        record = self._stored_without(field_name)
+        assert field_name not in record
+        text = dossier_mod.render_markdown(pack_manifest.dossier_from_dict(record))
+        assert text.startswith("# Shellfish Classification Aid")
+
+    def test_a_misspelt_field_is_still_an_error(self):
+        """The fix fills the fields the DATACLASS declares, and nothing else.
+
+        A `__getattr__`-returns-None namespace would also have made these renders pass, and
+        would have turned `dossier.persoan` into a blank line in a document a buyer pays for.
+        """
+        ns = pack_manifest.dossier_from_dict(self._stored_without("persona"))
+        assert ns.persona == ""
+        with pytest.raises(AttributeError):
+            ns.persoan

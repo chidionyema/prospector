@@ -43,7 +43,10 @@ export default function OrderPage() {
 
   if (error) {
     return (
-      <MarketingLayout>
+      <MarketingLayout
+        breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Your order' }]}
+        breadcrumbsWidth="3xl"
+      >
         <div className="flex min-h-dvh items-center justify-center px-6">
           <div className="text-center">
             <h1 className="text-h2 font-semibold text-text mb-2">Order not found</h1>
@@ -69,7 +72,10 @@ export default function OrderPage() {
       : '#';
 
   return (
-    <MarketingLayout>
+    <MarketingLayout
+      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Your order' }]}
+      breadcrumbsWidth="3xl"
+    >
       <div className="flex min-h-dvh items-center justify-center px-6 py-16">
         <div className="bg-surface rounded-md border border-border p-8 max-w-md w-full mx-4">
           <h1 className="text-h2 font-semibold text-text mb-2">Thank you for your purchase</h1>

@@ -88,8 +88,13 @@ def test_a_trailing_full_stop_is_dropped_without_spending_a_second_draft():
 # --- which lines are actually defective -------------------------------------------------
 
 def test_a_row_whose_copy_is_sound_is_left_alone_entirely():
+    # The headline was "You stop writing off the last of the job" until 2026-08-16, when
+    # `assess` began running the shelf-voice rules. It is second person — copy aimed at the
+    # subcontractor rather than at the person deciding whether to run this business — so the
+    # fixture for "sound copy" was itself an example of the defect the founder named that
+    # day. Rewritten third person; the assertion it exists to make is unchanged.
     row = dict(ROW, title="Retention chasing for building subcontractors",
-               headline="You stop writing off the last of the job",  # 'every' is an absolute
+               headline="The last of the job stops being written off",
                cardLine="Retention chased without a solicitor")
     assert retitle.assess(row) == {}
 

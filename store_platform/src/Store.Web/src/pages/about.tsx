@@ -33,7 +33,10 @@ export default function AboutPage() {
   // up printing the kill count elsewhere on the site. See lib/stats.ts.
   const totals = RESEARCH_STATS;
   return (
-    <MarketingLayout>
+    <MarketingLayout
+      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'About' }]}
+      breadcrumbsWidth="3xl"
+    >
       <Seo
         title={`About ${BRAND.name} - who is behind this`}
         description={`Why ${BRAND.name} exists, in the words of the person who built it, and where the engine that kills most of the ideas came from.`}

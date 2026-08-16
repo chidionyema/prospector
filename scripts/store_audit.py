@@ -78,6 +78,33 @@ def main() -> int:
     on_disk = len(list(DOSSIER_DIR.glob("*.json")))
     check("DOSSIERS_ON_DISK", on_disk > 0, f"{on_disk} files")
 
+    # ── the packs already sold can still be re-rendered ──────────────────────
+    # A stored dossier is written once and read for years, so the reader has to tolerate a row
+    # older than the schema. It did not: `dossier_from_dict` built a namespace from the keys a
+    # record happens to have, and `render_markdown` reads `dossier.persona` unguarded
+    # (dossier.py:776) — a field every stored PASS predates. 84 records, 84 AttributeErrors,
+    # which is what put the packs on the shelf out of reach of the re-render that corrects
+    # their QA report. `pack_manifest._fill_defaults` fixed the class.
+    #
+    # This belongs here rather than in pytest for the reason at the top of this file, and the
+    # reason is not bookkeeping: the fixture tests round-trip a dossier built by TODAY's
+    # dataclass, so they were green the whole time every real record failed. A row written
+    # before a field existed only exists where the real store is.
+    from prospector import dossier as dossier_mod
+    from prospector import pack_manifest
+    unrenderable: list[str] = []
+    pass_files = sorted(DOSSIER_DIR.glob("*.pass.json"))
+    for p in pass_files:
+        try:
+            dossier_mod.render_markdown(
+                pack_manifest.dossier_from_dict(json.loads(p.read_text(encoding="utf-8"))))
+        except Exception as exc:
+            unrenderable.append(f"{p.name}: {type(exc).__name__}: {exc}")
+    check("PASS_DOSSIERS_RENDER", not unrenderable,
+          f"{len(pass_files)} stored PASS dossiers, all render"
+          if not unrenderable
+          else f"{len(unrenderable)}/{len(pass_files)} raise: {unrenderable[:3]}")
+
     # ── ledger / spend ───────────────────────────────────────────────────────
     if LEDGER.is_file():
         costs = costs_data(str(LEDGER))

@@ -195,6 +195,27 @@ def _write_heartbeat(cfg, *, phase: str, **extra) -> None:
             tmp.unlink()
 
 
+def producer_mode(cfg) -> bool:
+    """`schedule.producer_mode` — is this daemon the PRODUCER half of the split?
+
+    False (the default) is the tick exactly as it has always been: drain, then generate, vet,
+    and publish, all inside one 3-hour deadline. Nothing about the split changes a deployment
+    that has not asked for it — the flag is the only thing that moves.
+
+    True makes the tick a producer: it generates, parks every survivor in the queue as a DEFER
+    row (`run.enqueue_candidates`), and returns. It does NOT vet, does NOT publish, and does NOT
+    drain — a consumer process (`python -m prospector.run consume`) owns all three.
+
+    THE DRAIN IS SKIPPED HERE ON PURPOSE, and it is the part worth stating. Leaving it on would
+    be SAFE — the queue lease (`store.claim`) already stops two workers vetting one row — but it
+    would put the tick back on the moat's clock, which is the entire thing the split exists to
+    end: a generation tick would once again stall behind a benched brain, and the 3-hour deadline
+    would once again be shared by a phase that cannot be bounded. Half a split is the worst of
+    both, so the flag moves both halves at once.
+    """
+    return bool(_sched(cfg, "producer_mode", False))
+
+
 def _resume_per_tick(cfg) -> int:
     """How many backlogged candidates one tick may re-vet. 0 disables the drain."""
     schedule = getattr(cfg, "schedule", None) or {}
@@ -883,6 +904,29 @@ def _decay_per_tick(cfg) -> int:
         return _DECAY_PER_TICK_DEFAULT
 
 
+def _decay_sweep_budget(cfg) -> int:
+    """How many rows THIS process may re-verify: `_decay_per_tick`, or 0 in producer mode.
+
+    THE SWEEP IS MOAT WORK, AND THE PRODUCER OWNS NO MOAT WORK. It is the same class as the
+    drain — `run_decay_sweep` re-verifies SLA-expired PASSes through the full verdict chain —
+    so leaving it on the producer's tick left the split half-built: the tick would still block
+    on the moat's clock, the one thing the split exists to end. Not a small residue either. At
+    the worst measured vet (4127s, 2026-08-15) two rows is 8254s against the 10800s tick
+    deadline, so the sweep alone can take three quarters of the budget that was supposed to
+    belong to generation. `prospector/consumer.py` runs it instead, on its own cadence.
+
+    THE UNLIST DRAIN IS NOT GATED, AND MUST NEVER BE. `_decay_pass` calls `_unlist_pass`
+    outside its `if n_decay`, so a producer returning 0 here still pulls KILLed packs off sale
+    every tick. The asymmetry is the point: the sweep is expensive LLM work that can wait for
+    the half of the estate that owns a brain, while the unlist drain is a cheap one-way
+    actuator whose cost when skipped is a killed pack still taking money — six of them,
+    measured 2026-08-09. It is safe in both roles at once by construction, because it can only
+    ever set `isListed: false` and never charges anyone, so both halves running it costs a
+    wasted round trip and nothing worse.
+    """
+    return 0 if producer_mode(cfg) else _decay_per_tick(cfg)
+
+
 #: `tools/unlist_killed.py` needs the Store.Api internal key, which is exactly why the
 #: unattended re-vet sweep does not call Store.Api itself. Running it as a bounded subprocess
 #: preserves that boundary: the sweep stays credential-free, the drain is a separate idempotent
@@ -1093,7 +1137,10 @@ def _default_generate(cfg, batch_size: int) -> dict:
     # immediately before calling this function (`threading.Timer(_TICK_HARD_DEADLINE_S, ...)`,
     # ~line 1424), so this instant is the tick's T0 to within the cost of one log line.
     _tick_started_mono = time.monotonic()
-    resumed = _drain_pass(cfg, _resume_per_tick(cfg))
+    # PRODUCER MODE owns both halves of the tick or neither (see `producer_mode`). A producer
+    # does not drain: the consumer process does, on the queue's schedule instead of this one's.
+    _producer = producer_mode(cfg)
+    resumed = None if _producer else _drain_pass(cfg, _resume_per_tick(cfg))
     # Multi-lane by default (Part 14). Until 2026-08-01 this call passed no `lanes=`, so
     # run_signal took its no-lane default branch (run.py:604) and every unattended batch ran
     # the single implicit default — `generation.operator_archetype: solo_agent`. The four
@@ -1172,7 +1219,11 @@ def _default_generate(cfg, batch_size: int) -> dict:
                "vet_budget_s": vet_budget, "tick_deadline_s": _TICK_HARD_DEADLINE_S,
                "drain_spent_s": _spent, "tick_remaining_s": _left,
                "batch_size": batch_size})
-    dossiers = run_signal("", cfg=cfg, k=batch_size, publish=True, lanes=lanes,
+    # `vet=False` returns after the survivors are queued, so `publish` could only ever be inert
+    # in producer mode — it is passed as False rather than left True so the call states what the
+    # tick actually does. `_cmd_generate` refuses the same combination outright (run.py:2858).
+    dossiers = run_signal("", cfg=cfg, k=batch_size, publish=not _producer, lanes=lanes,
+                          vet=not _producer,
                           gen_time_budget_s=budget,
                           artifact_time_budget_s=art_budget,
                           vet_time_budget_s=vet_budget)
@@ -1192,6 +1243,18 @@ def _default_generate(cfg, batch_size: int) -> dict:
     provisional = sum(1 for d in dossiers if getattr(d, "provisional", False))
     out = {"dossiers": len(dossiers), "passes": passes, "defers": defers,
            "provisional": provisional}
+    if _producer:
+        # THE TICK MUST SAY WHICH KIND OF TICK IT WAS, or the alerter reads a healthy producer
+        # as an outage: every row a producer writes is a DEFER, so `defers >= dossiers` — the
+        # exact condition of the CRITICAL "Moat outage: all N candidates DEFERRED" page
+        # (alerts.py:466). That would fire on EVERY tick, and an alert that always fires trains
+        # the founder to ignore the channel that carries the real ones.
+        #
+        # `queued` rather than reusing `passes`: a producer's success metric is rows handed to
+        # the queue, and it has no verdict to report by construction. Anything downstream that
+        # wants "did the factory work" must read the number the factory actually produces.
+        out["mode"] = "producer"
+        out["queued"] = len(dossiers)
     if resumed is not None:
         out["resumed"] = resumed
     # Which market this batch was generated for. Recorded whenever rotation is ON, so the tick
@@ -1509,12 +1572,27 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
             deadline.daemon = True
             deadline.start()
             try:
-                resumed = _drain_pass(cfg, _drain_only_resume_per_tick(cfg))
+                # NOT IN PRODUCER MODE. Everything above this line argues that a brake which
+                # also stopped the drain would freeze the number it is waiting on — and that is
+                # exactly right for the classic single-process tick, where this branch is the
+                # daemon's whole workload. In a SPLIT estate the argument inverts: the consumer
+                # is already draining, continuously and with no deadline, so the number goes
+                # down whether or not the producer helps. What draining here would actually buy
+                # is the one thing the split exists to remove — the producer back on the moat's
+                # clock, for up to the full 3h deadline, in precisely the situation (a queue
+                # deeper than the cap) where the moat is already the bottleneck. A second
+                # drainer does not make a saturated brain faster.
+                #
+                # So the producer's brake is a plain stop: no generation, no vetting, and the
+                # unlist drain below still runs. It self-releases under the cap on the
+                # consumer's progress rather than its own.
+                resumed = None if producer_mode(cfg) else _drain_pass(
+                    cfg, _drain_only_resume_per_tick(cfg))
                 # Inside the deadline guard, for the reason spelled out above it: this branch is
                 # the daemon's entire workload while the brake is engaged, and `_decay_pass`
                 # swallows every exception by design, so an uncovered sweep could wedge the tick
                 # invisibly.
-                decayed = _decay_pass(cfg, _decay_per_tick(cfg))
+                decayed = _decay_pass(cfg, _decay_sweep_budget(cfg))
             finally:
                 deadline.cancel()
         tick["result"] = {"dossiers": 0, "resumed": resumed, "decayed": decayed}
@@ -1546,7 +1624,9 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
             # same class as the drain, and it must run on a normal tick too — a decay rail that
             # only fired while the generation brake was engaged would be as good as unwired for any
             # week the brake never engages, which is the failure this whole change exists to fix.
-            decayed = _decay_pass(cfg, _decay_per_tick(cfg))
+            # `_decay_sweep_budget` returns 0 in producer mode: the SWEEP is moat work that
+            # belongs to the consumer, while the unlist drain inside `_decay_pass` still runs.
+            decayed = _decay_pass(cfg, _decay_sweep_budget(cfg))
             if isinstance(tick.get("result"), dict) and decayed is not None:
                 tick["result"]["decayed"] = decayed
             logger.info("Tick complete: %s", tick["result"])

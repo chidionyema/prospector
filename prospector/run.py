@@ -16,6 +16,7 @@ import datetime
 import json
 import os
 import sys
+import uuid
 from pathlib import Path
 from typing import NamedTuple, Optional
 
@@ -30,7 +31,44 @@ def _vet_workers(cfg) -> int:
     env = os.environ.get("PROSPECTOR_VET_WORKERS")
     if env:
         return max(1, int(env))
-    return max(1, int(getattr(cfg.retrieval, "vet_workers", 3)))
+    # DEFENSIVE ON THE SECTION, not just on the key. `_cmd_resume` began calling this when the
+    # drain became a pool, and its callers include Namespace configs and test fixtures with no
+    # `retrieval` section at all — `cfg.retrieval` raised AttributeError where the old serial loop
+    # simply never asked. A missing SECTION must fall back to the default exactly as a missing key
+    # does. The isinstance branch is not paranoia: `cfg.generation` is a dict built verbatim from
+    # the YAML, and assuming an object there silently returned a hardcoded 5 on every unattended
+    # tick for as long as the line existed (see run.py:1430).
+    r = getattr(cfg, "retrieval", None)
+    raw = (r.get("vet_workers", 3) if isinstance(r, dict) else getattr(r, "vet_workers", 3))
+    return max(1, int(raw))
+
+
+# A sentinel, not None and not a Dossier: "another worker already holds this row's lease."
+# It needs to be distinguishable from BOTH other outcomes. `None` already means "the index row
+# has no dossier JSON on disk", which is a store INCONSISTENCY an operator should chase; a
+# contended lease is the queue working exactly as designed and must not be reported as damage.
+_LEASE_HELD = object()
+
+
+def _lease_ttl_s(cfg) -> float:
+    """How long a worker may hold a queue row before the lease expires and frees it.
+
+    Sized off the WORST measured vet, not the median: a drain row took 4127s on 2026-08-15
+    (content phase 51-56% of it), so a TTL near the ~251s average would expire mid-vet and hand
+    a live row to a second worker — manufacturing the exact double-work the lease exists to
+    prevent, and doing it most often on the slowest, most expensive rows. Too long is the safe
+    direction: an over-long lease on a crashed worker delays one row, while an over-short one
+    duplicates paid work and can reach the publish path twice.
+
+    Read defensively for the same reason `_vet_workers` is (run.py:33) — this function's callers
+    include None and SimpleNamespace configs from the daemon's own tests.
+    """
+    env = os.environ.get("PROSPECTOR_LEASE_TTL_S")
+    if env:
+        return max(1.0, float(env))
+    s = getattr(cfg, "schedule", None)
+    raw = (s.get("lease_ttl_s", 7200) if isinstance(s, dict) else getattr(s, "lease_ttl_s", 7200))
+    return max(1.0, float(raw))
 
 
 # Kill-fast is a rule about IDEAS: stop paying for a candidate the moment one gate is decisive.
@@ -102,6 +140,78 @@ def _vet_budget_cancel(deadline_mono: Optional[float], pending) -> Optional[int]
     return sum(1 for f in pending if f.cancel())
 
 
+def enqueue_as_defer(cand, *, store, cfg, op, reason: str) -> Dossier:
+    """Write ONE candidate into the queue as a DEFER row, and return the row.
+
+    This is the enqueue half of the producer/consumer split, and it is deliberately the SAME
+    function the budget-park rail below uses. A DEFER row is already what this repo means by
+    "generated, not yet ruled" — `drainable()` selects it, `vet --resume` finishes it, the
+    backlog counters count it — so the queue needs no new table and no second state machine.
+    What it does need is ONE writer: two call sites each building "a queued row" by hand is
+    how the producer's rows and the parked rows drift into two shapes the consumer then has
+    to tell apart.
+
+    `reason` is the only thing that differs between callers, and it rides in `gate_fired` so
+    the row says why it is waiting: `queued_for_vetting` (never started — a producer minted
+    it) versus `vet_budget_spent` (started, then the tick's clock ran out). The consumer
+    treats them identically; a human diagnosing where a backlog came from does not.
+
+    Raises on a failed save rather than swallowing it. Both callers catch — but they catch
+    for their own reasons, and a writer that silently returns a row it never persisted would
+    make both of them count a queue entry that does not exist.
+    """
+    # A `gate_fired` outside DEFER_REASONS decides KILL (dossier.py:113), which is right for a
+    # real gate and catastrophic here: a typo would mint an evidentiary kill on a candidate no
+    # check has looked at, in a row that reads as fully reasoned. That is the
+    # `2102bacc6dd75cf9.kill.json` defect, and this is the one place it can be introduced.
+    # Fail loudly at the call rather than silently in the catalogue.
+    if reason not in DEFER_REASONS:
+        raise ValueError(
+            f"enqueue reason {reason!r} is not a deferral — it would be recorded as a KILL. "
+            f"Add it to models.DEFER_REASONS ({sorted(DEFER_REASONS)}) if it is one.")
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    d = build_dossier(
+        cand=cand, checks=[], adversarial=None,
+        gate_fired=reason, score=None, cfg=cfg,
+        op_model_version=getattr(op, "model_version", ""),
+        provider_chain="", created_at=now.isoformat(),
+        reverify_due_at=(now + datetime.timedelta(days=30)).isoformat())
+    if store is not None:
+        store.save(d)
+    return d
+
+
+def enqueue_candidates(kept, *, store, cfg, op) -> list[Dossier]:
+    """THE PRODUCER. Park every selected candidate in the queue, vetting none of them.
+
+    The reason the split exists is that generating and ruling have incompatible clocks.
+    Generation is bounded and fairly predictable; a single vet has been measured at 4127s
+    against a ~251s median, so a tick that must do both under one deadline either sizes its
+    generation for the vet's worst case or force-exits mid-verdict. Both were happening.
+
+    Separated, the producer's contract is exactly: novelty-selected candidates become durable
+    rows, then it is done. It never waits on a brain, so a benched moat costs it nothing; it
+    never publishes, so it touches no money rail; and its failure mode is a short queue rather
+    than a truncated batch that reports nothing amiss.
+
+    A save that fails is logged and skipped rather than raised — the batch's other rows are
+    already paid for and one lost row must not take them with it. The RETURN is the rows
+    actually written, never the count attempted: a producer that reports its intent instead of
+    its effect is the counters-lie failure mode, and every queue-depth reading downstream is
+    built on this number.
+    """
+    queued: list[Dossier] = []
+    for idx, cand in enumerate(kept, start=1):
+        try:
+            queued.append(enqueue_as_defer(cand, store=store, cfg=cfg, op=op,
+                                           reason="queued_for_vetting"))
+        except Exception as e:  # noqa: BLE001 - one lost row must not cost the batch
+            logger.error("Could not enqueue candidate %s: %s", idx, e,
+                         extra={"candidate_index": idx, "error": str(e)})
+    return queued
+
+
 def _defer_unstarted_candidates(fut_meta, kept, already_cancelled, *,
                                 store, cfg, op, dossiers) -> int:
     """Park every vet the budget stop just cancelled as a DEFER row, and return how many.
@@ -129,16 +239,8 @@ def _defer_unstarted_candidates(fut_meta, kept, already_cancelled, *,
         if not fut.cancelled() or fut in already_cancelled:
             continue
         try:
-            cand = kept[idx - 1]
-            now = datetime.datetime.now(datetime.timezone.utc)
-            d = build_dossier(
-                cand=cand, checks=[], adversarial=None,
-                gate_fired="vet_budget_spent", score=None, cfg=cfg,
-                op_model_version=getattr(op, "model_version", ""),
-                provider_chain="", created_at=now.isoformat(),
-                reverify_due_at=(now + datetime.timedelta(days=30)).isoformat())
-            if store is not None:
-                store.save(d)
+            d = enqueue_as_defer(kept[idx - 1], store=store, cfg=cfg, op=op,
+                                 reason="vet_budget_spent")
             dossiers.append(d)
             parked += 1
         except Exception as e:  # noqa: BLE001 - see docstring: never lose the batch
@@ -334,6 +436,7 @@ from .generate import generate  # noqa: E402 - deferred import after the helper 
 from .lane_yield import measured_lane_quota  # noqa: E402 - deferred import after the helper block
 from .models import (  # noqa: E402 - deferred import after the helper block
     DEFER_GATE,
+    DEFER_REASONS,
     Candidate,
     Decision,
     Dossier,
@@ -763,8 +866,46 @@ def publish_and_record(dossier: Dossier, cfg: Config, store: Optional[Store] = N
     full vet — a live vet cannot run offline and the test would skip in CI, which is exactly
     where the guard most needs to hold.
     """
-    from . import progress
+    from . import claim_lock, progress
     cid = getattr(getattr(dossier, "candidate", None), "candidate_id", "?")
+
+    # THE MONEY RAIL'S MUTUAL EXCLUSION. Publishing mints a provider Price and writes the
+    # catalogue row (`bridge.py`), so it is the one step in this engine that costs real money
+    # and cannot be made idempotent by retrying: two processes publishing one candidate mint
+    # TWO prices for one pack, and the catalogue then disagrees with the rail — the drift that
+    # `the-catalogue-took-the-fallback-the-rail-took-the-decision` records, which charges a
+    # buyer and then fails the fulfilment fence.
+    #
+    # Under the tick this could not happen: one process, one deadline. The producer/consumer
+    # split is what makes it reachable — `consume --publish` is designed to be run as more than
+    # one worker, and the queue lease (`store.claim`) deliberately does not cover this. The
+    # lease excludes two consumers from VETTING one row; it says nothing about a manual
+    # `vet --resume --publish` racing a consumer, or a re-publish racing a first publish.
+    #
+    # Refusal is a SKIP, never a wait and never a failure: `claim_lock.claiming` returns
+    # immediately (claim_lock.py:170) because a rail that blocks is a rail that stalls a drain,
+    # and "someone else is publishing this right now" is not an error to record. Critically the
+    # loser also does NOT write to the dossier or the store — the winner is mid-publish with its
+    # own copy of this row, and a `store.save` here would overwrite `published` with a status
+    # about our own lock. Nothing to say, so nothing is written.
+    with claim_lock.claiming(cid, claim_lock.PUBLISH_PURPOSE, cfg=cfg) as got:
+        if not got:
+            logger.info("Publish skipped for %s — another process holds the publish claim", cid,
+                        extra={"candidate_id": cid, "purpose": claim_lock.PUBLISH_PURPOSE})
+            progress.note(f"publish skipped for {cid} — another worker holds the publish claim")
+            return "skipped_locked"
+        return _publish_and_record_claimed(dossier, cfg, store, cid=cid)
+
+
+def _publish_and_record_claimed(dossier: Dossier, cfg: Config, store: Optional[Store],
+                                *, cid: str) -> str:
+    """The body of `publish_and_record`, run only by the holder of the publish claim.
+
+    Split out so the claim is visibly the OUTER scope of every path that can write a listing —
+    an early `return` added inside this body later cannot accidentally escape the lock, which
+    is how a `with` that wraps 40 lines of branching eventually leaks.
+    """
+    from . import progress
     try:
         from publish.publish import publish as _publish
         res = _publish(dossier, cfg) or {}
@@ -1064,8 +1205,18 @@ def run_signal(
     gen_time_budget_s: Optional[float] = None,
     artifact_time_budget_s: Optional[float] = None,
     vet_time_budget_s: Optional[float] = None,
+    vet: bool = True,
 ) -> list[Dossier]:
     """Generate candidates from a signal, dedup, prescreen, vet each, return dossiers.
+
+    ``vet=False`` makes this the PRODUCER: it runs the funnel down to novelty selection and
+    then enqueues every survivor as a DEFER row instead of ruling on it (see
+    ``enqueue_candidates``). The returned dossiers are queue entries with no verdict — the
+    consumer (``vet --resume``) turns them into rulings on its own clock. Every rail above the
+    split still applies unchanged, deliberately: dedup, prescreen and novelty selection are
+    what stop the producer from filling the queue with near-duplicates that the consumer would
+    then pay a moat verdict each to reject. The default stays True so the single-process path,
+    the CLI and every existing caller behave exactly as before.
 
     Any of cfg/op/search/store may be None — defaults are loaded automatically.
     Plain runs are cheap (verdict + score only); pass publish=True to also
@@ -1441,6 +1592,23 @@ def run_signal(
             "--candidates" if k else "config generation.candidates_per_signal",
             extra={"novelty_selected": len(kept), "prescreened": len(prescreened_data),
                    "target_k": target_k})
+
+    # THE PRODUCER/CONSUMER SPLIT. Everything above this line is generation — bounded, cheap,
+    # and dependent on no brain that can be benched. Everything below is vetting, whose cost is
+    # a moat verdict per candidate and whose tail was measured at 4127s. `vet=False` stops here:
+    # the survivors become durable queue rows and this call returns without opening a pool.
+    #
+    # The split is HERE, after novelty selection, not before it. Dedup and prescreen are what
+    # make the queue worth draining — enqueueing prescreened-out or near-duplicate candidates
+    # would move the expensive decisions to the consumer, which is exactly what already happened
+    # once (a k=50 batch minting rows a moat verdict each would then reject).
+    if not vet:
+        queued = enqueue_candidates(kept, store=store, cfg=cfg, op=op)
+        progress.step(f"queued {len(queued)} candidate(s) for vetting")
+        logger.info("Producer queued %d of %d selected candidate(s) as DEFER",
+                    len(queued), len(kept),
+                    extra={"queued": len(queued), "selected": len(kept)})
+        return queued
 
     workers = _vet_workers(cfg)
     progress.step(f"vetting {len(kept)} candidate(s) diverse subset live (max {workers} in parallel)…")
@@ -2233,7 +2401,36 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     # returns catalogue order, this backlog reaches back to 2026-06-14, and newest-first would
     # starve the oldest rows forever at 3 per tick. Nothing starves; the ranks just get served
     # in the order of what they can produce.
-    pending = sorted(pending, key=lambda r: (_drain_rank(r), str(r.get("created_at", ""))))
+    #
+    # ATTEMPTS SIT BETWEEN RANK AND AGE (added 2026-08-15, with the producer/consumer split).
+    # Under the tick, "oldest first within a rank" was the whole anti-starvation story and it was
+    # enough, because generation and vetting shared one deadline: nothing new could arrive while
+    # a pass ran. A producer that writes rows continuously breaks that, and the live index shows
+    # exactly the shape it breaks on — a barbell, 62 DEFER rows from today and 45 from more than
+    # 30 days ago, with NOTHING in between (measured 2026-08-15 on store/prospector.db). Pure age
+    # hands every pass to the June cohort first: rows that have already been attempted repeatedly
+    # and keep coming back. A fresh candidate then waits behind the least resolvable rows in the
+    # store, which is head-of-line blocking by the one group least likely to produce anything.
+    #
+    # `attempts` is the number of unresolved re-vets `drain_state` has already recorded for a
+    # candidate, so this is free — the ledger is a small JSON the survey already reads, and no
+    # new state is introduced. A row that has never been tried goes first WITHIN its rank; one
+    # that has burned three attempts goes last; `drain_state.max_attempts` retires it entirely.
+    # Nothing starves, because attempts only rise when a row is actually worked.
+    #
+    # Rank stays FIRST, deliberately. Cross-rank starvation (a fresh DEFER behind a wall of
+    # provisional PASSes) is the obvious thing to fix here and is NOT a condition this store can
+    # be in: rank 0 measured ZERO rows, and provisional rows are minted only by a brain outside
+    # `moat_primary()` (operator.py:1451) — today's roster has both brains inside it, so ranks 0
+    # and 2 are legacy populations that drain to zero and never refill. Weighted fair share and
+    # aging promotion are the right answers to that problem when it exists; building them now
+    # would be pinning a policy to a condition no measurement shows.
+    _attempts = drain_state.load(store.root)
+    pending = sorted(pending, key=lambda r: (
+        _drain_rank(r),
+        _attempts.get(str(r.get("candidate_id", "") or ""), 0),
+        str(r.get("created_at", "")),
+    ))
 
     # UNMOVABLE ROWS MUST NOT CONSUME THE BOUNDED PASS — and `drain_survey` has already taken
     # them out, so this slice is a plain one.
@@ -2262,7 +2459,7 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     print(f"Found {backlog} deferred + provisional candidate(s); re-vetting "
           f"{len(pending)} of them with the moat ({mix}; highest-value population "
           f"first)...{excluded}")
-    import time as _time
+    from concurrent.futures import CancelledError, ThreadPoolExecutor, as_completed
 
     from . import progress
     from .models import Candidate
@@ -2270,40 +2467,75 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
 
     n_pass = n_kill = n_defer = 0
     n_unreached = 0
+    n_leased = 0
     resumed_dossiers = []
-    for _idx, row in enumerate(pending):
-        # THE DRAIN'S OWN WALL. Measured 2026-08-15 on the daemon's own log, and it is the
-        # reason this exists: the drain ran BEFORE generation, inside the tick's hard-deadline
-        # Timer, with no budget of any kind — and it ate the tick.
-        #   tick 10:16:59Z — 3 rows took 4197s of a 10800s tick (39%) before generation began;
-        #   tick 13:23:07Z — row 1 alone took 4127s and row 2 was still running at +5885s (55%).
-        # Per-row it is not the verdict that dominates but the CONTENT phase on a row that
-        # passes: 1461s of row 1's 2844s (51%) on the first tick, 2331s of 4127s (56%) on the
-        # second. Hence both rails — this wall, and `artifact_time_budget_s` below.
-        #
-        # STOPPING HERE IS LOSSLESS, which is what makes a hard wall the right instrument. A
-        # row not reached keeps the exact state it had: it is already a DEFER or provisional
-        # row in the backlog, `drainable()` still counts it, and the next tick's drain picks it
-        # up from the same priority sort. Nothing was generated for it, nothing is discarded,
-        # and no attempt is recorded against its cap — unlike the vetting batch, where a
-        # cancelled candidate had already been paid for and must be parked deliberately.
-        # Counted off the loop INDEX, not off `len(resumed_dossiers)`: a row whose dossier JSON
-        # is missing `continue`s below without producing a result, so the two differ, and the
-        # difference would be silently attributed to the budget — a rail blamed for a store
-        # inconsistency it had nothing to do with.
-        if deadline_mono is not None and _time.monotonic() >= deadline_mono:
-            n_unreached = len(pending) - _idx
-            progress.note(
-                f"Drain budget spent: stopping after {len(resumed_dossiers)} of {len(pending)} "
-                f"row(s). The {n_unreached} not reached keep their state and their place in the "
-                f"backlog — nothing is discarded — and the tick gets its generation batch back.")
-            break
+
+    # THE DRAIN IS VETTING WITH A DIFFERENT INPUT FILTER — so it runs on the same pool, at the
+    # same width, as the vetting batch in `run_signal` (run.py:1456). Until 2026-08-15 it was a
+    # plain `for` calling `vet_candidate` synchronously while `run_signal` ran `_vet_workers(cfg)`
+    # of them at once, and THAT ASYMMETRY IS THE BACKLOG. Measured on the daemon's own log:
+    #   tick 13:23:07Z — drain row 1 alone took 4127s, and row 2 was still running at +5885s;
+    #   tick 16:08:57Z — the vetting pool completed one candidate every ~251s at three workers.
+    # Three rows a tick against a generator committing fifty is not a policy anyone chose; it is
+    # one `for` loop. The 202-row backlog (oldest 2026-07-02) is that arithmetic, not an outage.
+    #
+    # NOTHING ABOUT THE DRAIN'S POLICY MOVES HERE. `pending` is already ranked and sliced above
+    # (highest-value population first, oldest first within it, `--only` applied, `--limit`
+    # applied), and the pool is fed in exactly that order — so a bounded pass still spends itself
+    # on the same rows, in the same priority, as the serial loop did. What changes is only how
+    # many are in flight at once.
+    #
+    # ALL BOOKKEEPING STAYS ON THIS THREAD. The workers do exactly one thing — load a row and call
+    # `vet_candidate` — and every counter, every `drain_state` write and every summary field is
+    # written in the completion loop below. `drain_state.record_unresolved` is itself safe to call
+    # concurrently (it holds an `fcntl.flock`, drain_state.py:174), but it DEGRADES TO UNLOCKED and
+    # merely logs when flock is unavailable (drain_state.py:204), and eight threads turn that
+    # degraded path from a theoretical race into a live one. A lost attempt count means a stuck row
+    # is never excluded from the backlog, which silently re-engages the generation freeze the
+    # attempt cap exists to release. Keeping the increments on one thread costs nothing.
+    workers = _vet_workers(cfg)
+    total = len(pending)
+
+    # WHO HOLDS A LEASE. Per-INVOCATION, not per-process: two `vet --resume` passes running
+    # concurrently in one process would share a pid, and `Store.claim` deliberately lets an owner
+    # re-take its own row so a long vet can renew. A shared owner string would turn that renewal
+    # affordance into "both passes may hold the same row", which is the bug, not the feature.
+    lease_owner = f"{os.getpid()}:{uuid.uuid4().hex[:8]}"
+    lease_ttl = _lease_ttl_s(cfg)
+
+    def _revet(idx: int, row: dict):
+        """Load and re-vet ONE backlog row. Runs on a worker; touches no shared counter.
+
+        Returns `(candidate_id, dossier)`; `(candidate_id, None)` when the index row has no
+        dossier JSON on disk; `(candidate_id, _LEASE_HELD)` when another worker already owns it.
+        The caller distinguishes all three, because attributing a store inconsistency or a normal
+        lease contention to the budget would blame a rail for something it had nothing to do with
+        — the same confusion the serial loop avoided by counting off its loop index.
+        """
         cid = row.get("candidate_id", "")
-        # Load the full dossier JSON to reconstruct the candidate fields.
+        # CLAIMED BEFORE ANY WORK, INCLUDING THE READ. Selection is a plain SELECT and always
+        # was, so between `drainable()` and here a second consumer — another daemon, or an
+        # operator running `vet --resume` by hand, which this repo treats as routine — can pick
+        # the same row. Doing the work and discovering the collision afterwards would already
+        # have paid for two vets and, on a PASS, raced two publishes into a Stripe mint that has
+        # no lock of its own. The compare-and-swap is the whole defence, so nothing may precede
+        # it.
+        if not store.claim(cid, lease_owner, lease_ttl):
+            return cid, _LEASE_HELD
+        try:
+            return cid, _revet_claimed(idx, row, cid)
+        finally:
+            # Released on EVERY path, including a raise: a row whose vet blew up belongs back in
+            # the queue immediately, not parked for the remainder of a TTL sized for the worst
+            # case. Scoped to this owner inside `release`, so a lease that already expired and
+            # was legitimately re-taken is not stolen back on the way out.
+            store.release(cid, lease_owner)
+
+    def _revet_claimed(idx: int, row: dict, cid: str):
+        """The re-vet itself, with this worker's lease already held. Returns a Dossier or None."""
         full = store.get(cid)
         if not full:
-            print(f"  ⚠ {cid}: dossier JSON missing, skipping")
-            continue
+            return None
         cand_dict = full.get("candidate", {})
         cand = Candidate.from_dict(cand_dict)
         # Also restore ambition_tier and structural_form from the stored data.
@@ -2313,55 +2545,168 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
         prior = ("provisional " + str(full.get("decision", "")).upper()
                  if was_provisional else "deferred")
         original_reason = full.get("reason", "")[:80]
-        progress.banner(f"[resume] {cand.title!r} (was {prior}: {original_reason})")
-
-        try:
-            d = vet_candidate(cand, op, search, cfg, store=store,
-                              query_op=fast_op,
-                              publish=getattr(args, "publish", False),
-                              show_checks=True,
-                              board_personas=_resolve_board(args),
-                              # THE TWO BUDGETS THE DRAIN NEVER RECEIVED. `run_signal` has
-                              # passed both into every vet since 2026-08-15; this call site was
-                              # missed, so the one path that runs FIRST in a tick was the one
-                              # path with no ceiling on its most expensive phase. `vet_candidate`
-                              # clamps the artifact ceiling to `vet_deadline_mono` internally,
-                              # so a single long row can never outlive the drain's own wall.
-                              artifact_time_budget_s=artifact_time_budget_s,
-                              vet_deadline_mono=deadline_mono)
-        except ProviderExhaustedError as e:
-            # Moat still exhausted — stop here. Remaining candidates keep their prior
-            # state (deferred, or provisional verdict); re-run --resume when moat recovers.
-            progress.note(f"Moat still exhausted ({e}). Remaining candidates keep their "
-                         f"prior state. Re-run `vet --resume` when moat recovers.")
-            break
-
-        if d.decision == Decision.PASS:
-            n_pass += 1
-        elif d.decision == Decision.KILL:
-            n_kill += 1
-        else:
-            n_defer += 1
-
-        # PER-ROW ATTEMPT ACCOUNTING. Only a COMPLETED re-vet with a verdict counts, and only if
-        # that verdict left the row in the backlog — a DEFER, or a ruling that is provisional
-        # again. The two outage paths never reach here (a blind moat returns before the loop; a
-        # ProviderExhaustedError breaks out of it above), which is the point: the backlog exists
-        # because of outages, so an outage must not be able to spend a row's budget.
+        # The index rides in the banner because parallel re-vets interleave on stderr — the same
+        # reason `run_signal` tags every vet with `_label(idx, total, title)` (run.py:1452).
+        progress.banner(f"[resume {idx}/{total}] {cand.title!r} (was {prior}: {original_reason})")
+        # THE ROW IS JUDGED ON ITS OWN LANE'S BAR. `run_signal` has resolved per-candidate config
+        # since Part 14 (`vet_cfg = cfg.for_lane(cand.ambition_tier)`, run.py:1483); the drain
+        # passed the GLOBAL cfg, so a row parked as DEFER came back graded against the default
+        # lane's `hard_gates`, `thresholds` and `weights` instead of its own (config.py:697-727).
+        # That is wrong in BOTH directions — a side_hustle idea held to a venture bar, a venture
+        # idea waved through a cheaper one — in a dossier that reads as fully reasoned. It only
+        # ever hit the rows a budget parked, which is why it survived; it is fixed here because
+        # this pass now moves 8 rows at a time instead of 3, and because the queue this drain is
+        # becoming will route EVERY candidate through this call site. `ambition_tier` is restored
+        # from the stored candidate five lines up, and `for_lane` returns self unchanged on an
+        # empty or unknown name, so an untagged row behaves exactly as before.
         #
-        # A resolved row is FORGOTTEN rather than left at its count, so if a later re-save puts it
-        # back in the backlog it starts from a full budget instead of inheriting a spent one.
-        if max_att:
-            if d.decision == Decision.DEFER or bool(getattr(d, "provisional", False)):
-                n = drain_state.record_unresolved(store.root, cid)
-                if n >= max_att:
-                    progress.note(
-                        f"{cid}: {n} completed re-vets, still unresolved — no longer counted as "
-                        f"backlog, so the generation brake can release. "
-                        f"rm {drain_state.ledger_path(store.root)} to retry it.")
+        # Resolved defensively for the same reason `_vet_workers` reads its section defensively
+        # (run.py:33): this drain's callers include `None` and `SimpleNamespace` configs from the
+        # daemon's own tests, where the serial loop never asked anything of `cfg` and so never
+        # noticed. A config that cannot describe lanes does not have any, and the error a bare
+        # attribute access raises here is swallowed by the per-row `except Exception` below —
+        # so it would have shown up as every row failing, not as a missing method.
+        _for_lane = getattr(cfg, "for_lane", None)
+        vet_cfg = _for_lane(cand.ambition_tier) if callable(_for_lane) else cfg
+        return vet_candidate(
+            cand, op, search, vet_cfg, store=store,
+            query_op=fast_op,
+            publish=getattr(args, "publish", False),
+            show_checks=True,
+            board_personas=_resolve_board(args),
+            # THE TWO BUDGETS THE DRAIN NEVER RECEIVED. `run_signal` has passed both into every
+            # vet since 2026-08-15; this call site was missed, so the one path that runs FIRST in
+            # a tick was the one path with no ceiling on its most expensive phase. `vet_candidate`
+            # clamps the artifact ceiling to `vet_deadline_mono` internally, so a single long row
+            # can never outlive the drain's own wall.
+            artifact_time_budget_s=artifact_time_budget_s,
+            vet_deadline_mono=deadline_mono)
+
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        fut_meta: dict = {}
+        budget_stopped = False
+        exhausted = False
+
+        def _decline_remaining() -> int:
+            """Cancel every un-started re-vet; return how many were NEWLY stopped.
+
+            Counted as a before/after diff of the cancelled set rather than from `cancel()`'s
+            return value, because `Future.cancel()` returns True for a future that was ALREADY
+            cancelled. A raw sum therefore double-counts the moment two rails fire in one pass,
+            and `unreached_budget` is the number an operator sizes `drain_budget_frac` from. This
+            is the same trap `_defer_unstarted_candidates` takes an `already_cancelled` argument
+            for (run.py:120).
+            """
+            before = {f for f in fut_meta if f.cancelled()}
+            for f in fut_meta:
+                f.cancel()
+            return len({f for f in fut_meta if f.cancelled()} - before)
+
+        # THE WALL IS CONSULTED BEFORE ANYTHING IS SUBMITTED, not only between completions. An
+        # already-spent budget must start ZERO rows: the serial loop got that for free by testing
+        # at the top of every iteration, whereas a pool that submits first would have `workers`
+        # expensive vets in flight before its first completion could check anything. Asking
+        # `_vet_budget_cancel` with nothing to cancel is the same "is the budget spent?" question —
+        # one definition of spent, shared with the loop below and with the vetting batch.
+        if _vet_budget_cancel(deadline_mono, ()) is not None:
+            n_unreached = total
+            progress.note(
+                f"Drain budget already spent before the pass began: starting none of {total} "
+                f"row(s). They keep their state and their place in the backlog.")
+        else:
+            fut_meta = {executor.submit(_revet, i, row): i
+                        for i, row in enumerate(pending, start=1)}
+
+        for future in as_completed(fut_meta):
+            # THE DRAIN'S OWN WALL. Measured 2026-08-15 on the daemon's own log, and it is the
+            # reason this exists: the drain ran BEFORE generation, inside the tick's hard-deadline
+            # Timer, with no budget of any kind — and it ate the tick.
+            #   tick 10:16:59Z — 3 rows took 4197s of a 10800s tick (39%) before generation began;
+            #   tick 13:23:07Z — row 1 alone took 4127s and row 2 was still running at +5885s.
+            # Per-row it is not the verdict that dominates but the CONTENT phase on a row that
+            # passes: 1461s of row 1's 2844s (51%), 2331s of 4127s (56%). Hence both rails — this
+            # wall, and `artifact_time_budget_s` above.
+            #
+            # STOPPING HERE IS LOSSLESS, which is what makes cancellation the right instrument. A
+            # row not reached keeps the exact state it had: it is already a DEFER or provisional
+            # row in the backlog, `drainable()` still counts it, and the next pass picks it up from
+            # the same priority sort. Nothing was generated for it, nothing is discarded, and no
+            # attempt is recorded against its cap — unlike the vetting batch, where a cancelled
+            # candidate had already been paid for and must be parked deliberately
+            # (`_defer_unstarted_candidates`, run.py:105). That asymmetry is why this rail needs no
+            # parking step and that one does.
+            #
+            # Checked BEFORE banking each result rather than after, so a breach is acted on at the
+            # first completion past the wall instead of one row later.
+            if not budget_stopped and _vet_budget_cancel(deadline_mono, fut_meta) is not None:
+                budget_stopped = True
+                n_unreached += _decline_remaining()
+                progress.note(
+                    f"Drain budget spent: stopping after {len(resumed_dossiers)} of {total} "
+                    f"row(s). The {n_unreached} not reached keep their state and their place in "
+                    f"the backlog — nothing is discarded — and the tick gets its generation "
+                    f"batch back.")
+            try:
+                cid, d = future.result()
+            except CancelledError:
+                # A re-vet this loop cancelled above — expected, not an error, and already counted
+                # in `n_unreached`. Caught HERE because since 3.8 CancelledError derives from
+                # BaseException, so the `except Exception` below cannot see it and it would escape
+                # and kill the pass.
+                continue
+            except ProviderExhaustedError as e:
+                # Moat still exhausted. The serial loop `break`s here; the pool declines to buy
+                # more work instead, which is the same decision with the in-flight rows banked
+                # rather than abandoned. Every un-started row keeps its prior state — deferred, or
+                # its provisional verdict — exactly as the break left it, and spends no attempt.
+                if not exhausted:
+                    exhausted = True
+                    n_unreached += _decline_remaining()
+                    progress.note(f"Moat still exhausted ({e}). Remaining candidates keep their "
+                                  f"prior state. Re-run `vet --resume` when moat recovers.")
+                continue
+            except Exception as e:  # noqa: BLE001 — one bad row must never cost the whole pass
+                logger.error("ERROR re-vetting backlog row: %s", e, extra={"error": str(e)})
+                progress.note(f"⚠ error re-vetting a backlog row: {e}")
+                continue
+            if d is _LEASE_HELD:
+                # Someone else is working this row. Not an error and not a skip to investigate:
+                # it is the queue doing its job. Counted so the summary can distinguish "the
+                # pass did nothing because rows were contended" from "the pass did nothing
+                # because the store is broken" — two very different mornings for an operator.
+                n_leased += 1
+                continue
+            if d is None:
+                print(f"  ⚠ {cid}: dossier JSON missing, skipping")
+                continue
+
+            if d.decision == Decision.PASS:
+                n_pass += 1
+            elif d.decision == Decision.KILL:
+                n_kill += 1
             else:
-                drain_state.forget(store.root, cid)
-        resumed_dossiers.append(d)
+                n_defer += 1
+
+            # PER-ROW ATTEMPT ACCOUNTING. Only a COMPLETED re-vet with a verdict counts, and only
+            # if that verdict left the row in the backlog — a DEFER, or a ruling that is
+            # provisional again. The two outage paths never reach here (a blind moat returns before
+            # the pool is built; a ProviderExhaustedError is handled above), which is the point:
+            # the backlog exists because of outages, so an outage must not be able to spend a
+            # row's budget.
+            #
+            # A resolved row is FORGOTTEN rather than left at its count, so if a later re-save puts
+            # it back in the backlog it starts from a full budget instead of inheriting a spent one.
+            if max_att:
+                if d.decision == Decision.DEFER or bool(getattr(d, "provisional", False)):
+                    n = drain_state.record_unresolved(store.root, cid)
+                    if n >= max_att:
+                        progress.note(
+                            f"{cid}: {n} completed re-vets, still unresolved — no longer counted "
+                            f"as backlog, so the generation brake can release. "
+                            f"rm {drain_state.ledger_path(store.root)} to retry it.")
+                else:
+                    drain_state.forget(store.root, cid)
+            resumed_dossiers.append(d)
 
     # Summary.
     print(f"\n{'='*60}")
@@ -2397,6 +2742,12 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
         # third number is the "counters lie" shape, and it would hide the one fact an operator
         # needs to size `drain_budget_frac`: that the wall is binding.
         summary["unreached_budget"] = n_unreached
+    if n_leased:
+        # Same argument, for the queue. A pass whose rows were all held by another consumer
+        # reports `attempted: N, resumed: 0` — identical on its face to a pass that found N
+        # broken rows. One is the queue working; the other is damage. An operator cannot be
+        # asked to tell them apart from a number that does not exist.
+        summary["leased_elsewhere"] = n_leased
     # Excluded counts surfaced into the tick row, so a store inconsistency or an exhausted attempt
     # budget is visible in ticks.jsonl and the state probe instead of showing up as an
     # inexplicable `attempted: 3, resumed: 0` — or, once the brake is engaged, as a generation
@@ -2520,6 +2871,46 @@ def _cmd_signal(args: argparse.Namespace, log_path: Path) -> None:
     print(f"\n{costs_report(log_path or '')}")
 
 
+def _cmd_consume(args: argparse.Namespace) -> None:
+    """`consume` — run the vetting consumer until stopped.
+
+    Thin on purpose. Everything that decides anything lives in `consumer.run_consumer`
+    (when to drain) and `_cmd_resume` (how), so this is argument plumbing and a summary.
+
+    `--once` is `--max-passes 1` and is named separately because that is the question an
+    operator actually asks — "does a pass work right now?" — and a flag they can remember is
+    a rail they will use before starting a daemon.
+
+    No `log_path` parameter, unlike its neighbours: each drain pass builds its own from
+    `cfg.store_dir` inside `resume_deferred`, which is what made the daemon's drain the one
+    caller whose costs were reported to nobody. A second path threaded from here would be a
+    second answer to the same question.
+    """
+    from .consumer import StopFlag, run_consumer
+
+    cfg = _build_config_and_overrides(args)
+    max_passes = 1 if getattr(args, "once", False) else getattr(args, "max_passes", None)
+
+    flag = StopFlag().install()
+    try:
+        out = run_consumer(cfg, batch=getattr(args, "batch", None),
+                           publish=getattr(args, "publish", False),
+                           max_passes=max_passes, stop=flag)
+    finally:
+        # Restore whatever handled SIGTERM before, always. A CLI that leaves its own handler
+        # installed changes how the interpreter dies for everything that runs after it.
+        flag.restore()
+
+    print(f"\n=== Consumer stopped: {out['stopped_because']} ===")
+    print(f"  passes    : {out['passes']}  ({out['idle']} idle, {out['blocked']} blocked, "
+          f"{out['errors']} errored)")
+    print(f"  rows      : {out['resumed']} resumed of {out['attempted']} attempted")
+    if out["leased_elsewhere"]:
+        # Never silently zero-summed into "attempted". Rows held by another worker are the
+        # queue working correctly, and they read identically to broken rows without this line.
+        print(f"  leased    : {out['leased_elsewhere']} row(s) held by another worker")
+
+
 def _cmd_generate(args: argparse.Namespace, log_path: Path) -> None:
     """Blue-sky run: generate + vet candidates with NO signal (signal_text="").
     With --resume: re-run the full pipeline for all pending signals that failed due
@@ -2530,6 +2921,19 @@ def _cmd_generate(args: argparse.Namespace, log_path: Path) -> None:
     if getattr(args, "resume", False):
         _cmd_generate_resume(args, cfg, log_path)
         return
+
+    # `--no-vet --publish` is refused rather than quietly ignored. Producer mode returns
+    # before a verdict exists, and publishing is gated on PASS, so the flag could only ever
+    # be inert — and an operator who passed it would reasonably believe rows had shipped.
+    # Silently dropping a flag the caller typed is the "no silent feature removal" defect.
+    no_vet = bool(getattr(args, "no_vet", False))
+    if no_vet and getattr(args, "publish", False):
+        print("error: --no-vet queues candidates without ruling on them, so there is no PASS "
+              "to publish.\n  Queue them, then publish from the consumer:\n"
+              "    python -m prospector.run generate --no-vet\n"
+              "    python -m prospector.run vet --resume --publish",
+              file=sys.stderr)
+        sys.exit(2)
 
     from .operator import make_operator
     op = make_operator(cfg)
@@ -2542,7 +2946,16 @@ def _cmd_generate(args: argparse.Namespace, log_path: Path) -> None:
                           publish=getattr(args, "publish", False),
                           lanes=_resolve_lanes(cfg, args),
                           focus=getattr(args, "focus", None),
-                          board_personas=_resolve_board(args))
+                          board_personas=_resolve_board(args),
+                          vet=not no_vet)
+
+    if no_vet:
+        print(f"\n=== Queued {len(dossiers)} candidate(s) for vetting ===")
+        for d in dossiers:
+            print(f"  [QUEUED] {d.candidate.title}")
+            print(f"         id={d.candidate.candidate_id}")
+        print("\nDrain the queue with:  python -m prospector.run vet --resume")
+        return
 
     print(f"\n=== Blue-sky result: {len(dossiers)} candidate(s) vetted ===")
     for d in dossiers:
@@ -3338,6 +3751,12 @@ def main() -> None:
                        help="Path to fixtures JSON (uses FixtureProvider)")
     gen_p.add_argument("--publish", action="store_true",
                        help="Generate listing artifacts + publish PASSes (extra model calls)")
+    gen_p.add_argument("--no-vet", action="store_true", dest="no_vet",
+                       help="PRODUCER MODE: generate, dedup, prescreen and select, then queue "
+                            "every survivor as a DEFER row and exit without vetting any of "
+                            "them. `vet --resume` is the consumer that drains the queue on "
+                            "its own clock. Implies no publishing: a row with no verdict "
+                            "cannot pass.")
     gen_p.add_argument("--lane", metavar="NAME",
                        help="Ambition lane for generation + vetting (e.g. side_hustle, venture). "
                             "Default: config active_lane.")
@@ -3380,6 +3799,22 @@ def main() -> None:
     rep_p.add_argument("--lane", metavar="NAME", help="Ambition lane to judge against")
     rep_p.add_argument("--persona", metavar="NAME", help="Analytical persona")
     _add_market_args(rep_p)
+
+    # ---- consume subcommand: the consumer half of the producer/consumer split ----
+    con_p = sub.add_parser(
+        "consume",
+        help="Run the vetting CONSUMER: drain the queue continuously, on no deadline")
+    con_p.add_argument("--batch", type=int, default=None, metavar="N",
+                       help="Rows per drain pass before the rails are re-read "
+                            "(default: config consumer.batch). Not a throughput limit — a "
+                            "pass still runs retrieval.vet_workers rows in parallel.")
+    con_p.add_argument("--publish", action="store_true",
+                       help="Generate artifacts and publish PASSes as they are ruled")
+    con_p.add_argument("--once", action="store_true",
+                       help="Run exactly one drain pass and exit. The operator's dry run: "
+                            "same code path, same rails, no loop.")
+    con_p.add_argument("--max-passes", type=int, default=None, metavar="N", dest="max_passes",
+                       help="Stop after N passes (default: never — this is a daemon)")
 
     # ---- discover subcommand (spec EXTENSION: self-sourced signals) ----
     disc_p = sub.add_parser("discover",
@@ -3528,6 +3963,8 @@ def main() -> None:
         _cmd_signal(args, log_path)
     elif args.command == "generate":
         _cmd_generate(args, log_path)
+    elif args.command == "consume":
+        _cmd_consume(args)
     elif args.command == "discover":
         _cmd_discover(args, log_path)
     elif args.command == "report":

@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
+import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator, Optional
@@ -41,7 +42,9 @@ CREATE TABLE IF NOT EXISTS dossiers (
     retrieval_degraded INTEGER DEFAULT 0,
     market          TEXT,
     audience         TEXT,
-    seed_kind        TEXT
+    seed_kind        TEXT,
+    lease_owner      TEXT,
+    lease_until      REAL
 );
 """
 
@@ -55,6 +58,7 @@ CREATE INDEX IF NOT EXISTS idx_persona ON dossiers(persona);
 CREATE INDEX IF NOT EXISTS idx_market ON dossiers(market);
 CREATE INDEX IF NOT EXISTS idx_audience ON dossiers(audience);
 CREATE INDEX IF NOT EXISTS idx_seed_kind ON dossiers(seed_kind);
+CREATE INDEX IF NOT EXISTS idx_lease_until ON dossiers(lease_until);
 """
 
 _UPSERT = """
@@ -216,7 +220,27 @@ class Store:
                                # would manufacture data. They stay '' and the survival report
                                # counts them as an explicit `unknown` bucket rather than
                                # silently folding them into whichever kind is more convenient.
-                               ("seed_kind", "TEXT")]:
+                               ("seed_kind", "TEXT"),
+                               # THE QUEUE LEASE. Who is working this row right now, and until
+                               # when. A backlog row is a verdict RECORD; these two columns are
+                               # what make it also a queue ENTRY that exactly one worker may hold.
+                               #
+                               # `lease_until` is REAL EPOCH SECONDS, not the ISO text every other
+                               # timestamp here uses, and not a monotonic reading. Epoch because a
+                               # lease is compared inside SQL, and SQLite comparing TEXT to REAL is
+                               # a type mismatch that silently answers the wrong question — the
+                               # string-vs-numeric trap, moved into the database. Wall clock rather
+                               # than monotonic because the whole point is comparison BETWEEN
+                               # processes, and a monotonic reading is meaningless outside the
+                               # process that took it.
+                               #
+                               # NULL means unheld. An expired lease is not cleaned up by anyone:
+                               # expiry IS the release, so a worker that is SIGKILLed mid-vet
+                               # returns its row to the queue by doing nothing at all. That is the
+                               # property the `threading.Timer` force-exit used to provide for a
+                               # whole tick, at per-row grain.
+                               ("lease_owner", "TEXT"),
+                               ("lease_until", "REAL")]:
             if col in cols:
                 continue
             try:
@@ -492,6 +516,76 @@ class Store:
         with self._connect() as conn:
             rows = conn.execute(
                 "SELECT * FROM dossiers WHERE provisional = 1").fetchall()
+        return [dict(row) for row in rows]
+
+    # ------------------------------------------------------------------
+    # The queue lease
+    # ------------------------------------------------------------------
+    #
+    # A backlog row has always been selectable by anyone — `drainable()` is a SELECT, and
+    # nothing marked a row as taken. That was safe only because exactly one serialized tick
+    # ever ran, and it stops being safe the moment vetting is a continuously-running consumer
+    # or a second process. Two workers on one row is not merely wasted money: they race on
+    # `store.save`'s fixed temp path, on the stale-decision sweep that unlinks the OTHER
+    # decision's JSON, and — if both rule PASS — on a publish path that mints a Stripe Price
+    # from a check-then-act with no lock of its own.
+    #
+    # `drain_state` is an attempt COUNTER, not a lease: it records that a row was worked, after
+    # the fact. It cannot stop a second worker from starting.
+    #
+    # This is a compare-and-swap in one UPDATE. Atomic under WAL by the same transaction that
+    # already protects every other write here, needing no new dependency, no lock file and no
+    # daemon — and, unlike an flock, it survives across machines and reboots because the state
+    # lives in the row rather than in a process.
+
+    def claim(self, candidate_id: str, owner: str, ttl_s: float) -> bool:
+        """Take the lease on one row for `ttl_s` seconds. True iff THIS caller now holds it.
+
+        Free rows are `lease_until IS NULL` or an expired lease. An owner may always re-take
+        its own row, which makes this double as `renew()` — a vet measured at 4127s must be
+        able to extend a lease it is still legitimately working, and a re-entrant claim that
+        returned False would make a worker abandon its own in-flight row.
+
+        The read and the write are ONE statement on purpose. Asking "is it free?" and then
+        writing is the same check-then-act this exists to remove, and two consumers polling a
+        queue hit that window constantly rather than rarely.
+        """
+        now = time.time()
+        with self._connect() as conn:
+            cur = conn.execute(
+                "UPDATE dossiers SET lease_owner = ?, lease_until = ? "
+                "WHERE candidate_id = ? "
+                "  AND (lease_until IS NULL OR lease_until < ? OR lease_owner = ?)",
+                (owner, now + float(ttl_s), candidate_id, now, owner))
+            return cur.rowcount == 1
+
+    def release(self, candidate_id: str, owner: str) -> bool:
+        """Give the lease back. True iff this caller held it.
+
+        Scoped to `lease_owner = ?` so a worker whose lease already EXPIRED — and was therefore
+        legitimately taken by someone else — cannot release the new holder's claim on its way
+        out. Releasing is an optimisation, not a correctness requirement: expiry already frees
+        the row. It exists so a clean finish returns the row immediately instead of leaving it
+        parked for the remainder of a TTL sized for the worst case.
+        """
+        with self._connect() as conn:
+            cur = conn.execute(
+                "UPDATE dossiers SET lease_owner = NULL, lease_until = NULL "
+                "WHERE candidate_id = ? AND lease_owner = ?", (candidate_id, owner))
+            return cur.rowcount == 1
+
+    def leased(self) -> list[dict]:
+        """Rows with a LIVE lease right now — what is in flight, for the operator surface.
+
+        Deliberately not used to filter `drainable()`. That count is also the backlog brake's
+        input (`run.drain_survey`), and a row being worked has not left the backlog: hiding it
+        would make the brake read a queue as shorter than it is and release a generation freeze
+        on work that has not landed yet. One definition of backlog, or the rail deadlocks.
+        """
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM dossiers WHERE lease_until IS NOT NULL AND lease_until > ?",
+                (time.time(),)).fetchall()
         return [dict(row) for row in rows]
 
     def tombstone(self, candidate_id: str, reason: str, *,

@@ -359,6 +359,15 @@ def _ns(value: Any) -> Any:
     needed here — and no mapping table is the point, because a table would be a second place for
     a renamed field to have to be remembered.
 
+    What the key names being right does NOT cover is a key that is not there at all. This builds
+    a namespace out of the keys the record HAPPENS to have, so a field added to `Dossier` after
+    the row was written is simply absent, and the first reader to touch it raises
+    `AttributeError` — `dossier.render_markdown` reading `dossier.persona` (dossier.py:776)
+    against every stored PASS, all of which predate `persona` (models.py:460). That is the same
+    lesson as `dossier._mapping`, on the other axis: there it was a dict whose KEYS are data
+    arriving as a namespace, here it is a field the record predates. `_fill_defaults` below is
+    the fix, and it is still no mapping table — the defaults come off the dataclass itself.
+
     Deliberately NOT a `Dossier.from_dict`. Reconstructing the real dataclasses would mean
     resolving enums, defaults and required arguments for a record whose schema has moved since it
     was written, and failing on any historical row that predates a field — for a document that only

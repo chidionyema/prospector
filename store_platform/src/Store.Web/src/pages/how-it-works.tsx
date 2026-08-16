@@ -106,7 +106,10 @@ function firstSentences(reason: string, budget: number): string {
 export default function HowItWorks() {
   const { variant } = useCopyVariant();
   return (
-    <MarketingLayout>
+    <MarketingLayout
+      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'How it works' }]}
+      breadcrumbsWidth="6xl"
+    >
       <Seo
         title="How it works"
         description={variant.howItWorksSeoDescription}

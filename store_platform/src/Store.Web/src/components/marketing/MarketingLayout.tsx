@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { Button, Logo, Icon } from '@/components/ui';
+import { Breadcrumbs, Button, Logo, Icon } from '@/components/ui';
 import { CartButton } from '@/components/cart/CartButton';
 import { LEGAL, BRAND } from '@/lib/config';
 import { SEARCH_OPEN_EVENT } from '@/lib/searchEvent';
@@ -67,11 +67,23 @@ function isActivePath(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+/* Mirrors BAND_WIDTH in components/marketing/blocks.tsx. Copied rather than imported so the
+   shell does not depend on the block library. The trail must sit on the SAME band as the
+   page's first Section, otherwise it hangs off the left of the content it belongs to. */
+const CRUMB_WIDTH = {
+  '2xl': 'max-w-2xl', '3xl': 'max-w-3xl', '4xl': 'max-w-4xl',
+  '6xl': 'max-w-6xl', '7xl': 'max-w-7xl',
+} as const;
+
 interface MarketingLayoutProps {
   children: React.ReactNode;
+  /** Trail rendered above the page content. Omit on the home page: you cannot go back from it. */
+  breadcrumbs?: { href: string; label: string }[];
+  /** MUST match the `width` of the page's first Section/SectionBand, so the trail aligns. */
+  breadcrumbsWidth?: keyof typeof CRUMB_WIDTH;
 }
 
-export default function MarketingLayout({ children }: MarketingLayoutProps) {
+export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidth = '3xl' }: MarketingLayoutProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { triggerRef: menuButtonRef } = useDisclosure(menuOpen, () => setMenuOpen(false));
   const router = useRouter();
@@ -407,7 +419,14 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
       </header>
 
       {/* Full-width main: children own their contrast bands. */}
-      <main id="main" className="bg-bg">{children}</main>
+      <main id="main" className="bg-bg">
+        {breadcrumbs && breadcrumbs.length > 0 && (
+          <div className={`mx-auto ${CRUMB_WIDTH[breadcrumbsWidth]} px-6 pt-6 md:px-8 lg:px-10`}>
+            <Breadcrumbs items={breadcrumbs} />
+          </div>
+        )}
+        {children}
+      </main>
 
       {/*
         Footer. Column headings are `text-caption font-medium text-subtle` in sentence case --
