@@ -201,6 +201,24 @@ _OPEN_ID_TAIL = re.compile(r"\s*[(\[][^()\[\]]*?[0-9a-f]{8,}[^()\[\]]*$")
 # repair cannot orphan a space before the next comma.
 _EMPTY_MARKER = re.compile(r"\s*[(\[][\s,;:]*[)\]]")
 
+# A LIST of bracketed citations: `[id], [id], and [id]`. `_clean_bracketed` drops each span on
+# its own and cannot see the separators standing BETWEEN them, so the commas and the Oxford
+# "and" are left holding a sentence whose reference list has gone:
+#
+#     "The ASHE earnings tables [8e92…], [ed3a…], and [0bae…] contain only cookie consent
+#      screens" -> "The ASHE earnings tables, and contain only cookie consent screens"
+#
+# published in that state on the home page's check sequence and on /sample (pack
+# f2ac7df9995c334e, measured 2026-08-16). It is the same defect class `_ORPHAN_NOUN_SEPS`
+# repairs one noun over, and it could not fire here because the word in front is "tables",
+# not "passages" — the rule cannot be about the noun, so this one is about the RUN.
+#
+# A single citation is untouched: one span is what `_clean_bracketed` already handles
+# correctly, and its neighbouring punctuation is ordinary prose. Two or more adjacent spans
+# are one reference and leave together, separators included.
+_CITE_SPAN = rf"[(\[]\s*(?:{_REF_LABEL}\s*[:,]?\s*)?{_HEX}(?:{_SEP}{_HEX})*\s*[)\]]"
+_CITE_RUN = re.compile(rf"\s*{_CITE_SPAN}(?:{_SEP}{_CITE_SPAN})+")
+
 # Confidence figures. A bare `0.0` in marketing prose reads as "0% confident" and argues
 # against the verdict it is attached to, so the DEFAULT is to omit it (the QA report inside
 # the pack is the one place it may stay — see `publish_pass(keep_confidence_figures=True)`).
@@ -359,7 +377,9 @@ def _clean_bracketed(text: str) -> str:
             return ""
         return f"{lead}{opener}{cleaned}{closer}"
 
-    return _BRACKETED.sub(repl, text)
+    # Runs first: a list of citations is ONE reference, and taking it out whole is what keeps
+    # its internal separators from outliving it (see `_CITE_RUN`).
+    return _BRACKETED.sub(repl, _CITE_RUN.sub("", text))
 
 
 def _tidy(text: str) -> str:

@@ -13,7 +13,7 @@ from prospector.bridge import _sample_excerpts
 from prospector.dossier import check_label
 from prospector.models import Candidate, CheckResult, Verdict
 from prospector.pack_floors import claim_safe_marketing
-from prospector.plain_text import has_markup, plain_lines, to_plain_text
+from prospector.plain_text import has_markup, plain_lines, publish_pass, to_plain_text
 
 
 def _candidate(**kw):
@@ -264,3 +264,39 @@ class TestRegressionGuards:
     def test_keep_link_urls_still_appends_target(self):
         out = to_plain_text("[t](u)", collapse=True, keep_link_urls=True)
         assert out == "t (u)"
+
+
+class TestCitationListLeavesNoSeparatorsBehind:
+    """A LIST of citations is ONE reference and must leave whole (`plain_text._CITE_RUN`).
+
+    Verbatim from pack `f2ac7df9995c334e`, whose `payer_solvency` rationale reached the home
+    page's check sequence and /sample as "The ASHE earnings tables, and contain only cookie
+    consent screens": the spans were dropped one at a time and the commas and the Oxford
+    "and" that stood BETWEEN them stayed behind (measured 2026-08-16).
+    """
+
+    RAW = (
+        "The ASHE earnings tables [8e921ad4e2ee8463], [ed3a0e72a0c93ca9], and "
+        "[0bae286017ab2675] contain only cookie consent screens with no wage data."
+    )
+
+    def test_the_separators_leave_with_the_ids(self):
+        out = publish_pass(self.RAW, sentences=True)
+        assert out == (
+            "The ASHE earnings tables contain only cookie consent screens with no wage data."
+        )
+        assert ", and contain" not in out
+
+    def test_a_lone_citation_keeps_the_old_behaviour(self):
+        # One span is what `_clean_bracketed` already handled correctly. The run rule needs two
+        # or more ADJACENT spans, so ordinary sentence punctuation is never in its scope.
+        assert publish_pass(
+            "Retention is standard [c33885f4562ab1de] in UK contracts.", sentences=True
+        ) == "Retention is standard in UK contracts."
+
+    def test_prose_between_two_citations_is_not_a_run(self):
+        out = publish_pass(
+            "Uber [aa11bb22cc33dd44] and Deliveroo [11223344aabbccdd] both deactivate.",
+            sentences=True,
+        )
+        assert out == "Uber and Deliveroo both deactivate."

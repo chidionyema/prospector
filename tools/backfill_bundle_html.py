@@ -159,10 +159,27 @@ class Report:
 PDF_FAILURES: List[str] = []
 
 
+#: The report whose markdown carried our scoresheet. Named rather than pattern-matched: the
+#: strip is scoped to this ONE document because it is the only one `render_markdown` writes,
+#: and a scrub loose enough to run over a buyer's spec sheet is a worse defect than the leak.
+QA_REPORT = "QA_Report.md"
+
+
 def patched_md(name: str, raw: bytes) -> bytes:
     """The bytes to ship for one .md entry: usually the originals, unchanged.
 
-    THE ONE DELIBERATE EXCEPTION to "every .md is copied byte-identical". A live pack's footer
+    TWO DELIBERATE EXCEPTIONS to "every .md is copied byte-identical", both of them a shared
+    renderer in `dossier.py` rather than a rule written twice.
+
+    The second is `QA_Report.md`, and it is why this tool can fix a pack already on the shelf.
+    That report printed a "How it scored" table — the composite to four decimal places and six
+    internal axis names marked out of five — plus "Survived all gates; composite 3.6500" under
+    "Why this passed". Founder, on a live pack, 2026-08-15: *"it has engine ifo like conposite
+    score etc"*. `render_markdown(include_our_grade=False)` stops it reaching a pack generated
+    from now on; `strip_our_grade_markdown` is that same removal applied to the markdown a pack
+    already shipped, and the two are pinned equal over all 75 stored dossiers.
+
+    The first is the footer. A live pack's read `Evidence goes stale after: <ISO stamp>` —
     printed `Evidence goes stale after: <ISO stamp>` — `reverify_due_at`, an internal scheduling
     field (`run.py:813`) that tells the decay sweep when to look again. To a buyer it reads as a
     warranty with a cliff: bought on day 28, the document says three days left. The rewrite is
@@ -173,8 +190,15 @@ def patched_md(name: str, raw: bytes) -> bytes:
     if not name.endswith(".md"):
         return raw
     text = raw.decode("utf-8", errors="replace")
+    original = text
+    if name == QA_REPORT:
+        stripped = dossier_render.strip_our_grade_markdown(text)
+        if stripped is not None:
+            text = stripped
     rewritten = dossier_render.rewrite_legacy_shelf_life(text)
-    return raw if rewritten is None else rewritten.encode("utf-8")
+    if rewritten is not None:
+        text = rewritten
+    return raw if text == original else text.encode("utf-8")
 
 
 def ordered_md_entries(src: zipfile.ZipFile) -> List[Tuple[str, str]]:
@@ -486,6 +510,9 @@ def main() -> int:
     ap.add_argument("--api-url", default=DEFAULT_API_URL)
     ap.add_argument("--apply", action="store_true",
                     help="upload new zips and repoint listings (default: dry-run report only)")
+    ap.add_argument("--from-preconversion", action="store_true",
+                    help="for a pack already converted (no .md left), render from the newest "
+                         "pre-conversion object under its prefix instead of skipping it")
     ap.add_argument("--take-newest", action="store_true",
                     help="when a pack has several stored objects, use the most recent instead of skipping")
     ap.add_argument("--only", metavar="PACK_ID", action="append",
@@ -566,6 +593,38 @@ def main() -> int:
 
             zip_bytes = s3.get_object(Bucket=bucket, Key=old_key)["Body"].read()
 
+            # THE RENDER SOURCE, which is not always the object being replaced.
+            #
+            # Conversion is one-way: a converted pack has no .md left, so `rebuild_zip_with_
+            # index` returns None on it and every already-converted listing is a no-op. That
+            # was correct while the only job was ADDING a reader. It is wrong the moment a
+            # change has to reach a pack already converted — which is what the engine-info
+            # removal is: 61 of 61 live packs carry "How it scored" inside index.html AND
+            # inside Complete_Pack.pdf, and both are RENDERED, so neither can be edited in
+            # place.
+            #
+            # The escape hatch is the one this file already documents: R2 keys are content
+            # addressed, so the pre-conversion object carrying the .md is never overwritten
+            # and stays fetchable. Measured 2026-08-16: 59 of 61 live packs have one. So the
+            # render reads from THAT object while the served object is still what gets
+            # replaced, and the two packs without one are reported rather than guessed at.
+            source_bytes, source_note = zip_bytes, ""
+            if args.from_preconversion and not any(
+                    n.endswith(".md") for n in zipfile.ZipFile(io.BytesIO(zip_bytes)).namelist()):
+                found = s3.list_objects_v2(Bucket=bucket, Prefix=f"packs/{pid}/").get("Contents", [])
+                found.sort(key=lambda o: o["LastModified"], reverse=True)
+                for obj in found:
+                    cand = s3.get_object(Bucket=bucket, Key=obj["Key"])["Body"].read()
+                    if any(n.endswith(".md") for n in zipfile.ZipFile(io.BytesIO(cand)).namelist()):
+                        source_bytes = cand
+                        source_note = f" (rendered from pre-conversion {obj['Key'].rsplit('/', 1)[-1][:12]})"
+                        break
+                else:
+                    report.add(PackResult(pid, "no-source",
+                                          "already converted and no pre-conversion object under its "
+                                          "prefix — nothing to re-render from"))
+                    continue
+
             # Details endpoint carries the metadata the reader's header shows. Fields the
             # projection lacks stay blank rather than being guessed.
             details = requests.get(f"{args.api_url}/catalog/{pid}", timeout=15)
@@ -597,9 +656,22 @@ def main() -> int:
                 pack_id=pid,
                 claim_count=claim_count,
             )
-            new_bytes = rebuild_zip_with_index(zip_bytes, meta, dossier, pid)
+            new_bytes = rebuild_zip_with_index(source_bytes, meta, dossier, pid)
             if new_bytes is None:
                 report.add(PackResult(pid, "already-correct", old_key.rsplit("/", 1)[-1]))
+                continue
+
+            # THE OUTPUT IS GRADED BEFORE IT IS UPLOADED. This backfill exists to remove a
+            # leak, so "the tool ran" is not the receipt — "the object a buyer downloads no
+            # longer carries it" is. Graded on the rendered reader, which is the surface the
+            # leak was measured on, and a pack that still fails is reported and NOT uploaded
+            # rather than swapped for another dirty zip.
+            rebuilt = zipfile.ZipFile(io.BytesIO(new_bytes))
+            reader = _text(rebuilt.read("index.html") if "index.html" in rebuilt.namelist() else b"")
+            still_leaking = [t for t in ("How it scored", "composite ") if t.lower() in reader.lower()]
+            if still_leaking:
+                report.add(PackResult(pid, "error",
+                                      f"rebuilt reader STILL carries {still_leaking}; not uploading"))
                 continue
 
             new_hash = hashlib.sha256(new_bytes).hexdigest()
@@ -608,11 +680,17 @@ def main() -> int:
             # Two different jobs under one action, worth telling apart in the log: a pack that
             # never had a reader is gaining one, a pack that had the write-order reader is
             # having it corrected. Only the second is a change to what an existing buyer sees.
+            # `had` is what the buyer has NOW, so it is read from the served object; the
+            # shelf-life probe below reads the RENDER SOURCE, because a converted served
+            # object has no .md to probe and would always report "nothing to retire".
             had = zipfile.ZipFile(io.BytesIO(zip_bytes)).namelist()
+            src_zip = zipfile.ZipFile(io.BytesIO(source_bytes))
             parts = ["reordered reader" if "index.html" in had else "new reader"]
+            if source_note:
+                parts.append("engine grade stripped")
             if any(dossier_render.rewrite_legacy_shelf_life(
-                    zipfile.ZipFile(io.BytesIO(zip_bytes)).read(n).decode("utf-8", "replace"))
-                    for n in had if n.endswith(".md")):
+                    src_zip.read(n).decode("utf-8", "replace"))
+                    for n in src_zip.namelist() if n.endswith(".md")):
                 parts.append("shelf-life line retired")
             if dossier is None:
                 parts.append("no-dossier: manifest SKIPPED")
@@ -621,7 +699,7 @@ def main() -> int:
             else:
                 parts.append("new manifest")
             kind = ", ".join(parts)
-            sized = f"{len(zip_bytes)}B -> {len(new_bytes)}B ({delta:+d}B, {kind})"
+            sized = f"{len(zip_bytes)}B -> {len(new_bytes)}B ({delta:+d}B, {kind}){source_note}"
 
             if not args.apply:
                 report.add(PackResult(pid, "would-convert", sized, old_key, new_key, delta))
