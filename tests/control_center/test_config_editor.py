@@ -105,11 +105,12 @@ class TestMoatAffecting:
         new = {"spend": {"daily_cap_usd": 100.0}}
         assert not ce.is_moat_affecting(old, new)
 
-    def test_changing_weights_is_moat_affecting(self):
-        # `weights` feeds the composite score in score.py, and `min_composite` is a kill
-        # gate. Move a weight and ideas that passed yesterday fail today, so the change
-        # must be flagged like any other verdict-affecting edit. This test asserted the
-        # opposite until 2026-08-16, when ("weights",) was added to MOAT_AFFECTING_KEYS.
+    def test_changing_weights_IS_moat_affecting(self):
+        """Reversed 2026-08-16 (T0-6). `weights` are the coefficients of the composite, and
+        `thresholds.min_composite_to_pass` — already moat-affecting — is the number that composite
+        is compared against. Moving the weights moves the same decision boundary from the other
+        side, and `min_composite` is the gate most KILLs land on. Uncertifying on a threshold
+        change while waving through a weight change certified nothing."""
         old = {"weights": {"pain_acuity": 0.2, "distribution": 0.15}}
         new = {"weights": {"pain_acuity": 0.5, "distribution": 0.1}}
         assert ce.is_moat_affecting(old, new)

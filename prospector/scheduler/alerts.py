@@ -279,8 +279,15 @@ _HERMES_ALERT_PATH = Path.home() / ".hermes" / "scripts" / "estate_alert.py"
 #: with money already spent and nothing to show, and on 2026-08-14 it was discovered only
 #: because the founder asked. Throttled at 6h in the emitter, so a long-lived strand cannot
 #: mute the channel.
+#: `consumer_down` qualifies on the same principle as `stranded_passes`, and more sharply. The
+#: drain is a separate process since the producer/consumer split; when it dies, the producer keeps
+#: ticking green (this module suppresses the all-DEFER tick alarm by design) and the queue grows
+#: with money already spent on every row in it. Nothing self-heals that: launchd relaunches a
+#: process that EXITS, but a crash-loop or a wedge produces exactly the same silence. Throttled at
+#: 1h in the watchdog, so a long outage cannot mute the channel.
 TELEGRAM_KEYS = frozenset({
     "liveness", "tick_error", "zero_yield", "barren_streak", "moat_blind", "stranded_passes",
+    "consumer_down",
 })
 
 
