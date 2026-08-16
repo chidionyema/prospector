@@ -138,7 +138,15 @@ export function PackSpecimen({ className }: { className?: string }) {
           horizontal scrollbar because an ancestor is `overflow-x: clip`, so the page LOOKED fine and
           simply cut the content off. That is the worst version of this bug: silent. `min-w-0` lets
           the track shrink to the viewport and the truncation inside the sheet do its job. */}
-      <div className="grid min-w-0 gap-10 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-14">
+      {/* `lg:grid-rows-[auto_1fr]`: the left column's two blocks sit one under the other, and the
+          slack falls at the BOTTOM of the column. Before this the sheet spanned both rows at 38rem
+          while the argument column held ~200px of heading and ~250px of price argument, and the
+          bottom block was `self-end` -- so the leftover ~160px was banked in the MIDDLE, between
+          the counts line and the quote. Founder, 2026-08-16: "why the blank in the middle?" A hole
+          inside a column reads as a rendering fault; the same space after the last element reads
+          as the column ending. Aligning the button's baseline with the sheet's bottom edge was the
+          intent, and it is not worth a gap the reader has to explain to themselves. */}
+      <div className="grid min-w-0 gap-10 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:grid-rows-[auto_1fr] lg:gap-14">
         <div className="min-w-0 lg:col-start-1 lg:row-start-1">
           {/* The eyebrow is SANS. The wide-tracked all-caps mono eyebrow is the exact pattern
               `__tests__/monoIsTheDataVoice.test.ts` was written to stop spreading: mono is the
@@ -360,7 +368,7 @@ export function PackSpecimen({ className }: { className?: string }) {
             engine-written, cited, and it was sitting unused in this JSON several thousand pixels
             from a £49 button. Quoting it is the difference between us asserting the pack is cheap
             and the research stating what the alternative costs. */}
-        <div className="min-w-0 lg:col-start-1 lg:row-start-2 lg:self-end">
+        <div className="min-w-0 lg:col-start-1 lg:row-start-2 lg:self-start">
           {report.premortem?.strongestAlternative && (
             <blockquote className="border-l-2 border-border pl-4">
               <p className="text-body italic text-muted">{report.premortem.strongestAlternative}</p>

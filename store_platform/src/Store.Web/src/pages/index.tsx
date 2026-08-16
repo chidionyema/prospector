@@ -37,7 +37,7 @@ import { EvidenceBar } from '@/components/ui/EvidenceBar';
 import { ShelfEndCapture } from '@/components/discovery/ShelfEndCapture';
 import { fetchCatalog, fetchCatalogStats, freshnessLabel, marketLabel, Pack, CatalogStats } from '@/lib/api/client';
 // Last-known-good catalogue. A failed fetch must never render as "nothing is for sale".
-import { lastKnownCatalog, rememberCatalog } from '@/lib/catalogCache';
+import { freshCatalog, lastKnownCatalog, rememberCatalog } from '@/lib/catalogCache';
 import { formatPriceForMarket, currencyForCountry, type Currency } from '@/lib/fx';
 import { repairTruncation } from '@/lib/copy';
 import { track } from '@/lib/analytics';
@@ -1339,11 +1339,13 @@ function CatalogBrowser({
           reader actually arrives with (I know the words / I know the sector / I know only my own
           situation), and deleting one is a product decision about which of those readers we stop
           serving -- the founder's call to make, not a defect for me to patch out silently. The
-          defect named in the review is the missing relationship, and this is that. */}
-      <p className="mb-4 max-w-prose text-meta text-muted">
-        Three ways in, one list. Search the words, pick a sector, or answer the questions: they
-        stack, and the count updates as you go.
-      </p>
+          defect named in the review is the missing relationship, and this is that.
+
+          Cut to seven words on 2026-08-16 (founder: "why so much words saying so little"). The
+          first version described each of the three controls in turn, which the controls do
+          themselves, immediately below. The only thing a reader cannot see by looking is whether
+          using the second undoes the first, so that is the only thing left. */}
+      <p className="mb-4 max-w-prose text-meta text-muted">Use one or all three. They combine.</p>
 
       {/* Toolbar: search, count, sort. */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -2700,6 +2702,35 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (context)
     if (!anchor) return [];
     return similarPacks(anchor, available);
   };
+
+  /*
+    THE SHELF IS NOT PER-VISITOR, SO IT IS NOT RE-FETCHED PER VISITOR (2026-08-16).
+
+    Everything above this line is derived from the request -- query, cookies, the country header --
+    and costs nothing. The catalogue is the opposite: the same two calls, returning the same bytes,
+    awaited before the first byte of HTML can leave. Measured against the live API that is 0.37-
+    0.48s for `/catalog` plus 0.36s for `/catalog/stats`, and it showed up as a 0.495s TTFB on the
+    home page while /kill-log, which is ISR, answered in 0.39s with far more HTML to send.
+
+    So a catalogue fetched within the last minute is served straight from this process. The
+    personalised row, the market, the currency and the cookie are all still computed per request:
+    what is cached is the shelf, not the page.
+  */
+  const fresh = freshCatalog();
+  if (fresh) {
+    return {
+      props: {
+        packs: fresh.packs,
+        stats: fresh.stats,
+        initialState,
+        market,
+        currency,
+        personalised: personalisedFor(fresh.packs),
+        viewedIds: recentlyViewedIds,
+        catalogUnavailable: false,
+      },
+    };
+  }
 
   try {
     const [packs, stats] = await Promise.all([fetchCatalog(), fetchCatalogStats()]);
