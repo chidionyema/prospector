@@ -110,6 +110,21 @@ def test_hedges_are_a_rate_not_a_count():
     assert p.hedges_per_1k == pytest.approx(3.0)   # may, could, possibly
 
 
+def test_a_hyphen_inside_a_word_is_not_a_dash():
+    """Counted together, our compound-heavy titles read as a dash habit and we would go and
+    fix punctuation that is not there. Measured 2026-08-16: merged, our 'dash' rate came out
+    7x the human corpus; split, dashes sat INSIDE the human range and hyphens were 12x."""
+    p = profile(["A well-founded, re-sited front-door claim."])
+    assert p.punct_per_1k["hyphen"] > 0
+    assert p.punct_per_1k["dash"] == 0
+
+
+def test_an_em_dash_and_a_spaced_hyphen_both_count_as_dashes():
+    p = profile(["The firm agreed — eventually. The buyer - who waited - did not."])
+    assert p.punct_per_1k["dash"] > 0
+    assert p.punct_per_1k["hyphen"] == 0
+
+
 def test_opener_diversity_falls_when_every_sentence_opens_the_same_way():
     same = profile(["The firm did this. The firm did that. The firm did the other."])
     varied = profile(["The firm did this. Buyers did that. Regulators did the other."])

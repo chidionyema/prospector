@@ -50,10 +50,20 @@ although though whereas while because since unless until whether if when wheneve
 which who whom whose that after before once so as
 """.split())
 
+#: Single characters, counted by membership.
 PUNCT_CLASSES = {
     "comma": ",", "semicolon": ";", "colon": ":", "question": "?",
-    "exclamation": "!", "dash": "—–-", "paren": "()", "quote": "\"'“”",
+    "exclamation": "!", "paren": "()", "quote": "\"'“”",
 }
+
+#: Dashes and hyphens are counted SEPARATELY, and the distinction is the whole point.
+#: A hyphen inside "well-founded" is a compound noun. An em dash, or a hyphen with spaces
+#: around it, is a writer stacking clauses — the thing `copy_lint.check_house_dashes` bans.
+#: Counted together, our compound-heavy titles ("Front-Door Key-Safe Re-Siting") read as a
+#: dash habit, and we would go and fix punctuation that is not there. First measured
+#: 2026-08-16: counting them together put our "dash" rate 7x over the human corpus.
+_DASH = re.compile(r"[—–]|(?<=\s)-(?=\s)|(?<=\s)--?(?=\S)")
+_HYPHEN = re.compile(r"(?<=\w)-(?=\w)")
 
 
 def tokens(text: str) -> list[str]:
@@ -140,6 +150,8 @@ def profile(docs: list[str]) -> Profile:
             for name, chars in PUNCT_CLASSES.items():
                 if ch in chars:
                     punct[name] += 1
+        punct["dash"] += len(_DASH.findall(doc))
+        punct["hyphen"] += len(_HYPHEN.findall(doc))
         for para in paragraphs(doc):
             ss = sentences(para)
             if ss:
@@ -177,7 +189,8 @@ def profile(docs: list[str]) -> Profile:
     joined = " ".join(all_toks)
     attrib += sum(joined.count(ph) for ph in ATTRIB_PHRASES)
     p.attribution_per_1k = attrib * per_1k
-    p.punct_per_1k = {k: punct[k] * per_1k for k in PUNCT_CLASSES}
+    p.punct_per_1k = {k: punct[k] * per_1k
+                      for k in (*PUNCT_CLASSES, "dash", "hyphen")}
     window = all_toks[:10_000]
     p.type_token_ratio = (len(set(window)) / len(window)) if window else 0.0
     return p

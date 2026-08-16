@@ -34,10 +34,16 @@ from tools.corpus.text import profile  # noqa: E402
 #: The measures the distance metric runs on. Counts (documents, words, sentence_count) are
 #: excluded on purpose: a long document is not an off-register one.
 SCORED = ("sent_len_mean", "sent_len_sd", "long_sentence_rate", "clause_load_mean",
-          "para_sentences_mean", "para_words_mean", "opener_diversity",
-          "hedges_per_1k", "attribution_per_1k", "type_token_ratio",
+          "opener_diversity", "hedges_per_1k", "attribution_per_1k", "type_token_ratio",
           "punct_comma_per_1k", "punct_semicolon_per_1k", "punct_colon_per_1k",
-          "punct_dash_per_1k", "punct_paren_per_1k")
+          "punct_dash_per_1k", "punct_hyphen_per_1k", "punct_paren_per_1k")
+
+#: Measured and printed, but NOT scored. `build_ours.document` writes each field as its own
+#: paragraph, so our paragraph length is a property of the corpus builder, not of the
+#: writing. Scoring it would produce a large, confident z about nothing. When packs are
+#: measured as the buyer reads them (rendered markdown, not store JSON), these move into
+#: SCORED. Measured 2026-08-16: ours 1.92 sentences per paragraph, human 16.37.
+REPORTED_ONLY = ("para_sentences_mean", "para_words_mean")
 
 #: A document under this length gives an unstable profile — one long sentence moves the
 #: mean by a third. Reported separately rather than scored.
@@ -56,7 +62,7 @@ def per_document(docs: list[str]) -> list[dict]:
 def target(rows: list[dict]) -> dict[str, dict[str, float]]:
     """mean, sd and the 5th-95th interval per measure, across the human corpus."""
     t = {}
-    for k in SCORED:
+    for k in (*SCORED, *REPORTED_ONLY):
         vals = sorted(r[k] for r in rows if k in r)
         if len(vals) < 2:
             continue
@@ -68,7 +74,7 @@ def target(rows: list[dict]) -> dict[str, dict[str, float]]:
 
 
 def distance(row: dict, t: dict) -> tuple[float, float, list[tuple[str, float]]]:
-    zs = [(k, (row[k] - t[k]["mean"]) / t[k]["sd"]) for k in t if k in row]
+    zs = [(k, (row[k] - t[k]["mean"]) / t[k]["sd"]) for k in SCORED if k in t and k in row]
     if not zs:
         return 0.0, 0.0, []
     worst = sorted(zs, key=lambda kv: -abs(kv[1]))
@@ -98,13 +104,13 @@ def main() -> int:
     print(f"human: {len(human)} docs ({len(h_rows)} scored)   "
           f"ours: {len(ours)} docs ({len(o_rows)} scored)\n")
     print(f"{'measure':<26}{'HUMAN mean':>12}{'(p5–p95)':>18}{'OURS mean':>12}{'z':>8}")
-    for k in SCORED:
+    for k in (*SCORED, *REPORTED_ONLY):
         if k not in t:
             continue
         ov = statistics.fmean(r[k] for r in o_rows) if o_rows else float("nan")
         z = (ov - t[k]["mean"]) / t[k]["sd"] if o_rows else float("nan")
         interval = f"{t[k]['p5']:.2f}–{t[k]['p95']:.2f}"
-        flag = "  <<<" if abs(z) >= 2 else ""
+        flag = "  not scored" if k in REPORTED_ONLY else ("  <<<" if abs(z) >= 2 else "")
         print(f"{k:<26}{t[k]['mean']:>12.2f}{interval:>18}{ov:>12.2f}{z:>8.1f}{flag}")
 
     if o_rows:
