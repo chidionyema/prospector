@@ -113,8 +113,20 @@ is never clean.
   Re-run; if it repeats, the source itself may be damaged, which is an incident, not a backup
   problem.
 
-**When it should run.** Hourly for the check, daily for `--fix`. The check is one storage listing
-and costs nothing.
+**When it should run.** Daily. `deploy/com.prospector.offsite-backup.plist` runs `--fix` at 03:50,
+and a `--fix` run prints the freshness check too, so one green line in
+`store/offsite_backup.log` is the daily receipt. Install it once:
+
+```bash
+cd /Users/chidionyema/Documents/code/prospector
+cp deploy/com.prospector.offsite-backup.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.prospector.offsite-backup.plist
+tail -20 store/offsite_backup.log   # after 03:50 the next morning
+```
+
+The read-only check costs one storage listing, so run it as often as you like; the console will
+call it on its sweep. It is deliberately not on its own hourly timer yet — an hourly line in a log
+nobody reads is not monitoring, and the console screen (R6) is where it becomes visible.
 
 **Restoring.** This automation makes copies; it does not restore. `scripts/restore_drill.py` is
 the drill for the engine store. There is no tested restore of `store.db` into a fresh Fly machine
