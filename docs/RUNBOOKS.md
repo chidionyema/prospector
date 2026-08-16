@@ -62,3 +62,65 @@ tracked files (about 1,200 files, under a second), so there is no reason to run 
 **Adding a new retired name.** Add a `terms:` entry to `ops/config/retired_terms.yaml` with the
 name and one sentence saying why it must not come back. Run the check, and allow-list the history
 it finds. No code change.
+
+---
+
+## offsite-backup
+
+**What it checks.** That every irreplaceable thing has a recent copy in storage we control,
+outside the account that holds the original. The sources, the storage and the freshness window
+are declared in `ops/config/offsite_backup.yaml`; the engine holds none of them.
+
+Declared today: `/data/store.db` on the Fly volume (orders, entitlements, grant tokens, download
+counts, price history) and `/data/keys`, the ASP.NET Data Protection key ring.
+
+**Run it.**
+
+```bash
+cd /Users/chidionyema/Documents/code/prospector
+.venv/bin/python -m ops.automations.offsite_backup          # how old is each copy?
+.venv/bin/python -m ops.automations.offsite_backup --json   # what the console calls
+.venv/bin/python -m ops.automations.offsite_backup --fix    # take a backup now
+```
+
+**What red means.** Either no copy exists, or the newest is older than the declared window (24
+hours). Fly's own snapshots are not a substitute: they live in the same Fly account as the
+volume, keep 5 days, and nobody has restored one. Lose the account, or notice a corruption on day
+six, and the record of who bought what is gone.
+
+**What to do.**
+
+1. Run `--fix`. It fetches, opens the copy to prove it is readable, uploads it under a dated key
+   and prunes to the declared `keep`. A copy that fails its check is not uploaded, so a bad copy
+   can never displace a good one.
+2. If `--fix` fails, read the reason. It names the source and the stage.
+
+**How long.** The database is about 3.6 MB, so a fetch and upload is seconds.
+
+**If it exits 2 (could not establish).** The check could not run, and the state is unknown. Exit 2
+is never clean.
+
+- `missing credentials: R2_…` — the run has no `.env` and no environment. Names only are printed,
+  never values.
+- `local clock is …s from the storage endpoint` — fix the clock, not the keys. A signed request
+  with a skewed timestamp is rejected as a bad signature, which reads like a credentials problem
+  and is not one.
+- `storage endpoint did not answer` — network or R2 outage. Nothing was uploaded and nothing was
+  lost; the next run retries from the same state.
+- `fetch exited …` — the host CLI failed. Usually `fly auth login`. Note that `fly auth whoami`
+  can pass on a dead token, so trust the fetch's own error over a login probe.
+- `the copy does not open as SQLite` / `failed PRAGMA integrity_check` — the copy is torn.
+  Re-run; if it repeats, the source itself may be damaged, which is an incident, not a backup
+  problem.
+
+**When it should run.** Hourly for the check, daily for `--fix`. The check is one storage listing
+and costs nothing.
+
+**Restoring.** This automation makes copies; it does not restore. `scripts/restore_drill.py` is
+the drill for the engine store. There is no tested restore of `store.db` into a fresh Fly machine
+yet — that is expectation E5 in `docs/OPS_AUTOMATION_PRINCIPLES.md` and it is still open.
+
+**Adding a new source.** Add a `sources:` entry with `name`, `key`, a `fetch:` command as a list
+of arguments (`{dest}` is substituted with the download path), a `why:` in plain words, and
+`verify:` — `sqlite` to open it and run an integrity check, `nonempty` for anything else. No code
+change.
