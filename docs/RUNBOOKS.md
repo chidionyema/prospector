@@ -195,3 +195,39 @@ construction. Both exclusions are written into the declaration with their reason
 
 **Adding a log.** Add a `targets:` entry with `path` (a file, a glob, or an absolute path), a
 `why:` in plain words, and optionally `max_mb` and `keep`. No code change.
+
+## stranded-packs
+
+**What it checks.** Every pack that passed research (`store/dossiers/<id>.pass.json`) is checked
+against the publication gate's own record (`<id>.lint.json`). A pack whose lint record says `ok`
+is sellable. A pack whose record says otherwise, or that has no record at all, is *stranded*:
+the research was paid for and the pack cannot be bought.
+
+**Command.** `python -m ops.automations.stranded_packs` — read-only, no model calls, no network.
+Add `--json` for the console shape, `--root <checkout>` to measure a checkout other than the one
+the code lives in (a worktree carries the code but not `store/`).
+
+**What red means.** Exit 1 with a count. The breakdown names the linter rule blocking each pack,
+so the output is a work list, not an alarm. Measured 2026-08-16 on the main checkout: 38 of 100
+passed packs stranded — 29 failed lint, 9 had never been linted; the rules doing the blocking were
+grammar (27 packs), citation_urls (27), shelf_copy (25), title_new_word (11), title_claim (7),
+currency (6), title (3), placeholders (2), marketing_audience (1).
+
+**What to do.** Nothing here repairs anything and there is no `--fix`, deliberately: repair means
+re-running content generation, which costs model calls (R8, P3). Use the breakdown to decide.
+- `never_linted` packs are the cheapest win: `python -m tools.publish_passes --dry-run --all` runs
+  the gate and writes the missing lint records, and costs zero model calls.
+- `citation_urls` is usually link rot on old packs, not bad writing.
+- `grammar`, `shelf_copy` and the `title_*` rules need the pack's copy regenerated.
+
+**How long.** The check itself is seconds over a few thousand files. The repair is not — size it
+from the breakdown before starting.
+
+**Exit 2 (`unknown`) reasons, all of them.** No declaration at `ops/config/stranded_packs.yaml`;
+the declaration is not valid YAML or not a mapping; pyyaml missing; no dossier directory at the
+declared path; **no file matching `pass_glob`** — that last one exists because the dossier naming
+is `<id>.pass.json` and reading the id with `Path.stem` yields `<id>.pass`, which finds no lint
+record and reports every pack as stranded. A zero match is a naming change, never a clean shelf.
+
+**Adding this to another startup.** Point `dossier_dir`, `pass_glob` and `lint_suffix` at its own
+layout. The engine has no fact about this business in it.
