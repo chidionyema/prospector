@@ -23,6 +23,7 @@ if str(_ROOT) not in _sys.path:
 from prospector.control_center.components.chrome import page_hero
 from prospector.ops import pause as _pause
 from prospector.ops import readmodel as _rm
+from prospector.ops import supervisor as _sup
 
 
 def _age(seconds) -> str:
@@ -46,6 +47,48 @@ def _cfg():
     a panel that skipped this would name the wrong brains as trusted (§14.5.1).
     """
     return _rm.load_cfg()
+
+
+def _render_supervisor(cfg, *, expanded: bool) -> None:
+    """Is launchd holding each engine job, and one button to fix it when it is not.
+
+    Writes go through `prospector.ops.supervisor`, the one writer, which stamps an intent receipt.
+    This page never shells out to launchctl itself.
+    """
+    with st.expander("Supervisor (launchd)", expanded=expanded):
+        st.caption("Whether launchd is holding each process up. A heartbeat cannot show this: it "
+                   "says the writer was alive, not that anything will restart it.")
+        for label in _sup.JOBS:
+            try:
+                state = _sup.job_state(label)
+            except Exception as exc:  # noqa: BLE001 — a panel must not take the page down
+                st.error(f"`{label}`: state read failed: {exc}")
+                continue
+
+            with st.container(border=True):
+                head, act = st.columns([4, 1])
+                with head:
+                    if state["loaded"] is None:
+                        st.markdown(f"**`{label}`** · cannot ask launchctl")
+                    elif state["loaded"]:
+                        st.markdown(f"**`{label}`** · loaded · pid {state['pid'] or '—'}")
+                    else:
+                        st.markdown(f"**`{label}` NOT LOADED** — KeepAlive cannot relaunch it, "
+                                    f"so nothing will bring this process back")
+                    missing = "" if state["plist_exists"] else "  ← plist MISSING"
+                    st.caption(f"{state['what']}  \n`{state['plist']}`{missing}  \n"
+                               f"{state['reason']}")
+                with act:
+                    label_txt = "Start" if state["loaded"] is False else "Restart"
+                    if st.button(label_txt, key=f"restart_{label}", use_container_width=True):
+                        st.session_state[f"sup_result_{label}"] = _sup.restart(
+                            cfg, label, actor="control_center")
+                        st.rerun()
+
+                rec = st.session_state.get(f"sup_result_{label}")
+                if rec:
+                    show = st.success if rec.get("ok") else st.error
+                    show(f"{rec.get('message', '')} · receipt in store/ops/intents.jsonl")
 
 
 # --------------------------------------------------------------------------- #
@@ -86,6 +129,14 @@ def render():
         st.error(f"Consumer {c_state}: {consumer.get('reason') or '—'}")
     elif c_state == "blocked":
         st.warning(f"Consumer blocked (a rail is refusing it on purpose): {consumer.get('reason')}")
+
+    # ---- supervisor: the launchd jobs behind those two processes ---------- #
+    # A dead process whose job is UNLOADED stays dead until a human runs launchctl, because
+    # KeepAlive only restarts jobs launchd knows about. That is exactly what happened on
+    # 2026-08-16, and the liveness lines above cannot show it — they read a heartbeat file, which
+    # says nothing about whether anything is supervising the writer. Rendered here, and repairable
+    # here, because the fix was one safe command (P10).
+    _render_supervisor(cfg, expanded=not producer_ok or c_state in ("dead", "late"))
 
     # ---- R16: queue ------------------------------------------------------ #
     st.subheader("Queue")
