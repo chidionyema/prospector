@@ -95,6 +95,20 @@ class Retrieval:
     # 0.0 = OFF, a byte-for-byte no-op for fixtures, the golden set and any directly
     # constructed Retrieval().
     min_relevance: float = 0.0
+    # Providers that may only be reached because an EARLIER provider FAILED — never because
+    # an earlier provider merely answered below `min_relevance`.
+    #
+    # WHY (founder directive 2026-08-16: "unacceptable use of claude cli"). The relevance
+    # escalation above is cheap when the next rung is a web API and ruinous when it is a
+    # language model. Measured that morning: 141 of 347 searches walked the whole ladder to
+    # `claude_cli`, which is a model doing a search — queued 4 wide, retried at 1.5x timeout,
+    # ~196s per call. It took 2,744s of 3,622s (76%) of all grounding time while supplying
+    # 21% of the evidence. Naming it here keeps it as the OUTAGE backstop it was built to be:
+    # if duckduckgo and exa both raise, it still runs and the check still grounds, so this
+    # cannot cause a DEFER that did not already exist. If they both merely answer off-topic,
+    # the chain now keeps the best set it has instead of paying three minutes for a coin flip.
+    # Empty list = the pre-2026-08-16 behaviour exactly.
+    backstop_only_providers: list[str] = field(default_factory=lambda: ["claude_cli"])
     # DiskCache freshness: cached grounding passages older than this are treated as a
     # miss and re-fetched, so a verdict never rules on stale evidence. 0 disables expiry
     # (cache forever). Default 14 days — long enough to amortise repeat vets in a batch,

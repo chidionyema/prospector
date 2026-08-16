@@ -1690,6 +1690,15 @@ def _trailing_barren_count(cfg, window: int = 50) -> int:
             continue
         if not t.get("allowed") or t.get("dry_run"):
             continue
+        # A cycle the engine deliberately SUPPRESSED produced nothing on purpose, so it is a
+        # skipped cycle, not a barren one — exactly like a dry run. Counting it barren is how
+        # a working engine pages the founder: on 2026-08-16 eight consecutive suppressed
+        # cycles (07:30Z-09:36Z, retrieval probe timing out) fired "Generation DEAD: 8 barren
+        # ticks" at CRITICAL, naming three causes that were all healthy, while the engine was
+        # doing the right thing. A separate alert must own "suppressed too long"; this counter
+        # answers "did generation run and stock nothing", and a suppressed cycle never ran.
+        if t.get("generation_suppressed"):
+            continue
         real.append(t)
     # real[-1] is the current tick when the caller's tick was itself real. When it was not, the
     # value this function returns is discarded — `alerts_for_tick` yields nothing for a skipped,
@@ -1887,6 +1896,9 @@ def _emit_tick_digest(cfg, tick: dict) -> None:
         logger.warning("status digest unavailable (modules not importable): %s", exc)
         return
     except Exception:  # noqa: BLE001 — a broken status module must never break the daemon
+        # swallow-ok: the SECOND half of a deliberate split (ImportError above), and it already
+        # logs at ERROR with a traceback — the fix ladder's step 3, done. The auditor counts two
+        # returns in two handlers and cannot see that one of them is the logged branch.
         logger.exception("status module failed to IMPORT (this is a bug, not a missing estate); "
                          "tick digest skipped")
         return
@@ -2407,14 +2419,70 @@ def _kill_stale_daemon(cfg) -> None:
         logger.error("Watchdog: not permitted to kill pid %d: %s", pid, exc)
 
 
+def _check_consumer(cfg) -> None:
+    """Page when the CONSUMER has died, which no other alarm in this estate can see.
+
+    Since the producer/consumer split, the drain is a separate process — and every alarm here
+    watches the producer. Worse, `alerts_for_tick` SUPPRESSES the all-DEFER tick alarm by design
+    (correct while the producer merely enqueues), so a dead consumer leaves the producer ticking
+    green while the queue grows without bound. That combination is silent by construction, which
+    is why this check lives in the watchdog: the watchdog's 900s cadence is the only clock in the
+    estate faster than the 7200s tick, and it runs in a process that is not the one being judged.
+
+    IT ALERTS BUT NEVER KILLS, unlike the daemon branch. A drain pass was measured at 4127s
+    against a ~251s median, and that tail is the whole reason the consumer exists; killing a
+    `late` consumer would abort the exact long vet it was built to finish, then bill it again on
+    the relaunch. A hung consumer costs throughput; a killed one costs work.
+
+    `unknown` is deliberately not an alarm: no heartbeat file is also what "not deployed yet"
+    looks like, and paging for that on every box that has never run a consumer is how a channel
+    gets muted.
+    """
+    from prospector.scheduler.alerts import CRITICAL, WARNING, emit_alert, resolve_alert
+    from prospector.consumer import consumer_liveness
+
+    try:
+        live = consumer_liveness(cfg)
+    except Exception as exc:  # noqa: BLE001 — a broken check must not take the daemon watchdog with it
+        logger.warning("Watchdog: consumer liveness check failed: %s", exc)
+        return
+
+    state, reason = live.get("state"), live.get("reason") or ""
+    if state == "dead":
+        emit_alert(cfg, severity=CRITICAL, key="consumer_down",
+                   title="Drain consumer is DEAD", message=reason, throttle_s=3600)
+        print(f"⚠ consumer DEAD: {reason}")
+        return
+    if state == "late":
+        # WARNING, not CRITICAL: the pid is alive, so the likeliest cause is a long pass rather
+        # than a death, and the two are only distinguishable by waiting.
+        emit_alert(cfg, severity=WARNING, key="consumer_down",
+                   title="Drain consumer is not beating", message=reason, throttle_s=3600)
+        print(f"⚠ consumer LATE: {reason}")
+        return
+    # running / blocked / stopped / unknown are all non-alarms — and the resolve must cover
+    # `blocked` too, or an operator's own PAUSE would leave a CRITICAL banner up until they
+    # noticed it themselves.
+    resolve_alert(cfg, key="consumer_down", reason=f"consumer is {state}: {reason}")
+
+
 def _run_watchdog(cfg) -> int:
     """One-shot liveness check that RESTARTS the daemon if it is hung. Run on its own schedule.
 
     Intended to be invoked every ~15 min by a separate launchd job (com.prospector.watchdog.plist),
     so a dead/hung daemon is caught even though it emits no ticks. On a stale heartbeat it alerts
     AND kills the wedged pid so launchd KeepAlive relaunches it. Returns 0 if alive, 1 if not.
+
+    THE RETURN CODE IS THE PRODUCER'S ANSWER ONLY. The consumer is checked here too (see
+    `_check_consumer`) because this is the estate's fastest clock, but it reports through its own
+    alert key: this exit code is what decides whether the DAEMON was killed, and folding a second
+    process into it would make "the daemon is fine" unreadable from the outside.
     """
     from prospector.scheduler.alerts import CRITICAL, emit_alert, resolve_alert
+
+    # First, and outside the producer's branches, so a `return` on the producer path can never
+    # skip it — the two processes fail independently and the common case is exactly one of them.
+    _check_consumer(cfg)
 
     ok, reason = _liveness(cfg)
     if ok:

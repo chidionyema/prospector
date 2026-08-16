@@ -20,5 +20,5 @@
     "prospector/scheduler/alerts.py": 1,
     "prospector/scheduler/run_scheduled.py": 4
   },
-  "waivers": 1
+  "waivers": 5
 }

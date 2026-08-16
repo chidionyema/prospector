@@ -18,6 +18,7 @@ holds under genuine concurrency.
 """
 from __future__ import annotations
 
+import os
 import threading
 import time
 import types
@@ -200,3 +201,113 @@ def test_a_nonpositive_ttl_leaves_the_row_immediately_free(tmp_path, ttl):
 
     store.claim("c1", "worker-a", ttl)
     assert store.claim("c1", "worker-b", 60) is True
+
+
+def test_a_bounded_pass_does_not_spend_its_slice_on_rows_someone_else_holds(tmp_path):
+    """The starvation this filter exists to stop, measured on the live store 2026-08-16.
+
+    `_revet` already claims each row and skips it when the claim fails, which is correct and is
+    not enough. The pass takes its slice from a DETERMINISTIC rank sort, so a held row sits at
+    the front of the queue on every pass. The consumer logged
+
+        {"attempted": 24, "resumed": 0, "backlog": 317}
+
+    every ten seconds for 25 minutes, judging nothing. All 24 leases belonged to four SIGKILLed
+    processes and `schedule.lease_ttl_s` is 7200, so four dead workers froze the whole queue for
+    up to two hours.
+    """
+    from prospector.run import _drop_leased
+
+    store = _store(tmp_path)
+    for cid in ("a", "b", "c", "d"):
+        _row(store, cid)
+    store.claim("a", "dead-worker", 3600)
+    store.claim("b", "dead-worker", 3600)
+
+    pending = [{"candidate_id": c} for c in ("a", "b", "c", "d")]
+    kept, dropped = _drop_leased(pending, store)
+
+    assert [r["candidate_id"] for r in kept] == ["c", "d"]
+    assert dropped == 2
+    # A two-row slice must now be two WORKABLE rows, not two collisions.
+    assert len(kept[:2]) == 2
+
+
+def test_an_expired_lease_does_not_hold_a_row_out_of_the_pass(tmp_path):
+    """Expiry is the crash-recovery path. If this filter honoured a dead lease, it would park
+    the row for the full TTL instead of the claim re-taking it immediately."""
+    from prospector.run import _drop_leased
+
+    store = _store(tmp_path)
+    _row(store, "a")
+    store.claim("a", "dead-worker", 0.05)
+    time.sleep(0.2)
+
+    kept, dropped = _drop_leased([{"candidate_id": "a"}], store)
+    assert [r["candidate_id"] for r in kept] == ["a"] and dropped == 0
+
+
+def test_the_filter_preserves_the_priority_order_it_was_given(tmp_path):
+    """The caller has already ranked by population and age. Removing rows must not reorder the
+    survivors, or a bounded pass silently stops working the highest-value population first."""
+    from prospector.run import _drop_leased
+
+    store = _store(tmp_path)
+    for cid in ("p1", "p2", "p3", "p4"):
+        _row(store, cid)
+    store.claim("p2", "other", 3600)
+
+    kept, _ = _drop_leased([{"candidate_id": c} for c in ("p1", "p2", "p3", "p4")], store)
+    assert [r["candidate_id"] for r in kept] == ["p1", "p3", "p4"]
+
+
+def test_a_store_that_cannot_answer_never_ends_the_pass(tmp_path):
+    """A diagnostic-grade read must not be able to break the drain. Worst case is the behaviour
+    that existed before the filter: every row offered, collisions discovered by the claim."""
+    from prospector.run import _drop_leased
+
+    class _Broken:
+        def leased(self):
+            raise RuntimeError("db locked")
+
+    rows = [{"candidate_id": "a"}]
+    assert _drop_leased(rows, _Broken()) == (rows, 0)
+
+
+def test_a_dead_workers_lease_is_reclaimed_instead_of_waiting_out_the_ttl(tmp_path):
+    """`lease_ttl_s` is 7200, sized off the worst measured vet so a LIVE worker is never expired
+    mid-vet. Applied to a worker that is gone, that same number parks the row for two hours. The
+    consumer is SIGKILLed routinely (it ignores SIGTERM mid-wave), so on 2026-08-16 four dead
+    processes held the 24 best rows and the queue judged nothing."""
+    from prospector.run import _drop_leased
+
+    store = _store(tmp_path)
+    _row(store, "a")
+    _row(store, "b")
+    # Pid 0 is never a real process here, and `os.kill(0, 0)` would signal the whole process
+    # group — so the owner is a pid that has certainly exited instead.
+    import subprocess
+    p = subprocess.Popen(["true"])
+    p.wait()
+    dead_owner = f"{p.pid}:deadbeef"
+    store.claim("a", dead_owner, 7200)
+    store.claim("b", f"{os.getpid()}:alive", 7200)
+
+    kept, dropped = _drop_leased([{"candidate_id": "a"}, {"candidate_id": "b"}], store)
+
+    assert [r["candidate_id"] for r in kept] == ["a"], (
+        "the dead worker's row must come back; the live worker's must not")
+    assert dropped == 1
+    # RELEASED, not merely ignored: `store.claim` still honours an unexpired lease, so a row the
+    # filter waved through without releasing would come back as _LEASE_HELD and waste the slot.
+    assert store.claim("a", "next-worker", 60) is True
+
+
+def test_an_unparsable_or_foreign_owner_is_treated_as_alive(tmp_path):
+    """Unsure means alive. A false 'gone' puts two workers on one row, which is the double
+    publish the lease exists to prevent; a false 'alive' costs one row a wait."""
+    from prospector.run import _owner_is_gone
+
+    assert _owner_is_gone("not-a-pid:abc") is False
+    assert _owner_is_gone("") is False
+    assert _owner_is_gone(f"{os.getpid()}:abc") is False

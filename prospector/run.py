@@ -50,6 +50,78 @@ def _vet_workers(cfg) -> int:
 _LEASE_HELD = object()
 
 
+def _owner_is_gone(owner: str) -> bool:
+    """True when a lease owner is a process that is definitely not running any more.
+
+    Owners are minted as `f"{os.getpid()}:{uuid4}"` (see `_cmd_resume`), and every worker in this
+    system runs on this machine — the engine is local by design. `os.kill(pid, 0)` is the check:
+    it signals nothing and only asks whether the pid exists.
+
+    UNSURE ALWAYS MEANS ALIVE. An unparsable owner, a pid we lack permission to signal, or a pid
+    another program has since been given all return False, so the lease stands and the TTL is the
+    only thing that frees it. The cost of a false "gone" is two workers on one row, which is the
+    double-publish this lease exists to prevent; the cost of a false "alive" is one row waiting.
+    """
+    head = owner.split(":", 1)[0]
+    if not head.isdigit():
+        return False
+    try:
+        os.kill(int(head), 0)
+    except ProcessLookupError:
+        return True
+    except (PermissionError, OverflowError, OSError):
+        return False
+    return False
+
+
+def _drop_leased(pending: list, store) -> tuple[list, int]:
+    """Take the rows another worker is holding out of a re-vet pass. Returns (rows, dropped).
+
+    Ordering is preserved, so the ranked, highest-value-first priority the caller already built
+    is untouched — this only removes rows nothing can work right now.
+
+    Applies to the SELECTION only, never to the backlog count: a leased row has no verdict yet
+    and has not left the queue, and `drainable()` feeds the generation brake as well as this
+    drain (store.py:560). Narrowing one side and not the other is how the brake deadlocks.
+
+    Never raises. A store that cannot answer "what is in flight" must not be able to end a drain
+    pass; the worst case of a failed read is the behaviour that existed before this filter.
+    """
+    try:
+        rows = store.leased()
+    except Exception:  # noqa: BLE001 — see the docstring
+        return pending, 0
+    held = set()
+    for r in rows:
+        cid = str(r.get("candidate_id", "") or "")
+        if _owner_is_gone(str(r.get("lease_owner", "") or "")):
+            # A DEAD WORKER MUST NOT PARK A ROW FOR ITS FULL TTL. `lease_ttl_s` is 7200, sized
+            # off the worst measured vet (4127s) so a live worker is never expired mid-vet. That
+            # is right for a worker that is running and wrong for one that is gone: on
+            # 2026-08-16 four SIGKILLed processes held the front of the queue, and the consumer
+            # is SIGKILLed routinely because it ignores SIGTERM mid-wave. Every restart would
+            # otherwise cost two hours of the 24 best rows.
+            #
+            # Reclaimed rather than merely ignored: `store.claim` still honours the unexpired
+            # lease, so a row we skipped the filter for would come straight back as _LEASE_HELD
+            # and waste the slot anyway. Releasing is scoped to that owner (store.py:545), so
+            # this cannot take a row from anyone else.
+            #
+            # Every owner is a pid on THIS machine — the engine is local by design, and the
+            # owner string is minted as `os.getpid():uuid` a few lines below. Pid reuse fails
+            # SAFE: an unrelated process holding the number reads as alive and the row is left
+            # alone. The reverse — a live worker whose pid is gone — cannot happen.
+            if store.release(cid, str(r.get("lease_owner", "") or "")):
+                logger.info("released a lease held by a dead worker",
+                            extra={"candidate_id": cid, "owner": r.get("lease_owner")})
+                continue
+        held.add(cid)
+    if not held:
+        return pending, 0
+    kept = [r for r in pending if str(r.get("candidate_id", "") or "") not in held]
+    return kept, len(pending) - len(kept)
+
+
 def _lease_ttl_s(cfg) -> float:
     """How long a worker may hold a queue row before the lease expires and frees it.
 
@@ -2443,6 +2515,22 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     #   backlog 406, orphaned 46, leading unbroken run of orphans 45 (2026-06-14..06-21)
     # At 3 per tick that is 15 consecutive ticks — ~1.2 days — of no-op drains reporting
     # `attempted: 3` before the pass reaches its first real candidate.
+    # A ROW SOMEONE ELSE IS HOLDING MUST NOT EAT THE BOUNDED SLICE EITHER — same rule as the
+    # unmovable rows above, one cause over. `_revet` claims each row before it does any work and
+    # skips it when the claim fails, which is correct and is not enough: the slice is taken from a
+    # DETERMINISTIC rank sort, so the leased rows are the same rows at the front of the queue every
+    # pass. The pass then spends its whole budget discovering the same 24 collisions, silently.
+    #
+    # MEASURED ON THE LIVE STORE 2026-08-16, which is why this is here: the consumer logged
+    #   {"attempted": 24, "resumed": 0, "backlog": 317}
+    # every ~10 seconds for 25 minutes, judging nothing, while 317 rows waited. All 24 leases
+    # belonged to four SIGKILLed processes (pids 13217, 40647, 7563, 9536 — none alive), and
+    # `schedule.lease_ttl_s` is 7200, so the queue was frozen for up to two hours by four dead
+    # workers. Filtering here moves the pass on to row 25 instead.
+    #
+    # `backlog` is computed ABOVE this filter and is untouched: a leased row has not left the
+    # queue, and the generation brake reads the same number it always did (store.py:560).
+    pending, n_leased_skipped = _drop_leased(pending, store)
     if limit is not None:
         pending = pending[:limit]
 
@@ -2452,9 +2540,11 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     _ranks = [_drain_rank(r) for r in pending]
     mix = ", ".join(f"{_ranks.count(i)} {_RANK_NAMES[i]}"
                     for i in sorted(set(_ranks)))
+    skipped_note = (f" Skipped {n_leased_skipped} row(s) another worker is holding."
+                    if n_leased_skipped else "")
     print(f"Found {backlog} deferred + provisional candidate(s); re-vetting "
           f"{len(pending)} of them with the moat ({mix}; highest-value population "
-          f"first)...{excluded}")
+          f"first)...{excluded}{skipped_note}")
     from concurrent.futures import CancelledError, ThreadPoolExecutor, as_completed
 
     from . import progress
@@ -2744,6 +2834,12 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
         # broken rows. One is the queue working; the other is damage. An operator cannot be
         # asked to tell them apart from a number that does not exist.
         summary["leased_elsewhere"] = n_leased
+    if n_leased_skipped:
+        # The rows this pass DECLINED to take because someone else holds them, as opposed to
+        # `leased_elsewhere`, which is the rows it tried and lost. Reported separately because
+        # they answer different questions: this one says how much of the queue is parked, and a
+        # number that stays high across passes is a dead worker holding rows to their TTL.
+        summary["leased_skipped"] = n_leased_skipped
     # Excluded counts surfaced into the tick row, so a store inconsistency or an exhausted attempt
     # budget is visible in ticks.jsonl and the state probe instead of showing up as an
     # inexplicable `attempted: 3, resumed: 0` — or, once the brake is engaged, as a generation
