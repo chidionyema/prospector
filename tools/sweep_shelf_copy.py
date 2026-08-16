@@ -54,6 +54,9 @@ RULES
   a priced, dated change note the client has to answer" is the shape.
 - Keep every fact: every figure, price, place, institution and named market must survive
   unchanged. Add nothing that is not already in the line.
+- Do NOT name a customer group the line does not already name. If the line does not say who
+  the customers are, describe what the business does and stop; inventing an audience is
+  inventing a fact.
 - One sentence, under 200 characters, plain words a stranger to the trade reads once.
 
 Return JSON: {{"one_liner": "<the rewritten line>"}}"""
@@ -133,7 +136,63 @@ def rewrite_one(op, title: str, line: str) -> str | None:
     if voice_breaches(new):
         print(f"    rewrite still breaches, keeping the original: {new!r}")
         return None
+    invented = _new_facts(f"{title} {line}", new)
+    if invented:
+        print(f"    rewrite invents {', '.join(invented)} — keeping the original: {new!r}")
+        return None
     return new
+
+
+#: Words a rewrite may introduce without inventing anything: they carry no fact.
+_FREE_WORDS = frozenset("""
+a an and the of for to in on at by with from that which who whose so it its their
+one each every per turns builds gives makes into out up as is are be
+service tool report pack app system engine kit dashboard business
+""".split())
+
+
+def _new_facts(source: str, new: str) -> list[str]:
+    """Proper nouns and figures in the rewrite that are nowhere in the source.
+
+    The first run produced "A data intelligence report for UK retirees that turns HMRC's
+    real settlement data into evidence for negotiating inheritance tax bills" from a line
+    that never mentioned retirees — and inheritance tax is not, as a rule, paid by them. A
+    reworded line is allowed to be shorter, clearer and differently ordered; it is not
+    allowed to know something the original did not, on a storefront whose whole claim is
+    that every fact came from a source.
+
+    Only names and numbers are checked. An ordinary word the rewrite reaches for is style;
+    a capitalised term or a figure is a fact, and a fact that appeared from nowhere is the
+    class worth blocking."""
+    # Compared on a five-character stem, because a faithful rewrite reworks the grammar:
+    # `HMRC.` becomes `HMRC's` and `negotiate` becomes `negotiating`, and an exact-token
+    # guard calls both of those inventions and blocks a clean line.
+    def _norm(s):
+        return {re.sub(r"[^a-z0-9£$%]", "", w) for w in s.lower().split()} - {""}
+
+    have = _norm(source)
+
+    def known(w):
+        if w in have or w.rstrip("s") in have or w in _FREE_WORDS:
+            return True
+        return len(w) >= 5 and any(h.startswith(w[:5]) or w.startswith(h[:5])
+                                   for h in have if len(h) >= 4)
+
+    out = []
+    for tok in re.findall(r"[A-Z][\w'’-]+|[£$]?\d[\d,.]*%?", new):
+        low = re.sub(r"[^a-z0-9£$%]", "", tok.lower())
+        if low and not known(low):
+            out.append(tok)
+
+    # And the audience, which is the half `retirees` fell through: a lowercase noun, so no
+    # capital marks it as a name, but "for X" is a claim about who buys — the one fact this
+    # storefront is least able to source after the fact.
+    for phrase in re.findall(r"\bfor ((?:[a-z][\w'’-]*[ ]?){1,4})", new.lower()):
+        for word in phrase.split():
+            w = re.sub(r"[^a-z0-9]", "", word)
+            if len(w) > 3 and not known(w):
+                out.append(w)
+    return sorted(set(out))
 
 
 def persist(cid: str, new_line: str) -> None:
