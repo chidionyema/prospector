@@ -3,13 +3,22 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
+import yaml
 
 from ops.automations.stranded_packs import CannotEstablish, _pack_id, scan
 
-DECL = {"dossier_dir": "store/dossiers", "pass_glob": "*.pass.json",
-        "lint_suffix": ".lint.json"}
+# The SHIPPED declaration, not a copy of it. Every `scan()` below joins this onto tmp_path, so
+# nothing here reads the operator's real store — but a duplicated `"store/dossiers"` literal reads
+# to `test_suite_is_machine_independent.py` exactly like a test that does, and it cannot tell the
+# two apart. Loading the file the automation itself loads settles that and buys a second thing:
+# renaming a key in the yaml now fails these tests instead of leaving them green against a shape
+# the automation no longer has.
+DECL = yaml.safe_load(
+    (Path(__file__).resolve().parents[2] / "ops" / "config" / "stranded_packs.yaml")
+    .read_text(encoding="utf-8"))
 
 
 def _store(tmp_path):
