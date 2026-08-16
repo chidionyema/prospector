@@ -1,7 +1,7 @@
 """
 EngineBridge — Connects Prospector PASS to the Store API and payment provider.
 Ships the £30 bundle (zip), provisions the product with the active payment provider
-(Paddle or Stripe), and updates the Catalog.
+(Stripe), and updates the Catalog.
 """
 from __future__ import annotations
 
@@ -578,7 +578,7 @@ class ExistingPrice(NamedTuple):
 
 
 class ProductProvisioner(Protocol):
-    """Provider-agnostic product provisioning. Implementations: PaddleClient, StripeProvisioner."""
+    """Provider-agnostic product provisioning. Implementation: StripeProvisioner."""
     def create_product(self, name: str, description: str, metadata: Dict[str, str]) -> str:
         """Returns the provider's product ID."""
         ...
@@ -617,14 +617,11 @@ class EngineBridge:
         # PROSPECTOR_ENTITLEMENTS_API_KEY env var). Empty = fail-closed.
         self.entitlements_api_key = getattr(cfg, "entitlements_api_key", "")
 
-        # Active provider selection (config-driven, matches .NET MoneyRailConfigGate)
-        self.active_provider = getattr(cfg, "store_payments", {}).get("active_provider", "paddle") if hasattr(cfg, "store_payments") else \
-            os.environ.get("PAYMENTS_ACTIVE_PROVIDER", "paddle")
-
-        # Paddle settings (kept for backward compat + fallback)
-        self.paddle_api_key = os.environ.get("PADDLE_API_KEY")
-        self.paddle_env = os.environ.get("PADDLE_ENVIRONMENT", "sandbox")
-        self.paddle = PaddleClient(self.paddle_api_key, self.paddle_env) if self.paddle_api_key else None
+        # Active provider selection (config-driven, matches .NET MoneyRailConfigGate).
+        # Stripe is the only rail we can mint on; the default matches the Store's own default
+        # so the two ends of the money rail cannot disagree about who is billing.
+        self.active_provider = getattr(cfg, "store_payments", {}).get("active_provider", "stripe") if hasattr(cfg, "store_payments") else \
+            os.environ.get("PAYMENTS_ACTIVE_PROVIDER", "stripe")
 
         # Stripe settings. The key must belong to the SAME Stripe account the deployed Store
         # bills through: a price minted anywhere else does not exist as far as checkout is
@@ -676,14 +673,17 @@ class EngineBridge:
     @property
     def provisioner(self) -> Optional[ProductProvisioner]:
         """Returns the active product provisioner, or None if unconfigured."""
+        # Any other provider name is a row from a rail we no longer hold a key for. None is
+        # the honest answer, and it publishes the pack UNLISTED instead of minting nothing and
+        # listing it with a stub price id.
         if self.active_provider == "stripe":
             return self.stripe
-        return self.paddle
+        return None
 
     def publish_pass(self, dossier: Dossier, *, dry_run: bool = False) -> bool:
         """
         Execute Phase 2 of the Build Plan:
-        PASS -> zip bundle -> Paddle API (Product/Price/Upload) -> Store API (Catalog).
+        PASS -> zip bundle -> Stripe API (Product/Price) -> R2 upload -> Store API (Catalog).
 
         ``dry_run=True`` runs every DETERMINISTIC gate — the guards above, the zip build,
         ``validate_pack``, ``audit_bundle`` and ``lint_pack`` — writes the usual
@@ -1188,6 +1188,12 @@ class EngineBridge:
             engine_leak_block=bool(listing_cfg.get("engine_leak_block", False)),
             max_engine_leak_per_1k=float(
                 listing_cfg.get("max_engine_leak_per_1k", 0.0) or 0.0),
+            # How far our writing sits from professional human writing in the same genre,
+            # measured against 270 ombudsman decisions. Off by the same rule as everything
+            # above: the intervals are the human 5th-95th percentile, so about one human
+            # document in ten falls outside on any single measure. Blocking on that today
+            # would unlist packs a human author would also have failed.
+            human_register_block=bool(listing_cfg.get("human_register_block", False)),
         )
         lint_ok = bool(lint_report.get("ok"))
         if not lint_ok:
@@ -1332,7 +1338,7 @@ class EngineBridge:
         applied_price_pence = price.price_pence
         # The USD amount actually MINTED onto the provider Price in this call, not the one the
         # ladder decided. It stays None on every path that does not mint — a reused live price
-        # (whose currency_options we did not write and cannot inspect from here), a Paddle rail,
+        # (whose currency_options we did not write and cannot inspect from here), a non-Stripe rail,
         # a missing provisioner — because the catalogue's USD figure is what the fulfilment fence
         # bills against, and recording a price the provider was never told about is how a buyer
         # is charged in a currency the rail then refuses. None costs a US buyer a GBP checkout;
@@ -1415,8 +1421,8 @@ class EngineBridge:
             # `priced` guard below; this branch only records why.
             logger.error(
                 f"EngineBridge: No {payment_provider} provisioner available for "
-                f"{candidate_id} (keys: stripe={'set' if self.stripe_api_key else 'unset'}, "
-                f"paddle={'set' if self.paddle_api_key else 'unset'}). Pack will be "
+                f"{candidate_id} (keys: stripe={'set' if self.stripe_api_key else 'unset'}). "
+                f"Pack will be "
                 f"published UNLISTED — a stub price id cannot take money. "
                 f"Stripe key selection: {self.stripe_key_reason}"
             )
@@ -2292,71 +2298,6 @@ class R2Uploader:
 
         return False
 
-
-class PaddleClient:
-    """Minimal Paddle Billing API client."""
-    def __init__(self, api_key: str, environment: str = "sandbox"):
-        self.api_key = api_key
-        self.base_url = "https://sandbox-api.paddle.com" if environment == "sandbox" else "https://api.paddle.com"
-        self.headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
-
-    def create_product(self, name: str, description: str, metadata: Dict[str, str]) -> str:
-        url = f"{self.base_url}/products"
-        payload = {
-            "name": name,
-            "tax_category": "digital-goods",
-            "description": description,
-            "custom_data": metadata
-        }
-        resp = requests.post(url, json=payload, headers=self.headers)
-        resp.raise_for_status()
-        return resp.json()["data"]["id"]
-
-    def create_price(self, product_id: str, amount_pence: int, currency: str = "GBP",
-                     usd_cents: Optional[int] = None) -> str:
-        """`usd_cents` is accepted to satisfy the ProductProvisioner protocol and DELIBERATELY
-        ignored: Paddle prices a product per-currency through its own overrides API, which this
-        client does not call. Ignoring it is safe because the catalogue only records a USD price
-        when the provisioner returns one (see EngineBridge's `minted_usd_cents`), so a Paddle
-        pack simply stays GBP-only and the fulfilment fence refuses USD for it — rather than the
-        pack being advertised in a currency Paddle was never told about.
-        """
-        url = f"{self.base_url}/prices"
-        payload = {
-            "product_id": product_id,
-            "description": "One-off Pack Purchase",
-            "unit_price": {
-                "amount": str(amount_pence),
-                "currency_code": currency
-            },
-            "quantity": {"minimum": 1, "maximum": 1}
-        }
-        resp = requests.post(url, json=payload, headers=self.headers)
-        resp.raise_for_status()
-        return resp.json()["data"]["id"]
-
-    def describe_price(self, price_id: str) -> Optional[ExistingPrice]:
-        """Resolve a live Paddle price to its product, amount and currency.
-
-        Paddle has no idempotency keys on these endpoints at all, so it does not even have
-        Stripe's 24-hour grace: EVERY republish would mint a duplicate without this lookup.
-        Returns None on any failure — the caller reads that as "cannot verify" and reuses the
-        catalogue's ids rather than minting.
-        """
-        try:
-            resp = requests.get(f"{self.base_url}/prices/{price_id}",
-                                headers=self.headers, timeout=10)
-            resp.raise_for_status()
-            data = resp.json()["data"]
-            unit = data["unit_price"]
-            return ExistingPrice(str(data["product_id"]), int(unit["amount"]),
-                                 str(unit.get("currency_code", "GBP")))
-        except Exception as e:
-            logger.error(f"PaddleClient: could not retrieve price {price_id}: {e}")
-            return None
 
 
 def _bundle_version(dossier, candidate) -> str:

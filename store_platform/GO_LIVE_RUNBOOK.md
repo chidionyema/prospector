@@ -80,5 +80,7 @@ Everything else (validation, reprovisioning prices, proving the fail-closed boot
    that makes the cheap price unreachable to buyers, and exactly where its proof ends.
 
 ## Rollback
-Set `payments__active_provider` back to `paddle` (or stop the deploy). No data migration is involved;
-reprovisioning only updates `ProviderPriceId`/`ProviderProductId` on existing packs.
+Stop the deploy. There is no second rail to fall back to — Stripe is the only payment provider
+(the Paddle provider was deleted 2026-08-16), and `MoneyRailConfigGate` refuses to start on any
+other `payments__active_provider` value. No data migration is involved; reprovisioning only
+updates `ProviderPriceId`/`ProviderProductId` on existing packs.

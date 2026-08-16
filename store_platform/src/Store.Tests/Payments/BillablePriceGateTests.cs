@@ -41,15 +41,4 @@ public sealed class BillablePriceGateTests
         // without a network call so the answer holds even when Stripe is unreachable.
         Assert.False(await Provider().CanBillPriceAsync("price_stub_abc123", CancellationToken.None));
     }
-
-    [Fact]
-    public async Task Paddle_declines_to_veto_rather_than_claiming_billability()
-    {
-        // The Store holds no Paddle credential, so it cannot check a Paddle price. Answering
-        // true is a refusal to veto on an unanswerable question, not an assertion — pinned so
-        // nobody later reads it as "Paddle prices are verified".
-        var paddle = new PaddleProvider();
-
-        Assert.True(await paddle.CanBillPriceAsync("price_stub_abc123", CancellationToken.None));
-    }
 }

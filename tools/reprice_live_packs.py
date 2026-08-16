@@ -4,7 +4,7 @@ Why this exists
 ---------------
 `bridge.py` assigns `price_stub_{id}` as a *fallback* before provisioning, and only
 overwrites it when a provisioner is available. Before 2026-07-31 `store_payments` was
-unset, so `active_provider` defaulted to "paddle"; no `PADDLE_API_KEY` was set, so
+unset, so `active_provider` defaulted to a rail we held no key for, so
 `provisioner` was None, so the stub survived — and the pack listed anyway. The Store's
 checkout builds a Stripe Checkout Session from `ProviderPriceId`, so those packs render
 a buy button that returns HTTP 500. Verified live: stub pack -> 500, real-price pack ->

@@ -13,8 +13,8 @@ import { textLinkClass } from '@/components/ui';
 
 /**
  * Privacy Policy for the Mumchimp digital-download storefront.
- * Covers: data collected (email, payment via Stripe/Paddle, download tokens),
- * lawful basis, retention, sub-processors (Stripe/Paddle, Mailjet, storage),
+ * Covers: data collected (email, payment via Stripe, download tokens),
+ * lawful basis, retention, sub-processors (Stripe, Mailjet, storage),
  * UK GDPR data subject rights, contact.
  * Pending review by qualified legal counsel before go-live.
  */
@@ -50,7 +50,7 @@ export default function PrivacyPage() {
           </>,
           <>
             <strong>Payment data</strong>, payment is processed entirely by our payment
-            processor (Stripe or Paddle, depending on which is active at checkout). We never
+            processor, Stripe. We never
             see or store your full card number, CVV, or bank-account details. We receive only
             a payment confirmation and a transaction reference. The payment processor is an
             independent data controller for the card data it processes; please review their
@@ -113,9 +113,9 @@ export default function PrivacyPage() {
       <LegalList
         items={[
           <>
-            <strong>Stripe, Inc.</strong> or <strong>Paddle.com Market Limited</strong>,
-            payment processing. Acting as independent data controller for card and payment
-            data; data may be transferred outside the UK under appropriate safeguards.
+            <strong>Stripe, Inc.</strong>, payment processing. Acting as independent data
+            controller for card and payment data; data may be transferred outside the UK
+            under appropriate safeguards.
           </>,
           // Brand + group only, deliberately. mailjet.com/legal/terms names a DIFFERENT
           // contracting entity per jurisdiction, Mailjet SaaS Ltd (UK), Mailjet SAS (FR),

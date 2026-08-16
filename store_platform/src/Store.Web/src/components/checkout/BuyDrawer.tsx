@@ -67,14 +67,13 @@ function BuyDrawer({
     checkoutError,
     clientSecret,
     canCheckout,
-    provider,
     buy,
     handleUnreachable,
     closeOverlay,
   } = usePackCheckout(pack);
 
   const priceLabel = formatPrice(pack.price);
-  const providerLabel = provider === 'stripe' ? 'Stripe' : 'Paddle';
+  const providerLabel = 'Stripe';
   const name = pack.cardLine || pack.headline || pack.title;
 
   // Stripe's overlay is a full-viewport panel of its own, so the drawer steps out of the way

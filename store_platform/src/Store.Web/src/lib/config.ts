@@ -139,11 +139,6 @@ export const LEGAL = {
   supportEmail: 'support@mumchimp.com',
 } as const;
 
-export const PADDLE_SETTINGS = {
-  environment: process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT || 'sandbox',
-  clientToken: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN || '',
-} as const;
-
 /**
  * The API's real origin. Correct for server-side fetches, and for links the BROWSER NAVIGATES to
  * (`/download/{token}` answers with a 302 to a presigned URL and must be followed as a navigation,

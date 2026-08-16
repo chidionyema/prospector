@@ -97,7 +97,7 @@ class TestDryRunMintsNothing(unittest.TestCase):
         # Both provisioners and the object store, so the assertion does not depend on which
         # provider happens to be active in this environment.
         self.bridge.stripe = MagicMock()
-        self.bridge.paddle = MagicMock()
+        self.bridge.stripe = MagicMock()
         self.bridge.r2 = MagicMock()
 
     def tearDown(self):
@@ -116,7 +116,7 @@ class TestDryRunMintsNothing(unittest.TestCase):
         # drifted below the line it was put above.
         mock_price_for.assert_not_called()
         self.bridge.stripe.assert_not_called()
-        self.bridge.paddle.assert_not_called()
+        self.bridge.stripe.assert_not_called()
         self.bridge.r2.upload.assert_not_called()
         # entitlements_check is mocked out, so any surviving POST would be the catalogue push.
         mock_post.assert_not_called()

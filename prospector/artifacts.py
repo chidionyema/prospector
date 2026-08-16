@@ -21,13 +21,14 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from concurrent.futures import TimeoutError as FuturesTimeoutError
 from typing import Any, Dict, List, Optional
 
-from . import evidence_budget, facets
+from . import evidence_budget, facets, prose_target
 from .copy_lint import buyer_readable
 from .marketing_assets import ASSET_TYPES
 from .models import Candidate, CheckResult, Decision, Dossier, Verdict
 from .operator import Operator, ParseError, _extract_json
 from .pack_linter import symbol_for_currency
 from .prompts import ALL_MARKET_KEYS, market_kwargs, render
+from .register_lint import measurable_prose
 from .telemetry import logger
 from .telemetry import stage as telemetry_stage
 
@@ -80,6 +81,49 @@ def claim_check_blocks_listing(cfg: Optional[Any]) -> bool:
     off must not also turn off the measurement that justifies turning it back on.
     """
     return bool(_listing_cfg(cfg).get("claim_check_block", CLAIM_CHECK_BLOCK_DEFAULT))
+
+
+#: Default for `listing.human_register_repair`. ON, and it is a different KIND of switch
+#: from `listing.human_register_block`, which stays OFF: this one spends a repair turn on a
+#: draft that already exists, while the blocker refuses to sell a finished pack. Rewriting
+#: prose costs one model call and risks nothing. Unlisting on a style measure with a known
+#: one-in-ten false-positive rate (the interval is the human p5 to p95) risks the pack.
+HUMAN_REGISTER_REPAIR_DEFAULT = True
+
+
+def prose_repair_enabled(cfg: Optional[Any]) -> bool:
+    """Whether a prose artifact outside the human range gets a rewrite turn.
+
+    `config.yaml listing.human_register_repair`, default ON. The measurement that justifies
+    it is the same one `register_lint` reports on, so turning this off leaves the receipt in
+    `<id>.lint.json` intact and only stops the engine acting on it.
+    """
+    return bool(_listing_cfg(cfg).get("human_register_repair",
+                                      HUMAN_REGISTER_REPAIR_DEFAULT))
+
+
+def _prose_findings(content: str) -> tuple[List[Dict[str, Any]], bool]:
+    """Where this draft falls outside the human range, and whether we could measure it.
+
+    Returns `(findings, failed)`. The flag is the whole point of the shape: `[]` on its own
+    says two different things — "this draft already reads like a human" and "we could not
+    tell" — and a caller that cannot separate them stops repairing prose on the day the
+    measurement breaks, with nothing in the pack to show for it.
+
+    Never raises. An unreadable target must not stop a pack being WRITTEN: the linter is
+    where that outage is said out loud, because there it can stop the pack listing and be
+    seen. Here it could only turn a style nudge into a failed artifact.
+    """
+    try:
+        return prose_target.grade_text(measurable_prose(content)), False
+    except prose_target.TargetUnreadable as exc:
+        failed = True
+        logger.warning(f"prose target unreadable, skipping register repair: {exc}")
+        return [], failed
+    except Exception as exc:  # measurement must never break generation
+        failed = True
+        logger.error(f"prose measurement failed, skipping register repair: {exc}")
+        return [], failed
 
 
 def unverified_claims_block_listing(cand: Any) -> bool:
@@ -534,6 +578,7 @@ def _gen_one_artifact(op: Operator, cand_json: str, claims_json: str,
                       length_rule: str = _LEGACY_LENGTH_RULE,
                       check_op: Optional[Operator] = None,
                       claims: Optional[List[Dict[str, Any]]] = None,
+                      prose_repair: bool = True,
                       ) -> tuple[str, str, Optional[Dict[str, Any]], List[Dict[str, Any]]]:
     """Generate one artifact type. Runs in a thread.
 
@@ -543,8 +588,12 @@ def _gen_one_artifact(op: Operator, cand_json: str, claims_json: str,
     buyer's bundle could never ship a spreadsheet or a machine-readable financial file
     (register F1/F3). It is ``None`` for every other artifact type.
 
-    ``violations`` is what the claim-check said about the finished prose after the repair
-    turn below, and is empty when ``check_op`` is None. This function never drops the
+    ``violations`` is what the CLAIM-CHECK said about the finished prose after the repair
+    turn below, and is empty when ``check_op`` is None. Human-register findings never join
+    it, however badly a draft reads: ``violations`` is wired to a listing gate, and the
+    register interval is the human 5th-95th percentile, so one human document in ten falls
+    outside it. Register drives the rewrite and stops there. Truth blocks a sale; style
+    earns a second draft. This function never drops the
     content: dropping an unverified marketing piece costs the buyer a tweet, but dropping
     build_spec would make the pack structurally INCOMPLETE, and the failure would then
     surface as "artifact 'build_spec' is empty" — an outage's signature, not an invention's.
@@ -555,10 +604,16 @@ def _gen_one_artifact(op: Operator, cand_json: str, claims_json: str,
     claims = claims or []
     feedback = ""
     violations: List[Dict[str, Any]] = []
+    is_prose = t in _PROSE_ARTIFACT_TYPES
     # One draft, plus one repair turn that is shown exactly what it got wrong. A second
     # repair is not free and the marketing path already measured the second one as the
     # point of diminishing returns (`_gen_one_content` gives its cheap pieces 2 attempts).
-    attempts = 2 if (check_op is not None and t in _PROSE_ARTIFACT_TYPES) else 1
+    #
+    # The repair turn now has two possible triggers, and either one alone earns it. It used
+    # to need `check_op`, which meant a pack generated with the claim-check off could not be
+    # corrected on register either, though nothing about measuring our own prose needs a
+    # second operator.
+    attempts = 2 if (is_prose and (check_op is not None or prose_repair)) else 1
 
     for attempt in range(attempts):
         # The financial_model is a JSON fill whose length is a property of the Python
@@ -590,25 +645,50 @@ def _gen_one_artifact(op: Operator, cand_json: str, claims_json: str,
             return t, content, assumptions, []
 
         content = str(data.get("content", ""))
-        if check_op is None or t not in _PROSE_ARTIFACT_TYPES:
+        if not is_prose:
             return t, content, None, []
 
         # The same verifier that has always guarded the copy we give away, now pointed at
         # the document the buyer pays for. It was never wired here: before 2026-08-14
         # every reference to `verify_claims_detail` sat on the marketing path.
-        ok, violations = verify_claims_detail(check_op, content, claims)
-        if ok:
+        violations = []
+        ok = True
+        if check_op is not None:
+            ok, violations = verify_claims_detail(check_op, content, claims)
+
+        # The register measurement, applied. Detection shipped on 2026-08-16 and graded
+        # finished packs; nothing acted on the grade, so a draft outside the human range
+        # was written, measured, filed and sold unchanged.
+        findings, register_unmeasured = (
+            _prose_findings(content) if prose_repair else ([], False))
+        if register_unmeasured:
+            # Said out loud, at ERROR, because the alternative is a run that looks like a
+            # clean sweep of in-range drafts while nothing was graded at all.
+            logger.error(
+                f"Artifact {t} register not measured; shipping this draft unrepaired",
+                extra={"type": t})
+
+        if ok and not findings:
             return t, content, None, []
-        logger.info(
-            f"Artifact {t} failed claim-check (attempt {attempt + 1}/{attempts})",
-            extra={"type": t, "violations_n": len(violations)})
-        feedback = (
-            "Your previous draft FAILED claim-check. Rewrite so every factual statement "
-            "is supported by the verified claims. Do not invent tools, prices, channels "
-            "or benchmarks. Cutting an unsupported paragraph is always better than "
-            "softening it. Violations:\n"
-            f"{json.dumps(violations, ensure_ascii=False)}"
-        )
+
+        parts: List[str] = []
+        if not ok:
+            logger.info(
+                f"Artifact {t} failed claim-check (attempt {attempt + 1}/{attempts})",
+                extra={"type": t, "violations_n": len(violations)})
+            parts.append(
+                "Your previous draft FAILED claim-check. Rewrite so every factual statement "
+                "is supported by the verified claims. Do not invent tools, prices, channels "
+                "or benchmarks. Cutting an unsupported paragraph is always better than "
+                "softening it. Violations:\n"
+                f"{json.dumps(violations, ensure_ascii=False)}"
+            )
+        if findings:
+            logger.info(
+                f"Artifact {t} outside the human register (attempt {attempt + 1}/{attempts})",
+                extra={"type": t, "measures": [f["measure"] for f in findings]})
+            parts.append(prose_target.repair_feedback(findings))
+        feedback = "\n\n".join(p for p in parts if p)
 
     return t, content, None, violations
 
@@ -747,6 +827,7 @@ def generate_artifacts(
     # a verification gate judged by the same model that produced the copy is not a gate.
     # Same rule `_gen_one_content` has always followed for the marketing pieces.
     claim_check_on = evidence_budget.artifacts_cfg(cfg)["claim_check"]
+    prose_repair_on = prose_repair_enabled(cfg)
 
     types = ["build_spec", "gtm_plan", "ops_plan", "financial_model"]
     results: Dict[str, str] = {}
@@ -767,7 +848,7 @@ def generate_artifacts(
             ex.submit(_gen_one_artifact,
                       cheap_op if t == "financial_model" else prose_op,
                       cand_json, claims_json, t, market_vars, length_rule,
-                      op if claim_check_on else None, claims): t
+                      op if claim_check_on else None, claims, prose_repair_on): t
             for t in types
         }
         try:

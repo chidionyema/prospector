@@ -366,7 +366,7 @@ export interface CheckoutSession {
  * Open a checkout session for a pack, asking for the embedded surface.
  *
  * Asking is not getting: the API answers with a hosted URL whenever the provider cannot render
- * embedded (Paddle, or a Stripe account without it). That is why this returns a session rather
+ * embedded (a Stripe account without it enabled). That is why this returns a session rather
  * than a client secret, there is no failure to report when the answer is "use the hosted page",
  * and turning it into one would block a buyer from paying over a cosmetic difference.
  */

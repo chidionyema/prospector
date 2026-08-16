@@ -105,10 +105,14 @@ class TestMoatAffecting:
         new = {"spend": {"daily_cap_usd": 100.0}}
         assert not ce.is_moat_affecting(old, new)
 
-    def test_changing_weights_is_not_moat_affecting(self):
+    def test_changing_weights_is_moat_affecting(self):
+        # `weights` feeds the composite score in score.py, and `min_composite` is a kill
+        # gate. Move a weight and ideas that passed yesterday fail today, so the change
+        # must be flagged like any other verdict-affecting edit. This test asserted the
+        # opposite until 2026-08-16, when ("weights",) was added to MOAT_AFFECTING_KEYS.
         old = {"weights": {"pain_acuity": 0.2, "distribution": 0.15}}
         new = {"weights": {"pain_acuity": 0.5, "distribution": 0.1}}
-        assert not ce.is_moat_affecting(old, new)
+        assert ce.is_moat_affecting(old, new)
 
 
 class TestDiff:

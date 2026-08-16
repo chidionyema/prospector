@@ -167,6 +167,12 @@ def _sets_failure_flag(handler: ast.ExceptHandler) -> bool:
     assignments — both reach the caller. A log line does NOT count: the caller cannot read
     the log, and the whole failure mode of this bug class is downstream code proceeding
     confidently on a value it has no way to question.
+
+    `rec["error"] = ...` counts too. It did not until 2026-08-16, which was a hole rather
+    than a rule: a dict LITERAL carrying the same key already counted (the ast.Dict branch
+    below), so the tool graded two spellings of one act differently. A handler that writes
+    the failure into the response dict it is about to return has told the caller in data,
+    which is the whole question this function asks.
     """
     logged = _logger_subtree_ids(handler)
     for n in ast.walk(handler):
@@ -176,6 +182,11 @@ def _sets_failure_flag(handler: ast.ExceptHandler) -> bool:
             return True
         if isinstance(n, ast.Assign):
             for t in n.targets:
+                if isinstance(t, ast.Subscript):
+                    key = t.slice
+                    if isinstance(key, ast.Constant) and key.value in FAILURE_FLAGS:
+                        return True
+                    continue
                 nm = t.id if isinstance(t, ast.Name) else (
                     t.attr if isinstance(t, ast.Attribute) else "")
                 if nm in FAILURE_FLAGS:

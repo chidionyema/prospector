@@ -4,13 +4,13 @@ using Store.Api.Services;
 
 public interface IPaymentProvider
 {
-    string Name { get; } // "paddle"
+    string Name { get; } // "stripe"
 
     // Inbound: verify signature + parse body into the provider-agnostic transaction.
     Task<WebhookVerifyResult> VerifyAndParseAsync(HttpRequest request, string rawBody, IConfiguration config, ILogger logger);
 
-    // Outbound (provisioning/checkout) — NOT used by Paddle in P0 (bridge.py provisions Paddle,
-    // and Paddle checkout is a frontend overlay). Implement as NotSupported for now; Stripe fills
+    // Outbound (provisioning/checkout). A provider that cannot provision implements these as
+    // NotSupported; Stripe fills
     // these in P2/P3.
     Task<ProviderProduct> CreateProductAsync(string title, long pricePence, string currency, IDictionary<string,string> metadata, CancellationToken ct);
     // Each line's PackId is stamped into the checkout session metadata so the inbound webhook
@@ -31,7 +31,7 @@ public interface IPaymentProvider
     // session carrying both success_url and ui_mode=embedded, and returns client_secret on one
     // shape and url on the other.
     //
-    // Returns null when this provider has no embedded surface (Paddle, whose checkout is already
+    // Returns null when this provider has no embedded surface (one whose checkout is already
     // a frontend overlay) or when the provider answered without a client secret. Null is not an
     // error: the caller falls back to the hosted redirect, which is the path that exists today.
     // A checkout must never fail because a nicer checkout was unavailable.
@@ -56,7 +56,7 @@ public interface IPaymentProvider
     // not yet paid, or the provider cannot resolve one — the caller then falls back to
     // telling the buyer to check their email.
     //
-    // Default implementation returns null so providers that have no session concept (Paddle,
+    // Default implementation returns null so providers that have no session concept (
     // whose checkout is a frontend overlay) need no change.
     Task<string?> ResolvePaidTransactionIdAsync(string sessionId, CancellationToken ct)
         => Task.FromResult<string?>(null);

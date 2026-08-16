@@ -1,0 +1,168 @@
+@import 'tailwindcss';
+
+/*
+  Ops.Console styling.
+
+  The tokens are the storefront's, copied by VALUE from
+  `store_platform/src/Store.Web/src/styles/tokens.css` rather than imported across app
+  boundaries. Two apps, two builds, two `public/` roots — an import would only work by accident
+  of relative paths, and the first move of either directory would break it silently.
+
+  This console follows the storefront's voice: one sans for what a human wrote, one mono for
+  anything the engine produced. Monospace is the promise that a string is checkable — a run id,
+  a provider name, a YAML path, a price. That split is the reason this file does not simply use
+  a system stack.
+
+  What is deliberately NOT copied: the storefront's category hues, its shelf and card rules, its
+  brand mark. None of them mean anything here.
+
+  Layout law for this app (spec §9): the page never scrolls sideways. Anything wide — a table, a
+  diff, a JSON blob — scrolls inside its own box. `.scroll-x` below is that box, and it exists
+  once so a new panel cannot forget it.
+*/
+
+@font-face {
+  font-family: 'Switzer';
+  src: url('/fonts/Switzer-Variable.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Commit Mono';
+  src: url('/fonts/CommitMono-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --bg: #faf9f7;
+  --surface: #ffffff;
+  --surface2: #fafafa;
+  --surface3: #f4f4f5;
+  --surface4: #ededef;
+  --border: #e4e4e7;
+  --border-strong: #d4d4d8;
+  --border-control: #8e8e96;
+
+  --text: #171717;
+  --muted: #52525b;
+  --subtle: #71717a;
+  --faint: #a1a1aa;
+
+  --action: #2d3436;
+  --action-hover: #1f2426;
+  --action-active: #14181a;
+  --on-action: #ffffff;
+  --action-tint: rgba(45, 52, 54, 0.07);
+
+  --ok: #047857;
+  --ok-bg: #ecfdf5;
+  --ok-strong: #065f46;
+  --warn: #b45309;
+  --warn-bg: #fffbeb;
+  --warn-strong: #92400e;
+  --bad: #dc2626;
+  --bad-bg: #fef2f2;
+  --bad-strong: #b91c1c;
+
+  --focus: #047857;
+  --radius: 2px;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface2: var(--surface2);
+  --color-surface3: var(--surface3);
+  --color-surface4: var(--surface4);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-border-control: var(--border-control);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-faint: var(--faint);
+  --color-action: var(--action);
+  --color-action-hover: var(--action-hover);
+  --color-on-action: var(--on-action);
+  --color-ok: var(--ok);
+  --color-ok-bg: var(--ok-bg);
+  --color-ok-strong: var(--ok-strong);
+  --color-warn: var(--warn);
+  --color-warn-bg: var(--warn-bg);
+  --color-warn-strong: var(--warn-strong);
+  --color-bad: var(--bad);
+  --color-bad-bg: var(--bad-bg);
+  --color-bad-strong: var(--bad-strong);
+  --color-focus: var(--focus);
+
+  --font-sans: 'Switzer', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Commit Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --radius-sm: var(--radius);
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius);
+}
+
+/*
+  `100dvh`, not `100vh`. In Telegram's in-app WKWebView the toolbar overlays the viewport, so a
+  `100vh` sheet puts its last row under the chrome — which is exactly where a confirm button
+  ends up on a write screen.
+*/
+html {
+  background: var(--bg);
+  /* iOS Safari inflates text in landscape unless this is pinned. */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  min-height: 100dvh;
+  /* The page itself never scrolls sideways. Wide content uses .scroll-x. */
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Every interactive thing gets the same visible focus ring. Keyboard use on a laptop matters
+   even though the primary target is a phone. */
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+/*
+  The one place horizontal scrolling is allowed. `-webkit-overflow-scrolling` keeps the momentum
+  flick inside the box on iOS instead of handing it to the page.
+*/
+.scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+
+/* Long ids, URLs and YAML paths break rather than widening the page. */
+.wrap-any {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Tap targets. 44px is the iOS minimum; a control below it is a mis-tap on a moving train. */
+.tap {
+  min-height: 44px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
