@@ -195,12 +195,19 @@ class _Checker:
             {"text": "Most councils now require this.", "issue": "no source"}]}
 
 
-def _gen(t="build_spec", check_op=None):
+def _gen(t="build_spec", check_op=None, prose_repair=False):
+    """Generate one artifact. `prose_repair` is OFF by default, on purpose.
+
+    The human-register repair is a separate switch (`listing.human_register_repair`) and it
+    fires on every draft we write today, so leaving it on here would make every draft count
+    below a measurement of two features at once. These tests are about the claim gate, so
+    they hold the other switch off and `test_the_prose_repair_buys_its_own_draft` covers it.
+    """
     from prospector.artifacts import _gen_one_artifact
     from prospector.prompts import ALL_MARKET_KEYS
     writer = _Writer()
     out = _gen_one_artifact(writer, "{}", "[]", t, {k: "" for k in ALL_MARKET_KEYS},
-                            eb.length_rule(500, 700), check_op, [])
+                            eb.length_rule(500, 700), check_op, [], prose_repair)
     return writer, out
 
 
@@ -208,6 +215,21 @@ def test_without_a_checker_the_artifact_path_makes_no_verification_call():
     writer, (_t, content, _raw, violations) = _gen()
     assert content and violations == []
     assert len(writer.users) == 1
+
+
+def test_the_prose_repair_buys_its_own_draft_and_never_reports_a_violation():
+    """The register repair is a SECOND trigger on the same repair loop, not a second loop.
+
+    Two things are pinned here. It costs one extra writer call with no checker present, so
+    the cost is visible. And it returns no violations: that list drives the listing gate,
+    and one human document in ten falls outside the p5-p95 range, so a style finding must
+    never be able to block a sale.
+    """
+    writer, (_t, content, _raw, violations) = _gen(prose_repair=True)
+    assert len(writer.users) == 2, "a draft outside the human range buys one rewrite"
+    assert violations == [], "a register finding is never a violation"
+    assert "human range" in writer.users[1], "the repair turn must be told the target"
+    assert content
 
 
 def test_a_failed_claim_check_buys_exactly_one_repair_turn_that_sees_the_violations():
