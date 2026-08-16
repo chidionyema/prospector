@@ -12,6 +12,8 @@ shelf.
     python tools/sweep_shelf_copy.py --fix           # rewrite the breaches, 8 in flight
     python tools/sweep_shelf_copy.py --fix --limit 5 # rewrite a few first
     python tools/sweep_shelf_copy.py --fix --jobs 4  # gentler on the provider
+    python tools/sweep_shelf_copy.py --push --dry-run # what the LIVE shelf would change to
+    STORE_INTERNAL_API_KEY=... python tools/sweep_shelf_copy.py --push
 
 Rewrites are re-graded before they are accepted, so a model that fails to fix the line
 leaves the old line alone rather than replacing one defect with another. The rewrite may
@@ -23,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sqlite3
 import sys
@@ -232,13 +235,88 @@ def persist(cid: str, new_line: str) -> None:
             path.write_text(json.dumps(doc, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
+#: The rollback. Written BEFORE each live PATCH, one row per pack: once the live `oneLine`
+#: is overwritten no GET projects the old one, so this file is the only copy of it.
+PUSH_LOG = ROOT / "store" / "shelf_copy_log.jsonl"
+
+
+def push_live(api_url: str, key: str, dry: bool) -> int:
+    """Send the repaired lines to the shelf the buyer actually reads.
+
+    `--fix` writes the local dossier and the local DB, and a reader of this tool could
+    reasonably think that is the shelf. It is not: `store/prospector.db` is this engine's
+    own record, and mumchimp.com serves `oneLine` from the catalogue row behind
+    `api.mumchimp.com/catalog`. Sixteen lines were repaired on 2026-08-16 and every one of
+    them was still live in its old wording afterwards.
+
+    The door is `PATCH /internal/catalog/{id}/copy` — the narrow one, which reaches copy and
+    nothing else — through `backfill_listing_copy.patch_copy`, so the money-bearing fields
+    are asserted unmoved by the same definition the other copy tools use rather than a
+    second one written here."""
+    import requests
+    sys.path.insert(0, str(ROOT / "tools"))
+    from backfill_listing_copy import patch_copy  # noqa: E402  (same dir)
+
+    live = requests.get(f"{api_url}/catalog", timeout=30).json()
+    live = live if isinstance(live, list) else live.get("items", [])
+    by_id = {r.get("id"): r for r in live}
+
+    pending = []
+    for cid, title, one, _created in live_rows():
+        row = by_id.get(cid)
+        if row is None or not one:
+            continue
+        if (row.get("oneLine") or "").strip() == one.strip():
+            continue
+        # Push only where the LIVE line is the defective one. Difference is not evidence of
+        # improvement in either direction: `backfill_listing_copy` has already rewritten
+        # copy directly on the shelf, so for 20-odd rows the live line is the NEWER one and
+        # the local DB carries the wording it replaced — `ac755ca1473e57fa` is live as
+        # "When a nursery closes mid term, this recovers the parent's prepaid fees…" against
+        # a local "A fixed-fee transaction broker that, when a nursery…". Pushing on
+        # difference alone would have reverted every one of them. The two conditions are
+        # separate on purpose: the live line must be broken, and ours must be clean.
+        if not voice_breaches(row.get("oneLine") or ""):
+            continue
+        if voice_breaches(one):
+            continue
+        pending.append((cid, row, one))
+
+    print(f"live rows: {len(by_id)}   lines to push: {len(pending)}")
+    pushed = 0
+    for cid, row, new in pending:
+        print(f"\n{cid}\n  live:  {(row.get('oneLine') or '')[:110]}\n  local: {new[:110]}")
+        if dry:
+            continue
+        with PUSH_LOG.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps({"pack_id": cid, "field": "oneLine",
+                                 "before": row.get("oneLine") or "", "after": new}) + "\n")
+        ok, problem = patch_copy(api_url, key, cid, {"oneLine": new}, row)
+        print(f"  -> {'pushed' if ok else 'REFUSED: ' + problem}")
+        pushed += bool(ok)
+    if not dry:
+        print(f"\npushed: {pushed} of {len(pending)}   rollback log: {PUSH_LOG}")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--fix", action="store_true", help="rewrite the breaching lines in place")
+    ap.add_argument("--push", action="store_true",
+                    help="send repaired lines to the LIVE catalogue (needs STORE_INTERNAL_API_KEY)")
+    ap.add_argument("--dry-run", action="store_true", help="with --push: show the diff, send nothing")
+    ap.add_argument("--api-url", default="https://api.mumchimp.com")
     ap.add_argument("--limit", type=int, default=0, help="stop after N rewrites")
     ap.add_argument("--jobs", type=int, default=8,
                     help="rewrites in flight at once (default 8, the measured-clean MiniMax figure)")
     args = ap.parse_args()
+
+    if args.push:
+        key = os.environ.get("STORE_INTERNAL_API_KEY", "")
+        if not key and not args.dry_run:
+            print("--push needs STORE_INTERNAL_API_KEY; refusing.", file=sys.stderr)
+            return 2
+        return push_live(args.api_url, key, args.dry_run)
 
     rows = live_rows()
     bad = [(cid, t, o, c, b) for cid, t, o, c in rows if (b := breaches(t, o))]
