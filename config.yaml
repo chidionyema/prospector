@@ -1584,6 +1584,43 @@ listing:
   # every one the same shape ("value_durability 0.438, distribution 0.430").
   engine_leak_block: false              # findings -> error
   max_engine_leak_per_1k: 0.0           # rate ceiling; 0 = measure only
+  # HUMAN WRITING PATTERNS. Added 2026-08-16 (docs/PROSE_CORPUS_PROGRAM.md). Every pack is
+  # measured the way 270 Financial Ombudsman decisions were measured — the same tokeniser,
+  # the same function (`prospector/prose_measure.py`) — and graded against the committed
+  # target `prospector/data/prose_target.json`. The measures and any findings land in
+  # <id>.lint.json under `human_register`, on every pack, pass or fail.
+  #
+  # We adopt the FORM of human writing, not its subject matter. The target only carries
+  # measures of how sentences are built; words about complaints, the NHS or the FCA are
+  # excluded by construction (`prose_measure.classify_item`), so no rule here can ever push
+  # our prose towards someone else's topic.
+  #
+  # SIX MEASURES ARE ARMED, and a measure only arms when our mean sits outside the human
+  # 5th-95th percentile by at least 10% of that interval's width:
+  #   hyphen rate        31.8 per 1k vs human  2.7   compound stacking; z = 11.3
+  #   comma rate         61.3 per 1k vs human 31.8
+  #   semicolon rate      4.6 per 1k vs human  0.7
+  #   heavy sentences    47%  of sentences vs human 16%   two or more comma-clauses
+  #   MATTR (vocabulary) 0.77 vs human 0.67       a different word where a human repeats
+  #   hedges              3.5 per 1k vs human 13.8   we assert more flatly than a human
+  # The 25-word sentence rule is deliberately NOT armed: a human breaks it in 31% of
+  # sentences and the human 95th percentile is 52%, which is exactly our rate.
+  #
+  # OFF, on the same terms as every knob above, plus one specific to this check: the
+  # interval is the human 5th-95th percentile, so roughly one human document in ten falls
+  # outside it on any single measure. Blocking today would unlist packs a human author
+  # would also have failed. Turn it on against the baseline that accrues in the reports.
+  human_register_block: false           # outside the human range -> error
+  # APPLYING the same measurement, rather than only reporting it. Two switches, because
+  # they are two different acts:
+  #   human_register_block  (above)  refuses to SELL a finished pack.        OFF.
+  #   human_register_repair (below)  spends one rewrite turn on a draft.     ON.
+  # A rewrite costs one model call and risks nothing. Unlisting on a measure whose interval
+  # is the human 5th-95th percentile, where one human document in ten falls outside, risks
+  # the pack. The armed measures also reach the WRITER now, through the house voice guide
+  # (`prose_target.prompt_block` -> `prompts.style_kwargs`), so the first draft is aimed at
+  # the target instead of being graded against a rubric it was never shown.
+  human_register_repair: true           # outside the human range -> one rewrite turn
   # PAID-ARTIFACT CLAIM CHECK (artifacts.claim_check_blocks_listing). Added 2026-08-15.
   #
   # What it is: when build_spec / gtm_plan / ops_plan still carry claim-check violations after

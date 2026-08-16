@@ -1188,6 +1188,12 @@ class EngineBridge:
             engine_leak_block=bool(listing_cfg.get("engine_leak_block", False)),
             max_engine_leak_per_1k=float(
                 listing_cfg.get("max_engine_leak_per_1k", 0.0) or 0.0),
+            # How far our writing sits from professional human writing in the same genre,
+            # measured against 270 ombudsman decisions. Off by the same rule as everything
+            # above: the intervals are the human 5th-95th percentile, so about one human
+            # document in ten falls outside on any single measure. Blocking on that today
+            # would unlist packs a human author would also have failed.
+            human_register_block=bool(listing_cfg.get("human_register_block", False)),
         )
         lint_ok = bool(lint_report.get("ok"))
         if not lint_ok:

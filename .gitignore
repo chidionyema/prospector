@@ -136,3 +136,6 @@ tools/experiments/_hhem_score_cache.json
 # Both are derived from what is already published; neither is source.
 .cache/
 publish/preview/
+
+# Corpus text is never committed. Only manifests and derived tables are.
+corpora/

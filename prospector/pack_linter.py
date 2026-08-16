@@ -1681,7 +1681,8 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
               max_four_item_list_rate: float = 0.0,
               max_unsourced_figure_rate: float = 0.0,
               engine_leak_block: bool = False,
-              max_engine_leak_per_1k: float = 0.0) -> Dict[str, Any]:
+              max_engine_leak_per_1k: float = 0.0,
+              human_register_block: bool = False) -> Dict[str, Any]:
     """Run every lint check; return the machine-readable report.
 
     `report["ok"]` is False iff any problem has severity "error" — that is the half the
@@ -1777,7 +1778,8 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
     problems += check_register(
         style_corpus, block=register_block, max_per_1k=max_register_per_1k,
         long_sentence_max_rate=max_long_sentence_rate,
-        clause_load_max_rate=max_clause_load_rate, metrics=register_metrics_)
+        clause_load_max_rate=max_clause_load_rate,
+        human_register_block=human_register_block, metrics=register_metrics_)
     # Same corpus, third question: is our own filing system in the buyer's prose? Nothing
     # asked it before 2026-08-15 — `INTERNAL_VOCAB` is scoped to the six shelf lines, so a
     # financial model could print `value_durability 0.438` and every check here passed.
@@ -1848,6 +1850,15 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
             "R10_flat_predictions": house_metrics["flat_predictions"],
             "quotes": house_metrics["quotes"],
             "Q_bad_quotes": house_metrics["bad_quotes"],
+        },
+        # This pack measured the way 270 human ombudsman decisions were measured, and the
+        # armed measures it sits outside the human range on. Recorded on every pack whether
+        # or not `human_register_block` is on, for the same reason `house_spec` is: a
+        # threshold may only be set from numbers seen on live packs.
+        "human_register": {
+            "measures": register_metrics_["prose_measures"],
+            "outside": register_metrics_["human_register"],
+            "error": register_metrics_["human_register_error"],
         },
         "problems": problems,
     }

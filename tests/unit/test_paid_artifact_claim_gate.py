@@ -128,6 +128,19 @@ def cfg(base_cfg):
     # The data files are a separate register (F1/F2) and would add unrelated keys and file
     # writes to every assertion here.
     c.pack_data = {"enabled": False}
+
+    # The human-register repair turn is a SECOND trigger on the same redraft loop, added
+    # 2026-08-16. It fires on almost every draft today, because our prose sits outside the
+    # human range on four measures at once, so leaving it on would make every draft count in
+    # this file measure the two gates added together and `_FakeOperator`'s fixture prose
+    # would decide the number. Its own behaviour is pinned in `test_prose_application.py`.
+    listing = getattr(c, "listing", None)
+    if isinstance(listing, dict):
+        listing["human_register_repair"] = False
+    elif listing is not None:
+        setattr(listing, "human_register_repair", False)
+    else:
+        c.listing = {"human_register_repair": False}
     return c
 
 
