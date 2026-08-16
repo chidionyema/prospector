@@ -230,11 +230,24 @@ class TestTheManifestCarriesTheEvidence:
         bad = reviews["payer_solvency"]
         assert bad["prospector:degraded"] is True
         assert bad["prospector:retrievalFailed"] is True
-        assert bad["prospector:provisional"] is True
-        assert bad["prospector:ruledBy"] == "minimax/MiniMax-M3"
         clean = reviews["buyer_intent"]
         assert "prospector:degraded" not in clean
-        assert "prospector:provisional" not in clean
+        assert "prospector:retrievalFailed" not in clean
+
+    def test_the_buyer_is_never_told_which_model_ruled(self, bridge):
+        """`prospector:ruledBy` was the model name, per check, in the zip the buyer downloads,
+        and `prospector:provisional` was our trust tier for it. Founder, 2026-08-15, on a pack
+        pulled off the live storefront: it had "even ai judge info".
+
+        The two flags left above stay, and the difference is the whole rule: `degraded` and
+        `retrievalFailed` are facts about the EVIDENCE, which is what was sold. Which model
+        ruled is a fact about our supply chain, and the buyer can do nothing with it."""
+        doc = _manifest_from_zip(bridge._create_bundle(_dossier(), _full_artifacts(), []))
+        blob = json.dumps(doc)
+        assert "ruledBy" not in blob
+        assert "minimax" not in blob.lower()
+        for node in _nodes(doc, "ClaimReview"):
+            assert "prospector:provisional" not in node, node["claimReviewed"]
 
     def test_the_verdict_scale_is_stated_in_the_document(self):
         """`unverifiable` is a real third outcome, not a missing value, and an agent has no way to
@@ -320,12 +333,33 @@ class TestTheBackfillPathRendersFromAStoredDossier:
             {}, BUNDLE_FILES, _FILE_TITLES, "c" * 16)
         assert json.loads(stored) == json.loads(live)
 
-    def test_the_scores_survive_the_namespace_conversion(self):
+    def test_our_grade_of_the_idea_never_reaches_the_buyer(self):
+        """`prospector:scores` and `prospector:compositeScore` were in every manifest until
+        2026-08-15. They are our internal ranking, which exists to decide what to PUBLISH — a
+        decision already made by the time anyone can download this — and printing the grade
+        beside the thing graded invites a comparison the pack cannot support, between two
+        composites scored months apart against different evidence.
+
+        Asserted on the SUBSTRING as well as the key, because the number also reached the
+        buyer through `pack_data`'s scorecard.json and would have to be removed twice."""
         from prospector.models import ScoreResult
         d = _dossier()
         d.score = ScoreResult(scores={"pain_reality": 4}, justification={}, composite=3.4)
         doc = json.loads(pack_manifest.render_manifest(
             pack_manifest.dossier_from_dict(d.to_dict()), {}, BUNDLE_FILES, _FILE_TITLES, "c" * 16))
         pack = next(n for n in doc["@graph"] if n.get("@type") == "Report")
-        assert pack["prospector:scores"] == {"pain_reality": 4}
-        assert pack["prospector:compositeScore"] == 3.4
+        assert "prospector:scores" not in pack
+        assert "prospector:compositeScore" not in pack
+        assert "prospector:providerChain" not in pack
+        assert "3.4" not in json.dumps(pack)
+
+    def test_the_namespace_conversion_guard_is_still_exercised(self):
+        """`_plain_mapping` lost its caller when the scores came out of the manifest, and its
+        lesson is worth more than the call site was: `dossier_from_dict` rebuilds a stored
+        dossier as nested SimpleNamespaces, so a plain Dict[str, float] on the live path
+        arrives as a NAMESPACE on the backfill path and `dict()` raises TypeError. Every unit
+        test built from the real dataclasses missed it; the first real stored dossier found
+        it. Pinned directly so the next caller inherits a tested helper."""
+        from types import SimpleNamespace
+        assert pack_manifest._plain_mapping({"pain_reality": 4}) == {"pain_reality": 4}
+        assert pack_manifest._plain_mapping(SimpleNamespace(pain_reality=4)) == {"pain_reality": 4}

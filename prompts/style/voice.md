@@ -95,6 +95,20 @@ These are the rules that actually decide whether it reads clearly:
     durable_wedge_type, weak_monetisation…) are ours, not the reader's. Say what the
     thing does instead. A reader who meets one of these words has been handed our
     filing system by mistake.
+  - NO DASHES. Not the em dash, not the en dash, not a spaced hyphen standing in for
+    one. Every one of them is a sentence the writer would not commit to: it welds two
+    thoughts together without saying how they relate. Use a full stop, a comma, a
+    colon, or the word that does the work — "because", "so", "but", "which". A range
+    of numbers takes "to": "three to seven days", never "3-7 days". The only dash that
+    survives is one inside a real word. Measured across 296 live buyer documents on
+    2026-08-15: 3,940 em dashes in 427,687 words, one every 108 words. It is the
+    loudest single tell that a machine wrote the page.
+  - NEVER DEFINE A THING BY WHAT IT IS NOT. "This is not X, it is Y". "Not a Z, but a
+    W". "X, not Y". "rather than". The antithesis is a rhythm, not an argument: it
+    makes the reader carry a false thing in their head to arrive at the true one, and
+    it fills a sentence that had nothing to say. State the true thing once, in the
+    affirmative. If a real misconception genuinely has to be cleared, give it its own
+    sentence and name who holds it.
   - A SHORT LINE IS STILL A SENTENCE. Every rule above binds hardest where there is
     least room: a shelf card line, a headline, a label. Character pressure is what
     makes a writer drop the verb and reach for the trade's shorthand, and the result

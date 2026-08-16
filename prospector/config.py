@@ -478,7 +478,9 @@ _BLOCK_KEYS: dict[str, frozenset[str]] = {
     "claim_lock": frozenset({"enabled", "dir", "stale_after_s"}),
     # F1-F4 — deterministic buyer-facing data artifacts (scorecard, financials,
     # comparables, radar SVG, XLSX, PDF). Zero LLM calls.
-    "pack_data": frozenset({"enabled", "formats", "chrome_path"}),
+    # `include_scorecard` added 2026-08-15: our six-axis grade of the idea, as data files in
+    # the buyer's zip. Default off — see `pack_data.DEFAULT_INCLUDE_SCORECARD`.
+    "pack_data": frozenset({"enabled", "formats", "chrome_path", "include_scorecard"}),
     # The pack's length contract, derived from the evidence it holds rather than asserted
     # as a constant. See prospector/evidence_budget.py for the measurement that set it.
     "artifacts": frozenset({
