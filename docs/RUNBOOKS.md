@@ -132,7 +132,66 @@ nobody reads is not monitoring, and the console screen (R6) is where it becomes 
 the drill for the engine store. There is no tested restore of `store.db` into a fresh Fly machine
 yet — that is expectation E5 in `docs/OPS_AUTOMATION_PRINCIPLES.md` and it is still open.
 
-**Adding a new source.** Add a `sources:` entry with `name`, `key`, a `fetch:` command as a list
+**Adding a new backup source.** Add a `sources:` entry with `name`, `key`, a `fetch:` command as a list
 of arguments (`{dest}` is substituted with the download path), a `why:` in plain words, and
 `verify:` — `sqlite` to open it and run an integrity check, `nonempty` for anything else. No code
 change.
+
+---
+
+## log-rotation
+
+**What it checks.** Every log named in `ops/config/log_rotation.yaml`, against the size limit
+declared next to it. The engine holds no paths and no limits.
+
+**Run it.**
+
+```bash
+cd /Users/chidionyema/Documents/code/prospector
+.venv/bin/python -m ops.automations.log_rotation          # what is over its limit
+.venv/bin/python -m ops.automations.log_rotation --json   # what the console calls
+.venv/bin/python -m ops.automations.log_rotation --fix    # rotate what is over
+```
+
+**What red means.** A log is past the size at which people still read it. That is not a disk
+problem, it is a wrong-answer problem. On 2026-08-16 a `grep -c` over a 25 MB unrotated
+`launchd.err.log` counted 97 provider failures and read as "97 today". Today's real number was 8,
+and most of the rest named a provider chain that had already been deleted. The wrong number
+reached `docs/LAUNCH_OPS_PROGRAM.md` as a blocker.
+
+**What to do.** Run `--fix`. It compresses the content into `<log>.<UTC stamp>.gz`, truncates the
+original in place, and prunes to the declared `keep`.
+
+**How long.** Seconds. The first real run compressed 62.7 MB down to 5.5 MB.
+
+**How it rotates, and why you must not "improve" it to a rename.** It copies and truncates in
+place. It never renames. A daemon holds its log open by file descriptor, and renaming the file
+does not move that descriptor: the daemon keeps writing into the renamed file, the fresh log
+stays empty, and the next person to read it sees a process that has gone silent. Every writer
+here is under launchd, which redirects stdout by descriptor. `tests/unit/test_log_rotation.py`
+pins the inode across a rotation for exactly this reason.
+
+**If it exits 2 (could not establish).** The check could not run, and the state is unknown.
+
+- `declaration not found` — wrong directory, or the YAML moved. Pass `--config <path>`.
+- `not a git repository` — relative paths in the declaration are resolved from the git root.
+  Run it inside the repo or a worktree of it. Absolute paths in the declaration work anywhere.
+- `PyYAML is not installed` — use `.venv/bin/python`, not system python.
+
+**When it should run.** Daily at 04:00 via `deploy/com.prospector.log-rotation.plist`, after the
+two backup jobs so a rotation cannot race a copy of the thing being rotated. Install it once:
+
+```bash
+cd /Users/chidionyema/Documents/code/prospector
+cp deploy/com.prospector.log-rotation.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.prospector.log-rotation.plist
+```
+
+**What is deliberately not rotated.** `store/prospector.jsonl` — 211 MB and 761,090 lines on
+2026-08-16. It looks like a log and it is the durable spend ledger the daily cap reads, so
+truncating it changes what the spend guard believes. Shrinking it is a separate job with its own
+reader. `store/scheduler/audit/*.jsonl` is one file per day already, so it rotates by
+construction. Both exclusions are written into the declaration with their reasons.
+
+**Adding a log.** Add a `targets:` entry with `path` (a file, a glob, or an absolute path), a
+`why:` in plain words, and optionally `max_mb` and `keep`. No code change.
