@@ -8,6 +8,7 @@ import { useCopyVariant } from '@/lib/useCopyVariant';
 import { COMMON_CHECKS, idsFor, type Check } from '@/lib/checks';
 import { RESEARCH_STATS, killsSummary } from '@/lib/stats';
 import { plainEnglish } from '@/lib/plainEnglish';
+import { PACK_DISCLAIMER, PACK_SCOPE } from '@/lib/disclaimer';
 import CheckSequence from '@/components/marketing/CheckSequence';
 /* `kill-log-examples.json`, NOT the full `kill-log.json`. This page draws ONE illustrative kill per
    check and needs the whole record (reason, citations), so the names file is not enough. The
@@ -382,8 +383,7 @@ export default function HowItWorks() {
       >
         <div className="max-w-3xl">
           <p className="text-body font-normal leading-relaxed text-muted">
-            A pack is evidence-backed research, not a guarantee. The finding, vetting and sourcing
-            is done. The execution is yours. No analysis can promise a business outcome.
+            {`${PACK_DISCLAIMER} ${PACK_SCOPE} No analysis can promise a business outcome.`}
           </p>
         </div>
       </Section>

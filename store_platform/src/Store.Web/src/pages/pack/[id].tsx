@@ -17,6 +17,7 @@ import { Section } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_DOCUMENTS } from '@/components/marketing/PackContents';
 import { ApiError, fetchCatalog, fetchPackDetails, freshnessLabel, marketLabel, parseCheckCounts, scoreAxes, splitVerdict, Pack, PackDetails, FinancialSnapshot } from '@/lib/api/client';
 import { RESEARCH_STATS } from '@/lib/stats';
+import { PACK_DISCLAIMER } from '@/lib/disclaimer';
 import { paybackEquation } from '@/lib/payback';
 import { formatPriceForMarket, formatChargeNote, formatApproxNote, currencyForCountry, type Currency } from '@/lib/fx';
 import { isTruncated, repairTruncation } from '@/lib/copy';
@@ -520,8 +521,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
       <p className="mt-6 text-caption leading-relaxed text-subtle">
         {/* Secure checkout named where it is relevant, in a sentence, instead of as a third
             icon row. */}
-        Secure checkout via {providerLabel}. A pack is evidence-backed research, not a promise of business
-        success. See our{' '}
+        Secure checkout via {providerLabel}. {PACK_DISCLAIMER} See our{' '}
         <Link href="/refund" className={textLinkClass()}>
           refund policy
         </Link>

@@ -9,6 +9,7 @@ import { usePackCheckout } from '@/lib/checkout/usePackCheckout';
 import { formatPrice, Pack } from '@/lib/api/client';
 import { formatPriceForMarket, type Currency } from '@/lib/fx';
 import { textLinkClass } from '@/components/ui';
+import { PACK_DISCLAIMER } from '@/lib/disclaimer';
 
 // Loaded on demand. `BuyDrawerProvider` mounts on the homepage for EVERY visitor
 // (`pages/index.tsx`), so a static import here put the full `@stripe/react-stripe-js` Elements
@@ -181,7 +182,7 @@ function BuyDrawer({
         </div>
 
         <p className="text-caption leading-relaxed text-muted">
-          A pack is evidence-backed research, not a promise of business success. See our{' '}
+          {PACK_DISCLAIMER} See our{' '}
           <Link href="/refund" className={textLinkClass()}>
             refund policy
           </Link>
