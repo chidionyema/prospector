@@ -270,16 +270,64 @@ def _render_operator_routing(cfg: dict):
     st.caption("Moat order: models that run kill-check verdicts and adversarial passes. "
                "Non-critical chain: models for generation/prescreen/score only.")
 
-    op = cfg.get("operator", "")
-    new_op = st.selectbox(
-        "Primary operator",
-        ["", "mock", "claude"],
-        index=["", "mock", "claude"].index(op) if op in ["", "mock", "claude"] else 0,
-    )
-    _update_staged(cfg, "operator", new_op)
+    # THE T0-2 FIX. This offered `["", "mock", "claude"]`: the live value is a LIST
+    # (`operator: [minimax, claude_cli]`, config.yaml:58), it was in none of the options, so
+    # `index` fell to 0 and this staged the EMPTY STRING on every render — no interaction
+    # required, no way for the operator to see it before Save. `claude` was not even buildable:
+    # the paid Anthropic adapter was deleted 2026-08-15 and `_build_operator` raises on it.
+    #
+    # Now: the chain is a multiselect over the tiers that can actually be CONSTRUCTED
+    # (`operator.BUILDABLE_TIERS` — read from the builder, never a second list that drifts), it
+    # is seeded with the real value, and nothing is staged unless it differs from disk.
+    from prospector.operator import BUILDABLE_TIERS
 
-    moat_order = cfg.get("moat_order", [])
-    st.caption(f"Moat order (current): {moat_order or [op]}")
+    current = cfg.get("operator", [])
+    chain = [current] if isinstance(current, str) and current else list(current or [])
+    unknown = [t for t in chain if t not in BUILDABLE_TIERS]
+    if unknown:
+        st.error(f"config.yaml names {unknown} — no adapter can build these. "
+                 "The engine will fail loudly at startup until they are removed.")
+
+    new_chain = st.multiselect(
+        "Verdict chain (`operator:`) — order is the failover order",
+        options=list(BUILDABLE_TIERS) + unknown,
+        default=chain,
+        help="Tried left to right. Only tiers in `moat_primary` may rule FINALLY; anything else "
+             "that rules is stamped provisional and re-vetted.",
+    )
+    if new_chain != chain:
+        _update_staged(cfg, "operator", new_chain)
+
+    # R20 — the roster is EDITABLE here, and the fence lives in the writer, not in this widget.
+    # `routing_problems` is the same function `config_editor.validate_config` and
+    # `prospector.ops.routing.set_moat_primary` (the CLI the phone reaches) call, so a roster
+    # refused here is refused there and vice versa.
+    from prospector.ops.routing import routing_advisories, routing_problems
+
+    raw_trusted = cfg.get("moat_primary", [])
+    trusted = ([raw_trusted] if isinstance(raw_trusted, str) and raw_trusted
+               else list(raw_trusted or []))
+    new_trusted = st.multiselect(
+        "Trusted-final (`moat_primary:`) — who may rule a verdict that PUBLISHES",
+        options=list(BUILDABLE_TIERS) + [t for t in trusted if t not in BUILDABLE_TIERS],
+        default=trusted,
+        help="Anything outside this set that rules is stamped provisional (operator.py:1509) "
+             "and never publishes on PASS (run.py:1157). Narrow it wrongly and the engine keeps "
+             "running, keeps spending and stops selling.",
+    )
+    if new_trusted != trusted:
+        _update_staged(cfg, "moat_primary", new_trusted)
+
+    problems = routing_problems(new_chain, new_trusted)
+    for p in problems:
+        st.error(p)
+    for note in routing_advisories(new_chain, new_trusted):
+        st.caption(f"ℹ️ {note}")
+    if not problems and new_chain:
+        st.success(f"A PASS ruled by `{new_chain[0]}` would publish.")
+
+    st.caption(f"Non-critical chain (never rules): "
+               f"`{cfg.get('noncritical_operator', '(default)')}`")
 
 
 # ---------------------------------------------------------------------------
@@ -334,6 +382,47 @@ def _render_lanes(cfg: dict):
 # Helpers
 # ---------------------------------------------------------------------------
 
+#: The verdict list a re-ticked gate is restored with. Every gate on disk reads `[refuted]`, and
+#: the polarity note at config.yaml:481 is explicit that `refuted` = KILL for all of them; a gate
+#: restored with anything else would kill on a different verdict than its neighbours.
+_DEFAULT_FAILING_VERDICTS = ["refuted"]
+
+
+def _stage_hard_gates(cfg: dict, ticked: dict) -> list:
+    """Toggle gates ON THE REAL STRUCTURE — the T0-1 fix.
+
+    This used to be `[{"k": True} for k, v in value.items() if v]`, where `k` is the *string
+    literal* rather than the comprehension variable. Six ticked checkboxes therefore staged six
+    identical `{"k": True}` entries: every gate NAME gone, every failing-verdict list gone, and
+    the `adversarial_decisive` entry gone. `validate_config` waved it through because it only
+    asserted "a list, of dicts". The effect was that the six hard gates deciding what may be
+    SOLD stopped matching any check name — the money rail's kill filter, silently disarmed by
+    saving a page.
+
+    So the toggle now edits the config's own list: an unticked gate is DROPPED, a ticked one is
+    passed through byte-identical (keeping its verdict list), an entry the checkboxes do not
+    describe is left alone, and a re-ticked gate comes back with the polarity every other gate
+    on disk uses.
+    """
+    original = cfg.get("hard_gates") or []
+    out: list = []
+    seen: set[str] = set()
+    for entry in original:
+        if not isinstance(entry, dict) or len(entry) != 1:
+            out.append(entry)                  # not ours to interpret; never dropped
+            continue
+        (name, verdicts), = entry.items()
+        seen.add(str(name))
+        if str(name) not in ticked:
+            out.append(entry)                  # e.g. adversarial_decisive — not a checkbox
+        elif ticked[str(name)]:
+            out.append(entry)                  # unchanged, verdict list intact
+    for name, on in ticked.items():
+        if on and str(name) not in seen:
+            out.append({str(name): list(_DEFAULT_FAILING_VERDICTS)})
+    return out
+
+
 def _update_staged(cfg: dict, key: str, value):
     """Write a value into the staged config in session_state."""
     import copy
@@ -345,8 +434,7 @@ def _update_staged(cfg: dict, key: str, value):
     if key.startswith("__"):
         # Special keys: __hard_gates__, __weights__
         if key == "__hard_gates__":
-            gates = [{"k": True} for k, v in value.items() if v]
-            staged["hard_gates"] = gates
+            staged["hard_gates"] = _stage_hard_gates(cfg, value)
         elif key == "__weights__":
             staged["weights"] = value
         return
