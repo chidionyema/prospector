@@ -34,28 +34,44 @@ export function repoRoot(): string {
  * Turbopack panicked with "Symlink … is invalid, it points out of the filesystem root" and
  * `next build` failed outright. Measured 2026-08-16: `path.join(repoRoot(), '.venv/bin/python')`
  * failed as a DirAssetReference, the template-string version failed as a FileSourceReference, and
- * removing the literal builds. The default now lives in `package.json` and
- * `scripts/run_ops_console.sh`, where no bundler reads it.
+ * removing the literal builds. The default now lives in `package.json` (`npm run dev` / `npm
+ * start` compute it from the repo root) and in the launchd plist
+ * `~/Library/LaunchAgents/com.prospector.ops-console.plist`, where no bundler reads it.
  */
 export function pythonBin(): string {
   const bin = process.env.PROSPECTOR_PYTHON;
   if (!bin) {
     throw new Error(
       'PROSPECTOR_PYTHON is not set, so there is no interpreter to run the engine gateway with. ' +
-        'Start the console with scripts/run_ops_console.sh, or with `npm run dev`, both of which ' +
-        "point it at the repo's .venv.",
+        'Start it with `npm run dev` or `npm start`, which point it at the repo\'s .venv, or ' +
+        'through the launchd job com.prospector.ops-console, whose plist names the interpreter.',
     );
   }
   return bin;
 }
 
 /**
- * Hard ceiling on one gateway call. `read metrics` scans the diagnostics window and is the slow
- * one; everything else measured under 400ms. A request that outlives this is reported as a
+ * TWO CEILINGS, BECAUSE A READ AND A TOOL RUN ARE DIFFERENT JOBS.
+ *
+ * A read is a panel waiting on a number. `read metrics` scans the diagnostics window and is the
+ * slow one; everything else measured under 400ms. A request that outlives this is reported as a
  * TIMEOUT, never as an empty result — an outage is the end of a measurement, not a datum, and a
  * swallowed one returns `[]` and reads as "nothing to show".
  */
-export const OPS_TIMEOUT_MS = Number(process.env.OPS_TIMEOUT_MS || 120_000);
+export const OPS_READ_TIMEOUT_MS = Number(process.env.OPS_TIMEOUT_MS || 120_000);
+
+/**
+ * A write may spawn a batch tool, and those run for minutes. `console_api._TOOL_TIMEOUT_S` is
+ * 1800s, so anything lower here kills the gateway while the tool it started is still working.
+ *
+ * That was live until 2026-08-16: the default was 120s for every call, the launchd plist papered
+ * over it with `OPS_TIMEOUT_MS=1900000`, and a console started any other way — `npm run dev`,
+ * `npm start`, a plist edited later — killed `scripts/store_audit.py` at two minutes and reported
+ * a gateway timeout. The env var is still accepted, but the DEFAULT now clears the Python ceiling
+ * on its own, so no console depends on an environment it was not given.
+ * `tests/timeouts.test.ts` reads the Python constant and fails if this drops below it.
+ */
+export const OPS_ACT_TIMEOUT_MS = Number(process.env.OPS_ACT_TIMEOUT_MS || 1_860_000);
 
 export type OpsEnvelope<T = unknown> = {
   ok: boolean;
@@ -80,12 +96,20 @@ export type OpsResult<T = unknown> = {
 /** The contract version this app was written against. `console_api.CONTRACT_VERSION`. */
 export const EXPECTED_CONTRACT = 1;
 
-function runPython(args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
+function runPython(
+  args: string[],
+  timeoutMs: number,
+): Promise<{ code: number; stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
     const child = spawn(pythonBin(), ['-m', 'prospector.ops.console_api', ...args], {
       cwd: repoRoot(),
       env: { ...process.env, PYTHONUNBUFFERED: '1' },
       stdio: ['ignore', 'pipe', 'pipe'],
+      // Its own process group, so the timeout below can kill the tool the gateway spawned and not
+      // just the gateway. Killing the parent alone leaves the tool running, writing to `store/`
+      // with no receipt and no undo id — a timeout that abandons a live write is worse than one
+      // that waits.
+      detached: true,
     });
 
     let stdout = '';
@@ -96,14 +120,17 @@ function runPython(args: string[]): Promise<{ code: number; stdout: string; stde
       if (settled) return;
       settled = true;
       // SIGKILL, not SIGTERM: a wedged child holding a pipe is the hang this timeout exists for,
-      // and a polite signal it may ignore turns a timeout into a leak.
-      child.kill('SIGKILL');
+      // and a polite signal it may ignore turns a timeout into a leak. The negative pid kills the
+      // whole group — see `detached` above.
+      try {
+        if (child.pid) process.kill(-child.pid, 'SIGKILL');
+      } catch {
+        child.kill('SIGKILL'); // the group is already gone, or this platform refused it
+      }
       reject(
-        new Error(
-          `the engine gateway did not answer within ${OPS_TIMEOUT_MS}ms (${args.join(' ')})`,
-        ),
+        new Error(`the engine gateway did not answer within ${timeoutMs}ms (${args.join(' ')})`),
       );
-    }, OPS_TIMEOUT_MS);
+    }, timeoutMs);
 
     child.stdout.on('data', (c) => {
       stdout += c;
@@ -154,7 +181,7 @@ export async function opsRead<T = unknown>(
   for (const [k, v] of Object.entries(args)) {
     if (v !== undefined && v !== null && v !== '') argv.push('--arg', `${k}=${v}`);
   }
-  return parse<T>(await runPython(argv), `read ${view}`);
+  return parse<T>(await runPython(argv, OPS_READ_TIMEOUT_MS), `read ${view}`);
 }
 
 /**
@@ -168,8 +195,12 @@ export async function opsPreview<T = unknown>(
   action: string,
   payload: Record<string, unknown>,
 ): Promise<OpsResult<T>> {
+  // A preview only DESCRIBES the write, so it runs on the read ceiling. It never spawns the tool.
   return parse<T>(
-    await runPython(['act', action, '--payload', JSON.stringify(payload), '--preview']),
+    await runPython(
+      ['act', action, '--payload', JSON.stringify(payload), '--preview'],
+      OPS_READ_TIMEOUT_MS,
+    ),
     `preview ${action}`,
   );
 }
@@ -187,7 +218,10 @@ export async function opsAct<T = unknown>(
   confirm: string,
 ): Promise<OpsResult<T>> {
   return parse<T>(
-    await runPython(['act', action, '--payload', JSON.stringify(payload), '--confirm', confirm]),
+    await runPython(
+      ['act', action, '--payload', JSON.stringify(payload), '--confirm', confirm],
+      OPS_ACT_TIMEOUT_MS,
+    ),
     `act ${action}`,
   );
 }

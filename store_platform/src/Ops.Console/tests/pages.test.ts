@@ -62,7 +62,14 @@ describe('the console and the gateway agree on what exists', () => {
   function pythonRegistry(name: string): string[] {
     const block = gateway.split(`\n${name}`)[1] ?? '';
     const body = block.slice(0, block.indexOf('\n}'));
-    return [...body.matchAll(/^\s{4}"([a-z_.]+)":/gm)].map((m) => m[1]);
+    return [
+      ...[...body.matchAll(/^\s{4}"([a-z_.]+)":/gm)].map((m) => m[1]),
+      // A handler defined after the literal is registered on its own line instead. `job` is one:
+      // it needs the tool timeout, which is declared 600 lines below the READS table.
+      ...[...gateway.matchAll(new RegExp(`^${name}\\["([a-z_.]+)"\\]\\s*=`, 'gm'))].map(
+        (m) => m[1],
+      ),
+    ];
   }
 
   it('every view this console offers exists in the gateway', async () => {

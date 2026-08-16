@@ -26,6 +26,8 @@ export const VIEWS = [
   'config',
   'intents',
   'tools',
+  'job',
+  'undo',
   'catalogue',
   'pack',
   'shelf',
@@ -42,6 +44,7 @@ const ALLOWED_ARGS: Record<string, string[]> = {
   config: ['history_limit'],
   intents: ['limit'],
   pack: ['id'],
+  job: ['job'],
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
