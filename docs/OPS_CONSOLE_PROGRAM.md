@@ -1272,7 +1272,8 @@ matching the CLI). The same script had taken 239.9s cold an hour earlier. A run 
 two minutes cannot distinguish a fixed ceiling from a lucky one, so the fake-interpreter tests are
 the proof and the live run is only evidence that the door still opens.
 
-Three comments named `scripts/run_ops_console.sh`, which is not on disk — including the error text
+Three comments named `scripts/run_ops_console.sh`, which is not on disk (doc-lint-ok: that is the
+point of the sentence) — including the error text
 an operator sees when `PROSPECTOR_PYTHON` is unset, which told them to run a missing file. They now
 name `npm run dev` / `npm start` and the launchd plist. (`scripts/install_control_center_agent.sh`,
 also referenced, does exist and installs the SEPARATE Streamlit `com.prospector.control-center`
@@ -1291,7 +1292,8 @@ request shows a spinner, dies with the tab, and cannot be checked from a second 
   The new session is load-bearing: §14.14 made the console kill the whole process GROUP on timeout,
   so a worker in the gateway's group would be killed with it.
 - **The worker writes the second receipt.** `_run_tool_job` runs the tool at `_TOOL_TIMEOUT_S` and
-  appends a receipt to `store/ops/intents.jsonl` with `state` `finished` or `timed_out`, the exit
+  appends a receipt to `store/ops/intents.jsonl` (doc-lint-ok: untracked runtime state) with
+  `state` `finished` or `timed_out`, the exit
   code, `took_s`, the undo id from the snapshot, and the last 60 lines of output. A timeout is
   reported as `timed_out`, never as an exit-code failure — the tool wrote whatever it wrote before
   the kill, and "we stopped waiting" is a different fact from "it failed".
