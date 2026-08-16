@@ -59,11 +59,39 @@ RULES
 Return JSON: {{"one_liner": "<the rewritten line>"}}"""
 
 
-def breaches(title: str, one_liner: str) -> list[str]:
-    """The errors the publish gate would raise on this row today."""
+def breaches(title: str, one_liner: str) -> list[tuple[str, str]]:
+    """The errors the publish gate would raise on this row today, each tagged with the
+    FIELD it came from.
+
+    Tagged because the row has two shelf strings and they fail independently: the first run
+    of this sweep printed "second person on the shelf" twice against
+    `Printed, weatherproof bin store signs made for one specific block of flats` — a line
+    with no second person in it at all. Both findings were about its TITLE. An untagged
+    report reads as a defect in the line the operator is looking at, and sends the rewrite
+    at the wrong string."""
     fields = {"title": title or "", "oneLine": one_liner or ""}
-    return [p["detail"] for p in check_shelf_copy(fields, block=True)
-            if p.get("severity") == "error"]
+    seen, out = set(), []
+    for p in check_shelf_copy(fields, block=True):
+        if p.get("severity") != "error":
+            continue
+        key = (p.get("where") or "?", p["detail"])
+        if key not in seen:
+            seen.add(key)
+            out.append(key)
+    return out
+
+
+def voice_breaches(one_liner: str) -> list[str]:
+    """The subset a REWRITE of the one-liner can actually clear: the founder's two, second
+    person and a bare opener.
+
+    An initialism is deliberately not here. `PA RTY-100` and `British Standard BS 4142`
+    both trip the initialism rule, and neither is a voice defect — spelling those out is a
+    judgement about the term, not about who the sentence is addressed to, and asking a
+    cheap brain to fix it while it rewords is how a rewrite invents an expansion. They are
+    reported and left."""
+    return [d for f, d in breaches("", one_liner)
+            if "second person" in d or "opens on" in d]
 
 
 def listed_ids() -> set[str]:
@@ -102,7 +130,7 @@ def rewrite_one(op, title: str, line: str) -> str | None:
     new = re.sub(r"\s+", " ", str(new)).strip().strip('"')
     if not new:
         return None
-    if breaches(title, new):
+    if voice_breaches(new):
         print(f"    rewrite still breaches, keeping the original: {new!r}")
         return None
     return new
@@ -135,7 +163,12 @@ def main() -> int:
 
     rows = live_rows()
     bad = [(cid, t, o, c, b) for cid, t, o, c in rows if (b := breaches(t, o))]
-    print(f"live packs: {len(rows)}   defective shelf copy: {len(bad)}")
+    # Split by what a rewrite can reach. A row whose ONLY breach is its title is reported
+    # and skipped: rewriting the one-liner cannot clear it, and spending a call to find
+    # that out — 44 rows' worth on the first run — is the whole cost of the sweep.
+    fixable = [r for r in bad if voice_breaches(r[2])]
+    print(f"live packs: {len(rows)}   defective: {len(bad)}   "
+          f"one-liners a rewrite can fix: {len(fixable)}")
     if not bad:
         return 0
 
@@ -161,11 +194,11 @@ def main() -> int:
             return 1
 
     fixed = 0
-    for cid, title, one, created, why in bad:
+    for cid, title, one, created, why in (fixable if args.fix else bad):
         print(f"\n{cid}  listed from {created[:10]}")
         print(f"  OLD: {one}")
-        for w in why:
-            print(f"   ! {w.split(':')[0]}")
+        for field, detail in why:
+            print(f"   ! [{field}] {detail.split(':')[0]}")
         if not args.fix:
             continue
         if args.limit and fixed >= args.limit:
@@ -177,7 +210,7 @@ def main() -> int:
             fixed += 1
             print(f"  NEW: {new}")
     if args.fix:
-        print(f"\nrewritten: {fixed} of {len(bad)}")
+        print(f"\nrewritten: {fixed} of {len(fixable)}")
     return 0
 
 
