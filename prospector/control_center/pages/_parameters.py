@@ -306,6 +306,24 @@ def _render_retrieval(cfg: dict):
     _update_staged(cfg, "retrieval.results_per_query", new_rpq)
     _update_staged(cfg, "retrieval.search_retries", new_retries)
 
+    # THE COOKIE-BANNER SWITCH. On by default in config.yaml, exposed here because the failure
+    # it prevents is visible to buyers and the operator should not need a source edit and a
+    # daemon restart to turn it off. A page whose banner survives extraction hands the verdict
+    # brain 600 chars of cookie notice, and the check then rules `unverifiable` on evidence we
+    # never gave it -- the live landing page ran for a day saying the ASHE earnings tables
+    # "contain only cookie consent screens with no actual wage data".
+    # Turning it OFF is a real choice, not a footgun: the stripping is heuristic, so if it ever
+    # starts eating real prose an operator can stop it here in one click and the engine keeps
+    # running on whole pages.
+    new_strip = st.checkbox(
+        "Strip cookie banners from fetched pages",
+        value=bool(retr.get("strip_consent_banners", False)),
+        help="Removes consent widgets and banner sentences before the verdict brain reads the "
+             "passage. Measured 2026-08-16: 76 of 43,673 stored passages open with a banner "
+             "inside the 600 chars the brain reads, including 12.3% of everything fetched from "
+             "ons.gov.uk. Off means pages are stored exactly as fetched.")
+    _update_staged(cfg, "retrieval.strip_consent_banners", new_strip)
+
 
 # ---------------------------------------------------------------------------
 # Ambition lanes

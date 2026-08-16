@@ -578,8 +578,116 @@ def _extract_published_at(doc) -> Optional[str]:
 _MIN_PAGE_TEXT = 200
 
 
+#: Sentences carrying one of these read as a cookie/consent banner and never as evidence.
+#: Deliberately phrases, not the bare word "cookie": a page about cookie law, or an ICO ruling
+#: on consent, is a legitimate source and says "cookie" constantly.
+_CONSENT_PHRASES = [
+    r"cookies are small (?:text )?files",
+    r"cookies on [a-z0-9.\-]+\.(?:gov\.uk|co\.uk|com|org|net|uk)",
+    r"we use (?:some )?(?:essential|necessary|strictly necessary) cookies",
+    r"(?:essential|necessary) cookies to make (?:this|our) (?:website|site) work",
+    r"(?:we(?:'d| would) like to )?set additional cookies",
+    r"we use cookies",
+    r"(?:accept|reject|allow|decline) (?:all )?(?:additional |non-essential )?cookies",
+    r"cookie (?:settings|preferences|policy|consent|choices|banner)",
+    r"manage (?:your )?(?:cookies|cookie preferences)",
+    r"your (?:privacy|cookie) choices",
+    r"(?:enable|turn on) javascript",
+    r"javascript is (?:disabled|required|turned off)",
+    r"checking your browser",
+    r"verify (?:that )?you are (?:a )?human",
+]
+_CONSENT_RX = re.compile("|".join(_CONSENT_PHRASES), re.I)
+
+#: Attribute tokens a consent widget announces itself with, including the common vendor CMPs.
+#: Used only for the DOM pass, where a short matching container can be dropped outright.
+_CONSENT_ATTR_TOKENS = ("cookie", "consent", "gdpr", "onetrust", "cookiebot", "didomi",
+                        "usercentrics", "quantcast", "klaro", "osano", "trustarc")
+_LOWER = "translate(@{attr},'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')"
+_CONSENT_XPATH = "//*[" + " or ".join(
+    f"contains({_LOWER.format(attr=attr)},'{tok}')"
+    for attr in ("id", "class") for tok in _CONSENT_ATTR_TOKENS
+) + "]"
+
+#: A consent container is SHORT. Above this many characters the element is the page's actual
+#: subject (iubenda's home page, an ICO guidance note, Google's "manage your cookies" help
+#: article), and dropping it would delete the evidence rather than the furniture.
+CONSENT_CONTAINER_MAX_CHARS = 2_000
+
+#: If removing consent sentences would take more than this share of a passage, the page really
+#: is a consent wall or really is about cookies. Leave it whole either way: a wall must stay
+#: visibly empty so the check rules `unverifiable` honestly, and a page about cookie law must
+#: keep the sentences that make it a source.
+CONSENT_MAX_REMOVED_SHARE = 0.6
+
+
+def strip_consent_sentences(text: str) -> str:
+    """Drop the sentences of `text` that are cookie/consent banner boilerplate.
+
+    THE DEFECT THIS CLOSES. `select_passage` anchors the stored passage on the window holding
+    the most query terms, but a consent banner contains none of them, so on a page whose banner
+    survives extraction the anchor finds nothing and falls back to the head slice -- which IS
+    the banner. The verdict brain then reads 600 chars of cookie notice and rules the check
+    `unverifiable`, correctly, on evidence we never actually gave it.
+
+    MEASURED 2026-08-16 over 43,673 stored passages in `store/dossiers/`: 76 open with a banner
+    inside the 600 chars the verdict reads, 62 of them within the first 200 chars. In aggregate
+    that is 0.2%, which is why this is a small fix -- but it is not spread evenly. It is 8 of 65
+    passages from ons.gov.uk (12.3%) and 5 of 225 from legislation.gov.uk (2.2%), which are
+    precisely the authoritative sources the payer-solvency and legality checks depend on. One of
+    them reached the storefront: the live landing page spent a day telling buyers that the ASHE
+    earnings tables "contain only cookie consent screens with no actual wage data".
+
+    WHY SENTENCES AND NOT A BLOCK. There is no reliable marker for where a banner ENDS once the
+    markup is gone. A sentence carrying "we use some essential cookies" is never evidence no
+    matter where it sits, so removing the sentences is both simpler and safer than guessing a
+    boundary. The share guard above is what keeps a page ABOUT cookies intact.
+    """
+    if not text:
+        return text
+    # Split on sentence ends and on the blank-line boundaries that survive extraction; a banner
+    # is often a heading plus two sentences with no full stop between them.
+    parts = re.split(r"(?<=[.!?])\s+|\n{2,}", text)
+    kept = [p for p in parts if not _CONSENT_RX.search(p)]
+    if not kept:
+        return text
+    out = " ".join(" ".join(p.split()) for p in kept if p.strip())
+    if not out:
+        return text
+    removed_share = 1.0 - (len(out) / max(1, len(text)))
+    if removed_share > CONSENT_MAX_REMOVED_SHARE:
+        return text
+    return out
+
+
+def _strip_consent_elements(doc, etree) -> None:
+    """Remove consent widgets from a parsed document, in place, before any text is read.
+
+    Runs BEFORE `strip_consent_sentences` because it is the precise pass: a banner in a
+    `<div id="global-cookie-message">` is identified by what it IS, not by what it says, so it
+    goes without any phrase matching and without any risk to prose. Only SHORT containers are
+    dropped (`CONSENT_CONTAINER_MAX_CHARS`), which is what stops this deleting the body of a
+    page whose subject happens to be cookies.
+    """
+    try:
+        nodes = doc.xpath(_CONSENT_XPATH)
+    except (etree.XPathError, ValueError):
+        return
+    for node in nodes:
+        parent = node.getparent()
+        if parent is None:                      # never drop the root
+            continue
+        try:
+            if len(node.text_content()) > CONSENT_CONTAINER_MAX_CHARS:
+                continue
+            parent.remove(node)
+        except (ValueError, AttributeError):
+            continue
+
+
 def fetch_page(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
-               max_bytes: int = 400_000, query: Optional[str] = None
+               max_bytes: int = 400_000, query: Optional[str] = None,
+               strip_consent: bool = False
                ) -> tuple[Optional[str], Optional[str]]:
     """GET a grounding URL and return its readable text, or None.
 
@@ -657,6 +765,11 @@ def fetch_page(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
         etree.strip_elements(doc, "script", "style", "noscript", "nav", "header", "footer",
                              "aside", "form", "svg", "iframe", "button", "select", "template",
                              with_tail=False)
+        # The consent widget is furniture too, but it is named rather than tagged, so it
+        # survives the call above. Dropped here, while the DOM still says which element
+        # it is -- after `text_content()` there is nothing left to identify it by.
+        if strip_consent:
+            _strip_consent_elements(doc, etree)
         # Prefer the region the page itself declares as its content. Falling back to the whole
         # document is deliberate — plenty of real pages (gov.uk guidance among them) use none
         # of these landmarks, and refusing those would re-create the false-drop problem.
@@ -725,14 +838,21 @@ def fetch_page(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
         return None, published
     # Select the passage that answers the query rather than the top of the page. `query=None`
     # (any caller predating 2026-08-14) still gets the head slice, byte for byte.
+    if strip_consent:
+        # Second pass, on the text: a banner whose container carried no telltale id or
+        # class reaches this line intact, and it is the head of the string -- exactly
+        # where `select_passage` falls back to when the query matches nothing.
+        text = strip_consent_sentences(text)
     return (select_passage(text, max_chars, query=query) or None), published
 
 
 def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
-                    max_bytes: int = 400_000, query: Optional[str] = None) -> Optional[str]:
+                    max_bytes: int = 400_000, query: Optional[str] = None,
+                    strip_consent: bool = False) -> Optional[str]:
     """Text-only view of `fetch_page`, kept for callers that do not want the date."""
     return fetch_page(url, timeout_s=timeout_s, max_chars=max_chars,
-                      max_bytes=max_bytes, query=query)[0]
+                      max_bytes=max_bytes, query=query,
+                      strip_consent=strip_consent)[0]
 
 
 class PageTextEnricher(SearchProvider):
@@ -749,12 +869,13 @@ class PageTextEnricher(SearchProvider):
     """
     def __init__(self, inner: SearchProvider, *, timeout_s: float = 8.0,
                  max_workers: int = 8, min_gain_chars: int = 400,
-                 max_bytes: int = 400_000) -> None:
+                 max_bytes: int = 400_000, strip_consent: bool = False) -> None:
         self._inner = inner
         self._timeout_s = timeout_s
         self._max_workers = max(1, int(max_workers))
         self._min_gain = max(0, int(min_gain_chars))
         self._max_bytes = max_bytes
+        self._strip_consent = bool(strip_consent)
 
     @track_latency(name="page_fetch")
     def search(self, query: str, k: int = 4, max_chars: int = 1500) -> list[Source]:
@@ -778,7 +899,8 @@ class PageTextEnricher(SearchProvider):
         def _one(pair) -> tuple[Optional[str], Optional[str]]:
             ctx, s = pair
             return ctx.run(fetch_page, s.url, timeout_s=self._timeout_s,
-                           max_chars=max_chars, max_bytes=self._max_bytes, query=query)
+                           max_chars=max_chars, max_bytes=self._max_bytes, query=query,
+                           strip_consent=self._strip_consent)
 
         try:
             with ThreadPoolExecutor(max_workers=min(self._max_workers, len(sources))) as ex:
@@ -2255,7 +2377,9 @@ def make_provider(cfg, fixtures: dict | None = None) -> SearchProvider:
                                 timeout_s=getattr(r, "fetch_timeout_s", 8.0),
                                 max_workers=getattr(r, "fetch_max_workers", 8),
                                 min_gain_chars=getattr(r, "fetch_min_gain_chars", 400),
-                                max_bytes=getattr(r, "fetch_max_bytes", 400_000))
+                                max_bytes=getattr(r, "fetch_max_bytes", 400_000),
+                                strip_consent=bool(
+                                    getattr(r, "strip_consent_banners", False)))
     # `_pinned` bypasses the cross-tick DiskCache. Golden-set queries are stable strings,
     # and store/_cache is full of entries written by earlier UNPINNED runs against live DDG
     # and Exa — so a pinned run would be served yesterday's live web under a fixture chain,
