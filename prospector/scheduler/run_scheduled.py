@@ -904,6 +904,29 @@ def _decay_per_tick(cfg) -> int:
         return _DECAY_PER_TICK_DEFAULT
 
 
+def _decay_sweep_budget(cfg) -> int:
+    """How many rows THIS process may re-verify: `_decay_per_tick`, or 0 in producer mode.
+
+    THE SWEEP IS MOAT WORK, AND THE PRODUCER OWNS NO MOAT WORK. It is the same class as the
+    drain — `run_decay_sweep` re-verifies SLA-expired PASSes through the full verdict chain —
+    so leaving it on the producer's tick left the split half-built: the tick would still block
+    on the moat's clock, the one thing the split exists to end. Not a small residue either. At
+    the worst measured vet (4127s, 2026-08-15) two rows is 8254s against the 10800s tick
+    deadline, so the sweep alone can take three quarters of the budget that was supposed to
+    belong to generation. `prospector/consumer.py` runs it instead, on its own cadence.
+
+    THE UNLIST DRAIN IS NOT GATED, AND MUST NEVER BE. `_decay_pass` calls `_unlist_pass`
+    outside its `if n_decay`, so a producer returning 0 here still pulls KILLed packs off sale
+    every tick. The asymmetry is the point: the sweep is expensive LLM work that can wait for
+    the half of the estate that owns a brain, while the unlist drain is a cheap one-way
+    actuator whose cost when skipped is a killed pack still taking money — six of them,
+    measured 2026-08-09. It is safe in both roles at once by construction, because it can only
+    ever set `isListed: false` and never charges anyone, so both halves running it costs a
+    wasted round trip and nothing worse.
+    """
+    return 0 if producer_mode(cfg) else _decay_per_tick(cfg)
+
+
 #: `tools/unlist_killed.py` needs the Store.Api internal key, which is exactly why the
 #: unattended re-vet sweep does not call Store.Api itself. Running it as a bounded subprocess
 #: preserves that boundary: the sweep stays credential-free, the drain is a separate idempotent
@@ -1549,12 +1572,27 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
             deadline.daemon = True
             deadline.start()
             try:
-                resumed = _drain_pass(cfg, _drain_only_resume_per_tick(cfg))
+                # NOT IN PRODUCER MODE. Everything above this line argues that a brake which
+                # also stopped the drain would freeze the number it is waiting on — and that is
+                # exactly right for the classic single-process tick, where this branch is the
+                # daemon's whole workload. In a SPLIT estate the argument inverts: the consumer
+                # is already draining, continuously and with no deadline, so the number goes
+                # down whether or not the producer helps. What draining here would actually buy
+                # is the one thing the split exists to remove — the producer back on the moat's
+                # clock, for up to the full 3h deadline, in precisely the situation (a queue
+                # deeper than the cap) where the moat is already the bottleneck. A second
+                # drainer does not make a saturated brain faster.
+                #
+                # So the producer's brake is a plain stop: no generation, no vetting, and the
+                # unlist drain below still runs. It self-releases under the cap on the
+                # consumer's progress rather than its own.
+                resumed = None if producer_mode(cfg) else _drain_pass(
+                    cfg, _drain_only_resume_per_tick(cfg))
                 # Inside the deadline guard, for the reason spelled out above it: this branch is
                 # the daemon's entire workload while the brake is engaged, and `_decay_pass`
                 # swallows every exception by design, so an uncovered sweep could wedge the tick
                 # invisibly.
-                decayed = _decay_pass(cfg, _decay_per_tick(cfg))
+                decayed = _decay_pass(cfg, _decay_sweep_budget(cfg))
             finally:
                 deadline.cancel()
         tick["result"] = {"dossiers": 0, "resumed": resumed, "decayed": decayed}
@@ -1586,7 +1624,9 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
             # same class as the drain, and it must run on a normal tick too — a decay rail that
             # only fired while the generation brake was engaged would be as good as unwired for any
             # week the brake never engages, which is the failure this whole change exists to fix.
-            decayed = _decay_pass(cfg, _decay_per_tick(cfg))
+            # `_decay_sweep_budget` returns 0 in producer mode: the SWEEP is moat work that
+            # belongs to the consumer, while the unlist drain inside `_decay_pass` still runs.
+            decayed = _decay_pass(cfg, _decay_sweep_budget(cfg))
             if isinstance(tick.get("result"), dict) and decayed is not None:
                 tick["result"]["decayed"] = decayed
             logger.info("Tick complete: %s", tick["result"])

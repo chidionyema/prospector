@@ -58,10 +58,12 @@ holds identically whether this process sleeps for 300s or dies and comes back.
 """
 from __future__ import annotations
 
+import json
 import logging
 import signal
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Callable, Optional
 
 logger = logging.getLogger("prospector")
@@ -102,6 +104,12 @@ class ConsumerConfig:
     #: pass an integer; nothing else should.
     max_passes: Optional[int] = None
     publish: bool = False
+    #: How often the consumer runs the SLA decay sweep, in seconds. It is a cadence and not a
+    #: per-pass job because the consumer cycles far faster than the 2h tick that used to own
+    #: this: run per pass and a bounded 2-row sweep becomes a continuous re-vet of the whole
+    #: published catalogue, at full moat cost, competing with the drain it is supposed to be
+    #: secondary to. Defaults to the tick interval it inherited the job from.
+    decay_interval_s: float = 7200.0
 
 
 def consumer_config(cfg) -> ConsumerConfig:
@@ -139,7 +147,91 @@ def consumer_config(cfg) -> ConsumerConfig:
         busy_s=_num("busy_s", 0.0),
         idle_s=_num("idle_s", 60.0),
         blocked_s=_num("blocked_s", 300.0),
+        decay_interval_s=_num("decay_interval_s", 7200.0),
     )
+
+
+#: Where the consumer records that it attempted a sweep. A FILE and not an in-process timer,
+#: because `KeepAlive` respawns this process: an in-memory "last swept" resets on every crash,
+#: so a consumer crash-looping at the plist's 120s ThrottleInterval would fire a full moat
+#: sweep every two minutes — a cost bug that only appears in the failure case, which is the
+#: worst place to keep one.
+_DECAY_MARKER_FILENAME = "consumer_decay.json"
+
+
+def _decay_marker(cfg) -> Path:
+    from .scheduler import paths as _paths
+    return _paths.scheduler_dir(cfg) / _DECAY_MARKER_FILENAME
+
+
+def _decay_due(cfg, conf: ConsumerConfig, *, now: float | None = None) -> bool:
+    """Is the SLA sweep due? True on the first run, and every `decay_interval_s` after.
+
+    An unreadable or absent marker reads as DUE. That is the safe direction here and the
+    opposite of the pause probe's: skipping a sweep silently lets an expired PASS keep selling
+    on evidence nobody has rechecked, while running one too often costs a bounded 2 rows.
+    """
+    if conf.decay_interval_s <= 0:
+        return False
+    now = time.time() if now is None else now
+    try:
+        raw = json.loads(_decay_marker(cfg).read_text())
+        return (now - float(raw["at"])) >= conf.decay_interval_s
+    except Exception:  # noqa: BLE001 — missing, unparsable or wrong-shaped all mean "due"
+        return True
+
+
+def _stamp_decay(cfg, *, now: float | None = None) -> None:
+    """Record the ATTEMPT, before the sweep runs, never after.
+
+    "Attempted at" rather than "succeeded at" is deliberate: a sweep that raises has already
+    spent whatever it spent, and a marker written only on success would retry it every cycle.
+    The interval retries anyway, so the cost of stamping early is at most one delayed sweep and
+    the cost of stamping late is an unbounded retry loop against a failing moat.
+    """
+    try:
+        path = _decay_marker(cfg)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"at": time.time() if now is None else now}))
+    except OSError as exc:
+        # Not fatal: the consumer's job is draining, and a sweep that runs too often is a cost
+        # problem rather than a correctness one. Logged so it cannot be silent.
+        logger.warning("consumer: could not stamp the decay marker (%s)", exc)
+
+
+def _maybe_decay(cfg, conf: ConsumerConfig) -> Optional[dict]:
+    """Run the SLA decay sweep if it is due AND this estate is actually split.
+
+    GATED ON `producer_mode` SO THE SWEEP HAS EXACTLY ONE OWNER. In the classic single-tick
+    deployment the scheduler still runs it (`run_scheduled._decay_sweep_budget` returns the
+    full budget), so a consumer loaded alongside — which the plist header calls "safe but
+    pointless" — would otherwise double-sweep: two processes re-verifying the same expired
+    PASSes at full moat cost, and each stamping a marker the other does not read.
+
+    Never raises. `_decay_pass` already swallows its own failures by design; this adds the
+    same guarantee around the config read and the import, because a consumer that dies on a
+    secondary job has abandoned the queue, which is the primary one.
+
+    NOT-DUE AND BROKEN ARE DIFFERENT RETURN VALUES, and that is the whole contract of the
+    handler below. `None` means "nothing to do" — not producer mode, or inside the interval.
+    A failure returns `{"error": ...}`, because the caller's only question is which of the two
+    it got: a sweep that throws every cycle and returns `None` is byte-identical to a healthy
+    estate between intervals, so SLA re-verification would stop for good while the loop kept
+    reporting clean. The log is not enough. The marker is stamped BEFORE the sweep, so after a
+    crash the next cycle is genuinely not due, and nothing downstream would ever ask again.
+    """
+    try:
+        from .scheduler.run_scheduled import _decay_pass, _decay_per_tick, producer_mode
+        if not producer_mode(cfg) or not _decay_due(cfg, conf):
+            return None
+        _stamp_decay(cfg)
+        out = _decay_pass(cfg, _decay_per_tick(cfg))
+        if out is not None:
+            logger.info("consumer: decay sweep %s", out, extra={"decay": out})
+        return out
+    except Exception as exc:  # noqa: BLE001 — a secondary job must never end the loop
+        logger.error("consumer: decay sweep failed (loop continues): %s", exc, exc_info=True)
+        return {"error": f"{type(exc).__name__}: {exc}"}
 
 
 # --------------------------------------------------------------------------- #
@@ -252,7 +344,8 @@ def run_consumer(cfg, *, batch: int | None = None, publish: bool = False,
     from .run import resume_deferred
 
     totals = {"passes": 0, "attempted": 0, "resumed": 0, "leased_elsewhere": 0,
-              "blocked": 0, "idle": 0, "errors": 0, "stopped_because": ""}
+              "blocked": 0, "idle": 0, "errors": 0, "decay_sweeps": 0,
+              "stopped_because": ""}
     #: Consecutive cycles that were refused before a pass could start. A blocked cycle does
     #: NOT spend the pass budget — a PAUSE lifted between two cycles must still leave `--once`
     #: with its one pass to run — but it cannot be free either, or a bounded run never returns:
@@ -288,6 +381,21 @@ def run_consumer(cfg, *, batch: int | None = None, publish: bool = False,
             continue
 
         blocked_streak = 0
+        # BEFORE the drain and outside the `attempted == 0` idle path, so an empty queue still
+        # gets its sweep. Decay is about packs ALREADY on sale, so tying it to the arrival of
+        # new work would switch the shelf's own SLA off exactly when the producer stopped —
+        # i.e. it would be least alive in the situation where the catalogue is most stale.
+        decayed = _maybe_decay(cfg, conf)
+        if decayed is not None:
+            # A broken sweep is counted as an ERROR, never as a sweep. Counting both together
+            # would make the totals report the loop's INTENT rather than its effect, and this
+            # is the one job whose failure is otherwise invisible: the marker is already
+            # stamped, so a crashed sweep is silently not-due for the next full interval.
+            if decayed.get("error"):
+                totals["errors"] += 1
+            else:
+                totals["decay_sweeps"] += 1
+
         totals["passes"] += 1
         try:
             out = resume_deferred(cfg, limit=batch, publish=publish)

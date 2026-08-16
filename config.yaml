@@ -2138,7 +2138,18 @@ schedule: { cadence: daily, batch_size: 50, backlog_cap: 0, max_resume_attempts:
             # producer tick is all-DEFER by construction, so `alerts_for_tick` suppresses the
             # page that would once have fired ("all N candidates DEFERRED"). The consumer's own
             # liveness is what to watch, not the producer's ticks.
-            producer_mode: false,
+            #
+            # LIVE 2026-08-15, together with com.prospector.consumer. The generation cadence is
+            # deliberately UNCHANGED for the first window (--interval 7200 in the plist argv):
+            # the split removes the tick's deadline pressure, it does not by itself tell us how
+            # fast the consumer drains, and lowering the interval before that is measured would
+            # be trading a known cadence for a guess. `backlog_cap` stays 0 — see the note above
+            # it: a stock brake at 100 is what suppressed generation for weeks by controlling on
+            # the wrong variable, and a continuous consumer does not make a stock brake correct.
+            # What bounds the producer is unchanged and rate-shaped: the grounding gate and the
+            # daily spend cap. Queue DEPTH over the first window is the measurement that would
+            # justify touching either number.
+            producer_mode: true,
             market_rotation: "us-tx,us-ca,us-fl,us-ny,uk,us-il,us-pa,us-oh,us-ga,uk" }
 
 # The CONSUMER loop (`python -m prospector.run consume`) — the vetting half of the
@@ -2160,6 +2171,21 @@ consumer:
   # re-scans the spend ledger — measured at 108s on a 157 MB one — so polling it hard would
   # spend more on asking than the pass would have spent working.
   blocked_s: 300
+  # How often the consumer runs the SLA decay sweep (re-verify expired PASSes, then unlist
+  # whatever that killed). ONLY ACTIVE WHEN `schedule.producer_mode` IS TRUE — the sweep is
+  # full moat work, so it belongs to whichever half owns a brain, and in the classic single-
+  # tick deployment the scheduler still runs it (`run_scheduled._decay_sweep_budget`).
+  #
+  # A cadence rather than a per-pass job because this loop cycles far faster than the 2h tick
+  # it inherited the sweep from: run it every pass and a bounded `schedule.decay_per_tick` (2)
+  # becomes a continuous re-vet of the whole published catalogue, at full moat cost, competing
+  # with the drain it is meant to be secondary to. 7200 = the tick interval, so the sweep rate
+  # is unchanged by the split; only its owner moved. 0 disables it.
+  #
+  # The cadence is persisted to store/scheduler/consumer_decay.json, not held in memory: the
+  # plist sets KeepAlive, so an in-process timer would reset on every respawn and a consumer
+  # crash-looping at the 120s ThrottleInterval would sweep every two minutes.
+  decay_interval_s: 7200
 
 spend:
   # BILLED money only — metered API providers (minimax, deepseek). This is the liability rail.
