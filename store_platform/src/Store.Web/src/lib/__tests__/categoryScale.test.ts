@@ -164,6 +164,11 @@ describe('the untagged pack renders no sector marker', () => {
    * again at 96px, so the 9 untagged packs of the 63 then live all wore the same grey briefcase.
    */
   const page = readSource('../../pages/index.tsx');
+  /* The dense row moved out of the page on 2026-08-15 (the founder's mobile brief: one Row
+     component shared by eight surfaces instead of a branch inside the catalogue page). Both
+     files are read because the guard this file protects now has to hold in both. */
+  const row = readSource('../../components/discovery/PackRow.tsx');
+  const cards = page + row;
 
   it('the sector chip is gated on `tagged`', () => {
     /*
@@ -181,14 +186,16 @@ describe('the untagged pack renders no sector marker', () => {
      * four places it appears. What this test protects has never been the operator -- it is that
      * no code path can reach the chip with an untagged category.
      */
-    expect(page, 'the chip must be behind a tagged guard').toMatch(
+    expect(cards, 'the chip must be behind a tagged guard').toMatch(
       /\{(?:cat|category)\.tagged (?:&&|\?)/,
     );
 
     // The row's empty branch must stay INVISIBLE, not merely empty: it exists to hold the
     // sector column open so the figure beside it lands on the same x, and a placeholder that
     // announced itself would read as a missing value rather than as alignment.
-    const placeholder = page.match(/<span className="hidden flex-none sm:block sm:w-44"[^>]*\/>/);
+    // The ROW moved out of this page on 2026-08-15 (`components/discovery/PackRow.tsx`), so its
+    // placeholder is read from there. The rule is unchanged; only the file it lives in moved.
+    const placeholder = row.match(/<span className="hidden flex-none sm:block sm:w-44"[^>]*\/>/);
     expect(placeholder?.[0], 'the row placeholder must be aria-hidden').toContain('aria-hidden');
   });
 
@@ -211,8 +218,8 @@ describe('the untagged pack renders no sector marker', () => {
      * defect being guarded against is a card with no sector AND no figure, and only one of those
      * two is visible in the source text.
      */
-    const cardStart = page.indexOf('function PackCard(');
-    expect(cardStart, 'function PackCard must be locatable for this assertion').toBeGreaterThan(-1);
+    const cardStart = page.indexOf('function PackSpotlight(');
+    expect(cardStart, 'function PackSpotlight must be locatable').toBeGreaterThan(-1);
     const cardEnd = page.indexOf('\nfunction ', cardStart + 1);
     const card = page.slice(cardStart, cardEnd === -1 ? undefined : cardEnd);
     const cardCode = card
@@ -255,10 +262,12 @@ describe('the untagged pack renders no sector marker', () => {
 
     // And the identity that does not depend on the sector at all: the pack's own figure, on
     // every variant. This is the part an untagged pack relies on.
+    // TWO variants now, in two files: the Spotlight here and the Row in `PackRow.tsx`. Was 3 --
+    // the `mid` weight was deleted with the tile-grid format (2026-08-15 brief).
     expect(
-      (cardCode.match(/<PackFigure\b/g) ?? []).length,
+      ((cardCode + row).match(/<PackFigure\b/g) ?? []).length,
       'every card variant must carry the pack figure',
-    ).toBe(3);
+    ).toBe(2);
   });
 
   it('an untagged pack still leads with a figure of its own', () => {
