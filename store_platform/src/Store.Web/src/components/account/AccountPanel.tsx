@@ -261,7 +261,10 @@ function OrdersTab() {
                   aria-hidden
                   className="w-12 shrink-0 self-stretch bg-brand-mark/10 text-brand-mark"
                 >
-                  <PackMark id={item.pack_id} emphasis />
+                  {/* `bleed` because the spine fixed the aspect ratio and left the ragged edge:
+                      bands of different lengths on a shared baseline read as a bar chart, on the
+                      one surface with nothing to measure. See PackMark's `bleed` docblock. */}
+                  <PackMark id={item.pack_id} emphasis bleed />
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
                   <div className="min-w-0">
