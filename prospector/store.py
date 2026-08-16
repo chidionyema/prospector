@@ -124,7 +124,33 @@ class Store:
         """
         conn = sqlite3.connect(str(self.db), timeout=10.0)
         conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=WAL")
+        # Set WAL only when it is not already set, and survive losing the race to set it.
+        #
+        # `timeout=10.0` above does NOT cover this statement, which is the whole defect: SQLite
+        # documents that changing the journal mode while another connection has the database open
+        # "returns SQLITE_BUSY immediately without invoking the busy handler". So the one statement
+        # here that needs a retry is precisely the one the timeout cannot help, and under any
+        # concurrency it raised `sqlite3.OperationalError: database is locked` out of `_connect` —
+        # i.e. out of `Store.__init__`, i.e. out of `import prospector.api` (api.py:22 builds a
+        # module-level Store). Found 2026-08-15 when `pytest.ini` began running the suite under
+        # `-n auto`: four xdist workers importing `tests/integration/test_api.py` at once, two of
+        # them losing the WAL conversion, so two workers collected the file and two did not and
+        # xdist aborted the whole run with "Different tests were collected between gw2 and gw3".
+        # That reads as a broken test suite; it is a real concurrency defect in the store, and the
+        # live daemon, the CLI and the API all open this same database.
+        #
+        # Reading the mode first is safe (a shared lock) and makes the attempt a cold-start-only
+        # event: journal mode is a durable property of the FILE, so once any connection has
+        # converted it, every later connection reads "wal" and never contends again.
+        if str(conn.execute("PRAGMA journal_mode").fetchone()[0] or "").lower() != "wal":
+            try:
+                conn.execute("PRAGMA journal_mode=WAL")
+            except sqlite3.OperationalError:
+                # Someone else holds the database open. Narrow on purpose: the ONLY thing lost is
+                # an optimisation another connection is in the middle of applying anyway, and the
+                # connection this returns is fully usable in the meantime. Swallowing anything
+                # wider would hide a genuinely unopenable database behind a pragma.
+                pass
         try:
             with conn:
                 yield conn
@@ -136,7 +162,33 @@ class Store:
             conn.execute(_CREATE_TABLE)
             # Migration: add any new columns that an old DB is missing.
             cols = {r[1] for r in conn.execute("PRAGMA table_info(dossiers)")}
-            for col, typ in [("one_liner", "TEXT"),
+            self._add_missing_columns(conn, cols)
+
+            # Create indexes AFTER columns are guaranteed to exist
+            conn.executescript(_CREATE_INDEXES)
+
+    def _add_missing_columns(self, conn: sqlite3.Connection, cols: set[str]) -> None:
+        """Bring the `dossiers` table up to date, tolerating a LOST migration race.
+
+        SQLite has no `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, so this is a check-then-act:
+        read the current columns, then alter. That is only safe if nothing else migrates in
+        between, and something does. `api.py` builds a module-level `Store` at import, so every
+        xdist worker opens this file at once — and in production the daemon, the CLI and the API
+        all do. Two openers that both read `cols` before either alters will both alter, and the
+        loser gets
+
+            sqlite3.OperationalError: duplicate column name: tombstone
+
+        out of `Store.__init__`, therefore out of `import prospector.api`. In CI that surfaced as
+        xdist aborting with "Different tests were collected between gw3 and gw1" — a message
+        naming neither the column nor the race, which is why this deserves its own handler rather
+        than a retry somewhere further out. (Same file, same import, same shape as the
+        `PRAGMA journal_mode=WAL` contention fixed in ba08b24; different statement.)
+
+        Losing the race is SUCCESS, not failure: the winner ran the identical DDL, so the
+        post-condition this method exists for — the column is there — holds either way.
+        """
+        for col, typ in [("one_liner", "TEXT"),
                                ("ambition_tier", "TEXT"),
                                ("structural_form", "TEXT"),
                                ("provisional", "INTEGER DEFAULT 0"),
@@ -189,11 +241,16 @@ class Store:
                                # whole tick, at per-row grain.
                                ("lease_owner", "TEXT"),
                                ("lease_until", "REAL")]:
-                if col not in cols:
-                    conn.execute(f"ALTER TABLE dossiers ADD COLUMN {col} {typ}")
-            
-            # Create indexes AFTER columns are guaranteed to exist
-            conn.executescript(_CREATE_INDEXES)
+            if col in cols:
+                continue
+            try:
+                conn.execute(f"ALTER TABLE dossiers ADD COLUMN {col} {typ}")
+            except sqlite3.OperationalError as e:
+                # Narrow on purpose. Only the lost race is tolerable; a typo in the DDL, a
+                # missing table or a locked database must still raise, or this handler quietly
+                # becomes "ignore schema errors" and the next migration fails silently.
+                if "duplicate column name" not in str(e).lower():
+                    raise
 
     # ------------------------------------------------------------------
     # Public API
@@ -451,6 +508,33 @@ class Store:
                 rows = conn.execute("SELECT * FROM dossiers").fetchall()
         return [dict(row) for row in rows]
 
+    def provisional(self) -> list[dict]:
+        """Return rows ruled by the emergency fallback tail (moat exhausted).
+
+        These are real-but-untrusted decisions (PASS or KILL) awaiting a moat re-vet.
+        `vet --resume` re-runs them so the trusted moat overwrites the cheap verdict."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM dossiers WHERE provisional = 1").fetchall()
+        return [dict(row) for row in rows]
+
+    # ------------------------------------------------------------------
+    # The queue lease
+    # ------------------------------------------------------------------
+    #
+    # A backlog row has always been selectable by anyone — `drainable()` is a SELECT, and
+    # nothing marked a row as taken. That was safe only because exactly one serialized tick
+    # ever ran, and it stops being safe the moment vetting is a continuously-running consumer
+    # or a second process. Two workers on one row is not merely wasted money: they race on
+    # `store.save`'s fixed temp path, on the stale-decision sweep that unlinks the OTHER
+    # decision's JSON, and — if both rule PASS — on a publish path that mints a Stripe Price
+    # from a check-then-act with no lock of its own.
+    #
+    # `drain_state` is an attempt COUNTER, not a lease: it records that a row was worked, after
+    # the fact. It cannot stop a second worker from starting.
+    #
+    # This is a compare-and-swap in one UPDATE. Atomic under WAL by the same transaction that
+
     def counts_by_decision(self) -> dict[str, int]:
         """`{decision: rows}` for the whole index, counted in SQL.
 
@@ -491,32 +575,6 @@ class Store:
                 " FROM dossiers", (now, now)).fetchone()
         return {k: int(row[k] or 0) for k in ("held", "expired", "unheld", "total")}
 
-    def provisional(self) -> list[dict]:
-        """Return rows ruled by the emergency fallback tail (moat exhausted).
-
-        These are real-but-untrusted decisions (PASS or KILL) awaiting a moat re-vet.
-        `vet --resume` re-runs them so the trusted moat overwrites the cheap verdict."""
-        with self._connect() as conn:
-            rows = conn.execute(
-                "SELECT * FROM dossiers WHERE provisional = 1").fetchall()
-        return [dict(row) for row in rows]
-
-    # ------------------------------------------------------------------
-    # The queue lease
-    # ------------------------------------------------------------------
-    #
-    # A backlog row has always been selectable by anyone — `drainable()` is a SELECT, and
-    # nothing marked a row as taken. That was safe only because exactly one serialized tick
-    # ever ran, and it stops being safe the moment vetting is a continuously-running consumer
-    # or a second process. Two workers on one row is not merely wasted money: they race on
-    # `store.save`'s fixed temp path, on the stale-decision sweep that unlinks the OTHER
-    # decision's JSON, and — if both rule PASS — on a publish path that mints a Stripe Price
-    # from a check-then-act with no lock of its own.
-    #
-    # `drain_state` is an attempt COUNTER, not a lease: it records that a row was worked, after
-    # the fact. It cannot stop a second worker from starting.
-    #
-    # This is a compare-and-swap in one UPDATE. Atomic under WAL by the same transaction that
     # already protects every other write here, needing no new dependency, no lock file and no
     # daemon — and, unlike an flock, it survives across machines and reboots because the state
     # lives in the row rather than in a process.
