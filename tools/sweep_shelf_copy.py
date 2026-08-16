@@ -188,8 +188,17 @@ def _new_facts(source: str, new: str) -> list[str]:
     # Compared on a five-character stem, because a faithful rewrite reworks the grammar:
     # `HMRC.` becomes `HMRC's` and `negotiate` becomes `negotiating`, and an exact-token
     # guard calls both of those inventions and blocks a clean line.
+    # A compound term is indexed whole AND in pieces. `Cal/OSHA` reaches this function as
+    # one whitespace token, normalises to `calosha`, and the rewrite's `Cal/OSHA` arrives
+    # as two matches, `Cal` and `OSHA` — so a source that plainly contains the term was
+    # read as containing neither half, and two good rewrites of `d6f72b9dc9a45c45` were
+    # refused for inventing a fact quoted in their own input.
     def _norm(s):
-        return {re.sub(r"[^a-z0-9£$%]", "", w) for w in s.lower().split()} - {""}
+        out = set()
+        for w in s.lower().split():
+            out.add(re.sub(r"[^a-z0-9£$%]", "", w))
+            out.update(re.split(r"[^a-z0-9£$%]+", w))
+        return out - {""}
 
     have = _norm(source)
 
