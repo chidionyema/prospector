@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
-import { PageHero, Section, CtaBand } from '@/components/marketing/blocks';
+import { PageHero, Section, CtaBand, HeroList } from '@/components/marketing/blocks';
 import { Seo } from '@/components/Seo';
 import { buttonClasses, Icon } from '@/components/ui';
 import { useCopyVariant } from '@/lib/useCopyVariant';
@@ -112,11 +112,28 @@ export default function HowItWorks() {
         description={variant.howItWorksSeoDescription}
       />
 
+      {/* THE ASIDE IS THE ATTACK LIST, and it is `refutation`, not `name`, on purpose.
+          The headline says every idea faces checks built to kill it, and until now the reader had
+          to scroll past a stat, a worked example and a disclosure before learning what any of them
+          were. `name` would have been a table of contents for the timeline below and would read as
+          the same list printed twice. `refutation` is the other face of each check -- the thing the
+          agent is trying to PROVE -- so the column states what the headline asserts, in the
+          headline's own register, while the timeline below keeps the names, the questions and the
+          worked kills. One vocabulary source either way: `COMMON_CHECKS`, which exists because this
+          page once carried its own and gave one gate three names across the site. Ordered, because
+          the run really is a sequence and it stops at the first hard failure. */}
       <PageHero
         width="6xl"
         eyebrow={variant.howItWorksEyebrow}
         title={variant.howItWorksTitle}
         lead={variant.howItWorksLead}
+        aside={
+          <HeroList
+            label="What each agent tries to prove"
+            ordered
+            items={COMMON_CHECKS.map((c) => c.refutation)}
+          />
+        }
       />
 
       {/*

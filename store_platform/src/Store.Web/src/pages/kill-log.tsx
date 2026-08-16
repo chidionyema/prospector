@@ -203,7 +203,25 @@ export default function KillLogPage({
       {/* Left-aligned, one column, no centred hero (spec §7.4). A centred 22ch headline over a
           centred 62ch paragraph over a centred stat row gives the reader three different left
           edges to find in the first screen of a page that is otherwise a table. */}
+      {/* TWO COLUMNS ON DESKTOP (2026-08-16, founder: "right first row/ish empty no content, looks
+          odd on desktop"). Same diagnosis as /ideas and /how-it-works -- a 3xl measure inside a 6xl
+          band leaves about 24rem of nothing to the right of the headline, and only above `lg`,
+          which is why the report was desktop-only. This page does not use `PageHero`, so it takes
+          the same grid by hand rather than adopting the component: the hero here is four blocks in
+          two registers, not a headline with a lead, and routing it through `PageHero` would mean
+          bending that component to a fifth shape for one caller.
+
+          WHAT MOVES IS THE CAVEAT, and nothing is written to fill the space. It is the one block
+          here in a different register -- a correction, in `text-meta`, qualifying the count above it
+          -- and it was set as a fourth paragraph in the same column, which is what buried it below
+          all three claims it corrects. Beside them it is read with them.
+
+          The mobile order changes slightly and deliberately: the caveat now falls after the chip row
+          instead of before it. Its own docblock's requirement is that the correction arrive before
+          the CLAIM IT CORRECTS -- the implied 1,364-row page -- and it still does, by a whole
+          screen, since the table is far below. */}
       <SectionBand bg="white" width="6xl" className="pt-14 pb-8 md:pt-20 md:pb-10">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,46rem)_minmax(0,1fr)] lg:items-start lg:gap-16">
         <div className="max-w-3xl">
           <p className="text-caption font-medium text-subtle">The kill log</p>
           {/* THE HERO: ONE COUNT. It read "1,364 killed. 80 survived.", and the second half was
@@ -220,17 +238,6 @@ export default function KillLogPage({
           <p className="mt-5 max-w-[60ch] text-body text-muted">
             Most ideas do not survive. Here is what we rejected, the reason each one failed, and
             the sources, so you can check the reasoning yourself.
-          </p>
-          {/* THE CAVEAT, AT THE TOP.
-              It used to sit below all the entries, under a homepage line promising the log "has
-              every one". A reader met an implied 1,330-row page, scrolled, and only then learned
-              what they were actually looking at. On the one page whose job is to prove we do not
-              overclaim, the correction has to arrive before the claim it corrects. */}
-          <p className="mt-4 max-w-[68ch] text-meta text-muted">
-            This page publishes {publishedKills} of those kills, not all {killed.toLocaleString('en-GB')}.
-            The rest were rejected on a low overall score, with no single finding behind it, so
-            there would be nothing here for you to read. Every kill below names the check it
-            failed and why, and{` ${withSource}`} of them link the source.
           </p>
           {/* Mono: both are counts, and the pair is the one place on the site where the rejection
               rate is stated as a measured quantity rather than a boast. */}
@@ -255,6 +262,25 @@ export default function KillLogPage({
               </span>
             ) : null}
           </div>
+        </div>
+
+        {/* THE CAVEAT. It used to sit below all the entries, under a homepage line promising the log
+            "has every one": a reader met an implied 1,330-row page, scrolled, and only then learned
+            what they were actually looking at. On the one page whose job is to prove we do not
+            overclaim, the correction has to arrive before the claim it corrects, so it came to the
+            top -- and then sat as a fourth paragraph in the same column, under the three claims it
+            qualifies. It is a different register from all of them. Here it is beside them.
+            `border-l` and `text-meta` are `HeroList`'s grammar, so the three heroes that gained a
+            right-hand column on 2026-08-16 read as one treatment. */}
+        <aside className="lg:pt-1">
+          <p className="text-caption font-medium text-subtle">What this page publishes</p>
+          <p className="mt-4 border-l border-border pl-4 text-meta leading-relaxed text-muted">
+            This page publishes {publishedKills} of those kills, not all {killed.toLocaleString('en-GB')}.
+            The rest were rejected on a low overall score, with no single finding behind it, so
+            there would be nothing here for you to read. Every kill below names the check it
+            failed and why, and{` ${withSource}`} of them link the source.
+          </p>
+        </aside>
         </div>
       </SectionBand>
 
