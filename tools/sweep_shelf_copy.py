@@ -124,25 +124,41 @@ def live_rows():
         con.close()
 
 
-def rewrite_one(op, title: str, line: str) -> str | None:
-    """One cheap call. Returns the new line only if it grades clean, else None."""
-    try:
-        got = op.complete_json(SYSTEM, USER.format(title=title, line=line))
-    except Exception as exc:  # an outage is not a verdict on the copy
-        print(f"    rewrite call failed: {exc}")
-        return None
-    new = (got or {}).get("one_liner", "") if isinstance(got, dict) else ""
-    new = re.sub(r"\s+", " ", str(new)).strip().strip('"')
-    if not new:
-        return None
-    if voice_breaches(new):
-        print(f"    rewrite still breaches, keeping the original: {new!r}")
-        return None
-    invented = _new_facts(f"{title} {line}", new)
-    if invented:
-        print(f"    rewrite invents {', '.join(invented)} — keeping the original: {new!r}")
-        return None
-    return new
+def rewrite_one(op, title: str, line: str, attempts: int = 2) -> str | None:
+    """Rewrite until it grades clean, or keep the original.
+
+    The second attempt is told WHY the first was refused. Four of the founder's twenty rows
+    came back unfixed on the first parallel run — including the two lines he opened with,
+    the stolen-tool claim and the Cal/OSHA citation — and a refusal we could name in one
+    clause was thrown away instead of being handed back. A retry that repeats the same
+    prompt is a coin flip; a retry that quotes the rejection is the cheapest correction
+    available, at one extra call on failures only."""
+    note = ""
+    for attempt in range(max(1, attempts)):
+        try:
+            got = op.complete_json(SYSTEM, USER.format(title=title, line=line) + note)
+        except Exception as exc:  # an outage is not a verdict on the copy
+            print(f"    rewrite call failed: {exc}")
+            return None
+        new = (got or {}).get("one_liner", "") if isinstance(got, dict) else ""
+        new = re.sub(r"\s+", " ", str(new)).strip().strip('"')
+        if not new:
+            return None
+
+        why = ""
+        if voice_breaches(new):
+            why = ("it still addresses the reader as 'you' or opens on a pronoun "
+                   "(it, we, this, they)")
+        elif (invented := _new_facts(f"{title} {line}", new)):
+            why = (f"it introduced {', '.join(invented)}, which appear nowhere in the "
+                   f"original — use only the words and facts already there")
+        if not why:
+            return new
+
+        print(f"    attempt {attempt + 1} refused ({why.split(',')[0]}): {new!r}")
+        note = (f"\n\nYour previous answer was REJECTED because {why}. It was:\n{new}\n"
+                f"Rewrite it again, fixing exactly that and changing nothing else.")
+    return None
 
 
 #: Words a rewrite may introduce without inventing anything: they carry no fact.
