@@ -745,6 +745,37 @@ export function cardHeading(pack: CardHeadingInput): CardHeading {
   return { name, heading: name, eyebrow: null, sub: descriptor };
 }
 
+/**
+ * THE TRAILING AUDIENCE CLAUSE, DROPPED IN LISTS ONLY.
+ *
+ * Titles on this shelf share one construction: a subject, then "for UK <audience>". Three
+ * consecutive rows read "Freelance pay benchmarks for UK...", "Weekly judgment brief for UK..."
+ * and "HMRC £100 late-filing penalty appeals for UK...". They ellipsed at the identical word, so
+ * a list of distinct packs looked like one item repeated (founder, 2026-08-16, item 5).
+ *
+ * Widening the column does not fix that. The clause is the LAST thing on every title, so any
+ * cut lands on it and the rows stay identical where the eye scans first. Removing it in list
+ * contexts is what makes the rows differ, and it costs the reader nothing: the category label
+ * sits directly beneath the title and already names the audience.
+ *
+ * LISTS ONLY. `/pack/[id]` renders `cardHeading().heading` untouched, so the buyer reads the
+ * whole title on the page where they decide to buy. This function is a RENDER-time trim; it
+ * never touches stored copy, so nothing in the pack, the manifest or the zip changes.
+ *
+ * Two guards, both there to stop it eating a title:
+ *   - Only a TRAILING clause, and only for a market this shop actually sells to.
+ *   - Only when at least three words survive. "Compliance for UK landlords" keeps its clause,
+ *     because "Compliance" alone is not a title.
+ */
+const LIST_AUDIENCE_TAIL = /\s+for\s+(?:the\s+)?(?:UK|US|U\.K\.|U\.S\.)\b.*$/i;
+
+export function listHeading(heading: string): string {
+  const trimmed = (heading ?? '').trim();
+  const stripped = trimmed.replace(LIST_AUDIENCE_TAIL, '').trim();
+  if (stripped === trimmed) return trimmed;
+  return stripped.split(/\s+/).length >= 3 ? stripped : trimmed;
+}
+
 // ── Discovery v2: intent extraction ──────────────────────────────────────
 
 /**
