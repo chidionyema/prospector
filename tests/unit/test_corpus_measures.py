@@ -19,6 +19,7 @@ from tools.corpus.build_ours import document
 from tools.corpus.load import load_corpus
 from tools.corpus.text import (
     MATTR_WINDOW,
+    classify_item,
     log_likelihood,
     log_ratio,
     mattr,
@@ -203,6 +204,37 @@ def test_our_documents_keep_paragraph_breaks():
     d = {"candidate": {"title": "T", "one_liner": "O"},
          "checks": [{"rationale": "R."}], "adversarial": {}}
     assert len(paragraphs(document(d))) == 3
+
+
+# --------------------------------------------- form is a target, subject matter is not
+
+def test_the_sectors_we_write_about_can_never_become_a_voice_rule():
+    """THE CARVE-OUT. We are not adjudicating complaints, so the human corpus's subject
+    matter is not a target. These four are the top content rows in the keyness table; a rule
+    cut from them would ban what this engine exists to write about."""
+    for topic in ("uk", "nhs", "ai", "data", "tool", "solo", "buyer", "pricing"):
+        assert classify_item(topic) == "content"
+
+
+def test_our_own_machinery_is_actionable_not_subject_matter():
+    """`passages` is our largest keyness row at 1,872x the human rate. It is not a topic —
+    it is us describing our retrieval to a reader who wants to know what is true."""
+    for item in ("passages", "the passages", "none of the passages", "no passage",
+                 "passages show", "cited in"):
+        assert classify_item(item) == "meta"
+
+
+def test_function_word_patterns_are_form():
+    """Closed-class items are how we build sentences, which is the pattern to adopt."""
+    for item in ("none of", "but none", "is a", "and a", "every", "who"):
+        assert classify_item(item) == "form"
+
+
+def test_one_content_word_makes_the_whole_item_content():
+    """A phrase is only form if EVERY token is closed-class. Otherwise the topic rides in
+    on the back of the function words around it."""
+    assert classify_item("none of the nhs trusts") == "content"
+    assert classify_item("") == "content"
 
 
 # ------------------------------------------------- vocabulary, with length controlled

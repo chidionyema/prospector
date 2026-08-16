@@ -25,7 +25,22 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.corpus.load import load_corpus  # noqa: E402
-from tools.corpus.text import log_likelihood, log_ratio, ngrams, tokens  # noqa: E402
+from tools.corpus.text import (  # noqa: E402
+    classify_item,
+    log_likelihood,
+    log_ratio,
+    ngrams,
+    tokens,
+)
+
+#: Print order, and the order of how actionable a row is. `content` is printed last and
+#: exists to be READ, never to be turned into a rule — see text.FUNCTION_WORDS.
+CATEGORIES = ("meta", "form", "content")
+CATEGORY_NOTE = {
+    "meta": "we describe our own retrieval instead of the world — actionable in any genre",
+    "form": "how we build sentences — this is the human pattern to adopt",
+    "content": "what we write ABOUT — NOT a target, we are not adjudicating complaints",
+}
 
 #: G2 = 15.13 is p < 0.0001 at 1 degree of freedom. Below that, the difference is not
 #: distinguishable from sampling noise and has no business in a style rule.
@@ -57,7 +72,8 @@ def compare(ours: list[str], human: list[str], n: int, min_freq: int) -> list[di
         lr = log_ratio(a, b, a_total, b_total)
         if g2 < G2_FLOOR or lr < LOG_RATIO_FLOOR:
             continue
-        rows.append({"n": n, "item": " ".join(item) if n > 1 else item,
+        text = " ".join(item) if n > 1 else item
+        rows.append({"n": n, "item": text, "category": classify_item(text),
                      "ours": a, "human": b, "g2": round(g2, 1), "log_ratio": round(lr, 2),
                      "ours_per_1k": round(a / a_total * 1000, 3),
                      "human_per_1k": round(b / b_total * 1000, 3)})
@@ -88,10 +104,14 @@ def main() -> int:
 
     all_rows: list[dict] = []
     for n in range(1, args.max_n + 1):
-        rows = compare(ours, human, n, args.min_freq)
-        all_rows.extend(rows)
-        print(f"\n=== OVER-USED BY US, {n}-gram — {len(rows)} items over G2 {G2_FLOOR} "
-              f"and log ratio {LOG_RATIO_FLOOR} ===")
+        all_rows.extend(compare(ours, human, n, args.min_freq))
+
+    for cat in CATEGORIES:
+        rows = [r for r in all_rows if r["category"] == cat]
+        rows.sort(key=lambda r: -r["g2"])
+        print(f"\n=== OVER-USED BY US — {cat.upper()} — {len(rows)} items over "
+              f"G2 {G2_FLOOR} and log ratio {LOG_RATIO_FLOOR} ===")
+        print(f"    {CATEGORY_NOTE[cat]}")
         print(f"{'item':<44}{'G2':>9}{'x more':>9}{'ours/1k':>9}{'human/1k':>10}")
         for r in rows[:args.top]:
             x = 2 ** r["log_ratio"]
@@ -99,9 +119,11 @@ def main() -> int:
                   f"{r['ours_per_1k']:>9.2f}{r['human_per_1k']:>10.2f}")
 
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+    counts_by_cat = {c: sum(1 for r in all_rows if r["category"] == c) for c in CATEGORIES}
     Path(args.out).write_text(json.dumps(
         {"g2_floor": G2_FLOOR, "log_ratio_floor": LOG_RATIO_FLOOR,
-         "ours_docs": len(ours), "human_docs": len(human), "rows": all_rows}, indent=1))
+         "ours_docs": len(ours), "human_docs": len(human),
+         "rows_by_category": counts_by_cat, "rows": all_rows}, indent=1))
     print(f"\nwrote {len(all_rows)} rows -> {args.out}")
     return 0
 

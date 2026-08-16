@@ -50,6 +50,53 @@ although though whereas while because since unless until whether if when wheneve
 which who whom whose that after before once so as
 """.split())
 
+#: THE ONE CARVE-OUT. We are not adjudicating complaints, so the human corpus's SUBJECT
+#: MATTER is not a target — only its FORM is. A keyness table mixes the two: `uk`, `nhs`,
+#: `ai` and `data` sit in the same ranking as `none of` and `the passages`, and a voice rule
+#: cut from that table without this split would ban the sectors we write about.
+#:
+#: The split is mechanical, not a judgement per row. English function words are a CLOSED
+#: class — you cannot coin a new preposition — so "is every token in this item a function
+#: word?" separates form from content without anyone deciding what a topic is.
+FUNCTION_WORDS = frozenset("""
+a an the this that these those
+i you he she it we they me him her us them my your his its our their itself themselves
+and or but nor so yet for
+in on at by to from with without within into onto over under between among about
+against during before after above below through across near per via upon out up down off
+is are was were be been being am do does did doing have has had having
+will would shall should can could must ought
+not no never none neither either both all any some each every few many much more most
+less least other another same such own very too also only just even still again
+here there then now once ever
+of s t re ve ll d m
+""".split()) | HEDGES | SUBORDINATORS
+
+#: Our own machinery, named in our own prose. `passages` is the single largest keyness row
+#: we have (G2 4004, 1342x the human rate) and it is not subject matter — it is us
+#: describing our retrieval to a reader who wants to know what is TRUE. Wrong in any genre,
+#: so these are separated out and kept actionable rather than filed under content.
+META_WORDS = frozenset("""
+passage passages citation citations cite cited query queries retrieval retrieved
+corpus dossier
+""".split())
+
+
+def classify_item(item: str) -> str:
+    """`meta`, `form` or `content` for one keyness row.
+
+    content = subject matter. Under the carve-out above, no rule may be cut from it.
+    """
+    toks = item.split()
+    if not toks:
+        return "content"
+    if any(t in META_WORDS for t in toks):
+        return "meta"
+    if all(t in FUNCTION_WORDS for t in toks):
+        return "form"
+    return "content"
+
+
 #: Single characters, counted by membership.
 PUNCT_CLASSES = {
     "comma": ",", "semicolon": ";", "colon": ":", "question": "?",
