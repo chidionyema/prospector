@@ -23,6 +23,7 @@ import time
 from typing import Optional
 
 from . import usage_wall
+from .audit import audit as _audit
 from .cli_auth import subscription_env
 from .cli_governor import make_governor
 from .errors import ProviderExhaustedError, cause_context, looks_exhausted
@@ -491,13 +492,28 @@ class ClaudeCliGroundingProvider(SearchProvider):
             "Use only real source URLs you actually retrieved. No prose, no code fences."
         )
         logger.info(f"Claude CLI Search started: {query!r}")
+        # AUDIT (added 2026-08-16). Every other grounding provider writes a `search` row;
+        # this one never did, so its cost was invisible: on 2026-08-16 the whole search step
+        # measured 21,338s while the ddg+exa rows summed to 2,036s, and the missing 90% was
+        # this provider. Stage timers then measured it at 2,744s of 3,622s across 20 searches
+        # (~196s per call) — it is the single most expensive thing in grounding, and until
+        # this line existed no report could say so.
+        _t0 = time.monotonic()
         # Transport/exhaustion failure PROPAGATES so the fallback layer can fail over
         # (and, if all providers are out, run_check defers — never a false kill).
-        resp = run_claude_cli(prompt, web=True, model=self.model,
-                              timeout=self.timeout, timeout_max=self.timeout_max,
-                              escalation=self.escalation, retries=self.retries,
-                              queue_timeout=self.queue_timeout,
-                              json_schema=_SEARCH_SCHEMA)
+        try:
+            resp = run_claude_cli(prompt, web=True, model=self.model,
+                                  timeout=self.timeout, timeout_max=self.timeout_max,
+                                  escalation=self.escalation, retries=self.retries,
+                                  queue_timeout=self.queue_timeout,
+                                  json_schema=_SEARCH_SCHEMA)
+        except Exception as e:
+            _audit("search", provider="claude_cli", query=query[:200], k=k,
+                   max_chars=max_chars, returned_n=0,
+                   latency_ms=int((time.monotonic() - _t0) * 1000),
+                   status="error", error=str(e)[:200])
+            raise
+        _call_ms = int((time.monotonic() - _t0) * 1000)
         try:
             data = _extract_json(resp)
         except Exception as e:
@@ -530,4 +546,10 @@ class ClaudeCliGroundingProvider(SearchProvider):
         from .retrieval import resolve_sources
         out = resolve_sources(data, query, max_chars, k)
         logger.info(f"Claude CLI Search returned {len(out)} results", extra={"count": len(out)})
+        # `call_ms` is the CLI itself (queue wait + attempts); `latency_ms` adds URL
+        # resolution, so the gap between them says which half to attack.
+        _audit("search", provider="claude_cli", query=query[:200], k=k,
+               max_chars=max_chars, returned_n=len(out),
+               latency_ms=int((time.monotonic() - _t0) * 1000), call_ms=_call_ms,
+               status="ok" if out else "empty")
         return out

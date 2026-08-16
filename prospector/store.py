@@ -508,6 +508,46 @@ class Store:
                 rows = conn.execute("SELECT * FROM dossiers").fetchall()
         return [dict(row) for row in rows]
 
+    def counts_by_decision(self) -> dict[str, int]:
+        """`{decision: rows}` for the whole index, counted in SQL.
+
+        The operator surface's headline number, derived ONCE and here rather than by len()-ing
+        `all()` on a caller: 2,376 rows crossing a process boundary to be counted is a read that
+        gets skipped when the panel feels slow, and a skipped read becomes a cached one, and a
+        cached count is how a console reports a queue that emptied an hour ago.
+
+        Reconciles by construction to `sqlite3 store/prospector.db
+        "select decision, count(*) from dossiers group by decision"` — the same statement, and
+        `tests/ops/test_readmodel.py` asserts the equality rather than assuming it.
+        """
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT decision, COUNT(*) AS n FROM dossiers GROUP BY decision").fetchall()
+        return {str(r["decision"]): int(r["n"]) for r in rows}
+
+    def lease_census(self, *, now: Optional[float] = None) -> dict[str, int]:
+        """How many rows are held, expired-held and unheld, at one instant.
+
+        THREE STATES, NOT TWO. `lease_until IS NULL` (never taken) and `lease_until` in the past
+        are both "free to take" for `claim()`, but they mean different things to an operator: an
+        EXPIRED lease is the fingerprint of a worker that died mid-vet (expiry IS the release —
+        nothing cleans a lease up), so a rising expired count is a crashing consumer, while a
+        rising held count is simply a busy one. Collapsing them into "free" hides the only
+        signal that distinguishes those two.
+
+        Counted in one pass at one `now`, so the three numbers always sum to the table.
+        """
+        now = time.time() if now is None else float(now)
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT "
+                " SUM(CASE WHEN lease_until IS NOT NULL AND lease_until > ? THEN 1 ELSE 0 END) AS held,"
+                " SUM(CASE WHEN lease_until IS NOT NULL AND lease_until <= ? THEN 1 ELSE 0 END) AS expired,"
+                " SUM(CASE WHEN lease_until IS NULL THEN 1 ELSE 0 END) AS unheld,"
+                " COUNT(*) AS total"
+                " FROM dossiers", (now, now)).fetchone()
+        return {k: int(row[k] or 0) for k in ("held", "expired", "unheld", "total")}
+
     def provisional(self) -> list[dict]:
         """Return rows ruled by the emergency fallback tail (moat exhausted).
 

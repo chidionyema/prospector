@@ -232,11 +232,43 @@ retrieval:
   #
   # STILL DEAD on this machine (do NOT reintroduce without restoring the dependency):
   #   brave  → no BRAVE_API_KEY
-  #   searxng→ not running (localhost:8888 refused)
   # deepseek/minimax_search/openrouter are LLM-synthesis, NOT real search — they hallucinate
   # URLs that _resolve() drops → every check "unverifiable". Never use them for grounding.
+  #
+  # SEARXNG IS BACK, AS A BACKSTOP ONLY — free, keyless, unlimited, and NOT good enough to lead.
+  # Founder 2026-08-16: "brave is not free, we need free unlimited reliable solution". SearXNG is
+  # the only option that is free AND unlimited AND needs no key: self-hosted metasearch at
+  # localhost:8080 (`docker compose -f searxng/docker-compose.yml up -d`). The stale note here
+  # said "not running (localhost:8888 refused)" — wrong port; the compose file binds 8080 and the
+  # container came straight up.
+  #
+  # IT IS NOT RELIABLE ON QUALITY, measured head-to-head 2026-08-16 on 5 real grounding queries,
+  # 4 sources each, scored with `_mean_coverage` (the same function the escalation uses):
+  #     searxng  mean coverage 0.10, mean 3.2s
+  #     ddg      mean coverage 0.40, mean 6.2s
+  # `min_relevance` is 0.35, so SearXNG missed the bar on 5 of 5 and duckduckgo cleared it on 3.
+  # The cause is in its own response: `unresponsive_engines` came back
+  # [brave "too many requests", duckduckgo "timeout", mojeek "access denied", startpage "CAPTCHA"]
+  # — public engines block a self-hosted scraper under continuous daemon load, so what answers is
+  # mostly wikipedia, which matches broad entities rather than specific commercial questions.
+  #
+  # Hence BACKSTOP, not primary. Leading with it would spend 3.2s to return results the relevance
+  # gate then throws away. In the backstop slot it runs only when duckduckgo actually RAISES, and
+  # there it costs nothing and can save a check that would otherwise reach claude_cli.
   # Options: ddg | claude_cli | exa | brave | searxng | fixture
-  provider: [ddg, exa, claude_cli]
+  provider: [ddg, exa, searxng, claude_cli]
+  # Providers here answer an OUTAGE only. They are skipped whenever an earlier provider in
+  # the chain answered at all, even off-topic, so the relevance escalation can never reach
+  # them. Founder directive 2026-08-16, on the measurement: "unacceptable use of claude cli"
+  # — 141 of 347 searches that day walked the ladder to `claude_cli`, a model doing a search
+  # at ~196s a call, which took 76% of all grounding time to supply 21% of the evidence.
+  # If duckduckgo AND exa both raise, it still runs, so no check loses its grounding.
+  # Empty list restores the pre-2026-08-16 behaviour exactly.
+  #
+  # ORDER INSIDE THE CHAIN STILL DECIDES WHO GOES FIRST. searxng sits ahead of claude_cli, so a
+  # real outage tries the free keyless one before the expensive model — see the measurement above
+  # the `provider:` line for why searxng is here rather than leading.
+  backstop_only_providers: [searxng, claude_cli]
   queries_per_check: 2              # LLM query-gen: 2 distinct queries per check for grounding depth
   results_per_query: 3             # 3 sources per query (~6 passages/check) so checks can reach 'supported'
   max_passage_chars: 1500
@@ -2319,12 +2351,22 @@ schedule:
 # The CONSUMER loop (`python -m prospector.run consume`) — the vetting half of the
 # producer/consumer split. It has NO deadline by design; these four numbers are its pacing.
 consumer:
-  # Rows per drain pass before the loop regains control and re-reads the rails. NOT a
-  # throughput limit: a pass still vets `retrieval.vet_workers` (8) rows in parallel. Smaller
-  # means PAUSE and the spend cap take effect sooner, at one more pass of operator setup;
-  # larger amortises that setup and defers the rail check by up to one batch. 5 sits just
-  # under vet_workers so a pass is one wave, and a stop is never more than one wave away.
-  batch: 5
+  # Rows per pass before the loop regains control and re-reads the rails.
+  #
+  # IT IS A THROUGHPUT LIMIT, whatever the old comment here claimed. `run.py:2447` slices the
+  # queue to `pending[:limit]` and only then hands it to `ThreadPoolExecutor(max_workers=8)`
+  # (`run.py:2492,2581`), so a batch of 5 can never put more than 5 of the 8 slots to work —
+  # three sit idle by construction. Worse, the pool is a barrier: `as_completed` inside the
+  # `with` block means the pass does not end until its SLOWEST row ends. Rows measured
+  # 2026-08-16 at 346s..3219s (9.3x spread), so a wave of 5 runs at the speed of its worst row.
+  # MEASURED effect: 9 rows finished in 2.6h, 14401s of row time in a 9360s window = 1.54
+  # rows actually in flight against 8 slots — 19% utilisation.
+  #
+  # 24 = 3x vet_workers, so the pool stays fed while the slow tail of the previous wave drains.
+  # The cost is the documented one: a PAUSE or a spend-cap trip is noticed at most one wave
+  # later. That trade is correct here because the rails are checked between waves, not between
+  # rows, in either setting — a bigger wave does not weaken the rail, it delays the check.
+  batch: 24
   # Queue had work — the drain itself is the slow part, so there is nothing to pace.
   busy_s: 0
   # Queue was empty: how fast the consumer notices the producer filling it. A minute is well
@@ -2353,8 +2395,19 @@ consumer:
 
 spend:
   # BILLED money only — metered API providers (minimax, deepseek). This is the liability rail.
-  daily_cap_usd: 20.0
-  warn_at_usd: 15.0
+  # RAISED 20.0 -> 100.0 (founder decision 2026-08-16). Basis: metered spend measured
+  # $0.69 (08-11) -> $1.05 -> $4.08 -> $8.47 (08-15), ~8x in four days since MiniMax took the
+  # moat, and the producer/consumer split (shipped 2026-08-16 ~00:40Z) runs the consumer
+  # CONTINUOUSLY rather than once per 7200s tick, so the drain now bills without a tick gate.
+  # At $20 the cap was projected to bind within days; binding does not lose money, it STALLS
+  # THE QUEUE (guard blocks -> consumer sleeps 300s -> resumes at midnight), so the failure
+  # mode is silent backlog growth, not overspend. The monitor being built alongside this
+  # (OPS_CONSOLE_PROGRAM R15) surfaces spend-vs-cap with a projected hit-time, which is the
+  # real brake; this number is the liability ceiling behind it, not the control.
+  daily_cap_usd: 100.0
+  # Held at 75% of the cap, as 15.0/20.0 was — a warn at 15% of cap fires every day and stops
+  # being an early warning.
+  warn_at_usd: 75.0
   # Claude Code CLI burn, which `daily_cap_usd` structurally cannot see: the CLI logs its own
   # cost under `cost_usd` with no `event: spend` tag, so the ledger scan skips it. Measured
   # 2026-08-05: metered $1.64, CLI $71.94 — the rail covered 2% of the day's consumption.
