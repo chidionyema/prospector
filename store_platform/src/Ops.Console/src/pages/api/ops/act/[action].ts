@@ -25,6 +25,11 @@ export const ACTIONS = [
   'config.set',
   'config.restore',
   'catalogue.set_listing',
+  'shelf.repair_copy',
+  'shelf.publish_pending',
+  'daemon.restart',
+  'tools.run',
+  'tools.undo',
 ] as const;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
