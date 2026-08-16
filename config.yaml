@@ -261,6 +261,24 @@ retrieval:
   # with less than it replaced.
   fetch_min_gain_chars: 400
   fetch_max_bytes: 400000
+  # Drop the cookie banner before the verdict brain reads it (2026-08-16).
+  # `select_passage` anchors the stored passage on the window with the most query terms. A
+  # consent banner has none, so the anchor finds nothing and falls back to the head slice,
+  # which on ons.gov.uk and gov.uk IS the banner. The brain then reads 600 chars of cookie
+  # notice and rules `unverifiable` on evidence we never gave it.
+  # MEASURED 2026-08-16 over 43,673 stored passages in store/dossiers/: 76 hand the brain a
+  # banner inside its 600-char read window, 62 of those within the first 200 chars. Only 0.2%
+  # overall, but 12.3% of ons.gov.uk passages and 2.2% of legislation.gov.uk — the sources the
+  # payer-solvency and legality checks lean on hardest. One reached the shop: the live landing
+  # page told buyers the ASHE earnings tables "contain only cookie consent screens with no
+  # actual wage data".
+  # Two passes, both bounded so they cannot eat a real page. The DOM pass drops short
+  # containers whose id/class names a consent widget; the text pass drops sentences carrying a
+  # banner phrase, and gives up if that would remove more than 60% of the passage (a page
+  # genuinely ABOUT cookie law keeps its content, and a true consent wall stays visibly empty
+  # so the check rules `unverifiable` honestly).
+  # Toggle it from the ops console: Parameters -> Retrieval -> "Strip cookie banners".
+  strip_consent_banners: true
   # Rank what search returned instead of taking DuckDuckGo's first 3 (2026-08-14).
   # 3 x 3 = 9 results fetched per query, best 3 by query-term coverage kept. One wider
   # search call; no extra page fetch (ranking runs on the snippet, before the fetch) and
@@ -1566,6 +1584,43 @@ listing:
   # every one the same shape ("value_durability 0.438, distribution 0.430").
   engine_leak_block: false              # findings -> error
   max_engine_leak_per_1k: 0.0           # rate ceiling; 0 = measure only
+  # HUMAN WRITING PATTERNS. Added 2026-08-16 (docs/PROSE_CORPUS_PROGRAM.md). Every pack is
+  # measured the way 270 Financial Ombudsman decisions were measured — the same tokeniser,
+  # the same function (`prospector/prose_measure.py`) — and graded against the committed
+  # target `prospector/data/prose_target.json`. The measures and any findings land in
+  # <id>.lint.json under `human_register`, on every pack, pass or fail.
+  #
+  # We adopt the FORM of human writing, not its subject matter. The target only carries
+  # measures of how sentences are built; words about complaints, the NHS or the FCA are
+  # excluded by construction (`prose_measure.classify_item`), so no rule here can ever push
+  # our prose towards someone else's topic.
+  #
+  # SIX MEASURES ARE ARMED, and a measure only arms when our mean sits outside the human
+  # 5th-95th percentile by at least 10% of that interval's width:
+  #   hyphen rate        31.8 per 1k vs human  2.7   compound stacking; z = 11.3
+  #   comma rate         61.3 per 1k vs human 31.8
+  #   semicolon rate      4.6 per 1k vs human  0.7
+  #   heavy sentences    47%  of sentences vs human 16%   two or more comma-clauses
+  #   MATTR (vocabulary) 0.77 vs human 0.67       a different word where a human repeats
+  #   hedges              3.5 per 1k vs human 13.8   we assert more flatly than a human
+  # The 25-word sentence rule is deliberately NOT armed: a human breaks it in 31% of
+  # sentences and the human 95th percentile is 52%, which is exactly our rate.
+  #
+  # OFF, on the same terms as every knob above, plus one specific to this check: the
+  # interval is the human 5th-95th percentile, so roughly one human document in ten falls
+  # outside it on any single measure. Blocking today would unlist packs a human author
+  # would also have failed. Turn it on against the baseline that accrues in the reports.
+  human_register_block: false           # outside the human range -> error
+  # APPLYING the same measurement, rather than only reporting it. Two switches, because
+  # they are two different acts:
+  #   human_register_block  (above)  refuses to SELL a finished pack.        OFF.
+  #   human_register_repair (below)  spends one rewrite turn on a draft.     ON.
+  # A rewrite costs one model call and risks nothing. Unlisting on a measure whose interval
+  # is the human 5th-95th percentile, where one human document in ten falls outside, risks
+  # the pack. The armed measures also reach the WRITER now, through the house voice guide
+  # (`prose_target.prompt_block` -> `prompts.style_kwargs`), so the first draft is aimed at
+  # the target instead of being graded against a rubric it was never shown.
+  human_register_repair: true           # outside the human range -> one rewrite turn
   # PAID-ARTIFACT CLAIM CHECK (artifacts.claim_check_blocks_listing). Added 2026-08-15.
   #
   # What it is: when build_spec / gtm_plan / ops_plan still carry claim-check violations after
@@ -2198,60 +2253,68 @@ dedup_token_threshold: 0.34
 # 1200s is ~13x a healthy call, so it only ever bites a chain that is actually hung, and it
 # cannot overrun the tick: run.py:559-561 clamps it against the batch's vet deadline, which
 # stops the batch regardless. 0 disables the floor and restores the pure-share behaviour.
-schedule: { cadence: daily, batch_size: 50, backlog_cap: 0, max_resume_attempts: 5,
-            artifact_budget_frac: 0.40, vet_budget_frac: 0.85, drain_budget_frac: 0.15,
-            artifact_budget_floor_s: 1200,
-            # revet_provisional_kills: false -> true, 2026-08-15. The 176 provisional KILLs the
-            # drain refused every cycle ("No backlogged candidate the drain can work on") were
-            # ruled under a confidence metric that scored citation VOLUME, not evidence
-            # (verify._calc_confidence, fixed this day) — so an unknown share of them are kills
-            # our own scorer manufactured, not judgements. They are also now cheap to re-ask:
-            # minimax leads the chain at ~$0.0004 a check, putting the whole 176-row sweep under
-            # a dollar. Set back to false once that backlog is worked off, so the drain's bound
-            # goes to rows that can still reach the publish gate.
-            revet_provisional_kills: true, gate_generation_on_grounding: true,
-            reload_on_code_change: true, gen_budget_frac: 0.35,
-            # `lease_ttl_s: 7200` — how long a worker may hold a queue row before the lease
-            # expires and the row returns to the queue. Sized off the WORST measured vet, not the
-            # median: a drain row took 4127s on 2026-08-15 (content phase 51-56% of it) against a
-            # ~251s average. A TTL near the average would expire mid-vet and hand a LIVE row to a
-            # second worker, manufacturing the double-work the lease exists to prevent — and doing
-            # it most reliably on the slowest, most expensive rows. Too long is the safe
-            # direction: it delays one row after a crash, where too short duplicates paid work and
-            # can reach the Stripe mint twice. Expiry is the ONLY release path that survives a
-            # SIGKILL, so this number is also the per-row backstop the tick's `threading.Timer`
-            # used to provide for a whole tick. PROSPECTOR_LEASE_TTL_S overrides for ops.
-            lease_ttl_s: 7200,
-            # `producer_mode: false` — which HALF of the split this daemon is. False is the tick
-            # exactly as it has always been: drain, generate, vet, publish, all inside one
-            # deadline. True makes the daemon a pure PRODUCER — it generates, parks every
-            # survivor in the queue as a DEFER row, and returns; it does not vet, publish or
-            # drain, because a consumer (`python -m prospector.run consume`) owns all three.
-            #
-            # It moves BOTH halves at once on purpose. Leaving the drain on in producer mode
-            # would be SAFE — the queue lease already stops two workers vetting one row — but it
-            # would put the tick back on the moat's clock, which is the whole thing the split
-            # exists to end. Half a split is the worst of both: the deadline is still there and
-            # now there are two processes.
-            #
-            # Flip this ONLY together with a running consumer. A producer with no consumer fills
-            # the queue and nothing drains it — and that failure is quiet by design, because a
-            # producer tick is all-DEFER by construction, so `alerts_for_tick` suppresses the
-            # page that would once have fired ("all N candidates DEFERRED"). The consumer's own
-            # liveness is what to watch, not the producer's ticks.
-            #
-            # LIVE 2026-08-15, together with com.prospector.consumer. The generation cadence is
-            # deliberately UNCHANGED for the first window (--interval 7200 in the plist argv):
-            # the split removes the tick's deadline pressure, it does not by itself tell us how
-            # fast the consumer drains, and lowering the interval before that is measured would
-            # be trading a known cadence for a guess. `backlog_cap` stays 0 — see the note above
-            # it: a stock brake at 100 is what suppressed generation for weeks by controlling on
-            # the wrong variable, and a continuous consumer does not make a stock brake correct.
-            # What bounds the producer is unchanged and rate-shaped: the grounding gate and the
-            # daily spend cap. Queue DEPTH over the first window is the measurement that would
-            # justify touching either number.
-            producer_mode: true,
-            market_rotation: "us-tx,us-ca,us-fl,us-ny,uk,us-il,us-pa,us-oh,us-ga,uk" }
+schedule:
+  cadence: daily
+  batch_size: 50
+  backlog_cap: 0
+  max_resume_attempts: 5
+  artifact_budget_frac: 0.40
+  vet_budget_frac: 0.85
+  drain_budget_frac: 0.15
+  artifact_budget_floor_s: 1200
+  # revet_provisional_kills: false -> true, 2026-08-15. The 176 provisional KILLs the
+  # drain refused every cycle ("No backlogged candidate the drain can work on") were
+  # ruled under a confidence metric that scored citation VOLUME, not evidence
+  # (verify._calc_confidence, fixed this day) — so an unknown share of them are kills
+  # our own scorer manufactured, not judgements. They are also now cheap to re-ask:
+  # minimax leads the chain at ~$0.0004 a check, putting the whole 176-row sweep under
+  # a dollar. Set back to false once that backlog is worked off, so the drain's bound
+  # goes to rows that can still reach the publish gate.
+  revet_provisional_kills: true
+  gate_generation_on_grounding: true
+  reload_on_code_change: true
+  gen_budget_frac: 0.35
+  # `lease_ttl_s: 7200` — how long a worker may hold a queue row before the lease
+  # expires and the row returns to the queue. Sized off the WORST measured vet, not the
+  # median: a drain row took 4127s on 2026-08-15 (content phase 51-56% of it) against a
+  # ~251s average. A TTL near the average would expire mid-vet and hand a LIVE row to a
+  # second worker, manufacturing the double-work the lease exists to prevent — and doing
+  # it most reliably on the slowest, most expensive rows. Too long is the safe
+  # direction: it delays one row after a crash, where too short duplicates paid work and
+  # can reach the Stripe mint twice. Expiry is the ONLY release path that survives a
+  # SIGKILL, so this number is also the per-row backstop the tick's `threading.Timer`
+  # used to provide for a whole tick. PROSPECTOR_LEASE_TTL_S overrides for ops.
+  lease_ttl_s: 7200
+  # `producer_mode: false` — which HALF of the split this daemon is. False is the tick
+  # exactly as it has always been: drain, generate, vet, publish, all inside one
+  # deadline. True makes the daemon a pure PRODUCER — it generates, parks every
+  # survivor in the queue as a DEFER row, and returns; it does not vet, publish or
+  # drain, because a consumer (`python -m prospector.run consume`) owns all three.
+  #
+  # It moves BOTH halves at once on purpose. Leaving the drain on in producer mode
+  # would be SAFE — the queue lease already stops two workers vetting one row — but it
+  # would put the tick back on the moat's clock, which is the whole thing the split
+  # exists to end. Half a split is the worst of both: the deadline is still there and
+  # now there are two processes.
+  #
+  # Flip this ONLY together with a running consumer. A producer with no consumer fills
+  # the queue and nothing drains it — and that failure is quiet by design, because a
+  # producer tick is all-DEFER by construction, so `alerts_for_tick` suppresses the
+  # page that would once have fired ("all N candidates DEFERRED"). The consumer's own
+  # liveness is what to watch, not the producer's ticks.
+  #
+  # LIVE 2026-08-15, together with com.prospector.consumer. The generation cadence is
+  # deliberately UNCHANGED for the first window (--interval 7200 in the plist argv):
+  # the split removes the tick's deadline pressure, it does not by itself tell us how
+  # fast the consumer drains, and lowering the interval before that is measured would
+  # be trading a known cadence for a guess. `backlog_cap` stays 0 — see the note above
+  # it: a stock brake at 100 is what suppressed generation for weeks by controlling on
+  # the wrong variable, and a continuous consumer does not make a stock brake correct.
+  # What bounds the producer is unchanged and rate-shaped: the grounding gate and the
+  # daily spend cap. Queue DEPTH over the first window is the measurement that would
+  # justify touching either number.
+  producer_mode: true
+  market_rotation: "us-tx,us-ca,us-fl,us-ny,uk,us-il,us-pa,us-oh,us-ga,uk"
 
 # The CONSUMER loop (`python -m prospector.run consume`) — the vetting half of the
 # producer/consumer split. It has NO deadline by design; these four numbers are its pacing.

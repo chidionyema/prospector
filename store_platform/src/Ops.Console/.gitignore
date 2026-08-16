@@ -1,0 +1,7 @@
+# Build output and local run state. None of it is source. Before this file existed, staging the
+# app pulled in 291 build files and 2.5 MB of source maps on 2026-08-16.
+/.next/
+/node_modules/
+/test-results/
+/playwright-report/
+*.tsbuildinfo
