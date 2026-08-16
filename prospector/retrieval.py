@@ -564,7 +564,10 @@ def _extract_published_at(doc) -> Optional[str]:
             got = _normalise_date(value)
             if got:
                 return got
-    except Exception:   # noqa: BLE001 — a date is a bonus; it may never cost us a passage
+    except (AttributeError, ValueError, TypeError):
+        # Narrow on purpose: these are the shapes malformed markup produces. None already
+        # means "this page declares no date", so the caller loses nothing it had, and the
+        # date must never cost us the passage we came for.
         return None
     return None
 
