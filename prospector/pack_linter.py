@@ -905,7 +905,19 @@ KNOWN_INITIALISMS = frozenset("""
 NHS HMRC DWP DVLA MOT PAYE VAT ISA GP GPS CV DIY PDF CSV TV CCTV PPE LED UV
 UK US USA EU EEA IRS DMV FBI FDA CDC EPA USDA
 AI IT HR API CEO CFO CTO MP MPs PhD BBC
+OSHA
 """.split()) | frozenset(_US_STATE_CODES.split())
+
+#: OSHA, added 2026-08-16, is a deliberate claim under the rule this list states: a capable
+#: adult outside the sector already knows it. "OSHA violation" is ordinary American speech,
+#: the same register as MOT or NHS here, and the California agency's own name is `Cal/OSHA`
+#: — an expansion ("California Division of Occupational Safety and Health") is longer than
+#: the 60-character title budget and names a body no one searches for. It was the single
+#: remaining initialism hit across the 61 live rows, on
+#: `d6f72b9dc9a45c45 Cal/OSHA citation contest tool for California employers`, and spelling
+#: it out would have made that title worse to satisfy a rule aimed at trade shorthand.
+#: The neighbours it does NOT license stay out: COSHH, DVSA, IHT, DLA and PAH remain
+#: defects, because each is a term only the trade says.
 
 #: Words, for the lexicon tests. Apostrophes stay inside the token so "you're" survives as
 #: one word; hyphens split, so "unpaid-hours" tests as "unpaid" and "hours".
