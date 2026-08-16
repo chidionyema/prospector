@@ -179,12 +179,12 @@ class TestItIsWiredWhereItCosts_Nothing:
 
         enriched = PageTextEnricher(RelevanceRankedProvider(inner, overfetch=3))
         import prospector.retrieval as R
-        orig = R.fetch_page_text
+        orig = R.fetch_page
         try:
-            R.fetch_page_text = lambda url, **kw: fetched.append(url) or None
+            R.fetch_page = lambda url, **kw: (fetched.append(url), None)
             enriched.search(QUERY, k=3)
         finally:
-            R.fetch_page_text = orig
+            R.fetch_page = orig
         assert len(fetched) == 3, f"fetched {len(fetched)} pages to return 3 sources"
 
     def test_fixtures_never_get_the_ranker(self):
@@ -260,12 +260,12 @@ class TestSelectingThePassage:
         import prospector.retrieval as R
         seen: dict = {}
         inner = _Fake([_src("https://e/1", "snippet")])
-        orig = R.fetch_page_text
+        orig = R.fetch_page
         try:
-            R.fetch_page_text = lambda url, **kw: seen.update(kw) or None
+            R.fetch_page = lambda url, **kw: (seen.update(kw), None)
             PageTextEnricher(inner).search(QUERY, k=1)
         finally:
-            R.fetch_page_text = orig
+            R.fetch_page = orig
         assert seen.get("query") == QUERY, f"query never reached the fetch: {seen}"
 
     def test_a_huge_page_is_selected_in_reasonable_time(self):

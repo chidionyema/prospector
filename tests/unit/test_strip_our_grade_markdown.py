@@ -13,6 +13,7 @@ matched, 0 mismatched, 0 no-ops.
 """
 import pytest
 
+from prospector.dossier import render_markdown, strip_our_grade_markdown
 from prospector.models import (
     Candidate,
     CheckResult,
@@ -22,7 +23,6 @@ from prospector.models import (
     Source,
     Verdict,
 )
-from prospector.dossier import render_markdown, strip_our_grade_markdown
 
 SCORED = """\
 # Every check, in full
