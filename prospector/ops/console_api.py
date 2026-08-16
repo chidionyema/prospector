@@ -183,7 +183,10 @@ def _heartbeats(cfg) -> dict:
                 body = json.loads(path.read_text(errors="replace"))
             except Exception as exc:  # noqa: BLE001
                 body = {}
-                rec["unreadable"] = f"{exc}"
+                # The failure goes in the RESPONSE, not only the log. Without it an unreadable
+                # beat renders exactly like a role that has never beaten at all, and the panel
+                # exists to tell those two apart.
+                rec["error"] = f"heartbeat unreadable: {exc}"
             rec["beat"] = body
             rec["pid"] = body.get("pid")
             rec["phase"] = body.get("phase")
@@ -609,8 +612,11 @@ def _read_pack(cfg, args: dict) -> dict:
         else:
             out["exists"] = None
     except Exception as exc:  # noqa: BLE001
+        # `price_history: null` and `exists: null` are also what a pack with no history looks
+        # like, so the error field is the only thing separating "nothing to show" from "we
+        # could not ask". It ships in the response for that reason.
         out["price_history"] = None
-        out["price_history_error"] = f"{exc}"
+        out["error"] = f"price history unreadable: {exc}"
         out["exists"] = None
     out["price_note"] = ("Price is READ ONLY here. prospector/bridge.py mints the Stripe Price "
                          "and writes the catalogue row as one PriceDecision so they cannot "
