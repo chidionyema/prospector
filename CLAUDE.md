@@ -74,10 +74,27 @@ Pluggable modules:
 
 ## Working in a git worktree
 
-**The pre-commit gate is DISABLED (founder decision, 2026-08-14).** `.git/hooks/pre-commit` is
-moved aside to `pre-commit.DISABLED-2026-08-14`; because that lives in the shared git dir, it is
-off for every worktree at once. Re-enable with
-`ln -s ../../.lux/hooks/pre-commit .git/hooks/pre-commit`.
+**The pre-commit gate is LIVE. This section used to say it was disabled, and that was wrong.**
+
+The founder did disable it on 2026-08-14 by moving `.git/hooks/pre-commit` aside to
+`pre-commit.DISABLED-2026-08-14`. On 2026-08-15 at 18:57 someone set `core.hooksPath` to
+`.git/hooks-active`, which symlinks `pre-commit` straight to `.lux/hooks/pre-commit`.
+**`core.hooksPath` overrides the hooks directory entirely, so moving the old hook aside now does
+nothing.** The gate has been running on every commit since.
+
+Check which it is, never trust this paragraph:
+
+```bash
+git config --get core.hooksPath          # set => THAT directory wins, not .git/hooks
+ls -la "$(git rev-parse --git-path hooks)"/pre-commit
+```
+
+To actually disable it: `git config --unset core.hooksPath` (and only then does moving
+`.git/hooks/pre-commit` aside take effect). To enable: point `core.hooksPath` at a directory
+whose `pre-commit` links to `.lux/hooks/pre-commit`.
+
+This cost a session on 2026-08-16: a commit failed with only "exit code 1", and the doc said no
+gate could have refused it. The gate had refused it, on one test out of 4124.
 
 The reason is arithmetic, not preference: the suite measures ~3185s serially against a 2400s
 ceiling, so the gate could not pass — every commit paid ~40 minutes to be refused. It also runs

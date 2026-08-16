@@ -143,7 +143,7 @@ def test_disarm_clears_it_and_both_actions_leave_a_receipt(tmp_path):
     out = P.disarm(cfg, "consumer", actor="desk")
 
     assert out["changed"] is True and not P.pause_path(cfg, "consumer").exists()
-    receipts = [json.loads(l) for l in P.intents_path(cfg).read_text().splitlines() if l.strip()]
+    receipts = [json.loads(ln) for ln in P.intents_path(cfg).read_text().splitlines() if ln.strip()]
     assert [r["actuator"] for r in receipts] == ["engine.pause.arm", "engine.pause.disarm"]
     assert [r["actor"] for r in receipts] == ["phone", "desk"]
 

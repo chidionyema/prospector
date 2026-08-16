@@ -2438,8 +2438,8 @@ def _check_consumer(cfg) -> None:
     looks like, and paging for that on every box that has never run a consumer is how a channel
     gets muted.
     """
-    from prospector.scheduler.alerts import CRITICAL, WARNING, emit_alert, resolve_alert
     from prospector.consumer import consumer_liveness
+    from prospector.scheduler.alerts import CRITICAL, WARNING, emit_alert, resolve_alert
 
     try:
         live = consumer_liveness(cfg)

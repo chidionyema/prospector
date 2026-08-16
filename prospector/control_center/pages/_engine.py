@@ -89,10 +89,10 @@ def render():
 
     # ---- R16: queue ------------------------------------------------------ #
     st.subheader("Queue")
-    b, l, d = queue["backlog"], queue["leases"], queue["drain"]
+    b, leases, d = queue["backlog"], queue["leases"], queue["drain"]
     k1, k2, k3, k4 = st.columns(4)
     k1.metric("Workable", b["workable"], help="run.drain_survey — THE definition of backlog")
-    k2.metric("Leased now", l["held"], help=f"{l['expired']} expired · {l['unheld']} free")
+    k2.metric("Leased now", leases["held"], help=f"{leases['expired']} expired · {leases['unheld']} free")
     k3.metric("Drain rate", f"{d['rate_per_h']:.2f}/h" if d["rate_per_h"] else "—",
               help=f"{d['resumed']} resumed over {d['window_h']}h, {d['events']} pass(es)")
     k4.metric("Drained in", f"{d['eta_h']:.0f}h" if d["eta_h"] is not None else "—",

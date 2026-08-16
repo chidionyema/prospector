@@ -179,8 +179,8 @@ def test_t0_3_the_inline_comment_on_an_edited_line_survives(cfg_file):
     new["spend"]["daily_cap_usd"] = 55.0
     ce.write_config(new, moat_affecting=False, orig_mtime=ce.get_config_mtime())
 
-    line = next(l for l in cfg_file.read_text(encoding="utf-8").splitlines()
-                if "daily_cap_usd" in l)
+    line = next(ln for ln in cfg_file.read_text(encoding="utf-8").splitlines()
+                if "daily_cap_usd" in ln)
     assert "# raised 2026-08-15" in line
 
 
@@ -242,8 +242,8 @@ def test_t0_5_history_is_written_as_one_json_object_per_line(cfg_file):
     ok, msg = ce.write_config(new, moat_affecting=False, orig_mtime=ce.get_config_mtime())
     assert ok, msg
 
-    lines = [l for l in ce._config_history().read_text(encoding="utf-8").splitlines() if l.strip()]
-    assert lines and all(isinstance(json.loads(l), dict) for l in lines)
+    lines = [ln for ln in ce._config_history().read_text(encoding="utf-8").splitlines() if ln.strip()]
+    assert lines and all(isinstance(json.loads(ln), dict) for ln in lines)
 
 
 def test_t0_5_the_reader_still_parses_the_233_legacy_yaml_records(cfg_file):
