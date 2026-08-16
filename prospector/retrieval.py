@@ -13,6 +13,7 @@ never crashing the run.
 from __future__ import annotations
 
 import contextvars
+import datetime
 import hashlib
 import json
 import os
@@ -495,14 +496,91 @@ class RelevanceRankedProvider(SearchProvider):
         return kept
 
 
+_ISO_DATE_RE = re.compile(r"^\s*(\d{4})-(\d{2})-(\d{2})")
+_SLASH_DATE_RE = re.compile(r"^\s*(\d{4})/(\d{2})/(\d{2})")
+
+
+def _normalise_date(raw) -> Optional[str]:
+    """'2024-03-11T09:00:00Z' -> '2024-03-11'. None when it is not a plausible date.
+
+    Deliberately anchored at the START of the string: an unanchored search would pull a
+    number out of a query string or an id and hand us a date the page never published.
+    """
+    if not isinstance(raw, str) or not raw.strip():
+        return None
+    m = _ISO_DATE_RE.match(raw) or _SLASH_DATE_RE.match(raw)
+    if not m:
+        return None
+    try:
+        y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        datetime.date(y, mo, d)
+    except ValueError:
+        return None
+    if not (1990 <= y <= datetime.date.today().year + 1):
+        return None
+    return f"{y:04d}-{mo:02d}-{d:02d}"
+
+
+def _jsonld_date(obj) -> Optional[str]:
+    """First `datePublished` anywhere in a JSON-LD blob, however nested."""
+    if isinstance(obj, dict):
+        got = _normalise_date(obj.get("datePublished"))
+        if got:
+            return got
+        for v in obj.values():
+            got = _jsonld_date(v)
+            if got:
+                return got
+    elif isinstance(obj, list):
+        for v in obj:
+            got = _jsonld_date(v)
+            if got:
+                return got
+    return None
+
+
+def _extract_published_at(doc) -> Optional[str]:
+    """Read a publication date from a parsed lxml document. NEVER raises.
+
+    MUST be called on the document BEFORE `etree.strip_elements` runs: that call deletes
+    `<script>` (where JSON-LD lives) and `<footer>`/`<header>` (where `<time>` usually
+    lives), so extracting after stripping silently finds nothing on most real pages.
+    """
+    try:
+        for xp in ('//meta[@property="article:published_time"]/@content',
+                   '//meta[@name="date"]/@content'):
+            for value in doc.xpath(xp):
+                got = _normalise_date(value)
+                if got:
+                    return got
+        for blob in doc.xpath('//script[@type="application/ld+json"]/text()'):
+            try:
+                got = _jsonld_date(json.loads(blob))
+            except (ValueError, TypeError):
+                continue
+            if got:
+                return got
+        for value in doc.xpath("//time/@datetime"):
+            got = _normalise_date(value)
+            if got:
+                return got
+    except (AttributeError, ValueError, TypeError):
+        # Narrow on purpose: these are the shapes malformed markup produces. None already
+        # means "this page declares no date", so the caller loses nothing it had, and the
+        # date must never cost us the passage we came for.
+        return None
+    return None
+
+
 # Below this, an extraction is a page title or an error page, not a passage. Set just under the
 # 222-char mean of the search snippets this function exists to REPLACE: returning less than the
 # snippet we already hold is a downgrade, and the caller reads None as "keep what you had".
 _MIN_PAGE_TEXT = 200
 
 
-def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
-                    max_bytes: int = 400_000, query: Optional[str] = None) -> Optional[str]:
+def fetch_page(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
+               max_bytes: int = 400_000, query: Optional[str] = None
+               ) -> tuple[Optional[str], Optional[str]]:
     """GET a grounding URL and return its readable text, or None.
 
     THE DEFECT THIS CLOSES. `_resolve()` above sends a HEAD: it proves the host is real and
@@ -517,27 +595,31 @@ def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
     snippet whenever this returns None. A grounding fetch failing is our convenience failing;
     it must not cost a source, and it must not turn into a false `unverifiable` (this repo has
     already paid once for an outage that presented as a reasoned kill).
+
+    It also returns the page's publication date as `(text, published_at)` whenever the page
+    declares one, and None for that second element when it does not.
     """
     try:
         import requests
         from lxml import etree
         from lxml import html as lxml_html
     except ImportError:                     # no requests/lxml installed => keep snippets
-        return None
+        return None, None
 
     resp = None
+    published: Optional[str] = None
     try:
         resp = requests.get(url, timeout=timeout_s, allow_redirects=True, stream=True,
                             headers={"User-Agent": _RESOLVE_UA})
         if resp.status_code >= 400:
-            return None
+            return None, published
         # A PDF/image/zip is not something lxml can turn into prose. An absent Content-Type
         # is treated as HTML rather than skipped: the parse below is the real gate, and
         # dropping a page for a missing header would re-introduce the false-drop that the
         # HEAD-based `_resolve` docstring above spent so long getting rid of.
         ctype = (resp.headers.get("Content-Type") or "").lower()
         if ctype and not ("html" in ctype or "xml" in ctype or "text/plain" in ctype):
-            return None
+            return None, published
         buf = bytearray()
         for chunk in resp.iter_content(8192):
             if not chunk:
@@ -546,14 +628,14 @@ def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
             if len(buf) >= max_bytes:
                 break
         if not buf:
-            return None
+            return None, published
         raw = bytes(buf).decode(resp.encoding or "utf-8", errors="replace")
     except (requests.RequestException, OSError, UnicodeDecodeError, ValueError):
         # network / decode: keep the snippet. NARROWED from `except Exception` 2026-08-15 —
         # the bare form also caught our own bugs in the streaming loop above and returned the
         # same `None` that a dead host returns, so a refactor could silently stop the engine
         # ever reading a page and the only symptom would be thin grounding.
-        return None
+        return None, published
     finally:
         if resp is not None:
             try:
@@ -563,6 +645,7 @@ def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
 
     try:
         doc = lxml_html.fromstring(raw)
+        published = _extract_published_at(doc)
         # Strip the page furniture BEFORE reading any text. Script/style bodies are not prose,
         # and neither is the nav bar. Leaving either in feeds the verdict brain boilerplate
         # that dilutes the passage AND inflates the question/passage word overlap that
@@ -639,10 +722,17 @@ def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
             if len(better) > len(text):
                 text = better
     if len(text) < _MIN_PAGE_TEXT:
-        return None
+        return None, published
     # Select the passage that answers the query rather than the top of the page. `query=None`
     # (any caller predating 2026-08-14) still gets the head slice, byte for byte.
-    return select_passage(text, max_chars, query=query) or None
+    return (select_passage(text, max_chars, query=query) or None), published
+
+
+def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
+                    max_bytes: int = 400_000, query: Optional[str] = None) -> Optional[str]:
+    """Text-only view of `fetch_page`, kept for callers that do not want the date."""
+    return fetch_page(url, timeout_s=timeout_s, max_chars=max_chars,
+                      max_bytes=max_bytes, query=query)[0]
 
 
 class PageTextEnricher(SearchProvider):
@@ -685,9 +775,9 @@ class PageTextEnricher(SearchProvider):
         # behaviour it exists to replace, while still reporting success.
         pairs = [(contextvars.copy_context(), s) for s in sources]
 
-        def _one(pair) -> Optional[str]:
+        def _one(pair) -> tuple[Optional[str], Optional[str]]:
             ctx, s = pair
-            return ctx.run(fetch_page_text, s.url, timeout_s=self._timeout_s,
+            return ctx.run(fetch_page, s.url, timeout_s=self._timeout_s,
                            max_chars=max_chars, max_bytes=self._max_bytes, query=query)
 
         try:
@@ -698,15 +788,20 @@ class PageTextEnricher(SearchProvider):
             return sources
 
         upgraded = 0
-        for s, page in zip(sources, pages):
+        dated = 0
+        for s, (page, published) in zip(sources, pages):
             if page and len(page) >= len(s.text or "") + self._min_gain:
                 s.text = page
                 upgraded += 1
+            if published and not s.published_at:
+                s.published_at = published
+                dated += 1
         audit("page_fetch", query=query[:200], n_sources=len(sources),
-              upgraded=upgraded, latency_ms=int((time.monotonic() - start) * 1000),
+              upgraded=upgraded, dated=dated,
+              latency_ms=int((time.monotonic() - start) * 1000),
               status="ok" if upgraded else "no_gain")
         logger.info(f"page fetch: upgraded {upgraded}/{len(sources)} passages",
-                    extra={"upgraded": upgraded, "n_sources": len(sources)})
+                    extra={"upgraded": upgraded, "n_sources": len(sources), "dated": dated})
         return sources
 
 
