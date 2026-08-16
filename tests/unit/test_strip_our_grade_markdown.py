@@ -11,12 +11,17 @@ test: strip the `include_our_grade=True` render and you must get the `include_ou
 render, character for character. Measured 2026-08-16 over all 75 stored PASS dossiers: 75
 matched, 0 mismatched, 0 no-ops.
 """
-import glob
-import json
-
 import pytest
 
-from prospector import pack_manifest
+from prospector.models import (
+    Candidate,
+    CheckResult,
+    Decision,
+    Dossier,
+    ScoreResult,
+    Source,
+    Verdict,
+)
 from prospector.dossier import render_markdown, strip_our_grade_markdown
 
 SCORED = """\
@@ -92,28 +97,73 @@ def test_a_report_with_only_the_composite_clause_is_still_stripped():
 # The pairing test — the one that stops the two implementations drifting
 # ---------------------------------------------------------------------------
 
-def _stored_dossiers():
-    return sorted(glob.glob("store/dossiers/*.pass.json"))
+#: The shapes the pairing has to hold over, built here rather than read off this disk.
+#:
+#: This test globbed the operator's own PASS dossiers until 2026-08-16, and CI refused it:
+#: `tests/test_suite_is_machine_independent.py::test_no_test_reads_the_operators_own_store`
+#: forbids reading a gitignored path — 1,153 dossiers on the author's Mac, none in any
+#: clone. Its `pytest.skip` on an empty store did not save it, because that guard is static:
+#: it reads the source line, so the test would have SKIPPED in CI forever and pinned nothing
+#: anyway. Built dossiers cost the property nothing and are the only version that runs where
+#: it matters.
+#:
+#: One case per SHAPE the strip has to handle, each drawn from a real stored reason line:
+#: the number mid-sentence, the number opening the sentence, and the record with no score at
+#: all — the third being the no-op case, where the two renders are already identical.
+_PAIRING_CASES = {
+    "composite mid-sentence": dict(
+        decision=Decision.PASS,
+        reason="Survived all gates; composite 3.6500; 5 grounded-supported check(s) "
+               "(moat grounded: 2).",
+        composite=3.6500),
+    "composite opens the sentence": dict(
+        decision=Decision.KILL,
+        reason="Composite 2.9500 cleared the bar but adversarial review refused it.",
+        composite=2.9500),
+    "no score at all": dict(
+        decision=Decision.PASS,
+        reason="Survived all gates; 8 grounded-supported check(s).",
+        composite=None),
+}
 
 
-def test_strip_matches_what_the_renderer_omits():
-    """Over every stored PASS dossier on this disk. Skipped rather than failed where the
-    store is absent: a fresh worktree has no dossiers, and a data-dependent test that fails
-    on an empty store reports a checkout problem as a code defect."""
-    paths = _stored_dossiers()
-    if not paths:
-        pytest.skip("no stored PASS dossiers on this checkout")
+def _dossier(*, decision, reason, composite):
+    checks = [CheckResult(
+        check_name="pain_reality", verdict=Verdict.SUPPORTED, confidence=0.7,
+        rationale="Fleets file the reclaim by hand.", citations=["s1"],
+        sources=[Source(source_id="s1", url="https://www.gov.uk/x", text="p")],
+    )]
+    score = None if composite is None else ScoreResult(
+        scores={"pain_acuity": 4, "value_durability": 3},
+        justification={"pain_acuity": "It hurts weekly."},
+        composite=composite)
+    return Dossier(
+        candidate=Candidate(title="A thing", one_liner="It does a thing."),
+        checks=checks, decision=decision, reason=reason, score=score,
+        created_at="2026-08-01T00:00:00+00:00",
+    )
 
-    mismatched = []
-    for path in paths:
-        d = pack_manifest.dossier_from_dict(json.loads(open(path).read()))
-        with_grade = render_markdown(d, include_our_grade=True)
-        without = render_markdown(d, include_our_grade=False)
-        if with_grade == without:
-            continue  # nothing to strip; the pairing claim is vacuous for this record
-        if strip_our_grade_markdown(with_grade) != without:
-            mismatched.append(path)
 
-    assert not mismatched, (
-        f"{len(mismatched)} of {len(paths)} dossiers strip to something other than the "
-        f"renderer's own omission: {mismatched[:3]}")
+@pytest.mark.parametrize("name", sorted(_PAIRING_CASES))
+def test_strip_matches_what_the_renderer_omits(name):
+    """Strip the graded render and you must get the ungraded one, character for character.
+
+    Two functions do one job — the renderer omits our scoresheet on everything generated
+    from 2026-08-15, and `strip_our_grade_markdown` removes it from the 61 packs already
+    rendered — so the only thing stopping them drifting is this equality."""
+    d = _dossier(**_PAIRING_CASES[name])
+    with_grade = render_markdown(d, include_our_grade=True)
+    without = render_markdown(d, include_our_grade=False)
+    # None is the documented "nothing to strip", not a failure: it is what tells `patched_md`
+    # an already-clean pack must not be rewritten twice. The claim is about the RESULT, so a
+    # no-op has to be read as the document unchanged.
+    assert (strip_our_grade_markdown(with_grade) or with_grade) == without
+
+
+def test_at_least_one_case_actually_has_something_to_strip():
+    """The pairing above passes trivially where the two renders are already identical. A
+    suite of only no-ops is green and pins nothing, so one case must do real work."""
+    stripped = [n for n in _PAIRING_CASES
+                if render_markdown(_dossier(**_PAIRING_CASES[n]), include_our_grade=True)
+                != render_markdown(_dossier(**_PAIRING_CASES[n]), include_our_grade=False)]
+    assert stripped, "every pairing case is a no-op; the equality proves nothing"

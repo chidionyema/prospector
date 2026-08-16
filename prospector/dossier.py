@@ -330,6 +330,14 @@ _SCORES_BLOCK_RE = re.compile(r"(?:\A|\n)-{3,}\n## How it scored\n.*?(?=\n-{3,}\
 #: document would silently edit a buyer's spec sheet, which is a worse defect than the leak.
 _PASS_REASON_SECTION_RE = re.compile(r"(## Why this passed\n\n)([^\n]*)")
 
+#: The KILL form of the same sentence. The renderer writes the reason into a blockquote
+#: under `> **Why we stopped:**` (:779) and scrubs it there under `include_our_grade=False`;
+#: this side handled only the PASS heading, so a KILL document kept `Composite 2.9500` — our
+#: internal number, to four decimal places, in the shipped file. It survived review because
+#: the pairing test read only `*.pass.json` off the author's own disk, so the KILL shape was
+#: never rendered on either side of the comparison.
+_KILL_REASON_SECTION_RE = re.compile(r"(> \*\*Why we stopped:\*\*\n> )([^\n]*)")
+
 
 def strip_our_grade_markdown(markdown: str) -> Optional[str]:
     """Remove our grade from an ALREADY-SHIPPED report, or None if it is not there.
@@ -351,8 +359,8 @@ def strip_our_grade_markdown(markdown: str) -> Optional[str]:
     """
     text = str(markdown or "")
     out = _SCORES_BLOCK_RE.sub("", text)
-    out = _PASS_REASON_SECTION_RE.sub(
-        lambda m: m.group(1) + _scrub_our_grade(m.group(2)), out)
+    for pattern in (_PASS_REASON_SECTION_RE, _KILL_REASON_SECTION_RE):
+        out = pattern.sub(lambda m: m.group(1) + _scrub_our_grade(m.group(2)), out)
     return None if out == text else out
 
 
