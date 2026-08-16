@@ -169,7 +169,7 @@ export default function HowItWorks() {
         bg="white"
         width="6xl"
         title="One idea, all the way through"
-        intro="Every pack on the shelf carries an evidence record like this. The one below is real, it is the free sample, and every source in it opens."
+        intro="Every pack carries an evidence record like this one. It is the free sample, and every source in it opens."
       >
         <CheckSequence />
       </Section>
@@ -192,13 +192,13 @@ export default function HowItWorks() {
             paragraph on /about that told the same fact in different words. Inconsistent disclosure
             across a site reads as evasive, so it is stated ONCE, here, on the page that explains
             the mechanism, and the home page and /about say nothing about mechanism and link here.
-            One sentence, before the first check, because a reader who learns this after reading
-            six verdicts has been told late. */}
+            Before the first check, because a reader who learns this after reading six verdicts has
+            been told late. The 52-word single sentence it started as was three claims sharing one
+            spine; three short sentences say the same thing and can each be read on its own. */}
         <p className="mb-10 max-w-3xl text-body leading-relaxed text-muted">
-          The research is AI-led and automated: the checks below are run by AI agents, each
-          instructed to rule only on passages it fetched from the open web, and the sources they
-          used are published with the verdict so you can hold the reasoning against them yourself.
-          A person reviews that record before the pack reaches the shelf.
+          AI agents run the checks below. Each may only rule on passages it fetched from the open
+          web, and those sources are published with the verdict, so you can hold the reasoning
+          against them yourself. A person reads that record before a pack reaches the shelf.
         </p>
         {/* No `mt-12`: the lede moved into the heading block, whose `mb-10` is now the gap to the
             content. Keeping both stacked 88px between the lede and step 1. */}
@@ -326,15 +326,15 @@ export default function HowItWorks() {
       >
         <div className="max-w-3xl space-y-4">
           <p className="text-body font-normal leading-relaxed text-muted">
-            The finding, the checking and the sourcing are automated, and that is the point: it is
-            how every idea gets the same treatment instead of the handful a person could read. But
-            nothing reaches the shelf on its own. A person reads the verdict, opens the sources and
-            checks that the argument holds before a pack is published.
+            Automating the finding, the checking and the sourcing is what lets every idea get the
+            same treatment, instead of the handful a person could read. But nothing reaches the
+            shelf on its own: a person reads the verdict, opens the sources, and checks the
+            argument holds before a pack is published.
           </p>
           <p className="text-meta leading-relaxed text-muted">
             The reviewer can send a pack back or kill it outright. What they cannot do is add
-            evidence the record does not have, which is why the verdict you read is the one the
-            published sources support.
+            evidence the record does not have. The verdict you read is the one the published
+            sources support.
           </p>
         </div>
       </Section>
@@ -358,8 +358,8 @@ export default function HowItWorks() {
               What is left describes what a published kill CONTAINS, which is what this section is
               for. */}
           <p className="text-body leading-relaxed text-muted">
-            Each published kill carries the check that fired and the argument that killed it, with
-            the sources where the kill had them.
+            Every published kill names the check it failed and the argument that killed it, with
+            the sources behind that argument where there were any.
           </p>
           <Link
             href="/kill-log"

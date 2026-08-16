@@ -1844,8 +1844,8 @@ function CatalogBrowser({
                     Built for {group.label} rules
                   </h3>
                   <p className="mt-1 max-w-[60ch] text-caption text-subtle">
-                    The buyers, numbers and legal steps in these are {group.label}. Read them
-                    anywhere; build them there.
+                    The buyers, the numbers and the legal steps all follow {group.label} rules.
+                    Read them anywhere; build them there.
                   </p>
                   {/* Rows, not cards. This group is explicitly secondary -- the copy directly
                       above says the numbers and legal steps will not transfer -- so giving it the
@@ -2568,8 +2568,8 @@ export default function Home({ packs, stats, initialState, market, currency, per
               A reader cannot check it either way, so it bought nothing and risked the one thing
               this page is selling. What is left claims only what the shelf can show. */}
           <p className="mt-4 max-w-[60ch] text-body text-muted">
-            A claim without a source dies before it reaches this shelf. Every pack you&rsquo;re
-            browsing came through it.
+            A claim without a source dies before it reaches this shelf. Every pack here came out
+            the other side.
           </p>
           {/* The kill figure left this row with the second band: the terms column beside it now
               states it once, in a sentence that also says what the log actually contains. A link
