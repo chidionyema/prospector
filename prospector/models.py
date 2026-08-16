@@ -83,7 +83,12 @@ CHECKS: dict[str, str] = {
                         "channel a novice can actually execute (an open ad channel, a marketplace, "
                         "an existing audience) — not one requiring scarce expertise or blocked by a ban?"),
     "currency": ("Is this opportunity live and current right NOW — an active trend/regulation/need — "
-                 "rather than a stale or already-peaked leftover from a previous year?"),
+                 "rather than a stale or already-peaked leftover from a previous year? Rule ONLY on "
+                 "the dates carried by the passages, never on your own sense of what year it is: "
+                 "cite at least one DATED passage showing the trigger is live (a rule taking effect, "
+                 "a launch, a price move, a platform change). If every passage is undated, or the "
+                 "only dated evidence predates the last two years, answer UNVERIFIABLE — an undated "
+                 "web page is not evidence that a thing is stale, only that we cannot tell."),
     "claims_verifiable": ("Can the core factual claims be checked against retrievable public sources "
                           "rather than merely asserted — and do the sources confirm rather than "
                           "contradict them?"),
@@ -334,6 +339,13 @@ class AdversarialResult:
     # True when the adversarial pass was ruled by the cheap emergency fallback tail
     # (moat exhausted). Same semantics as CheckResult.provisional.
     provisional: bool = False
+    # The objection MEMO (2026-08-16). `kill_case` is one paragraph, which is how the whole
+    # case against an idea reached the buyer: a blob. These are the objections one at a
+    # time, each with what would have to be true for it not to bite, and each carrying the
+    # source ids it rests on. Every entry here has already passed the citation-resolution
+    # rail in verify.adversarial — an objection citing nothing is an opinion, and opinions
+    # do not ship. Shape: {objection, what_would_have_to_be_true, severity, citations}.
+    objections: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
