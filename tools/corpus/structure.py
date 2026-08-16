@@ -34,16 +34,25 @@ from tools.corpus.text import profile  # noqa: E402
 #: The measures the distance metric runs on. Counts (documents, words, sentence_count) are
 #: excluded on purpose: a long document is not an off-register one.
 SCORED = ("sent_len_mean", "sent_len_sd", "long_sentence_rate", "clause_load_mean",
-          "opener_diversity", "hedges_per_1k", "attribution_per_1k", "type_token_ratio",
+          "opener_diversity", "hedges_per_1k", "attribution_per_1k", "mattr",
           "punct_comma_per_1k", "punct_semicolon_per_1k", "punct_colon_per_1k",
           "punct_dash_per_1k", "punct_hyphen_per_1k", "punct_paren_per_1k")
 
-#: Measured and printed, but NOT scored. `build_ours.document` writes each field as its own
-#: paragraph, so our paragraph length is a property of the corpus builder, not of the
-#: writing. Scoring it would produce a large, confident z about nothing. When packs are
-#: measured as the buyer reads them (rendered markdown, not store JSON), these move into
-#: SCORED. Measured 2026-08-16: ours 1.92 sentences per paragraph, human 16.37.
-REPORTED_ONLY = ("para_sentences_mean", "para_words_mean")
+#: Measured and printed, but NOT scored. Each exclusion is a defect in the MEASUREMENT, not
+#: a judgement about the writing:
+#:
+#: `para_*` — NEITHER corpus carries usable paragraph structure. Ours: `build_ours.document`
+#: writes each field as its own paragraph. Human: the FOS PDF extraction yields a MEDIAN OF
+#: TWO paragraph blocks per decision (199 of 200 sampled have under three), so the human
+#: 16.37 sentences per paragraph is the extractor's blank lines, not an ombudsman's habit.
+#: Scoring either side would produce a large, confident z about nothing. Unblocking this
+#: needs a human corpus whose paragraph breaks survive extraction, not a change here.
+#:
+#: `type_token_ratio` — length-confounded, superseded by `mattr`. It counts distinct words
+#: over the WHOLE document, and that ratio falls as a document grows, so against our 654-word
+#: mean and the human 1,923-word mean it measures length before vocabulary. Kept in the
+#: report so both numbers can be read side by side; `mattr` is the one scored.
+REPORTED_ONLY = ("para_sentences_mean", "para_words_mean", "type_token_ratio")
 
 #: A document under this length gives an unstable profile — one long sentence moves the
 #: mean by a third. Reported separately rather than scored.

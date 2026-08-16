@@ -11,14 +11,17 @@ measured those. See docs/PROSE_CORPUS_PROGRAM.md.
 from __future__ import annotations
 
 import math
+import random
 
 import pytest
 
 from tools.corpus.build_ours import document
 from tools.corpus.load import load_corpus
 from tools.corpus.text import (
+    MATTR_WINDOW,
     log_likelihood,
     log_ratio,
+    mattr,
     ngrams,
     paragraphs,
     profile,
@@ -200,3 +203,45 @@ def test_our_documents_keep_paragraph_breaks():
     d = {"candidate": {"title": "T", "one_liner": "O"},
          "checks": [{"rationale": "R."}], "adversarial": {}}
     assert len(paragraphs(document(d))) == 3
+
+
+# ------------------------------------------------- vocabulary, with length controlled
+
+def _same_writing_at_two_lengths() -> tuple[list[str], list[str]]:
+    """One writer, one vocabulary, two document lengths. Any measure that separates these
+    two is measuring length."""
+    rng = random.Random(7)
+    vocab = [f"w{i}" for i in range(300)]
+    toks = [rng.choice(vocab) for _ in range(4000)]
+    return toks[:600], toks
+
+
+def test_type_token_ratio_falls_with_length_on_identical_writing():
+    """The reason `type_token_ratio` was retired from the scored set. Our documents average
+    654 words and the human decisions 1,923, so this drop alone put us 3.5 sd 'above' the
+    human corpus on vocabulary."""
+    short, long_ = _same_writing_at_two_lengths()
+    ttr = lambda t: len(set(t)) / len(t)  # noqa: E731
+    assert ttr(short) - ttr(long_) > 0.15
+
+
+def test_mattr_holds_when_the_same_writing_gets_longer():
+    """Same two texts, same writer, fixed 100-word window: the measure does not move."""
+    short, long_ = _same_writing_at_two_lengths()
+    assert mattr(short) == pytest.approx(mattr(long_), abs=0.02)
+
+
+def test_mattr_is_nan_below_one_window_and_never_zero():
+    """A short document is UNMEASURED, not word-poor. Zero would be averaged into the target
+    as 'no vocabulary variety' and drag it down with documents nobody measured."""
+    assert math.isnan(mattr(["a"] * (MATTR_WINDOW - 1)))
+    row = profile(["one two three."]).as_row()
+    assert "mattr" not in row
+
+
+def test_mattr_separates_a_repetitive_writer_from_a_varied_one():
+    """Direction check: the measure must be able to move at all."""
+    repetitive = ["the", "claim", "is", "supported"] * 200
+    varied = [f"w{i}" for i in range(800)]
+    assert mattr(repetitive) < 0.1
+    assert mattr(varied) > 0.9

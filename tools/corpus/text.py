@@ -65,6 +65,16 @@ PUNCT_CLASSES = {
 _DASH = re.compile(r"[—–]|(?<=\s)-(?=\s)|(?<=\s)--?(?=\S)")
 _HYPHEN = re.compile(r"(?<=\w)-(?=\w)")
 
+#: Vocabulary variety, measured on a FIXED window so document length cannot fake it.
+#: Type/token ratio falls as a document grows: every new word is more likely to be one
+#: already used. Our documents average 654 words and the human decisions average 1,923, so
+#: a raw type/token comparison between the two corpora measures length first and vocabulary
+#: second. Measured 2026-08-16: raw TTR said we were at 0.52 against a human 0.29, z=+3.5,
+#: which read as "our vocabulary churns". MATTR (moving-average type/token ratio) takes the
+#: mean type/token over every 100-word window instead, so a 600-word document and a 4,000-word
+#: one are scored on the same window size. 100 is the standard window for this measure.
+MATTR_WINDOW = 100
+
 
 def tokens(text: str) -> list[str]:
     """Lowercased word tokens. The single definition both corpora use."""
@@ -91,6 +101,29 @@ def ngrams(toks: list[str], n: int) -> list[tuple[str, ...]]:
     return [tuple(toks[i:i + n]) for i in range(len(toks) - n + 1)]
 
 
+def mattr(toks: list[str], window: int = MATTR_WINDOW) -> float:
+    """Mean type/token ratio over every `window`-token span. NaN when the text is shorter
+    than one window, because there is nothing to average and 0.0 would read as "no variety".
+
+    Rolling counter rather than a set per window: the corpus-level call runs over 500,000
+    tokens, and rebuilding a 100-item set half a million times is a minute of nothing.
+    """
+    if len(toks) < window:
+        return float("nan")
+    seen: Counter[str] = Counter(toks[:window])
+    total = len(seen)
+    spans = 1
+    for i in range(window, len(toks)):
+        out_tok, in_tok = toks[i - window], toks[i]
+        seen[out_tok] -= 1
+        if seen[out_tok] == 0:
+            del seen[out_tok]
+        seen[in_tok] += 1
+        total += len(seen)
+        spans += 1
+    return total / spans / window
+
+
 @dataclass
 class Profile:
     """The structural fingerprint of one corpus. Every rate is per 1,000 words so two
@@ -112,10 +145,15 @@ class Profile:
     hedges_per_1k: float = 0.0
     attribution_per_1k: float = 0.0
     punct_per_1k: dict[str, float] = field(default_factory=dict)
-    type_token_ratio: float = 0.0        # on a fixed 10k-word window, size-independent
+    type_token_ratio: float = 0.0        # WHOLE text up to 10k words — falls as length rises
+    mattr: float = 0.0                   # mean TTR per 100-word window — length-independent
 
     def as_row(self) -> dict[str, float]:
-        d = {k: v for k, v in self.__dict__.items() if k != "punct_per_1k"}
+        """NaN measures are DROPPED, not zeroed. `mattr` is undefined on a document shorter
+        than one window; a 0.0 in the table would be averaged in as "no vocabulary variety"
+        and drag the target down with documents that were never measured."""
+        d = {k: v for k, v in self.__dict__.items()
+             if k != "punct_per_1k" and not (isinstance(v, float) and math.isnan(v))}
         d.update({f"punct_{k}_per_1k": v for k, v in self.punct_per_1k.items()})
         return d
 
@@ -193,6 +231,7 @@ def profile(docs: list[str]) -> Profile:
                       for k in (*PUNCT_CLASSES, "dash", "hyphen")}
     window = all_toks[:10_000]
     p.type_token_ratio = (len(set(window)) / len(window)) if window else 0.0
+    p.mattr = mattr(all_toks)
     return p
 
 
