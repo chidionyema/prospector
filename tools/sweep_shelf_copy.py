@@ -225,13 +225,18 @@ def _new_facts(source: str, new: str) -> list[str]:
     return sorted(set(out))
 
 
-def persist(cid: str, new_line: str) -> None:
+def persist(cid: str, new_line: str | None = None, new_title: str | None = None) -> None:
     """Both copies, or neither: the DB row is what the shelf reads, the dossier JSON is
     what a republish would read back. Leaving one behind is how the shelf silently reverts
     the next time the pack is republished."""
+    sets = [(col, val) for col, val in (("one_liner", new_line), ("title", new_title))
+            if val is not None]
+    if not sets:
+        return
     con = sqlite3.connect(DB)
     try:
-        con.execute("UPDATE dossiers SET one_liner = ? WHERE candidate_id = ?", (new_line, cid))
+        con.execute(f"UPDATE dossiers SET {', '.join(c + ' = ?' for c, _ in sets)} "
+                    f"WHERE candidate_id = ?", [v for _, v in sets] + [cid])
         con.commit()
     finally:
         con.close()
@@ -240,8 +245,53 @@ def persist(cid: str, new_line: str) -> None:
             continue
         doc = json.load(path.open())
         if isinstance(doc.get("candidate"), dict):
-            doc["candidate"]["one_liner"] = new_line
+            for col, val in sets:
+                doc["candidate"][col] = val
             path.write_text(json.dumps(doc, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def pull_live(api_url: str, dry: bool) -> int:
+    """Copy the live wording back into our own record, where the two disagree.
+
+    The shelf is ahead of us, not behind: `backfill_listing_copy` edits copy directly on the
+    catalogue, so on 2026-08-16 the live rows were voice-clean while this DB still held 16
+    titles addressed to the end customer and five carrying trade initialisms. That is not a
+    cosmetic gap — `bridge._update_catalog` sources the title from the DOSSIER
+    (`bridge.py:1514`), so the next republish of any of those packs would push the old
+    wording back onto the shelf and undo a fix nobody remembers making. Pulling is the
+    cheap direction: it costs no model call and cannot invent a fact, because every string
+    it writes is already the one the buyer is reading."""
+    import requests
+    live = requests.get(f"{api_url}/catalog", timeout=30).json()
+    live = live if isinstance(live, list) else live.get("items", [])
+    by_id = {r.get("id"): r for r in live}
+
+    pending = []
+    for cid, title, one, _created in live_rows():
+        row = by_id.get(cid)
+        if row is None:
+            continue
+        lt = (row.get("title") or "").strip()
+        lo = (row.get("oneLine") or "").strip()
+        # Only where OUR copy is the defective one. A live line that breaches is the push
+        # path's business, and pulling it in would launder a defect into our record.
+        want_t = lt if lt and lt != title.strip() and breaches(title, "") and not breaches(lt, "") else None
+        want_o = lo if lo and lo != one.strip() and voice_breaches(one) and not voice_breaches(lo) else None
+        if want_t or want_o:
+            pending.append((cid, want_t, want_o))
+
+    print(f"live rows: {len(by_id)}   local rows the shelf has already fixed: {len(pending)}")
+    for cid, want_t, want_o in pending:
+        print(f"\n{cid}")
+        if want_t:
+            print(f"  title -> {want_t[:100]}")
+        if want_o:
+            print(f"  line  -> {want_o[:100]}")
+        if not dry:
+            persist(cid, new_line=want_o, new_title=want_t)
+    if dry:
+        print("\nDRY RUN — nothing written.")
+    return 0
 
 
 #: The rollback. Written BEFORE each live PATCH, one row per pack: once the live `oneLine`
@@ -314,12 +364,16 @@ def main() -> int:
     ap.add_argument("--push", action="store_true",
                     help="send repaired lines to the LIVE catalogue (needs STORE_INTERNAL_API_KEY)")
     ap.add_argument("--dry-run", action="store_true", help="with --push: show the diff, send nothing")
+    ap.add_argument("--pull", action="store_true",
+                    help="copy live copy back into the local record where the shelf is ahead")
     ap.add_argument("--api-url", default="https://api.mumchimp.com")
     ap.add_argument("--limit", type=int, default=0, help="stop after N rewrites")
     ap.add_argument("--jobs", type=int, default=8,
                     help="rewrites in flight at once (default 8, the measured-clean MiniMax figure)")
     args = ap.parse_args()
 
+    if args.pull:
+        return pull_live(args.api_url, args.dry_run)
     if args.push:
         key = os.environ.get("STORE_INTERNAL_API_KEY", "")
         if not key and not args.dry_run:
