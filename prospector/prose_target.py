@@ -167,3 +167,143 @@ def advice_for(measure: str, side: str) -> str:
     """The line to show a writer, or "" if the measure has none. Never raises: a missing
     entry must not turn a warning into a crash on the publish path."""
     return (ADVICE.get(measure) or {}).get(side, "")
+
+
+# ---------------------------------------------------------------------------
+# APPLICATION: the same measurement, said to the writer BEFORE it writes
+# ---------------------------------------------------------------------------
+#
+# Detection was the whole of the first cut: `grade` scored a finished document and
+# `check_register` reported on it. Nothing told the generator what the target was, which is
+# the defect memory `the-generator-was-never-shown-the-scorers-rubric.md` records: a model
+# graded on a rubric it has never read can only meet it by luck.
+#
+# `ADVICE` above is written for a person reading a lint report, so it is phrased as a
+# diagnosis of a document that already exists ("compound stacking", "vocabulary churn").
+# A prompt needs the imperative instead, so this is a second phrasing of the same fact
+# rather than a second fact. Both are keyed by measure, and the same test that pins ADVICE
+# to the armed set pins this one, so an armed measure can never reach the linter without
+# also reaching the writer.
+#
+# House voice binds here too: no dashes, no defining a thing by what it is not.
+PROMPT_RULE = {
+    "punct_hyphen_per_1k": {
+        "above": "Write compounds out as words. 'A key safe re-sited by the front door', "
+                 "never 'Front-Door Key-Safe Re-Siting'. Hyphens are the loudest tell we "
+                 "have.",
+        "below": "The occasional hyphenated compound is normal. Do not avoid them entirely.",
+    },
+    "punct_comma_per_1k": {
+        "above": "Use fewer commas. One claim per sentence. When a third clause arrives, "
+                 "start a new sentence instead.",
+        "below": "Hold a qualification inside the sentence where it belongs. Prose with no "
+                 "commas reads as a list of assertions.",
+    },
+    "punct_semicolon_per_1k": {
+        "above": "Almost never use a semicolon. A full stop does the same work and reads "
+                 "faster.",
+        "below": "No semicolons is normal writing. Nothing to change.",
+    },
+    "heavy_sentence_rate": {
+        "above": "Keep most sentences to a single clause. A sentence carrying two or more "
+                 "comma-clauses should be the exception you chose, not the shape you "
+                 "default to.",
+        "below": "Join two clauses where the second genuinely qualifies the first. Every "
+                 "sentence standing alone reads as a list.",
+    },
+    "mattr": {
+        "above": "Repeat the plain word rather than reaching for a new one each time. "
+                 "Human writers reuse ordinary words far more than we do.",
+        "below": "Vary the wording where the repetition is accidental rather than "
+                 "deliberate.",
+    },
+    "hedges_per_1k": {
+        "above": "State the finding. Hedge only the part that is genuinely uncertain.",
+        "below": "Say which part you are unsure about, inside the sentence. A writer "
+                 "accountable for the verdict marks the uncertain half rather than "
+                 "stating everything as settled.",
+    },
+}
+
+
+def _fmt(value: Any) -> str:
+    """Two decimals for a rate, one for a per-1k count. Keeps the block readable without a
+    per-measure unit table."""
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    return f"{v:.2f}" if abs(v) < 1 else f"{v:.1f}"
+
+
+def prompt_block(path: Optional[Path] = None) -> str:
+    """The armed target, phrased as instructions for the model that is about to write.
+
+    Returns "" when the target cannot be read. A missing target must degrade generation to
+    exactly what it was before this existed, never crash the writing path: the linter is
+    where an unreadable target is said out loud (`TargetUnreadable`), because there it can
+    stop a pack listing, and here it could only stop a pack existing.
+
+    Only ARMED measures appear, and only on the side the corpus actually falls off, so this
+    block cannot tell a writer to fix something we have not measured ourselves failing.
+    """
+    try:
+        armed = armed_measures(path)
+        corpus = load_target(path).get("corpus") or {}
+    except TargetUnreadable:
+        return ""
+    if not armed:
+        return ""
+
+    human_docs = corpus.get("human_documents") or corpus.get("human_docs")
+    provenance = (
+        f"measured against {human_docs} documents written by people"
+        if human_docs else "measured against a corpus of documents written by people"
+    )
+
+    lines = [
+        "HOW HUMANS ACTUALLY WRITE. The rules above are the house voice. What follows is "
+        f"{provenance}, compared with what this engine has been writing. Each line names "
+        "the gap and what to do about it. These are measurements of FORM, never of subject "
+        "matter, so they apply whatever the sector.",
+    ]
+    for name, spec in sorted(armed.items(), key=lambda kv: -abs(float(kv[1].get("z") or 0))):
+        side = str(spec.get("side") or "")
+        rule = (PROMPT_RULE.get(name) or {}).get(side, "")
+        if not rule:
+            continue
+        lines.append(
+            f"  - {rule} (we run {_fmt(spec.get('ours_mean'))}, human writing averages "
+            f"{_fmt(spec.get('human_mean'))}, normal range {_fmt(spec.get('p5'))} to "
+            f"{_fmt(spec.get('p95'))})"
+        )
+    if len(lines) == 1:
+        return ""
+    return "\n".join(lines)
+
+
+def repair_feedback(findings: List[Dict[str, Any]]) -> str:
+    """What to show a model whose finished draft fell outside the human range.
+
+    Same source as `prompt_block`, pointed at one document rather than at the corpus: the
+    side comes from what THIS draft did, not from what the engine does on average, because
+    a draft that over-corrected needs the opposite instruction.
+    """
+    lines = []
+    for f in findings:
+        name, side = str(f.get("measure")), str(f.get("side"))
+        rule = (PROMPT_RULE.get(name) or {}).get(side, "")
+        if not rule:
+            continue
+        lines.append(
+            f"  - {rule} (this draft: {_fmt(f.get('value'))}, human range "
+            f"{_fmt(f.get('p5'))} to {_fmt(f.get('p95'))})"
+        )
+    if not lines:
+        return ""
+    return (
+        "Your previous draft sits outside the range of human writing on the measures "
+        "below. Rewrite the prose to sit inside it. Do not change any figure, date, "
+        "source or named entity to do it, and do not cut evidence: this is about how the "
+        "sentences are built, never about what they say.\n" + "\n".join(lines)
+    )

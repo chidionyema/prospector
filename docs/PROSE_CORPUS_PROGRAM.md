@@ -318,6 +318,76 @@ Wiring, all of it default-off:
   is the human 5th–95th percentile, so about one human document in ten falls outside on any
   single measure; blocking today would unlist packs a human author would also have failed.
 
+#### Applied and corrected, 2026-08-16
+
+The founder's question on the first cut was "does it correct the mistakes? Prevention is one
+thing but application and correction are also critical." The answer then was no: everything
+above DETECTS. A document was written, measured, filed and sold unchanged. This is the other
+two thirds.
+
+**APPLY — the writer is shown the target before it writes.** `prose_target.prompt_block()`
+renders the armed measures as instructions, with our number and the human range beside each
+one, and `prompts.style_kwargs()` appends it to the house voice guide. That guide already
+reaches all six templates that write prose (`generate_system`, `refine_system`,
+`revise_system`, `content_gen`, `artifacts`, `retitle`), so no template needed editing and
+no call site can forget it. Only ARMED measures appear, and only on the side the corpus
+actually falls off, so the block cannot instruct a writer about something we have not
+measured ourselves failing. An unreadable target returns `""` and generation is exactly what
+it was before. This closes the defect in memory
+`the-generator-was-never-shown-the-scorers-rubric.md`: a model graded on a rubric it has
+never read can only meet it by luck.
+
+**CORRECT — a draft outside the range earns one rewrite.** `artifacts._gen_one_artifact`
+already had a repair turn for claim-check violations. It now has a second trigger rather
+than a second loop: `prose_target.repair_feedback()` tells the model which measures this
+draft fell outside and by how much, and the existing two-attempt budget covers it. The
+repair prompt says explicitly that no figure, date, source or named entity may change to fix
+a sentence.
+
+Two fences hold this apart from the money:
+
+- **A register finding never blocks the sale.** `violations` is wired to
+  `listing.claim_check_block`, and the register interval is the human 5th–95th percentile, so
+  one human document in ten falls outside it. Register findings drive the rewrite and stop
+  there. Truth blocks a sale; style earns a second draft. Pinned by
+  `test_a_register_finding_never_blocks_the_sale`.
+- **Repair and block are separate switches.** `listing.human_register_repair` is **true**,
+  `listing.human_register_block` stays **false**. A rewrite costs one model call and risks
+  nothing. Unlisting on a style measure risks the pack.
+
+The repair turn no longer needs `check_op`. It used to, which meant a pack generated with
+the claim-check off could not be corrected on register either, though measuring our own
+prose needs no second operator.
+
+**What this costs, measured before shipping it, not after.** Every `build_spec`, `gtm_plan`
+and `ops_plan` in 400 dossiers on disk was graded against the shipped target:
+
+```
+pack documents measured: 269
+outside the human range -> would take a repair turn: 269 = 100%
+   mattr                  100%    punct_comma_per_1k      55%
+   punct_hyphen_per_1k     97%    punct_semicolon_per_1k  54%
+   hedges_per_1k           75%    heavy_sentence_rate     48%
+```
+
+So this is not a repair that fires on an exception. On today's prose it fires on every
+prose artifact, and the honest description is a second mandatory drafting pass: three extra
+model calls per pack, capped at one extra call each by the existing two-attempt budget.
+
+The cost is certain and the benefit is not yet measured. Nobody has yet shown that draft two
+lands INSIDE the range, and `mattr` in particular (vocabulary churn) may not be fixable in
+one turn. It ships on because the founder asked for correction and because
+`listing.human_register_repair: false` reverses it without a code change. **The next
+measurement is the one that decides whether it stays on: run a batch and compare the
+`human_register` block in `<id>.lint.json` for draft one against draft two.** If draft two
+does not move, this is paying double for nothing and the switch goes to false.
+
+Pinned by `tests/unit/test_prose_application.py` (17 tests): the armed set, the advice set
+and the writer's instruction set are the same set; the block obeys the no-dashes rule it is
+appended to; the seam through `style_kwargs` is real; the repair fires on a draft that is
+provably outside the range and not on one that is not; a broken measurement never breaks
+generation.
+
 #### What is not yet done
 
 Stage 7 — a distance score per generated document, written into the run receipt — is not

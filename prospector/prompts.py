@@ -95,7 +95,28 @@ def style_kwargs() -> dict[str, str]:
     verbatim. These depend on nothing but the files, so there is no reason for a call
     site to be involved at all.
     """
-    return {key: _style_text(fname) for key, fname in STYLE_KEYS.items()}
+    out = {key: _style_text(fname) for key, fname in STYLE_KEYS.items()}
+
+    # THE MEASURED TARGET, SAID TO THE WRITER. Imported here rather than at module scope so
+    # a prompt render never depends on the prose package importing cleanly; `prompt_block`
+    # returns "" for any unreadable target, so the worst case is the voice guide exactly as
+    # it was before this existed.
+    #
+    # It rides on `style_guide` rather than taking a placeholder of its own because that
+    # placeholder already reaches all six templates that write prose (generate_system,
+    # refine_system, revise_system, content_gen, artifacts, retitle). A new key would have
+    # needed six template edits and would have reached only the templates someone
+    # remembered, which is the call-site discipline this function's docstring warns about.
+    try:
+        from . import prose_target
+        block = prose_target.prompt_block()
+    except Exception:  # noqa: BLE001 - a style block must never break a render
+        block = ""
+    if block and out.get("style_guide"):
+        out["style_guide"] = f"{out['style_guide']}\n\n{block}"
+    elif block:
+        out["style_guide"] = block
+    return out
 
 
 def _fragment_chain(cfg) -> tuple[str, ...]:

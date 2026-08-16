@@ -1593,6 +1593,16 @@ listing:
   # outside it on any single measure. Blocking today would unlist packs a human author
   # would also have failed. Turn it on against the baseline that accrues in the reports.
   human_register_block: false           # outside the human range -> error
+  # APPLYING the same measurement, rather than only reporting it. Two switches, because
+  # they are two different acts:
+  #   human_register_block  (above)  refuses to SELL a finished pack.        OFF.
+  #   human_register_repair (below)  spends one rewrite turn on a draft.     ON.
+  # A rewrite costs one model call and risks nothing. Unlisting on a measure whose interval
+  # is the human 5th-95th percentile, where one human document in ten falls outside, risks
+  # the pack. The armed measures also reach the WRITER now, through the house voice guide
+  # (`prose_target.prompt_block` -> `prompts.style_kwargs`), so the first draft is aimed at
+  # the target instead of being graded against a rubric it was never shown.
+  human_register_repair: true           # outside the human range -> one rewrite turn
   # PAID-ARTIFACT CLAIM CHECK (artifacts.claim_check_blocks_listing). Added 2026-08-15.
   #
   # What it is: when build_spec / gtm_plan / ops_plan still carry claim-check violations after
