@@ -46,6 +46,7 @@ import json
 import os
 import re
 import secrets
+import shlex
 import subprocess
 import sys
 import time
@@ -153,6 +154,7 @@ def _read_status(cfg, args: dict) -> dict:
     from .routing import routing_view
 
     out: dict[str, Any] = {"heartbeats": _heartbeats(cfg), "alerts": _alerts(cfg)}
+    out["supervisor"] = _supervisor_view()
     out["pause"] = pause_view(cfg)
     out["providers"] = provider_view(cfg)
     out["queue"] = queue_view(cfg, lookback_h=float(args.get("lookback_h") or 24.0))
@@ -162,6 +164,33 @@ def _read_status(cfg, args: dict) -> dict:
         out["routing"] = {"error": f"{exc}", "error_kind": type(exc).__name__}
     out["spend"] = _spend_headline(cfg)
     return out
+
+
+def _supervisor_view() -> dict:
+    """Whether launchd actually HOLDS each engine job, and its pid if it does.
+
+    A heartbeat says the process was alive a minute ago. It cannot say whether anything will
+    start it again when it dies. On 2026-08-16 `com.prospector.scheduler` was not loaded into
+    launchd at all, so KeepAlive had nothing to keep alive and the daemon stayed dead until a
+    human ran `launchctl bootstrap` at a terminal. No screen showed that. It is also the exact
+    state the Restart control acts on, so it belongs next to the button.
+
+    `loaded` is tri-state and stays that way here: None means "could not ask launchctl", which is
+    not the same as "not loaded" and must not be rendered as a fault.
+    """
+    from .supervisor import JOBS, job_state
+
+    jobs = []
+    for label in sorted(JOBS):
+        try:
+            jobs.append(job_state(label))
+        except Exception as exc:  # noqa: BLE001 — one unreadable job must not blank the panel
+            rec: dict[str, Any] = {"label": label, "loaded": None, "pid": None,
+                                   "role": JOBS[label].get("role", "unknown")}
+            rec["error"] = f"{type(exc).__name__}: {exc}"
+            rec["reason"] = "could not ask launchctl"
+            jobs.append(rec)
+    return {"jobs": jobs}
 
 
 #: Phases that are DOING something rather than waiting for something. They write no `next_check`
@@ -720,8 +749,21 @@ def _read_tools(cfg, args: dict) -> dict:
         rel = tool["path"]
         out.append({**tool, "exists": (root / rel).exists()})
     return {"root": str(root), "tools": out,
-            "note": "Tools marked run=false are shown with their command and are not executable "
-                    "from the web. Destructive tools are never runnable here."}
+            "note": "Run any of these with the `tools.run` action, using the tool's `id`. What "
+                    "makes it safe is the preview, the confirmation token and the rollback "
+                    "snapshot — not a hidden button. `risk` says what undo covers: 'local' means "
+                    "all of it, 'external' means the local half only."}
+
+
+def _read_undo(cfg, args: dict) -> dict:
+    """The rollback points that exist, newest first."""
+    from prospector.ops import undo as undo_mod
+
+    snaps = undo_mod.list_snapshots()
+    return {"snapshots": snaps, "count": len(snaps), "keep": undo_mod.DEFAULT_KEEP,
+            "excluded": sorted(undo_mod.EXCLUDED),
+            "covers": "the local store/ tree. NOT Stripe, NOT the live shelf, NOT config.yaml "
+                      "(config has its own backups — see the config.restore action)."}
 
 
 #: The shelf survey, loaded from the tool that already owns the question rather than
@@ -814,6 +856,7 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
     "config": _read_config,
     "intents": _read_intents,
     "tools": _read_tools,
+    "undo": _read_undo,
     "catalogue": _read_catalogue,
     "pack": _read_pack,
 }
@@ -1406,6 +1449,181 @@ def _run_repair(cfg, name: str, argv: list[str], preview: bool, *, effect: str,
     return receipt
 
 
+#: How long any catalogued tool may run from the console before it is killed. Same budget as a
+#: shelf repair: these are batch tools, so minutes is normal and a timeout is not a failure.
+_TOOL_TIMEOUT_S = _SHELF_TIMEOUT_S
+
+#: `<name>` in a catalogued command is a value the operator must supply, e.g. `<idea>`.
+_PLACEHOLDER_RE = re.compile(r"<([a-z0-9_]+)>")
+
+
+def _tool_by_id(tool_id: str) -> dict:
+    """Look a tool up in `TOOLS` by its id. The id is a hash of the catalogued command."""
+    for tool in TOOLS:
+        if tool["id"] == tool_id:
+            return tool
+    raise ValueError(f"no tool with id {tool_id!r}")
+
+
+def _tool_argv(tool: dict, payload: dict) -> list[str]:
+    """Turn a catalogued command into argv, filling `<placeholders>` from the payload.
+
+    THE COMMAND COMES FROM `TOOLS`, NEVER FROM THE CALLER. The browser sends an id and values for
+    named placeholders. It cannot send a command, a flag, or a path. Running a client-supplied
+    string would be a web shell on the operator's machine — a different feature from "reach the
+    admin tools", and not one anybody asked for.
+
+    Values are substituted into single argv elements and the child runs without a shell, so a
+    value containing `;` or `&&` is one argument, not a second command.
+    """
+    argv: list[str] = []
+    for part in shlex.split(tool["command"]):
+        missing: list[str] = []
+
+        def _fill(match, _missing=missing):
+            name = match.group(1)
+            if payload.get(name) in (None, ""):
+                _missing.append(name)
+                return match.group(0)
+            return str(payload[name])
+
+        filled = _PLACEHOLDER_RE.sub(_fill, part)
+        if missing:
+            raise ValueError(f"{tool['purpose']!r} needs a value for "
+                             f"{', '.join(sorted(set(missing)))}")
+        argv.append(filled)
+
+    # The catalogue writes `.venv/bin/python` because that is what an operator types. The console
+    # is a launchd job whose interpreter is named in its plist, so resolve it rather than trusting
+    # a relative path against whatever cwd the job happens to have.
+    if argv and Path(argv[0]).name.startswith("python"):
+        argv[0] = os.environ.get("PROSPECTOR_PYTHON") or sys.executable
+    return argv
+
+
+def _exec(cmd: list[str], cwd: Path, timeout: int) -> tuple[str, Optional[int], bool]:
+    """Run a child and return (combined output, exit code, timed_out). Never raises on failure."""
+    try:
+        proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
+        return (proc.stdout or "") + (proc.stderr or ""), proc.returncode, False
+    except subprocess.TimeoutExpired as exc:
+        out = ((exc.stdout or b"").decode(errors="replace")
+               + (exc.stderr or b"").decode(errors="replace")) if exc.stdout or exc.stderr else ""
+        return out, None, True
+
+
+def _act_tools_run(cfg, payload: dict, preview: bool) -> dict:
+    """Run any catalogued operator tool, and take a rollback snapshot first if it writes.
+
+    This is the action that replaced the old `run=False` fence (founder directive, 2026-08-16:
+    "we just need rollback to be safe not to hide actions"). A refused button did not stop a tool
+    running; it moved the run to a terminal, where there is no preview, no receipt and no undo.
+
+    What makes it safe is the same fence every other action goes through — a preview that names
+    the exact command, a confirmation token bound to that payload, and a receipt — plus
+    `prospector.ops.undo`. The preview states what the snapshot does NOT cover, because a tool
+    that reaches Stripe or the live shelf cannot be rolled back from this machine.
+    """
+    from prospector.ops import undo as undo_mod
+
+    tool = _tool_by_id(str(payload.get("id") or "").strip())
+    root = _repo_root()
+    if not tool["run"]:
+        raise ValueError(f"{tool['path']} is not runnable from the console. {tool['danger']}")
+    if not (root / tool["path"]).exists():
+        raise ValueError(f"{tool['path']} is not on disk. The catalogue is hand-kept, so this "
+                         f"means the tool was renamed or deleted and the table was not updated.")
+
+    argv = _tool_argv(tool, payload)
+    writes = bool(tool["writes"])
+
+    if preview:
+        return {
+            "action": "tools.run", "id": tool["id"], "path": tool["path"],
+            "purpose": tool["purpose"], "risk": tool["risk"], "danger": tool["danger"],
+            "command": " ".join(shlex.quote(a) for a in argv),
+            "effect": tool["purpose"],
+            "snapshot": "a rollback snapshot of store/ is taken first" if writes
+                        else "none — this tool writes nothing",
+            "undo_covers": tool["undo_covers"],
+            "moat_affecting": False,
+            "takes_effect": "immediately, while the tool runs",
+            "note": f"Runs for up to {_TOOL_TIMEOUT_S // 60} minutes." + (
+                "" if tool["risk"] != "external" else
+                " THIS REACHES OFF THIS MACHINE. Undo restores the local store/ tree and nothing "
+                "else — a Stripe price, a published pack or an uploaded backup stays changed."),
+        }
+
+    # Same reason as `_run_repair`: launchd does not read a shell profile, so a tool spawned from
+    # the console starts without the API keys a terminal already has.
+    try:
+        from prospector.run import _load_dotenv
+
+        _load_dotenv()
+    except Exception:  # noqa: BLE001
+        pass
+
+    snap = None
+    if writes:
+        snap = undo_mod.snapshot(f"tools.run {tool['path']}", root=root,
+                                 actor=str(payload.get("actor") or "console"),
+                                 note=f"before: {' '.join(argv)}")
+
+    started = time.time()
+    out, code, timed_out = _exec(argv, root, _TOOL_TIMEOUT_S)
+    tail = "\n".join(out.splitlines()[-60:])
+    receipt = {
+        "ts": _now_iso(), "actuator": f"tools.run:{tool['path']}",
+        "command": " ".join(shlex.quote(a) for a in argv),
+        "actor": str(payload.get("actor") or "console"),
+        "reason": str(payload.get("reason") or ""),
+        "nonce": str(payload.get("nonce") or ""),
+        "risk": tool["risk"],
+        "applied": code == 0, "changed": bool(tail), "timed_out": timed_out,
+        "exit_code": code, "took_s": round(time.time() - started, 1),
+        "undo_id": (snap or {}).get("id"),
+        "undo_covers": tool["undo_covers"],
+        "message": tail or "(the tool printed nothing)",
+    }
+    _record_intent(cfg, receipt)
+    return receipt
+
+
+def _act_tools_undo(cfg, payload: dict, preview: bool) -> dict:
+    """Roll `store/` back to a snapshot taken before a tool ran.
+
+    Rollback means the tree ends up as it was, so this deletes files written since as well as
+    restoring the ones that changed. The preview counts both, because the deletion list is the
+    part that can cost the operator work they wanted to keep.
+    """
+    from prospector.ops import undo as undo_mod
+
+    snap_id = str(payload.get("snapshot") or "").strip()
+    if not snap_id:
+        snaps = undo_mod.list_snapshots()
+        if not snaps:
+            raise ValueError("there is no snapshot to roll back to")
+        snap_id = snaps[0]["id"]
+
+    plan = undo_mod.restore_plan(snap_id)
+    if preview:
+        return {"action": "tools.undo", **plan, "moat_affecting": False,
+                "effect": f"puts store/ back to {snap_id}: restores {plan['restore']} file(s) "
+                          f"and DELETES {plan['delete']} written since",
+                "takes_effect": "immediately",
+                "note": "Undo covers the local store/ tree only. It cannot take back a Stripe "
+                        "price, a published pack, or an uploaded backup."}
+
+    rec = undo_mod.restore(snap_id)
+    receipt = {"ts": _now_iso(), "actuator": "engine.tools.undo", "snapshot": snap_id,
+               "actor": str(payload.get("actor") or "console"),
+               "reason": str(payload.get("reason") or ""),
+               "nonce": str(payload.get("nonce") or ""),
+               "changed": bool(rec["restored"] or rec["deleted"]), **rec}
+    _record_intent(cfg, receipt)
+    return receipt
+
+
 def _act_shelf_repair_copy(cfg, payload: dict, preview: bool) -> dict:
     """Rewrite the shelf copy that fails the linter, so those packs can be listed."""
     argv = ["tools/sweep_shelf_copy.py", "--fix"]
@@ -1518,25 +1736,31 @@ ACTIONS: dict[str, Callable[[Any, dict, bool], dict]] = {
     "config.set": _act_config_set,
     "config.restore": _act_config_restore,
     "catalogue.set_listing": _act_catalogue_listing,
+    "tools.run": _act_tools_run,
+    "tools.undo": _act_tools_undo,
 }
 
 #: Actions the console refuses by name rather than by absence, so the error says WHY.
-#: `ADMIN_CONSOLE_PROGRAM.md` §7 carries the full price-change design; nothing here implements it.
+#:
+#: THIS LIST IS SHORT ON PURPOSE. It used to hold `index.reconcile` on the grounds that the tool
+#: is destructive, and that was the wrong fence (founder directive 2026-08-16): refusing it did
+#: not stop the deletion, it moved the deletion to a terminal where nothing recorded it. It now
+#: runs through `tools.run`, behind a preview and a rollback snapshot.
+#:
+#: What is left is refused for a reason no snapshot fixes: these two would write the catalogue row
+#: WITHOUT the Stripe side, so the two would disagree and a buyer would be charged the old price.
+#: The fix is to run the money-rail tool, which writes both, and that is now reachable from the
+#: console as well. `ADMIN_CONSOLE_PROGRAM.md` §7 carries the full design.
 REFUSED_ACTIONS: dict[str, str] = {
     "catalogue.set_price": (
-        "Price writes are not implemented, deliberately. prospector/bridge.py is the money rail: "
-        "one PriceDecision mints the Stripe Price and writes the catalogue row together so they "
-        "cannot drift. A console that PATCHed the catalogue price directly would write the row "
-        "while Stripe still held the old price. Use tools/set_live_pack_price.py; the flow is "
-        "specified in docs/ADMIN_CONSOLE_PROGRAM.md §7."
+        "A direct catalogue price write is refused because it would drift from Stripe. "
+        "prospector/bridge.py is the money rail: one PriceDecision mints the Stripe Price and "
+        "writes the catalogue row together so they cannot disagree. Run the tool that does both "
+        "— tools/set_live_pack_price.py, via the tools.run action."
     ),
     "catalogue.reprice": (
-        "Bulk repricing is not implemented from the web. See tools/reprice_live_packs.py and "
-        "docs/ADMIN_CONSOLE_PROGRAM.md §7."
-    ),
-    "index.reconcile": (
-        "scripts/reconcile_orphan_index.py deletes index rows. Destructive tools are never "
-        "runnable from this surface; run it at a terminal."
+        "Same reason as catalogue.set_price: a bulk row write would leave Stripe holding the old "
+        "prices. Run tools/reprice_live_packs.py via the tools.run action."
     ),
 }
 
@@ -1545,13 +1769,42 @@ REFUSED_ACTIONS: dict[str, str] = {
 # The operator CLI catalogue
 # --------------------------------------------------------------------------- #
 #: A hand-kept table, NOT a directory scan. A scan can list files; it cannot say whether a tool
-#: writes to the money rail, and that is the only property that decides whether the console may
-#: run it. `exists` is filled in at read time, so a tool that is renamed shows up as missing
-#: instead of silently vanishing from the operator's map.
-def _t(path, purpose, writes, screen, run=False, danger=None, cmd=None):
-    return {"path": path, "purpose": purpose, "writes": writes, "screen": screen,
-            "run": run, "danger": danger,
-            "command": cmd or f".venv/bin/python {path}"}
+#: reaches off this machine, and that is what decides which safety net applies. `exists` is filled
+#: in at read time, so a tool that is renamed shows up as missing instead of silently vanishing
+#: from the operator's map.
+#:
+#: `run` USED TO BE THE FENCE, AND THAT WAS WRONG (founder directive, 2026-08-16: "we just need
+#: rollback to be safe not to hide actions"). A tool the console refused was not a tool that did
+#: not run; it was a tool the operator ran at a terminal, with no preview, no receipt and no undo.
+#: The fence is now the preview + confirmation token every action already goes through, plus
+#: `prospector.ops.undo`. So `run` defaults to True and `risk` carries the honest part:
+#:
+#:   "read"     — writes nothing. No snapshot needed.
+#:   "local"    — writes only the local store/ tree. `undo` rolls it back in full.
+#:   "external" — reaches off this machine: Stripe, the live shelf, R2, public source files.
+#:                A snapshot is still taken, but it CANNOT undo the external half. The preview
+#:                says so, because an undo that covers half the blast radius is worse than none.
+#:   "shell"    — not a tool. Not runnable, and the refusal names why.
+RISKS = ("read", "local", "external", "shell")
+
+
+def _t(path, purpose, writes, screen, run=True, danger=None, cmd=None, risk=None):
+    if risk is None:
+        risk = "local" if writes else "read"
+    if risk not in RISKS:
+        raise ValueError(f"{path}: risk={risk!r} is not one of {RISKS}")
+    command = cmd or f".venv/bin/python {path}"
+    # The id must be stable across restarts (a browser holds it between preview and confirm) and
+    # unique. The command alone is neither: two rows share `launchctl list | grep com.prospector`.
+    ident = hashlib.sha1(f"{path}|{purpose}|{command}".encode()).hexdigest()[:10]
+    return {"id": ident,
+            "path": path, "purpose": purpose, "writes": writes, "screen": screen,
+            "run": bool(run) and risk != "shell", "danger": danger, "risk": risk,
+            "undo_covers": {"read": "nothing is written",
+                            "local": "everything this writes",
+                            "external": "the local half only",
+                            "shell": "n/a"}[risk],
+            "command": command}
 
 
 TOOLS: list[dict] = [
@@ -1577,9 +1830,11 @@ TOOLS: list[dict] = [
     _t("prospector/run.py", "Manage markets", True, "/tools",
        cmd=".venv/bin/python -m prospector.run markets show"),
     _t("prospector/scheduler/run_scheduled.py", "The producer loop (launchd owns it)", True,
-       "/engine", cmd="launchctl list | grep com.prospector"),
+       "/engine", risk="shell", cmd="launchctl list | grep com.prospector",
+       danger="a daemon, not a tool — launchd starts it. Use daemon.restart."),
     _t("prospector/consumer.py", "The drain loop (launchd owns it)", True, "/engine",
-       cmd="launchctl list | grep com.prospector"),
+       risk="shell", cmd="launchctl list | grep com.prospector",
+       danger="a daemon, not a tool — launchd starts it. Use daemon.restart."),
     _t("prospector/ops/pause.py", "Arm or clear a pause scope", True, "/engine", run=True,
        cmd=".venv/bin/python -m prospector.ops.pause show"),
     _t("prospector/ops/routing.py", "Who may rule finally", True, "/engine", run=True,
@@ -1593,19 +1848,20 @@ TOOLS: list[dict] = [
     _t("prospector/ops/runs.py", "Run and candidate internals", False, "/runs", run=True,
        cmd=".venv/bin/python -m prospector.ops.runs --runs"),
     _t("tools/spend_today.py", "Today's spend against the cap", False, "/spend"),
-    _t("tools/govern.py", "Run a command under a concurrency ceiling", False, "/tools"),
     # --- publish / republish ---
-    _t("publish/publish.py", "The single publish entry point", True, "/catalogue"),
+    _t("publish/publish.py", "The single publish entry point", True, "/catalogue",
+       risk="external"),
     _t("tools/publish_offline.py", "Publish stored PASSes without regenerating", True,
-       "/catalogue"),
+       "/catalogue", risk="external"),
     _t("tools/publish_passes.py", "Generate content then publish", True, "/catalogue",
-       danger="costs model calls"),
+       risk="external", danger="costs model calls"),
     _t("tools/backfill_missing_listings.sh", "Mass publish stranded PASSes", True, "/catalogue",
-       danger="bulk publish — review the stranded list first",
+       risk="external", danger="bulk publish — review the stranded list first",
        cmd="bash tools/backfill_missing_listings.sh"),
-    _t("tools/unlist_killed.py", "Unlist packs re-vetted to KILL", True, "/catalogue"),
+    _t("tools/unlist_killed.py", "Unlist packs re-vetted to KILL", True, "/catalogue",
+       risk="external"),
     _t("tools/retire_rotted_passes.py", "Retire PASSes whose citations rotted", True,
-       "/catalogue"),
+       "/catalogue", risk="external"),
     _t("tools/verify_pass_shelf_coverage.py", "PASSes the shelf does not show", False,
        "/catalogue", run=True),
     _t("tools/verify_selling_catalogue.py", "Every selling pack backed by a PASS", False,
@@ -1616,44 +1872,57 @@ TOOLS: list[dict] = [
        "/catalogue"),
     _t("scripts/pack_banner_probe.py", "Live packs showing a retired banner", False, "/catalogue"),
     # --- backfill / repair ---
-    _t("tools/backfill_facets.py", "Tag packs with discovery facets", True, "/tools"),
+    _t("tools/backfill_facets.py", "Tag packs with discovery facets", True, "/tools",
+       risk="external"),
     _t("tools/backfill_listing_copy.py", "Replace floor copy with generated copy", True,
-       "/tools"),
-    _t("tools/backfill_bundle_html.py", "Re-render a listed pack's zip", True, "/tools"),
+       "/tools", risk="external"),
+    _t("tools/backfill_bundle_html.py", "Re-render a listed pack's zip", True, "/tools",
+       risk="external"),
     _t("tools/backfill_pack_currency.py", "Repair currency on pre-market packs", True, "/tools"),
     _t("tools/backfill_archived_url.py", "Backfill archived source urls", True, "/tools"),
-    _t("tools/backfill_audience.py", "Copy audience tag into the index", True, "/tools"),
+    _t("tools/backfill_audience.py", "Copy audience tag into the index", True, "/tools",
+       risk="external"),
     _t("tools/backfill_market.py", "Stamp legacy dossiers with market", True, "/tools",
        danger="no rehearsal flag — it writes on the first run"),
     _t("tools/sweep_shelf_copy.py", "Re-grade and rewrite shelf copy", True, "/tools"),
-    _t("tools/retitle_catalogue.py", "Rewrite live pack titles", True, "/tools"),
+    _t("tools/retitle_catalogue.py", "Rewrite live pack titles", True, "/tools",
+       risk="external"),
     _t("tools/site_wide_dash_cleanup.py", "Rewrite dashes in storefront source", True, "/tools",
-       danger="edits public source — never one-tap"),
+       risk="external", danger="edits public source files, which undo does not cover — git does"),
     _t("scripts/backfill_tiers.py", "Fill ambition_tier on legacy dossiers", True, "/tools"),
     _t("scripts/backfill_price_anchors.py", "Backfill cited price anchors", True, "/tools"),
     _t("scripts/reconcile_orphan_index.py", "Delete index rows with no dossier", True, "/tools",
-       danger="DESTRUCTIVE — never runnable from the web"),
+       risk="external",
+       danger="DELETES index rows. Undo covers the local store, not the remote index — take the "
+              "snapshot AND be ready to re-publish"),
     _t("tools/review_figures.py", "Human verification of untraceable figures", True, "/tools"),
-    # --- money rail: shown, never run ---
+    # --- money rail ---
+    # These run from the console like everything else. What makes them safe is the preview, the
+    # confirmation token and the receipt — NOT a hidden button. What undo cannot do is take back
+    # a Stripe price, so `risk="external"` makes the preview say that in words.
     _t("tools/set_live_pack_price.py", "Set one pack to a named rung", True, "/catalogue",
-       danger="MONEY RAIL — console shows the command only"),
+       risk="external", danger="MONEY RAIL — mints a real Stripe Price. Undo cannot take it back; "
+                               "correcting it means setting the rung again"),
     _t("tools/reprice_live_packs.py", "Re-price packs with unbillable stub ids", True, "/tools",
-       danger="MONEY RAIL — console shows the command only"),
+       risk="external", danger="MONEY RAIL — bulk Stripe writes. Undo cannot take them back"),
     _t("tools/reprice_to_charm_rungs.py", "Move packs onto charm rungs", True, "/tools",
-       danger="MONEY RAIL — console shows the command only"),
+       risk="external", danger="MONEY RAIL — bulk Stripe writes. Undo cannot take them back"),
     _t("scripts/backfill_ladder_prices.py", "Move the catalogue onto the L1 ladder", True,
-       "/tools", danger="MONEY RAIL — console shows the command only"),
+       "/tools", risk="external",
+       danger="MONEY RAIL — bulk Stripe writes. Undo cannot take them back"),
     _t("tools/depth_reprice_preview.py", "Before/after for the depth ladder", False, "/tools"),
     _t("tools/price_history.py", "Who moved a price and why", False, "/catalogue"),
     # --- integrity / probes ---
-    _t("scripts/backup_store.py", "Back up dossiers and ledger to R2", True, "/tools"),
+    _t("scripts/backup_store.py", "Back up dossiers and ledger to R2", True, "/tools",
+       risk="external"),
     _t("scripts/restore_drill.py", "Prove the backup restores", False, "/tools"),
     _t("scripts/store_audit.py", "Audit the operator's store", False, "/tools"),
     _t("scripts/blocker_probe.py", "Which programme items are blocked", False, "/tools"),
     _t("scripts/load_gate.py", "Is the machine fit to trust a test result", False, "/tools"),
     _t("scripts/popdd_verify.py", "The lane-aware proof runner", False, "/tools"),
     _t("scripts/site_spec_probe.py", "Site spec ledger against the tree", False, "/tools"),
-    _t("scripts/graphify_sweep.py", "Graph freshness scoreboard", True, "/tools"),
+    _t("scripts/graphify_sweep.py", "Graph freshness scoreboard", True, "/tools",
+       risk="external"),
     _t("scripts/gen_budget_guard.py", "Does generation fit its tick deadline", False, "/tools"),
     _t("scripts/guard_protected_deletions.py", "Guard silent deletion of protected files", False,
        "/tools"),
@@ -1667,8 +1936,12 @@ TOOLS: list[dict] = [
        "/tools"),
     _t("tools/prove_diversity.py", "Diversity proof harness", False, "/tools"),
     _t("tools/prove_reliability.py", "Reliability proof harness", False, "/tools"),
-    _t("tools/make_kill_log.py", "Bake the public kill log", True, "/tools"),
-    _t("tools/make_sample_report.py", "Bake the public sample report", True, "/tools"),
+    _t("tools/make_kill_log.py", "Bake the public kill log", True, "/tools", risk="external"),
+    _t("tools/make_sample_report.py", "Bake the public sample report", True, "/tools",
+       risk="external"),
+    _t("tools/govern.py", "Run a command under a concurrency ceiling", False, "/tools",
+       danger="takes a command as an argument. The console only ever runs the command in this "
+              "table, never one typed into the browser — that would be a web shell"),
 ]
 
 

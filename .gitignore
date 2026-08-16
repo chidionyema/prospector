@@ -136,3 +136,7 @@ tools/experiments/_hhem_score_cache.json
 # Both are derived from what is already published; neither is source.
 .cache/
 publish/preview/
+
+# Rollback snapshots taken before a console tool runs (prospector/ops/undo.py).
+# APFS clones of store/, so they cost almost no disk. Never source.
+.undo/

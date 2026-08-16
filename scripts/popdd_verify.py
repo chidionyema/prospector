@@ -66,6 +66,7 @@ if TYPE_CHECKING:
 
 ROOT = Path(__file__).parent.parent
 WEB_DIR = ROOT / "store_platform" / "src" / "Store.Web"
+CONSOLE_DIR = ROOT / "store_platform" / "src" / "Ops.Console"
 DOTNET_TEST_PROJ = "store_platform/src/Store.Tests/Store.Tests.csproj"
 
 # Wall-clock ceiling per lane. This is a HANG detector, not a performance budget — set it
@@ -111,6 +112,13 @@ SOURCE_EXTS = {".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".cs", ".csp
 WEB_EXTS = {".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".json", ".css"}
 
 WEB_REL = "store_platform/src/Store.Web/"
+
+# The Ops Console is the admin surface. It was untracked until 2026-08-16, so no lane covered
+# it and every one of its files read as unproven. It has the same proof shape as the
+# storefront — tsc plus vitest — so it gets its own lane rather than being folded into `web`:
+# the two apps have separate node_modules and separate npm scripts, and one lane cannot cd to
+# two directories.
+CONSOLE_REL = "store_platform/src/Ops.Console/"
 
 # ── the engine lane's catchment ───────────────────────────────────────────────
 # The daemon is steered by two kinds of file, and until 2026-08-14 one of them was proven by
@@ -274,6 +282,22 @@ LANES: dict[str, Lane] = {
         parser=_parse_engine,
         preflight=(ROOT / "scripts" / "verify_engine_change.sh",),
     ),
+    # The Ops Console runs every admin action, including the money-rail tools, so a type error
+    # in its act handler is an operator pressing a button that 404s. That happened: on
+    # 2026-08-16 `daemon.restart` was live in the Python gateway and missing from the browser
+    # allowlist, and nothing caught it. tests/act.test.ts now checks the two lists agree.
+    "console": Lane(
+        key="console",
+        label="console — tsc --noEmit + vitest (Ops.Console)",
+        target="ops-console:console-suite",
+        steps=(
+            ("typecheck", ["npm", "run", "--silent", "typecheck"]),
+            ("vitest", ["npm", "test", "--silent"]),
+        ),
+        parser=_parse_vitest,
+        cwd=CONSOLE_DIR,
+        preflight=(CONSOLE_DIR / "node_modules",),
+    ),
     "dotnet": Lane(
         key="dotnet",
         label="dotnet — Store.Tests",
@@ -285,7 +309,7 @@ LANES: dict[str, Lane] = {
 
 # cheapest first, so a fast failure comes back fast. `engine` (~15s) leads: a change that
 # stops the daemon completing a tick should be reported before anything spends 175s.
-LANE_ORDER = ("engine", "web", "dotnet", "python")
+LANE_ORDER = ("engine", "console", "web", "dotnet", "python")
 
 
 def lanes_for(paths: list[str]) -> tuple[list[str], list[str]]:
@@ -306,7 +330,9 @@ def lanes_for(paths: list[str]) -> tuple[list[str], list[str]]:
         # can still complete one. Neither substitutes for the other.
         if _is_engine_path(path):
             lanes.add("engine")
-        if path.startswith(WEB_REL) and ext in WEB_EXTS:
+        if path.startswith(CONSOLE_REL) and ext in WEB_EXTS:
+            lanes.add("console")
+        elif path.startswith(WEB_REL) and ext in WEB_EXTS:
             lanes.add("web")
         elif ext == ".py":
             lanes.add("python")
