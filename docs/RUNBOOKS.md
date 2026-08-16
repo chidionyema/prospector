@@ -62,3 +62,172 @@ tracked files (about 1,200 files, under a second), so there is no reason to run 
 **Adding a new retired name.** Add a `terms:` entry to `ops/config/retired_terms.yaml` with the
 name and one sentence saying why it must not come back. Run the check, and allow-list the history
 it finds. No code change.
+
+---
+
+## offsite-backup
+
+**What it checks.** That every irreplaceable thing has a recent copy in storage we control,
+outside the account that holds the original. The sources, the storage and the freshness window
+are declared in `ops/config/offsite_backup.yaml`; the engine holds none of them.
+
+Declared today: `/data/store.db` on the Fly volume (orders, entitlements, grant tokens, download
+counts, price history) and `/data/keys`, the ASP.NET Data Protection key ring.
+
+**Run it.**
+
+```bash
+cd /Users/chidionyema/Documents/code/prospector
+.venv/bin/python -m ops.automations.offsite_backup          # how old is each copy?
+.venv/bin/python -m ops.automations.offsite_backup --json   # what the console calls
+.venv/bin/python -m ops.automations.offsite_backup --fix    # take a backup now
+```
+
+**What red means.** Either no copy exists, or the newest is older than the declared window (24
+hours). Fly's own snapshots are not a substitute: they live in the same Fly account as the
+volume, keep 5 days, and nobody has restored one. Lose the account, or notice a corruption on day
+six, and the record of who bought what is gone.
+
+**What to do.**
+
+1. Run `--fix`. It fetches, opens the copy to prove it is readable, uploads it under a dated key
+   and prunes to the declared `keep`. A copy that fails its check is not uploaded, so a bad copy
+   can never displace a good one.
+2. If `--fix` fails, read the reason. It names the source and the stage.
+
+**How long.** The database is about 3.6 MB, so a fetch and upload is seconds.
+
+**If it exits 2 (could not establish).** The check could not run, and the state is unknown. Exit 2
+is never clean.
+
+- `missing credentials: R2_…` — the run has no `.env` and no environment. Names only are printed,
+  never values.
+- `local clock is …s from the storage endpoint` — fix the clock, not the keys. A signed request
+  with a skewed timestamp is rejected as a bad signature, which reads like a credentials problem
+  and is not one.
+- `storage endpoint did not answer` — network or R2 outage. Nothing was uploaded and nothing was
+  lost; the next run retries from the same state.
+- `fetch exited …` — the host CLI failed. Usually `fly auth login`. Note that `fly auth whoami`
+  can pass on a dead token, so trust the fetch's own error over a login probe.
+- `the copy does not open as SQLite` / `failed PRAGMA integrity_check` — the copy is torn.
+  Re-run; if it repeats, the source itself may be damaged, which is an incident, not a backup
+  problem.
+
+**When it should run.** Daily. `deploy/com.prospector.offsite-backup.plist` runs `--fix` at 03:50,
+and a `--fix` run prints the freshness check too, so one green line in
+`store/offsite_backup.log` is the daily receipt. Install it once:
+
+```bash
+cd /Users/chidionyema/Documents/code/prospector
+cp deploy/com.prospector.offsite-backup.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.prospector.offsite-backup.plist
+tail -20 store/offsite_backup.log   # after 03:50 the next morning
+```
+
+The read-only check costs one storage listing, so run it as often as you like; the console will
+call it on its sweep. It is deliberately not on its own hourly timer yet — an hourly line in a log
+nobody reads is not monitoring, and the console screen (R6) is where it becomes visible.
+
+**Restoring.** This automation makes copies; it does not restore. `scripts/restore_drill.py` is
+the drill for the engine store. There is no tested restore of `store.db` into a fresh Fly machine
+yet — that is expectation E5 in `docs/OPS_AUTOMATION_PRINCIPLES.md` and it is still open.
+
+**Adding a new backup source.** Add a `sources:` entry with `name`, `key`, a `fetch:` command as a list
+of arguments (`{dest}` is substituted with the download path), a `why:` in plain words, and
+`verify:` — `sqlite` to open it and run an integrity check, `nonempty` for anything else. No code
+change.
+
+---
+
+## log-rotation
+
+**What it checks.** Every log named in `ops/config/log_rotation.yaml`, against the size limit
+declared next to it. The engine holds no paths and no limits.
+
+**Run it.**
+
+```bash
+cd /Users/chidionyema/Documents/code/prospector
+.venv/bin/python -m ops.automations.log_rotation          # what is over its limit
+.venv/bin/python -m ops.automations.log_rotation --json   # what the console calls
+.venv/bin/python -m ops.automations.log_rotation --fix    # rotate what is over
+```
+
+**What red means.** A log is past the size at which people still read it. That is not a disk
+problem, it is a wrong-answer problem. On 2026-08-16 a `grep -c` over a 25 MB unrotated
+`launchd.err.log` counted 97 provider failures and read as "97 today". Today's real number was 8,
+and most of the rest named a provider chain that had already been deleted. The wrong number
+reached `docs/LAUNCH_OPS_PROGRAM.md` as a blocker.
+
+**What to do.** Run `--fix`. It compresses the content into `<log>.<UTC stamp>.gz`, truncates the
+original in place, and prunes to the declared `keep`.
+
+**How long.** Seconds. The first real run compressed 62.7 MB down to 5.5 MB.
+
+**How it rotates, and why you must not "improve" it to a rename.** It copies and truncates in
+place. It never renames. A daemon holds its log open by file descriptor, and renaming the file
+does not move that descriptor: the daemon keeps writing into the renamed file, the fresh log
+stays empty, and the next person to read it sees a process that has gone silent. Every writer
+here is under launchd, which redirects stdout by descriptor. `tests/unit/test_log_rotation.py`
+pins the inode across a rotation for exactly this reason.
+
+**If it exits 2 (could not establish).** The check could not run, and the state is unknown.
+
+- `declaration not found` — wrong directory, or the YAML moved. Pass `--config <path>`.
+- `not a git repository` — relative paths in the declaration are resolved from the git root.
+  Run it inside the repo or a worktree of it. Absolute paths in the declaration work anywhere.
+- `PyYAML is not installed` — use `.venv/bin/python`, not system python.
+
+**When it should run.** Daily at 04:00 via `deploy/com.prospector.log-rotation.plist`, after the
+two backup jobs so a rotation cannot race a copy of the thing being rotated. Install it once:
+
+```bash
+cd /Users/chidionyema/Documents/code/prospector
+cp deploy/com.prospector.log-rotation.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.prospector.log-rotation.plist
+```
+
+**What is deliberately not rotated.** `store/prospector.jsonl` — 211 MB and 761,090 lines on
+2026-08-16. It looks like a log and it is the durable spend ledger the daily cap reads, so
+truncating it changes what the spend guard believes. Shrinking it is a separate job with its own
+reader. `store/scheduler/audit/*.jsonl` is one file per day already, so it rotates by
+construction. Both exclusions are written into the declaration with their reasons.
+
+**Adding a log.** Add a `targets:` entry with `path` (a file, a glob, or an absolute path), a
+`why:` in plain words, and optionally `max_mb` and `keep`. No code change.
+
+## stranded-packs
+
+**What it checks.** Every pack that passed research (`store/dossiers/<id>.pass.json`) is checked
+against the publication gate's own record (`<id>.lint.json`). A pack whose lint record says `ok`
+is sellable. A pack whose record says otherwise, or that has no record at all, is *stranded*:
+the research was paid for and the pack cannot be bought.
+
+**Command.** `python -m ops.automations.stranded_packs` — read-only, no model calls, no network.
+Add `--json` for the console shape, `--root <checkout>` to measure a checkout other than the one
+the code lives in (a worktree carries the code but not `store/`).
+
+**What red means.** Exit 1 with a count. The breakdown names the linter rule blocking each pack,
+so the output is a work list, not an alarm. Measured 2026-08-16 on the main checkout: 38 of 100
+passed packs stranded — 29 failed lint, 9 had never been linted; the rules doing the blocking were
+grammar (27 packs), citation_urls (27), shelf_copy (25), title_new_word (11), title_claim (7),
+currency (6), title (3), placeholders (2), marketing_audience (1).
+
+**What to do.** Nothing here repairs anything and there is no `--fix`, deliberately: repair means
+re-running content generation, which costs model calls (R8, P3). Use the breakdown to decide.
+- `never_linted` packs are the cheapest win: `python -m tools.publish_passes --dry-run --all` runs
+  the gate and writes the missing lint records, and costs zero model calls.
+- `citation_urls` is usually link rot on old packs, not bad writing.
+- `grammar`, `shelf_copy` and the `title_*` rules need the pack's copy regenerated.
+
+**How long.** The check itself is seconds over a few thousand files. The repair is not — size it
+from the breakdown before starting.
+
+**Exit 2 (`unknown`) reasons, all of them.** No declaration at `ops/config/stranded_packs.yaml`;
+the declaration is not valid YAML or not a mapping; pyyaml missing; no dossier directory at the
+declared path; **no file matching `pass_glob`** — that last one exists because the dossier naming
+is `<id>.pass.json` and reading the id with `Path.stem` yields `<id>.pass`, which finds no lint
+record and reports every pack as stranded. A zero match is a naming change, never a clean shelf.
+
+**Adding this to another startup.** Point `dossier_dir`, `pass_glob` and `lint_suffix` at its own
+layout. The engine has no fact about this business in it.
