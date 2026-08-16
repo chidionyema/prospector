@@ -966,6 +966,17 @@ handles prepares drafts submits appeals spots catches stops starts keeps holds
 lets helps needs wants gets puts sits comes goes means counts
 """.split())
 
+#: Pronouns that carry no antecedent when a shelf line is read on its own. A shelf line is
+#: shown beside the title, never inside a paragraph, so "It takes a published NHS rota..."
+#: (the live `b94760e86e62585a` one-liner the founder rejected on 2026-08-16 as "zero
+#: content") points at nothing the sentence itself has named.
+#:
+#: Fires ONLY when the pronoun is followed immediately by a finite verb, which is what
+#: makes it BARE. "This service reads your rota" names its subject and stays quiet; "It
+#: takes" and "They read" do not. That pairing is why the check needs no exception list:
+#: measured over the 75 live one-liners on 2026-08-16 it named exactly one, the founder's.
+_BARE_PRONOUN_OPENERS = frozenset({"it", "they", "this", "that", "these", "those"})
+
 #: Dedup attribution order: the title is the canonical line, so when a headline or card
 #: line repeats it the finding is reported against the REPEAT, not against the title. Any
 #: field not named here sorts after these, alphabetically.
@@ -980,6 +991,106 @@ _DEDUP_STRIP_RE = re.compile(r"[^a-z0-9 ]+")
 
 def _dedup_key(text: str) -> str:
     return " ".join(_DEDUP_STRIP_RE.sub(" ", (text or "").lower()).split())
+
+
+# ==============================================================================================
+# Engine vocabulary in the BODY of the pack.
+#
+# WHY THIS IS A SECOND LIST AND NOT `INTERNAL_VOCAB`. That list grades `SHELF_FIELDS` — six
+# short lines — where a single word out of register is fatal and `candidate` can only mean our
+# candidate. The body is 5,800 words per pack of ordinary business English, and every loose word
+# on the shelf list means something else there. Measured on 296 live buyer documents (427,687
+# words) on 2026-08-15, a loose list scored 461 hits for "composite/score" and 191 for the check
+# names, and the FIRST FIVE examples pulled at random were all false positives: "aluminum
+# composite" in a signage build spec, a council "pre-screening addresses", "adversarial" used to
+# describe a marketing tone, "churn signal", "no grounding in specific search volume". A check
+# that cries wolf 90% of the time is how a rate ceiling gets set to a number that means nothing.
+#
+# So this list holds only tokens with NO other meaning in a business document. Retested against
+# the same corpus it found 24 real hits and no false positives, all of the same shape — the
+# engine quoting its own scoresheet at the buyer:
+#
+#     "The confidence scores on the supporting checks are low (value_durability 0.438,
+#      distribution 0.430), and nothing retrieved demonstrates that…"
+#
+# `distribution`, `incumbency` and `legality` are check names and are ABSENT on purpose: they are
+# also three of the commonest nouns in the corpus. They are caught in the sentence above by their
+# neighbour, which is the correct precision to buy.
+BODY_ENGINE_TOKENS = frozenset("""
+pain_reality value_durability payer_solvency pain_acuity money_provability
+min_composite ambition_tier durable_wedge_type weak_monetisation composite_score
+provider_chain retrieval_failed score_failed prescreen prescreened unverifiable
+""".split())
+
+#: Multi-word engine phrases. Each is checked as a whole phrase because each has a harmless
+#: single word inside it: "composite" (a material), "chain" (of shops), "judge" (a person),
+#: "gate" (a milestone), "fail" (a test). The phrase is ours; the words are not.
+BODY_ENGINE_PHRASES: Tuple[str, ...] = (
+    "composite score", "kill filter", "kill-filter", "provider chain",
+    "ai judge", "ai-judge", "adversarial review", "adversarial pass",
+    "vetting pass", "grounding pass", "provisional verdict", "hard fail",
+    "confidence score of", "our internal score",
+)
+
+_BODY_PHRASE_RE = re.compile(
+    "|".join(re.escape(p) for p in sorted(BODY_ENGINE_PHRASES, key=len, reverse=True)),
+    re.I,
+)
+
+
+def check_engine_leak(sections: Optional[Mapping[str, str]], *,
+                      block: bool = False, max_per_1k: float = 0.0) -> List[Problem]:
+    """Grade the assembled buyer read for OUR filing system leaking into the prose.
+
+    `sections` is the same corpus `check_register` takes — the fourteen-section assembled
+    read when the caller has it, the four prose artifacts otherwise. Nothing had ever graded
+    it for engine vocabulary: `check_shelf_copy` reads six short lines and `INTERNAL_VOCAB`
+    is scoped to them, so a financial model could print `value_durability 0.438` at a buyer
+    and every check in this module passed.
+
+    SHADOW-FIRST, like every other rate actuator here. `block` off, every finding is a
+    warning and the receipt accrues on live packs; `max_per_1k` at 0.0 means the rate is
+    measured and never enforced. A threshold is set from the baseline, not before it.
+    """
+    problems: List[Problem] = []
+    if not sections:
+        return problems
+
+    mk = _err if block else _warn
+    total_words = 0
+    hits: List[Tuple[str, str]] = []          # (section, the offending text)
+
+    for name, body in sorted((sections or {}).items()):
+        if not isinstance(body, str) or not body.strip():
+            continue
+        total_words += len(body.split())
+        lowered = body.lower()
+
+        found = sorted({w for w in _SHELF_WORD_RE.findall(lowered) if w in BODY_ENGINE_TOKENS})
+        # Underscored identifiers do not survive `_SHELF_WORD_RE`, which splits on the
+        # underscore. Match them on the raw text instead — they are the whole point of the
+        # token list, and every one of the 24 measured hits has this shape.
+        found += sorted({t for t in _TAXONOMY_TOKEN_RE.findall(lowered)
+                         if t in BODY_ENGINE_TOKENS})
+        found += sorted({m.group(0).lower() for m in _BODY_PHRASE_RE.finditer(body)})
+
+        for term in sorted(set(found)):
+            i = lowered.find(term)
+            window = body[max(0, i - 70):i + 90].replace("\n", " ").strip()
+            hits.append((name, term))
+            problems.append(mk("engine_leak", name,
+                               f"our filing system in the buyer's prose: {term!r} — "
+                               f"say what the thing does instead: …{window}…"))
+
+    # The rate, reported whether or not it fires, so the baseline accrues.
+    if total_words and max_per_1k > 0:
+        rate = 1000.0 * len(hits) / total_words
+        if rate > max_per_1k:
+            problems.append(mk("engine_leak", "pack",
+                               f"engine vocabulary at {rate:.2f} per 1,000 words over the whole "
+                               f"pack, above the {max_per_1k:.2f} ceiling "
+                               f"({len(hits)} in {total_words:,} words)"))
+    return problems
 
 
 def check_shelf_copy(fields: Dict[str, str], *, block: bool = False,
@@ -1060,7 +1171,21 @@ def check_shelf_copy(fields: Dict[str, str], *, block: bool = False,
                                   f"reads as a fragment, with no finite verb — a short line is still a "
                                   f"sentence: {text!r}"))
 
-    # 6. The same line twice. The shelf shows title and card line together and the pack page
+        # 6. A bare pronoun opener. The title is not a sentence the line can continue from,
+        #    so a shelf line that starts "It takes ..." spends its first two words pointing
+        #    at nothing. `title` is exempt: it is a noun phrase by contract
+        #    (`prompts/retitle.md`), so it cannot open on a pronoun-plus-verb anyway.
+        if name != "title":
+            opener_words = _SHELF_WORD_RE.findall(lowered)
+            if (len(opener_words) >= 2
+                    and opener_words[0] in _BARE_PRONOUN_OPENERS
+                    and opener_words[1] in _FINITE_VERBS):
+                problems.append(mk("shelf_copy", name,
+                                   f"opens on the bare pronoun {opener_words[0]!r}, which has no "
+                                   f"antecedent when the line is read beside the title rather than "
+                                   f"after it; name the subject: {text!r}"))
+
+    # 7. The same line twice. The shelf shows title and card line together and the pack page
     #    shows title and headline together, so a repeat spends the page's most valuable line
     #    saying nothing new. 13 of 48 live packs repeated their title as their headline.
     keys: Dict[str, str] = {}
@@ -1506,7 +1631,9 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
               house_block_predictions: bool = False,
               house_block_quotes: bool = False,
               max_four_item_list_rate: float = 0.0,
-              max_unsourced_figure_rate: float = 0.0) -> Dict[str, Any]:
+              max_unsourced_figure_rate: float = 0.0,
+              engine_leak_block: bool = False,
+              max_engine_leak_per_1k: float = 0.0) -> Dict[str, Any]:
     """Run every lint check; return the machine-readable report.
 
     `report["ok"]` is False iff any problem has severity "error" — that is the half the
@@ -1603,6 +1730,12 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
         style_corpus, block=register_block, max_per_1k=max_register_per_1k,
         long_sentence_max_rate=max_long_sentence_rate,
         clause_load_max_rate=max_clause_load_rate, metrics=register_metrics_)
+    # Same corpus, third question: is our own filing system in the buyer's prose? Nothing
+    # asked it before 2026-08-15 — `INTERNAL_VOCAB` is scoped to the six shelf lines, so a
+    # financial model could print `value_durability 0.438` and every check here passed.
+    problems += check_engine_leak(style_corpus, block=engine_leak_block,
+                                  max_per_1k=max_engine_leak_per_1k)
+
     house_metrics = house_style_metrics(style_corpus)
     problems += check_house_style(
         style_corpus, metrics=house_metrics,

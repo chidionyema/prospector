@@ -663,7 +663,20 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                     exactly this slot, and the full description is in the sections below.
                   - There is no `subhead`: dropping it would leave the title with no sentence
                     under it at all, so the cut is repaired back to a word boundary instead. */}
-            {!(isTruncated(pack.oneLine) && pack.subhead) && (
+            {/* ONE LEAD PARAGRAPH, NEVER TWO (2026-08-15, brief item 8). The guard was
+                `!(isTruncated(pack.oneLine) && pack.subhead)`, which drops `oneLine` only when it
+                is BOTH cut AND has a subhead to fall back on. On a pack with a subhead whose
+                `oneLine` came through intact -- the ones the publish path did not cut at
+                150 chars -- both branches were true, so the page printed two lead
+                paragraphs in the same slot, same size, same colour, one under the other. That is
+                the founder's "the pack detail page prints its intro paragraph twice".
+
+                The rule the docblock above already states is the fix: "There is a `subhead`: the
+                cut sentence is dropped outright and the subhead is the lead." Truncation was
+                never the condition -- it was the reason the rule was WRITTEN. The subhead is a
+                complete sentence written for exactly this slot and the full description is in the
+                sections below, so dropping `oneLine` whenever a subhead exists loses nothing. */}
+            {!pack.subhead && (
               <p className="mt-4 max-w-[60ch] text-body text-muted">
                 {repairTruncation(pack.oneLine)}
               </p>
@@ -683,11 +696,18 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 would be the first unsourced claim on the money page. This one asserts nothing
                 about the pack: it describes what the product category is, in the second person,
                 and every word of it is already backed by the sections below. Also carries no
-                number, so there is nothing here for `source-or-die` to demand a citation for. */}
+                number, so there is nothing here for `source-or-die` to demand a citation for.
+
+                REWRITTEN 2026-08-16. The previous wording ("is NOT having it. IT IS the time...")
+                defined the product by what it is not, which is the exact antithesis construction
+                `prompts/style/voice.md` now bans in generated prose; a hardcoded line on every
+                pack page is the one place a style rule cannot be enforced by the linter, so it
+                is enforced here by hand. It also opened on a negation, which read as zero
+                content. Say what the buyer GETS, in the affirmative, naming only things that
+                literally appear in the sections below. */}
             <p className="mt-4 max-w-[60ch] text-meta leading-relaxed text-muted">
-              The expensive part of a business idea is not having it. It is the time you spend
-              finding out it does not work. This pack is that work, already done, with its sources
-              left open.
+              You get the checking already done: the evidence behind the idea, the sources it came
+              from, and the objections it survived, all open below so you can judge them yourself.
             </p>
 
             {/* The evidence line: what stands behind the listing, in mono because every item on it
@@ -1479,12 +1499,20 @@ function ShareRow({ title, path }: { title: string; path: string }) {
       {/* Copy link */}
       <button type="button" onClick={handleCopy} className={btnClass} aria-label="Copy link">
         {copied ? (
-     <span className="text-caption font-medium text-success">Copied ✓</span>
+          <span className="flex items-center gap-1 text-caption font-medium text-success">
+            <Icon name="check" size={16} />
+            Copied
+          </span>
         ) : (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <Icon name="link" size={16} />
         )}
       </button>
 
+      {/* X and LinkedIn stay hand-inlined, and are the ONE exception to the one-family rule
+          (brief 2026-08-15, Part Three). lucide-react 1.28 ships no brand marks -- `twitter.mjs`
+          and `linkedin.mjs` do not exist in the package -- and a brand mark is not a UI icon: it
+          is someone else's trademark, drawn to their spec, and redrawing it in a 2px outline hand
+          would make it wrong rather than consistent. Everything else on this page is `Icon`. */}
       {/* X (Twitter) */}
       <a
         href={`https://x.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`}

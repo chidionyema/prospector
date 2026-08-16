@@ -294,6 +294,30 @@ _CHECK_LABEL = {
 # reader; new reasons are already plain English (see build_dossier).
 _GATE_PREFIX = re.compile(r"^Gate '[^']+' fired(?: — |\.\s*)")
 
+# Our own six-axis grade of the idea, printed into the buyer's prose. `build_dossier`
+# writes it into every `reason` string (`composite {score.composite:.4f}`) because the
+# reason is an AUDIT record first, and there the number belongs. It stops belonging the
+# moment the same string is rendered into `QA_Report.md`, which is a document the person
+# who bought the idea opens: "3.6500" is a ranking against other candidates they will
+# never see, on a scale nobody explained, and it reads as a mark out of five for the
+# thing they just paid for. FOUNDER, 2026-08-15, on a live pack: "it has engine ifo like
+# conposite score etc". Scrubbed on render, never on the record.
+_COMPOSITE_CLAUSE = re.compile(r"\bcomposite\s+\d+(?:\.\d+)?\s*;?\s*", re.I)
+
+
+def _scrub_our_grade(text: str) -> str:
+    """Drop the composite figure from a reason string, leaving the sentence standing.
+
+    "Survived all gates; composite 3.6500; 5 grounded-supported check(s)" becomes
+    "Survived all gates; 5 grounded-supported check(s)" — the clause carried nothing the
+    buyer could act on. The re-capitalisation matters for the KILL forms, which OPEN on
+    the number ("Composite 2.9500 cleared the bar but ..."): scrubbing without it ships a
+    sentence starting mid-word, which is how a scrub gets reverted as "it broke the copy".
+    """
+    out = _COMPOSITE_CLAUSE.sub("", str(text or "")).strip()
+    return out[:1].upper() + out[1:] if out else out
+
+
 _AXIS_LABEL = {
     "pain_acuity": "How badly it hurts",
     "money_provability": "How provable the money is",
@@ -651,10 +675,23 @@ def _labelled(name: str, labels: dict[str, str]) -> str:
     return f"{label} (`{name}`)" if label else f"`{name}`"
 
 
-def render_markdown(dossier: Any) -> str:
+def render_markdown(dossier: Any, *, include_our_grade: bool = False) -> str:
     """Render a human-readable audit document from a Dossier.
 
     Both PASS and KILL are first-class: a KILL renders its cited reason prominently.
+
+    `include_our_grade` controls the "How it scored" table and the composite figure inside
+    the reason strings — OUR ranking of the idea, on our scale, against candidates the
+    reader will never see. It defaults to OFF because the buyer is the caller that matters:
+    `bridge.py` renders this document straight into `QA_Report.md` inside the pack zip, and
+    a default that had to be remembered is exactly how our scoresheet shipped to 145 live
+    products in the first place. The operator's own `vet --show` (`run.py`) passes True; a
+    caller that forgets gets the safe answer.
+
+    What STAYS either way is the evidence: every check, its verdict, its confidence, and
+    every source we fetched. The rule is not "hide the working" — the store's proposition
+    is that the checks are real and published. It is that our GRADE of the purchase is a
+    fact about our pipeline, not about the buyer's market.
 
     Typed `Any` rather than `Dossier` since 2026-08-15, because that is what it has always
     accepted: the backfill renders stored JSON through `pack_manifest.dossier_from_dict`, and
@@ -702,7 +739,10 @@ def render_markdown(dossier: Any) -> str:
     # KILL reason gets its own highlighted block
     if decision == Decision.KILL:
         lines.append("> **Why we stopped:**")
-        lines.append(f"> {_GATE_PREFIX.sub('', str(getattr(dossier, 'reason', '') or '')).strip()}")
+        kill_reason = _GATE_PREFIX.sub("", str(getattr(dossier, "reason", "") or "")).strip()
+        if not include_our_grade:
+            kill_reason = _scrub_our_grade(kill_reason)
+        lines.append(f"> {kill_reason}")
         gate_fired = getattr(dossier, "gate_fired", "")
         if gate_fired:
             lines.append(">")
@@ -819,8 +859,12 @@ def render_markdown(dossier: Any) -> str:
                 lines.append("**Sources used:** " + rendered)
                 lines.append("")
 
-    # --- Scores table (PASS only, but render for KILLs that have a score too) ---
-    sc = getattr(dossier, "score", None)
+    # --- Scores table: OPERATOR-ONLY since 2026-08-15 (see `include_our_grade`) ---
+    # This block is the single largest engine leak measured in a live pack: the composite to
+    # four decimal places, then six internal axis names and their weighted marks out of five,
+    # under the heading "How it scored". A buyer reading it learns our filing system and
+    # nothing about their market.
+    sc = getattr(dossier, "score", None) if include_our_grade else None
     if sc:
         lines.append("---")
         lines.append("## How it scored")
@@ -838,6 +882,8 @@ def render_markdown(dossier: Any) -> str:
 
     # PASS reason
     pass_reason = str(getattr(dossier, "reason", "") or "").strip()
+    if not include_our_grade:
+        pass_reason = _scrub_our_grade(pass_reason)
     if decision == Decision.PASS and pass_reason:
         lines.append("---")
         lines.append("## Why this passed")

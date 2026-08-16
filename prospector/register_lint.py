@@ -64,7 +64,11 @@ def _warn(check: str, where: str, detail: str) -> Problem:
 # THE BAR FOR ADDING A WORD is that it has no legitimate use anywhere in this catalogue,
 # which sells businesses in every sector. That bar is why `foster`, `leverage`, `bespoke`
 # and `ecosystem` are NOT here: foster care, financial leverage, bespoke tailoring and a
-# supplier ecosystem are all real subjects a pack may be about. Words that are merely
+# supplier ecosystem are all real subjects a pack may be about. The founder confirmed this
+# bar on 2026-08-15 against the spec's own R9 list, which named `leverage` and `ecosystem`:
+# the spec's list lost, and docs/HOUSE_WRITING_SPEC.md was amended to match this file rather
+# than the other way round. `leveraging` stays banned because the tic is the -ing form and
+# "using" replaces it everywhere. Words that are merely
 # OVERUSED go in `ADVISORY` below, which never blocks.
 
 BANNED_SPEC = """
@@ -153,7 +157,6 @@ crucial -> (say what breaks without it)
 pivotal -> (say what turns on it)
 vital -> (say what fails without it)
 streamline -> (say which step goes away)
-ecosystem -> (name the parties)
 journey -> (name the steps)
 value proposition -> what it is worth to them
 scalable -> (say how big it can get before it breaks)

@@ -1181,6 +1181,13 @@ class EngineBridge:
                 listing_cfg.get("max_four_item_list_rate", 0.0) or 0.0),
             max_unsourced_figure_rate=float(
                 listing_cfg.get("max_unsourced_figure_rate", 0.0) or 0.0),
+            # Our filing system in the buyer's prose. Shadow-first on the same reasoning as
+            # every knob above, and for one more: this check is NEW, so its false-positive
+            # rate on the live corpus is measured on 296 documents and nothing else. It stays
+            # advisory until the baseline says what a real ceiling is.
+            engine_leak_block=bool(listing_cfg.get("engine_leak_block", False)),
+            max_engine_leak_per_1k=float(
+                listing_cfg.get("max_engine_leak_per_1k", 0.0) or 0.0),
         )
         lint_ok = bool(lint_report.get("ok"))
         if not lint_ok:

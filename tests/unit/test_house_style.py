@@ -10,6 +10,8 @@ block would strand the catalogue.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 from prospector.house_style import (
     MIN_QUOTE_WORDS,
     check_house_style,
@@ -260,12 +262,76 @@ class TestWiredIntoTheGateThatDecidesWhatShips:
         # this repo had ever graded register on anything, let alone on the assembled read.
         #
         # It is "leveraging" rather than the founder's own R9 example "moat" on purpose:
-        # `register_lint.py:65-67` deliberately keeps `foster`, `leverage`, `bespoke` and
+        # `register_lint.py:64-71` deliberately keeps `foster`, `leverage`, `bespoke` and
         # `ecosystem` OUT of the banned list, because foster care and financial leverage are
         # real subjects a pack may be about on a storefront that sells every sector. The
-        # spec's R9 list and this one disagree, that disagreement is recorded in the ledger
-        # in docs/HOUSE_WRITING_SPEC.md, and it is the founder's to settle — not a test's.
+        # spec's R9 list disagreed; the founder settled it for this file on 2026-08-15 and the
+        # spec was amended. See test_leverage_and_ecosystem_are_not_banned_register below.
         assert self._lint()["house_spec"]["R9_register_per_1k"] > 0
+
+
+class TestTheWordsTheFounderUnbanned:
+    """Founder decision, 2026-08-15: `leverage` and `ecosystem` are not banned register.
+
+    A word is banned only if it has no legitimate use anywhere in a catalogue that sells
+    businesses in every sector. Financial leverage and a supplier ecosystem are real subjects
+    a pack may be ABOUT, so a ban on the noun stops a page saying what it is for. The tic is
+    the -ing form, and that stays banned.
+
+    This is pinned in three places because the rule lives in three files and a later edit to
+    any ONE of them silently re-bans the word in one lane only.
+    """
+
+    VALE_REGISTER = (
+        Path(__file__).resolve().parents[2] / "styles" / "Mumchimp" / "Register.yml")
+    SPEC = Path(__file__).resolve().parents[2] / "docs" / "HOUSE_WRITING_SPEC.md"
+
+    def test_the_pack_lane_does_not_ban_them(self):
+        from prospector.register_lint import BANNED
+        assert "leverage" not in BANNED
+        assert "ecosystem" not in BANNED
+
+    def test_the_tic_is_still_banned(self):
+        from prospector.register_lint import BANNED
+        assert "leveraging" in BANNED, (
+            "the -ing form is the AI tic and 'using' replaces it everywhere; unbanning it "
+            "was never part of the founder's decision")
+
+    def test_a_pack_about_financial_leverage_can_say_so(self):
+        """The whole point. Before this, a pack whose SUBJECT was leverage graded as
+        badly-written for naming its own subject."""
+        from prospector.register_lint import check_register, register_metrics
+        text = {"body": (
+            "The fund lends against property at three times leverage. "
+            "Its supplier ecosystem is four wholesalers and one carrier.")}
+        m = register_metrics(text)
+        assert m["banned_count"] == 0, m["banned_hits"]
+        assert m["register_per_1k"] == 0.0, m
+        # Not in ADVISORY either. Advisory never blocks, but it still tells the writer to stop
+        # naming their own subject, and that is the same instruction in a quieter voice.
+        assert [h["phrase"] for h in m["advisory_hits"]] == [], m["advisory_hits"]
+        assert check_register(text, block=True, max_per_1k=0.01, metrics=m) == []
+
+    def test_the_storefront_lane_does_not_ban_them_either(self):
+        """Vale is the other lane. A token here re-bans the word on every .md/.tsx/.ts file
+        even though the pack lane is clean, and nothing else in this suite would notice."""
+        tokens = self.VALE_REGISTER.read_text()
+        assert "leverages?" not in tokens
+        assert "ecosystems?" not in tokens
+        assert "- leveraging" in tokens
+
+    def test_the_spec_itself_was_amended_not_just_the_code(self):
+        """The conflict was recorded in the ledger as the founder's to settle. A decision that
+        leaves the normative document contradicting the code has not been adopted."""
+        spec = self.SPEC.read_text()
+        # The LIST only — the blockquote lines. The prose under it explains the removal and
+        # therefore names both words; splitting on `---` would swallow that and pass never.
+        after = spec.split("**R9 token list:**", 1)[1]
+        r9_list = "\n".join(ln for ln in after.splitlines()[:8] if ln.startswith(">"))
+        assert r9_list.strip(), "the R9 blockquote moved; this test is now vacuous"
+        assert "leverage ·" not in r9_list and "· leverage" not in r9_list
+        assert "ecosystem" not in r9_list
+        assert "leveraging" in r9_list
 
 
 class TestEmptyAndMalformedInput:

@@ -39,7 +39,7 @@ export default function AboutPage() {
         description={`Why ${BRAND.name} exists, in the words of the person who built it, and where the engine that kills most of the ideas came from.`}
       />
 
-      <section className="mx-auto max-w-3xl px-6 py-16 md:py-24">
+      <section className="mx-auto max-w-3xl px-6 py-10 md:py-24">
         <p className="mb-3 text-caption font-medium text-muted">
           About
         </p>

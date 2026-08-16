@@ -195,7 +195,17 @@ export function Section({
   outerClassName?: string;
 }) {
   return (
-    <SectionBand bg={bg} width={width} outerClassName={outerClassName} className={`py-16 md:py-24 scroll-mt-16 ${className ?? ''}`}>
+  /* MOBILE SECTION RHYTHM, CAPPED (brief 2026-08-15, item 7: "cap section gaps").
+     `py-16` on both sides of a band means two adjacent bands put 64 + 64 = 128px of pure
+     whitespace between the last line of one and the first line of the next. MEASURED at a 390
+     viewport before this change: the six largest whitespace bands on /how-it-works were 178, 149,
+     129, 129, 129, 129px, and the 129s are exactly that stack. On a phone that is most of a
+     screen of nothing between two paragraphs, which is the founder's complaint.
+
+     `py-10` is 40px, on the brief's 8/16/24/40/64 scale, and takes the stacked gap to 80px. The
+     desktop `md:py-24` is untouched: at 1280px a 96px band reads as composition, and the defect
+     is specific to the width where the content column is 350px wide. */
+    <SectionBand bg={bg} width={width} outerClassName={outerClassName} className={`py-10 md:py-24 scroll-mt-16 ${className ?? ''}`}>
       {(title || intro) && (
         <div className="mb-10">
           {title && <h2 className="text-h2 font-semibold text-text md:text-h1">{title}</h2>}
@@ -270,7 +280,7 @@ export function CtaBand({
   secondary?: { href: string; label: string };
 }) {
   return (
-    <SectionBand bg="surface2" width={width} className="scroll-mt-16 py-16 md:py-24">
+    <SectionBand bg="surface2" width={width} className="scroll-mt-16 py-10 md:py-24">
       <h2 className="max-w-[20ch] text-balance text-h1 font-semibold text-text">{title}</h2>
       {lead && <p className="mt-3 max-w-[60ch] text-body text-muted">{lead}</p>}
       <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">

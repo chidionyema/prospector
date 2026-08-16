@@ -178,11 +178,12 @@ def _check_node(check: Any, pack_ref: str) -> Dict[str, Any]:
         node["prospector:degraded"] = True
     if getattr(check, "retrieval_failed", False):
         node["prospector:retrievalFailed"] = True
-    if getattr(check, "provisional", False):
-        node["prospector:provisional"] = True
-    provider = getattr(check, "provider", "") or ""
-    if provider:
-        node["prospector:ruledBy"] = provider
+    # `prospector:provisional` and `prospector:ruledBy` USED TO BE HERE. Removed 2026-08-15:
+    # both name our own brain roster, and `ruledBy` names it literally — it is the model that
+    # ruled the check, shipped to the buyer inside the zip. The founder downloaded a live pack
+    # and found "even ai judge info". Which model ruled is a fact about our supply chain, not
+    # about the idea, and a buyer cannot act on it. The two flags above stay because they are
+    # facts about the EVIDENCE, which is what was sold.
     return node
 
 
@@ -303,15 +304,24 @@ def render_manifest(
         # Every ruling here has a shelf life, and saying so is more honest than letting an agent
         # treat a year-old verdict as current.
         pack_node["prospector:reverifyDueAt"] = reverify
-    provider_chain = getattr(dossier, "provider_chain", "") or ""
-    if provider_chain:
-        pack_node["prospector:providerChain"] = provider_chain
-    if getattr(dossier, "provisional", False):
-        pack_node["prospector:provisional"] = True
-    score = getattr(dossier, "score", None)
-    if score is not None and not getattr(score, "score_failed", False):
-        pack_node["prospector:scores"] = _plain_mapping(getattr(score, "scores", None))
-        pack_node["prospector:compositeScore"] = round(float(getattr(score, "composite", 0.0) or 0.0), 3)
+    # FOUR FIELDS USED TO BE HERE and were removed on 2026-08-15, on the founder's report of a
+    # pack downloaded from the live storefront: "it has engine ifo like conposite score etc and
+    # even ai judge info".
+    #
+    #   prospector:providerChain   which models ran, in order
+    #   prospector:provisional     our trust tier for the model that ruled
+    #   prospector:scores          the six axis scores
+    #   prospector:compositeScore  the weighted total
+    #
+    # None of them is a fact about the business the buyer just bought. Two describe our supply
+    # chain and two are our internal ranking, which exists to decide what to PUBLISH — a
+    # decision already made by the time anyone can download this. Printing the grade next to the
+    # thing graded also invites the one reading the pack cannot support: comparing 3.4 to 3.6
+    # across two packs whose axes were scored months apart against different evidence.
+    #
+    # What survives is what was sold: the decision, the checks, the sources, and the shelf life
+    # (`prospector:reverifyDueAt`, above). The score has not moved anywhere else in the zip —
+    # `pack_data.include_scorecard` now defaults to False for the same reason.
 
     graph: List[Dict[str, Any]] = [pack_node] + parts
     graph.extend(_check_node(c, pack_ref) for c in checks)

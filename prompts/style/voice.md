@@ -95,6 +95,20 @@ These are the rules that actually decide whether it reads clearly:
     durable_wedge_type, weak_monetisation…) are ours, not the reader's. Say what the
     thing does instead. A reader who meets one of these words has been handed our
     filing system by mistake.
+  - NO DASHES. Not the em dash, not the en dash, not a spaced hyphen standing in for
+    one. Every one of them is a sentence the writer would not commit to: it welds two
+    thoughts together without saying how they relate. Use a full stop, a comma, a
+    colon, or the word that does the work — "because", "so", "but", "which". A range
+    of numbers takes "to": "three to seven days", never "3-7 days". The only dash that
+    survives is one inside a real word. Measured across 296 live buyer documents on
+    2026-08-15: 3,940 em dashes in 427,687 words, one every 108 words. It is the
+    loudest single tell that a machine wrote the page.
+  - NEVER DEFINE A THING BY WHAT IT IS NOT. "This is not X, it is Y". "Not a Z, but a
+    W". "X, not Y". "rather than". The antithesis is a rhythm, not an argument: it
+    makes the reader carry a false thing in their head to arrive at the true one, and
+    it fills a sentence that had nothing to say. State the true thing once, in the
+    affirmative. If a real misconception genuinely has to be cleared, give it its own
+    sentence and name who holds it.
   - A SHORT LINE IS STILL A SENTENCE. Every rule above binds hardest where there is
     least room: a shelf card line, a headline, a label. Character pressure is what
     makes a writer drop the verb and reach for the trade's shorthand, and the result
@@ -104,6 +118,17 @@ These are the rules that actually decide whether it reads clearly:
     history", "£180 a day, underwritten solo, fixed payout", "Rota plus timesheet
     against contract terms". If a line has no verb, or uses a word the trade says to
     itself, spend the characters rather than the reader.
+  - A STANDALONE LINE NAMES ITS OWN SUBJECT. A title, a one-line summary and a card
+    line are read BESIDE the title, never after it, so they cannot borrow an
+    antecedent from it. Never open one on a bare pronoun: "It takes a published NHS
+    rota and timesheet…" points at nothing the sentence has named, and spends the two
+    words the reader is most likely to actually read. Name the thing, the buyer, or
+    the trigger instead: "A rota audit that…", "NHS doctors owed unsocial hours pay
+    get…", "Every published rota carries…".
+    And vary that opening. Of 75 live one-liners on 2026-08-16, 55 began "A" and 4
+    began "An", so four packs in five opened identically on the shelf; the reader
+    scanning a grid sees one idea repeated. Open on whichever of the buyer, the
+    trigger, the artefact or the outcome carries the most information for THIS idea.
   - CLARITY NEVER COSTS ACCURACY. Numbers, dates and named entities stay exactly as
     the evidence gives them. Simplifying the language must never round a figure,
     soften a caveat, widen a specific finding, or drop a source.
