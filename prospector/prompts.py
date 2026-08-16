@@ -107,11 +107,21 @@ def style_kwargs() -> dict[str, str]:
     # refine_system, revise_system, content_gen, artifacts, retitle). A new key would have
     # needed six template edits and would have reached only the templates someone
     # remembered, which is the call-site discipline this function's docstring warns about.
+    #
+    # Both excepts are NARROW on purpose. A blanket `except Exception` here would also eat
+    # our own bugs in `prompt_block`, and the only symptom would be prompts that quietly
+    # stopped carrying the target — the exact shape `tools/audit_swallow_sites.py` ratchets
+    # against. These two are the known conditions: the package may not import, and the
+    # shipped target may be missing or malformed.
     try:
         from . import prose_target
-        block = prose_target.prompt_block()
-    except Exception:  # noqa: BLE001 - a style block must never break a render
+    except ImportError:
         block = ""
+    else:
+        try:
+            block = prose_target.prompt_block()
+        except prose_target.TargetUnreadable:
+            block = ""
     if block and out.get("style_guide"):
         out["style_guide"] = f"{out['style_guide']}\n\n{block}"
     elif block:

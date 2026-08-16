@@ -180,7 +180,7 @@ def test_a_non_prose_artifact_is_never_graded_on_register(monkeypatch):
     of the template, not of the model's restraint."""
     called = []
     monkeypatch.setattr(artifacts, "_prose_findings",
-                        lambda c: called.append(c) or [])
+                        lambda c: (called.append(c) or [], False))
     op = _RecordingOperator([_OFFENDING_DRAFT])
     artifacts._gen_one_artifact(
         op, "{}", "[]", "marketing_email", _market_vars(), "", None, [], True)

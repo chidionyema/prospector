@@ -58,7 +58,7 @@ class TestGenerateArtifactsBudget:
         released = threading.Event()
 
         def _fake(op, cand_json, claims_json, t, market_vars=None, length_rule="",
-                  check_op=None, claims=None):
+                  check_op=None, claims=None, prose_repair=True):
             if t == SLOW:
                 released.wait(60.0)  # far past any budget below; must never be awaited
             if t == "financial_model":
@@ -97,7 +97,7 @@ class TestGenerateArtifactsBudget:
     def test_no_deadline_is_unbounded_exactly_as_before(self, monkeypatch):
         """`deadline_mono=None` (every caller today) must not change behaviour at all."""
         def _fake(op, cand_json, claims_json, t, market_vars=None, length_rule="",
-                  check_op=None, claims=None):
+                  check_op=None, claims=None, prose_repair=True):
             if t == "financial_model":
                 return t, f"content-{t}", {"revenue": 1}, []
             return t, f"content-{t}", None, []

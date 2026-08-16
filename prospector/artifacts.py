@@ -102,21 +102,28 @@ def prose_repair_enabled(cfg: Optional[Any]) -> bool:
                                       HUMAN_REGISTER_REPAIR_DEFAULT))
 
 
-def _prose_findings(content: str) -> List[Dict[str, Any]]:
-    """Where this draft falls outside the human range, or [] if it does not.
+def _prose_findings(content: str) -> tuple[List[Dict[str, Any]], bool]:
+    """Where this draft falls outside the human range, and whether we could measure it.
+
+    Returns `(findings, failed)`. The flag is the whole point of the shape: `[]` on its own
+    says two different things — "this draft already reads like a human" and "we could not
+    tell" — and a caller that cannot separate them stops repairing prose on the day the
+    measurement breaks, with nothing in the pack to show for it.
 
     Never raises. An unreadable target must not stop a pack being WRITTEN: the linter is
     where that outage is said out loud, because there it can stop the pack listing and be
     seen. Here it could only turn a style nudge into a failed artifact.
     """
     try:
-        return prose_target.grade_text(measurable_prose(content))
+        return prose_target.grade_text(measurable_prose(content)), False
     except prose_target.TargetUnreadable as exc:
+        failed = True
         logger.warning(f"prose target unreadable, skipping register repair: {exc}")
-        return []
+        return [], failed
     except Exception as exc:  # measurement must never break generation
-        logger.warning(f"prose measurement failed, skipping register repair: {exc}")
-        return []
+        failed = True
+        logger.error(f"prose measurement failed, skipping register repair: {exc}")
+        return [], failed
 
 
 def unverified_claims_block_listing(cand: Any) -> bool:
@@ -652,7 +659,14 @@ def _gen_one_artifact(op: Operator, cand_json: str, claims_json: str,
         # The register measurement, applied. Detection shipped on 2026-08-16 and graded
         # finished packs; nothing acted on the grade, so a draft outside the human range
         # was written, measured, filed and sold unchanged.
-        findings = _prose_findings(content) if prose_repair else []
+        findings, register_unmeasured = (
+            _prose_findings(content) if prose_repair else ([], False))
+        if register_unmeasured:
+            # Said out loud, at ERROR, because the alternative is a run that looks like a
+            # clean sweep of in-range drafts while nothing was graded at all.
+            logger.error(
+                f"Artifact {t} register not measured; shipping this draft unrepaired",
+                extra={"type": t})
 
         if ok and not findings:
             return t, content, None, []
