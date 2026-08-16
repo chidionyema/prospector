@@ -157,7 +157,6 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
     checkoutError,
     clientSecret,
     canCheckout,
-    provider,
     buy: handleBuy,
     handleUnreachable: handleEmbeddedUnreachable,
     closeOverlay,
@@ -258,7 +257,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
   // tracking is needed.
   // (See the cookie write in getServerSideProps below.)
 
-  const providerLabel = provider === 'stripe' ? 'Stripe' : 'Paddle';
+  const providerLabel = 'Stripe';
   const priceLabel = formatPriceForMarket(pack.price, currency);
 
   // The one number that answers "is this worth it", as a RATIO. See the note at its render site.

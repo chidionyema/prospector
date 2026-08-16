@@ -223,7 +223,7 @@ def _no_live_payment_credentials(monkeypatch):
     So the guard below closes the file route as well. It is also why "the key was resident at no
     test boundary" was never evidence of safety: a credential read from disk at call time is
     never at a boundary."""
-    for key in ("STRIPE_API_KEY", "STRIPE_LIVE_API_KEY", "PADDLE_API_KEY",
+    for key in ("STRIPE_API_KEY", "STRIPE_LIVE_API_KEY",
                 "STORE_INTERNAL_API_KEY"):
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv("PROSPECTOR_DISABLE_DOTENV", "1")

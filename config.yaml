@@ -1844,8 +1844,8 @@ listing:
 # Storefront payment rail. MUST match the provider the Store API bills through: checkout
 # builds a Stripe Checkout Session from the pack's ProviderPriceId, so a pack provisioned
 # under any other rail lists with a `price_stub_*` id and its checkout returns HTTP 500.
-# This was unset before 2026-07-31, so EngineBridge defaulted to `paddle`, found no
-# PADDLE_API_KEY, and shipped six listed-but-unbuyable packs. Explicit now, and
+# This was unset before 2026-07-31, so EngineBridge defaulted to a rail we held no key
+# for and shipped six listed-but-unbuyable packs. Explicit now, and
 # bridge.py refuses to LIST anything still carrying a stub price id.
 store_payments:
   active_provider: stripe

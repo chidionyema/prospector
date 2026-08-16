@@ -60,10 +60,8 @@ public sealed class StoreApiFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
-            // Replace both keyed rails: a test must never reach the real Stripe, and a pack's
-            // stored provider decides which key is resolved.
+            // Replace the keyed rail: a test must never reach the real Stripe.
             services.AddKeyedSingleton<IPaymentProvider>("stripe", (_, _) => Payments);
-            services.AddKeyedSingleton<IPaymentProvider>("paddle", (_, _) => Payments);
         });
     }
 
