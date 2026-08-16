@@ -261,6 +261,24 @@ retrieval:
   # with less than it replaced.
   fetch_min_gain_chars: 400
   fetch_max_bytes: 400000
+  # Drop the cookie banner before the verdict brain reads it (2026-08-16).
+  # `select_passage` anchors the stored passage on the window with the most query terms. A
+  # consent banner has none, so the anchor finds nothing and falls back to the head slice,
+  # which on ons.gov.uk and gov.uk IS the banner. The brain then reads 600 chars of cookie
+  # notice and rules `unverifiable` on evidence we never gave it.
+  # MEASURED 2026-08-16 over 43,673 stored passages in store/dossiers/: 76 hand the brain a
+  # banner inside its 600-char read window, 62 of those within the first 200 chars. Only 0.2%
+  # overall, but 12.3% of ons.gov.uk passages and 2.2% of legislation.gov.uk — the sources the
+  # payer-solvency and legality checks lean on hardest. One reached the shop: the live landing
+  # page told buyers the ASHE earnings tables "contain only cookie consent screens with no
+  # actual wage data".
+  # Two passes, both bounded so they cannot eat a real page. The DOM pass drops short
+  # containers whose id/class names a consent widget; the text pass drops sentences carrying a
+  # banner phrase, and gives up if that would remove more than 60% of the passage (a page
+  # genuinely ABOUT cookie law keeps its content, and a true consent wall stays visibly empty
+  # so the check rules `unverifiable` honestly).
+  # Toggle it from the ops console: Parameters -> Retrieval -> "Strip cookie banners".
+  strip_consent_banners: true
   # Rank what search returned instead of taking DuckDuckGo's first 3 (2026-08-14).
   # 3 x 3 = 9 results fetched per query, best 3 by query-term coverage kept. One wider
   # search call; no extra page fetch (ranking runs on the snippet, before the fetch) and
