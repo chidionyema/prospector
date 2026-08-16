@@ -721,6 +721,18 @@ thereby ceases cease aforementioned herein utilise utilises heretofore
 #: did address the buyer, and was still shorter and better in the third person.
 _SECOND_PERSON_RE = re.compile(r"\b(you|your|yours|you're|yourself|yourselves)\b", re.I)
 
+#: A shelf line that OPENS on a bare pronoun. The reader meets the line cold, with no
+#: antecedent anywhere on the page, so "It takes a published NHS rota…" and "We handle your
+#: stolen tool claim…" both start by naming nothing: the first word is a promise that the
+#: previous sentence said what this is, and there is no previous sentence. The house shape
+#: opens on the thing itself — "A tool for UK freelance designers, developers and writers
+#: that turns every out-of-scope client request into a priced, dated change note" (founder,
+#: 2026-08-16, naming this the line to copy). Matched on the FIRST word only: the same
+#: pronoun mid-sentence has an antecedent and is fine.
+_BARE_OPENER_RE = re.compile(
+    r"^[\s\"'“‘(]*(it|its|it's|we|our|ours|us|they|them|their|theirs|this|that|these|those|i)\b",
+    re.I)
+
 #: Finite verbs, for the residue check only. THE BARE INFINITIVES ARE DELIBERATELY ABSENT
 #: and this is the whole precision of the check: `cover`, `claim`, `check`, `file`, `pay`,
 #: `work`, `run` and `list` are all nouns in shelf copy, and including them scored a verb
@@ -812,7 +824,15 @@ def check_shelf_copy(fields: Dict[str, str], *, block: bool = False,
                                f"the business in the third person, and copy written to the service's "
                                f"end customer is aimed at nobody who can buy: {text!r}"))
 
-        # 5. Trade shorthand, and the residue. Both advisory under either setting.
+        # 5. Opens on a pronoun with nothing behind it (see `_BARE_OPENER_RE`).
+        opener = _BARE_OPENER_RE.match(text)
+        if opener:
+            problems.append(mk("shelf_copy", name,
+                               f"opens on {opener.group(1)!r}, a word that points back at a sentence the "
+                               f"reader has not read — name the thing first ('A tool for …', 'A fixed-fee "
+                               f"service that …'): {text!r}"))
+
+        # 6. Trade shorthand, and the residue. Both advisory under either setting.
         shorthand = sorted({w for w in _SHELF_WORD_RE.findall(lowered) if w in TRADE_SHORTHAND})
         if shorthand:
             problems.append(_warn("shelf_copy", name,
