@@ -290,6 +290,35 @@ export function cardLine(text: string | null | undefined, maxWords = 30): string
 }
 
 /**
+ * THE AUDIENCE CLAUSE COMES OFF IN THE ROW LIST (2026-08-16, founder review).
+ *
+ * Titles are written business-first, `<what it does> for <who pays>` (`isBusinessFirstTitle`), so
+ * a column of rows prints the same construction over and over: "...for UK software operations
+ * managers", "...for UK creatives and", "...for UK freelance creatives". Three of those in a row
+ * read as one repeated item, and a two-line clamp does not disguise it -- it makes it worse,
+ * because the clamp usually lands inside the identical half.
+ *
+ * The clause is dropped in the list only. The audience is already on the row: the sector prints
+ * on the meta line, and a pack outside the reader's market prints its own flag. The pack page
+ * still shows the title whole, which is where a buyer is deciding rather than scanning.
+ *
+ * TWO FENCES, because a title cut to a fragment is worse than a repetitive one:
+ * - Only a clause naming a MARKET is cut. "Cover for late payments" keeps its "for" -- that one
+ *   is the product, not the audience.
+ * - What is left must still be a name. "Grant finder for UK charities" would leave "Grant
+ *   finder", which is under the floor, so that title is printed whole.
+ */
+const AUDIENCE_TAIL =
+  / for (?:the )?(?:UK|U\.K\.|GB|Great Britain|British|US|U\.S\.|American|EU|European|Irish|Ireland)\b.*$/i;
+const LIST_HEADING_FLOOR = 16;
+
+export function listHeading(heading: string): string {
+  const cut = (heading ?? '').replace(AUDIENCE_TAIL, '').trim().replace(/[,;:]+$/, '');
+  if (cut.length < LIST_HEADING_FLOOR || cut.split(/\s+/).length < 2) return heading;
+  return cut;
+}
+
+/**
  * THE CARD'S VISUAL, AND IT IS A NUMBER.
  *
  * The shelf card had no visual at all after the generated cover was removed on 2026-08-14 (see
@@ -321,36 +350,24 @@ export function cardLine(text: string | null | undefined, maxWords = 30): string
 function PackFigure({ stat, weight }: { stat: PackLeadStat; weight: PackWeight }) {
   if (weight === 'row') {
     return (
-      /* `min-w-0` HERE AND ON THE LABEL, and the parent must be able to wrap. All three, or the
-         row breaks in one of two opposite ways -- which is why the first attempt at this fix
-         traded one for the other instead of ending it.
+      /* IT SITS UNDER THE PRICE NOW, NOT ON THE META LINE (2026-08-16).
+         The figure and the price are the two numbers a buyer weighs against each other, so they
+         belong in the same column. Pairing them also empties the row's meta line of everything
+         except what the pack IS, which is what took the row from nine lines to five.
 
-         The reported defect was collision: at 390px "48" printed over "US rules" as "48S rules",
-         and "9" over the evidence bar. The cause was NOT `min-w-0` on this box. It was `min-w-0`
-         on a box whose PARENT could not wrap and had no `min-w-0` of its own, so the meta line
-         overflowed, this box was squeezed toward zero, and the `flex-none` digits kept their
-         natural size and painted outside their own box onto the next item. Removing `min-w-0`
-         here stopped the collision by refusing to shrink at all -- measured at 390px, this box
-         then sat at W=229 inside a W=179 column, hanging 50px into the price's lane.
+         The whole collision problem the previous version of this branch was written for is gone
+         with the move. That note described a `flex-none` figure and a `truncate` label sharing a
+         line with a sector label, an evidence bar and a market flag, in a column ~179px wide:
+         nothing in the line could yield, so the digits painted over the text beside them ("48S
+         rules"). There is no such line any more. This box owns its column, it wraps instead of
+         truncating, and the only rule it needs is that it never widens the column.
 
-         229 is not a mystery, it is the automatic minimum size: with no `min-w-0`, `min-width`
-         resolves to this box's MIN-CONTENT, and `truncate` on the label carries
-         `white-space: nowrap`, so the label's min-content contribution is the whole 199px text
-         run -- 24 (figure) + 6 (gap) + 199 = 229 exactly. `min-w-0` on the label sets the
-         LABEL's own used minimum; it does not lower its parent's min-content. So the parent
-         needs its own `min-w-0` to stop being floored by a run of text that was never going to
-         be drawn at full length anyway.
-
-         Collapse-to-zero cannot come back, because the parent now wraps (`:421`): this box gets
-         a line to itself with the column's full width to shrink INTO, the `flex-none` figure
-         keeps the number at natural size, and the label absorbs the squeeze through `truncate`.
-         That is the shrink order the row wants -- the number is the fact, the word beside it is
-         the gloss. `max-w-full` is the belt: whatever the line width, this box cannot exceed it. */
-      <span className="flex min-w-0 max-w-full shrink items-baseline gap-1.5">
-        <span className="flex-none font-mono text-body font-semibold tabular-nums text-text">
-          {stat.figure}
-        </span>
-        <span className="min-w-0 truncate text-caption text-muted">{stat.label}</span>
+         It WRAPS rather than truncates, deliberately: the label is the most persuasive sentence
+         on the row and it is short by construction (`packStat.ts` writes both). A truncated
+         "the price back in month one, mod..." would be the row's worst line, not its best. */
+      <span className="mt-1 block text-caption leading-snug text-subtle">
+        <span className="font-mono font-semibold tabular-nums text-text">{stat.figure}</span>{' '}
+        {stat.label}
       </span>
     );
   }
@@ -409,6 +426,14 @@ function PackCard({
      about. When the lead is the modelled multiple the bar keeps its numeral, because then the
      two are different facts. */
   const evidenceLabel = stat?.kind !== 'sources';
+  /* The source count as words, for the ROW's meta line. Same rule as `evidenceLabel` and for the
+     same reason: when the lead figure IS the source count, the row already prints that number
+     under the price, and printing "26 sources" beside the sector as well states one fact twice.
+     The tick run stays either way -- it is the comparison between rows, not a second numeral. */
+  const sourceText =
+    evidenceLabel && typeof pack.sourceCount === 'number' && pack.sourceCount > 0
+      ? `${pack.sourceCount} ${pack.sourceCount === 1 ? 'source' : 'sources'}`
+      : null;
   const { heading, sub } = cardHeading(pack);
   // `repairTruncation` repairs the publish path's character-150 cut; `cardLine` then caps at a
   // word boundary so the card never shows a clause that stops mid-thought. See `cardLine`.
@@ -435,14 +460,28 @@ function PackCard({
       <Link
         href={`/pack/${pack.id}`}
         className={cx(
-          'group flex items-center gap-4 px-3 py-4 sm:gap-5 sm:px-4',
+          // `items-start`, not `items-center`. The price used to be centred against a three-line
+          // row, which left it floating in the middle of a column of its own whitespace with
+          // nothing on its line. It now starts on the title's line, where a buyer reads the two
+          // together.
+          'group flex items-start gap-5 py-5 pl-3 pr-3 sm:gap-6 sm:pl-4 sm:pr-4',
           // Hover LIFTS to paper (`--surface`) rather than sinking to `--surface3`, which is now
           // the shelf's own ground -- a hover state painted the same colour as the surface under
           // it is not a hover state. Same direction as the cards: white = a thing you can pick up.
           'transition-colors hover:bg-surface',
+          // "SEEN" IS THE ROW'S OWN EDGE NOW, NOT A BADGE IN THE TITLE (2026-08-16). The badge sat
+          // inside the title line and took width from it, so every row the buyer had already
+          // opened wrapped its title early -- the returning visitor was punished with the worst
+          // titles on the shelf. A 2px rule on the row's left edge states the same thing and
+          // costs the title nothing. The transparent border on an unread row keeps all forty
+          // rows' text on the same x. Colour alone is not a signal, so the word is still read
+          // aloud below.
+          'border-l-2',
+          viewed ? 'border-subtle' : 'border-transparent',
           focusRing,
         )}
       >
+        {viewed && <span className="sr-only">Already viewed. </span>}
         {/* THE SPINE IS GONE (2026-08-15), and it is the last of four near-black blocks to go.
             Its own two docblocks are the argument for removing it: the first records that on a
             pale ground forty of them read as "forty rows that have not finished loading", the
@@ -457,80 +496,63 @@ function PackCard({
             carries no chrome at all, which is exactly what makes it a different object from a
             card rather than a smaller one. */}
         <span className="min-w-0 flex-1">
-          {/* TWO LINES ON A PHONE, ONE FROM `sm` UP. The reported defect was "cuts at ~50% of
-              available width while empty space remains", and the space is real but it is not the
-              title's to take: measured at 390px the text column runs L=80..R=259 and the price
-              group starts at L=275, so the column ALREADY fills everything up to the 16px gap.
-              There is no missing `min-width: 0` here. The gap the eye sees is the price's own
-              lane, which is blank at the title's y-band only because the price is centred
-              vertically against a three-line row.
+          {/* TWO LINES AT EVERY WIDTH, AND THE CLAMP IS THE ONLY THING THAT CUTS (2026-08-16).
+              Two rules, and both of them replace something that was cutting the title early.
 
-              So the column cannot be widened much, and the title needs 439px against 179px
-              available -- 41%, which is where "Freelance pay bench..." comes from. A second line
-              is the only thing that actually buys the words back. Measured after the arrow note
-              below frees its 32px, the column runs L=80..R=286: 2 x 206px is 412px, so nearly
-              the whole title survives instead of two fifths of it.
-              `line-clamp-2` still ellipses, so a pathological title cannot push the row open.
-              From `sm` the single line has the room to be honest, and the shelf keeps the flat
-              scan-down-a-column rhythm the row variant exists for. */}
-          <span className="flex min-w-0 items-center gap-2">
-            <span className="line-clamp-2 text-body font-semibold text-text sm:line-clamp-none sm:truncate">
-              {heading}
-            </span>
-            {viewed && (
-              <span className="flex-none font-mono text-caption text-subtle">seen</span>
-            )}
+              First: the title is never cut by counting characters. The clamp is CSS, so the
+              browser fills each line completely and breaks only where it must. A character count
+              cannot know the width it is cutting for, which is how the old row printed
+              "Freelance pay bench..." with 30% of its own line still empty.
+
+              Second: `sm:truncate` is gone. From `sm` the row used to drop to ONE line, so the
+              widest screens showed the least title -- the opposite of the intent, and only ever
+              defensible while the row was three lines tall and a second line would have pushed it
+              to four. The row is five lines now by design; two of them are the title's.
+
+              The title also loses its audience clause here (`listHeading`), which buys back more
+              words than any width change: the clause was ~35 identical characters at the end of
+              most titles, so the clamp used to land inside the half every row shared. */}
+          <span className="line-clamp-2 text-body font-semibold text-text">
+            {listHeading(heading)}
           </span>
-          {line && <span className="mt-0.5 block truncate text-meta text-muted">{line}</span>}
-          {/* THE CONTAINER, NOT THE ROWS. This was `flex items-center gap-3` with two
-              `flex-none` children and an evidence bar that cannot shrink below its own tick
-              run, on a line that gets ~246px at 390px. Nothing in it could yield, so the row
-              overflowed and its items collided -- the single cause of three separate reported
-              defects (overlapping meta items, the bar running past the card's padding, and the
-              title truncating early because the overflow stole its space).
-              `flex-wrap` + `gap-y` is the same schema the mid card has always used
-              (`:653`), which is also the answer to the fourth: the two variants stop
-              disagreeing about how this row lays out. A wrapped row is taller; a row whose
-              contents print on top of each other is broken. */}
-          <span className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-            {/* A FIXED COLUMN, so the promise the note below makes is finally kept (2026-08-15).
-                That note claims the figure "lands on the same x on every row". It did not: the
-                sector printed at its natural width and the labels run from "Sector" to "Care and
-                benefits claims", so the figure started at a different x on nearly every row -- and
-                on an untagged pack the slot collapsed and the whole run jumped left. Measured on
-                the deployed shelf, that ragged left edge is what makes a column of rows read as
-                unaligned even though every row is built identically.
+          {/* THE DESCRIPTION GETS TWO LINES, NEVER ONE AND NEVER UNBOUNDED. At one line
+              (`truncate`) it was a fragment that said nothing the title had not; unbounded it ran
+              to five lines and the shelf showed one and a half products per screen. Two lines is
+              the sentence. `cardLine` still caps the string at a word boundary first, so the
+              clamp cannot land mid-word and put the browser's ellipsis on top of ours. */}
+          {line && <span className="mt-1 line-clamp-2 text-meta text-muted">{line}</span>}
+          {/* ONE META LINE, AND IT ONLY SAYS WHAT THE PACK IS (2026-08-16).
+              This line used to carry four stacked things -- sector, the lead figure, the figure's
+              label and the evidence bar -- on a container that had to wrap to fit them. That wrap
+              is what made the row nine lines tall and shapeless, and no amount of clamping the
+              text above could fix it, because the height was below the text.
 
-                From `sm` the sector gets an 11rem column; the longest label in the catalogue,
-                "Care and benefits claims", sets ~10.8rem at `text-caption` mono, so it fits and
-                anything longer ellipses rather than pushing the run. An untagged pack leaves the
-                column EMPTY instead of closing it, which is the whole point. Below `sm` the line
-                wraps anyway, so a fixed column there would only steal width from a 390px row --
-                hence the placeholder is `hidden sm:block`, not a transparent spacer. */}
-            {cat.tagged ? (
-              <span className={cx('flex-none truncate font-mono text-caption sm:w-44', cat.ink)}>
-                {cat.label}
-              </span>
-            ) : (
-              <span className="hidden flex-none sm:block sm:w-44" aria-hidden />
+              Two of the four have left. The figure and its label moved to the price column, where
+              the number they belong beside actually is. What is left is one line that never wraps
+              and never collides: sector, source count, tick run. `overflow-hidden` plus a
+              `truncate` on the sector is the whole shrink order -- the sector is the only item
+              here that can be long, so it is the only item that has to yield.
+
+              ONE INK FOR EVERY SECTOR. `cat.ink` painted each sector its own colour, which on a
+              column of forty rows reads as a status code the buyer keeps trying to decode. It is
+              a label, not a state. The cards still use the colour; a row is a line in a list. */}
+          <span className="mt-2 flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap font-mono text-caption text-subtle">
+            {/* SENTENCE CASE, NOT SMALL CAPS. The spec drew this line in all-caps; two tested
+                house rules say no (`weightAndCasePolicy`, `monoIsTheDataVoice`) -- CSS `uppercase`
+                leaves the DOM in one case and the screen in another, and mono + caps + tracking is
+                the eyebrow device this shop removed from 40 places. The part of the spec that
+                matters survives: one ink, one size, one face for every sector.
+
+                The separator sits INSIDE the sector's guard, not beside it. As its own
+                `cat.tagged &&` it would be a second guard with no label behind it, which is what
+                `categoryScale` counts to prove no path can print an empty chip. */}
+            {cat.tagged && (
+              <>
+                <span className="min-w-0 truncate">{cat.label}</span>
+                {sourceText && <span aria-hidden>·</span>}
+              </>
             )}
-            {/* THE SAME DEVICE AS THE CARDS, at the smallest of its three sizes: figure and label
-                on one baseline instead of stacked. A row is a line in a list, so the number sits
-                in the line rather than above it -- and it lands on the same x on every row, which
-                is what makes forty of them scannable down a column. */}
-            {stat && <PackFigure stat={stat} weight="row" />}
-            {/* Label off: the row already prints a sector in mono beside it, and two mono
-                fragments on one line read as a single run-on string. The bar alone still says
-                "more evidence than its neighbour", which is the comparison the shelf is for.
-                The bar goes entirely when the lead figure is already the source count -- at row
-                scale the figure, its label, a sector and a forty-tick run of the same number is
-                a line the eye cannot parse. */}
-            {/* Capped harder HERE than the component's default 40. The cap is honest either
-                way (past it the run draws an over-marker and the numeral carries the exact
-                value), and 40 ticks is a ~79px object competing for a line that has ~246px on
-                a phone for a sector, a figure, a label and a market flag. The bar's job in a
-                row is "more evidence than the row above", which 14 ticks state as well as 40. */}
-            {evidenceLabel && <EvidenceBar count={pack.sourceCount} label={false} cap={14} />}
+            {sourceText && <span className="flex-none tabular-nums">{sourceText}</span>}
             {/* COMPARE LIKE WITH LIKE. `groupByMarket` buckets on `packMarket(pack)` -- which
                 case-folds and applies the null-is-uk rule -- while this test used the RAW
                 field against the already-resolved viewer market. Two different value spaces,
@@ -539,27 +561,37 @@ function PackCard({
                 the raw field stays: a pack carrying no market at all makes no claim about
                 jurisdiction, so it prints none. */}
             {pack.market && packMarket(pack) !== viewerMarket && (
-              <span className="flex-none font-mono text-caption text-warning">
-                {marketLabel(pack.market)} rules
-              </span>
+              <span className="flex-none text-warning">{marketLabel(pack.market)} rules</span>
             )}
+            {/* LAST, because it is the only item on the line that may be clipped without losing
+                a fact: the count beside it states the exact number. Label off -- the row prints
+                "26 sources" two items to the left, and the bar's own numeral would be that same
+                number a third time. Capped at 14 rather than the component's 40: past the cap the
+                run draws an over-marker, and 40 ticks is a ~79px object on a line that has to fit
+                a sector and a count on a 390px phone. "More evidence than the row above" is what
+                the bar is for, and 14 ticks say it as well as 40. */}
+            <EvidenceBar count={pack.sourceCount} label={false} cap={14} />
           </span>
         </span>
 
-        <span className="flex flex-none items-center gap-3 sm:gap-4">
+        {/* WHAT IT IS ON THE LEFT, WHAT IT IS WORTH ON THE RIGHT (2026-08-16).
+            The price used to sit alone in this column, vertically centred, with nothing on its
+            line -- a column of whitespace with one number floating in it. The fix is not
+            `align-items`; it is giving the column a second thing to hold. The lead figure is that
+            thing: "13x" and "GBP 99.99" are the two numbers the buyer weighs against each other,
+            so they are the two that belong in one place.
+
+            A FIXED WIDTH, so the price lands on the same x on all forty rows and comparing them
+            is a vertical eye movement. The figure's label wraps inside it rather than widening
+            it, and the left column takes whatever is left.
+
+            THE ARROW IS GONE with the centring. Its whole job was `group-hover:translate-x-0.5`,
+            which never fires on the device where it cost the most (32px of a 390px row), and the
+            row is a link end to end -- `hover:bg-surface` is the affordance on the machines that
+            can hover. */}
+        <span className="flex w-28 flex-none flex-col items-end text-right sm:w-36">
           <PriceText className="text-body font-semibold text-azure">{price}</PriceText>
-          {/* THE ARROW IS A HOVER AFFORDANCE, so it costs 32px on the one device that cannot
-              hover. Its whole job is `group-hover:translate-x-0.5` -- on touch that never fires,
-              and the entire row is already a link, so at 390px it is 32px (glyph + `gap-3`) spent
-              on nothing. Handing those back to the text column takes it from 179px to a measured
-              206px, which is what makes the two-line title above land at 412px of its 439px
-              instead of 358px. Reclaiming width from a decoration beats squeezing the content
-              that had to be read. */}
-          <Icon
-            name="arrowRight"
-            size={15}
-            className="hidden text-subtle transition-transform group-hover:translate-x-0.5 sm:block"
-          />
+          {stat && <PackFigure stat={stat} weight="row" />}
         </span>
       </Link>
     );

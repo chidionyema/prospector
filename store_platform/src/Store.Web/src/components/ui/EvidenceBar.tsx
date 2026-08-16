@@ -1,7 +1,14 @@
 import { cx } from '@/components/ui/cx';
+import { EVIDENCE_TICK_CAP, evidenceLabel, evidenceRun } from '@/lib/evidenceTicks';
 
 /**
  * The source count, rendered as a physical bar.
+ *
+ * THE SHAPE IS NO LONGER DECIDED HERE (2026-08-15). Tick count, the height cycle and the tail fade
+ * moved to `lib/evidenceTicks.ts` because the link-preview card draws the same run through satori,
+ * which shares no renderer with this file. This component now owns only its units (px, Tailwind
+ * tokens) and its DOM. The reasoning behind each of those three decisions travelled with them --
+ * read it there, not here.
  *
  * WHAT THIS REPLACES. Every card on the shelf carried `8 documents · N sources` in mono
  * (`pages/index.tsx:351` before this pass). The document half is the same on all 57 cards --
@@ -24,12 +31,8 @@ import { cx } from '@/components/ui/cx';
 export function EvidenceBar({
   count,
   className,
-  /**
-   * Ticks stop being individually countable somewhere around forty and start being a texture.
-   * Past the cap the run is drawn at full width and the numeral carries the exact value, so no
-   * information is lost -- the bar just stops claiming to be countable when it no longer is.
-   */
-  cap = 40,
+  /** See `EVIDENCE_TICK_CAP` for why forty. */
+  cap = EVIDENCE_TICK_CAP,
   label = true,
   /**
    * `instrument` is the same bar drawn for the dark cover plate (`--ins-bg`), and it exists
@@ -52,19 +55,19 @@ export function EvidenceBar({
   tone?: 'default' | 'instrument';
   size?: 'sm' | 'lg';
 }) {
+  // The two sizes are the SAME shape scaled, not two drawings: the 5-step height cycle is
+  // multiplied by `track`, so a 26-source pack draws a recognisably identical skyline in the body,
+  // on the cover, and on the link-preview card. `track` is the tallest step in each, which is what
+  // the flex row is sized to.
+  const lg = size === 'lg';
+  const track = lg ? 22 : 12;
+
+  const { ticks, over, shown } = evidenceRun(count, { cap, track });
+
   // A pack with no source count renders NOTHING, not a zero and not an empty track. An empty
   // evidence bar on a product whose pitch is evidence is the single worst thing this component
   // could draw: it says "we checked and found none", when the truth is "this field is absent".
-  if (typeof count !== 'number' || count <= 0) return null;
-
-  const shown = Math.min(count, cap);
-  const over = count > cap;
-
-  // The two sizes are the SAME shape scaled, not two drawings: the 5-step height cycle below is
-  // multiplied, so a 26-source pack draws a recognisably identical skyline in the body and on the
-  // cover. `track` is the tallest step in each, which is what the flex row is sized to.
-  const lg = size === 'lg';
-  const track = lg ? 22 : 12;
+  if (shown === 0 || typeof count !== 'number') return null;
   const tick = lg ? 'w-0.5' : 'w-px';
   const gap = lg ? 'gap-[1.5px]' : 'gap-px';
   const ink = tone === 'instrument' ? 'bg-ins-survive' : 'bg-survive';
@@ -82,25 +85,11 @@ export function EvidenceBar({
       /* One accessible name for the whole widget. Without this a screen reader announces forty
          empty <span>s and then a number. `aria-hidden` on the track is the other half. */
       role="img"
-      aria-label={`${count} cited ${count === 1 ? 'source' : 'sources'}`}
+      aria-label={evidenceLabel(count)}
     >
       <span aria-hidden className={cx('flex items-end', gap)} style={{ height: track }}>
-        {Array.from({ length: shown }, (_, i) => (
-          <span
-            key={i}
-            className={cx(tick, ink)}
-            style={{
-              /* Height walks a fixed 5-step cycle rather than a random one. A flat run of equal
-                 ticks reads as a progress bar (i.e. "43 of 100"), which is a claim we are not
-                 making; a varying skyline reads as a measurement. It is deterministic in the
-                 INDEX, not in the pack, so it costs no seed and two packs with the same count
-                 draw the same shape -- which is correct, because the same count IS the same fact. */
-              height: ([12, 7, 10, 5, 9][i % 5] / 12) * track,
-              /* The run fades toward its tail so a 40-tick bar does not out-shout a 12-tick one
-                 purely by ink volume. The first ticks are the ones being compared. */
-              opacity: 0.35 + 0.65 * (1 - i / Math.max(shown, 1)),
-            }}
-          />
+        {ticks.map((t, i) => (
+          <span key={i} className={cx(tick, ink)} style={{ height: t.height, opacity: t.opacity }} />
         ))}
         {over && (
           <span className={cx('ml-0.5 opacity-40', tick, ink)} style={{ height: track }} />

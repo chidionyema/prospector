@@ -185,11 +185,30 @@ describe('the untagged pack renders no sector marker', () => {
       /\{(?:cat|category)\.tagged (?:&&|\?)/,
     );
 
-    // The row's empty branch must stay INVISIBLE, not merely empty: it exists to hold the
-    // sector column open so the figure beside it lands on the same x, and a placeholder that
-    // announced itself would read as a missing value rather than as alignment.
-    const placeholder = page.match(/<span className="hidden flex-none sm:block sm:w-44"[^>]*\/>/);
-    expect(placeholder?.[0], 'the row placeholder must be aria-hidden').toContain('aria-hidden');
+    /*
+     * THE ROW'S EMPTY PLACEHOLDER IS GONE, AND SO IS THE THING IT HELD OPEN (2026-08-16).
+     *
+     * It was a `hidden flex-none sm:block sm:w-44` span with `aria-hidden`, and its only job was
+     * to keep the sector column open on an untagged pack so that the lead figure printed beside
+     * it landed on the same x as every other row's.
+     *
+     * The figure is not on that line any more. It moved under the price, into a fixed-width
+     * value column, because the price and the multiple are the two numbers a buyer weighs
+     * against each other. So there is nothing left beside the sector to align, and an 11rem
+     * empty column on an untagged row is now just a hole in the meta line.
+     *
+     * What replaces the promise is stronger, because it no longer depends on the sector: the
+     * value column is a FIXED width, so the price and the figure land on the same x whether or
+     * not the pack carries a sector at all. That is what is pinned here instead.
+     */
+    const rowStart = page.indexOf("if (weight === 'row') {", page.indexOf('function PackCard('));
+    expect(rowStart, "PackCard's row branch must be locatable").toBeGreaterThan(-1);
+    const row = page.slice(rowStart, page.indexOf('\n  }', rowStart));
+    expect(row, 'the row must not re-open an empty sector column').not.toMatch(/sm:w-44/);
+    expect(
+      row,
+      'the value column must be a fixed width, so the price lands on the same x on every row',
+    ).toMatch(/className="flex w-\d+ flex-none flex-col items-end text-right sm:w-\d+"/);
   });
 
   it('the card draws no marker for a missing sector, and is not empty without one', () => {

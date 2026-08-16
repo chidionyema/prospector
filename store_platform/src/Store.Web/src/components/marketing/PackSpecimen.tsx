@@ -16,14 +16,22 @@ import { Button, Icon, SourceChip, sourceHost } from '@/components/ui';
  * seen.
  *
  * WHY THIS PAGE AND NOT A PRETTIER ONE. The page rendered here is the one carrying the pack's
- * FAILED check. Eight green ticks read as marketing; one refutation reads as a document. Nobody
- * fabricates a flaw in their own product, so a visible failure is the cheapest credibility this
- * shop will ever buy -- and it costs nothing, because `sample-report.json` already ships with
- * `claims_verifiable: "refuted"` in it. The choice is not hardcoded: `FAILED` is the first
- * non-`supported` check the data contains, and NO COPY anywhere states which page was chosen or
- * why. That reasoning is ours; saying it out loud to a buyer is a shop explaining its own
- * merchandising, which is what the founder rejected on 2026-08-15. Re-generate the sample with
- * eight clean checks and the sheet simply prints that check's verdict, with nothing to retract.
+ * REFUTED check. A row of green ticks reads as marketing; one refutation reads as a document.
+ * Nobody fabricates a flaw in their own product, so a visible failure is the cheapest credibility
+ * this shop will ever buy -- and it costs nothing, because `sample-report.json` already ships with
+ * a `refuted` check in it. The choice is not hardcoded: `FAILED` is the first `refuted` check the
+ * data contains, and NO COPY anywhere states which page was chosen or why. That reasoning is ours;
+ * saying it out loud to a buyer is a shop explaining its own merchandising, which is what the
+ * founder rejected on 2026-08-15.
+ *
+ * IT PREFERS `refuted` OVER `unverifiable`, and that order is the fix for a real defect (2026-08-16).
+ * It used to take the first check that was not `supported`. The sample data then changed under it,
+ * and the live landing page started printing an `unverifiable` check whose stated reason was that
+ * the fetched pages held cookie consent screens instead of wage tables. That is a page about our
+ * own retrieval missing, not a page about the idea. A refutation says "we checked this and it does
+ * not hold"; an unverifiable says "we could not find out", and only the first one buys credibility.
+ * The fallbacks stay honest rather than clever: no `refuted` check falls back to the first
+ * non-`supported` one, and an all-clean report simply prints its last page with nothing to retract.
  *
  * WHY IT REPLACES `EvidenceRecordPanel`. That component rendered these same eight verdicts, in
  * this same section, under the eyebrow "A real page from a real pack" -- while looking like a web
@@ -36,12 +44,18 @@ import { Button, Icon, SourceChip, sourceHost } from '@/components/ui';
  * WHAT MAKES IT READ AS PAPER RATHER THAN AS A CARD. Four things, in order of how much work they
  * do:
  *
- *   1. It is CROPPED BY ITS OWN FRAME, and it begins mid-sentence. A full small preview says
- *      "this is all there is". A page whose first line is the tail of the previous page's
- *      paragraph, and whose bottom edge cuts through the next section, says "this continues"
- *      without printing a number or a promise. The continuation text is real: it is the closing
- *      clause of the check immediately before the failed one, quoted with a leading ellipsis the
- *      way any document quotes a continuation.
+ *   1. It is CROPPED BY ITS OWN FRAME. A full small preview says "this is all there is". A page
+ *      whose bottom edge cuts through the next section says "this continues" without printing a
+ *      number or a promise.
+ *
+ *      THE PAGE NO LONGER OPENS MID-SENTENCE (2026-08-16). It used to start with an ellipsis and
+ *      the last 96 characters of the previous check's rationale, on the theory that a document
+ *      quotes a continuation that way. It does not read as one. The founder read the live page and
+ *      called it gibberish, and he was right: the fragment is the tail of a sentence about a
+ *      DIFFERENT check, so the first thing a buyer reads is half a thought on a subject the rest of
+ *      the page never returns to. A quoted continuation works when the reader has the first half.
+ *      Here nobody does. The "there are pages before this one" job now belongs to the numbered
+ *      section heading, which says it as a figure the reader can check against the pack.
  *   2. A RUNNING HEAD -- the pack's title on the left, the section on the right, a hairline under
  *      both. The section name is read from `PACK_DOCUMENTS`, so the page cannot claim to belong to
  *      a document the manifest below it does not list.
@@ -84,30 +98,29 @@ type Check = {
 const CHECKS = report.checks as Check[];
 
 /**
- * The failed check, found rather than named. The fallback keeps the component renderable against a
- * sample where everything passed: the sheet then prints that check's own verdict word instead, so
- * the specimen degrades to an honest page rather than to a claim about a failure that isn't there.
+ * The page to print, found rather than named, in a stated order of preference.
+ *
+ * A `refuted` check is the one worth showing: it says we checked a claim and it did not hold. An
+ * `unverifiable` check is second best and often much worse, because its rationale is usually a
+ * report on what we FAILED TO FETCH -- the live page spent a day telling buyers that our sources
+ * were cookie consent screens. It is still ahead of a clean page, so it stays as the fallback
+ * rather than being dropped. Last of all, a report where every check passed prints its final page
+ * with that check's own verdict word, so the specimen degrades to an honest page rather than to a
+ * claim about a failure that is not there.
+ *
  * Nothing here narrates the choice to the reader -- the page is the evidence, not the caption.
  */
-const FAILED_INDEX = CHECKS.findIndex((check) => check.verdict !== 'supported');
-const FAILED = FAILED_INDEX >= 0 ? CHECKS[FAILED_INDEX] : CHECKS[CHECKS.length - 1];
-const PAGE_NUMBER = (FAILED_INDEX >= 0 ? FAILED_INDEX : CHECKS.length - 1) + 1;
-
-/** The check printed immediately above this one, for the mid-sentence opening. */
-const PRECEDING = CHECKS[Math.max(0, (FAILED_INDEX >= 0 ? FAILED_INDEX : CHECKS.length - 1) - 1)];
-
-/**
- * The tail of a sentence, cut at a word boundary -- the fragment a page inherits from the page
- * before it. Deliberately not a character slice: cutting mid-word would read as a rendering bug
- * rather than as a continuation, which is the entire effect being bought here.
- */
-function sentenceTail(text: string, maxChars = 96): string {
-  const clean = (text ?? '').trim();
-  if (clean.length <= maxChars) return clean;
-  const window = clean.slice(clean.length - maxChars);
-  const space = window.indexOf(' ');
-  return space === -1 ? window : window.slice(space + 1);
+function pickPage(checks: Check[]): number {
+  const refuted = checks.findIndex((check) => check.verdict === 'refuted');
+  if (refuted >= 0) return refuted;
+  const failed = checks.findIndex((check) => check.verdict !== 'supported');
+  if (failed >= 0) return failed;
+  return checks.length - 1;
 }
+
+const FAILED_INDEX = pickPage(CHECKS);
+const FAILED = CHECKS[FAILED_INDEX];
+const PAGE_NUMBER = FAILED_INDEX + 1;
 
 /** The section of the pack this page belongs to, read from the manifest so it cannot drift. */
 const SECTION_TITLE =
@@ -196,18 +209,16 @@ export function PackSpecimen({ className }: { className?: string }) {
                     <span className="flex-none text-caption text-subtle">{SECTION_TITLE}</span>
                   </div>
 
-                  {/* THE MID-SENTENCE OPENING. Real text: the closing clause of the check printed
-                      immediately before this one, quoted with a leading ellipsis. This is the line
-                      that does the "there are pages before this one" work, and it does it without
-                      claiming a page count we cannot substantiate. */}
-                  <p className="mt-6 max-w-[62ch] text-body leading-[1.75] text-muted">
-                    …{sentenceTail(PRECEDING?.rationale ?? '')}
-                  </p>
+                  {/* THE SECTION HEADING, numbered the way a document numbers itself, and now the
+                      first thing on the sheet. The counter is mono -- it is a figure a reader can
+                      compare against the marks in the hero and against the pack's own QA report --
+                      and it is also the whole "there are pages before this one" signal, since "9 of
+                      9" states the position without inventing a sentence to imply it.
 
-                  {/* THE SECTION HEADING, numbered the way a document numbers itself. The counter
-                      is mono -- it is a figure a reader could compare against the eight marks in
-                      the hero and against the pack's own QA report. */}
-                  <div className="mt-8 flex flex-wrap items-baseline gap-x-3 gap-y-2 border-t border-border pt-6">
+                      NO TOP BORDER HERE. The running head above already draws a hairline, and two
+                      rules six pixels apart read as a mistake. It kept its border only while the
+                      continuation paragraph sat between them. */}
+                  <div className="mt-7 flex flex-wrap items-baseline gap-x-3 gap-y-2">
                     <span className="flex-none font-mono text-caption text-subtle">
                       {PAGE_NUMBER} of {CHECKS.length}
                     </span>
