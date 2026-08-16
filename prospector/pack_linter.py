@@ -1212,8 +1212,24 @@ def check_shelf_copy(fields: Dict[str, str], *, block: bool = False,
             if (len(opener_words) >= 2
                     and opener_words[0] in _BARE_PRONOUN_OPENERS
                     and opener_words[1] in _FINITE_VERBS):
+                # WORDED TO AVOID "opens on", and that is load-bearing rather than stylistic.
+                # Check 5 above (`_BARE_OPENER_RE`) and this check were added independently on
+                # 2026-08-16 — one on this branch, one on main — for the same rule, and both
+                # phrased their finding "opens on ...". Every caller that filters findings does
+                # so BY SUBSTRING (`tools/sweep_shelf_copy.py:102`,
+                # `tools/retitle_catalogue.py:223`, and the tests), so a line that trips both
+                # was reported twice under one name and
+                # `test_it_errors_under_the_actuator_and_warns_without_it` counted two errors
+                # where it asserts one.
+                #
+                # Neither check can simply be deleted: check 5 catches "We handle ..." (a line
+                # the founder rejected, and `handle` is a bare infinitive absent from
+                # `_FINITE_VERBS` by design), while this one is the only check that stays quiet
+                # on "This service reads ..." and exempts `title` — both pinned by
+                # `tests/unit/test_shelf_copy.py:275-292`. Distinct wording keeps both findings
+                # and gives each filter exactly one thing to match.
                 problems.append(mk("shelf_copy", name,
-                                   f"opens on the bare pronoun {opener_words[0]!r}, which has no "
+                                   f"starts on the bare pronoun {opener_words[0]!r}, which has no "
                                    f"antecedent when the line is read beside the title rather than "
                                    f"after it; name the subject: {text!r}"))
 
