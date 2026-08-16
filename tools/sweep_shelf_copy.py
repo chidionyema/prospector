@@ -9,8 +9,9 @@ us off the homepage. A gate cannot fix a shelf it only sees at the door; this wa
 shelf.
 
     python tools/sweep_shelf_copy.py                 # report: what is live and defective
-    python tools/sweep_shelf_copy.py --fix           # rewrite the breaches, in place
+    python tools/sweep_shelf_copy.py --fix           # rewrite the breaches, 8 in flight
     python tools/sweep_shelf_copy.py --fix --limit 5 # rewrite a few first
+    python tools/sweep_shelf_copy.py --fix --jobs 4  # gentler on the provider
 
 Rewrites are re-graded before they are accepted, so a model that fails to fix the line
 leaves the old line alone rather than replacing one defect with another. The rewrite may
@@ -25,6 +26,7 @@ import json
 import re
 import sqlite3
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -218,6 +220,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--fix", action="store_true", help="rewrite the breaching lines in place")
     ap.add_argument("--limit", type=int, default=0, help="stop after N rewrites")
+    ap.add_argument("--jobs", type=int, default=8,
+                    help="rewrites in flight at once (default 8, the measured-clean MiniMax figure)")
     args = ap.parse_args()
 
     rows = live_rows()
@@ -252,24 +256,36 @@ def main() -> int:
             print("no non-critical operator available — nothing rewritten")
             return 1
 
+    if not args.fix:
+        for cid, title, one, created, why in bad:
+            print(f"\n{cid}  listed from {created[:10]}")
+            print(f"  OLD: {one}")
+            for field, detail in why:
+                print(f"   ! [{field}] {detail.split(':')[0]}")
+        return 0
+
+    # In flight together. Each rewrite is one independent call about one line, sharing
+    # nothing with the others, and the founder's first run measured ~40s of latency per
+    # call — 23 rows serially is a quarter of an hour of waiting for work that is almost
+    # entirely idle. The default matches `config.yaml minimax_concurrency`, the figure this
+    # estate measured clean at 16/16 with no 429s; the writes stay serial below, because
+    # SQLite is the one part of this that is not idle-waiting.
+    todo = fixable[:args.limit] if args.limit else fixable
+    print(f"\nrewriting {len(todo)} line(s), {args.jobs} in flight")
+    with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
+        done = list(pool.map(lambda r: (r, rewrite_one(op, r[1], r[2])), todo))
+
     fixed = 0
-    for cid, title, one, created, why in (fixable if args.fix else bad):
+    for (cid, title, one, created, why), new in done:
         print(f"\n{cid}  listed from {created[:10]}")
         print(f"  OLD: {one}")
-        for field, detail in why:
-            print(f"   ! [{field}] {detail.split(':')[0]}")
-        if not args.fix:
-            continue
-        if args.limit and fixed >= args.limit:
-            print("  (limit reached)")
-            break
-        new = rewrite_one(op, title, one)
         if new:
             persist(cid, new)
             fixed += 1
             print(f"  NEW: {new}")
-    if args.fix:
-        print(f"\nrewritten: {fixed} of {len(fixable)}")
+        else:
+            print("  (kept — see the refusal above)")
+    print(f"\nrewritten: {fixed} of {len(todo)}")
     return 0
 
 
