@@ -103,7 +103,10 @@ export default function LegalDoc({ title, version = TOS_VERSION, interim = false
   const inForce = formatVersionDate(version);
 
   return (
-    <MarketingLayout>
+    <MarketingLayout
+      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: title }]}
+      breadcrumbsWidth="6xl"
+    >
       <Seo title={title} />
       {/* `6xl` and a grid: the rail is new width beside the document, not taken out of it, so the
           copy keeps the `max-w-2xl` measure it has always had. Below `lg` the rail does not render

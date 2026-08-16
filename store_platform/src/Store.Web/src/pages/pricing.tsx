@@ -37,7 +37,10 @@ import killTotals from '@/data/kill-log-totals.json';
  */
 export default function PricingPage({ range, ladder }: { range: PriceRange | null; ladder: LadderRung[] }) {
   return (
-    <MarketingLayout>
+    <MarketingLayout
+      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Pricing' }]}
+      breadcrumbsWidth="3xl"
+    >
       <Seo
         title={range ? `Pricing - ${range.label} per pack` : 'Pricing'}
         description={

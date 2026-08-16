@@ -252,7 +252,10 @@ export default function KillLogPage({ listed }: { listed: number | null }) {
     });
 
   return (
-    <MarketingLayout>
+    <MarketingLayout
+      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Kill log' }]}
+      breadcrumbsWidth="6xl"
+    >
       <Seo
         title="The kill log, the ideas we killed, and the sourced reason why"
         description={`We researched ${researched.toLocaleString('en-GB')} business ideas and killed ${rejectRateLabel} of them. Here are ${publishedKills} of the kills, each with the evidence that killed it.`}

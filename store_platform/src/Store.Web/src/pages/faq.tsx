@@ -126,7 +126,10 @@ export default function Faq() {
   }, [search, activeCategory]);
 
   return (
-    <MarketingLayout>
+    <MarketingLayout
+      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'FAQ' }]}
+      breadcrumbsWidth="6xl"
+    >
       <Seo
         title="FAQ"
         description="The packs, the payment, and the guarantees. Common questions about Mumchimp."

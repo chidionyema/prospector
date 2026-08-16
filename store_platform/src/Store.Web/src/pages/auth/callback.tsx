@@ -68,7 +68,14 @@ export default function AuthCallbackPage() {
   }, [router, adopt]);
 
   return (
-    <MarketingLayout>
+    // The trail is not decoration on this route. The happy path redirects immediately, but the
+    // `incomplete` branch below is a terminal state -- it says "please start again" and offers
+    // nothing to start again WITH. The crumb is the only way out of it.
+    // Width '3xl' matches the max-w-3xl the panel below already uses, so the two line up.
+    <MarketingLayout
+      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Signing in' }]}
+      breadcrumbsWidth="3xl"
+    >
       <Head>
         <meta name="robots" content="noindex, nofollow" />
       </Head>

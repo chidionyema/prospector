@@ -127,7 +127,10 @@ export default function IdeasHub({ categories, total, variant }: Props) {
   }, [categories, search]);
 
   return (
-    <MarketingLayout>
+    <MarketingLayout
+      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Categories' }]}
+      breadcrumbsWidth="7xl"
+    >
       <Seo
         title="Business ideas by category"
         description="Browse researched business ideas by industry. Every pack cites a source for every claim."
