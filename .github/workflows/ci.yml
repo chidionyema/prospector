@@ -55,6 +55,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # actions/setup-python downloads a version it cannot find locally, through
+      # actions/python-versions, whose macOS installer writes to /Users/runner/hostedtoolcache
+      # when AGENT_TOOLSDIRECTORY is unset. Our self-hosted Mac logs in as a different user and
+      # /Users is root-owned, so that mkdir fails, the step dies and every later step in the job
+      # is skipped. The job then reports `failure` with no test output at all, which reads like a
+      # code failure and is not one.
+      #
+      # This is set in the workflow, not on the runner, because the runner-side fix has to be
+      # re-applied by hand every time config.sh regenerates runsvc.sh. macOS only: on Linux the
+      # default tool cache is /opt/hostedtoolcache and is already populated, so overriding it
+      # there would throw away the preinstalled interpreters.
+      - name: Point the tool cache at a writable directory
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p "$HOME/hostedtoolcache"
+          echo "AGENT_TOOLSDIRECTORY=$HOME/hostedtoolcache" >> "$GITHUB_ENV"
+          echo "RUNNER_TOOL_CACHE=$HOME/hostedtoolcache" >> "$GITHUB_ENV"
+
       - name: Set up Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
         with:
@@ -111,6 +129,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      # Same reason as the python job above: on our self-hosted Mac the default tool cache path
+      # is unwritable, and setup-python dies before any of this job runs.
+      - name: Point the tool cache at a writable directory
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p "$HOME/hostedtoolcache"
+          echo "AGENT_TOOLSDIRECTORY=$HOME/hostedtoolcache" >> "$GITHUB_ENV"
+          echo "RUNNER_TOOL_CACHE=$HOME/hostedtoolcache" >> "$GITHUB_ENV"
 
       - name: Set up Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
