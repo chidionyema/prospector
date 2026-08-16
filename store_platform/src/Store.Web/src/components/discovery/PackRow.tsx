@@ -9,7 +9,7 @@ import { cx } from '@/components/ui/cx';
 import { marketLabel, type Pack } from '@/lib/api/client';
 import { categoryFor } from '@/lib/category';
 import { useCurrency } from '@/lib/currency';
-import { cardHeading, cardLine } from '@/lib/discovery';
+import { cardHeading, cardLine, listHeading } from '@/lib/discovery';
 import { repairTruncation } from '@/lib/copy';
 import { formatPriceForMarket, type Currency } from '@/lib/fx';
 import { packMarket } from '@/lib/market';
@@ -96,19 +96,26 @@ export function PackRow({
             The title needs 439px against 179px available -- 41% -- so a second line is the only
             thing that actually buys the words back. `line-clamp-2` still ellipses, so a
             pathological title cannot push the row open. */}
-        <span className="flex min-w-0 items-center gap-2">
-          {/* TWO LINES AT EVERY WIDTH (2026-08-15, brief item 3). The `sm:truncate` half of this
-              is gone: `truncate` is a MID-WORD cut, so the widest viewport was the one place a
-              title could still stop inside a word -- "Compliance evidence pack for gel man..." --
-              which is the defect the brief names, and it was hiding on desktop precisely because
-              it bites only the longest titles. `line-clamp-2` ellipses at a line box instead, so
-              a pathological title still cannot push the row open. */}
-          <span className="line-clamp-2 text-body font-semibold text-text">
-            {heading}
-          </span>
-          {viewed && <span className="flex-none font-mono text-caption text-subtle">seen</span>}
+        {/* THE TITLE OWNS THE WHOLE COLUMN. The `seen` badge used to sit beside it in a flex
+            wrapper, so a `flex-none` chip took its width off the top before the heading got a
+            character, and the heading wrapped early around a four-letter word. The badge now
+            rides in the meta row below, next to the category label, where it is still visible
+            and costs the title nothing (founder, 2026-08-16, item 4).
+
+            TWO LINES AT EVERY WIDTH (2026-08-15, brief item 3). The `sm:truncate` half of this
+            is gone: `truncate` is a MID-WORD cut, so the widest viewport was the one place a
+            title could still stop inside a word -- "Compliance evidence pack for gel man..." --
+            which is the defect the brief names, and it was hiding on desktop precisely because
+            it bites only the longest titles. `line-clamp-2` ellipses at a line box instead, so
+            a pathological title still cannot push the row open. */}
+        <span className="line-clamp-2 block text-body font-semibold text-text">
+          {listHeading(heading)}
         </span>
-        {line && <span className="mt-0.5 block truncate text-meta text-muted">{line}</span>}
+        {/* TWO LINES, not one (founder, 2026-08-16, item 3). `truncate` is a single line AND a
+            mid-word cut, which is the same defect the title was carrying: `cardLine` had already
+            capped the string at a word boundary, and then the one-line box cut it again inside a
+            word. `line-clamp-2` fills both lines and ellipses only at a line box. */}
+        {line && <span className="mt-0.5 line-clamp-2 block text-meta text-muted">{line}</span>}
         {/* THE CONTAINER WRAPS, and all three of `flex-wrap`, `min-w-0` here and `min-w-0` on the
             figure are load-bearing. Without them nothing on this line could yield, so the row
             overflowed and its items collided -- one cause behind three separately reported
@@ -129,6 +136,10 @@ export function PackRow({
           ) : (
             <span className="hidden flex-none sm:block sm:w-44" aria-hidden />
           )}
+          {/* The badge's new home. It reads as what it is here -- a note about the reader's own
+              history, sitting with the other row metadata -- instead of competing with the title
+              for the first line. */}
+          {viewed && <span className="flex-none font-mono text-caption text-subtle">seen</span>}
           {stat && <PackFigure stat={stat} weight="row" />}
           {/* Capped harder than the component's default 40. The cap is honest either way (past it
               the run draws an over-marker and the numeral carries the exact value), and 40 ticks
