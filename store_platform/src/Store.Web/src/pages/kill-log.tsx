@@ -11,7 +11,7 @@ import { RESEARCH_STATS } from '@/lib/stats';
 // which Next removes from the page's client JS along with everything only it imports. That is what
 // keeps `data/kill-log.json` (456 KB) out of the browser -- see `lib/killLog.server.ts`.
 import { buildKillIndex, type KillDetail, type KillIndex, type KillSummary } from '@/lib/killLog.server';
-import { fetchCatalogStats } from '@/lib/api/client';
+import { fetchCatalogStats, fetchKillLogDetail } from '@/lib/api/client';
 import { track } from '@/lib/analytics';
 import type { GetStaticProps } from 'next';
 
@@ -91,14 +91,12 @@ export default function KillLogPage({
   React.useEffect(() => {
     if (!wanted || details) return;
     let live = true;
-    fetch('/api/kill-log-detail')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (live && d) setDetails(d as Record<string, KillDetail>);
-      })
-      // Best effort. A failed fetch leaves the table, the filters and the sort working; only the
-      // expanded prose is missing, and the row says so rather than rendering an empty panel.
-      .catch(() => {});
+    // Best effort, and the swallowing now lives in the client function: a failed request leaves
+    // the table, the filters and the sort working; only the expanded prose is missing, and the
+    // row says so rather than rendering an empty panel.
+    fetchKillLogDetail().then((d) => {
+      if (live && d) setDetails(d);
+    });
     return () => {
       live = false;
     };
