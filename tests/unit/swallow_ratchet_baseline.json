@@ -20,5 +20,6 @@
     "prospector/scheduler/alerts.py": 1,
     "prospector/scheduler/run_scheduled.py": 4
   },
-  "waivers": 1
+  "_waivers_why": "Raised 1 -> 2 on 2026-08-16 for prospector/control_center/config_editor.py:354. The handler catches an unreadable on-disk config and treats it as an EMPTY config, which subtracts nothing from the routing problems reported, so the strict direction wins. The read is separately diagnosed by the mtime and parse fences in `write_config`, which refuse the write outright rather than proceeding.",
+  "waivers": 2
 }

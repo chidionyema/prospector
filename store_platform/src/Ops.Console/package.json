@@ -1,0 +1,33 @@
+{
+  "name": "ops-console",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "PROSPECTOR_PYTHON=\"${PROSPECTOR_PYTHON:-$(cd ../../.. && pwd)/.venv/bin/python}\" next dev -p 8611",
+    "build": "next build",
+    "start": "PROSPECTOR_PYTHON=\"${PROSPECTOR_PYTHON:-$(cd ../../.. && pwd)/.venv/bin/python}\" next start -p 8611",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "verify": "npm run typecheck && npm run test",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "next": "16.2.11",
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^25",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^4.1.8"
+  }
+}
