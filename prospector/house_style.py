@@ -40,9 +40,16 @@ __all__ = [
     "MAX_SENTENCE_WORDS",
 ]
 
-#: R1's ceiling as the spec states it. `register_lint.LONG_SENTENCE_WORDS` is 25 and is the
-#: number that actually blocks; this one exists so a receipt can report both, because a
-#: corpus can sit under one and over the other and "which limit" is then a real question.
+#: R1's ceiling as the spec states it, REPORT ONLY — `max_over_28_rate` is passed 0.0 at the
+#: one call site (`pack_linter.lint_pack`), so nothing has ever blocked on it.
+#:
+#: MEASURED 2026-08-16, and left report-only for a reason now rather than by default.
+#: Against 270 Financial Ombudsman final decisions, human mean sentence length has a 95th
+#: percentile of 28.8 words and our own mean is 28.1 — inside the human range. So
+#: `sent_len_mean` is NOT armed in `data/prose_target.json`, and neither this 28 nor
+#: `register_lint`'s 25 has a measurement behind it. Both stay as reported numbers so a
+#: receipt can say what the rate looks like at the number the spec writes down. Full
+#: working: docs/PROSE_CORPUS_PROGRAM.md.
 MAX_SENTENCE_WORDS = 28
 
 #: Q1. Eight words is the spec's floor for a quote to be a quote rather than a fragment.

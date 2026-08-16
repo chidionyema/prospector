@@ -202,45 +202,50 @@ human corpus on at least one measure.** No gate is armed; this is the number one
   writing. Both paragraph measures are printed but excluded from the distance metric
   (`structure.REPORTED_ONLY`) until packs are measured as the buyer reads them.
 
-### We are not handling complaints. Which findings actually transfer.
+### We are not handling complaints. We are adopting how a human writes.
 
 FOS is the right genre match for the SHAPE of a pack — a claim, the evidence, a verdict,
 reasons. It is not the same job. An ombudsman adjudicates between two parties over disputed
 facts, under a statutory duty, for a reader who may appeal. We assess an opportunity from
-retrieved passages for a buyer deciding where to spend. Some of the gaps above are that
-difference showing up, and copying the human number would make our prose worse, not better.
+retrieved passages for a buyer deciding where to spend.
 
-So the findings are tiered. Only tier A is a defect to fix.
+**The line is FORM against SUBJECT MATTER, and it is drawn mechanically, not row by row.**
+Founder directive, 2026-08-16: adopt and enforce human writing patterns; do not adopt
+complaint subject matter. `prose_measure.classify_item` splits every keyness row three ways
+using the closed class of English function words, so no rule can ever be cut from a topic:
 
-**Tier A — genre-independent. These are ours, and they would be wrong in any genre.**
+| category | rows | what it is | may become a rule |
+|---|---|---|---|
+| form | 273 | every token is a function word — `of the`, `none of`, `in which` | yes |
+| meta | 369 | our own machinery in the buyer's prose — `passages`, `retrieved` | yes, and it is a defect |
+| content | 6,855 | what we write about — `uk`, `nhs`, `ai`, `data` | never |
 
-| finding | why it transfers |
-|---|---|
-| hyphens 12x (z=+13.6) | Nothing about assessing an opportunity requires compound stacking. This is a naming habit. |
-| `passages` / `the passages` / `none of` (G2 4004, 2956) | Meta-commentary about our own retrieval. A reader wants what is true, not what our corpus did. Wrong in every genre. |
-| commas 61 vs 32, semicolons 4.6 vs 0.75 (z=+2.8) | Clause density is a property of English sentences, not of adjudication. |
-| the 25-word ceiling in `voice.md` | The rule is stricter than professional English. Retiring it is a deletion, not a new rule. |
+An earlier draft of this section tiered the findings A/B/C and parked hedging, vocabulary
+and paragraph shape as "do not act". That split was genre-independent-vs-genre-bound, and
+the founder replaced it: hedging and vocabulary are how a sentence is built, so they are
+form, and form is adopted. What is excluded is the content column, by construction.
 
-**Tier B — real, but the human number is NOT our target.** Hedging: 3.51 per 1k against
-13.58. An ombudsman hedges because the facts are contested and both parties are reading. We
-rule from passages we actually fetched, and this engine already has a first-class way to say
-"we do not know" — the `unverifiable` verdict. So the direction is right (we assert more
-confidently than an accountable writer) and the magnitude is not transferable. The target is
-a judgement to be argued and written down, somewhere between 3.5 and 13.6, not the FOS mean
-copied across. **Do not gate on hedging until that number has an argument attached.**
+**The findings that were parked, and what measuring them properly did to each.**
 
-**Tier C — confounded. Do not act on these at all yet.**
-
-- **Type/token 0.52 vs 0.29.** HYPOTHESIS: this is mostly document length, not vocabulary
-  churn. Type/token ratio falls as a document grows, and our documents average ~654 words
-  against FOS's ~1,724. Our corpus also spans every sector while FOS is one domain, which
-  raises TTR again. THE CHECK THAT SETTLES IT: truncate the FOS documents to our mean length
-  and re-measure; if FOS TTR rises to near 0.52, the finding is arithmetic and dies. Until
-  that is run, this is not evidence of anything.
-- **Paragraph length.** Already excluded — it measures `build_ours`, not the writing.
-- **Subject-matter rows in the keyness table.** `uk`, `nhs`, `ai`, `data`, `tool`, `solo`
-  are what we write ABOUT, not how we write. A voice rule built from them would ban our own
-  subject matter. The table needs a topic filter before any rule is cut from it.
+- **Vocabulary survived the length control.** Type/token ratio was 0.524 against 0.289, and
+  the hypothesis was that it measured length — TTR falls as a document grows, and our
+  documents average 654 words against FOS's 1,894 (500,758/766 and 511,336/270, both from
+  the `corpus` block of the shipped target). Settled by replacing it with MATTR, a
+  moving-average type/token ratio over a 100-token window, which is invariant to length by
+  construction (`prose_measure.mattr`). MATTR is 0.773 against 0.672, z = +4.2. The finding
+  is real: we reach for a different word where a human repeats the plain one. Raw TTR is now
+  reported-only (`structure.REPORTED_ONLY`) because it grades length.
+- **Hedging is armed, at the human interval, not at the human mean.** 3.51 per 1k against
+  13.79. The earlier objection stands on the MEAN — an ombudsman hedges because the facts
+  are contested and both parties are reading, and we have `unverifiable` for the same job.
+  It does not stand on the INTERVAL: the human 5th percentile is 5.67 and we are below it.
+  So the rule is "not flatter than the least hedged human", which needs no argument about
+  where between 3.5 and 13.8 we should sit.
+- **Paragraph shape is not measurable from this corpus, on EITHER side.** Our 1.92 sentences
+  per paragraph measures `build_ours.document`, which writes each field as its own
+  paragraph. The human 16.28 is the PDF extractor: the FOS documents have a median of 2
+  paragraph blocks each, and 199 of 200 have fewer than three. Both numbers are artefacts.
+  Reported, excluded, and blocked on both sides rather than deferred.
 
 ### Integrating across the platform, deliberately
 
@@ -255,20 +260,67 @@ Three surfaces, three genres. They do not share a target and must not share one.
    effort where no buyer reads.
 
 **Production requirements before any of this gates a run**, because a linter that reaches
-the network or drifts silently is worse than the invented constant it replaces:
+the network or drifts silently is worse than the invented constant it replaces. All five are
+now built, and each is pinned by a test in `tests/unit/test_prose_target.py`:
 
-- The measured target is a COMMITTED artifact (`corpora/structure.json` promoted into the
-  repo as a versioned target file). Lint time does no network I/O and reads no corpus.
-- The target file carries the corpus fingerprint it came from — document count, word count,
-  tokeniser version — so a number can always be traced to the measurement that produced it.
-- A test fails if the shipped target and the code that reads it disagree, so the constant
-  cannot rot the way `LONG_SENTENCE_WORDS = 25` did.
-- Every stage reports before it enforces, and enforcement is armed per measure, not all at
-  once. Tier A measures can arm. Tier B and C cannot.
+| requirement | where it is kept | test |
+|---|---|---|
+| the target is a COMMITTED artifact | `prospector/data/prose_target.json` | `test_the_shipped_target_loads_and_is_the_committed_artifact` |
+| lint time does no network I/O and reads no corpus | `prose_target.load_target` opens one JSON file | `test_lint_does_no_network_io` (sockets broken for the duration) |
+| the target carries its corpus fingerprint | `corpus` block: 270 human / 766 ours, word counts, tokeniser version | `test_the_shipped_target_loads...` |
+| a mismatched tokeniser is REFUSED, not read | `load_target` compares `TOKENISER_VERSION` | `test_a_target_measured_with_another_tokeniser_is_refused` |
+| enforcement arms PER MEASURE | `armed` written by `tools.corpus.structure.arming` | `test_an_unarmed_measure_can_never_produce_a_finding` |
+
+One more fence, chosen as construction rather than as a test: there is ONE path from a
+document to a number, `prose_measure.document_measures`. The target builder and the linter
+both call it, so they cannot drift. `tools/corpus/text.py` is now a re-export shim over that
+module for exactly this reason.
+
+**Arming rule.** A measure may gate only when our corpus mean sits outside the human
+5th–95th percentile by at least 10% of that interval's width
+(`structure.ARM_MARGIN_FRACTION`), plus an explicit `NEVER_ARM` list. The margin exists
+because parentheses sat at 15.66 against a p95 of 15.63 — outside by 0.03, which is noise.
+A `z >= 2` rule was considered and rejected: it would have waved hedging through, at
+z = −1.7 but below the human 5th percentile.
+
+#### Shipped, 2026-08-16
+
+Six measures armed, and every one is form:
+
+| measure | ours | human mean | human p5–p95 | z |
+|---|---|---|---|---|
+| `punct_hyphen_per_1k` | 31.84 | 2.72 | 0.69–7.06 | +11.3 |
+| `mattr` | 0.773 | 0.672 | 0.632–0.708 | +4.2 |
+| `heavy_sentence_rate` | 0.469 | 0.157 | 0.031–0.304 | +3.6 |
+| `punct_semicolon_per_1k` | 4.58 | 0.75 | 0.00–3.72 | +2.8 |
+| `punct_comma_per_1k` | 61.30 | 31.83 | 13.27–49.11 | +2.8 |
+| `hedges_per_1k` | 3.51 | 13.79 | 5.67–23.05 | −1.7 |
+
+Not armed, and the two that matter most are the rules we already enforced:
+
+- `long_sentence_rate` — ours 0.517, human p5–p95 0.131–0.518. **Inside the human range.**
+  A human breaks the 25-word rule in 31% of sentences. The rule was flagging normal writing.
+- `sent_len_mean` — ours 28.15, human p95 28.82. Inside. So `house_style.MAX_SENTENCE_WORDS
+  = 28` has no measurement behind it either; both are kept as reported numbers only.
+- `clause_load_mean` is on `NEVER_ARM`: it counts the same commas `heavy_sentence_rate`
+  counts, and arming both would fail one sentence twice.
+
+Wiring, all of it default-off:
+
+- `prospector/prose_measure.py` — the single measurement implementation.
+- `prospector/prose_target.py` — the reader, the arming fence, and per-side advice.
+- `register_lint.register_metrics` returns `prose_measures` + `human_register`;
+  `check_register(..., human_register_block=...)` emits one finding per armed measure the
+  pack falls outside on.
+- `pack_linter.lint_pack` writes a `human_register` block into every `<id>.lint.json`, pass
+  or fail, so the baseline accrues before any threshold is set.
+- `bridge.py` binds `listing.human_register_block`, **false** in `config.yaml`. The interval
+  is the human 5th–95th percentile, so about one human document in ten falls outside on any
+  single measure; blocking today would unlist packs a human author would also have failed.
 
 #### What is not yet done
 
-Stage 6 (delete the invented constants from `register_lint.py` and read the measured
-intervals) and stage 7 (a distance score written per run) are not built. Finding 4 above is
-the argument for doing stage 6: the constant currently in force is wrong in a measurable
-direction.
+Stage 7 — a distance score per generated document, written into the run receipt — is not
+built. The storefront still has no reference corpus of its own; a judicial corpus is the
+wrong target for a headline that has to sell, so `__tests__/copyRegister.test.tsx` remains
+the only gate there.

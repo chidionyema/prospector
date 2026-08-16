@@ -11,12 +11,14 @@ documents, giving a mean and a standard deviation per measure. A generated docum
 scored as the mean absolute z across measures, plus the worst single z. A document sitting
 inside the human range on every measure scores near zero. This is what a gate would read.
 
-Deliberately NOT a gate yet. `--score` reports; nothing fails. Stage 8 of
-docs/PROSE_CORPUS_PROGRAM.md is a separate decision, and this report is what it needs.
+Deliberately NOT a gate here. `--score` reports; nothing in this tool fails. What CAN gate
+is `prospector/register_lint.py`, and only through the target file this tool writes with
+`--write-target`, one measure at a time. See "arming" below.
 
 Usage:
     python -m tools.corpus.structure --ours corpora/ours --human corpora/fos
     python -m tools.corpus.structure --score corpora/ours --human corpora/fos --top 15
+    python -m tools.corpus.structure --write-target prospector/data/prose_target.json
 """
 from __future__ import annotations
 
@@ -25,17 +27,18 @@ import json
 import math
 import statistics
 import sys
+from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from prospector.prose_measure import TOKENISER_VERSION, document_measures, profile  # noqa: E402
 from tools.corpus.load import load_corpus  # noqa: E402
-from tools.corpus.text import profile  # noqa: E402
 
 #: The measures the distance metric runs on. Counts (documents, words, sentence_count) are
 #: excluded on purpose: a long document is not an off-register one.
-SCORED = ("sent_len_mean", "sent_len_sd", "long_sentence_rate", "clause_load_mean",
-          "opener_diversity", "hedges_per_1k", "attribution_per_1k", "mattr",
-          "punct_comma_per_1k", "punct_semicolon_per_1k", "punct_colon_per_1k",
+SCORED = ("sent_len_mean", "sent_len_sd", "long_sentence_rate", "heavy_sentence_rate",
+          "clause_load_mean", "opener_diversity", "hedges_per_1k", "attribution_per_1k",
+          "mattr", "punct_comma_per_1k", "punct_semicolon_per_1k", "punct_colon_per_1k",
           "punct_dash_per_1k", "punct_hyphen_per_1k", "punct_paren_per_1k")
 
 #: Measured and printed, but NOT scored. Each exclusion is a defect in the MEASUREMENT, not
@@ -58,13 +61,36 @@ REPORTED_ONLY = ("para_sentences_mean", "para_words_mean", "type_token_ratio")
 #: mean by a third. Reported separately rather than scored.
 MIN_DOC_WORDS = 150
 
+#: ARMING. A measure is armed — meaning `register_lint` may report a pack against it — when
+#: our corpus sits OUTSIDE the human 5th-95th interval by at least a tenth of that interval's
+#: width. The margin is the whole point: parentheses came out at 15.66 against a human p95 of
+#: 15.63, which is outside the interval by 0.03 and is not a finding about anything. Arming on
+#: "outside" alone would have gated a pack on rounding.
+#:
+#: The rule is deliberately not "z >= 2". These distributions are skewed — a document-level
+#: hedge rate has a floor at zero and a long tail — so a standard deviation over-states how
+#: unusual the low side is. Hedging sits 1.7 sd under the human mean and a full 2.16 per 1,000
+#: words below the human p5; a z-rule would have waved it through.
+ARM_MARGIN_FRACTION = 0.10
+
+#: Measures that may NEVER arm, whatever the numbers say, each for a stated reason. This is
+#: the list to argue with — everything else arms on the rule above.
+NEVER_ARM = {
+    "clause_load_mean":
+        "commas plus subordinators per sentence is the comma finding counted a second way. "
+        "Arming both fails a pack twice for one habit and the writer cannot tell which to fix.",
+    "sent_len_sd":
+        "variety of sentence length. Ours sits inside the human interval, and a floor on it "
+        "would reward padding a short sentence to make the spread look human.",
+}
+
 
 def per_document(docs: list[str]) -> list[dict]:
     out = []
     for d in docs:
-        p = profile([d])
-        if p.words >= MIN_DOC_WORDS:
-            out.append(p.as_row())
+        row = document_measures(d)
+        if row.get("words", 0) >= MIN_DOC_WORDS:
+            out.append(row)
     return out
 
 
@@ -90,12 +116,78 @@ def distance(row: dict, t: dict) -> tuple[float, float, list[tuple[str, float]]]
     return (statistics.fmean(abs(z) for _, z in zs), abs(worst[0][1]), worst)
 
 
+def arming(measure: str, t: dict, ours_mean: float) -> dict:
+    """Whether `register_lint` may report a pack against this measure, and why."""
+    if measure in NEVER_ARM:
+        return {"armed": False, "side": None, "reason": NEVER_ARM[measure]}
+    if measure in REPORTED_ONLY:
+        return {"armed": False, "side": None,
+                "reason": "the measurement itself is confounded; see REPORTED_ONLY"}
+    lo, hi, width = t["p5"], t["p95"], t["p95"] - t["p5"]
+    margin = width * ARM_MARGIN_FRACTION
+    if ours_mean > hi + margin:
+        return {"armed": True, "side": "above",
+                "reason": f"our corpus mean {ours_mean:.2f} is above the human p95 {hi:.2f} "
+                          f"by more than a tenth of the interval ({margin:.2f})"}
+    if ours_mean < lo - margin:
+        return {"armed": True, "side": "below",
+                "reason": f"our corpus mean {ours_mean:.2f} is below the human p5 {lo:.2f} "
+                          f"by more than a tenth of the interval ({margin:.2f})"}
+    return {"armed": False, "side": None,
+            "reason": f"our corpus mean {ours_mean:.2f} sits inside the human interval "
+                      f"{lo:.2f}–{hi:.2f} (or within a tenth of it)"}
+
+
+def build_target(t: dict, h_rows: list[dict], o_rows: list[dict],
+                 human_agg: dict, ours_agg: dict, *, human_docs: int, ours_docs: int) -> dict:
+    """The committed artifact `register_lint` reads.
+
+    It carries the FINGERPRINT of the corpora that produced it — document counts, word counts
+    and the tokeniser version — so any number in it can be traced back to the measurement,
+    and so a target measured under one tokeniser can never be read under another. Lint time
+    then does no network I/O and reads no corpus: it reads this file and nothing else.
+    """
+    measures = {}
+    for k in (*SCORED, *REPORTED_ONLY):
+        if k not in t:
+            continue
+        ours_mean = statistics.fmean(r[k] for r in o_rows if k in r) if o_rows else None
+        entry = {"human_mean": round(t[k]["mean"], 4), "human_sd": round(t[k]["sd"], 4),
+                 "p5": round(t[k]["p5"], 4), "p50": round(t[k]["p50"], 4),
+                 "p95": round(t[k]["p95"], 4),
+                 "ours_mean": round(ours_mean, 4) if ours_mean is not None else None,
+                 "scored": k in SCORED}
+        if ours_mean is not None:
+            entry["z"] = round((ours_mean - t[k]["mean"]) / t[k]["sd"], 2)
+            entry.update(arming(k, t[k], ours_mean))
+        measures[k] = entry
+    return {
+        "version": 1,
+        "tokeniser_version": TOKENISER_VERSION,
+        "measured_on": date.today().isoformat(),
+        "arm_rule": (f"armed when our corpus mean sits outside the human p5–p95 by at least "
+                     f"{ARM_MARGIN_FRACTION:.0%} of that interval's width"),
+        "corpus": {
+            "human": {"name": "Financial Ombudsman Service final decisions",
+                      "documents": human_docs, "scored_documents": len(h_rows),
+                      "words": human_agg.get("words")},
+            "ours": {"name": "prospector dossiers via tools.corpus.build_ours",
+                     "documents": ours_docs, "scored_documents": len(o_rows),
+                     "words": ours_agg.get("words")},
+        },
+        "measures": measures,
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--ours", default="corpora/ours")
     ap.add_argument("--human", default="corpora/fos")
     ap.add_argument("--score", default=None, help="directory of .txt to score against the human target")
     ap.add_argument("--out", default="corpora/structure.json")
+    ap.add_argument("--write-target", default=None,
+                    help="also write the committed target register_lint reads, "
+                         "e.g. prospector/data/prose_target.json")
     ap.add_argument("--top", type=int, default=12)
     args = ap.parse_args()
 
@@ -142,7 +234,20 @@ def main() -> int:
          "ours_aggregate": {k: o_all.get(k) for k in SCORED},
          "human_aggregate": {k: h_all.get(k) for k in SCORED}},
         indent=1, default=lambda v: None if isinstance(v, float) and math.isnan(v) else v))
-    print(f"\nwrote target -> {args.out}")
+    print(f"\nwrote report -> {args.out}")
+
+    if args.write_target:
+        tgt = build_target(t, h_rows, o_rows, h_all, o_all,
+                           human_docs=len(human), ours_docs=len(ours))
+        dest = Path(args.write_target)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(json.dumps(tgt, indent=1) + "\n")
+        armed = [k for k, v in tgt["measures"].items() if v.get("armed")]
+        print(f"wrote target -> {dest}")
+        print(f"  ARMED ({len(armed)}): {', '.join(armed) or 'none'}")
+        for k, v in tgt["measures"].items():
+            if not v.get("armed"):
+                print(f"  not armed: {k} — {v.get('reason', '')}")
     return 0
 
 
