@@ -568,6 +568,14 @@ lanes:
       - legality: [refuted]
       - pain_reality: [refuted]
       - adversarial_decisive: false
+    score_checks:                  # run + score, never kill
+      # WHY-NOW, added 2026-08-16. `currency` is the "is this live right now" check.
+      # side_hustle gates on it, smb and growth score it, and venture ran it nowhere — so the
+      # most expensive lane was the one lane that never asked whether its idea was five years
+      # late. Soft, not a gate: a durable thesis with a stale trigger should lose composite,
+      # not die. The check now rules on the publication dates carried by the passages
+      # (models.py CHECKS["currency"], rendered by verify.py::verdict_for).
+      - currency
     thresholds:
       confidence_floor: 0.4   # minimum confidence for a supported check to count as grounded
       min_composite_to_pass: 2.5

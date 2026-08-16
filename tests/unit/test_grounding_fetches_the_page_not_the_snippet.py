@@ -59,8 +59,9 @@ PAGE = "B" * 1400            # what the page itself yields
 
 def _enricher(inner, monkeypatch, page_result, **kw):
     import prospector.retrieval as R
-    monkeypatch.setattr(R, "fetch_page_text",
-                        lambda url, **k: page_result(url) if callable(page_result) else page_result)
+    monkeypatch.setattr(R, "fetch_page",
+                        lambda url, **k: ((page_result(url) if callable(page_result)
+                                           else page_result), None))
     return PageTextEnricher(inner, **kw)
 
 
@@ -130,7 +131,7 @@ def test_an_exploding_fetch_never_loses_the_results(monkeypatch):
     inner = _Inner([SNIPPET, SNIPPET])
     enr = _enricher(inner, monkeypatch, None)
     import prospector.retrieval as R
-    monkeypatch.setattr(R, "fetch_page_text", boom)
+    monkeypatch.setattr(R, "fetch_page", boom)
     out = enr.search("q")
 
     assert len(out) == 2 and all(s.text == SNIPPET for s in out), (
@@ -142,7 +143,8 @@ def test_empty_results_short_circuit(monkeypatch):
     calls = []
     inner = _Inner([])
     import prospector.retrieval as R
-    monkeypatch.setattr(R, "fetch_page_text", lambda url, **k: calls.append(url))
+    monkeypatch.setattr(R, "fetch_page",
+                        lambda url, **k: (calls.append(url), (None, None))[1])
     assert PageTextEnricher(inner).search("q") == []
     assert calls == []
 
@@ -248,7 +250,7 @@ def test_an_extraction_under_the_floor_is_no_passage_at_all(monkeypatch):
 
     assert fetch_page_text("https://example.invalid/x") is None
     # And the caller does keep the snippet, which is the whole point of returning None.
-    monkeypatch.setattr("prospector.retrieval.fetch_page_text", lambda url, **k: None)
+    monkeypatch.setattr("prospector.retrieval.fetch_page", lambda url, **k: (None, None))
     assert PageTextEnricher(_Inner([SNIPPET])).search("q")[0].text == SNIPPET
 
 
@@ -367,7 +369,7 @@ def test_binary_junk_can_never_reach_the_verdict_brain(monkeypatch):
 
     assert got is None or len(got) < 400, "binary junk was returned as a usable passage"
     inner = _Inner([SNIPPET])
-    monkeypatch.setattr("prospector.retrieval.fetch_page_text", lambda url, **k: got)
+    monkeypatch.setattr("prospector.retrieval.fetch_page", lambda url, **k: (got, None))
     assert PageTextEnricher(inner, min_gain_chars=400).search("q")[0].text == SNIPPET
 
 
@@ -384,9 +386,9 @@ def test_concurrent_fetches_do_not_share_one_context(monkeypatch):
 
     def slow(url, **kw):
         barrier.wait()          # force all three to be inside `ctx.run` simultaneously
-        return PAGE
+        return PAGE, None
 
-    monkeypatch.setattr("prospector.retrieval.fetch_page_text", slow)
+    monkeypatch.setattr("prospector.retrieval.fetch_page", slow)
     out = PageTextEnricher(_Inner([SNIPPET] * 3), max_workers=3).search("q")
 
     assert [s.text for s in out] == [PAGE] * 3, (
