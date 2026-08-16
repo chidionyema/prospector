@@ -108,7 +108,7 @@ export default function TermsPage() {
       <LegalHeading>6. Nature of AI-generated content, no warranty</LegalHeading>
       <LegalText>
         Packs are produced by automated AI systems and are provided <strong>&ldquo;as
-        is&rdquo;</strong>. While we use source-grounding and editorial processes to improve
+        is&rdquo;</strong>. While we cite a retrievable source for every claim, and edit for
         accuracy, <strong>we make no warranty, express or implied, that the Pack content is
         accurate, complete, current, or fit for any particular purpose.</strong> AI-generated
         content may contain errors, omissions, or outdated information. You are responsible for

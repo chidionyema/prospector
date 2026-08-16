@@ -2,6 +2,7 @@ import Link from 'next/link';
 
 import report from '@/data/sample-report.json';
 import { PACK_DOCUMENTS } from '@/components/marketing/PackContents';
+import { plainEnglish } from '@/lib/plainEnglish';
 import { Button, Icon, SourceChip, sourceHost } from '@/components/ui';
 
 /**
@@ -109,6 +110,32 @@ function sentenceTail(text: string, maxChars = 96): string {
   return space === -1 ? window : window.slice(space + 1);
 }
 
+/**
+ * A source's own page slug, read back as words.
+ *
+ * The engine ships `label: ""` on every source in this report (checked 2026-08-16: all 6 sources on
+ * the failed check, all 6 on the premortem), so a footnote list drawn from `label` would be six
+ * blank lines, and one drawn from the host alone repeats itself -- two of the six are the same law
+ * firm's site, and "gowlingwlg.com" twice reads as a rendering fault rather than as two articles.
+ * The slug is the publisher's own words for their own page, sitting in the URL the reader can open
+ * and check. It is not generated, summarised or inferred; if the path carries nothing usable this
+ * returns empty and the row is just the link.
+ */
+function slugTitle(url: string): string {
+  try {
+    const last = new URL(url).pathname.split('/').filter(Boolean).pop() ?? '';
+    const words = decodeURIComponent(last)
+      .replace(/\.(html?|php|aspx?|pdf)$/i, '')
+      .replace(/[-_+]+/g, ' ')
+      .trim();
+    // Short tails ("uk", "p", "238884") are route furniture, not a title.
+    if (words.length < 16) return '';
+    return words.charAt(0).toUpperCase() + words.slice(1);
+  } catch {
+    return '';
+  }
+}
+
 /** The section of the pack this page belongs to, read from the manifest so it cannot drift. */
 const SECTION_TITLE =
   PACK_DOCUMENTS.find((doc) => doc.section === 'Evidence_and_Constraints.md')?.title ??
@@ -116,6 +143,8 @@ const SECTION_TITLE =
 
 export function PackSpecimen({ className }: { className?: string }) {
   const source = FAILED?.sources?.[0];
+  /** Footnote 1 is printed on the sheet; 2..n are the column's job. */
+  const restSources = (FAILED?.sources ?? []).slice(1);
 
   return (
     <div className={className}>
@@ -137,7 +166,28 @@ export function PackSpecimen({ className }: { className?: string }) {
           horizontal scrollbar because an ancestor is `overflow-x: clip`, so the page LOOKED fine and
           simply cut the content off. That is the worst version of this bug: silent. `min-w-0` lets
           the track shrink to the viewport and the truncation inside the sheet do its job. */}
-      <div className="grid min-w-0 gap-10 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-14">
+      {/* THE LEFT COLUMN IS SHORTER THAN THE SHEET, AND THE ANSWER IS CONTENT, NOT GEOMETRY. Two
+          founder reports, one defect, both about the same slack:
+
+            "why the blank in the middle?"  the column was `auto 1fr` with the bottom block
+                                            `self-end`, so the slack sat BETWEEN the counts line
+                                            and the quote. Moved to the foot of the column.
+            "why is panel empty"            the slack was still there, now in one piece under the
+                                            button -- which is what a reader was looking at.
+
+          Measured on the built page at 1440x900 and 1280x800 (identical; the grid caps at 1200px):
+          the section is 686px tall because the right column is, and the left column held 121px +
+          56px gap + 194px = 371px. 315px, 46% of the section's height, was empty. Both attempts
+          before this one MOVED that space; the founder's instruction was to put actual relevant
+          content in it, which is the right call -- the previous two fixes were both arrangements
+          of nothing.
+
+          What went in is the rest of this page's footnote apparatus (see below). What was rejected:
+          shrinking the sheet, because at 30rem the fade begins at 352px against a body paragraph
+          that ends near 465px, the exact "fade lands mid-prose" defect the mobile floor was raised
+          to fix; and stacking the composition, which is the arrangement the top of this comment
+          records as already tried. */}
+      <div className="grid min-w-0 gap-10 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:grid-rows-[auto_1fr] lg:gap-14">
         <div className="min-w-0 lg:col-start-1 lg:row-start-1">
           {/* The eyebrow is SANS. The wide-tracked all-caps mono eyebrow is the exact pattern
               `__tests__/monoIsTheDataVoice.test.ts` was written to stop spreading: mono is the
@@ -256,7 +306,7 @@ export function PackSpecimen({ className }: { className?: string }) {
                       founder saw. 1.5 below `sm`, 1.75 from `sm` up where the 62ch cap does bind
                       and the ratio it was chosen for is the ratio in effect. */}
                   <p className="mt-6 max-w-[62ch] text-body leading-[1.5] text-muted sm:leading-[1.75]">
-                    …{sentenceTail(PRECEDING?.rationale ?? '')}
+                    …{sentenceTail(plainEnglish(PRECEDING?.rationale ?? ''))}
                   </p>
 
                   {/* THE SECTION HEADING, numbered the way a document numbers itself. The counter
@@ -304,7 +354,7 @@ export function PackSpecimen({ className }: { className?: string }) {
                       dissolving. `sm:line-clamp-none` because from `sm` up the sheet is 38rem and
                       the paragraph fits whole -- the desktop composition is unchanged. */}
                   <p className="mt-5 line-clamp-5 max-w-[62ch] text-body leading-[1.5] text-text sm:line-clamp-none sm:leading-[1.75]">
-                    {FAILED?.rationale}
+                    {plainEnglish(FAILED?.rationale ?? '')}
                   </p>
 
                   {/* THE FOOTNOTE. A rule, a short one -- not full width, the way a footnote rule
@@ -359,7 +409,7 @@ export function PackSpecimen({ className }: { className?: string }) {
             engine-written, cited, and it was sitting unused in this JSON several thousand pixels
             from a £49 button. Quoting it is the difference between us asserting the pack is cheap
             and the research stating what the alternative costs. */}
-        <div className="min-w-0 lg:col-start-1 lg:row-start-2 lg:self-end">
+        <div className="min-w-0 lg:col-start-1 lg:row-start-2 lg:self-start">
           {report.premortem?.strongestAlternative && (
             <blockquote className="border-l-2 border-border pl-4">
               <p className="text-body italic text-muted">{report.premortem.strongestAlternative}</p>
@@ -381,6 +431,58 @@ What people pay for this problem today.
             </Link>
             <span className="text-caption text-subtle">No payment, no email.</span>
           </div>
+
+          {/* THE REST OF THE FOOTNOTES, and this is the content that fills the column the founder
+              read as an empty panel.
+
+              It is the honest thing to put there because it is already on the page: the sheet
+              prints footnote 1 under the check's argument and then the frame cuts, so the reader
+              can see the check was ruled on sources and cannot see how many or which. Numbering
+              continues from the sheet's 1 -- the column is that page's footnote apparatus, run on
+              past the crop, which is the same "this document continues" move the crop itself makes.
+
+              It also settles the section's own claim at the point of the ask. The counts line at
+              the top says {report.sourceCount} sources across the pack; a reader has no way to
+              turn that into a feeling until they see what ONE check's worth looks like, and every
+              one of these opens.
+
+              NOT a `SourceChipRow`: that wraps chips inline, which is right where sources are a
+              trailing detail under a verdict and wrong here, where the list is the column's
+              content and each row carries a caption. The link itself is still `SourceChip`, which
+              is the only way this site draws an openable source
+              (`__tests__/sourceChipIsTheOnlyOne.test.ts`). */}
+          {restSources.length > 0 && (
+            <div className="mt-10 border-t border-border pt-6">
+              <p className="text-caption font-medium text-subtle">
+                The other {restSources.length} sources behind this one check
+              </p>
+              <ul className="mt-4 space-y-3">
+                {restSources.map((s, i) => {
+                  const title = slugTitle(s.url);
+                  return (
+                    <li key={s.url} className="min-w-0">
+                      <div className="flex items-baseline gap-2">
+                        {/* The number is `aria-hidden` for the same reason it is on the sheet: a
+                            screen reader gets the link, not the ordinal that positions it. */}
+                        <span aria-hidden className="flex-none font-mono text-caption text-faint">
+                          {i + 2}
+                        </span>
+                        <SourceChip url={s.url} host={sourceHost(s.url)} variant="link" />
+                      </div>
+                      {title && (
+                        // `truncate`, not a clamp: the caption is supporting detail in a 22rem
+                        // column, and a deterministic one-line row is what keeps this block's
+                        // height predictable against the sheet beside it.
+                        <p className="ml-5 truncate text-caption leading-snug text-faint">
+                          {title}
+                        </p>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     </div>

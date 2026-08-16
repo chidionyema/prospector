@@ -69,8 +69,9 @@ export default function AboutPage() {
             doubt fills that space much faster than research does.
           </p>
           <p>
-            What I actually enjoyed was the ideating. What I kept losing was the bit in the middle,
-            the part where you find out whether an idea holds up before you commit a year to it.
+            {/* "the ideating" was the one word on this page a reader would not use themselves. */}
+            What I enjoyed was having the ideas. What I kept losing was the bit in the middle,
+            where you find out whether one holds up before you commit a year to it.
           </p>
           {/* The one sentence the page exists for, set apart and in the darker ink. It is the
               hinge between the problem and the product, and it was previously buried as line four
@@ -97,9 +98,9 @@ export default function AboutPage() {
           </h2>
           <p className="mt-3 max-w-[60ch] text-body leading-relaxed text-muted">
             It started as the questions I made myself answer before starting anything: is the pain
-            real, would anyone pay, is there any way to reach them. Those questions are the checks,
-            asked now by software that has to fetch a source before it is allowed to answer, with
-            every claim cited or the pack does not ship.
+            real, would anyone pay, is there any way to reach them. Those questions are the checks
+            now, asked by software that has to fetch a source before it may answer. Every claim is
+            cited, or the pack does not ship.
           </p>
         </div>
 
@@ -112,8 +113,7 @@ export default function AboutPage() {
           >
             <p className="text-meta font-semibold text-text">How it works</p>
             <p className="mt-1 text-meta leading-relaxed text-muted">
-              One real idea taken through the checks from start to finish, with every source it was
-              judged on.
+              One idea taken through the checks end to end, with every source it was judged on.
             </p>
             <span className={textLinkClass('mt-3 inline-flex items-center gap-1 text-meta font-medium')}>
               Read it <Icon name="arrowRight" size={12} />
@@ -149,8 +149,8 @@ export default function AboutPage() {
             See the work first.
           </h2>
           <p className="mt-2 max-w-[60ch] text-meta text-muted">
-            Read a full report, unredacted. Every check, every verdict, every source link. If the
-            rigour is what the page describes, the pack will be too.
+            Read a full report, unredacted. Every check, every verdict, every source link. Judge
+            the pack by it.
           </p>
           <div className="mt-6">
             <Link

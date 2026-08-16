@@ -17,6 +17,7 @@ import { Section } from '@/components/marketing/blocks';
 import { PackContentsSection, PACK_DOCUMENTS } from '@/components/marketing/PackContents';
 import { ApiError, fetchCatalog, fetchPackDetails, freshnessLabel, marketLabel, parseCheckCounts, scoreAxes, splitVerdict, Pack, PackDetails, FinancialSnapshot } from '@/lib/api/client';
 import { RESEARCH_STATS } from '@/lib/stats';
+import { PACK_DISCLAIMER } from '@/lib/disclaimer';
 import { paybackEquation } from '@/lib/payback';
 import { formatPriceForMarket, formatChargeNote, formatApproxNote, currencyForCountry, type Currency } from '@/lib/fx';
 import { isTruncated, repairTruncation } from '@/lib/copy';
@@ -520,8 +521,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
       <p className="mt-6 text-caption leading-relaxed text-subtle">
         {/* Secure checkout named where it is relevant, in a sentence, instead of as a third
             icon row. */}
-        Secure checkout via {providerLabel}. A pack is evidence-backed research, not a promise of business
-        success. See our{' '}
+        Secure checkout via {providerLabel}. {PACK_DISCLAIMER} See our{' '}
         <Link href="/refund" className={textLinkClass()}>
           refund policy
         </Link>
@@ -529,6 +529,13 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
       </p>
     </>
   );
+
+  // The one sentence under the h1. See the docblock at its render site for why it is `oneLine`
+  // and not `subhead`: the shelf can only show `oneLine`, so it is the string the buyer clicked.
+  const lead =
+    pack.subhead && (!pack.oneLine || isTruncated(pack.oneLine))
+      ? pack.subhead
+      : repairTruncation(pack.oneLine);
 
   return (
     <MarketingLayout>
@@ -663,27 +670,31 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                     exactly this slot, and the full description is in the sections below.
                   - There is no `subhead`: dropping it would leave the title with no sentence
                     under it at all, so the cut is repaired back to a word boundary instead. */}
-            {/* ONE LEAD PARAGRAPH, NEVER TWO (2026-08-15, brief item 8). The guard was
-                `!(isTruncated(pack.oneLine) && pack.subhead)`, which drops `oneLine` only when it
-                is BOTH cut AND has a subhead to fall back on. On a pack with a subhead whose
-                `oneLine` came through intact -- the ones the publish path did not cut at
-                150 chars -- both branches were true, so the page printed two lead
-                paragraphs in the same slot, same size, same colour, one under the other. That is
-                the founder's "the pack detail page prints its intro paragraph twice".
+            {/* ONE LEAD PARAGRAPH, NEVER TWO (2026-08-15, brief item 8) -- BUT IT IS THE SENTENCE
+                THE BUYER CLICKED (2026-08-16, founder: the cards carry a description that is
+                missing on the pack page, "very confusing").
 
-                The rule the docblock above already states is the fix: "There is a `subhead`: the
-                cut sentence is dropped outright and the subhead is the lead." Truncation was
-                never the condition -- it was the reason the rule was WRITTEN. The subhead is a
-                complete sentence written for exactly this slot and the full description is in the
-                sections below, so dropping `oneLine` whenever a subhead exists loses nothing. */}
-            {!pack.subhead && (
-              <p className="mt-4 max-w-[60ch] text-body text-muted">
-                {repairTruncation(pack.oneLine)}
-              </p>
-            )}
-            {pack.subhead && (
-              <p className="mt-4 max-w-[60ch] text-body text-muted">{pack.subhead}</p>
-            )}
+                #225 resolved the double paragraph by keeping `subhead` whenever one exists, on the
+                reasoning in the docblock above: `oneLine` was cut at 150 characters on 34 of 63
+                packs, so the complete sentence won. That premise has expired at the source.
+                Measured against the live catalogue on 2026-08-16 (61 packs, `api.mumchimp.com`):
+                61 of 61 `oneLine` values end in a full stop, none carries a truncation mark, and
+                the longest is 268 characters. The publish path is no longer cutting them, so what
+                the rule does today is swap an intact sentence for a different one on the 52 packs
+                that carry a subhead.
+
+                The shelf cannot absorb that swap. `PackRow` heads every card with
+                `cardLine(repairTruncation(pack.oneLine))`, and `oneLine` is the ONLY description
+                `/catalog` returns -- there is no `subhead` in the catalog payload at all -- so the
+                line a buyer clicks is by construction the opening of `oneLine`, and the page they
+                landed on did not contain it. Measured before this change: the card's sentence was
+                absent from 45 of 60 live pack pages.
+
+                So the rule stands and the winner flips. The subhead leads only when `oneLine` is
+                missing or comes through cut, which is the case the docblock above was written for.
+                Nothing is lost when it stands down: its audience framing is the `whoPays` row
+                below, and the full description is in the sections under that. */}
+            {lead && <p className="mt-4 max-w-[60ch] text-body text-muted">{lead}</p>}
 
             {/* WHY THIS IS WORTH MONEY, STATED ONCE, AND THE SAME ON EVERY PACK.
                 The page argues rigour from the first screen (checks, sources, survival) and never

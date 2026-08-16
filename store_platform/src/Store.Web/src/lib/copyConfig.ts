@@ -136,7 +136,24 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
     howItWorksSeoDescription:
       'How Mumchimp works: every pack is a sourced business opportunity, vetted against checks built to kill it and sourced to retrievable evidence before it can be listed.',
 
-    sixChecksTitle: 'Six checks, in order. One hard fail and it stops.',
+    // NOT "Six checks, in order." The bare cardinal is the same closed-set promise corrected in
+    // variant b below, and it survived because `fixedCheckCount.test.ts` only banned a numeral
+    // sitting behind a DETERMINER ("all six checks", "the six gates"). "Six checks" needs no
+    // determiner to make the claim, and a section title is the strongest place to make it.
+    //
+    // It also contradicted the section directly above it. /how-it-works renders the worked
+    // evidence record first (`CheckSequence`, reading `data/sample-report.json`) and that record
+    // runs NINE checks -- six supported, two unverifiable, one refuted. So the page showed a
+    // reader nine checks and then titled the next section "Six checks, in order", which is the
+    // one kind of contradiction a page arguing for auditability cannot afford. The list below
+    // this heading is six long because `COMMON_CHECKS` is the set common to EVERY lane, not the
+    // set any particular pack ran; 23 of the 63 packs measured on 2026-08-06 report a denominator
+    // other than six.
+    //
+    // Dropping the numeral costs nothing the heading was doing: the list is still ordered, still
+    // six long, and the description still says some ideas face more. What goes is the promise
+    // that six is all there is.
+    sixChecksTitle: 'The checks, in order. One hard fail and it stops.',
     sixChecksDescription:
       'Some ideas face more checks; each pack page names its own. Every kill is logged with its reason, so the filter is auditable, not a black box.',
 
