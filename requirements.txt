@@ -11,10 +11,13 @@ requests>=2.31
 # (the real one is hand-rolled in errors.py/health.py, which no library was found to match).
 json_repair>=0.63
 pytest>=8.0
-# NOT optional, despite being a speed plugin: `pytest.ini addopts` now carries `-n auto`, so an
-# environment without xdist does not run the suite slowly — it dies at startup on
-# `unrecognized arguments: -n`, before collecting a single test. CI installs from this file
-# only (ci.yml:60), which is exactly the environment that would have hit it.
+# Declared 2026-08-15 because `pytest.ini` now passes `-n auto --dist loadfile` on EVERY
+# invocation, and an addopts naming a plugin that is not installed is not a slow suite: pytest
+# exits 4 with `error: unrecognized arguments: -n --dist` before collecting a single test. It
+# had been sitting in this estate's .venv undeclared, so the config passed locally and took
+# BOTH Python CI jobs down on the first push — .github/workflows/ci.yml:60 and :107 install
+# from this file and nothing else. A plugin the config REQUIRES belongs in the file the
+# environment is built from.
 pytest-xdist>=3.5
 # The linter, declared so a lint receipt is reproducible rather than a property of whichever
 # machine happens to have it. Rule set is pinned in ruff.toml; without it ruff's own defaults
@@ -81,6 +84,31 @@ openpyxl>=3.1
 # so a direct import under tools/ is invisible to it and would break the day streamlit drops
 # the transitive edge.
 numpy>=1.26
+# Added 2026-08-15 for the pack's own quality floor, after the founder read a rebuilt pack and
+# asked why nothing had caught its repetition. All three are imported INSIDE the function that
+# uses them, on the same terms as stripe/ddgs/exa_py above — and unlike those three they are
+# declared here from the day they are first imported, which is the whole point of that note.
+#
+# rapidfuzz    -> pack_linter.check_repetition. The near-duplicate pass is O(n^2) over ~500
+#                 sentences; difflib.SequenceMatcher took over two minutes on one pack, which
+#                 is a gate nobody would leave switched on. C++ core, a wheel, no build step.
+# trafilatura  -> retrieval.fetch_page_text, as a FALLBACK below 200 characters, which is a
+#                 narrower claim than the one first written here and the narrower claim is the
+#                 measured one. A/B over the same bytes on 12 cited URLs from pack
+#                 e698149e137fc164: boilerplate was a TIE (4 furniture hits each), so "it
+#                 removes nav bars" was wrong. What it actually fixes is total extraction
+#                 failure — the lxml landmark ladder returned 15 chars for isbe.net and 96 for
+#                 geekwire, and usable passages went 9/12 -> 12/12. It runs only when the cheap
+#                 path already failed because it costs ~2s/page against lxml's ~0.05s.
+# textstat     -> pack_linter.readability_grades, RECORDED and never actuated. Measured on the
+#                 same pack, the fourteen sections span grade 5.9-17.3, and the worst is "Copy
+#                 you can paste" at 17.3 — the section whose job is to hand the buyer sentences
+#                 for a landing page. That number is the finding. It is not a threshold, because
+#                 the spread tracks who WROTE each section, and a grade ceiling would block a
+#                 pack for quoting a statute.
+rapidfuzz>=3.14
+trafilatura>=2.2
+textstat>=0.7
 # NOTE: the LUX packages (lux-popdd / lux-spec / lux-spec-cli) are NOT listed here.
 # They were pinned to absolute file:/// paths on one developer's machine, which made this
 # file uninstallable anywhere else — including CI and any deploy host. Nothing in

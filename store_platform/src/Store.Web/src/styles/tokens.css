@@ -114,42 +114,59 @@
   --transition-standard: all 0.18s cubic-bezier(0.2, 0, 0, 1);  /* transform + shadow */
   --transition-slow: all 0.2s cubic-bezier(0.2, 0, 0, 1);       /* overlay enter */
 
-  /* ACTION. The primary action is INK, not a brand colour.
-     Vermillion #FF5A1F is deleted outright rather than demoted, for three concrete reasons:
-       (a) it fails AA on white (3.12:1), which is why v2 was forced into BLACK text on orange --
-           and black-on-safety-orange is hazard livery. It reads as a warning, not an invitation.
-       (b) it was simultaneously the brand, the CTA fill, the category eyebrow, the card's left
-           border and the hover colour. A colour that means five things means nothing.
-       (c) 61 identical orange buy buttons tiled down the shelf was the single loudest thing on
-           the site, and the shelf is the site.
-     Nothing here needs a "brand colour": the brand is the ink/mono/evidence system itself. */
-  --primary: #171717;       /* Buy/primary action fill. */
-  --on-primary: #FFFFFF;    /* 17.93:1 on --primary. AAA. */
-  --primary-hover: #2E2E33; /* White on it is 13.51:1. AAA. */
+  /* ── BLUE HAS ONE JOB: "DO SOMETHING" (founder directive, 2026-08-15) ─────────────────────────
+     This supersedes BOTH the ink-CTA rule below it and --azure, the money colour added earlier
+     the same day. Two things were wrong at once and they were the same mistake in two places.
 
-  /* THE MONEY COLOUR -- founder override, 2026-08-15, the second sanctioned exception to §3.1's
-     "no brand colour" after the logo mark (2026-08-08). ONE hue, on exactly TWO things: the price
-     and the buy button. Nothing else may consume it.
+     (1) Blue was on the PRICE, and a price is not interactive. A reader who has learned "blue =
+         tap this" taps £49.99 and nothing happens. That is a broken affordance, not a style
+         preference, and it was the founder's actual complaint -- the price is the one string on
+         the shelf a buyer is most likely to aim at.
+     (2) There were TWO primary colours: --azure filled the buy button and --primary (ink #171717)
+         filled every other button on the site. A reader cannot learn a rule with two answers, so
+         neither fill meant anything. Black buttons therefore disappear ENTIRELY.
 
-     The argument it is answering: every card on the shelf was ink on white, so the one element a
-     buyer has to find -- what it costs and how to get it -- had no more visual claim than the
-     body copy around it. §3.1's rule survives intact because azure is not a verdict hue: the
-     verdict system is green/amber/red, and a reader still cannot mistake a blue price for a
-     check that passed.
+     The system now assigns one job per colour, and only one:
+       --action (this token)  "do something"   -- every commercial action and every button fill
+       --text  (#171717)      "read something" -- prose, headings, AND prices
+       --brand-mark (#0F766E) identity only    -- the logo mark, source glyphs, the focus ring
+     with the verdict hues (green/amber/red) untouched: colour still means a ruling.
 
-     MEASURED 2026-08-15 (WCAG 2.1 relative luminance, script in the session log):
-       white on --azure        10.04:1  AAA
-       --azure on white        10.04:1  AAA  (the price, as text)
-       white on --azure-hover   6.86:1  AAA at the button's 16px/500
-       --azure on --surface3    9.14:1  AAA  (the price on the shelf gutter)
+     THE HUE. Royal blue pulled deeper and cooler into ink-navy so it reads as the teal mark's
+     sibling rather than as a second brand. Founder-specified band #12356F-#1B3F8B; this is its
+     light end, which is the only end with room for a darker hover.
 
-     Deliberately NOT wired through --primary: that token feeds Checkbox, RadioGroup,
-     SegmentedControl and every secondary CTA on the site, so pointing it at azure would repaint
-     twelve components the founder did not ask to repaint. Reverting is deleting the `buy` variant
-     in Button.tsx and two `text-azure` call sites. */
-  --azure: #0B3D91;         /* Price text, buy button fill. */
-  --azure-hover: #1554C0;   /* Lighter on hover, matching --primary-hover's direction. */
-  --on-azure: #FFFFFF;      /* 10.04:1 on --azure. AAA. */
+     MEASURED 2026-08-15 (WCAG 2.1 relative luminance; hover/active derived in HSL at exactly
+     -8 and -14 percentage points of lightness off #1B3F8B, H 220.7 S 67.5% L 32.55%):
+       white on --action          9.86:1  AAA   (the button label)
+       white on --action-hover   12.68:1  AAA
+       white on --action-active  15.16:1  AAA
+       --action on white          9.86:1  AAA   (kept for icons/underlines, never for prose)
+       --text on white           17.93:1  AAA   (the price, which is now ink)
+
+     Blue never appears on non-interactive text; the brand teal never fills a button; ink never
+     fills a button. Those three sentences are the whole system, and each is pinned by a test in
+     `__tests__/storefrontDesignContract.test.ts`. */
+  --action: #1B3F8B;        /* Every button fill and every commercial action. */
+  --action-hover: #143069;  /* -8pp lightness. White on it is 12.68:1. AAA. */
+  --action-active: #0F244F; /* -14pp lightness, for :active. White on it is 15.16:1. AAA. */
+  --on-action: #FFFFFF;     /* 9.86:1 on --action. AAA. */
+  /* Selected and hover BACKGROUNDS only -- a wash the ink on top still clears AAA against. It is
+     deliberately not a solid token: at 7% over any of our three near-white grounds it must stay a
+     tint of that ground rather than paint its own. Never legal as a text or border colour. */
+  --action-tint: rgba(27, 63, 139, 0.07);
+
+  /* --primary is now an ALIAS, not a colour. It feeds Button's `primary` variant, Checkbox,
+     RadioGroup, SegmentedControl, the cart and facet count badges and the skip link -- i.e. every
+     control that is not the buy button. Pointing it at --action is what makes "no two primary
+     colours" true in one line instead of in twelve components, and it is why there is no longer a
+     `buy` variant carrying its own fill: one job, one colour, one declaration site.
+     (The v2 vermillion #FF5A1F stays deleted: 3.12:1 on white, and black-on-orange is hazard
+     livery. The ink era it replaced ended here for the reason in (2) above, not because ink was
+     hard to read -- 17.93:1 is the best number on this page and it is now spent on PROSE.) */
+  --primary: var(--action);
+  --on-primary: var(--on-action);
+  --primary-hover: var(--action-hover);
 
   /* ── §3.1 (2026-08-08): THE ACCENT IS NO LONGER A HUE ──────────────────────────────────────
      Spec §3.1: "The only colour on the site is the verdict system; colour therefore MEANS 'a
@@ -439,9 +456,15 @@
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-on-primary: var(--on-primary);
-  --color-azure: var(--azure);
-  --color-azure-hover: var(--azure-hover);
-  --color-on-azure: var(--on-azure);
+  /* The action family replaces --azure (2026-08-15, same day it was added -- see the token block).
+     Every `*-azure` utility in src/ was rewritten in this same change, because in Tailwind v4 an
+     unmapped colour utility emits NO rule at all: leaving one behind would not fail the build, it
+     would render that element with no fill and look like a styling accident. */
+  --color-action: var(--action);
+  --color-action-hover: var(--action-hover);
+  --color-action-active: var(--action-active);
+  --color-action-tint: var(--action-tint);
+  --color-on-action: var(--on-action);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-brand-mark: var(--brand-mark); /* Logo.tsx's BrandMark only -- see the token above. */

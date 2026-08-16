@@ -108,10 +108,27 @@ def test_budget_is_computed_even_when_the_actuator_is_off():
 
 def test_config_block_is_read_from_a_dict_or_an_object():
     want = {"enforce_length_budget": True, "claim_check": True, "base_words": 100,
-            "words_per_evidence_word": 2.0, "floor_words": 1, "ceiling_words": 9}
+            "words_per_evidence_word": 2.0, "floor_words": 1, "ceiling_words": 9,
+            "narrative_words": 40}
     from_obj = eb.artifacts_cfg(type("C", (), {"artifacts": dict(want)})())
     from_dict = eb.artifacts_cfg({"artifacts": dict(want)})
     assert from_obj == from_dict == want
+
+
+def test_every_key_the_budget_reads_has_a_shipped_default():
+    """The exact-equality above is only worth anything if the key set is pinned somewhere.
+
+    `narrative_words` (`evidence_budget.py:219`) was added as a config-declared knob and read
+    unconditionally by `budget_for` (`:242`), so a config that omits it must still produce it:
+    a missing default is a KeyError at pack-render time, on the paid document.
+    """
+    defaults = eb.artifacts_cfg(None)
+    assert set(defaults) == {"enforce_length_budget", "claim_check", "base_words",
+                             "words_per_evidence_word", "floor_words", "ceiling_words",
+                             "narrative_words"}
+    assert defaults["narrative_words"] == 150
+    # And the knob is a knob: a declared value overrides the default through both readers.
+    assert eb.artifacts_cfg({"artifacts": {"narrative_words": 40}})["narrative_words"] == 40
 
 
 def test_the_shipped_config_actually_reaches_the_budget():

@@ -125,26 +125,66 @@ def pack_word_budget(evidence_words: int, *, base: int, ratio: float,
     return int(max(int(floor), min(int(ceiling), round(raw))))
 
 
-def per_artifact_words(total: int, n_types: int = len(PROSE_TYPES)) -> int:
-    return int(max(1, round(total / max(1, n_types))))
+def per_artifact_words(total: int, n_types: int = len(PROSE_TYPES),
+                       narrative: int = 0) -> int:
+    """Evidence-proportional share, plus a flat NARRATIVE allowance per artifact.
+
+    THE 2026-08-15 CHANGE, AND WHY IT IS NOT A CAP LIFT
+    ---------------------------------------------------
+    The founder's reading of the shipped packs: "our tone and language is hurried and
+    cryptic". That is this file's doing, and the diagnosis in the module docstring above is
+    still correct — the prose WAS padded, 78.3% of sentences carrying no figure. What was
+    wrong is the prescription. A flat ceiling cuts padding and connective tissue with the
+    same cut, because it cannot tell them apart: both are sentences without a number in
+    them. The model, optimising against "shorter is better", deleted the cheapest words
+    first, and the cheapest words are the ones that make a paragraph land.
+
+    Pullum's objection to "Omit needless words" is this defect exactly: a rule that only
+    restates the goal helps nobody, since a writer who could identify the needless words
+    would not need telling. So the fix is not a bigger number, it is a NAMED one. `narrative`
+    is an allowance with a stated job — the sentence that says what a section decides, and
+    the transition into it — and the prompt below spends it on that and says so. The
+    evidence-proportional part is untouched, which is what keeps this a reallocation rather
+    than a lift: an artifact with no evidence behind it gains 150 words of scaffolding, not
+    150 words of new claims, and the claim-check still governs what may be asserted.
+
+    Default 0 so every caller that has not opted in computes exactly the old number.
+    """
+    share = round(total / max(1, n_types))
+    return int(max(1, share + max(0, int(narrative))))
 
 
 def length_rule(per_artifact: int, evidence_words: int) -> str:
     """The prompt fragment. Written in the house voice — the buyer never sees it, but a
     model reproduces the register it is addressed in, and half this file exists because
     the previous instruction ("substantial (many paragraphs)") was an invitation to pad.
+
+    "Shorter is better and there is no minimum" was removed on 2026-08-15. It is the
+    sentence that produced the cryptic register: a model told that brevity is itself a
+    virtue writes telegrams. The ceiling stays — it is what removed the padding — but the
+    instruction under it now asks for density, which is a property of a sentence, rather
+    than for shortness, which is a property of a document.
     """
     return (
-        f"LENGTH CONTRACT: this artifact must be AT MOST {per_artifact} words. "
-        "Shorter is better and there is no minimum. Do not pad to reach a length.\n"
+        f"LENGTH CONTRACT: this artifact must be AT MOST {per_artifact} words. There is no "
+        "minimum. Do not pad to reach a length, and do not compress to beat it: an artifact "
+        "that comes in under the ceiling by dropping the sentence that made the next one "
+        "land has not saved the reader anything.\n"
         f"You have been given about {evidence_words} words of retrieved source material "
         "for the whole pack. Everything beyond that is your own judgement, which earns "
         "its place only where it tells the reader what to DO.\n"
         "Every paragraph must pass this test: it names a figure, a source, a named tool, "
         "a place, or an instruction the reader can carry out today. A paragraph that only "
         "restates what the reader has already been told is deleted, not rewritten.\n"
+        "ONE EXCEPTION, AND IT IS DELIBERATE: each section may open with a single sentence "
+        "that says what this section DECIDES, in plain words, carrying no figure. That "
+        "sentence is not padding — it is the only thing that tells a reader whether to read "
+        "on or skip, and a document made entirely of dense findings with no signposts is "
+        "unreadable however true every line is. One such sentence per section. Not two.\n"
         "Structure the artifact as several titled sections (markdown headings), each with "
-        "real substance — never a heading with one thin line under it."
+        "real substance — never a heading with one thin line under it. Title each section "
+        "with what it CONCLUDES, not with its topic: 'Sell to the commissioner, not the "
+        "family' rather than 'Route to market'."
     )
 
 
@@ -172,6 +212,11 @@ def artifacts_cfg(cfg: Optional[Any]) -> Dict[str, Any]:
         "words_per_evidence_word": float(block.get("words_per_evidence_word", 1.0)),
         "floor_words": int(block.get("floor_words", 600)),
         "ceiling_words": int(block.get("ceiling_words", 3600)),
+        # Flat per-artifact allowance for signposting prose. Config-declared, not a
+        # constant, because it is exactly the kind of number that should be movable
+        # without a source edit. See `per_artifact_words` for why it is separate from
+        # `base_words` rather than folded into it.
+        "narrative_words": int(block.get("narrative_words", 150)),
     }
 
 
@@ -194,5 +239,7 @@ def budget_for(checks: Iterable[Any], cfg: Optional[Any] = None) -> Dict[str, An
         **profile,
         "enforced": settings["enforce_length_budget"],
         "total_words": total,
-        "per_artifact_words": per_artifact_words(total),
+        "narrative_words": settings["narrative_words"],
+        "per_artifact_words": per_artifact_words(
+            total, narrative=settings["narrative_words"]),
     }

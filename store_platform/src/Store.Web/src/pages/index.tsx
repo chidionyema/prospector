@@ -547,7 +547,7 @@ function PackCard({
         </span>
 
         <span className="flex flex-none items-center gap-3 sm:gap-4">
-          <PriceText className="text-body font-semibold text-azure">{price}</PriceText>
+          <PriceText className="text-body">{price}</PriceText>
           {/* THE ARROW IS A HOVER AFFORDANCE, so it costs 32px on the one device that cannot
               hover. Its whole job is `group-hover:translate-x-0.5` -- on touch that never fires,
               and the entire row is already a link, so at 390px it is 32px (glyph + `gap-3`) spent
@@ -674,7 +674,7 @@ function PackCard({
             <EvidenceBar count={pack.sourceCount} size="lg" label={evidenceLabel} />
           </span>
           <span className="mt-auto flex items-end justify-between gap-4 pt-6 lg:mt-0 lg:flex-none lg:flex-col lg:items-end lg:gap-5 lg:pt-0">
-            <PriceText className="text-h1 font-semibold text-azure">{price}</PriceText>
+            <PriceText className="text-h1">{price}</PriceText>
             <span
               className={cx(
                 'inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2.5',
@@ -842,7 +842,7 @@ function PackCard({
               inherited body size with only `font-semibold` distinguishing it. Mono because a price
               is a checkable quantity, which is exactly the rule the house style already states,
               and `tabular-nums` so £49 and £149 align on the decimal down a column. */}
-          <PriceText className="text-h2 font-semibold text-azure">{price}</PriceText>
+          <PriceText className="text-h2">{price}</PriceText>
           <span
             className={cx(
               'inline-flex items-center gap-1.5 rounded-md bg-primary px-3.5 py-2',

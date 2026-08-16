@@ -54,6 +54,41 @@ export function tightDecimal(formatted: string): React.ReactNode {
   );
 }
 
+/** The leading currency run: everything before the first digit. `£`, `$`, `US$`, `€`. */
+// No `s` flag: the tsconfig target predates it, and a formatted price is a single line anyway --
+// anything containing a newline simply falls through to `tightDecimal` unchanged.
+const LEADING_SYMBOL = /^([^\d]+)(.*)$/;
+
+/**
+ * Sets the currency symbol at 0.8em (founder directive, 2026-08-15).
+ *
+ * The directive it belongs to is "prices come OFF blue": a blue price is a broken affordance --
+ * a reader who has learned that blue means "tap this" taps £49.99 and nothing happens. But a
+ * price that is simply ink like everything else around it stops being findable, which is the
+ * problem the blue was added to solve. So the price is differentiated from the button by WEIGHT
+ * and SIZE instead of by hue, and this is the size half: the figure keeps its full cap height and
+ * the symbol steps back, which is how a price list has been set since long before the web.
+ *
+ * It is applied HERE rather than at the five call sites for the reason this file already exists:
+ * `Money` and `PriceText` are the only two ways money reaches a reader, so one edit is the whole
+ * population. A per-call-site class is how the last repaint reached three of four shelf cards.
+ *
+ * `em`, not a token: the symbol must track whatever type scale the caller chose, from the shelf
+ * card's `text-caption` to the hero's `text-h1`.
+ */
+function withSmallSymbol(formatted: string): React.ReactNode {
+  const m = LEADING_SYMBOL.exec(formatted);
+  if (!m) return tightDecimal(formatted);
+  const [, symbol, rest] = m;
+  return (
+    <>
+      {/* Not aria-hidden: the symbol is the only thing saying which currency this is. */}
+      <span className="text-[0.8em]">{symbol}</span>
+      {tightDecimal(rest)}
+    </>
+  );
+}
+
 /**
  * Renders a minor-unit money amount. The ONLY way money is shown (UI-STANDARDS §2).
  * Fixed locale so server and client render byte-identical (no hydration drift).
@@ -65,7 +100,7 @@ export function Money({ cents, currency, className }: MoneyProps) {
   }).format(cents / 100);
   return (
     <span className={cx('font-mono font-semibold tabular-nums', className)}>
-      {tightDecimal(formatted)}
+      {withSmallSymbol(formatted)}
     </span>
   );
 }
@@ -80,9 +115,20 @@ export interface PriceTextProps {
   className?: string;
 }
 
-/** A formatted price string, set in the house mono voice with the decimal separator closed up. */
+/**
+ * A formatted price string, set in the house mono voice with the decimal separator closed up and
+ * the currency symbol at 0.8em.
+ *
+ * `font-semibold` is baked in here rather than repeated at every call site: under the 2026-08-15
+ * colour directive the price is INK like the prose around it, so weight is now the only thing
+ * making it findable, and a call site that forgot the class would render a price that reads as
+ * body copy. Hue is not available for this job any more -- blue means "do something", and a price
+ * does nothing.
+ */
 export function PriceText({ children, className }: PriceTextProps) {
   return (
-    <span className={cx('font-mono tabular-nums', className)}>{tightDecimal(children)}</span>
+    <span className={cx('font-mono font-semibold tabular-nums text-text', className)}>
+      {withSmallSymbol(children)}
+    </span>
   );
 }
