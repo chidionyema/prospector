@@ -73,13 +73,23 @@ jobs:
           echo "AGENT_TOOLSDIRECTORY=$HOME/hostedtoolcache" >> "$GITHUB_ENV"
           echo "RUNNER_TOOL_CACHE=$HOME/hostedtoolcache" >> "$GITHUB_ENV"
 
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
+      # actions/setup-python is NOT used. On macOS it downloads a python-versions package
+      # whose install script writes to a HARDCODED /Users/runner/hostedtoolcache, ignoring both
+      # AGENT_TOOLSDIRECTORY and RUNNER_TOOL_CACHE. Proven on 2026-08-16: with both variables set
+      # to /Users/chidionyema/hostedtoolcache and printed in the step environment, the step still
+      # died with "mkdir: /Users/runner: Permission denied" (job 95186484361). This Mac does not
+      # log in as `runner` and /Users is root-owned, so that path can never be created from a job.
+      #
+      # uv supplies the interpreter instead. It uses a local CPython when one matches (Homebrew
+      # python@3.14 here) and downloads a standalone build when none does. Same step on Ubuntu.
       - name: Install uv
         uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        run: |
+          uv venv --python "${{ env.PYTHON_VERSION }}" "$RUNNER_TEMP/venv"
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
+          echo "VIRTUAL_ENV=$RUNNER_TEMP/venv" >> "$GITHUB_ENV"
 
       - name: Cache uv cache
         uses: actions/cache@v4
@@ -89,10 +99,11 @@ jobs:
           restore-keys: |
             uv-${{ runner.os }}-
 
-      # Install from requirements.txt (there is no pyproject.toml, so `uv sync`
-      # cannot be used). --system installs into the setup-python interpreter.
+      # Install from requirements.txt (there is no pyproject.toml, so `uv sync` cannot be
+      # used). No --system: VIRTUAL_ENV set above is the target, so this installs into the venv
+      # the previous step created, and `python` on PATH is that same interpreter.
       - name: Install dependencies
-        run: uv pip install --system -r requirements.txt
+        run: uv pip install -r requirements.txt
 
       - name: Main test suite (excluding UI theme)
         # No -x. It stops at the first failure, so a run reports one problem and hides the
@@ -139,16 +150,18 @@ jobs:
           echo "AGENT_TOOLSDIRECTORY=$HOME/hostedtoolcache" >> "$GITHUB_ENV"
           echo "RUNNER_TOOL_CACHE=$HOME/hostedtoolcache" >> "$GITHUB_ENV"
 
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
+      # Same reason as the python job below: actions/setup-python cannot install on this Mac.
       - name: Install uv
         uses: astral-sh/setup-uv@v3
 
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        run: |
+          uv venv --python "${{ env.PYTHON_VERSION }}" "$RUNNER_TEMP/venv"
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
+          echo "VIRTUAL_ENV=$RUNNER_TEMP/venv" >> "$GITHUB_ENV"
+
       - name: Install dependencies
-        run: uv pip install --system -r requirements.txt
+        run: uv pip install -r requirements.txt
 
       # --no-tick: a runner has no .env and no spend ledger, so the dry-run tick would fail on
       # its environment instead of on the change. Checks 1, 2 and 4 still run, and the script
@@ -181,11 +194,19 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore store_platform/src/Store.Tests/Store.Tests.csproj
 
+      # -m:1 and no node reuse. On the self-hosted Mac (16 GB, four runner instances) a
+      # parallel build died with MSB4166, "Child node 2 exited prematurely" (job 95186490976).
+      # That is an MSBuild worker being killed under memory pressure, not a compile error. One
+      # node is slower and does not crash; this project is small enough that it does not matter.
       - name: Build
-        run: dotnet build store_platform/src/Store.Tests/Store.Tests.csproj --no-restore
+        run: dotnet build store_platform/src/Store.Tests/Store.Tests.csproj --no-restore -m:1
+        env:
+          MSBUILDDISABLENODEREUSE: "1"
 
       - name: Test
         run: dotnet test store_platform/src/Store.Tests/Store.Tests.csproj --no-build --verbosity normal
+        env:
+          MSBUILDDISABLENODEREUSE: "1"
 
   # ──────────────────────────────────────────────────────────────────
   # Next.js — build check on store platform
