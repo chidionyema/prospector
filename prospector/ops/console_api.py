@@ -1547,12 +1547,75 @@ def _act_tools_run(cfg, payload: dict, preview: bool) -> dict:
                         else "none — this tool writes nothing",
             "undo_covers": tool["undo_covers"],
             "moat_affecting": False,
-            "takes_effect": "immediately, while the tool runs",
-            "note": f"Runs for up to {_TOOL_TIMEOUT_S // 60} minutes." + (
+            "takes_effect": "it starts immediately and keeps running if you close the page",
+            "note": f"Runs in the background for up to {_TOOL_TIMEOUT_S // 60} minutes. You get a "
+                    f"job id straight away and the receipt lands in the audit log when it ends." + (
                 "" if tool["risk"] != "external" else
                 " THIS REACHES OFF THIS MACHINE. Undo restores the local store/ tree and nothing "
                 "else — a Stripe price, a published pack or an uploaded backup stays changed."),
         }
+
+    # The snapshot is taken HERE, in the request, not in the background worker. The operator gets
+    # the undo id in the same answer as the job id, so a tool that starts writing immediately can
+    # already be rolled back — and a snapshot that failed refuses the run instead of being
+    # discovered missing half an hour later.
+    snap = None
+    if writes:
+        snap = undo_mod.snapshot(f"tools.run {tool['path']}", root=root,
+                                 actor=str(payload.get("actor") or "console"),
+                                 note=f"before: {' '.join(argv)}")
+
+    # THE TOOL RUNS IN THE BACKGROUND, AND THE HTTP REQUEST DOES NOT WAIT FOR IT.
+    #
+    # `scripts/store_audit.py` measured 239.9s. Holding the request open for that (and up to 30
+    # minutes for a repair) gives the operator a spinner with no progress, nothing to check from a
+    # second device, and a run that dies with the tab. Every layer in between — the browser, the
+    # Node gateway timeout, launchd restarting the console — is another way to lose a job that was
+    # working. So the request starts the job and returns its id; the worker writes the finishing
+    # receipt to the same audit log, and `read job` is how anyone asks how it went.
+    #
+    # `start_new_session=True` is what makes it survive: the worker gets its own process group, so
+    # the console killing the gateway subprocess (ops.ts kills the GROUP on timeout) does not take
+    # a running tool with it. That is the opposite of the synchronous path, where killing the
+    # group is exactly right, and both are deliberate.
+    job = secrets.token_hex(6)
+    worker = [os.environ.get("PROSPECTOR_PYTHON") or sys.executable,
+              "-m", "prospector.ops.console_api", "run-tool", tool["id"],
+              "--job", job, "--payload", json.dumps({**payload, "undo_id": (snap or {}).get("id")},
+                                                    default=str)]
+    subprocess.Popen(worker, cwd=root, stdin=subprocess.DEVNULL,  # noqa: S603
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                     start_new_session=True)
+
+    receipt = {
+        "ts": _now_iso(), "actuator": f"tools.run:{tool['path']}",
+        "job": job, "state": "running",
+        "command": " ".join(shlex.quote(a) for a in argv),
+        "actor": str(payload.get("actor") or "console"),
+        "reason": str(payload.get("reason") or ""),
+        "nonce": str(payload.get("nonce") or ""),
+        "risk": tool["risk"],
+        "applied": True, "timed_out": False, "exit_code": None,
+        "undo_id": (snap or {}).get("id"),
+        "undo_covers": tool["undo_covers"],
+        "message": f"started as job {job}; it runs for up to {_TOOL_TIMEOUT_S // 60} minutes and "
+                   f"writes its own receipt when it ends",
+    }
+    _record_intent(cfg, receipt)
+    return receipt
+
+
+def _run_tool_job(cfg, tool_id: str, job: str, payload: dict) -> dict:
+    """Run one catalogued tool to completion and write the finishing receipt. The background half.
+
+    This is invoked ONLY by `_act_tools_run`, in a child process, AFTER the confirmation token was
+    checked and the snapshot taken. It does not check a token itself and must not be treated as a
+    second door: it takes a tool id from `TOOLS` exactly like the foreground path, so the worst a
+    caller who can already run this module can do is run a tool they could have run by typing its
+    command — which is what the catalogue is a list of.
+    """
+    tool = _tool_by_id(tool_id)
+    argv = _tool_argv(tool, payload)
 
     # Same reason as `_run_repair`: launchd does not read a shell profile, so a tool spawned from
     # the console starts without the API keys a terminal already has.
@@ -1563,30 +1626,83 @@ def _act_tools_run(cfg, payload: dict, preview: bool) -> dict:
     except Exception:  # noqa: BLE001
         pass
 
-    snap = None
-    if writes:
-        snap = undo_mod.snapshot(f"tools.run {tool['path']}", root=root,
-                                 actor=str(payload.get("actor") or "console"),
-                                 note=f"before: {' '.join(argv)}")
-
     started = time.time()
-    out, code, timed_out = _exec(argv, root, _TOOL_TIMEOUT_S)
+    out, code, timed_out = _exec(argv, _repo_root(), _TOOL_TIMEOUT_S)
     tail = "\n".join(out.splitlines()[-60:])
     receipt = {
         "ts": _now_iso(), "actuator": f"tools.run:{tool['path']}",
+        "job": job, "state": "timed_out" if timed_out else "finished",
         "command": " ".join(shlex.quote(a) for a in argv),
         "actor": str(payload.get("actor") or "console"),
         "reason": str(payload.get("reason") or ""),
-        "nonce": str(payload.get("nonce") or ""),
         "risk": tool["risk"],
         "applied": code == 0, "changed": bool(tail), "timed_out": timed_out,
         "exit_code": code, "took_s": round(time.time() - started, 1),
-        "undo_id": (snap or {}).get("id"),
+        "undo_id": payload.get("undo_id"),
         "undo_covers": tool["undo_covers"],
         "message": tail or "(the tool printed nothing)",
     }
     _record_intent(cfg, receipt)
     return receipt
+
+
+#: A job whose worker died — a reboot, a SIGKILL, a crash before the finishing receipt — would
+#: otherwise read as "running" forever. After the tool's own ceiling plus a minute of slack, an
+#: unfinished job is reported LOST rather than in progress. "Still going" is a claim about a live
+#: process, and nothing here can see one.
+_JOB_LOST_AFTER_S = _TOOL_TIMEOUT_S + 60
+
+
+def _read_job(cfg, args: dict) -> dict:
+    """How one background tool run is going, read from the receipts it writes."""
+    job = str(args.get("job") or "").strip()
+    if not job:
+        raise ValueError("a job id is required — `read job --arg job=<id>`")
+
+    path = _store_ops_dir(cfg) / "intents.jsonl"
+    rows: list[dict] = []
+    if path.exists():
+        for line in path.read_text(errors="replace").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(rec, dict) and rec.get("job") == job:
+                rows.append(rec)
+
+    if not rows:
+        return {"job": job, "state": "unknown", "receipt": None, "rows": 0,
+                "note": "no receipt carries this job id. Either it was never started or the audit "
+                        "log was rotated."}
+
+    latest = rows[-1]
+    state = str(latest.get("state") or "finished")
+    age_s = None
+    try:
+        started_ts = datetime.fromisoformat(str(rows[0].get("ts")).replace("Z", "+00:00"))
+        age_s = round((datetime.now(timezone.utc) - started_ts).total_seconds(), 1)
+    except (TypeError, ValueError):
+        pass
+    if state == "running" and age_s is not None and age_s > _JOB_LOST_AFTER_S:
+        state = "lost"
+
+    return {"job": job, "state": state, "receipt": latest, "rows": len(rows),
+            "started_ts": rows[0].get("ts"), "age_s": age_s,
+            "note": {"running": "still going; the receipt lands here when it ends",
+                     "finished": "done — `exit_code` and `message` are the tool's own",
+                     "timed_out": f"killed at {_TOOL_TIMEOUT_S // 60} minutes; whatever it wrote "
+                                  f"before that is written",
+                     "lost": "started but never finished, and it is past its own ceiling. The "
+                             "worker died — check the tool by hand.",
+                     }.get(state, "")}
+
+
+#: Registered here rather than in the READS literal above because the tool-running machinery this
+#: view reads is defined further down the file, and a dict literal evaluates its values at import.
+READS["job"] = _read_job
 
 
 def _act_tools_undo(cfg, payload: dict, preview: bool) -> dict:
@@ -1957,8 +2073,9 @@ def dispatch(argv: list[str]) -> tuple[dict, int]:
 
     ap = argparse.ArgumentParser(prog="prospector.ops.console_api",
                                  description="JSON gateway for the admin console")
-    ap.add_argument("verb", choices=["read", "act", "views", "actions"])
+    ap.add_argument("verb", choices=["read", "act", "views", "actions", "run-tool"])
     ap.add_argument("name", nargs="?", default="")
+    ap.add_argument("--job", default="", help="job id; run-tool only")
     ap.add_argument("--arg", action="append", default=[],
                     help="k=v, repeatable; read verbs only")
     ap.add_argument("--payload", default="{}", help="JSON object; act verbs only")
@@ -1979,6 +2096,23 @@ def dispatch(argv: list[str]) -> tuple[dict, int]:
     if not args.name:
         return _envelope(args.verb, "", started,
                          error=f"{args.verb} needs a name", error_kind="ValueError"), 2
+
+    if args.verb == "run-tool":
+        # The background half of `tools.run`. `_act_tools_run` spawns this after the confirmation
+        # token was checked and the snapshot taken; it is not a second door (see `_run_tool_job`).
+        if not args.job:
+            return _envelope("verb", "run-tool", started,
+                             error="run-tool needs --job", error_kind="ValueError"), 2
+        try:
+            payload = json.loads(args.payload or "{}")
+            if not isinstance(payload, dict):
+                raise ValueError("--payload must be a JSON object")
+            with _quiet_stdout():
+                cfg = _cfg(args.config)
+                data = _run_tool_job(cfg, args.name, args.job, payload)
+            return _envelope("verb", "run-tool", started, data=data), 0
+        except Exception as exc:  # noqa: BLE001
+            return _fail("verb", "run-tool", started, exc), 1
 
     if args.verb == "read":
         fn = READS.get(args.name)

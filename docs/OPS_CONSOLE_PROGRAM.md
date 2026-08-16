@@ -1230,3 +1230,101 @@ the contract: never claims the engine's state, and always dates itself.
   the consumer's REAL rate.
 * **The console password is `test`** (founder request, 2026-08-16, for phone typing). Previous
   20-char secret is in `~/Library/LaunchAgents/com.prospector.control-center.plist.bak-pre-test-*`.
+
+## §14.14 The slow tools were killed at two minutes by the console, not by Python (2026-08-16)
+
+`scripts/store_audit.py` takes **239.9s** (`/usr/bin/time -p`, measured 2026-08-16 on the live
+store: `real 239.87`, verdict `STORE_AUDIT FAIL checks=9 failed=1 [BACKFILL_ENTRIES]`). Python
+allowed it 1800s (`console_api.py:1454 _TOOL_TIMEOUT_S = _SHELF_TIMEOUT_S = 1800`). The console
+killed it at 120s.
+
+**The ceiling that decides is the Node one**, because `ops.ts` SIGKILLs the gateway subprocess
+itself. It was a single `OPS_TIMEOUT_MS` defaulting to 120,000 for every call, and the launchd
+plist hid that by setting `1900000`. Any console started another way — `npm run dev`, `npm start`,
+a plist written later — reported "the engine gateway did not answer within 120000ms" on a tool that
+was working correctly.
+
+What changed in `store_platform/src/Ops.Console/src/lib/ops.ts`:
+
+1. **Two ceilings, one for each kind of job.** `OPS_READ_TIMEOUT_MS` (env `OPS_TIMEOUT_MS`, still
+   120s) covers reads and previews — a panel is waiting on those and a wedged one must fail fast.
+   `OPS_ACT_TIMEOUT_MS` defaults to **1,860,000ms**, above Python's 1800s, so a write that spawns a
+   batch tool outlives it without any environment being set.
+2. **The timeout kills the process GROUP** (`detached: true`, `process.kill(-pid)`). Killing only
+   the gateway left the tool it spawned still writing to `store/` after the console had given up —
+   a write with no receipt, no exit code and no undo id.
+3. **`tests/timeouts.test.ts` reads `_SHELF_TIMEOUT_S` out of `console_api.py`** and fails if the
+   act ceiling ever drops below it. A number copied into a comment goes stale in silence.
+   **`tests/gateway.test.ts` drives the real `runPython` against a fake interpreter** and pins the
+   three facts a mock cannot: a write survives past the read ceiling, a read still gives up on the
+   short one, and a timed-out write leaves no grandchild alive to write afterwards. Checked against
+   the pre-fix code (single ceiling, no process group, restored immediately after): **3 failed | 1
+   passed** — the read test is the one that should still pass, and does. A test that passes before
+   and after the change proves nothing, so this is the receipt that it does not.
+4. **`OPS_TIMEOUT_MS=1900000` removed from the installed plist** (backup:
+   `com.prospector.ops-console.plist.bak-timeout-2026-08-16`). It now means the READ ceiling, and
+   giving a panel 31 minutes to answer is the opposite of what a panel wants.
+
+**A live run alone could not prove this, and that is worth recording.** After the rebuild, running
+`tools.run` on `store_audit` end-to-end through the API (sign in → preview → confirm) returned in
+**49s** (`took_s=49`, `timed_out=false`, `exit_code=1` — the tool's own BACKFILL_ENTRIES failure,
+matching the CLI). The same script had taken 239.9s cold an hour earlier. A run that comes in under
+two minutes cannot distinguish a fixed ceiling from a lucky one, so the fake-interpreter tests are
+the proof and the live run is only evidence that the door still opens.
+
+Three comments named `scripts/run_ops_console.sh`, which is not on disk — including the error text
+an operator sees when `PROSPECTOR_PYTHON` is unset, which told them to run a missing file. They now
+name `npm run dev` / `npm start` and the launchd plist. (`scripts/install_control_center_agent.sh`,
+also referenced, does exist and installs the SEPARATE Streamlit `com.prospector.control-center`
+job — it never writes the ops-console plist, so it cannot put `OPS_TIMEOUT_MS` back.)
+
+## §14.15 A tool run is now a background job with a job id (2026-08-16)
+
+A longer ceiling made the slow tools finish. It did not make them a sane shape: a 30-minute HTTP
+request shows a spinner, dies with the tab, and cannot be checked from a second device.
+
+`tools.run` now starts the tool and returns immediately.
+
+- **Python starts a detached worker.** `_act_tools_run` takes the undo snapshot, mints a 12-hex job
+  id, and `Popen`s `python -m prospector.ops.console_api run-tool <id> --job <job> --payload <json>`
+  with `start_new_session=True`. The reply is `{"state": "running", "job": ..., "exit_code": null}`.
+  The new session is load-bearing: §14.14 made the console kill the whole process GROUP on timeout,
+  so a worker in the gateway's group would be killed with it.
+- **The worker writes the second receipt.** `_run_tool_job` runs the tool at `_TOOL_TIMEOUT_S` and
+  appends a receipt to `store/ops/intents.jsonl` with `state` `finished` or `timed_out`, the exit
+  code, `took_s`, the undo id from the snapshot, and the last 60 lines of output. A timeout is
+  reported as `timed_out`, never as an exit-code failure — the tool wrote whatever it wrote before
+  the kill, and "we stopped waiting" is a different fact from "it failed".
+- **`read job` is the poll.** It returns the latest receipt for that job id. A `running` receipt
+  older than `_TOOL_TIMEOUT_S + 60` is reported **`lost`**, not `running`: past that point nobody
+  can see the process, and a spinner that never stops is prose-drift in UI form.
+- **The console polls it.** `tools.tsx` keeps the job id per tool and renders `JobWatch`, which
+  reads `job` every 4s and refreshes the undo panel once the job ends.
+- **The audit page labels a row by its state, not by `applied`.** One job writes two rows, and
+  `applied` means different things in them: "the run started" in the first, "exit code 0" in the
+  second. Read through the old rule, a started job showed "applied" before it had done anything and
+  a tool that ran to completion and exited 1 showed **"refused"** — which is the word this console
+  uses when a FENCE stopped an action. Rows carrying `state` now show `running` / `finished` /
+  `timed_out` / `exit <n>` (`src/pages/audit.tsx`).
+
+**Measured end to end on the live store (2026-08-16).** `tools.run` on `scripts/store_audit.py`
+**returned in 0.04s** with `{"state": "running", "job": "4c07523d53dd", "exit_code": null}`. Polling
+`read job` showed `running` at t+10s and `finished` at t+190s, with the receipt
+`{"state": "finished", "exit_code": 1, "applied": false, "took_s": 174.7, "timed_out": false}` —
+exit 1 is the tool's own `BACKFILL_ENTRIES` failure, the same verdict the CLI gives. So a 175-second
+tool now costs a 0.04-second request.
+
+Six tests in `tests/unit/test_console_tools_run.py` pin it: the run returns a job id and spawns with
+`start_new_session=True`; the worker writes the finishing receipt; a timeout says `timed_out`; the
+reader takes the latest receipt for the id; a stale `running` reads `lost`; an unknown id reads
+`unknown` and a missing id raises.
+
+**The view allow-list test found a live bug.** `test_the_browser_view_allowlist_matches_the_gateway`
+compares `VIEWS` in `src/pages/api/ops/read/[view].ts` to `console_api.READS`. The gateway had
+`undo`; the browser list did not — so `tools.tsx:171`'s `useOps<UndoView>('undo')` was 404ing on
+every render and the undo panel on the tools page had never worked. `undo` (and `job`) are now in
+the list. The equivalent test for the write door already existed; the read door had none.
+
+Probed on the running console after the rebuild (signed in, tailnet address): `read/undo` → **200**
+(it was 404 before this change), `read/job?job=4c07523d53dd` → **200** with
+`"state":"finished"` for the real background run above, and an unknown view still → **404**.

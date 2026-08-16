@@ -11,7 +11,8 @@
  *
  * THE NETWORK IS THE REAL FENCE. Bind one tailnet address, never 0.0.0.0. A password-only portal
  * on whatever wifi the laptop joins is not acceptable, and the single-address bind is what stops
- * it. This module cannot enforce that; `scripts/run_ops_console.sh` does.
+ * it. This module cannot enforce that; the launchd plist does, by passing `-H <tailnet address>`
+ * to `next start`.
  */
 import crypto from 'node:crypto';
 import type { NextApiRequest, NextApiResponse } from 'next';

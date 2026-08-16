@@ -22,7 +22,7 @@
  * `risk` is the honest part. "local" means undo covers everything the tool wrote. "external" means
  * the tool reaches Stripe, the live shelf or R2, and undo covers the local half only.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import Confirm from '@/components/Confirm';
 import Shell from '@/components/Shell';
@@ -91,6 +91,80 @@ function placeholdersOf(command: string): string[] {
   return [...command.matchAll(/<([a-z0-9_]+)>/g)].map((m) => m[1]);
 }
 
+type JobView = {
+  job: string;
+  state: 'running' | 'finished' | 'timed_out' | 'lost' | 'unknown';
+  rows: number;
+  age_s: number | null;
+  note: string;
+  receipt: {
+    exit_code?: number | null;
+    took_s?: number;
+    message?: string;
+    undo_id?: string | null;
+  } | null;
+};
+
+const JOB_TONE: Record<JobView['state'], 'mute' | 'ok' | 'warn' | 'bad'> = {
+  running: 'warn',
+  finished: 'ok',
+  timed_out: 'bad',
+  lost: 'bad',
+  unknown: 'mute',
+};
+
+/**
+ * A tool run in progress, and its receipt when it lands.
+ *
+ * The run is a BACKGROUND job: `tools.run` returns a job id immediately and the tool keeps going
+ * whether or not this page is open. So this polls rather than waits — closing the tab, losing wifi
+ * or restarting the console does not kill the run, and reopening the page picks the job back up.
+ * Its own component because a hook cannot live inside the tool list's map().
+ */
+function JobWatch({ job, onFinished }: { job: string; onFinished: () => void }) {
+  // THE POLL STOPS WHEN THE JOB DOES. Every read spawns a Python gateway process (measured ~850ms
+  // on this box), so a page left open on a finished job would spawn 900 subprocesses an hour to
+  // re-read a receipt that cannot change. `useOps` treats pollMs 0 as "do not poll".
+  const [done, setDone] = useState(false);
+  const live = useOps<JobView>('job', { job }, { pollMs: done ? 0 : 4000 });
+  const state = live.data?.state ?? 'unknown';
+  const receipt = live.data?.receipt ?? null;
+  const ended = state === 'finished' || state === 'timed_out' || state === 'lost';
+
+  // Refresh the undo list once, when the run ends: a tool that wrote may have added a snapshot.
+  const finished = useRef(onFinished);
+  finished.current = onFinished;
+  useEffect(() => {
+    if (!ended || done) return;
+    setDone(true);
+    finished.current();
+  }, [ended, done]);
+
+  return (
+    <div className="mt-2 flex flex-col gap-1 rounded-sm border border-border bg-surface2 px-3 py-2">
+      <div className="flex flex-wrap items-center gap-2 text-[12px]">
+        <Pill tone={JOB_TONE[state]}>{state === 'running' ? 'running' : state}</Pill>
+        <Mono>job {job}</Mono>
+        {live.data?.age_s != null ? (
+          <span className="text-subtle">{Math.round(live.data.age_s)}s</span>
+        ) : null}
+        {receipt?.exit_code != null ? (
+          <span className={receipt.exit_code === 0 ? 'text-ok-strong' : 'text-bad-strong'}>
+            exit {receipt.exit_code}
+          </span>
+        ) : null}
+      </div>
+      {live.error ? <Problem>{live.error}</Problem> : null}
+      <div className="text-[12px] text-muted">{live.data?.note ?? ''}</div>
+      {ended && receipt?.message ? (
+        <pre className="scroll-x mt-1 max-h-56 overflow-y-auto rounded-sm bg-surface3 px-2 py-1.5 font-mono text-[11px]">
+          {receipt.message}
+        </pre>
+      ) : null}
+    </div>
+  );
+}
+
 function fmtBytes(n?: number): string {
   if (!n) return '—';
   if (n > 1e9) return `${(n / 1e9).toFixed(1)} GB`;
@@ -109,6 +183,11 @@ export default function Tools() {
 
   const setValue = (toolId: string, name: string, v: string) =>
     setValues((prev) => ({ ...prev, [toolId]: { ...(prev[toolId] ?? {}), [name]: v } }));
+
+  // The background job each tool started in this session, so the row can show how it is going.
+  const [jobs, setJobs] = useState<Record<string, string>>({});
+  const setJob = (toolId: string, job: string) =>
+    setJobs((prev) => ({ ...prev, [toolId]: job }));
 
   const groups = useMemo(() => {
     const rows = (data?.tools ?? []).filter((t) => {
@@ -303,7 +382,11 @@ export default function Tools() {
                             <Note>{String(p.note ?? '')}</Note>
                           </div>
                         )}
-                        onApplied={() => undo.refresh()}
+                        onApplied={(receipt) => {
+                          undo.refresh();
+                          const job = receipt?.job;
+                          if (typeof job === 'string' && job) setJob(t.id, job);
+                        }}
                       />
                     ) : (
                       <div className="text-[12px] text-subtle">
@@ -312,6 +395,9 @@ export default function Tools() {
                           : 'the file is missing, so there is nothing to run'}
                       </div>
                     )}
+                    {jobs[t.id] ? (
+                      <JobWatch job={jobs[t.id]} onFinished={() => undo.refresh()} />
+                    ) : null}
                   </div>
                 </div>
               );
