@@ -75,12 +75,35 @@ export function PackMark({
    * simply stops the long axis running along the bands.
    */
   axis = 'across',
+  /**
+   * Drops `strata()`'s per-band inset so every band spans the full short axis.
+   *
+   * WHY THIS EXISTS (2026-08-16, founder on the members page: "the teal graphic in your library
+   * style looks funny"). `strata()` gives each band a left inset of 0 to 22% and a width of
+   * `1 - x`, so the bands end flush on one edge and start ragged on the other. At the shelf card's
+   * 32x48 that ragged edge is texture. At the library spine's 48x140, filled with the brand ink at
+   * `emphasis` opacity, it is not texture: bars of visibly different lengths sharing one baseline
+   * is the grammar of a HORIZONTAL BAR CHART, and it was drawn on the one surface where nothing is
+   * being measured. Rendered side by side (scratchpad `ux/mark-options.png`, four real pack ids):
+   * the inset version reads as a chart, the full-bleed version reads as a spine, and `axis="down"`
+   * reads as a COLUMN chart, which is worse than either.
+   *
+   * The identity survives because the inset was never carrying it: the seed, the band count, the
+   * thicknesses and the opacities are untouched, so two packs are still told apart by the same
+   * divisions, and the morph still lands on the same stack. Only the edge changes.
+   *
+   * This is the second attempt at this surface. The first (2026-08-15) rotated the box to a spine
+   * to escape the LOADING-SKELETON read and kept the geometry; that fixed the aspect ratio and
+   * left the ragged edge, which is the property this one removes.
+   */
+  bleed = false,
 }: {
   id: string;
   className?: string;
   morph?: boolean;
   emphasis?: boolean;
   axis?: 'across' | 'down';
+  bleed?: boolean;
 }) {
   const bands = strata(id);
 
@@ -108,10 +131,15 @@ export function PackMark({
            (`b.x`, capped at 22% by `strata()`) becomes an inset from the TOP -- so every column
            ends flush at y=1 exactly as every band ended flush at x=1. Same numbers, same
            divisions, one axis swap. */
+        /* `bleed` zeroes the inset and takes the full span back, on both axes, so the transpose
+           keeps working unchanged. See the prop's docblock for why the inset is what made the
+           spine read as a bar chart. */
+        const inset = bleed ? 0 : b.x;
+        const span = bleed ? 1 : b.w;
         const r =
           axis === 'down'
-            ? { x: b.y, y: b.x, width: thickness, height: b.w }
-            : { x: b.x, y: b.y, width: b.w, height: thickness };
+            ? { x: b.y, y: inset, width: thickness, height: span }
+            : { x: inset, y: b.y, width: span, height: thickness };
         return (
         <rect
           key={i}
