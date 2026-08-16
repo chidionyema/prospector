@@ -497,8 +497,15 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
 
     # FIX #2: truncate passages to reduce verdict input tokens by ~5-6x.
     # Format: [source_id] <truncated_text>  (url and title are in the prompt template).
+    # The publication DATE rides along (2026-08-16). The template placeholder this string
+    # replaces has always read `(url, published_at)`, but the line below rendered neither, so
+    # no check could ever say WHEN its evidence was published — and "is this live right now"
+    # was therefore judged from the model's memory of the year, not from the page. The url
+    # stays out on purpose: it is already in the prompt template, and FIX #2 above cut this
+    # string to `[id] text` to hold the verdict's input tokens down. A date costs ~4 tokens.
     passages = "\n".join(
-        f"[{s.source_id}] {s.text[:VERDICT_PASSAGE_TRUNCATE]}" for s in sources)
+        f"[{s.source_id}] ({getattr(s, 'published_at', None) or 'undated'}) "
+        f"{s.text[:VERDICT_PASSAGE_TRUNCATE]}" for s in sources)
     # for_moat=True: the verdict brain gets the jurisdiction's NAME and the relevance
     # precedents, never the market's evidence-landscape prose. Handing the moat market
     # knowledge is the prior-knowledge leak that verdict-from-retrieval-only forbids.

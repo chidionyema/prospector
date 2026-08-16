@@ -83,7 +83,12 @@ CHECKS: dict[str, str] = {
                         "channel a novice can actually execute (an open ad channel, a marketplace, "
                         "an existing audience) — not one requiring scarce expertise or blocked by a ban?"),
     "currency": ("Is this opportunity live and current right NOW — an active trend/regulation/need — "
-                 "rather than a stale or already-peaked leftover from a previous year?"),
+                 "rather than a stale or already-peaked leftover from a previous year? Rule ONLY on "
+                 "the dates carried by the passages, never on your own sense of what year it is: "
+                 "cite at least one DATED passage showing the trigger is live (a rule taking effect, "
+                 "a launch, a price move, a platform change). If every passage is undated, or the "
+                 "only dated evidence predates the last two years, answer UNVERIFIABLE — an undated "
+                 "web page is not evidence that a thing is stale, only that we cannot tell."),
     "claims_verifiable": ("Can the core factual claims be checked against retrievable public sources "
                           "rather than merely asserted — and do the sources confirm rather than "
                           "contradict them?"),
