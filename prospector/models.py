@@ -339,6 +339,13 @@ class AdversarialResult:
     # True when the adversarial pass was ruled by the cheap emergency fallback tail
     # (moat exhausted). Same semantics as CheckResult.provisional.
     provisional: bool = False
+    # The objection MEMO (2026-08-16). `kill_case` is one paragraph, which is how the whole
+    # case against an idea reached the buyer: a blob. These are the objections one at a
+    # time, each with what would have to be true for it not to bite, and each carrying the
+    # source ids it rests on. Every entry here has already passed the citation-resolution
+    # rail in verify.adversarial — an objection citing nothing is an opinion, and opinions
+    # do not ship. Shape: {objection, what_would_have_to_be_true, severity, citations}.
+    objections: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

@@ -730,6 +730,11 @@ def _labelled(name: str, labels: dict[str, str]) -> str:
     return f"{label} (`{name}`)" if label else f"`{name}`"
 
 
+# Severities the objection memo will label. Anything else renders unlabelled rather than
+# printing a word the model invented.
+_SEVERITY_LABELS = {"high", "medium", "low"}
+
+
 def render_markdown(dossier: Any, *, include_our_grade: bool = False) -> str:
     """Render a human-readable audit document from a Dossier.
 
@@ -906,6 +911,27 @@ def render_markdown(dossier: Any, *, include_our_grade: bool = False) -> str:
                      "**Not decisive.** Worth knowing, but it doesn't sink the idea.")
         lines.append("")
         lines.append(str(getattr(adv, "kill_case", "") or ""))
+
+        # The objection memo: the case against, one objection at a time, each with what
+        # would have to be true for it not to bite. Before 2026-08-16 the reader got only
+        # the paragraph above.
+        for ob in (getattr(adv, "objections", None) or []):
+            text = str(ob.get("objection", "") or "").strip()
+            if not text:
+                continue
+            severity = str(ob.get("severity", "") or "").lower()
+            label = f"{severity.capitalize()} risk — " if severity in _SEVERITY_LABELS else ""
+            lines.append("")
+            lines.append(f"**{label}{text}**")
+            answer = str(ob.get("what_would_have_to_be_true", "") or "").strip()
+            if answer:
+                lines.append("")
+                lines.append(f"What would have to be true for this not to bite: {answer}")
+            ob_cited = _cited(list(ob.get("citations") or []), src_index)
+            if ob_cited:
+                lines.append("")
+                lines.append("Sources: " + ob_cited)
+
         adv_citations = list(getattr(adv, "citations", None) or [])
         if adv_citations:
             rendered = _cited(adv_citations, src_index)

@@ -16,7 +16,7 @@ import contextvars
 import json
 import re
 import time as _time
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from .admissibility import corroboration_reason, demotion_reason, health_demotion_reason
 from .admissibility import host_of as admissibility_host_of
@@ -860,6 +860,12 @@ def run_check(op: Operator, search: SearchProvider, cfg: Config,
     return result
 
 
+# A memo is a shortlist. Past four, a reader stops reading and the strongest objection is
+# buried among the makeweights.
+MAX_OBJECTIONS = 4
+_SEVERITIES = {"high", "medium", "low"}
+
+
 @track_latency(name="adversarial")
 def adversarial(op: Operator, cfg: Config, cand: Candidate,
                 checks: list[CheckResult]) -> AdversarialResult:
@@ -906,6 +912,29 @@ def adversarial(op: Operator, cfg: Config, cand: Candidate,
                 extra={"dangling": _dangling[:10], "candidate_id": getattr(cand, "candidate_id", None)})
         citations = [c for c in citations if c in _valid_ids]
 
+        # The objection MEMO (2026-08-16). This pass used to return one `risk_summary`
+        # paragraph, so the whole case against an idea reached the reader as a blob. An
+        # investor reads objections one at a time and wants to know what would have to be
+        # true for each one not to bite. Same rail as the citations above, applied per
+        # objection: one that cites nothing resolving is an opinion, and opinions do not
+        # ship in this engine. Capped, because a list of twelve is a way of saying nothing.
+        objections: list[dict[str, Any]] = []
+        for raw_obj in (data.get("objections") or [])[:MAX_OBJECTIONS]:
+            if not isinstance(raw_obj, dict):
+                continue
+            text = str(raw_obj.get("objection") or "").strip()
+            cites = [str(c) for c in (raw_obj.get("citations") or [])
+                     if str(c) in _valid_ids]
+            if not text or not cites:
+                continue
+            severity = str(raw_obj.get("severity") or "").lower()
+            objections.append({
+                "objection": text,
+                "what_would_have_to_be_true":
+                    str(raw_obj.get("what_would_have_to_be_true") or "").strip(),
+                "severity": severity if severity in _SEVERITIES else "unknown",
+                "citations": cites,
+            })
 
         # New risk-sensor model: Python decides, LLM only classifies risk vectors.
         critical_regulatory = bool(data.get("critical_regulatory_blocker", False))
@@ -934,6 +963,7 @@ def adversarial(op: Operator, cfg: Config, cand: Candidate,
             decisive=decisive,
             confidence=conf,
             citations=citations,
+            objections=objections,
             provider=_served_provider(op),
             provisional=_served_is_provisional(op))
     except ProviderExhaustedError:
