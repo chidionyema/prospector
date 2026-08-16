@@ -1,228 +1,92 @@
 {
-  "id": "13d41ccee9e96e2d",
-  "title": "Retention chasing service for building subcontractors",
-  "oneLiner": "RetainRelease tracks every retention balance across every contract, sends the chase letters proven to release the cash, and files construction adjudication if a main contractor refuses.",
-  "whoPays": "UK subcontracting firms (typically 1-50 staff electricians, plumbers, bricklayers, joiners, groundworkers, plasterers, roofers) working on construction projects where main contractors hold retention. They are paid less per job than main contractors, are squeezed on margin, and have multiple live contracts with held-back cash they rarely chase.",
-  "whyNow": "The collapse of large main contractors since 2018 (Carillion, Berkeley, ISG, numerous mid-tier firms) has left retention money trapped in insolvent estates, with subbies waiting years for a fraction of what they are owed. The Construction Industry Fairness Charter (2024) and the Procurement Act 2023 are pushing the industry toward audited, faster release. Adjudication is the only statutory route that forces release in 28 days and is enforceable as a court order, so the value of an automated chase-and-adjudicate tool rises as more main contractors use insolvency to delay payment.",
-  "verifiedAt": "2026-08-05T20:44:54.968034+00:00",
-  "supported": 6,
-  "total": 9,
-  "sourceCount": 47,
+  "id": "f2ac7df9995c334e",
+  "title": "Gig Deactivation Reversal Dossier",
+  "oneLiner": "A productized service that builds a proven appeal pack for gig workers unjustly deactivated by platforms like Uber, DoorDash, or Instacart, using a proprietary dataset of successful appeal arguments and outcome patterns.",
+  "whoPays": "Gig worker aged 18-27 who has been deactivated and sees the service as a lifeline to restore their primary income source, paying from their remaining cash buffer (often $49, $99).",
+  "whyNow": "Growing gig workforce, increasing number of algorithmically-driven deactivations with limited human recourse, and a small but highly motivated body of workers who will pay for a better shot at reinstatement.",
+  "verifiedAt": "2026-08-15T15:36:08.421391+00:00",
+  "supported": 4,
+  "total": 6,
+  "sourceCount": 29,
   "scores": {
     "pain_acuity": 4,
-    "money_provability": 3,
+    "money_provability": 2,
     "automatability": 4,
-    "distribution": 4,
-    "defensibility": 2,
+    "distribution": 3,
+    "defensibility": 3,
     "build_feasibility": 3
   },
   "premortem": {
-    "strongestAlternative": "A construction solicitor or quantity surveyor, charging £500 to £2,000 per individual chase or adjudication.",
+    "strongestAlternative": "Worker filing the appeal themselves using the platform's own internal review form.",
     "whyDurable": "",
     "sources": [
       {
-        "url": "https://en.wikipedia.org/wiki/Housing_Grants,_Construction_and_Regeneration_Act_1996",
-        "domain": "en.wikipedia.org",
+        "url": "https://self-representation.org.uk/who-can-represent-you-at-an-employment-tribunal/",
+        "domain": "self-representation.org.uk",
         "label": ""
       },
       {
-        "url": "https://www.fenwickelliott.com/sites/default/files/construction_adjudication_practice_guideline_28dec2015.pdf",
-        "domain": "fenwickelliott.com",
+        "url": "https://www.ms-solicitors.co.uk/employee/employment-tribunal-services/",
+        "domain": "ms-solicitors.co.uk",
         "label": ""
       },
       {
-        "url": "https://www.payapps.com/uk/",
-        "domain": "payapps.com",
-        "label": ""
+        "url": "https://driversguild.org/deactivation/",
+        "domain": "driversguild.org",
+        "label": "Deactivation Representation, IDG"
       },
       {
-        "url": "https://www.capterra.com/p/238884/Payapps/",
-        "domain": "capterra.com",
-        "label": ""
+        "url": "https://www.acas.org.uk/",
+        "domain": "acas.org.uk",
+        "label": "Acas | Making working life better for everyone in Britain"
       },
       {
-        "url": "https://www.dentons.com/en/insights/articles/2026/june/2/the-proposed-retention-ban-and-other-new-payment-legislation/",
-        "domain": "dentons.com",
-        "label": ""
-      },
-      {
-        "url": "https://www.mills-reeve.com/publications/retentions-reform-and-the-uk-new-late-payment-crackdown-what-this-means-for-construction-projects/",
-        "domain": "mills-reeve.com",
-        "label": ""
-      },
-      {
-        "url": "https://gowlingwlg.com/en-gb/insights-resources/articles/2026/uk-government-proposes-ban-on-retention-payments-in-construction-contracts",
-        "domain": "gowlingwlg.com",
-        "label": ""
+        "url": "https://iwgb.org.uk/en/page/support-and-advice/",
+        "domain": "iwgb.org.uk",
+        "label": "Support and advice · IWGB"
       }
     ]
   },
   "adversarial": {
-    "killCase": "Nothing in the passages makes this service unlawful, UK law itself creates the 28-day adjudication route the product uses, no passage compares the cost of winning a customer against what that customer could pay, and no passage shows any single provider holding most of this market (Payapps is named but with no share or customer figures). The one grounded risk is to demand rather than legality: a Commercial Payments Bill introduced in Parliament on 19 May 2026 would ban held-back retention money under construction contracts outright, and if it passes there is eventually no held-back cash left to chase.",
+    "killCase": "The passages contain no evidence that a third-party appeal-writing service for gig deactivations is banned by UK law or requires legal qualification; UK employment tribunals explicitly permit lay representatives, and no passage shows acquisition costs exceeding a £49-99 fee. No single provider controls 80%+ of UK deactivation-appeal distribution, the closest free alternatives (IDG is US-only, Acas offers general advice, IWGB legal help is union-gated) are fragmented and none cover the niche end-to-end.",
     "decisive": false
   },
   "checks": [
     {
-      "name": "Is the pain real, or imagined?",
-      "key": "pain_reality",
-      "verdict": "supported",
-      "confidence": 0.68,
-      "rationale": "The passages show that main contractors in the UK routinely withhold a percentage of subcontractors' money, commonly 5% of the subcontract sum, until milestones are met, that unpaid subcontractors cause serious cash flow problems, and that Carillion's 2018 collapse left a trail of unpaid retentions with money outstanding across the UK.",
-      "sources": [
-        {
-          "url": "https://www.facebook.com/albanybusinessreview/posts/the-collapse-of-the-hodorowski-group-has-left-many-suppliers-and-subcontractors-/1181770580625860/",
-          "domain": "facebook.com",
-          "label": ""
-        },
-        {
-          "url": "https://www.retentiondepositscheme.org/insights/the-history-of-retentions",
-          "domain": "retentiondepositscheme.org",
-          "label": ""
-        },
-        {
-          "url": "https://www.lazyqs.co.uk/blog/construction-retention-explained",
-          "domain": "lazyqs.co.uk",
-          "label": ""
-        },
-        {
-          "url": "https://invoicedataextraction.com/blog/track-subcontractor-retention-release-uk",
-          "domain": "invoicedataextraction.com",
-          "label": ""
-        },
-        {
-          "url": "https://mjdsolicitors.co.uk/retention-disputes-defect-clauses-in-construction-industry/",
-          "domain": "mjdsolicitors.co.uk",
-          "label": ""
-        }
-      ]
-    },
-    {
-      "name": "Can the payer actually pay?",
-      "key": "payer_solvency",
-      "verdict": "supported",
-      "confidence": 0.65,
-      "rationale": "The FMB/CIOB State of Trade Survey shows UK construction SMEs are still growing, though momentum is slowing, so these firms are trading businesses rather than failing ones; and with the UK sector reported at the world's lowest average margin of 3.9%, a 3-5% sum held back is worth more than a typical job's entire profit, which gives owners a strong reason to chase it.",
-      "sources": [
-        {
-          "url": "https://bricks-bytes.com/news/uk-construction-growth-is-slowing/",
-          "domain": "bricks-bytes.com",
-          "label": ""
-        },
-        {
-          "url": "https://www.theaccessgroup.com/en-gb/construction/resources/construction-profit-margins-uk/",
-          "domain": "theaccessgroup.com",
-          "label": ""
-        },
-        {
-          "url": "https://www.gov.uk/search-bankruptcy-insolvency-register",
-          "domain": "gov.uk",
-          "label": ""
-        },
-        {
-          "url": "https://www.companydebt.com/insolvency/",
-          "domain": "companydebt.com",
-          "label": ""
-        },
-        {
-          "url": "https://www.investopedia.com/terms/i/insolvency.asp",
-          "domain": "investopedia.com",
-          "label": "Insolvency, Investopedia Insolvency is a term for when an individual or..."
-        }
-      ]
-    },
-    {
-      "name": "Is there a route to reach the market?",
-      "key": "distribution",
-      "verdict": "supported",
-      "confidence": 0.63,
-      "rationale": "The passages show the Federation of Master Builders is the UK's largest trade association for small and medium construction firms, with a vetted membership it already reaches through business-support services and time-saving tools for day-to-day admin, a ready-made, concentrated audience of exactly the small firms this product targets.",
-      "sources": [
-        {
-          "url": "https://www.fmb.org.uk/",
-          "domain": "fmb.org.uk",
-          "label": ""
-        },
-        {
-          "url": "https://www.fmb.org.uk/become-a-master-builder.html",
-          "domain": "fmb.org.uk",
-          "label": ""
-        },
-        {
-          "url": "https://squote.app/knowledge/general/fmb-membership",
-          "domain": "squote.app",
-          "label": ""
-        },
-        {
-          "url": "https://www.capterra.com/sem-compare-b/contract-management-software/?account_campaign_id=698134894&account_adgroup_id=1251245534443880&utm_source=ps-bing&utm_medium=ppc&utm_campaign=:1:CAP:2:COM:3:All:4:INTL:5:BAU:6:SOF:7:Desktop:8:BR:9:Contract_Management&network=o&msclkid=1ce77adaff121a52859610a958c14edb",
-          "domain": "capterra.com",
-          "label": ""
-        }
-      ]
-    },
-    {
-      "name": "Is there a legal landmine?",
-      "key": "legality",
-      "verdict": "supported",
-      "confidence": 0.64,
-      "rationale": "The passages show that UK law itself creates the mechanism this business relies on: the Housing Grants, Construction and Regeneration Act 1996 amended the law on construction contracts, its Section 108 gives a construction adjudicator jurisdiction to decide disputes, and the 2009 Act amendments to it took effect on 1 October.",
-      "sources": [
-        {
-          "url": "https://en.wikipedia.org/wiki/Housing_Grants,_Construction_and_Regeneration_Act_1996",
-          "domain": "en.wikipedia.org",
-          "label": ""
-        },
-        {
-          "url": "https://www.fenwickelliott.com/sites/default/files/construction_adjudication_practice_guideline_28dec2015.pdf",
-          "domain": "fenwickelliott.com",
-          "label": ""
-        },
-        {
-          "url": "https://www.buildinglawmonthly.com/legislation/amendments-to-housing-grants-construction-and-regeneration-act-1996-brought-into-force-52462.htm",
-          "domain": "buildinglawmonthly.com",
-          "label": ""
-        },
-        {
-          "url": "https://www.sra.org.uk/garfield-ai",
-          "domain": "sra.org.uk",
-          "label": ""
-        }
-      ]
-    },
-    {
       "name": "Will the value last, or evaporate?",
       "key": "value_durability",
-      "verdict": "unverifiable",
-      "confidence": 0.0,
-      "rationale": "The passages confirm that holding back retention money is still standard practice in UK construction contracts as of February 2025, at the 3-5% level the candidate describes, so the cash the tool would chase genuinely exists and no free or bundled alternative is shown to have taken it.",
+      "verdict": "supported",
+      "confidence": 0.74,
+      "rationale": "UK tribunal cases (Iqbal v Uber London, Hussein v Uber, Manjang v Uber Eats) demonstrate ongoing, contested deactivations within the UK gig economy, confirming the problem persists. US evidence that drivers 'rarely get reinstated' through internal appeals indicates platform processes remain opaque and unfavourable, sustaining demand for third-party advocacy. No UK-based free or commoditised incumbent appeal service is documented in the passages (IDG is US-based), so the value is not shown to be already absorbed.",
       "sources": [
         {
-          "url": "https://gowlingwlg.com/en/insights-resources/articles/2024/new-secondary-legislation-to-mandate-reporting-on-retentions-in-the-construction-market",
-          "domain": "gowlingwlg.com",
-          "label": ""
+          "url": "https://www.gov.uk/employment-tribunal-decisions/mr-s-iqbal-v-uber-london-ltd-3202211-slash-2024",
+          "domain": "gov.uk",
+          "label": "Mr S Iqbal v Uber London Ltd: 3202211/2024, GOV.UK"
         },
         {
-          "url": "https://kjmltd.co.uk/knowledge-bank/retention-in-construction-contracts-a-fair-practice-or-an-unnecessary-burden",
-          "domain": "kjmltd.co.uk",
-          "label": ""
+          "url": "https://www.gov.uk/employment-tribunal-decisions/mr-z-hussein-v-uber-6010938-slash-2024",
+          "domain": "gov.uk",
+          "label": "Mr Z Hussein v Uber: 6010938/2024, GOV.UK"
         },
         {
-          "url": "https://www.designingbuildings.co.uk/wiki/Retention+in+construction+contracts",
-          "domain": "designingbuildings.co.uk",
-          "label": ""
+          "url": "https://www.personneltoday.com/hr/uber-eats-settles-drivers-facial-recognition-discrimination-claim/",
+          "domain": "personneltoday.com",
+          "label": "Uber Eats settles driver's facial recognition discrimination claim"
         },
         {
-          "url": "https://gowlingwlg.com/en-gb/insights-resources/articles/2026/uk-government-proposes-ban-on-retention-payments-in-construction-contracts",
-          "domain": "gowlingwlg.com",
-          "label": ""
+          "url": "https://www.yahoo.com/news/articles/taxi-workers-alliance-wants-more-223100835.html",
+          "domain": "yahoo.com",
+          "label": "Taxi Workers Alliance wants more protection for Uber, Lyft drivers who get booted from app"
         },
         {
-          "url": "https://www.mills-reeve.com/publications/retentions-reform-and-the-uk-new-late-payment-crackdown-what-this-means-for-construction-projects/",
-          "domain": "mills-reeve.com",
-          "label": ""
+          "url": "https://driversguild.org/deactivation/",
+          "domain": "driversguild.org",
+          "label": "Deactivation Representation, IDG"
         },
         {
-          "url": "https://www.osborneclarke.com/insights/uk-government-ban-construction-retentions-and-tighten-late-payment-rules",
-          "domain": "osborneclarke.com",
+          "url": "https://www.lni.wa.gov/news-events/article/23-26",
+          "domain": "lni.wa.gov",
           "label": ""
         }
       ]
@@ -230,151 +94,160 @@
     {
       "name": "Do incumbents already own the space?",
       "key": "incumbency",
+      "verdict": "supported",
+      "confidence": 0.73,
+      "rationale": "No passage shows a dominant UK incumbent or funded rival productising gig-deactivation appeals. The platform's own internal review is described as barely functional and one-sided for drivers, while Acas is a broad free employment-advice service with no evidence it covers contractor-on-platform disputes, and IWGB legal help is gated behind union membership and not presented as a specialist appeal engine. The UK gig-deactivation appeal niche therefore appears open in these passages.",
+      "sources": [
+        {
+          "url": "https://www.metaintro.com/blog/gig-driver-deactivation-appeal-rights-2026",
+          "domain": "metaintro.com",
+          "label": ""
+        },
+        {
+          "url": "https://www.acas.org.uk/",
+          "domain": "acas.org.uk",
+          "label": "Acas | Making working life better for everyone in Britain"
+        },
+        {
+          "url": "https://iwgb.org.uk/en/page/support-and-advice/",
+          "domain": "iwgb.org.uk",
+          "label": "Support and advice · IWGB"
+        },
+        {
+          "url": "https://www.acas.org.uk/advice",
+          "domain": "acas.org.uk",
+          "label": "Advice | Acas"
+        }
+      ]
+    },
+    {
+      "name": "Can the payer actually pay?",
+      "key": "payer_solvency",
       "verdict": "unverifiable",
-      "confidence": 0.7,
-      "rationale": "The passages show that construction payment software exists in the UK, Payapps handles subcontractor applications for payment and integrates with accounting/ERP systems, and another product processes progress billings and pays subcontractors with retention deducted, but none of them is described as chasing overdue retention for subcontractors or filing adjudication, and no passage gives any market-share or customer-count figure.",
+      "confidence": 0.73,
+      "rationale": "The ASHE earnings tables contain only cookie consent screens with no actual wage data, and the remaining passages either describe generic financial-hardship concepts or US-specific retirement withdrawal rules. No passage provides the earnings or disposable income of UK gig workers aged 18-27, so affordability of a £49.99 one-time fee cannot be determined from this evidence.",
       "sources": [
         {
-          "url": "https://www.getyooz.com/en-gb/blog/construction-accounts-payable",
-          "domain": "getyooz.com",
-          "label": ""
-        },
-        {
-          "url": "https://fynex.ai/construction/",
-          "domain": "fynex.ai",
-          "label": ""
-        },
-        {
-          "url": "https://www.researchgate.net/publication/360963312_Late_payment_to_subcontractors_in_the_construction_industry",
-          "domain": "researchgate.net",
-          "label": ""
-        },
-        {
-          "url": "https://www.payapps.com/uk/",
-          "domain": "payapps.com",
-          "label": ""
-        },
-        {
-          "url": "https://www.pbctoday.co.uk/news/digital-construction-news/construction-software-news/access-coins-payapps-integration-transform-construction-industry-payments/157872/",
-          "domain": "pbctoday.co.uk",
-          "label": ""
-        },
-        {
-          "url": "https://www.capterra.com/p/238884/Payapps/",
-          "domain": "capterra.com",
-          "label": ""
-        }
-      ]
-    },
-    {
-      "name": "Is real money flowing here today?",
-      "key": "currency",
-      "verdict": "supported",
-      "confidence": 0.65,
-      "rationale": "The passages show the underlying practice is current, retention is described as commonly used in construction contracts today, and that the rules governing payment down the supply chain are actively changing, with the Procurement Act 2023 taking effect in October 2024 and commentary on supplier-to-subcontractor payment terms dated November 2025.",
-      "sources": [
-        {
-          "url": "https://www.designingbuildings.co.uk/wiki/Retention_in_construction_contracts",
-          "domain": "designingbuildings.co.uk",
-          "label": ""
-        },
-        {
-          "url": "https://www.dacbeachcroft.com/en/What-we-think/Is-retention-reform-really-on-the-way",
-          "domain": "dacbeachcroft.com",
-          "label": ""
-        },
-        {
-          "url": "https://www.gov.uk/government/collections/procurement-act-2023-guidance-documents",
-          "domain": "gov.uk",
-          "label": ""
-        },
-        {
-          "url": "https://www.wardhadaway.com/insights/procurement-in-a-nutshell/procurement-in-a-nutshell-supply-chain-payment-terms/",
-          "domain": "wardhadaway.com",
-          "label": ""
-        },
-        {
-          "url": "https://www.brownejacobson.com/insights/the-evolution-of-sub-contracting-under-the-procurement-act-2023",
-          "domain": "brownejacobson.com",
-          "label": ""
-        }
-      ]
-    },
-    {
-      "name": "Is anyone actually trying to buy this?",
-      "key": "buyer_intent",
-      "verdict": "supported",
-      "confidence": 0.72,
-      "rationale": "The passages are how-to material written for people trying to get retention money back, a dated guide telling them to submit a formal request for release, advice on keeping per-contract records to improve their chances, and step-by-step guides to using the statutory 28-day adjudication process to recover retention when disputes arise.",
-      "sources": [
-        {
-          "url": "https://hklegal.co.uk/newsroom/the-problem-with-retention-and-how-it-can-be-solved/",
-          "domain": "hklegal.co.uk",
-          "label": ""
-        },
-        {
-          "url": "https://go-legal.co.uk/understanding-retention-in-construction-projects/?srsltid=AfmBOorveapVcR3WGtNCIrwHtdID1qNDzlPQ0p2uYDWObI6tYgYMPL7K",
-          "domain": "go-legal.co.uk",
-          "label": ""
-        },
-        {
-          "url": "https://www.theaccessgroup.com/en-gb/construction/resources/retention-in-construction/",
-          "domain": "theaccessgroup.com",
-          "label": ""
-        },
-        {
-          "url": "https://hayhills.com/retention-disputes-a-complete-guide/",
-          "domain": "hayhills.com",
-          "label": ""
-        },
-        {
-          "url": "https://hayhills.com/construction-adjudication/",
-          "domain": "hayhills.com",
-          "label": ""
-        },
-        {
-          "url": "https://sitekiln.co.uk/guide/adjudication-step-by-step",
-          "domain": "sitekiln.co.uk",
-          "label": ""
-        }
-      ]
-    },
-    {
-      "name": "Do its own claims hold up to checking?",
-      "key": "claims_verifiable",
-      "verdict": "refuted",
-      "confidence": 0.7,
-      "rationale": "The passages do confirm the basic mechanics the pitch rests on, main contractors hold retention money under standard JCT and NEC building contracts, disputes over it are common, and adjudication is a recognised way to recover it.",
-      "sources": [
-        {
-          "url": "https://www.ons.gov.uk/businessindustryandtrade/constructionindustry/articles/constructionstatistics/latest",
+          "url": "https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/adhocs/2511annualsurveyofhoursandearningsasheestimatesofgrossbasicweeklyandannualearningsforspecifiedoccupationsengland2023and2024",
           "domain": "ons.gov.uk",
           "label": ""
         },
         {
-          "url": "https://www.ons.gov.uk/businessindustryandtrade/constructionindustry",
+          "url": "https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/datasets/earningsandhoursworkedbyindustryandoccupationashetable29",
           "domain": "ons.gov.uk",
           "label": ""
         },
         {
-          "url": "https://www.gov.uk/government/statistics/construction-statistics-great-britain-2024",
-          "domain": "gov.uk",
+          "url": "https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/adhocs/3139annualsurveyofhoursandearningsasheestimatesofgrossbasicweeklyandannualearningsforspecifiedoccupationsengland2024and2025",
+          "domain": "ons.gov.uk",
           "label": ""
         },
         {
-          "url": "https://www.dentons.com/en/insights/articles/2026/june/2/the-proposed-retention-ban-and-other-new-payment-legislation/",
-          "domain": "dentons.com",
+          "url": "https://www.latitudefinancial.com.au/hardship-care/",
+          "domain": "latitudefinancial.com.au",
           "label": ""
         },
         {
-          "url": "https://hayhills.com/retention-disputes-a-complete-guide/",
-          "domain": "hayhills.com",
+          "url": "https://www.reachlink.com/advice/stress/what-gig-work-actually-does-to-your-sense-of-self/",
+          "domain": "reachlink.com",
           "label": ""
         },
         {
-          "url": "https://www.mills-reeve.com/publications/retentions-reform-and-the-uk-new-late-payment-crackdown-what-this-means-for-construction-projects/",
-          "domain": "mills-reeve.com",
+          "url": "https://www.consumeraffairs.com/finance/hardship-loans.html",
+          "domain": "consumeraffairs.com",
           "label": ""
+        }
+      ]
+    },
+    {
+      "name": "Is there a route to reach the market?",
+      "key": "distribution",
+      "verdict": "supported",
+      "confidence": 0.73,
+      "rationale": "The passages show existing high-traffic channels where deactivated UK gig workers already gather: Facebook groups with more than 100,000 subscribers trading Deliveroo/Uber Eats accounts, and an IWGB mobilisation reaching around 200 drivers protesting unfair dismissals. These demonstrate that a solo operator can reach a large, self-identified buyer pool through low-friction routes (social groups, union networks), and the existence of a live US deactivation-help phone service further confirms the channel is executable.",
+      "sources": [
+        {
+          "url": "https://liveapp.inews.co.uk/2024/03/15/inside-the-thriving-black-market-for-illicit-deliveroo-uber-eats-and-just-eat-drivers/content.html",
+          "domain": "liveapp.inews.co.uk",
+          "label": "Inside the thriving black market for illicit Deliveroo and Uber Eats drivers"
+        },
+        {
+          "url": "https://inews.co.uk/news/deliveroo-uber-eats-just-eat-illegal-worker-accounts-2956956",
+          "domain": "inews.co.uk",
+          "label": ""
+        },
+        {
+          "url": "https://www.independent.co.uk/news/business/uber-deliveroo-drivers-disdmissed-jobs-b1890628.html",
+          "domain": "independent.co.uk",
+          "label": "Uber and Deliveroo drivers protest over hundreds of ‘unfair’ dismissals | The Independent"
+        },
+        {
+          "url": "https://consumerescalationservices.com/consumer-insights/rideshare-delivery-app-deactivation-help",
+          "domain": "consumerescalationservices.com",
+          "label": "Rideshare or Delivery App Deactivation Help Guide | Consumer Escalation Services"
+        }
+      ]
+    },
+    {
+      "name": "Is there a legal landmine?",
+      "key": "legality",
+      "verdict": "unverifiable",
+      "confidence": 0.71,
+      "rationale": "The passages discuss UK employment tribunal representation rights, lay representatives, and wasted costs orders, but none address whether third-party appeal-writing services for gig platform deactivations are lawful. The gig economy context (Uber, DoorDash, Instacart) is not covered, and the passages do not establish whether such a service would breach platform terms or require legal qualification.",
+      "sources": [
+        {
+          "url": "https://www.ms-solicitors.co.uk/employee/employment-tribunal-services/",
+          "domain": "ms-solicitors.co.uk",
+          "label": ""
+        },
+        {
+          "url": "https://self-representation.org.uk/who-can-represent-you-at-an-employment-tribunal/",
+          "domain": "self-representation.org.uk",
+          "label": ""
+        },
+        {
+          "url": "https://workingfamilies.org.uk/articles/calculating-damages-and-compensation/",
+          "domain": "workingfamilies.org.uk",
+          "label": ""
+        },
+        {
+          "url": "https://assets.publishing.service.gov.uk/media/66d1a2e1bdecebe01a1833ab/Ms_Sheilla_Gomes_-v-_Guys_and_St_Thomas_NHS_Foundation_Trust__2303791-2022_18-Aug-2024_Wasted_Costs_Order_.pdf",
+          "domain": "assets.publishing.service.gov.uk",
+          "label": ""
+        },
+        {
+          "url": "https://www.bailii.org/uk/cases/UKET/2023/4103197_2022.pdf",
+          "domain": "bailii.org",
+          "label": ""
+        },
+        {
+          "url": "https://tribunalsdecisions.service.gov.uk/utiac/37543",
+          "domain": "tribunalsdecisions.service.gov.uk",
+          "label": "Tribunal decisions"
+        }
+      ]
+    },
+    {
+      "name": "Is the pain real, or imagined?",
+      "key": "pain_reality",
+      "verdict": "supported",
+      "confidence": 0.76,
+      "rationale": "The passages establish that platform deactivation is a real and acute problem: Uber Eats drivers have been locked out by facial-recognition checks, drivers have sued over automated deactivation in the Netherlands, and hundreds staged a London strike explicitly demanding 'reinstatement of unfairly deactivated drivers'.",
+      "sources": [
+        {
+          "url": "https://www.bbc.co.uk/news/technology-68655429",
+          "domain": "bbc.co.uk",
+          "label": "Payout for Uber Eats driver over face scan bias case, BBC News"
+        },
+        {
+          "url": "https://www.bbc.com/news/business-54698858",
+          "domain": "bbc.com",
+          "label": "Uber sued by drivers over ‘automated robo-firing'"
+        },
+        {
+          "url": "https://time.com/6104844/uber-facial-recognition-racist/",
+          "domain": "time.com",
+          "label": "Uber Drivers Say a 'Racist' Algorithm Is Putting Them Out of Work"
         }
       ]
     }
@@ -395,7 +268,7 @@
         {
           "type": "callout",
           "nodes": [
-            "UK subcontracting firms (typically 1-50 staff electricians, plumbers, bricklayers, joiners, groundworkers, plasterers, roofers) working on construction projects where main contractors hold retention. They are paid less per job than main contractors, are squeezed on margin, and have multiple live contracts with held-back cash they rarely chase"
+            "Gig worker aged 18–27 who has been deactivated and sees the service as a lifeline to restore their primary income source, paying from their remaining cash buffer (often $49–$99)"
           ]
         },
         {
@@ -413,7 +286,7 @@
         {
           "type": "p",
           "nodes": [
-            "The collapse of large main contractors since 2018 (Carillion, Berkeley, ISG, numerous mid-tier firms) has left retention money trapped in insolvent estates, with subbies waiting years for a fraction of what they are owed. The Construction Industry Fairness Charter (2024) and the Procurement Act 2023 are pushing the industry toward audited, faster release. Adjudication is the only statutory route that forces release in 28 days and is enforceable as a court order, so the value of an automated chase-and-adjudicate tool rises as more main contractors use insolvency to delay payment."
+            "Growing gig workforce, increasing number of algorithmically‑driven deactivations with limited human recourse, and a small but highly motivated body of workers who will pay for a better shot at reinstatement."
           ]
         },
         {
@@ -422,7 +295,7 @@
         {
           "type": "h2",
           "nodes": [
-            "What we found — 4 of the 6 things that hold up"
+            "What we found — 4 things that hold up"
           ]
         },
         {
@@ -432,19 +305,19 @@
               {
                 "tag": "strong",
                 "children": [
-                  "Is the problem real?"
+                  "Will this still be worth money later?"
                 ]
               },
-              " Main contractors in the UK routinely withhold a percentage of subcontractors' money — commonly 5% of the subcontract sum — until milestones are met, unpaid subcontractors cause serious cash flow problems, and Carillion's 2018 collapse left a trail of unpaid retentions with money outstanding across the UK."
+              " UK tribunal cases (Iqbal v Uber London, Hussein v Uber, Manjang v Uber Eats) demonstrate ongoing, contested deactivations within the UK gig economy, confirming the problem persists."
             ],
             [
               {
                 "tag": "strong",
                 "children": [
-                  "Can the customer afford it?"
+                  "Is someone already doing this well?"
                 ]
               },
-              " The FMB/CIOB State of Trade Survey shows UK construction SMEs are still growing, though momentum is slowing, so these firms are trading businesses rather than failing ones; and with the UK sector reported at the world's lowest average margin of 3.9%, a 3-5% sum held back is worth more than a typical job's entire profit, which gives owners a strong reason to chase it."
+              " No passage shows a dominant UK incumbent or funded rival productising gig-deactivation appeals."
             ],
             [
               {
@@ -453,16 +326,16 @@
                   "Can you actually reach the customer?"
                 ]
               },
-              " The Federation of Master Builders is the UK's largest trade association for small and medium construction firms, with a vetted membership it already reaches through business-support services and time-saving tools for day-to-day admin — a ready-made, concentrated audience of exactly the small firms this product targets."
+              " Existing high-traffic channels where deactivated UK gig workers already gather: Facebook groups with more than 100,000 subscribers trading Deliveroo/Uber Eats accounts, and an IWGB mobilisation reaching around 200 drivers protesting unfair dismissals."
             ],
             [
               {
                 "tag": "strong",
                 "children": [
-                  "Is it legal?"
+                  "Is the problem real?"
                 ]
               },
-              " UK law itself creates the mechanism this business relies on: the Housing Grants, Construction and Regeneration Act 1996 amended the law on construction contracts, its Section 108 gives a construction adjudicator jurisdiction to decide disputes, and the 2009 Act amendments to it took effect on 1 October."
+              " Platform deactivation is a real and acute problem: Uber Eats drivers have been locked out by facial-recognition checks, drivers have sued over automated deactivation in the Netherlands, and hundreds staged a London strike explicitly demanding 'reinstatement of unfairly deactivated drivers'."
             ]
           ]
         },
@@ -485,27 +358,19 @@
               {
                 "tag": "strong",
                 "children": [
-                  "Can the claims be checked?"
+                  "Can the customer afford it?"
                 ]
-              }
+              },
+              " The ASHE earnings tables contain only cookie consent screens with no actual wage data, and the remaining passages either describe generic financial-hardship concepts or US-specific retirement withdrawal rules."
             ],
             [
               {
                 "tag": "strong",
                 "children": [
-                  "Is someone already doing this well?"
+                  "Is it legal?"
                 ]
               },
-              " Construction payment software exists in the UK — Payapps handles subcontractor applications for payment and integrates with accounting/ERP systems, and another product processes progress billings and pays subcontractors with retention deducted — but none of them is described as chasing overdue retention for subcontractors or filing adjudication, and no passage gives any market-share or customer-count figure."
-            ],
-            [
-              {
-                "tag": "strong",
-                "children": [
-                  "Will this still be worth money later?"
-                ]
-              },
-              " Holding back retention money is still standard practice in UK construction contracts as of February 2025, at the 3–5% level the candidate describes, so the cash the tool would chase genuinely exists and no free or bundled alternative is shown to have taken it."
+              " UK employment tribunal representation rights, lay representatives, and wasted costs orders, but none address whether third-party appeal-writing services for gig platform deactivations are lawful."
             ]
           ]
         },
@@ -565,31 +430,7 @@
         {
           "type": "p",
           "nodes": [
-            "UK construction holds between £3bn and £5bn of retention money at any time. When a sub-contractor (electrician, plumber, bricklayer, joiner) sends an invoice, the main contractor typically holds back 3-5% until practical completion and the end of the defects period, usually 12 to 24 months later. The subbie is owed the money but rarely chases it, because the process is admin-heavy and they fear losing future work with the main contractor."
-          ]
-        },
-        {
-          "type": "p",
-          "nodes": [
-            "The subbie does have a legal right to release. The Construction Act (Housing Grants, Construction and Regeneration Act 1996, as amended by the Local Democracy, Economic Development and Construction Act 2009) gives them the right to enforce payment through a fast-track 28-day binding decision called adjudication. A court will enforce the adjudicator's ruling, and the adjudicator's decision is binding even if the main contractor disputes it. The catch is that the subbie must follow the contract's exact notice procedure, build the right evidence pack, and file the adjudication correctly. Most subbies do not bother, so the main contractor keeps the cash for free."
-          ]
-        },
-        {
-          "type": "p",
-          "nodes": [
-            "RetainRelease does the chasing automatically. The subbie enters each contract (main contractor name, contract value, retention percentage, defects period end date) and the tool tracks the release date for every job. As the date approaches, it sends the contractually-required chase letter with the evidence pack attached: architect's certificate or practical completion statement, snagging list signed off, any contractual notices already served. If the main contractor disputes or simply does not respond within the contractual window, the tool files the 28-day adjudication with a partner construction lawyer who specialises in the route."
-          ]
-        },
-        {
-          "type": "p",
-          "nodes": [
-            "The value compounds as enforcement gets more aggressive. Since 2018, the collapse of Carillion, ISG, and dozens of mid-tier main contractors has left retention money trapped in insolvent estates where insolvency practitioners distribute to secured creditors first and subbies last. The government's Construction Industry Fairness Charter (launched 2024) and HMRC's increased scrutiny of retention practices are pushing the industry toward faster, audited release. Adjudication is increasingly the only way to recover retention before the insolvency practitioner distributes assets. The courts and the regulator can publish guidance and run free first-party templates, but they cannot run a commercial retention chaser, cannot take a commercial side against a main contractor, cannot hold the cross-main-contractor dataset that RetainRelease builds, and cannot serve the subbie adversarially to the duty-imposer."
-          ]
-        },
-        {
-          "type": "p",
-          "nodes": [
-            "The durable wedge is the proprietary dataset of main contractor retention release behaviour. Each release adds a data point: which main contractors release on time, which dispute, which require adjudication, which pay after the adjudicator's ruling. New subbies use the dataset to choose which main contractors to work for before signing. Insurers and quantity surveyors use it to price credit risk. Late copiers cannot catch up because the data compounds with every contract."
+            "Transplanting the structure of successful school admission appeals into the gig economy: a solo operator collects crowdsourced deactivation case data, identifies winning patterns, and converts a worker’s raw narrative into a legally persuasive subscriber‑ready dossier, charging a flat fee only if the appeal is filed."
           ]
         },
         {
@@ -607,7 +448,7 @@
         {
           "type": "p",
           "nodes": [
-            "This is a prosumer tool. The market it was checked against is the UK."
+            "This is a service sold as a fixed package rather than by the hour. The market it was checked against is the UK."
           ]
         },
         {
@@ -625,20 +466,13 @@
         {
           "type": "p",
           "nodes": [
-            "We searched for who is already serving this market and could not settle it. What follows is what we actually read, so you can pick up where the search stopped rather than start it again."
+            "Somebody is already doing a version of this, and that is the useful finding. It means the problem is real enough that a business formed around it. It does not mean the field is closed, and it does not mean your version wins. Read who they are and decide which part of the job they are not doing."
           ]
         },
         {
           "type": "p",
           "nodes": [
-            "What the reading of the field concluded, and why, is set out in ",
-            {
-              "tag": "strong",
-              "children": [
-                "What would sink this"
-              ]
-            },
-            " with everything else that argues against starting. What follows here is the evidence itself."
+            "No passage shows a dominant UK incumbent or funded rival productising gig-deactivation appeals. The platform's own internal review is described as barely functional and one-sided for drivers, while Acas is a broad free employment-advice service with no evidence it covers contractor-on-platform disputes, and IWGB legal help is gated behind union membership and not presented as a specialist appeal engine. The UK gig-deactivation appeal niche therefore appears open in these passages."
           ]
         },
         {
@@ -658,35 +492,35 @@
         },
         {
           "type": "source",
-          "host": "fynex.ai",
+          "host": "metaintro.com",
           "year": "",
           "label": "",
-          "url": "https://fynex.ai/construction/",
-          "quote": "The money layer for construction platforms and contractors. Collect progress billings, pay subcontractors and suppliers with retention and … [passage cut here; the rest is on the page linked above.]"
+          "url": "https://www.metaintro.com/blog/gig-driver-deactivation-appeal-rights-2026",
+          "quote": "Washington and New York give the strongest deactivation protections, while most states offer little. Save your earnings records and message screenshots now, before you ever get cut off. For thousands of Uber and Lyft drivers, a single app notification can end their income overnight."
         },
         {
           "type": "source",
-          "host": "payapps.com",
+          "host": "acas.org.uk",
           "year": "",
-          "label": "",
-          "url": "https://www.payapps.com/uk/",
-          "quote": "Discover why construction professionals in the UK and globally are using Payapps to streamline their management of subcontractor applications for payment. Construction software for easy management of subcontractor applications for payment."
+          "label": "established organisation",
+          "url": "https://www.acas.org.uk/",
+          "quote": "Making working life better for everyone in Britain Acas gives employees and employers free, impartial advice on workplace rights, rules and best practice. We also offer training and help to resolve disputes."
         },
         {
           "type": "source",
-          "host": "pbctoday.co.uk",
+          "host": "iwgb.org.uk",
           "year": "",
           "label": "",
-          "url": "https://www.pbctoday.co.uk/news/digital-construction-news/construction-software-news/access-coins-payapps-integration-transform-construction-industry-payments/157872/",
-          "quote": "Payapps are thrilled to announce a game-changing partnership with Access Construction, integrating award-winning solutions Payapps and Access Coins ERP software. This strategic partnership marks a new era in financial management for all sizes of Coins customers."
+          "url": "https://iwgb.org.uk/en/page/support-and-advice/",
+          "quote": "Support and advice Union members who joined more than two months ago can access legal support from the IWGB Legal Department. To open a case, please use our online Casework form. Please use this form in relation to issues with your work."
         },
         {
           "type": "source",
-          "host": "capterra.com",
+          "host": "acas.org.uk",
           "year": "",
-          "label": "",
-          "url": "https://www.capterra.com/p/238884/Payapps/",
-          "quote": "Payapps includes invoice management, purchase order management, and accounting integration for financial tracking, along with contractor, subcontractor, and supplier management."
+          "label": "established organisation",
+          "url": "https://www.acas.org.uk/advice",
+          "quote": "Acas Acas's advice is for every worker and employer across England, Scotland and Wales. We advise on employment law and good practice. Pay and hours How to agree pay and working arrangements. Holiday and leave How workers can take time off."
         }
       ]
     }

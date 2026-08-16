@@ -327,6 +327,52 @@ def _scrub_our_grade(text: str) -> str:
     return out[:1].upper() + out[1:] if out else out
 
 
+#: The "How it scored" block as `render_markdown` emits it: a `---` rule, the heading, the
+#: composite line and the axis table, up to but NOT including the next `---`, which belongs
+#: to whatever section follows. Anchored on the heading rather than on the table so a pack
+#: whose table came out empty is still stripped.
+_SCORES_BLOCK_RE = re.compile(r"(?:\A|\n)-{3,}\n## How it scored\n.*?(?=\n-{3,}\n|\Z)", re.S)
+
+#: The PASS reason section, matched so the composite scrub reaches its BODY ONLY. The scoping
+#: is the point: `_COMPOSITE_CLAUSE` is `\bcomposite\s+\d`, and a pack about signage
+#: legitimately writes "aluminium composite 3mm". Running the scrub over a whole shipped
+#: document would silently edit a buyer's spec sheet, which is a worse defect than the leak.
+_PASS_REASON_SECTION_RE = re.compile(r"(## Why this passed\n\n)([^\n]*)")
+
+#: The KILL form of the same sentence. The renderer writes the reason into a blockquote
+#: under `> **Why we stopped:**` (:779) and scrubs it there under `include_our_grade=False`;
+#: this side handled only the PASS heading, so a KILL document kept `Composite 2.9500` — our
+#: internal number, to four decimal places, in the shipped file. It survived review because
+#: the pairing test read only `*.pass.json` off the author's own disk, so the KILL shape was
+#: never rendered on either side of the comparison.
+_KILL_REASON_SECTION_RE = re.compile(r"(> \*\*Why we stopped:\*\*\n> )([^\n]*)")
+
+
+def strip_our_grade_markdown(markdown: str) -> Optional[str]:
+    """Remove our grade from an ALREADY-SHIPPED report, or None if it is not there.
+
+    `render_markdown(..., include_our_grade=False)` is what keeps the scoresheet out of every
+    pack generated from now on. This is the same removal expressed as a transform on markdown
+    a pack ALREADY shipped, which is what the 61 live listings need: their bundles are
+    re-rendered from their own pre-conversion `.md`, and that markdown was written before the
+    fix existed.
+
+    The two are a deliberate PAIR rather than one function, because neither side has the
+    other's input: the generator holds a `Score` and no document, the backfill holds a
+    document and no `Score`. `test_strip_matches_what_the_renderer_omits` is what stops them
+    drifting — it asserts that stripping the `include_our_grade=True` render of a dossier
+    yields the `include_our_grade=False` render of that same dossier, character for character.
+
+    Returns None when there is nothing to strip, matching `rewrite_legacy_shelf_life`, so
+    `patched_md` treats both the same way and an already-clean pack is never rewritten twice.
+    """
+    text = str(markdown or "")
+    out = _SCORES_BLOCK_RE.sub("", text)
+    for pattern in (_PASS_REASON_SECTION_RE, _KILL_REASON_SECTION_RE):
+        out = pattern.sub(lambda m: m.group(1) + _scrub_our_grade(m.group(2)), out)
+    return None if out == text else out
+
+
 _AXIS_LABEL = {
     "pain_acuity": "How badly it hurts",
     "money_provability": "How provable the money is",
