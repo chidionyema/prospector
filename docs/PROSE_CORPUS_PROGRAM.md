@@ -202,6 +202,70 @@ human corpus on at least one measure.** No gate is armed; this is the number one
   writing. Both paragraph measures are printed but excluded from the distance metric
   (`structure.REPORTED_ONLY`) until packs are measured as the buyer reads them.
 
+### We are not handling complaints. Which findings actually transfer.
+
+FOS is the right genre match for the SHAPE of a pack — a claim, the evidence, a verdict,
+reasons. It is not the same job. An ombudsman adjudicates between two parties over disputed
+facts, under a statutory duty, for a reader who may appeal. We assess an opportunity from
+retrieved passages for a buyer deciding where to spend. Some of the gaps above are that
+difference showing up, and copying the human number would make our prose worse, not better.
+
+So the findings are tiered. Only tier A is a defect to fix.
+
+**Tier A — genre-independent. These are ours, and they would be wrong in any genre.**
+
+| finding | why it transfers |
+|---|---|
+| hyphens 12x (z=+13.6) | Nothing about assessing an opportunity requires compound stacking. This is a naming habit. |
+| `passages` / `the passages` / `none of` (G2 4004, 2956) | Meta-commentary about our own retrieval. A reader wants what is true, not what our corpus did. Wrong in every genre. |
+| commas 61 vs 32, semicolons 4.6 vs 0.75 (z=+2.8) | Clause density is a property of English sentences, not of adjudication. |
+| the 25-word ceiling in `voice.md` | The rule is stricter than professional English. Retiring it is a deletion, not a new rule. |
+
+**Tier B — real, but the human number is NOT our target.** Hedging: 3.51 per 1k against
+13.58. An ombudsman hedges because the facts are contested and both parties are reading. We
+rule from passages we actually fetched, and this engine already has a first-class way to say
+"we do not know" — the `unverifiable` verdict. So the direction is right (we assert more
+confidently than an accountable writer) and the magnitude is not transferable. The target is
+a judgement to be argued and written down, somewhere between 3.5 and 13.6, not the FOS mean
+copied across. **Do not gate on hedging until that number has an argument attached.**
+
+**Tier C — confounded. Do not act on these at all yet.**
+
+- **Type/token 0.52 vs 0.29.** HYPOTHESIS: this is mostly document length, not vocabulary
+  churn. Type/token ratio falls as a document grows, and our documents average ~654 words
+  against FOS's ~1,724. Our corpus also spans every sector while FOS is one domain, which
+  raises TTR again. THE CHECK THAT SETTLES IT: truncate the FOS documents to our mean length
+  and re-measure; if FOS TTR rises to near 0.52, the finding is arithmetic and dies. Until
+  that is run, this is not evidence of anything.
+- **Paragraph length.** Already excluded — it measures `build_ours`, not the writing.
+- **Subject-matter rows in the keyness table.** `uk`, `nhs`, `ai`, `data`, `tool`, `solo`
+  are what we write ABOUT, not how we write. A voice rule built from them would ban our own
+  subject matter. The table needs a topic filter before any rule is cut from it.
+
+### Integrating across the platform, deliberately
+
+Three surfaces, three genres. They do not share a target and must not share one.
+
+1. **Packs** — FOS is the reference. Tier A lands here first.
+2. **The storefront** (`store_platform/.../lib/copyConfig.ts`) — sales copy. A judicial
+   corpus is the wrong target for a headline that has to sell. It needs its own reference
+   corpus chosen before it gets any measured gate. Until then it keeps
+   `__tests__/copyRegister.test.tsx`.
+3. **Operator and ops surfaces** — internal. Out of scope. Measuring them would spend
+   effort where no buyer reads.
+
+**Production requirements before any of this gates a run**, because a linter that reaches
+the network or drifts silently is worse than the invented constant it replaces:
+
+- The measured target is a COMMITTED artifact (`corpora/structure.json` promoted into the
+  repo as a versioned target file). Lint time does no network I/O and reads no corpus.
+- The target file carries the corpus fingerprint it came from — document count, word count,
+  tokeniser version — so a number can always be traced to the measurement that produced it.
+- A test fails if the shipped target and the code that reads it disagree, so the constant
+  cannot rot the way `LONG_SENTENCE_WORDS = 25` did.
+- Every stage reports before it enforces, and enforcement is armed per measure, not all at
+  once. Tier A measures can arm. Tier B and C cannot.
+
 #### What is not yet done
 
 Stage 6 (delete the invented constants from `register_lint.py` and read the measured
