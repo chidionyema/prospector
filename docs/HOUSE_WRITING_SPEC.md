@@ -59,10 +59,20 @@ Numbered so the editing pass and the linter can cite them.
 
 **R9 token list:**
 
-> wedge · compounds · leverage · landscape · ecosystem · robust · seamless · unlock ·
+> wedge · compounds · leveraging · landscape · robust · seamless · unlock ·
 > durable advantage · moat · flywheel · at scale · game-changing · increasingly ·
 > rapidly evolving · it is worth noting · delve · foster · underscore · pivotal · crucial ·
 > testament to
+
+**`leverage` and `ecosystem` were removed from this list on 2026-08-15, by founder
+decision.** They were in the original draft. The bar for banning a word here is that it has
+no legitimate use anywhere in a catalogue that sells businesses in every sector, and both
+words clear it in the wrong direction: financial leverage and a supplier ecosystem are real
+subjects a pack may be ABOUT, and a ban on the noun stops a page saying what it is for.
+`leveraging` stays banned in their place — the tic is the -ing form, and "using" replaces it
+in every sentence it appears in. This settles open conflict 1 in the ledger below, in favour
+of `prospector/register_lint.py:64-71`, which had already excluded both on this reasoning
+before the spec was written.
 
 ---
 
@@ -303,9 +313,8 @@ ignorecase: true
 tokens:
   - wedge
   - compounds?
-  - leverage
+  - leveraging      # not bare `leverage` — see the R9 note in Part Two
   - landscape
-  - ecosystem
   - robust
   - seamless
   - unlock
@@ -433,18 +442,31 @@ does not improve the writing, it empties the catalogue.
 | Q4 attribution format | **nothing** | — | — | — | — |
 | Q5 absent quote is stated | `pack_floors` prints "What we could not settle" carrying what was found | render only, not gated | ADVISORY | — | 2026-08-15 |
 
-### Two open conflicts, both the founder's to settle
+### One settled, one still open
 
-1. **R9's word list.** The spec bans `moat`, `wedge`, `leverage`, `ecosystem` and `compounds`.
-   `register_lint.py:65-67` deliberately keeps `foster`, `leverage`, `bespoke` and `ecosystem`
-   OUT, on a stated bar: foster care, financial leverage, bespoke tailoring and a supplier
-   ecosystem are real subjects a pack may be about on a storefront that sells every sector.
-   `moat`, `wedge` and `compounds` are the engine's own house vocabulary and are the top three
-   hits in the corpus. Adopting the spec's list verbatim means accepting that a pack about
-   financial leverage cannot say so.
-2. **R1's ceiling.** The spec says 28 words. `register_lint.LONG_SENTENCE_WORDS` is 25 and is the
-   number wired to an actuator. Two limits, one rule; the report currently prints the rate at
-   both, and only the 25 can block.
+1. **R9's word list — SETTLED 2026-08-15, founder decision: unban `leverage` and `ecosystem`.**
+   The spec's draft R9 list banned both. `register_lint.py:64-71` had already excluded them on
+   a stated bar — a word is banned only if it has no legitimate use anywhere in a catalogue
+   that sells every sector, and financial leverage and a supplier ecosystem are real subjects
+   a pack may be ABOUT. The founder ruled for the code, so the spec was amended to match it:
+   both words are out of the R9 token list in Part Two, out of `styles/Mumchimp/Register.yml`,
+   and out of the Part Six config listing. `leveraging` replaces them, because the tic is the
+   -ing form and "using" substitutes for it everywhere. Pinned by
+   `test_leverage_and_ecosystem_are_not_banned_register`.
+
+   Two words the same reasoning also covers are still banned in the storefront lane and were
+   NOT part of this decision: `fosters?`/`fostering` and (in the pack lane) nothing further.
+   Foster care is a real sector. Say the word and it comes out on the same grounds.
+
+   `moat`, `wedge` and `compounds` stay banned. They are the engine's own house vocabulary,
+   not a sector's, and they are the top three hits in the corpus.
+2. **R1's ceiling — STILL OPEN.** The spec says 28 words. `register_lint.LONG_SENTENCE_WORDS`
+   is 25 and is the number wired to an actuator. Two limits, one rule; the report currently
+   prints the rate at both, and only the 25 can block. Deferred by the founder on 2026-08-15
+   ("we dont want catalogue unlisted … tackle this after"), so R1 stays shadow-first: at 43.9%
+   corpus violations, turning either ceiling on today unlists the catalogue rather than
+   improving a sentence. The input to that decision is the per-pack rate recorded from packs
+   the amended generator prompt writes, not the pre-change corpus.
 
 ## Adoption log
 

@@ -1539,6 +1539,15 @@ listing:
   max_clause_load_rate: 0.0             # R2
   max_four_item_list_rate: 0.0          # R4
   max_unsourced_figure_rate: 0.0        # R5
+  # ENGINE VOCABULARY IN THE BUYER'S PROSE. Added 2026-08-15, after the founder downloaded a
+  # live pack: "it has engine ifo like conposite score etc and even ai judge info". The score
+  # itself is gone from the zip (`pack_data.include_scorecard`, and four fields removed from
+  # manifest.jsonld); this catches the engine talking about itself in the WRITING, which no
+  # check had ever read — `INTERNAL_VOCAB` grades six shelf lines and stops there.
+  # Measured baseline on 296 live documents / 427,687 words: 24 hits, 0.06 per 1,000 words,
+  # every one the same shape ("value_durability 0.438, distribution 0.430").
+  engine_leak_block: false              # findings -> error
+  max_engine_leak_per_1k: 0.0           # rate ceiling; 0 = measure only
   # PAID-ARTIFACT CLAIM CHECK (artifacts.claim_check_blocks_listing). Added 2026-08-15.
   #
   # What it is: when build_spec / gtm_plan / ops_plan still carry claim-check violations after
@@ -1991,6 +2000,12 @@ artifacts:
 pack_data:
   enabled: true              # founder 2026-08-07 — the data files now ship in the bundle
   formats: [json, csv, svg]  # add xlsx / pdf once F3/F4 are exercised on a real pack
+  # Our grading of the idea, in the buyer's zip. OFF, founder 2026-08-15, on a pack
+  # downloaded from the live storefront: "it has engine ifo like conposite score etc".
+  # This drops scorecard.json, scorecard.csv and scorecard_radar.svg. The financial model
+  # and the price comparables still ship — those are the buyer's, the grade is ours.
+  # Turning this back on is a decision to show a buyer how we ranked what they bought.
+  include_scorecard: false
   chrome_path: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
 # Second dedup signal: content-word overlap (Jaccard, 0..1). Char ratio above is blind to
