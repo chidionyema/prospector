@@ -49,6 +49,11 @@ terms:
       # to explain what red means and what it cost last time.
       - docs/OPS_AUTOMATION_PRINCIPLES.md
       - docs/RUNBOOKS.md
+      # The programme ledger. Section 7 records the Paddle audit as completed work and names
+      # the branch that did it (`chore/remove-paddle`). Deleting those two rows would delete
+      # the evidence that the removal happened, which is what the ledger is for. The live
+      # risk table above carries no Paddle row: PAY-5 closed when the code went.
+      - docs/LAUNCH_OPS_PROGRAM.md
       # Tracked runtime state written by the engine and by pytest.
       - store/
       - storage/
