@@ -227,3 +227,55 @@ def test_the_console_view_returns_the_report_shape():
     for key in ("graded_packs", "rules", "blocking", "shadow",
                 "ready_to_promote", "never_observed", "coverage"):
         assert key in out, f"the console view is missing {key}"
+
+
+# ---- P5: the console is the actuator that promotes a rule -----------------------------------
+
+def test_every_rule_with_a_switch_is_promotable_from_the_console():
+    """P5. A rule the operator cannot switch on is a rule that stays in shadow forever, whatever
+    its breach rate says. The knob list is GENERATED from the registry so the two cannot drift."""
+    from prospector.ops import console_api
+
+    declared = {r.config_key for r in content_contract.RULES if r.config_key}
+    offered = {k["path"][1] for k in console_api.KNOBS if k["group"] == "content"}
+    assert declared == offered, (
+        f"rules the console cannot promote: {sorted(declared - offered)}; "
+        f"switches the console offers for no rule: {sorted(offered - declared)}"
+    )
+
+
+def test_a_shared_switch_names_every_rule_it_moves():
+    """`title_block_on_breach` moves `title` AND `title_claim`. An operator promoting one must
+    see they are promoting both, or the console has understated the blast radius."""
+    from prospector.ops import console_api
+
+    knob = console_api.KNOBS_BY_KEY["listing.title_block_on_breach"]
+    assert "title_claim" in knob["label"], knob["label"]
+    assert "title" in knob["label"]
+
+
+def test_the_content_knobs_are_booleans_under_listing():
+    from prospector.ops import console_api
+
+    for knob in (k for k in console_api.KNOBS if k["group"] == "content"):
+        assert knob["path"][0] == "listing", knob
+        assert knob["kind"] == "bool", knob
+        assert knob["help"], f"{knob['path']} has no help text"
+
+
+def test_the_content_group_is_rendered():
+    """A group missing from GROUP_ORDER is a panel the console never draws. Built and
+    unreachable, again."""
+    from prospector.ops import console_api
+
+    assert "content" in console_api.GROUP_ORDER
+    assert console_api.GROUP_BLURBS.get("content")
+
+
+def test_the_help_text_warns_against_promoting_on_no_evidence():
+    """The one thing an operator must not do here is flip a switch without reading the rate.
+    98% of packs breach two of these today."""
+    from prospector.ops import console_api
+
+    knob = console_api.KNOBS_BY_KEY["listing.house_spec_block_quotes"]
+    assert "content_rules" in knob["help"], "the help does not point at the evidence view"

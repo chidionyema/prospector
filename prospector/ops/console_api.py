@@ -1061,8 +1061,12 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
 # --------------------------------------------------------------------------- #
 #: Groups are named for what the knob DOES, not for its YAML path. An operator looking for "how
 #: many ideas per batch" should not have to know it is called `batch_size` under `schedule`.
-GROUP_ORDER = ["work", "evidence", "brains", "speed", "money"]
+GROUP_ORDER = ["work", "evidence", "brains", "speed", "money", "content"]
 GROUP_BLURBS = {
+    "content": ("Which content rules may REFUSE a pack. Every rule grades either way; these "
+                "switches decide whether a breach blocks the sale or only lands on the receipt. "
+                "Read `views content_rules` first — a rule breaching most packs will strand most "
+                "of the catalogue the moment it is promoted."),
     "work": "How much the engine takes on, and when it stops taking on more.",
     "evidence": "Where the engine looks for proof, and what counts as relevant.",
     "brains": "Which model rules a verdict. The highest blast radius in the portal.",
@@ -1153,6 +1157,52 @@ KNOBS: list[dict] = [
      "label": "Warn at (USD)", "kind": "float", "min": 0.0, "max": 1000.0,
      "help": "Where the alert rail fires, below the ceiling."},
 ]
+
+
+def _content_rule_knobs() -> list[dict]:
+    """P5's actuator: the switch that promotes a content rule from shadow to blocking.
+
+    GENERATED from `content_contract.RULES`, not typed out. There are 24 rules and a third of
+    them share an actuator, so hand-writing the entries is how the console ends up offering a
+    switch the gate no longer reads, or missing one it does. The registry is already the single
+    declaration of which config key drives which check; this reads it.
+
+    One entry per CONFIG KEY, not per rule, because `title`, `title_new_word` and `title_claim`
+    are three rules on one switch. The label names every rule the switch moves, so an operator
+    turning it on can see it is promoting three checks at once rather than the one they came for.
+    """
+    from prospector import content_contract
+
+    by_key: dict[str, list] = {}
+    for rule in content_contract.RULES:
+        if rule.config_key:
+            by_key.setdefault(rule.config_key, []).append(rule)
+
+    out: list[dict] = []
+    for key in sorted(by_key):
+        rules = by_key[key]
+        checks = ", ".join(sorted(r.check for r in rules))
+        default_on = any(r.enforced_by_default for r in rules)
+        out.append({
+            "path": ["listing", key], "group": "content", "kind": "bool",
+            "label": f"Enforce: {checks}",
+            "help": (
+                f"When on, the publish gate REFUSES a pack breaching {checks}. When off the "
+                f"finding is still recorded on the pack's lint receipt, so the breach rate "
+                f"accrues while the switch is down — that history is what `views content_rules` "
+                f"reports, and what makes promoting this an evidence-based decision instead of a "
+                f"guess. Check the rate before switching it on: on 2026-08-17 two shadow rules "
+                f"were breaching 98% of packs, so promoting either would have stranded almost "
+                f"the whole catalogue. "
+                f"{'On by default.' if default_on else 'Off by default (shadow).'}"
+            ),
+        })
+    return out
+
+
+# Appended rather than written inline so the generation stays one obvious block. `extend`, not a
+# second list, because `KNOBS_BY_KEY` below and every consumer of `KNOBS` must see one list.
+KNOBS.extend(_content_rule_knobs())
 
 KNOBS_BY_KEY: dict[str, dict] = {".".join(k["path"]): k for k in KNOBS}
 

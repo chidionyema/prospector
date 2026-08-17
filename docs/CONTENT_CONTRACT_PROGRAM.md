@@ -230,12 +230,12 @@ Append here. Each entry: what shipped, the receipt, and the stranded count befor
 | P2 | Enforcement at the field write | not started | — |
 | P3 | Generator reads the registry | **shipped** | `generate._shelf_line_directive`; 5 tests in `tests/unit/test_the_generator_is_told_the_shelf_rules.py` |
 | P4 | Park instead of buy | **shipped, measure-first** — logs always, parks only when `listing.park_unrepairable_shelf_lines` is on (default off) | `run._unrepaired_shelf_breaches`; 15 tests in `tests/unit/test_the_engine_does_not_buy_a_pack_the_gate_will_refuse.py` |
-| P5 | Ratchet + console promotion | not started | — |
+| P5 | Ratchet + console promotion | **promotion shipped** — 10 generated console switches; the automatic ratchet is still manual | `console_api._content_rule_knobs`, group `content` |
 | P6 | Breach recording | **shipped as a READER** — nothing new is written; the counts were already in the 123 `*.lint.json` receipts | `prospector/ops/content_breaches.py`; 22 tests in `tests/unit/test_content_breach_rates_come_from_the_receipts.py` |
 | P7 | Shipping fence | not started | — |
 | C1 | Console: stranded by rule | **ALREADY EXISTS** — do not rebuild | `console_api.py:823` `_read_shelf` returns `by_reason`, `by_repair`, `stale_verdicts`; rendered on `shelf.tsx` |
 | C2 | Console: breach rate per rule | **shipped** — `views content_rules` | `console_api._read_content_rules`, registered in `READS` |
-| C3 | Console: rules ready to promote | not started — blocked on P5 | — |
+| C3 | Console: rules ready to promote | **shipped** — `ready_to_promote` and `never_observed` on `views content_rules` | `content_breaches.breach_report` |
 | C4 | Console: shipping gap | partly in flight in PR #286 (console build age) | `scripts/live_checkout.py` |
 
 Two things the console already does that this programme must build on rather than beside:
@@ -342,3 +342,28 @@ module says so rather than offering a promotion it cannot justify.
 **Coverage, stated on the panel.** One receipt per pack GRADED, not per pack generated — a
 candidate that never reached the gate is not in the denominator. `by_day` is keyed on when a pack
 was linted, so a re-lint backfill lands on one day.
+
+
+### P5 as built, 2026-08-17 — promotion, not yet the ratchet
+
+**The switches are generated from the registry, not typed out.** `console_api._content_rule_knobs`
+reads `content_contract.RULES` and emits one console knob per CONFIG KEY, giving 10 switches in a
+new `content` group. Typing 24 near-identical entries by hand is how a console ends up offering a
+switch the gate no longer reads, or missing one it does.
+
+**One knob per switch, not per rule, and the label says so.** `title_block_on_breach` moves
+`title` AND `title_claim`; `house_spec_block_register` moves `register` AND `register_repeat`. The
+label names every rule the switch promotes, so an operator turning one on can see they are
+promoting two checks rather than the one they came for. A test pins that.
+
+**What is NOT built: the automatic ratchet.** P5 as specified also promotes a rule automatically
+once its breach rate has held at zero for a declared number of batches. That is deliberately not
+shipped. `ready_to_promote` is computed and empty, and it is empty for a good reason — three
+grading days of receipts is not enough evidence to auto-arm a gate on the money path. The
+threshold belongs in config once there is enough history to choose it, and choosing it now would
+be picking a number to make a table look finished. The operator promotes from the console today,
+with the rate in front of them.
+
+**`title_new_word` has no switch, and that is correct.** It carries no `config_key` because
+nothing in `lint_pack` gates it — it is enforced unconditionally. It shows as blocking at 41% in
+the table above. A knob for it would be a control that does nothing.
