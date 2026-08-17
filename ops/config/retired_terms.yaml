@@ -23,6 +23,10 @@ terms:
       - store_platform/src/Store.Catalog/Migrations/
       # The regression test that pins the removal: a stale config naming paddle must not boot.
       - store_platform/src/Store.Tests/Payments/MoneyRailConfigGateTests.cs
+      # Its sibling. `NonStripeProvider_RecordsNotApplicable` needs a provider name the gate
+      # does not know, and paddle is the one that was removed, so it is the honest fixture.
+      # The test asserts the rail reports `not-applicable` for it, which is the removal working.
+      - store_platform/src/Store.Tests/Payments/MoneyRailStatusTests.cs
       # The engine-side twin: an unknown provider must mint nothing.
       - tests/test_engine_bridge.py
       # This declaration, and the test that drives the engine.
