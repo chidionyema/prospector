@@ -302,22 +302,6 @@ def _mean_coverage(query: str, sources: list) -> float:
             if sources else 0.0)
 
 
-def _best_coverage(query: str, sources: list) -> float:
-    """Coverage of the SINGLE best source, not the average of all of them.
-
-    A check needs one passage that answers it. Averaging punishes a result set that
-    contains a perfect source alongside two weak ones, and that is the normal shape of
-    a web search. Measured 2026-08-16 over 1500 real cached result sets: the mean
-    clears the 0.35 floor 24.3% of the time, the best source 44.1%.
-    """
-    return max((relevance_score(query, s.text) for s in sources), default=0.0)
-
-
-#: How `FallbackSearchProvider` turns a result set into one coverage number, declared by
-#: `config.yaml retrieval.coverage_metric`. "mean" is the pre-2026-08-16 behaviour.
-COVERAGE_METRICS = {"best": _best_coverage, "mean": _mean_coverage}
-
-
 #: The verdict prompt reads only the first `VERDICT_PASSAGE_TRUNCATE` chars of each passage
 #: (`verify.py`). Anchoring the stored passage on a window of exactly that size is what makes
 #: the selection pay: optimising the 1500-char window instead and slicing its head made what
@@ -2149,8 +2133,7 @@ class FallbackSearchProvider(SearchProvider):
     def __init__(self, providers: list[tuple[str, SearchProvider]],
                  *, failure_threshold: int = 3, cooldown_s: float = 60.0,
                  clock=time.monotonic, health=None, min_relevance: float = 0.0,
-                 backstop_only: Optional[list[str]] = None,
-                 coverage_metric: str = "best"):
+                 backstop_only: Optional[list[str]] = None):
         if not providers:
             raise ValueError("FallbackSearchProvider needs at least one provider")
         from .health import get_health
@@ -2161,14 +2144,6 @@ class FallbackSearchProvider(SearchProvider):
         # See `config.Retrieval.min_relevance`. 0.0 keeps the pre-2026-08-14 behaviour
         # exactly: the first provider that answers wins, however off-topic its answer.
         self.min_relevance = float(min_relevance or 0.0)
-        # See `COVERAGE_METRICS`. An unknown name is a config typo, and silently falling
-        # back to a different metric would change every escalation decision invisibly.
-        if coverage_metric not in COVERAGE_METRICS:
-            raise ValueError(
-                f"retrieval.coverage_metric={coverage_metric!r} is not one of "
-                f"{sorted(COVERAGE_METRICS)}")
-        self.coverage_metric = coverage_metric
-        self._coverage = COVERAGE_METRICS[coverage_metric]
         self._breakers = {
             name: CircuitBreaker(name, failure_threshold=failure_threshold,
                                  cooldown_s=cooldown_s, clock=clock)
@@ -2241,7 +2216,7 @@ class FallbackSearchProvider(SearchProvider):
                 # failure — the provider is healthy (breaker success is already recorded
                 # above and is NOT reversed), it just answered a different question.
                 _t0 = time.monotonic()
-                cov = self._coverage(query, results)
+                cov = _mean_coverage(query, results)
                 cov_ms += int((time.monotonic() - _t0) * 1000)
                 if best is None or cov > best[0]:
                     best = (cov, name, results)
@@ -2441,9 +2416,7 @@ def make_provider(cfg, fixtures: dict | None = None) -> SearchProvider:
                                     cooldown_s=r.breaker_cooldown_s,
                                     min_relevance=float(getattr(r, "min_relevance", 0.0) or 0.0),
                                     backstop_only=list(
-                                        getattr(r, "backstop_only_providers", None) or ()),
-                                    coverage_metric=str(
-                                        getattr(r, "coverage_metric", "best") or "best")))
+                                        getattr(r, "backstop_only_providers", None) or ())))
     # Fetch the PAGE rather than ruling on the search snippet. Wrapped here, not inside
     # FallbackSearchProvider, because the line above skips that wrapper entirely on a
     # single-provider config. Never wrapped when fixtures are pinned: the golden-set harness
