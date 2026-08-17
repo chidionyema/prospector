@@ -80,14 +80,10 @@ jobs:
   # ──────────────────────────────────────────────────────────────────
   python:
     runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
@@ -100,10 +96,33 @@ jobs:
           restore-keys: |
             uv-${{ runner.os }}-
 
-      # Install from requirements.txt (there is no pyproject.toml, so `uv sync`
-      # cannot be used). --system installs into the setup-python interpreter.
+      # This used to be `actions/setup-python@v5` followed by `uv pip install --system`. Both
+      # halves broke when CI moved to our self-hosted Macs on 2026-08-16, and between then and
+      # 2026-08-17 not one run went green.
+      #
+      # setup-python: the macOS builds in actions/python-versions are not relocatable. Their
+      # installer writes to the hosted runner's fixed home, so the step ends with
+      # `mkdir: /Users/runner: Permission denied` and exit 1 (run 31955945283). Nothing in the
+      # workflow can grant that; the path belongs to a user who does not exist on our box.
+      #
+      # --system: with setup-python gone, "the system interpreter" on our Mac is
+      # /usr/local/bin/python3, one installation shared by all four runners AND by the founder's
+      # own shell. Four concurrent jobs pip-installing into one site-packages is a race, and it
+      # rewrites the machine's Python as a side effect of running CI.
+      #
+      # uv fixes both: it fetches its own interpreter into its writable cache and puts the
+      # dependencies in a venv inside the job's workspace, so jobs cannot collide and the box is
+      # left alone. One code path for hosted Ubuntu and for our Macs.
+      - name: Python ${{ env.PYTHON_VERSION }} in a per-job venv
+        run: |
+          uv venv --python "${PYTHON_VERSION}" .venv
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+          echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
+          .venv/bin/python --version
+
+      # There is no pyproject.toml, so `uv sync` cannot be used.
       - name: Install dependencies
-        run: uv pip install --system -r requirements.txt
+        run: uv pip install -r requirements.txt
 
       - name: Main test suite (excluding UI theme)
         # No -x. It stops at the first failure, so a run reports one problem and hides the
@@ -137,20 +156,25 @@ jobs:
   # ──────────────────────────────────────────────────────────────────
   engine:
     runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
       - name: Install uv
         uses: astral-sh/setup-uv@v3
 
+      # Same reason as the python job above: setup-python cannot install on our self-hosted
+      # Macs, and --system would write into the box's shared /usr/local Python.
+      - name: Python ${{ env.PYTHON_VERSION }} in a per-job venv
+        run: |
+          uv venv --python "${PYTHON_VERSION}" .venv
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+          echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
+          .venv/bin/python --version
+
       - name: Install dependencies
-        run: uv pip install --system -r requirements.txt
+        run: uv pip install -r requirements.txt
 
       # --no-tick: a runner has no .env and no spend ledger, so the dry-run tick would fail on
       # its environment instead of on the change. Checks 1, 2 and 4 still run, and the script
@@ -168,6 +192,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────
   dotnet:
     runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v4
@@ -183,17 +208,24 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore store_platform/src/Store.Tests/Store.Tests.csproj
 
+      # -m:1 disables MSBuild's multi-process node reuse. MSBuild otherwise starts one worker
+      # node per core: 12 on our self-hosted Mac, times up to four concurrent jobs, on 16 GB.
+      # Six of the last eleven dotnet jobs died in Build or Test, the signature being
+      # `MSB4166: Child node exited prematurely` — a worker killed under memory pressure, not a
+      # compile error. One node is slower per job and finishes, which is the trade that matters
+      # when the alternative is a red check that says nothing about the code.
       - name: Build
-        run: dotnet build store_platform/src/Store.Tests/Store.Tests.csproj --no-restore
+        run: dotnet build store_platform/src/Store.Tests/Store.Tests.csproj --no-restore -m:1
 
       - name: Test
-        run: dotnet test store_platform/src/Store.Tests/Store.Tests.csproj --no-build --verbosity normal
+        run: dotnet test store_platform/src/Store.Tests/Store.Tests.csproj --no-build --verbosity normal -m:1
 
   # ──────────────────────────────────────────────────────────────────
   # Next.js — build check on store platform
   # ──────────────────────────────────────────────────────────────────
   nextjs:
     runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 40
 
     defaults:
       run:
