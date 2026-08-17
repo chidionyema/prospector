@@ -20,7 +20,7 @@ today. I have picked the possible one and built against it, but the founder shou
 | Option | Verdict | Evidence |
 |---|---|---|
 | **A. A separate Next.js app on the laptop** (chosen) | Works | The console must read `store/prospector.db`, `store/scheduler/*`, `store/dossiers/*.json` and `config.yaml`. All four live on the founder's Mac. A local Node process can open them. |
-| **B. `/admin` inside the public storefront** | Impossible without new inbound network | `store_platform/src/Store.Web` is deployed to Fly.io as `prospector-store-web` (`deploy/fly/web.fly.toml:12`), 2 machines, London. Its Docker image contains only `.next/standalone`, `.next/static` and `public/` (`Dockerfile:64-66`). It has no filesystem access to the laptop and no route to it. Serving engine admin from Fly would mean opening an inbound port on the laptop — the exact thing `OPS_CONSOLE_PROGRAM.md` §10 forbids and §14.7 chose Tailscale to avoid. |
+| **B. `/admin` inside the public storefront** | Impossible without new inbound network | `store_platform/src/Store.Web` is deployed to Fly.io as `prospector-store-web` (`store_platform/deploy/fly/web.fly.toml:12`), 2 machines, London. Its Docker image contains only `.next/standalone`, `.next/static` and `public/` (`Dockerfile:64-66`). It has no filesystem access to the laptop and no route to it. Serving engine admin from Fly would mean opening an inbound port on the laptop — the exact thing `OPS_CONSOLE_PROGRAM.md` §10 forbids and §14.7 chose Tailscale to avoid. |
 
 So the console is a **second Next.js app in this repo**, at `store_platform/src/Ops.Console`,
 served from the laptop and reached over the tailnet, the same way Streamlit is reached today
@@ -538,7 +538,7 @@ writes. "Screen" is where the console surfaces it; **Run** means the console can
 | `tools/preview_packs.py` | read any pack in full without buying | R | `/catalogue/[id]` Show |
 | `tools/pack_defect_census.py` | count live packs carrying each defect | R | `/catalogue` Show |
 | `tools/floor_signature.py` | count deterministic-floor copy on the shelf | R | `/catalogue` Show |
-| `tools/pack_banner_probe.py` | live packs still showing a retired banner | R | `/catalogue` Show |
+| tools/pack_banner_probe.py **(not built)** | live packs still showing a retired banner | R | `/catalogue` Show |
 
 ### 8.3 Backfill and repair
 
