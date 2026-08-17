@@ -79,10 +79,14 @@ import { DEFAULT_MARKET, groupByMarket, packMarket, resolveMarket } from '@/lib/
 import { KIND_NOUN } from '@/lib/facets';
 import { useCopyVariant } from '@/lib/useCopyVariant';
 import { RESEARCH_STATS, killsSummary } from '@/lib/stats';
+import { resolveFlags, type Flags } from '@/lib/flags';
+import { FilterBar } from '@/components/discovery/FilterBar';
 
 interface HomeProps {
   packs: Pack[];
   stats: CatalogStats | null;
+  /** Resolved on the server, once, per request. See `lib/flags.ts` for why not `NEXT_PUBLIC_*`. */
+  flags: Flags;
   /** Discovery state decoded from the query string on the server, so a shared filtered link
    *  renders filtered in the HTML rather than flashing the whole catalogue first. */
   initialState: DiscoveryState;
@@ -753,6 +757,7 @@ function ShelfRows({
 
 function CatalogBrowser({
   packs,
+  flags,
   initialState,
   market,
   currency,
@@ -762,6 +767,7 @@ function CatalogBrowser({
   catalogUnavailable,
 }: {
   packs: Pack[];
+  flags: Flags;
   initialState: DiscoveryState;
   market: string;
   currency: Currency;
@@ -945,7 +951,7 @@ function CatalogBrowser({
    * and the chips two sources of truth, so the two render sites below are mutually exclusive
    * branches, never an either/or that can both be true.
    */
-  const shelfControls = (
+  const wizardControls = (
     <div ref={shelfControlsRef} className="mb-8 pt-8">
       {/* Named, because an unlabelled control panel sitting mid-shelf reads as debris. It says
           what it is FOR, which is the thing the old placement never had to say because it was
@@ -1052,6 +1058,49 @@ function CatalogBrowser({
       )}
     </div>
   );
+
+  /**
+   * The one filter system (MASTER-BRIEF §7), behind `flags.filterBar`.
+   *
+   * It is the whole of `wizardControls` above in one row: the same search trigger, the sector
+   * filter, the capability filter, a price ceiling and the sort -- all writing the same
+   * `DiscoveryState` through the same `apply`. There is no sector rail and no applied-chip row,
+   * because each control now shows its own selection; and no `StepFlow`, which is the deletion §7
+   * asks for.
+   *
+   * IT KEEPS `shelfControlsRef`. That ref is what `FilterFab` measures to know whether the reader
+   * has scrolled past the controls, and the fab is the only way back to them from four screens
+   * down. The bar is shorter than the stack it replaces, so it goes past the top of the viewport
+   * sooner, not later.
+   *
+   * The count and the freshness line come with it. They are a statement about the shelf rather
+   * than a control, so they sit under the bar rather than in it.
+   */
+  const barControls = (
+    <div ref={shelfControlsRef} className="mb-8 pt-8">
+      <FilterBar
+        packs={packs}
+        state={state}
+        onChange={apply}
+        sort={sort}
+        sortOptions={SORTS}
+        onSortChange={(value) => setSort(value as SortKey)}
+        currency={currency}
+        onOpenSearch={() => setOpen(true)}
+        searchTriggerRef={triggerRef}
+      />
+      <p className="mt-2 font-mono text-caption text-subtle">
+        {visible.length === packs.length
+          ? `${packs.length} packs in the catalogue`
+          : `${visible.length} of ${packs.length} packs match`}
+        {lastVerified && ` \u00b7 updated ${lastVerified.replace(/^Verified /, '')}`}
+      </p>
+    </div>
+  );
+
+  /* One name for both paths, so every render site below is untouched by the flag. §8 asks for the
+     two to coexist for a week of comparison before the wizard is deleted. */
+  const shelfControls = flags.filterBar ? barControls : wizardControls;
 
   if (packs.length === 0) {
     /* Two different facts, and they were rendered as one sentence until 2026-08-15. An empty
@@ -1494,20 +1543,28 @@ function CatalogBrowser({
       {/* Both portal to <body>, so they sit here at the page root rather than inside the shelf --
           their position in this tree does not decide where they paint, and putting them next to
           the palette keeps every page-level overlay in one place. */}
-      <FilterFab
-        anchorRef={shelfControlsRef}
-        endRef={shelfEndRef}
-        state={state}
-        open={filtersOpen}
-        onOpen={() => setFiltersOpen(true)}
-      />
-      <FilterSheet
-        packs={packs}
-        state={state}
-        onChange={apply}
-        open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-      />
+      {/* WIZARD PATH ONLY. `FilterSheet` renders `StepFlow`, so on the bar path it would be the
+          deleted control coming back through an overlay, and `FilterFab` exists to open it. The
+          bar's own scroll-back story is the reader scrolling up to a control that is one row tall
+          instead of four. */}
+      {!flags.filterBar && (
+        <>
+          <FilterFab
+            anchorRef={shelfControlsRef}
+            endRef={shelfEndRef}
+            state={state}
+            open={filtersOpen}
+            onOpen={() => setFiltersOpen(true)}
+          />
+          <FilterSheet
+            packs={packs}
+            state={state}
+            onChange={apply}
+            open={filtersOpen}
+            onClose={() => setFiltersOpen(false)}
+          />
+        </>
+      )}
     </>
   );
 }
@@ -1523,7 +1580,7 @@ function CatalogBrowser({
  * show the product.
  */
 
-export default function Home({ packs, stats, initialState, market, currency, personalised, viewedIds, catalogUnavailable }: HomeProps) {
+export default function Home({ packs, stats, flags, initialState, market, currency, personalised, viewedIds, catalogUnavailable }: HomeProps) {
   // The live "N live now" figure is rendered by <Heartbeat>, which takes `stats` directly, so the
   // duplicate `stats?.listed ?? packs.length` that used to sit here was computed and dropped.
   const { variant } = useCopyVariant();
@@ -1974,7 +2031,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
               say each thing once, sitewide. Twice on ONE screen is the loudest version of it. */}
         </div>
 
-        <CatalogBrowser packs={packs} initialState={initialState} market={market} currency={currency} personalised={personalised} viewedIds={viewedIds} featuredId={featured?.id} catalogUnavailable={catalogUnavailable} />
+        <CatalogBrowser packs={packs} flags={flags} initialState={initialState} market={market} currency={currency} personalised={personalised} viewedIds={viewedIds} featuredId={featured?.id} catalogUnavailable={catalogUnavailable} />
       </Section>
       </div>
 
@@ -2222,6 +2279,10 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (context)
   // Decoded server-side: out-of-vocabulary values in a hand-edited URL are dropped rather than
   // filtering the shelf down to nothing on a value no pack can ever carry.
   const initialState = decodeDiscoveryState(context.query);
+  /* Read from the request environment, not from a build-time constant, so the operator flips
+     a filter path with a restart instead of a redeploy. `?ff=filterbar` overrides for one
+     request. See `lib/flags.ts`. */
+  const flags = resolveFlags(process.env, context.query);
 
   // Same precedence order documented on `resolveMarket`: an explicit `?market=` (the switcher)
   // beats a stored cookie, which beats the edge-supplied country header, which beats "uk".
@@ -2296,6 +2357,7 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (context)
       props: {
         packs: fresh.packs,
         stats: fresh.stats,
+        flags,
         initialState,
         market,
         currency,
@@ -2315,6 +2377,7 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (context)
       props: {
         packs,
         stats,
+        flags,
         initialState,
         market,
         currency,
@@ -2337,6 +2400,7 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (context)
         props: {
           packs: cached.packs,
           stats: cached.stats,
+          flags,
           initialState,
           market,
           currency,
@@ -2351,6 +2415,7 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (context)
       props: {
         packs: [],
         stats: null,
+        flags,
         initialState,
         market,
         currency,

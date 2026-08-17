@@ -141,6 +141,7 @@ describe('matchReasons — why this pack fits the intent', () => {
       commitment: null,
       effort: null,
       mechanism: null,
+      maxPence: null,
       sector: null,
     });
     expect(reasons.length).toBeGreaterThan(0);
@@ -155,6 +156,7 @@ describe('matchReasons — why this pack fits the intent', () => {
       commitment: null,
       effort: null,
       mechanism: null,
+      maxPence: null,
       sector: null,
     });
     expect(reasons).toEqual([]);
@@ -168,6 +170,7 @@ describe('matchReasons — why this pack fits the intent', () => {
       commitment: 'part_time',
       effort: 'automatable',
       mechanism: null,
+      maxPence: null,
       sector: null,
     });
     expect(reasons.length).toBeLessThanOrEqual(2);

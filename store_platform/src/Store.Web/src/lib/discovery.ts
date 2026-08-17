@@ -49,6 +49,10 @@ export interface FacetedPack {
   advantages?: string[] | null;
   sourceCount?: number;
   verifiedAt?: string;
+  /** The catalogue's display price, e.g. "£49". Read by the price filter. */
+  price?: string | null;
+  /** The same figure in pence when the API sent it. Preferred over parsing `price`. */
+  pricePence?: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -71,6 +75,23 @@ export interface DiscoveryState {
   effort: Effort | null;
   commitment: Commitment | null;
   mechanism: Mechanism | null;
+  /**
+   * Price ceiling in pence, inclusive. `null` means no ceiling.
+   *
+   * A CEILING, NOT A BAND, AND THE CATALOGUE IS WHY. Measured on the live shelf on 2026-08-05 and
+   * recorded in `priceRange.ts`: 61 packs at £29 x5, £49 x48, £79 x5, £99 x1, £149 x1, £199 x1.
+   * Three fixed bands over that distribution puts 79% of the shelf in one of them, so two of the
+   * three controls would do nothing a reader can see. "Under £79" is also the question a buyer
+   * actually arrives with; "between £30 and £79" is not.
+   *
+   * The offered ceilings are DERIVED FROM THE SHELF (`priceCeilings` below), never declared here,
+   * for the reason `priceRange.ts` states at length: a price claim about the catalogue comes from
+   * the catalogue or it is not made. When the ladder in `config.yaml listing.pricing` moves, the
+   * control moves with it and nothing is deployed.
+   *
+   * Pence, so the URL value is an integer and the round-trip cannot lose a penny to float text.
+   */
+  maxPence: number | null;
 }
 
 export const EMPTY_DISCOVERY_STATE: DiscoveryState = {
@@ -81,6 +102,7 @@ export const EMPTY_DISCOVERY_STATE: DiscoveryState = {
   effort: null,
   commitment: null,
   mechanism: null,
+  maxPence: null,
 };
 
 /** URL parameter names, and the deterministic order `encodeDiscoveryState` writes them in. */
@@ -105,6 +127,7 @@ export function isFiltered(state: DiscoveryState): boolean {
   return (
     state.q.trim() !== '' ||
     state.advantage.length > 0 ||
+    state.maxPence !== null ||
     SINGLE_PARAMS.some(([kind]) => state[kind] !== null)
   );
 }
@@ -112,7 +135,9 @@ export function isFiltered(state: DiscoveryState): boolean {
 /** How many facet constraints (not counting the text query) are active. Drives the near-miss rule. */
 export function activeConstraintCount(state: DiscoveryState): number {
   return (
-    (state.advantage.length > 0 ? 1 : 0) + SINGLE_PARAMS.filter(([kind]) => state[kind] !== null).length
+    (state.advantage.length > 0 ? 1 : 0) +
+    (state.maxPence !== null ? 1 : 0) +
+    SINGLE_PARAMS.filter(([kind]) => state[kind] !== null).length
   );
 }
 
@@ -126,6 +151,7 @@ export function encodeDiscoveryState(state: DiscoveryState): string {
     const value = state[kind];
     if (value) params.set(param, value);
   }
+  if (state.maxPence !== null) params.set('maxp', String(state.maxPence));
   return params.toString();
 }
 
@@ -164,11 +190,22 @@ export function decodeDiscoveryState(input: string | QueryLike | undefined | nul
     .map((v) => v.trim())
     .filter((v): v is Advantage => (ADVANTAGE as readonly string[]).includes(v));
 
+  /* Same rule as the closed vocabularies below, applied to a number: a ceiling that is not a
+     positive integer is DROPPED rather than clamped. `?maxp=-1` or `?maxp=abc` from a hand-edited
+     or truncated URL becomes "no ceiling" and the reader sees the whole shelf, which is the
+     failure a stale link should have. Clamping would invent a filter nobody asked for. It is not
+     checked against the shelf's own ceilings: the shelf changes, and a link sent last week whose
+     ceiling is no longer an offered option must still filter to what it said it filtered to. */
+  const maxPenceRaw = Number(firstValue(query, 'maxp'));
+  const maxPence =
+    Number.isSafeInteger(maxPenceRaw) && maxPenceRaw > 0 ? maxPenceRaw : null;
+
   const state: DiscoveryState = {
     ...EMPTY_DISCOVERY_STATE,
     q: (firstValue(query, 'q') ?? '').trim(),
     // De-duplicate so `?adv=code,code` cannot double-count in the URL round-trip.
     advantage: Array.from(new Set(advantage)),
+    maxPence,
   };
 
   for (const [kind, param] of SINGLE_PARAMS) {
@@ -223,12 +260,48 @@ function matchesSingle(pack: FacetedPack, kind: SingleValuedKind, wanted: string
 }
 
 /**
+ * A pack's price in pence, or `null` when we cannot read one.
+ *
+ * `pricePence` is preferred because it is the figure the money rail itself holds; the display
+ * string is a rendering of it. Parsing the string is the fallback for a catalogue row that
+ * predates the field, and it strips everything that is not a digit or a dot, exactly as
+ * `fx.ts::parseGbp` and `priceRange.ts::gbp` already do -- three parsers that disagree about
+ * "£1,299.00" would be three different prices for one pack.
+ */
+export function pricePenceOf(pack: FacetedPack): number | null {
+  if (typeof pack.pricePence === 'number' && Number.isFinite(pack.pricePence)) {
+    return pack.pricePence;
+  }
+  if (!pack.price) return null;
+  const pounds = parseFloat(pack.price.replace(/[^0-9.]/g, ''));
+  if (!Number.isFinite(pounds)) return null;
+  return Math.round(pounds * 100);
+}
+
+/**
+ * True when the pack is at or under the ceiling.
+ *
+ * A PACK WHOSE PRICE WE CANNOT READ IS NOT FILTERED OUT, which is the opposite of the null rule
+ * for facets one function above, and deliberately so. An untagged pack genuinely is not "B2B", so
+ * hiding it under a B2B filter states nothing false. A pack with an unreadable price is not
+ * expensive -- we simply failed to parse our own field -- and hiding it turns a data defect into a
+ * product that cannot be found, on the one facet where the buyer is most likely to be filtering.
+ */
+function withinCeiling(pack: FacetedPack, maxPence: number | null): boolean {
+  if (maxPence === null) return true;
+  const pence = pricePenceOf(pack);
+  if (pence === null) return true;
+  return pence <= maxPence;
+}
+
+/**
  * Apply the whole discovery state. AND across facets, OR within `advantage` (a buyer who can
  * both build and sell wants either kind of pack, not only packs tagged with both).
  */
 export function filterPacks<T extends FacetedPack>(packs: readonly T[], state: DiscoveryState): T[] {
   return packs.filter((pack) => {
     if (!matchesQuery(pack, state.q)) return false;
+    if (!withinCeiling(pack, state.maxPence)) return false;
     if (state.advantage.length > 0) {
       const tagged = pack.advantages ?? [];
       if (tagged.length === 0) return false;
@@ -236,6 +309,51 @@ export function filterPacks<T extends FacetedPack>(packs: readonly T[], state: D
     }
     return SINGLE_PARAMS.every(([kind]) => matchesSingle(pack, kind, state[kind]));
   });
+}
+
+/** One option in the price control: a ceiling, the price it was derived from, and its yield. */
+export interface PriceCeiling {
+  /** Inclusive ceiling in pence. Goes in the URL as `maxp`. */
+  pence: number;
+  /** The catalogue's own display string for that price, e.g. "£49". Format it for the viewer. */
+  price: string;
+  /** How many packs this ceiling yields under the rest of the current state. */
+  count: number;
+}
+
+/**
+ * The price ceilings worth offering, derived from the shelf.
+ *
+ * Every distinct price on the shelf EXCEPT the dearest becomes a ceiling, because a ceiling at the
+ * top price selects everything and is a control that visibly does nothing. Counts are computed
+ * with the price constraint removed, the same rule `facetCounts` states: each number answers "what
+ * do I get if I click this", not "how many exist".
+ *
+ * Ascending, so the list reads as a scale. Empty when the shelf has fewer than two distinct
+ * prices -- a uniform shelf has no price question, and a single option reading "Under £49" beside
+ * a shelf where everything is £49 is a control that lies about having a choice.
+ */
+export function priceCeilings(
+  packs: readonly FacetedPack[],
+  state: DiscoveryState,
+): PriceCeiling[] {
+  const pool = filterPacks(packs, { ...state, maxPence: null });
+
+  // Distinct prices across the WHOLE shelf, not the pool: the ladder is a property of the
+  // catalogue, so the options do not appear and vanish as other filters move. Only the counts do.
+  const byPence = new Map<number, string>();
+  for (const pack of packs) {
+    const pence = pricePenceOf(pack);
+    if (pence !== null && pack.price) byPence.set(pence, pack.price);
+  }
+  if (byPence.size < 2) return [];
+
+  const ascending = [...byPence.keys()].sort((a, b) => a - b);
+  return ascending.slice(0, -1).map((pence) => ({
+    pence,
+    price: byPence.get(pence) as string,
+    count: pool.filter((pack) => withinCeiling(pack, pence)).length,
+  }));
 }
 
 /**
