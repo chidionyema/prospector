@@ -50,6 +50,10 @@ LAUNCH = re.compile(r"Command running in background with ID:\s*([A-Za-z0-9_-]+)"
 DONE = re.compile(r"<task-id>\s*([A-Za-z0-9_-]+)\s*</task-id>")
 KILLED = re.compile(r"(?:killed|stopped) task\s+([A-Za-z0-9_-]+)", re.I)
 
+# Where the harness parks a background run's output. Depth-bounded globs, and a module
+# constant so the selftest can point them at a temp dir instead of the live estate.
+_TASK_ROOTS = ("/private/tmp/claude-*", "/tmp/claude-*")
+
 
 def _text_of(rec: dict) -> str:
     """Flatten one transcript record to searchable text, cheaply."""
@@ -97,7 +101,43 @@ def in_flight(transcript_path: str, tail: int = 400) -> list[str]:
                 launched.append(tid)
         finished.update(DONE.findall(text))
         finished.update(KILLED.findall(text))
-    return [t for t in launched if t not in finished]
+    return [t for t in launched if t not in finished and not _finished_on_disk(t)]
+
+
+def _finished_on_disk(tid: str) -> bool:
+    """True if this task's output file shows the process has already exited.
+
+    THE TRANSCRIPT IS NOT THE ONLY TRUTH, AND AFTER A COMPACTION IT IS NOT A COMPLETE ONE.
+    Measured 2026-08-17: this guard blocked a stop over bkibd8i24 and bv0kc1hr9. Both had
+    already reported `completed`, and bv0kc1hr9's output file ended
+    `442 passed, 1 warning in 387.35s` then `[exited with code 0]`. Compaction had
+    rewritten the transcript, keeping the launch text inside the summary and dropping the
+    `<task-id>` completion records, so the guard saw two runs that could never finish. A
+    guard that cannot be satisfied gets uninstalled, which is the failure this file's own
+    docstring warns about.
+
+    The harness writes each background run to <scratchpad-root>/<session>/tasks/<id>.output
+    and appends `[exited with code N]` when it exits. That line is on disk and survives
+    compaction, so it is the check that cannot go stale. The glob is depth-bounded — never
+    a recursive walk from a home directory (ESTATE_QUIRKS Q10).
+
+    NO OUTPUT FILE MEANS IT WAS NEVER LAUNCHED, and that case must also clear. The launch
+    marker is matched as TEXT, so text ABOUT a background run arms the guard just as well as
+    a real one: this file's own selftest fixtures, a compaction summary, a doc quoting the
+    marker. Measured 2026-08-17, minutes after the fix above: reading this script put its
+    fixture ids `bbb` and `zzz` into the transcript and the guard blocked a stop over two
+    tasks that had never existed. The harness creates the output file at launch, so its
+    ABSENCE is proof the id is not a real run.
+    """
+    import glob as _glob
+    for root in _TASK_ROOTS:
+        for hit in _glob.glob("%s/*/*/tasks/%s.output" % (root, tid)):
+            try:
+                with open(hit, encoding="utf-8", errors="replace") as fh:
+                    return "[exited with code" in fh.read()[-4000:]
+            except OSError:
+                continue
+    return True  # no output file anywhere: not a real background run
 
 
 REASON = (
@@ -153,6 +193,20 @@ def selftest() -> int:
     def rec(text: str) -> dict:
         return {"type": "user", "message": {"role": "user", "content": text}}
 
+    # Every fixture id below needs an output file, because an id with no file on disk is
+    # now proof the run was never real (see _finished_on_disk). One sandbox for the whole
+    # selftest; `done1` carries an exit line, the rest are still running.
+    global _TASK_ROOTS
+    sandbox = tempfile.mkdtemp(prefix="idleguard-")
+    tasks = os.path.join(sandbox, "sess", "run", "tasks")
+    os.makedirs(tasks, exist_ok=True)
+    for tid in ("abc123", "aaa", "bbb", "zzz", "live1"):
+        with open(os.path.join(tasks, tid + ".output"), "w") as fh:
+            fh.write("....... still going, no exit line yet\n")
+    with open(os.path.join(tasks, "done1.output"), "w") as fh:
+        fh.write("442 passed, 1 warning in 387.35s\n\n[exited with code 0]\n")
+    _saved_roots, _TASK_ROOTS = _TASK_ROOTS, (sandbox,)
+
     cases = []
 
     # 1. One launched, never finished -> in flight.
@@ -186,6 +240,24 @@ def selftest() -> int:
         {"type": "tool_result", "content": [
             {"type": "text", "text": "Command running in background with ID: zzz"}]}]}}])
     cases.append(("structured content", in_flight(p) == ["zzz"]))
+
+    # 7. The compaction defect: the launch text survives, the completion record does not,
+    #    but the run's output file on disk says it exited. Disk wins.
+    p = transcript([
+        rec("Command running in background with ID: done1"),
+        rec("Command running in background with ID: live1"),
+    ])
+    cases.append(("exited-on-disk clears a lost completion record",
+                  in_flight(p) == ["live1"]))
+    # 8. An id with no output file anywhere was never a real run. This is the guard reading
+    #    its OWN fixtures: the ids above are text in this file, so once the file had been
+    #    read they were text in the transcript too, and the guard blocked on them.
+    p = transcript([
+        rec("Command running in background with ID: ghost1"),
+        rec("Command running in background with ID: ghost2"),
+    ])
+    cases.append(("text about a run is not a run", in_flight(p) == []))
+    _TASK_ROOTS = _saved_roots
 
     ok = True
     for name, passed in cases:
