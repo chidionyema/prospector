@@ -82,6 +82,30 @@ in `FAIL_VERDICTS`. Between "fresh" and "dark" there was nothing; a job could ge
 slower and stay green until it got slow enough to disappear. Now it goes red while the
 diagnosis is still cheap. Override with `--budget-s`; `--budget-s 0` disables.
 
+**Half the interval was not enough, and the founder proved it the same day.** The
+complaint-ledger job went from minutes to 1h53m. That is a tenfold regression, and it sat
+comfortably inside half of a daily interval, so nothing went red and the founder was the
+alarm. Half the interval only catches a job about to suppress its own next run.
+
+So there is a second bar, from 2026-08-17: **three times the median of that job's own recent
+clean runs** (`launchd_receipt.py::_history_budget`, and the same function with the same
+numbers in `cron/scheduler.py`, so one audit reads both ledgers). The tighter of the two
+bars wins, and the receipt records which one under `budget_basis`. Median, not mean, so one
+outlier cannot raise the bar it exists to trip. Clean runs only, because a run that crashed
+early is fast for the wrong reason. Under five samples there is no budget at all — we do not
+know what normal is yet, and a guessed bar is worse than none. A 30s floor stops a job whose
+median is 0.2s going red at 0.6s.
+
+Proved: five clean runs of 100s give a 300s budget; five failed 0.1s runs do not lower it; a
+0.2s median gives 30s rather than 0.6s; and six 120s runs give 360s, which a 6780s run trips
+and a 130s run does not.
+
+**The cron jobs were outside all of this until the same day.** The rail read launchd plists,
+and 15 of 22 owned launchd jobs are long-running daemons with no interval to halve, while the
+complaint ledger has no plist at all — it runs from `~/.hermes/cron/jobs.json`. Its receipts
+recorded `duration_s` and compared it to nothing. The history bar needs no plist, which is
+what let the same rule cover both.
+
 ---
 
 ## Q3 — `StartCalendarInterval` is skipped outright if the machine is asleep
