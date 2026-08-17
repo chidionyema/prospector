@@ -1,25 +1,26 @@
 {
   "EnvironmentVariables": {
     "HOME": "/Users/chidionyema",
-    "PATH": "/Users/chidionyema/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+    "PATH": "/Users/chidionyema/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "PROSPECTOR_STORE_DIR": "/Users/chidionyema/Documents/code/prospector/store"
   },
   "Label": "com.prospector.watchdog",
   "ProgramArguments": [
-    "/Users/chidionyema/Documents/code/prospector/.venv/bin/python",
+    "/Users/chidionyema/Documents/code/prospector-live/.venv/bin/python",
     "/Users/chidionyema/.hermes/scripts/launchd_receipt.py",
     "--label",
     "com.prospector.watchdog",
     "--",
-    "/Users/chidionyema/Documents/code/prospector/.venv/bin/python",
+    "/Users/chidionyema/Documents/code/prospector-live/.venv/bin/python",
     "-m",
     "prospector.scheduler.run_scheduled",
     "--watchdog",
     "--config",
-    "/Users/chidionyema/Documents/code/prospector/config.yaml"
+    "/Users/chidionyema/Documents/code/prospector-live/config.yaml"
   ],
   "RunAtLoad": true,
   "StandardErrorPath": "/Users/chidionyema/Documents/code/prospector/store/scheduler/watchdog.err.log",
   "StandardOutPath": "/Users/chidionyema/Documents/code/prospector/store/scheduler/watchdog.out.log",
   "StartInterval": 900,
-  "WorkingDirectory": "/Users/chidionyema/Documents/code/prospector"
+  "WorkingDirectory": "/Users/chidionyema/Documents/code/prospector-live"
 }

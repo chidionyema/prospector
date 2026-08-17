@@ -1,0 +1,21 @@
+{
+  "EnvironmentVariables": {
+    "HOME": "/Users/chidionyema",
+    "PATH": "/Users/chidionyema/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "PROSPECTOR_STORE_DIR": "/Users/chidionyema/Documents/code/prospector/store"
+  },
+  "Label": "com.prospector.offsite-backup",
+  "ProgramArguments": [
+    "/Users/chidionyema/Documents/code/prospector-live/.venv/bin/python",
+    "-m",
+    "ops.automations.offsite_backup",
+    "--fix"
+  ],
+  "StandardErrorPath": "/Users/chidionyema/Documents/code/prospector/store/offsite_backup.log",
+  "StandardOutPath": "/Users/chidionyema/Documents/code/prospector/store/offsite_backup.log",
+  "StartCalendarInterval": {
+    "Hour": 3,
+    "Minute": 50
+  },
+  "WorkingDirectory": "/Users/chidionyema/Documents/code/prospector-live"
+}
