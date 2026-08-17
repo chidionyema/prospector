@@ -203,7 +203,7 @@ Append here. Each entry: what shipped, the receipt, and the stranded count befor
 | # | Part | Status | Receipt |
 |---|------|--------|---------|
 | 0 | Upstream title/one-liner repair (§1.3) | in PR #285; CI was red on three failures, two fixed by #282's merge, one real | `run.py:697,802,950` |
-| P1 | Registry of field contracts | not started | — |
+| P1 | Registry of field contracts | **shipped** | `prospector/content_contract.py`; 34 tests in `tests/unit/test_the_content_contract_covers_every_gate_knob.py`; `console_api._shelf_repair_for` now reads it |
 | P2 | Enforcement at the field write | not started | — |
 | P3 | Generator reads the registry | not started | — |
 | P4 | Park instead of buy | not started | — |
@@ -228,6 +228,43 @@ The console also already gets the receipt-staleness problem right (`console_api.
 stored lint verdict outlives the rules that produced it, so a pack can read as blocked long after
 its rule stopped blocking. P5 and P6 must not reintroduce that. Any recorded breach carries the
 ruleset version that produced it.
+
+### P1 as built, 2026-08-17
+
+`prospector/content_contract.py` declares 21 rules. Each names the checks' fields, the repair,
+the `lint_pack` keyword that switches it on and the `listing.*` config key wired to that keyword.
+It imports nothing from the engine, so the gate, the generator, the repair path and the console
+can all read it without a cycle.
+
+Three things worth writing down, because each was a defect caught while building it:
+
+1. **The config key and the gate keyword are different words for a third of the rules.**
+   `lint_grammar` actuates `grammar_enabled`; `house_spec_block_register` actuates
+   `register_block`. The first draft carried a single `actuator` field, which is a defect that
+   reads as working: every lookup still returns something and the something is wrong. They are
+   now `config_key` and `gate_param`, and
+   `test_every_declared_config_key_is_the_one_the_gate_is_wired_to` reads the actual keywords out
+   of the `lint_pack(...)` call in `bridge.py` as a syntax tree and fails on a mismatch. Proven to
+   fail on both real conflations before it was kept.
+
+2. **The registry is checked against the gate, never trusted over it.** The guard reads
+   `inspect.signature(pack_linter.lint_pack)`, finds the ten actuator-shaped keywords, and fails
+   if one is undeclared. Proven by deleting the `repetition` rule and watching it name
+   `repetition_block`. This is what stops the registry becoming a fourth list to forget, which
+   is the §1.4 failure repeated one level up.
+
+3. **What repairs a rule and what the console can do about it are different questions.** Only two
+   console actions exist, `shelf.repair_copy` and `shelf.publish_pending`.
+   `engine.regenerate_artifacts` is the true repair for nine rules and is not built. The registry
+   states the true repair, because P4 and P5 need it; `console_repair_for_check` degrades to
+   `manual` for anything unwired, because that is what the operator can act on. Answering the
+   second question with the first produces a button that does nothing.
+
+`_SHELF_REPAIR`, the console's private reason-to-repair map, is gone.
+`console_api._shelf_repair_for` routes on the parsed check names through the registry, falls back
+to lifecycle phrases for a pack that was never published, and keeps the old substring match as a
+last resort so no row loses its button. A pack that is both unpublished and breaching a rule
+routes to the rule fix first: publishing it while it breaches only strands it again.
 
 ### Baseline, 2026-08-17
 

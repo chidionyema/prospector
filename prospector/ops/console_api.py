@@ -55,6 +55,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
 
+from prospector import content_contract
+
 #: Bumped when the JSON contract changes shape. The web app asserts on it at boot, so a console
 #: talking to an older engine says so instead of rendering blanks.
 CONTRACT_VERSION = 1
@@ -857,16 +859,56 @@ def _shelf_survey_module():
     return mod
 
 
-#: Which repair each blocking reason needs. The console's job is to turn a reason into a button,
-#: so the mapping lives next to the reader rather than in an operator's head. `manual` means no
-#: tool repairs it today and the operator has to look at the pack.
-_SHELF_REPAIR = {
-    "shelf_copy": "shelf.repair_copy",
-    "title": "shelf.repair_copy",
-    "title_claim": "shelf.repair_copy",
-    "never published": "shelf.publish_pending",
-    "READY": "shelf.publish_pending",
+#: Reasons a pack is stranded that are NOT lint checks. A pack can be blocked because it was
+#: never published at all, which no rule in the content contract grades — that is a lifecycle
+#: state, so it keeps its own small map here.
+_SHELF_LIFECYCLE_REPAIR = {
+    "never published": content_contract.PUBLISH_PENDING,
+    "READY": content_contract.PUBLISH_PENDING,
 }
+
+#: Check names the stranded survey still prints under an older spelling than the linter emits
+#: today. Kept so an archived receipt does not lose its button.
+_LEGACY_CHECK_ALIASES = {"title_claim": "title_new_word"}
+
+#: Longest name first, so `title_new_word` cannot be shadowed by a bare `title` match.
+_SUBSTRING_FALLBACK = tuple(sorted(
+    ((r.check, content_contract.console_repair_for_check(r.check))
+     for r in content_contract.RULES
+     if content_contract.console_repair_for_check(r.check) != content_contract.MANUAL),
+    key=lambda kv: -len(kv[0]),
+))
+
+
+def _shelf_repair_for(why: str, checks: list[str]) -> str:
+    """The console action that repairs this stranded pack, or `manual`.
+
+    The check-to-repair knowledge is read from `prospector.content_contract`, the same
+    declaration the publish gate and the repair path read. Until 2026-08-17 this file held a
+    private copy, so a new rule reached the console correct and the engine unaware — and the
+    console could name a repair the engine had never heard of without anything failing.
+
+    Checks are consulted before lifecycle phrases because a pack that is both unpublished and
+    breaching a rule needs the rule fixed first: publishing it would only strand it again.
+    """
+    for check in checks:
+        action = content_contract.console_repair_for_check(
+            _LEGACY_CHECK_ALIASES.get(check, check)
+        )
+        if action != content_contract.MANUAL:
+            return action
+    for phrase, action in _SHELF_LIFECYCLE_REPAIR.items():
+        if phrase in why:
+            return action
+    # Last resort, and only when nothing parsed. The previous version of this function matched
+    # check names as substrings of the whole reason string; keeping that as a fallback means a
+    # row whose `error(s): ...` line the survey did not print the usual way still gets its
+    # button, instead of silently degrading to manual.
+    if not checks:
+        for name, action in _SUBSTRING_FALLBACK:
+            if name in why:
+                return action
+    return content_contract.MANUAL
 
 
 def _read_shelf(cfg, args: dict) -> dict:
@@ -896,7 +938,7 @@ def _read_shelf(cfg, args: dict) -> dict:
         # word match reads "error(s)" and "(no lint record)" as check names and reports "s".
         checks = sorted({c.strip() for m in re.findall(r"error\(s\): ([^)]+)\)", why)
                          for c in m.split(",") if c.strip()})
-        fix = next((a for k, a in _SHELF_REPAIR.items() if k in why), "manual")
+        fix = _shelf_repair_for(why, checks)
         rows.append({"id": cid, "created": str(created)[:10], "why": why,
                      "checks": checks, "repair": fix})
         for c in checks or ["other"]:
@@ -1889,7 +1931,7 @@ def _pending_publish_paths(cfg) -> list[str]:
     NAMED EXPLICITLY, never `--all`. `--all` walks every PASS in the store, including the 63
     already selling, and re-publishing a live pack re-runs the money rail on a row a buyer can
     already buy. The shelf reader already decides which rows need this repair
-    (`_SHELF_REPAIR`), so the action publishes exactly those and nothing else.
+    (`_shelf_repair_for`), so the action publishes exactly those and nothing else.
     """
     shelf = _read_shelf(cfg, {})
     if not shelf.get("reachable"):
