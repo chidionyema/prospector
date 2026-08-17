@@ -17,6 +17,10 @@ drifts; a status printed by a command cannot.
 | B | **Hermes agent** | `~/.hermes/capabilities.json` | the `capabilities` panel, or `python3 ~/.hermes/scripts/capability_audit.py` (slow) | #5, #6, #7 |
 | C | **Ops readiness programme** | `LAUNCH_OPS_PROGRAM.md` §1 and §4 | `.venv/bin/python scripts/ops_status.py` | #11 |
 
+`ESTATE_QUIRKS.md` sits beside these three. It is not a fourth stream. It is the register of
+platform behaviours that made a healthy thing look broken, so that the next diagnosis does not
+start from scratch. Read it before believing any red line.
+
 The Hermes agent can be across all three and should be. A and C are both things it can grade
 on a schedule and report unasked. A workstream nobody probes goes dark exactly like a
 capability does.
