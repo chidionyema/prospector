@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import re
 import sqlite3
@@ -60,6 +61,33 @@ from prospector.shelf_copy_repair import (  # noqa: E402
 
 __all__ = ["SYSTEM", "USER", "RewriteUnavailable", "_new_facts", "breaches", "rewrite_one",
            "voice_breaches"]
+
+log = logging.getLogger(__name__)
+
+
+def _rewrite_row(op, row) -> str | RewriteUnavailable | None:
+    """One row's rewrite, with the outage caught HERE rather than inside `rewrite_one`.
+
+    The sweep runs the rows in a thread pool, so a dead call on one line must not abort the
+    other twenty-two. But `rewrite_one` is also the engine's rewriter, and there the raise is
+    the only thing that tells an outage apart from "the brain refused this line" — swallowing
+    it inside the shared function made a quota failure read as an unfixable candidate. So the
+    catch lives at the caller that actually wants to continue.
+
+    It RETURNS the exception rather than `None`. `None` is what a refusal looks like, and the
+    summary prints a refused row as kept — finished work. An outage is not finished work, so it
+    is reported as NOT ATTEMPTED and the sweep exits non-zero.
+    """
+    try:
+        return rewrite_one(op, row[1], row[2])
+    except RewriteUnavailable as exc:
+        # swallow-ok: returned to the caller, which counts it, prints it and exits non-zero.
+        # The line on the shelf is left exactly as it was.
+        log.error("rewrite call failed for %s: %s", row[0], exc,
+                  extra={"candidate_id": row[0], "error": str(exc), "rewrite_failed": True})
+        print(f"    rewrite call failed for {row[0]}: {exc}")
+        return exc
+
 
 def glossary() -> dict[str, str]:
     """The operator's declared expansions, `config.yaml listing.initialism_glossary`.
@@ -472,21 +500,8 @@ def main() -> int:
     # SQLite is the one part of this that is not idle-waiting.
     todo = fixable[:args.limit] if args.limit else fixable
     print(f"\nrewriting {len(todo)} line(s), {args.jobs} in flight")
-    def _attempt(row):
-        """One row's rewrite, with an outage kept separate from a refusal.
-
-        `rewrite_one` raises `RewriteUnavailable` when the brain call failed, so one dead
-        call no longer takes the whole sweep down with it, and — the point — it is not
-        reported as "the line could not be improved". The two outcomes need different
-        actions: a refusal is finished work, an outage means run the sweep again.
-        """
-        try:
-            return rewrite_one(op, row[1], row[2])
-        except RewriteUnavailable as exc:
-            return exc
-
     with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
-        done = list(pool.map(lambda r: (r, _attempt(r)), todo))
+        done = list(pool.map(lambda r: (r, _rewrite_row(op, r)), todo))
 
     fixed = 0
     outages = 0

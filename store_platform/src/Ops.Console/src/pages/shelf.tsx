@@ -33,14 +33,48 @@ type ShelfView = {
   note?: string;
 };
 
+type ContentRule = {
+  check: string;
+  findings: number;
+  packs: number;
+  errors: number;
+  warnings: number;
+  blocking: boolean;
+  repair: string;
+  rate: number | null;
+  by_day: Record<string, number>;
+};
+
+type ContentRulesView = {
+  graded_packs: number;
+  days_graded: string[];
+  rules: ContentRule[];
+  blocking: ContentRule[];
+  shadow: ContentRule[];
+  ready_to_promote: string[];
+  never_observed: string[];
+  undeclared: string[];
+  coverage: { receipts: number; note: string };
+};
+
 const REPAIR_LABEL: Record<string, string> = {
   'shelf.repair_copy': 'rewrite the copy',
   'shelf.publish_pending': 'publish it',
   manual: 'needs a person',
 };
 
+/** `null` is not zero. A rule with nothing graded has no rate, and printing 0% would read as
+ *  a clean record — which is the one thing that must never be confused here, because a clean
+ *  record is what promotes a rule onto the money path. */
+function rateLabel(rate: number | null): string {
+  return rate === null ? 'no data' : `${Math.round(rate * 100)}%`;
+}
+
 export default function StrandedShelf() {
   const { data, envelope, error, refresh } = useOps<ShelfView>('shelf', {}, { pollMs: 120_000 });
+  // Read on its own cadence: the receipts only change when a pack is graded, so polling this
+  // as often as the stranded count would re-read 123 files for nothing.
+  const { data: rules } = useOps<ContentRulesView>('content_rules', {}, { pollMs: 300_000 });
 
   const rows = data?.rows ?? [];
   const byRepair = data?.by_repair ?? {};
@@ -180,6 +214,86 @@ export default function StrandedShelf() {
               ))}
             </div>
           )}
+        </Card>
+      ) : null}
+
+      {rules ? (
+        <Card title={`Every content rule, and how often it breaks (${rules.graded_packs} packs graded)`}>
+          {rules.rules.length === 0 ? (
+            <Empty>No pack has been graded yet, so no rule has a rate.</Empty>
+          ) : (
+            <Scroll>
+              <div className="flex flex-col gap-2 min-w-[560px]">
+                {rules.rules.map((r) => (
+                  <div
+                    key={r.check}
+                    className="flex items-baseline gap-3 border-b border-hair pb-2 last:border-0 last:pb-0"
+                  >
+                    <Mono>{r.check}</Mono>
+                    <Pill tone={r.blocking ? 'bad' : 'mute'}>
+                      {r.blocking ? 'blocking' : 'shadow'}
+                    </Pill>
+                    <span className="ml-auto text-[13px] text-muted">
+                      {rateLabel(r.rate)} of packs
+                    </span>
+                    <span className="w-24 text-right text-[11px] text-subtle">
+                      {r.findings} finding{r.findings === 1 ? '' : 's'}
+                    </span>
+                    <span className="w-28 text-right text-[11px] text-subtle">
+                      {REPAIR_LABEL[r.repair] ?? r.repair}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </Scroll>
+          )}
+          <Note>
+            A <strong>shadow</strong> rule is graded and recorded, and refuses nothing. Switching
+            one to blocking today strands every pack that breaches it, so read the rate before
+            you flip the switch on the Config page.
+          </Note>
+          <Note>{rules.coverage.note}</Note>
+        </Card>
+      ) : null}
+
+      {rules ? (
+        <Card title="Rules that could be switched on">
+          {rules.ready_to_promote.length === 0 ? (
+            <Empty>
+              None. A rule is offered here only when it has fired at least once — so we know it
+              runs — and then held clean across every day a pack was graded.
+            </Empty>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {rules.ready_to_promote.map((c) => (
+                <Pill key={c} tone="ok">
+                  {c}
+                </Pill>
+              ))}
+            </div>
+          )}
+          {rules.never_observed.length ? (
+            <>
+              <Note>
+                These have never raised a finding on any graded pack. That is NOT a clean record —
+                zero findings and never having run look identical from here, so they are held back
+                rather than offered:
+              </Note>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {rules.never_observed.map((c) => (
+                  <Pill key={c} tone="mute">
+                    {c}
+                  </Pill>
+                ))}
+              </div>
+            </>
+          ) : null}
+          {rules.undeclared.length ? (
+            <Problem>
+              The linters raised checks the content contract does not declare:{' '}
+              {rules.undeclared.join(', ')}. Nothing on this page can price or repair them.
+            </Problem>
+          ) : null}
         </Card>
       ) : null}
 
