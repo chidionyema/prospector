@@ -242,6 +242,20 @@ def report() -> int:
         problems.append("live checkout has local modifications")
 
     print()
+    print("== was the code in production ever tested? ==")
+    # The question this probe could not answer until 2026-08-17, which is how an untested
+    # commit ran production for hours without anyone being able to see it.
+    verdict, detail = ci_verdict(head)
+    print(f"  live commit {head[:12]}   CI {verdict}: {detail}")
+    if verdict in ("fail", "none"):
+        problems.append(f"production runs {head[:12]}, whose CI verdict is {verdict}")
+    if ALLOW_UNVERIFIED_DEPLOY.exists():
+        print(f"  {ALLOW_UNVERIFIED_DEPLOY.name} is present — the CI gate is BYPASSED")
+        problems.append("the CI deploy gate is bypassed")
+    if NO_AUTO_UPDATE.exists():
+        print(f"  {NO_AUTO_UPDATE.name} is present — auto roll-forward is PAUSED")
+
+    print()
     print("== untracked files the daemon needs (git never brings these across) ==")
     for rel in SECRETS:
         target = LIVE / rel
@@ -283,6 +297,77 @@ def report() -> int:
 #: A rail with no off switch gets uninstalled the first time it is wrong.
 NO_AUTO_UPDATE = DEV / "store" / "scheduler" / "NO_AUTO_UPDATE"
 
+#: Bypass for the CI gate below. Present => a commit with no green verdict ships anyway.
+#: Same convention as PAUSE and NO_AUTO_UPDATE: a file the operator can create from the
+#: console, not a flag that needs a code edit. It exists because a GitHub outage must not be
+#: able to freeze production deploys indefinitely with no way out.
+ALLOW_UNVERIFIED_DEPLOY = DEV / "store" / "scheduler" / "ALLOW_UNVERIFIED_DEPLOY"
+
+#: Workflow runs this gate ignores. Deploys and smoke tests run AFTER a merge and describe
+#: the deployment, not the code; requiring them would deadlock the deploy on itself.
+_IGNORED_WORKFLOWS = ("deploy", "smoke", "e2e")
+
+
+def ci_verdict(sha: str) -> tuple[str, str]:
+    """Did CI pass on `sha`? Returns (verdict, detail) where verdict is one of
+    "pass", "fail", "pending", "none", "unknown".
+
+    WHY THIS EXISTS. There is no branch protection on this repo — both
+    `/branches/main/protection` and `/rulesets` return 403 "Upgrade to GitHub Pro or make
+    this repository public", measured 2026-08-17 on this account. So nothing stops a red or
+    an untested commit reaching main, and the follower above ships main to production within
+    60 seconds of it landing.
+
+    That is not hypothetical. On 2026-08-17 four merges landed on main between 20:11 and
+    20:36. Three of their CI runs were cancelled by the next merge landing on top, and the
+    one run that reached a verdict concluded failure. Main's tip `5b8d010` — the commit the
+    daemons were executing — had ZERO check runs against it. Nothing had ever tested the
+    code in production.
+
+    "none" is deliberately its own verdict rather than folded into "unknown". A commit with
+    no run at all is the exact shape of the cancelled-by-the-next-merge case, and it is the
+    one the gate most needs to refuse. "unknown" means the question could not be asked (no
+    `gh`, no network, API error) and is a different decision for the caller to make.
+
+    It reads `actions/runs`, not `commits/{sha}/check-runs`. A run that is QUEUED has no
+    check runs yet, so the check-runs endpoint reports it as an empty list — indistinguishable
+    from a commit nobody ever tested. Measured 2026-08-17 on `5b8d010`: check-runs returned
+    nothing while `actions/runs` showed run 32066671248 sitting in `queued`. Those are
+    "wait 60 seconds" and "this was never tested"; a gate that cannot tell them apart cannot
+    report the truth about production.
+    """
+    if not shutil.which("gh"):
+        return "unknown", "gh CLI not on PATH"
+    # `head_sha` matches on the FULL 40 characters and returns an empty list for an
+    # abbreviation — silently, with rc 0. Measured 2026-08-17: `5b8d010` returned nothing
+    # while `5b8d0106d4223a83dbce19c765385d571454c0dc` returned its in-progress run. An
+    # abbreviated sha would therefore read as "never tested" and hold every deploy forever.
+    if len(sha) < 40:
+        rc, full = run(["git", "rev-parse", sha], cwd=DEV, timeout=10)
+        if rc != 0:
+            return "unknown", f"could not resolve {sha}: {full[:120]}"
+        sha = full.strip()
+    rc, out = run(
+        ["gh", "api", f"repos/:owner/:repo/actions/runs?head_sha={sha}&per_page=50",
+         "--jq", ".workflow_runs[] | \"\\(.name)\\t\\(.status)\\t\\(.conclusion)\""],
+        cwd=DEV, timeout=25,
+    )
+    if rc != 0:
+        return "unknown", f"gh api failed: {out[:200]}"
+    rows = [ln.split("\t") for ln in out.splitlines() if ln.strip()]
+    relevant = [r for r in rows
+                if not any(w in r[0].lower() for w in _IGNORED_WORKFLOWS)]
+    if not relevant:
+        return "none", "no CI run recorded against this commit"
+
+    waiting = [r[0] for r in relevant if r[1] != "completed"]
+    if waiting:
+        return "pending", f"still {relevant[0][1]}: {', '.join(waiting[:5])}"
+    bad = [f"{r[0]}={r[2]}" for r in relevant if r[2] != "success"]
+    if bad:
+        return "fail", ", ".join(bad[:5])
+    return "pass", f"{len(relevant)} run(s) green"
+
 
 def update(unattended: bool = False) -> int:
     """Fast-forward the live checkout to origin/main, relink secrets, restart the jobs.
@@ -320,6 +405,31 @@ def update(unattended: bool = False) -> int:
         print(f"fetch failed: {out}")
         return 1
     _, before = run(["git", "rev-parse", "--short", "HEAD"], cwd=LIVE)
+
+    # The CI gate. Only the roll-forward is gated, and only when it would actually move:
+    # a hand-run --update on an already-current checkout must not be blocked by a red
+    # verdict on code that is already live, or the operator loses the restart button
+    # during exactly the incident where they need it.
+    _, target = run(["git", "rev-parse", "origin/main"], cwd=LIVE)
+    _, current = run(["git", "rev-parse", "HEAD"], cwd=LIVE)
+    if target and target != current:
+        verdict, detail = ci_verdict(target)
+        if verdict == "pass":
+            print(f"CI green on {target[:12]}: {detail}")
+        elif ALLOW_UNVERIFIED_DEPLOY.exists():
+            print(f"CI {verdict} on {target[:12]}: {detail}")
+            print(f"shipping anyway — {ALLOW_UNVERIFIED_DEPLOY.name} is present")
+        elif verdict == "unknown":
+            # Could not ask. Refuse: an unverified deploy is the failure this gate exists
+            # to stop, and the next scheduled run is 60 seconds away.
+            print(f"HOLDING at {before}: could not read CI for {target[:12]} — {detail}")
+            print(f"To ship regardless: touch {ALLOW_UNVERIFIED_DEPLOY}")
+            return 1
+        else:
+            print(f"REFUSING to deploy {target[:12]}: CI {verdict} — {detail}")
+            print(f"Production stays at {before}. Fix main, or: "
+                  f"touch {ALLOW_UNVERIFIED_DEPLOY}")
+            return 1
     # --force, and the refusal check above is what makes it safe. `_code_changes` has
     # already proved there is no modified tracked CODE here; everything left dirty is
     # tracked runtime state under store/ and storage/, which every run rewrites. A plain
