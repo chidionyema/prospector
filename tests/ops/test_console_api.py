@@ -165,10 +165,31 @@ def test_no_action_can_reach_a_price():
     assert not [a for a in api.ACTIONS if "price" in a or "reprice" in a]
 
 
-def test_the_destructive_index_tool_is_refused():
+def test_the_destructive_index_tool_runs_only_behind_a_snapshot():
+    """This test used to assert `index.reconcile` was refused outright. The fence changed on
+    2026-08-16 (founder directive: "we just need rollback to be safe not to hide actions").
+    Refusing the button never stopped the deletion; it moved the deletion to a terminal, where
+    nothing took a snapshot and nothing wrote a receipt. So the tool now runs from the console,
+    and what this pins is the path it must take: no action by that name, a catalogued tool that
+    declares it writes, and a run that is refused until a token confirms the preview."""
     doc, code = api.dispatch(["act", "index.reconcile", "--payload", "{}"])
-    assert code == 3
-    assert doc["error_kind"] == "RefusedByDesign"
+    assert code == 2, "the old action name must not resolve to anything"
+    assert "index.reconcile" not in api.ACTIONS
+
+    tool = [t for t in api.TOOLS if t["path"] == "scripts/reconcile_orphan_index.py"]
+    assert tool, "the tool must stay in the inventory, not vanish with the refusal"
+    tool = tool[0]
+    assert tool["run"] is True
+    assert tool["writes"] is True
+
+    doc, code = api.dispatch(["act", "tools.run",
+                              "--payload", json.dumps({"id": tool["id"], "reason": "orphans"})])
+    assert code == 4
+    assert doc["error_kind"] == "ConfirmationRequired"
+    preview = doc["data"]
+    assert preview["path"] == "scripts/reconcile_orphan_index.py"
+    assert "snapshot" in preview["snapshot"]
+    assert preview["command"], "the preview must name the exact command it would run"
 
 
 # --------------------------------------------------------------------------- #
@@ -265,10 +286,23 @@ def test_every_listed_tool_is_on_disk():
     assert missing == []
 
 
-def test_money_rail_tools_are_shown_but_never_runnable():
+def test_money_rail_tools_say_in_the_preview_that_undo_cannot_reach_stripe():
+    """These tools were `run=False` until 2026-08-16. They are runnable now, and the safety is
+    no longer the refusal — it is that the operator is told, before confirming, exactly what a
+    rollback will and will not undo. A Stripe Price minted from this machine cannot be taken
+    back by restoring store/, so the preview has to say so in words."""
     money = [t for t in api.TOOLS if t["danger"] and "MONEY RAIL" in t["danger"]]
     assert money, "the price tools must be inventoried, not hidden"
-    assert all(t["run"] is False for t in money)
+    assert all(t["risk"] == "external" for t in money), \
+        "a tool that reaches Stripe is external risk, whatever else it does locally"
+    assert all(t["undo_covers"] == "the local half only" for t in money)
+
+    doc, code = api.dispatch(["act", "tools.run",
+                              "--payload", json.dumps({"id": money[0]["id"], "reason": "x"})])
+    assert code == 4
+    assert doc["error_kind"] == "ConfirmationRequired"
+    assert "THIS REACHES OFF THIS MACHINE" in doc["data"]["note"]
+    assert doc["data"]["undo_covers"] == "the local half only"
 
 
 def test_destructive_tools_are_never_runnable():

@@ -60,9 +60,11 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import signal
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -285,6 +287,295 @@ class StopFlag:
 
 
 # --------------------------------------------------------------------------- #
+# Liveness
+# --------------------------------------------------------------------------- #
+#: The consumer's own heartbeat file, SEPARATE from the producer's `heartbeat.json`. The
+#: separation is load-bearing rather than tidiness: a heartbeat write overwrites the whole file,
+#: so two processes sharing one path would each erase the other's phase, and a monitor would read
+#: whichever wrote last as "the engine" — the producer's `generating` and the consumer's `blocked`
+#: alternating in one field, with no way to tell which of the two roles had stalled.
+_HEARTBEAT_FILENAME = "consumer_heartbeat.json"
+
+#: Resolved once per process. `code_fingerprint()` hashes every module in the package plus
+#: config.yaml, which is far too expensive per cycle — and it cannot change under a running
+#: process anyway. That is the point of stamping it: a monitor diffs what this process is RUNNING
+#: against what is on disk, which needs the value the process STARTED with, not a fresh read.
+#: `""` means "asked and failed", so a failure is not retried every cycle.
+_RUNNING_CODE_FP: Optional[str] = None
+
+
+def _heartbeat_path(cfg) -> Path:
+    from .scheduler import paths as _paths
+    return _paths.scheduler_dir(cfg) / _HEARTBEAT_FILENAME
+
+
+def _running_code_fp() -> str:
+    """The fingerprint of the code this process loaded, computed at most once."""
+    global _RUNNING_CODE_FP
+    if _RUNNING_CODE_FP is None:
+        try:
+            from .scheduler.run_scheduled import code_fingerprint
+
+            # Passed explicitly, exactly as the daemon passes it (`run_scheduled.py:2063`).
+            # Argless OMITS config.yaml, and a monitor comparing an argless consumer value to
+            # the daemon's config-inclusive one would paint a healthy process STALE CODE — the
+            # R8 panel's own first false reading, reproduced from the other end.
+            _RUNNING_CODE_FP = code_fingerprint("config.yaml") or ""
+        except (ImportError, OSError, ValueError):  # liveness never fails on a diagnostic extra
+            _RUNNING_CODE_FP = ""
+    return _RUNNING_CODE_FP
+
+
+def _write_heartbeat(cfg, *, phase: str, **extra) -> None:
+    """Overwrite the liveness file every cycle, INCLUDING the cycles that only sleep.
+
+    WHY THIS EXISTS. Before it the consumer wrote nothing observable but `consumer_decay.json`,
+    stamped at most once per `decay_interval_s` (7200s) — so a dead consumer and a healthy one
+    were byte-identical for up to two hours. The gap is not symmetrical with the producer's,
+    because `alerts.py::alerts_for_tick` SUPPRESSES the all-DEFER tick alarm by design: correct
+    while the drain was the middle third of a tick, and precisely wrong now that it is another
+    process. A dead consumer leaves the producer ticking green while the queue fills, and
+    nothing else in the estate can see it.
+
+    WRITTEN ON THE SLEEPING CYCLES, which is the whole point rather than an extra. The long
+    waits are `blocked_s` (300s) and `idle_s` (60s), and those are exactly the states in which a
+    stopped process and a working one are indistinguishable from outside. `next_check` carries
+    when this cycle intends to wake, so a monitor can say "silent for 400s having promised 300s"
+    (late) rather than guessing from one fixed staleness threshold — which must be wrong for at
+    least one of two cadences that differ by 5x.
+
+    `mono` accompanies the wall-clock `ts` for the reason the producer documents, and this box is
+    a live instance rather than a hypothetical: `ps -o lstart` reports `1 Jan 1970` for
+    long-running pids here, and `store/scheduler/audit/1970-01-01.jsonl` exists on disk. A
+    stepped wall clock inflates the apparent age while the loop turns normally; a stopped loop
+    inflates both. Only the difference between them names the cause.
+
+    NEVER RAISES. Liveness is a diagnostic: a consumer that died because it could not write a
+    heartbeat would be the monitor causing the outage it exists to report.
+    """
+    beat = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "mono": time.monotonic(),
+        "pid": os.getpid(),
+        "role": "consumer",
+        "phase": phase,
+        **extra,
+    }
+    fp = _running_code_fp()
+    if fp:
+        beat.setdefault("code", fp[:12])
+    # ATOMIC, and load-bearing for the same reason it is in the producer. `write_text` truncates
+    # and THEN writes, so a reader can catch a 0-byte file — and readers do not treat that as
+    # "try again": the producer's watchdog turns an unreadable heartbeat into a SIGKILL. An empty
+    # read, not corrupt JSON, is the measured signature of reading mid-truncate. `os.replace` is
+    # atomic on POSIX, so a reader sees the whole previous beat or the whole new one.
+    # The pid in the temp name keeps two consumers (a daemon and an operator's `--once`) from
+    # colliding on one another's partial file.
+    #
+    # The try covers PATH RESOLUTION as well as the write, and that is not defensive padding:
+    # `paths.store_dir` RAISES `ValueError` on a cfg with no `store_dir` rather than guessing a
+    # cwd-relative default (`paths.py:65`, which exists because such a default reached the
+    # production audit log from pytest). Catching only `OSError` therefore let a diagnostic take
+    # down the loop it exists to watch — for every caller holding a minimal cfg, which is every
+    # existing consumer test. `Exception` is correct here precisely because the promise in this
+    # docstring is unconditional.
+    tmp = None
+    try:
+        path = _heartbeat_path(cfg)
+        tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+        tmp.write_text(json.dumps(beat, default=str), encoding="utf-8")
+        os.replace(tmp, path)
+    except Exception as exc:  # noqa: BLE001 — see above; liveness may never break the drain
+        logger.warning("consumer: could not write the heartbeat (%s)", exc)
+        if tmp is not None:
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+
+def _record_drain(cfg, out: dict, *, attempted: int, resumed: int) -> None:
+    """Append ONE line per completed drain pass to `store/scheduler/consumer_drains.jsonl`.
+
+    WHY A SECOND FILE WHEN THE HEARTBEAT ALREADY EXISTS. The heartbeat is OVERWRITTEN every
+    cycle: it can answer "what is happening now" and it structurally cannot answer "how fast is
+    the queue draining", which is the only input an ETA has. Before the producer/consumer split
+    that rate was readable from `ticks.jsonl` (`result.resumed`), because the producer drained
+    inside its own tick; the split moved the work to this process and left the series behind, so
+    the ops console's ETA would have been computed from a history that stopped on 2026-08-15.
+
+    ONE LINE PER PASS THAT ATTEMPTED WORK — the idle cycles are already counted in the heartbeat,
+    and logging them here would grow the file at the idle cadence (60s) to say nothing.
+
+    `backlog` rides along because `_cmd_resume` measured it anyway (it is the survey it just ran):
+    that makes this a real backlog time series at no extra cost, which is a strictly better ETA
+    input than a rate — and the reader can fall back to the rate when the series is short.
+
+    NEVER RAISES, for the same reason the heartbeat does not: a diagnostic that can end the drain
+    is a bigger defect than the one it reports.
+    """
+    try:
+        from .jsonl_atomic import append_jsonl
+        from .ops.readmodel import DRAIN_LOG_FILENAME
+        from .scheduler import paths as _paths
+
+        append_jsonl(_paths.scheduler_dir(cfg) / DRAIN_LOG_FILENAME, {
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "pid": os.getpid(),
+            "attempted": attempted,
+            "resumed": resumed,
+            "backlog": out.get("backlog"),
+            "passes": out.get("passes"),
+            "kills": out.get("kills"),
+            "defers": out.get("defers"),
+            # PARKED ROWS RIDE IN THE RATE SERIES. On 2026-08-16 this file logged
+            # `attempted: 24, resumed: 0` every ten seconds for 25 minutes, and nothing in the
+            # row said why — the 24 rows were held by four SIGKILLed workers. A drain rate of
+            # zero is only readable if the row says how much of the queue was unavailable.
+            "leased_skipped": out.get("leased_skipped", 0),
+            "metered_usd": out.get("metered_usd"),
+        }, fsync=False)
+    except Exception as exc:  # noqa: BLE001 — see the docstring; a rate log never breaks a drain
+        logger.warning("consumer: could not record the drain pass (%s)", exc)
+
+
+#: Grace added to a beat's own `next_check` before it counts as late. One cycle's worth of
+#: scheduling jitter plus the guard's own cost: `_blocked_reason` re-scans the spend ledger,
+#: measured at 108s on a 157 MB one, and that scan happens BETWEEN two beats. A grace shorter
+#: than the slowest thing that can legitimately happen between beats is an alarm that pages for
+#: a working consumer, which is how an operator learns to ignore the channel.
+_LATE_GRACE_S = 180.0
+
+#: Used only when a beat carries no `next_check` (an older writer, or a `draining` beat, whose
+#: duration is genuinely unbounded — 4127s was measured). Deliberately generous: the pid check
+#: below is what catches a dead consumer FAST, so this threshold only has to catch the rarer
+#: case of a process that is alive and wedged.
+_NO_NEXT_CHECK_STALE_S = 3600.0
+
+
+def _pid_alive(pid: int) -> Optional[bool]:
+    """Is that pid running? `None` when we cannot tell.
+
+    `None` is a distinct answer and not a convenience: on a permissions error the process exists
+    but is not ours, and reporting that as dead would page for a healthy consumer, while
+    reporting it as alive would hide a real death. The caller renders it as `unproven` — the
+    `VERDICT_GLYPHS` slot a hand-rolled panel always omits, which is how "the probe could not
+    run" ends up painted green.
+    """
+    if pid <= 0:
+        return None
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True          # exists, owned by someone else
+    except OSError:
+        return None
+
+
+def consumer_liveness(cfg, *, now: float | None = None) -> dict:
+    """Is the consumer alive, and if not, what kind of not-alive?
+
+    THE ONE READER of the heartbeat format, so the alarm and every panel answer this question
+    identically. Two readers of one file is how a dashboard and a pager come to disagree about
+    whether the estate is up (memory: `one-reader-two-caller-shapes`).
+
+    `state` is one of:
+      `running`  — beat fresh, pid alive, doing work or legitimately sleeping
+      `blocked`  — a rail is refusing it ON PURPOSE (PAUSE_CONSUMER, the spend cap, the moat).
+                   NOT an alarm: the rail working is not a fault, and paging for it trains the
+                   operator to ignore the channel that also carries the real failures.
+      `stopped`  — it wrote a final beat and left. An operator's stop, not a death.
+      `dead`     — the pid is gone and the last beat was not `stopped`. This is the alarm.
+      `late`     — the pid is alive but the beat is older than the consumer itself promised.
+      `unknown`  — no heartbeat file at all, or one that will not parse.
+
+    A DEAD PID SHORT-CIRCUITS STALENESS. Waiting for a beat to age out before declaring death
+    would keep the queue silently filling for the grace period, and the grace has to be generous
+    (see `_LATE_GRACE_S`) precisely because the sleeps are long. The pid is the fast, certain
+    signal; staleness is only the backstop for a process that is alive and wedged.
+    """
+    now = time.time() if now is None else now
+    out: dict = {"state": "unknown", "reason": "", "path": None, "phase": None,
+                 "pid": None, "age_s": None, "alive": False, "beat": None}
+    try:
+        path = _heartbeat_path(cfg)
+    except Exception as exc:  # noqa: BLE001 — same reason as the writer: `store_dir` raises
+        out["reason"] = f"cannot resolve the heartbeat path: {exc}"
+        return out
+    out["path"] = str(path)
+    try:
+        beat = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(beat, dict):
+            raise ValueError("heartbeat is not an object")
+    except FileNotFoundError:
+        out["reason"] = ("no consumer heartbeat has ever been written — either the consumer has "
+                         "not run since this was built, or it is not deployed")
+        return out
+    except Exception as exc:  # noqa: BLE001 — unreadable and unparsable are the same answer
+        # NOT escalated to `dead`. An empty read is the measured signature of catching an
+        # atomic write mid-flight, and the producer's watchdog turning that into a SIGKILL is a
+        # scar this estate already carries. `unknown` is the honest state; a second consecutive
+        # unknown is what a caller should act on.
+        out["reason"] = f"unreadable heartbeat: {exc}"
+        return out
+
+    out["beat"] = beat
+    phase = beat.get("phase")
+    pid = int(beat.get("pid") or 0)
+    out["phase"], out["pid"] = phase, pid
+
+    ts = beat.get("ts")
+    try:
+        age = now - datetime.fromisoformat(str(ts)).timestamp()
+    except (TypeError, ValueError):
+        # The known condition: `ts` absent or not an ISO-8601 string. Narrow, so a bug in
+        # this arithmetic surfaces instead of reading as a heartbeat with no timestamp.
+        age = None
+    out["age_s"] = age
+
+    alive = _pid_alive(pid)
+    out["pid_alive"] = alive
+
+    if phase == "stopped":
+        out["state"] = "stopped"
+        out["reason"] = str(beat.get("stopped_because") or "stopped")
+        return out
+
+    if alive is False:
+        out["state"] = "dead"
+        out["reason"] = (f"pid {pid} is gone and its last beat was '{phase}', not 'stopped' — "
+                         f"the consumer died without saying so")
+        return out
+
+    # Late is measured against what THIS beat promised, not a global constant, because the two
+    # cadences differ by 5x (`idle_s` 60 vs `blocked_s` 300) and one threshold must be wrong for
+    # one of them: too tight for blocked, or too slack to notice an idle loop stopping.
+    nxt = beat.get("next_check")
+    if age is not None:
+        if isinstance(nxt, (int, float)) and now > float(nxt) + _LATE_GRACE_S:
+            out["state"] = "late"
+            out["reason"] = (f"beat is {age:.0f}s old; it promised to check back by "
+                             f"{max(0.0, float(nxt) - now):.0f}s from now")
+            return out
+        if not isinstance(nxt, (int, float)) and age > _NO_NEXT_CHECK_STALE_S:
+            out["state"] = "late"
+            out["reason"] = f"beat is {age:.0f}s old in phase '{phase}' with no next_check"
+            return out
+
+    out["alive"] = True
+    if phase in ("blocked", "skipped"):
+        out["state"] = "blocked"
+        out["reason"] = str(beat.get("blocked_reason") or beat.get("skipped_reason") or phase)
+    else:
+        out["state"] = "running"
+        out["reason"] = f"phase={phase}"
+    return out
+
+
+# --------------------------------------------------------------------------- #
 # The loop
 # --------------------------------------------------------------------------- #
 def _blocked_reason(cfg) -> Optional[str]:
@@ -356,6 +647,12 @@ def run_consumer(cfg, *, batch: int | None = None, publish: bool = False,
 
     logger.info("consumer: starting (batch=%d, publish=%s)", batch, publish,
                 extra={"batch": batch, "publish": publish})
+    # Before the first cycle, not after it. The first `_blocked_reason` re-scans the spend ledger
+    # (measured 108s on a 157 MB one), so a heartbeat written only after a completed cycle would
+    # leave a freshly-started consumer looking dead for the first two minutes of every restart —
+    # and a KeepAlive crash-loop would then look like a permanently dead consumer rather than a
+    # restarting one, which is the opposite of the diagnosis an operator needs.
+    _write_heartbeat(cfg, phase="starting", cycle=0, batch=batch, publish=publish)
 
     while not flag.stopped:
         if max_passes is not None and totals["passes"] >= max_passes:
@@ -377,6 +674,13 @@ def run_consumer(cfg, *, batch: int | None = None, publish: bool = False,
                 totals["stopped_because"] = (
                     f"blocked {blocked_streak} cycle(s) in a row: {blocked}")
                 break
+            # A blocked consumer is the RAIL WORKING, so this must not read as a fault — but it
+            # is also the longest sleep in the loop, so it is the state most easily mistaken for
+            # death. The reason travels with the beat, which is what lets a monitor render
+            # "paused by the operator" and "capped at $100" differently from "not responding".
+            _write_heartbeat(cfg, phase="blocked", cycle=totals["passes"],
+                             blocked_reason=blocked, blocked_streak=blocked_streak,
+                             next_check=time.time() + conf.blocked_s)
             sleep(conf.blocked_s)
             continue
 
@@ -397,6 +701,13 @@ def run_consumer(cfg, *, batch: int | None = None, publish: bool = False,
                 totals["decay_sweeps"] += 1
 
         totals["passes"] += 1
+        # BEFORE the drain, because the drain is the phase that can hang: a vet was measured at
+        # 4127s against a ~251s median, and that tail is the reason this process exists. A beat
+        # written only after `resume_deferred` returns would be missing for exactly the duration
+        # of the pathology it is meant to expose. `phase=draining` plus a stale `ts` is the
+        # signature of a stuck pass; `phase=idle` plus a stale `ts` is a stopped loop.
+        _write_heartbeat(cfg, phase="draining", cycle=totals["passes"], batch=batch,
+                         resumed_total=totals["resumed"], errors=totals["errors"])
         try:
             out = resume_deferred(cfg, limit=batch, publish=publish)
         except Exception as e:  # noqa: BLE001 - one bad pass must not end the consumer
@@ -405,6 +716,8 @@ def run_consumer(cfg, *, batch: int | None = None, publish: bool = False,
             # whatever restarts the process, on that thing's schedule instead of the queue's.
             totals["errors"] += 1
             logger.exception("consumer: drain pass failed: %s", e)
+            _write_heartbeat(cfg, phase="error", cycle=totals["passes"], error=str(e)[:200],
+                             errors=totals["errors"], next_check=time.time() + conf.blocked_s)
             sleep(conf.blocked_s)
             continue
 
@@ -420,6 +733,13 @@ def run_consumer(cfg, *, batch: int | None = None, publish: bool = False,
             totals["blocked"] += 1
             logger.info("consumer: pass skipped — %s", out["skipped"],
                         extra={"skipped": out["skipped"]})
+            # A distinct phase from `blocked`, because the cause is distinct and the operator's
+            # action differs: `blocked` is a rail this operator armed (PAUSE, the cap), `skipped`
+            # is the moat refusing the pass. Collapsing them would send someone to the pause table
+            # to fix a dead brain.
+            _write_heartbeat(cfg, phase="skipped", cycle=totals["passes"],
+                             skipped_reason=str(out["skipped"])[:200],
+                             next_check=time.time() + conf.blocked_s)
             sleep(conf.blocked_s)
             continue
 
@@ -428,15 +748,29 @@ def run_consumer(cfg, *, batch: int | None = None, publish: bool = False,
             # counted rather than logged per cycle — `idle` divided by `passes` is how you see
             # whether the producer is keeping up, and a log line here would bury that in noise.
             totals["idle"] += 1
+            _write_heartbeat(cfg, phase="idle", cycle=totals["passes"],
+                             idle_streak=totals["idle"], resumed_total=totals["resumed"],
+                             next_check=time.time() + conf.idle_s)
             sleep(conf.idle_s)
             continue
 
         logger.info("consumer: pass drained %d/%d row(s)", resumed, attempted,
                     extra={"resumed": resumed, "attempted": attempted})
+        _record_drain(cfg, out, attempted=attempted, resumed=resumed)
+        _write_heartbeat(cfg, phase="drained", cycle=totals["passes"], resumed=resumed,
+                         attempted=attempted, resumed_total=totals["resumed"],
+                         next_check=time.time() + conf.busy_s)
         sleep(conf.busy_s)
 
     if flag.stopped and not totals["stopped_because"]:
         totals["stopped_because"] = flag.reason or "stopped"
+    # A DELIBERATE stop is not a death, and without this beat it is indistinguishable from one:
+    # the file would simply stop moving. `phase=stopped` with its reason is what lets a monitor
+    # stay quiet for an operator-requested stop and page for a SIGKILL — the case no writer can
+    # cover, and which the reader resolves by finding a stale beat whose pid is gone.
+    _write_heartbeat(cfg, phase="stopped", cycle=totals["passes"],
+                     stopped_because=totals["stopped_because"], resumed_total=totals["resumed"],
+                     errors=totals["errors"])
     logger.info("consumer: stopped after %d pass(es), %d row(s) resumed (%s)",
                 totals["passes"], totals["resumed"], totals["stopped_because"],
                 extra=dict(totals))

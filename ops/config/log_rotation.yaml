@@ -1,0 +1,44 @@
+# Log rotation — the business facts. The engine (`ops/automations/log_rotation.py`) has none.
+#
+# Every value carries the reason it has that value. A limit with no reason is a number
+# somebody will raise the first time it goes red.
+
+# Defaults, used by any target that does not override them.
+max_mb: 10      # 10 MB is about 60k lines here: a week of context, and still greppable in
+                # under a second. Above that people stop reading the log and start guessing.
+keep: 5         # Five archives at daily-ish rotation is roughly a working week of history,
+                # which is the window in which anybody asks "what happened on Tuesday".
+
+targets:
+  - path: store/scheduler/*.log
+    why: >
+      The daemon's stdout and stderr. This is the file that caused the rule: on 2026-08-16 a
+      grep over an unrotated 25 MB launchd.err.log counted 97 provider failures and read as
+      "97 today". Today's real number was 8, and most of the rest named a provider chain that
+      had already been deleted. The wrong number reached a planning document as a blocker.
+    max_mb: 10
+    keep: 7
+
+  - path: store/*.log
+    why: >
+      Backup and offsite-backup receipts. Small, but they are the only proof a scheduled job
+      ran, so they are kept longer than they are large.
+    max_mb: 5
+    keep: 7
+
+  - path: .pi/side-agents/runtime/*/backlog.log
+    why: >
+      Side-agent transcripts. Measured 2026-08-16 at 21 MB and 14 MB for two agents. They are
+      debugging material with a short useful life, so the limit is tight and the retention short.
+    max_mb: 5
+    keep: 2
+
+# Deliberately NOT here, and why:
+#
+#   store/prospector.jsonl — 211 MB, 761,090 lines as of 2026-08-16. It looks like a log and
+#   it is not: it is the durable spend ledger the daily cap reads. Truncating it changes what
+#   the spend guard believes and loses the audit trail. Shrinking it is a separate job with
+#   its own reader (see `tools/spend_today.py` and the memory
+#   `never-hand-parse-the-spend-ledger.md`), not a rotation.
+#
+#   store/scheduler/audit/*.jsonl — one file per day already, so it rotates by construction.
