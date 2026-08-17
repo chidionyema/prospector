@@ -2,7 +2,12 @@
 @import "./tokens.css";
 
 html {
-  color-scheme: light;
+  /* `light only`, not `light` (MASTER-BRIEF §9, 2026-08-17). Plain `light` states a preference
+     and still lets an engine's forced-dark pass repaint the page: Android Chrome auto-dark and
+     several in-app browsers (Instagram, Facebook, LinkedIn) invert a `light` page and render the
+     teal muddy. `only` withdraws consent to that transform. Paired with theme-color `#FAFAF7`
+     in `pages/_document.tsx` -- a browser bar that matches the page ground. */
+  color-scheme: light only;
   scroll-behavior: smooth;
   overflow-y: scroll;
   scrollbar-gutter: stable;
@@ -82,6 +87,42 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale; /* Crucial for macOS/iOS crispness */
   text-rendering: optimizeLegibility; /* Enables kerning & ligatures */
+}
+
+/*
+  PAINT THE GROUND ONTO THE LAYOUT ELEMENTS, NOT `body` ALONE (MASTER-BRIEF §9, 2026-08-17).
+
+  `color-scheme: light only` is the correct instruction and most engines honour it. The ones that
+  do not are the ones that matter commercially: Android Chrome's forced-dark and the in-app
+  browsers inside Instagram, Facebook and LinkedIn -- which is how a large share of buyers arrive
+  from a link. Those engines walk the tree and repaint elements whose background they judge to be
+  "default". An element that never declares a background is exactly that, so `header`, `main`,
+  `footer` and `section` get inverted individually while `body` keeps the light one it declared.
+  The result is not a dark site; it is a light page with dark bands through it and teal that has
+  gone muddy, which reads as broken rather than as a theme.
+
+  Declaring the ground on each of them removes the ambiguity: there is no element left for the
+  heuristic to consider unstyled. `background-color` rather than the `background` shorthand, so a
+  section that sets its own gradient or image keeps it and only picks up the ground beneath.
+
+  Scoped to the four structural tags the brief names. It is deliberately NOT `*`, which would
+  paint over every card, chip and tint token in the system.
+
+  IT MUST LIVE IN `@layer base`, and that is not tidiness. Unlayered CSS beats EVERY cascade layer
+  regardless of specificity, and `@import "tailwindcss"` puts all utilities in `@layer utilities`.
+  Written bare, this four-tag selector would therefore have outranked every `bg-*` utility in the
+  app: the dark inspection band (`--ins-bg`, a `<section>` carrying a `bg-ins-bg` class) would have
+  been repainted paper, which is the one surface on the site whose whole job is to be dark. In
+  `@layer base` the order inverts and any utility class wins, so this only ever reaches elements
+  that state no background of their own -- exactly the ones forced-dark was going to claim.
+*/
+@layer base {
+  header,
+  main,
+  footer,
+  section {
+    background-color: var(--bg);
+  }
 }
 
 /*

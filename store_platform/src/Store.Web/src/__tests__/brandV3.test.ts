@@ -52,15 +52,23 @@ describe('Brand v3 — palette, motion, surfaces', () => {
          is now visible as a card without a border doing all the work. Asserting both is what
          stops a later edit from quietly re-flattening them back to one colour, which would
          delete the separation without failing anything. */
-      expect(stripped, '--bg must be the warm canvas #FAF9F7').toMatch(/--bg\s*:\s*#FAF9F7/i);
+      /* RE-PINNED 2026-08-17 to MASTER-BRIEF §1. #FAF9F7 -> #FAFAF7, a half-step cooler ground.
+         The pinned PROPERTY is unchanged and is the load-bearing half: one declared ground, split
+         from a white surface. Only the literal moved, and it moved because the brief declares the
+         palette now. */
+      expect(stripped, '--bg must be the paper ground #FAFAF7').toMatch(/--bg\s*:\s*#FAFAF7/i);
       expect(stripped, '--surface must stay white paper on it').toMatch(
         /--surface\s*:\s*#FFFFFF/i,
       );
     });
 
     it('declares --border as a high-contrast neutral, not a warm tan', () => {
-      expect(stripped, '--border must be the neutral hairline #E4E4E7').toMatch(
-        /--border\s*:\s*#E4E4E7/i,
+      // RE-PINNED 2026-08-17 to MASTER-BRIEF §1: #E4E4E7 -> #E7E7E1, the brief's `--line`. Same
+      // job, same lightness; it drops the blue cast so the hairline sits on the warm ground
+      // instead of reading faintly violet against it. The anti-tan assertion below is the part
+      // that must never be deleted.
+      expect(stripped, '--border must be the neutral hairline #E7E7E1').toMatch(
+        /--border\s*:\s*#E7E7E1/i,
       );
       expect(stripped, '--border must NOT be the old warm tan #D4C9B5').not.toMatch(
         /--border\s*:\s*#D4C9B5/i,

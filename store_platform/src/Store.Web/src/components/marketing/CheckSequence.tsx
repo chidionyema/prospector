@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import report from '@/data/sample-report.json';
-import { SourceChip, textLinkClass } from '@/components/ui';
+import { SourceChip, VerdictChip, textLinkClass } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { plainEnglish } from '@/lib/plainEnglish';
 
@@ -92,13 +92,16 @@ export function CheckSequence({ className }: { className?: string }) {
                 <span
                   className={cx(
                     'flex h-7 w-7 items-center justify-center rounded-sm font-mono text-caption',
-                    // tokens.css:143 states it outright -- --kill on --kill-bg measures 4.41:1,
-                    // under the AA floor -- and this pairing did exactly that. --kill-strong exists
-                    // because of it and measures 5.91:1 on the same tint. The BORDER stays --kill:
-                    // an edge is a UI boundary held to 3:1, not text.
+                    // AMBER, NOT RED (2026-08-17, MASTER-BRIEF §2). This numeral is drawn for a
+                    // check that was PUSHED BACK, not killed, and red is reserved for a kill.
+                    // Measured on the §1 palette: --pushed-back-strong #6E5608 on
+                    // --pushed-back-bg #FCF8E8 is 6.58:1, and the --pushed-back #8A6D0B edge is
+                    // 4.62:1 on the same tint -- both clear, the edge well past the 3:1 a UI
+                    // boundary needs. The -strong variant is used for the same reason it always
+                    // was: the base ink on its own tint sits near the AA floor.
                     supported
                       ? 'bg-survive text-bg'
-                      : 'border border-kill bg-kill-bg text-kill-strong',
+                      : 'border border-pushed-back bg-pushed-back-bg text-pushed-back-strong',
                   )}
                 >
                   {String(i + 1).padStart(2, '0')}
@@ -133,14 +136,10 @@ export function CheckSequence({ className }: { className?: string }) {
                       spec's own answer is the QA report, with the explanation next to it. That
                       surface is a separate build and is called out in the commit, not quietly
                       dropped here. */}
-                  <span
-                    className={cx(
-                      'font-mono text-caption',
-                      supported ? 'text-survive' : 'text-kill',
-                    )}
-                  >
-                    {supported ? 'survived' : 'pushed back'}
-                  </span>
+                  {/* One component decides what a verdict looks like (MASTER-BRIEF §6). This span
+                      used to pick its own colour and picked the kill red for a check that was
+                      merely pushed back, which is the defect VerdictChip exists to end. */}
+                  <VerdictChip kind={supported ? 'survived' : 'pushed-back'} />
                 </div>
                 <p className="mt-1.5 max-w-[62ch] text-meta leading-relaxed text-muted">
                   {plainEnglish(check.rationale)}
@@ -172,11 +171,15 @@ export function CheckSequence({ className }: { className?: string }) {
           a cited kill, and this component cannot see either. Stating the outcome would be asserting
           a rule the page has not shown. The counts are the fact; /sample is the whole record. */}
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-md bg-surface2 p-5">
-        <p className="font-mono text-caption text-text">
-          <span className="text-survive">{SURVIVED} survived</span>
-          <span className="text-subtle">{' · '}</span>
-          <span className="text-kill">{PUSHED_BACK} pushed back</span>
-          <span className="text-subtle">{` · ${report.sourceCount} sources cited`}</span>
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-caption text-text">
+          <VerdictChip kind="survived" label={`${SURVIVED} survived`} />
+          {/* Amber, not red. Red is reserved for a KILL (MASTER-BRIEF §2), and a pushed-back check
+              is not a kill: the check found nothing decisive either way, the idea continued, and
+              the doubt stays on the record. Red told a reader the idea had failed something it had
+              not. The chip is what makes that a property of the component rather than of this
+              line. */}
+          <VerdictChip kind="pushed-back" label={`${PUSHED_BACK} pushed back`} />
+          <span className="text-subtle">{`${report.sourceCount} sources cited`}</span>
         </p>
         <Link
           href="/sample"

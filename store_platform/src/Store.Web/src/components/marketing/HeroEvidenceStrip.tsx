@@ -83,7 +83,9 @@ export function HeroEvidenceStrip({ className }: { className?: string }) {
                      `--warning-strong` on `--warning-bg` (6.84:1), so the page carried two
                      colour families for one state. `--warning-strong` also fixes the contrast
                      miss underneath: `--kill` on `--kill-bg` measures 4.41:1. */
-                  supported ? 'h-5 bg-survive' : 'h-5 border border-warning-strong bg-warning-bg',
+                  supported
+                    ? 'h-5 bg-survive'
+                    : 'h-5 border border-pushed-back-strong bg-pushed-back-bg',
                 )}
               />
             );
@@ -93,8 +95,11 @@ export function HeroEvidenceStrip({ className }: { className?: string }) {
         <p className="font-mono text-caption text-text">
           <span className="text-survive">{SURVIVED} survived</span>
           <span className="text-subtle">{' · '}</span>
-          {/* Matches the ticks above, and for the same reason. See the note on their class. */}
-          <span className="text-warning-strong">{PUSHED_BACK} pushed back</span>
+          {/* Matches the ticks above, and for the same reason. See the note on their class.
+              The token is `--pushed-back-strong` now, not `--warning-strong`: same value, but the
+              name says the verdict rather than a generic UI state, so the next person to read
+              this line cannot mistake it for a caution message. */}
+          <span className="text-pushed-back-strong">{PUSHED_BACK} pushed back</span>
           <span className="text-subtle">{` · ${report.sourceCount} sources`}</span>
         </p>
       </div>

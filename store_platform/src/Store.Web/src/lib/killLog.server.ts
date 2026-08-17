@@ -44,7 +44,14 @@ export type KillSummary = {
 /** What an expanded row shows, keyed by slug. Prose is already translated. */
 export type KillDetail = { oneLiner: string; reason: string; citations: Citation[] };
 
-export type GateBar = { gate: string; count: number; label: string; published: boolean };
+export type GateBar = {
+  gate: string;
+  count: number;
+  label: string;
+  published: boolean;
+  /** True when this cause is a STAGE of the process, not a CHECK on the idea. See STAGE_GATES. */
+  isStage: boolean;
+};
 
 export type KillIndex = {
   summaries: KillSummary[];
@@ -106,7 +113,53 @@ const EXTRA_LABELS: Record<string, string> = {
   moat_ungrounded: 'The defensibility claim was not evidence-backed',
   source_or_die: 'Its own claims could not be sourced',
   buyer_intent: 'No sign anyone is trying to buy it',
+  // Added 2026-08-17. It was missing, and with no entry here the fallback below prints the raw
+  // engine key with its underscores swapped for spaces -- "adversarial decisive". That is the
+  // fourth largest cause of death on the site (142 kills), so the machine's own identifier was
+  // being rendered to buyers on the biggest chart the page draws.
+  adversarial_decisive: 'It did not survive the adversarial pass',
 };
+
+/*
+ * STAGES ARE NOT CHECKS (MASTER-BRIEF §5.2, added 2026-08-17).
+ *
+ * A check is a question about the IDEA: is the pain real, can the payer pay. A stage is something
+ * the PROCESS did -- it scored the idea, it attacked the idea, it went looking for evidence behind
+ * a defensibility claim and found none. Both end an idea's life and both belong on this page, but
+ * they answer different questions. Listing them in one undifferentiated column of "causes" tells a
+ * reader that "scored below the bar" is a finding about the market. It is not. It is a fact about
+ * our own threshold.
+ *
+ * The sizes are why this matters more here than anywhere else on the site. Measured against
+ * `src/data/kill-log.json` totals on 2026-08-17: min_composite 624, moat_ungrounded 191,
+ * adversarial_decisive 142 -- 957 of 1,364 kills, 70%. The single largest cause of death, and two
+ * of the top four, are stages. A "how ideas die" chart that does not separate them is largely a
+ * chart of our own process wearing the label of a market finding.
+ *
+ * Exactly the three the brief names. `source_or_die` and `buyer_intent` are deliberately NOT here:
+ * they are evidence tests about the idea, which is what a check is.
+ */
+export const STAGE_GATES: ReadonlySet<string> = new Set([
+  'min_composite',
+  'moat_ungrounded',
+  'adversarial_decisive',
+]);
+
+/**
+ * Whether a cause is a stage of the process rather than a check on the idea.
+ *
+ * Keyed on the LABEL, not on the gate, because every reader-facing surface on this page is keyed
+ * on label -- the filter chips, the sort, the chart's grouping -- for the reason written at
+ * `gateCounts` below: two engine keys can carry one label, and keying on the key drew the same
+ * claim twice with different counts. A helper that keyed on `gate` would reintroduce exactly that
+ * split for stages.
+ */
+export function isStageLabel(label: string): boolean {
+  for (const gate of STAGE_GATES) {
+    if (EXTRA_LABELS[gate] === label) return true;
+  }
+  return false;
+}
 
 /** Everything the page needs at load. Called from `getStaticProps`, never from a component. */
 export function buildKillIndex(): KillIndex {
@@ -169,12 +222,19 @@ export function buildKillIndex(): KillIndex {
         count,
         label: labelFor[gate] ?? gate.replace(/_/g, ' '),
         published: published.has(gate),
+        // Read off the GATE here, where the gate is still in hand, rather than off the label. The
+        // merge below is by label and the two agree, but a stage and a check can never share a
+        // label, so this is the cheaper and more direct of the two.
+        isStage: STAGE_GATES.has(gate),
       }))
       .reduce<Record<string, GateBar>>((acc, d) => {
         const existing = acc[d.label];
         if (existing) {
           existing.count += d.count;
           existing.published = existing.published || d.published;
+          // OR, matching `published` directly above: merged bars share one label, and a label is
+          // either a stage or it is not, so this can only ever re-assert what is already set.
+          existing.isStage = existing.isStage || d.isStage;
         } else {
           acc[d.label] = { ...d };
         }
