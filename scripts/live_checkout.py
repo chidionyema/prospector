@@ -55,6 +55,24 @@ def run(cmd: list[str], cwd: Path | None = None, timeout: int = 30) -> tuple[int
     return proc.returncode, (proc.stdout + proc.stderr).strip()
 
 
+def _code_changes(porcelain: str) -> list[str]:
+    """Modified TRACKED CODE, ignoring tracked runtime state.
+
+    store/ and storage/ are tracked but are written by every run, so `git status` in a
+    working production checkout is never empty. Counting those as local modifications
+    would make the clean-mirror check fire permanently and mean nothing.
+    """
+    out = []
+    for line in porcelain.splitlines():
+        if line.startswith("??"):
+            continue
+        path = line[3:].strip().strip('"')
+        if path.startswith(("store/", "storage/")):
+            continue
+        out.append(line)
+    return out
+
+
 def job_cwd(job: str) -> tuple[str | None, str | None]:
     """Return (pid, cwd) for a launchd job, read from the process, not from config."""
     rc, out = run(["launchctl", "print", f"gui/{os.getuid()}/{job}"])
@@ -125,7 +143,7 @@ def report() -> int:
         problems.append(f"live checkout is {behind} commits behind origin/main")
 
     _, dirty = run(["git", "status", "--porcelain"], cwd=LIVE)
-    tracked = [ln for ln in dirty.splitlines() if not ln.startswith("??")]
+    tracked = _code_changes(dirty)
     if tracked:
         print(f"  local modifications: {len(tracked)} tracked file(s) changed")
         problems.append("live checkout has local modifications")
@@ -163,7 +181,7 @@ def update() -> int:
         return 1
 
     _, dirty = run(["git", "status", "--porcelain"], cwd=LIVE)
-    tracked = [ln for ln in dirty.splitlines() if not ln.startswith("??")]
+    tracked = _code_changes(dirty)
     if tracked:
         print("REFUSING: the live checkout has local modifications. It must stay a clean")
         print("mirror of origin/main. Changes belong in a branch and a PR:")

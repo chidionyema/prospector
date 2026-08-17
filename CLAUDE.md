@@ -77,6 +77,46 @@ Pluggable modules:
 - **The DRAIN stays trusted-only, and that asymmetry is deliberate.** `run.py::_cmd_resume` runs the same classifier at the default `trusted_only=True`, because re-vetting a `provisional` row on a provisional brain re-stamps it `provisional`: the row does not move, the money is spent, and the drain's CLI load helps keep the trusted brain benched (measured 2026-08-06: provisional −14 / defer +13 over 30 minutes, net −1). Generation may run into a provisional tail; the drain may not. One shared function, one parameter — so the two can never disagree by accident.
 - **Price is a rung, and evidence and action are separate decisions.** `price_comparables` retrieves cited willingness-to-pay anchors by default; letting them MOVE a price is a second, explicitly-enabled switch. Same flag for both is how a catalogue re-prices itself the day a feature merges.
 
+## Where production runs (changed 2026-08-17 — read this before editing a branch)
+
+**Production does NOT run from this checkout any more.** The scheduler and consumer run from
+`/Users/chidionyema/Documents/code/prospector-live`, a checkout kept detached at `origin/main`.
+Editing a branch here can no longer change what production executes.
+
+The live answer is a command, never this paragraph:
+
+```bash
+.venv/bin/python scripts/live_checkout.py            # daemon cwd, live HEAD vs origin/main, secrets
+.venv/bin/python scripts/live_checkout.py --update   # roll production forward and restart
+```
+
+Both are console buttons. `--update` refuses a live checkout with local code changes: it must stay
+a clean mirror of `main`, so a fix reaches production through a PR, not through an edit on the box.
+
+Why it changed: production ran from this shared developer checkout, on whatever branch a session
+had left it on. On 2026-08-17 that was `integrate/minimax-into-main`, 75 commits behind
+`origin/main`, so the daemon executed 17-hour-old code — and the only way to see that was to run
+`lsof` on the pid by hand.
+
+**State did NOT move, and two traps guard that.**
+
+`PROSPECTOR_STORE_DIR` on both plists pins the catalogue, ledger, dossiers and scheduler files to
+`/Users/chidionyema/Documents/code/prospector/store`. That is the canonical store. There is exactly
+one.
+
+1. **Git does not carry secrets.** The live checkout has no `.env` of its own. The first thing the
+   move did was bench every MiniMax tier with `ProviderExhaustedError: All operators in ('minimax',
+   'minimax_m27') unavailable — check API keys and credentials`, because the key file was simply not
+   there. `.env` and `.lux/keys/agent.pem` are symlinks back to this checkout, and the probe checks
+   both.
+2. **A store path derived from `__file__` follows the CODE, not the store.** Four constants did
+   exactly that, so for twenty minutes the provider health marks, the retrieval cache and the
+   scheduler audit trail were written beside the new code while the ledger went to the canonical
+   store. `config.store_root()` is the one resolver now; anything needing a store path at module
+   level calls it. Never write `Path(__file__).parent.parent / "store"` again — the health file
+   records which brains are benched, and a daemon writing one copy while a probe reads another can
+   never see a provider recover.
+
 ## Working in a git worktree
 
 **The pre-commit gate is LIVE. This section used to say it was disabled, and that was wrong.**
