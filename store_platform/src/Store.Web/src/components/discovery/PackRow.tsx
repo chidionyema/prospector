@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import React from 'react';
 
-import { EvidenceBar } from '@/components/ui/EvidenceBar';
 import { Icon } from '@/components/ui/Icon';
 import { CATEGORY_LABEL } from '@/components/ui/PackCardHeader';
 import { PriceText } from '@/components/ui/Money';
@@ -73,7 +72,25 @@ export function PackRow({
   const { heading, sub } = cardHeading(pack);
   // `repairTruncation` repairs the publish path's character-150 cut; `cardLine` then caps at a
   // word boundary so the row never shows a clause that stops mid-thought. See `cardLine`.
-  const line = cardLine(repairTruncation(pack.oneLine) || sub);
+  //
+  // THE ROW GETS ITS OWN BUDGET (founder review, 2026-08-16): 6 words, not `cardLine`'s 30-word
+  // default. `cardLine`'s default is sized for the Spotlight card, which renders its line with no
+  // CSS clamp at all (`pages/index.tsx:402`) -- so a 155-203 char output there just wraps to
+  // however many lines it needs and nothing is ever cut. The row is different: the description
+  // sits in a `line-clamp-2` box in a column measured at 179px wide on a 390px phone (this file's
+  // own docblock above, "the text column runs L=80..R=259"). Measured with the real font
+  // (Switzer, 14px/1.4, the site's `--text-meta`) against real prose in that exact column: only
+  // 46-57 characters fit on two lines before the clamp starts eating words. That is almost
+  // exactly the length of the two examples the founder quoted as broken -- "...the financier
+  // covers the difference if copper" is 46 characters, the same number the measurement landed
+  // on. At the 30-word default, `cardLine`'s own docblock records a 155-char median: roughly
+  // three and a half times too long for this column, which is why the clamp was cutting mid-word
+  // and mid-clause instead of never firing. Re-running `cardLine`'s exact algorithm (word cap,
+  // then clause-boundary backoff, then dangling-word backoff) at maxWords=6 against five
+  // realistic descriptions, the worst case is 2 lines at this column width; maxWords=7 already
+  // overflows to 3 on the longest sample. 6 is the highest budget that keeps the clamp a safety
+  // net that never fires, at the narrowest supported width.
+  const line = cardLine(repairTruncation(pack.oneLine) || sub, 6);
   const price = formatPriceForMarket(pack.price, cur);
 
   return (
@@ -108,14 +125,28 @@ export function PackRow({
             which is the defect the brief names, and it was hiding on desktop precisely because
             it bites only the longest titles. `line-clamp-2` ellipses at a line box instead, so
             a pathological title still cannot push the row open. */}
-        <span className="line-clamp-2 block text-body font-semibold text-text">
+        {/* RESERVED HEIGHT, not just a two-line cap (founder, 2026-08-16, item 2: "nothing sits
+            on a grid" -- row heights varied with content, so the price/category/multiple line
+            below landed at a different y on every row). `min-h` reserves the box for two lines
+            even when the heading is one line or the pack has no line at all, so every row is the
+            same height whether or not its content needs both lines. `text-body` is 1rem/1.55
+            (tokens.css), so two line boxes are 2 * 1 * 1.55 = 3.1rem. This is a floor, not a
+            fixed height: `line-clamp-2` still governs the ceiling, so a longer heading still
+            wraps and clips at two lines instead of pushing the row taller. */}
+        <span className="line-clamp-2 block min-h-[3.1rem] text-body font-semibold text-text">
           {listHeading(heading)}
         </span>
         {/* TWO LINES, not one (founder, 2026-08-16, item 3). `truncate` is a single line AND a
             mid-word cut, which is the same defect the title was carrying: `cardLine` had already
             capped the string at a word boundary, and then the one-line box cut it again inside a
-            word. `line-clamp-2` fills both lines and ellipses only at a line box. */}
-        {line && <span className="mt-0.5 line-clamp-2 block text-meta text-muted">{line}</span>}
+            word. `line-clamp-2` fills both lines and ellipses only at a line box.
+            RESERVED HEIGHT (item 2, same reasoning as the title above): `text-meta` is
+            0.875rem/1.4 (tokens.css), so two line boxes are 2 * 0.875 * 1.4 = 2.45rem. Rendered
+            unconditionally now (not gated on `line`) so a pack with no description still holds
+            its slot instead of collapsing the row shorter than its neighbours. */}
+        <span className="mt-0.5 line-clamp-2 block min-h-[2.45rem] text-meta text-muted">
+          {line}
+        </span>
         {/* THE CONTAINER WRAPS, and all three of `flex-wrap`, `min-w-0` here and `min-w-0` on the
             figure are load-bearing. Without them nothing on this line could yield, so the row
             overflowed and its items collided -- one cause behind three separately reported
@@ -141,11 +172,21 @@ export function PackRow({
               for the first line. */}
           {viewed && <span className="flex-none font-mono text-caption text-subtle">seen</span>}
           {stat && <PackFigure stat={stat} weight="row" />}
-          {/* Capped harder than the component's default 40. The cap is honest either way (past it
-              the run draws an over-marker and the numeral carries the exact value), and 40 ticks
-              is a ~79px object competing for a line that has ~246px on a phone. The bar's job in
-              a row is "more evidence than the row above", which 14 ticks state as well as 40. */}
-          {evidenceLabel && <EvidenceBar count={pack.sourceCount} label={false} cap={14} />}
+          {/* A NUMBER, not a bar (founder, 2026-08-16, item 5: "the sparkline is decoration
+              wearing data's clothes"). The bar this replaced was `<EvidenceBar count=...
+              label={false} cap={14} />` -- 12px ticks with no numeral, so a reader could not
+              tell 6 sources from 14 without counting marks on a row. `evidenceLabel` only true
+              when `stat.kind !== 'sources'` (declared above), i.e. exactly the branch where the
+              row's lead figure is the price multiple, NOT the source count -- so this is the
+              only place on the row the count is shown as text; `PackFigure` shows the multiple,
+              not the count, in this branch. Confirmed by reading `packStat.ts` and `PackFigure`
+              before cutting the bar: the count does not survive elsewhere in this branch, so
+              cutting it silently would have dropped information rather than just decoration. */}
+          {evidenceLabel && typeof pack.sourceCount === 'number' && pack.sourceCount > 0 && (
+            <span className="flex-none font-mono text-caption text-subtle">
+              {pack.sourceCount} {pack.sourceCount === 1 ? 'source' : 'sources'}
+            </span>
+          )}
           {/* COMPARE LIKE WITH LIKE. `groupByMarket` buckets on `packMarket(pack)`, which
               case-folds and applies the null-is-uk rule, so testing the RAW field here would flag
               a correctly-placed pack as foreign on any casing variance. The guard on the raw

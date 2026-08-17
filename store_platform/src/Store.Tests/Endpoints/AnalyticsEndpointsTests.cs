@@ -71,6 +71,8 @@ public sealed class AnalyticsEndpointsTests : IClassFixture<StoreApiFactory>
     [InlineData("matchmaker_answered")]
     [InlineData("palette_search")]
     [InlineData("copy_variant")]
+    [InlineData("card_impression")]
+    [InlineData("card_click")]
     public async Task Storefront_emitted_event_is_accepted_and_counted(string name)
     {
         var before = await CountAsync(name);
@@ -182,6 +184,81 @@ public sealed class AnalyticsEndpointsTests : IClassFixture<StoreApiFactory>
         Assert.Equal(HttpStatusCode.Accepted, (await PostEventAsync(new { name = "page_view", path = "/" })).StatusCode);
 
         Assert.Equal(before + 2, await CountAsync("page_view"));
+    }
+
+    /// <summary>
+    /// The title instrument has to produce a RATIO, per pack. The summary endpoint can only
+    /// ever say "N impressions, M clicks" across the whole shelf, which cannot compare one
+    /// title against another — the only question the events exist to answer.
+    ///
+    /// One session sees three cards and clicks one, so the clicked card must read 1/1 and the
+    /// other two 0/1. Asserting the ratio rather than the raw counts is deliberate: raw
+    /// counts would still pass if impressions and clicks were tallied into separate,
+    /// unjoinable totals, which is exactly the defect this endpoint exists to prevent.
+    /// </summary>
+    [Fact]
+    public async Task Card_ctr_is_reported_per_pack()
+    {
+        const string session = "ctrsession01";
+
+        Assert.Equal(HttpStatusCode.Accepted, (await PostEventAsync(new
+        {
+            name = "card_impression",
+            path = "/ideas",
+            meta = $$"""{"s":"{{session}}","p":["ctrpack_a","ctrpack_b","ctrpack_c"]}""",
+        })).StatusCode);
+
+        Assert.Equal(HttpStatusCode.Accepted, (await PostEventAsync(new
+        {
+            name = "card_click",
+            path = "/ideas",
+            meta = $$"""{"s":"{{session}}","p":"ctrpack_b","i":1}""",
+        })).StatusCode);
+
+        var report = await InternalClient().GetFromJsonAsync<JsonElement>("/internal/analytics/card-ctr?days=1");
+        var packs = report.GetProperty("packs").EnumerateArray().ToList();
+
+        JsonElement Pack(string id) => packs.Single(
+            p => string.Equals(p.GetProperty("pack_id").GetString(), id, StringComparison.Ordinal));
+
+        Assert.Equal(1, Pack("ctrpack_a").GetProperty("impressions").GetInt32());
+        Assert.Equal(0, Pack("ctrpack_a").GetProperty("clicks").GetInt32());
+        Assert.Equal(0.0, Pack("ctrpack_a").GetProperty("ctr").GetDouble());
+
+        Assert.Equal(1, Pack("ctrpack_b").GetProperty("impressions").GetInt32());
+        Assert.Equal(1, Pack("ctrpack_b").GetProperty("clicks").GetInt32());
+        Assert.Equal(1.0, Pack("ctrpack_b").GetProperty("ctr").GetDouble());
+    }
+
+    /// <summary>
+    /// A beacon cut by the 512-character Meta truncation is not partially recoverable, and
+    /// half a JSON string must never be guessed into a pack id — that would put fictional
+    /// cards in the denominator. Skipped rows are counted and surfaced instead, because a
+    /// rising skip count is the only warning that the instrument is losing data.
+    /// </summary>
+    [Fact]
+    public async Task Truncated_card_meta_is_skipped_not_guessed()
+    {
+        Assert.Equal(HttpStatusCode.Accepted, (await PostEventAsync(new
+        {
+            name = "card_impression",
+            path = "/ideas",
+            meta = """{"s":"cut","p":["goodpack","choppe""",
+        })).StatusCode);
+
+        var report = await InternalClient().GetFromJsonAsync<JsonElement>("/internal/analytics/card-ctr?days=1");
+
+        Assert.True(report.GetProperty("skipped_events").GetInt32() >= 1);
+        Assert.DoesNotContain(
+            report.GetProperty("packs").EnumerateArray(),
+            p => (p.GetProperty("pack_id").GetString() ?? string.Empty).StartsWith("choppe", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Card_ctr_is_closed_without_internal_key()
+    {
+        var bare = await _factory.CreateClient().GetAsync("/internal/analytics/card-ctr");
+        Assert.Equal(HttpStatusCode.Unauthorized, bare.StatusCode);
     }
 
     [Fact]

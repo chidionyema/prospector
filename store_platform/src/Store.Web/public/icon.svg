@@ -13,13 +13,24 @@
        on a white ground; in a favicon those white bars would have shown against a dark browser
        tab strip. Three closed paths in one colour have no dependency on the surface behind them.
 
-       Ink is #171717 (bg-text), matching every other static icon in this directory. The header
-       lockup recolours the same geometry with the brand mark token; the favicon stays ink.
+       TEAL, NOT INK (founder review, 2026-08-16, viewing the live tab next to Gmail and Mail).
+       This mark used to render at #171717 here while `Logo.tsx`'s `BrandMark` recoloured the same
+       geometry with the "brand mark" custom property (CSS var, two leading hyphens, spelled out
+       in words here because a literal double hyphen inside an XML comment is malformed and this
+       file's own test pins that), on the stated argument that the favicon should stay ink to
+       match every other static icon in this directory. That argument was about internal
+       consistency, and it cost the actual goal: at 16px, three near-black slabs on a white tab
+       carry no hue at all, so next to a blue-and-red Mail icon and a red Gmail M the tab reads as
+       a grey smudge, and the two Mumchimp tabs (this page, the catalogue) were indistinguishable
+       from each other for the same reason. That brand-mark teal (#0F766E) is on screen nowhere
+       else on first paint, so this is now the one place a reader can identify the product by colour before
+       reading a word. The geometry is untouched, so the "mirrors `BrandMark` EXACTLY" claim above
+       is now true of colour as well, not only shape.
 
        Geometry: the funnel edges run from (3,6) and (97,6) to (37,94) and (63,94); the slabs are
        that trapezoid cut at y=38..46 and y=70..78, so each slab is shorter as well as narrower
        than the one above it (32, 24 and 16 units tall). -->
-  <path d="M 3 6 L 97 6 L 84.64 38 L 15.36 38 Z" fill="#171717" />
-  <path d="M 18.45 46 L 81.55 46 L 72.27 70 L 27.73 70 Z" fill="#171717" />
-  <path d="M 30.82 78 L 69.18 78 L 63 94 L 37 94 Z" fill="#171717" />
+  <path d="M 3 6 L 97 6 L 84.64 38 L 15.36 38 Z" fill="#0F766E" />
+  <path d="M 18.45 46 L 81.55 46 L 72.27 70 L 27.73 70 Z" fill="#0F766E" />
+  <path d="M 30.82 78 L 69.18 78 L 63 94 L 37 94 Z" fill="#0F766E" />
 </svg>
