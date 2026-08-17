@@ -1950,7 +1950,7 @@ def _act_daemon_restart(cfg, payload: dict, preview: bool) -> dict:
     Not destructive in the sense `index.reconcile` is: the worst case is a clean process replacing
     a running one, and the plists are the estate's own declaration of how these processes start.
     """
-    from .supervisor import JOBS, PRODUCER, job_state, restart
+    from .supervisor import JOBS, PRODUCER, deploy_plist_path, job_state, restart
 
     label = str(payload.get("label") or PRODUCER).strip()
     if label not in JOBS:
@@ -1961,10 +1961,17 @@ def _act_daemon_restart(cfg, payload: dict, preview: bool) -> dict:
         if state["loaded"] is None:
             effect = f"cannot ask launchctl ({state['reason']}) — this would do nothing"
         elif not state["loaded"]:
-            effect = (f"job is NOT loaded, so nothing can relaunch it — bootstraps "
-                      f"{state['plist']}, which starts it (RunAtLoad) and keeps it up (KeepAlive)"
-                      if state["plist_exists"] else
-                      f"job is NOT loaded and {state['plist']} does not exist — nothing to do")
+            if state["plist_exists"]:
+                effect = (f"job is NOT loaded, so nothing can relaunch it — bootstraps "
+                          f"{state['plist']}, which starts it (RunAtLoad) and keeps it up "
+                          f"(KeepAlive)")
+            else:
+                deploy = deploy_plist_path(label)
+                effect = (f"job has NEVER been installed — copies the tracked plist "
+                          f"{deploy.name} from deploy/ to {state['plist']}, then bootstraps it"
+                          if deploy.exists() else
+                          f"job is NOT loaded, {state['plist']} does not exist and there is no "
+                          f"tracked plist at {deploy} — nothing to do")
         else:
             effect = (f"SIGKILLs pid {state['pid'] or '—'} and lets launchd start a clean process "
                       f"(`launchctl kickstart -k`); in-flight work on this tick is lost")

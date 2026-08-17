@@ -41,6 +41,10 @@ type Job = {
   reason: string;
   plist: string;
   plist_exists: boolean;
+  /** false for a job that runs on a schedule and writes no heartbeat, e.g. the daily backup. */
+  heartbeat?: boolean;
+  /** true when a tracked plist exists in deploy/, so Start can install a job never installed. */
+  installable?: boolean;
   error?: string;
 };
 type Beat = {
@@ -102,6 +106,7 @@ const SCOPE_TITLE: Record<string, string> = {
 const ROLE_TITLE: Record<string, string> = {
   producer: 'Idea generator',
   consumer: 'Idea checker',
+  backup: 'Offsite backup',
 };
 
 export default function Engine() {
@@ -260,6 +265,10 @@ function ProcessCard({ job, beat, onDone }: { job: Job; beat?: Beat; onDone: () 
   const held = job.loaded === true;
   const unheld = job.loaded === false;
   const beating = beat?.present === true && beat.stale === false;
+  // A scheduled job writes no heartbeat and is not supposed to. Showing it a red "no heartbeat"
+  // pill for the 23 hours a day it is correctly not running would train the operator to ignore
+  // the pill on the two daemons where it is the fault signal.
+  const expectsBeat = job.heartbeat !== false;
 
   return (
     <div
@@ -271,9 +280,13 @@ function ProcessCard({ job, beat, onDone }: { job: Job; beat?: Beat; onDone: () 
           <Pill tone={held ? 'ok' : unheld ? 'bad' : 'warn'}>
             {held ? 'launchd holds it' : unheld ? 'NOT HELD' : 'launchd unknown'}
           </Pill>
-          <Pill tone={beating ? 'ok' : beat?.present ? 'warn' : 'bad'}>
-            {beating ? 'beating' : beat?.present ? 'silent' : 'no heartbeat'}
-          </Pill>
+          {expectsBeat ? (
+            <Pill tone={beating ? 'ok' : beat?.present ? 'warn' : 'bad'}>
+              {beating ? 'beating' : beat?.present ? 'silent' : 'no heartbeat'}
+            </Pill>
+          ) : (
+            <Pill tone="ok">on a schedule</Pill>
+          )}
         </div>
       </div>
 
@@ -281,8 +294,12 @@ function ProcessCard({ job, beat, onDone }: { job: Job; beat?: Beat; onDone: () 
 
       {unheld ? (
         <Problem>
-          launchd is not holding this job, so nothing restarts it when it dies. Restart bootstraps
-          it from {job.plist_exists ? 'its plist' : 'a plist that does not exist'}.
+          launchd is not holding this job, so nothing starts it.{' '}
+          {job.plist_exists
+            ? 'Start bootstraps it from its plist.'
+            : job.installable
+              ? 'It has never been installed. Start copies the tracked plist from deploy/ and bootstraps it.'
+              : 'There is no plist here and none in deploy/, so Start has nothing to install.'}
         </Problem>
       ) : null}
       {job.error ? <Problem>{job.error}</Problem> : null}
@@ -292,11 +309,13 @@ function ProcessCard({ job, beat, onDone }: { job: Job; beat?: Beat; onDone: () 
           pid <span className="font-mono">{job.pid ?? beat?.pid ?? ABSENT}</span> · launchctl says{' '}
           <span className="font-mono">{job.reason}</span>
         </div>
-        <div>
-          last beat {beat?.ts ? ago(beat.ts) : ABSENT}
-          {beat?.phase ? ` · ${beat.phase}` : ''}
-          {beat?.code ? ` · code ${beat.code}` : ''}
-        </div>
+        {expectsBeat ? (
+          <div>
+            last beat {beat?.ts ? ago(beat.ts) : ABSENT}
+            {beat?.phase ? ` · ${beat.phase}` : ''}
+            {beat?.code ? ` · code ${beat.code}` : ''}
+          </div>
+        ) : null}
         <div className="wrap-any font-mono">{job.label}</div>
       </div>
 
