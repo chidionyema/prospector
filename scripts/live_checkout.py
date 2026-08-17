@@ -189,11 +189,33 @@ def report() -> int:
     return 0
 
 
-def update() -> int:
-    """Fast-forward the live checkout to origin/main, relink secrets, restart the jobs."""
+#: Kill switch for the unattended roll-forward. Present => --update reports and refuses,
+#: exactly like the scheduler's PAUSE file, which is the convention on this estate.
+#: A rail with no off switch gets uninstalled the first time it is wrong.
+NO_AUTO_UPDATE = DEV / "store" / "scheduler" / "NO_AUTO_UPDATE"
+
+
+def update(unattended: bool = False) -> int:
+    """Fast-forward the live checkout to origin/main, relink secrets, restart the jobs.
+
+    `unattended` is what the scheduled job passes. It changes two things and nothing else:
+    the kill switch is honoured, and being already up to date is a silent success rather
+    than a thing to report. The roll-forward itself is identical, because a scheduled path
+    that behaves differently from the hand-run one is a second code path to trust.
+
+    WHY THIS RUNS ON A SCHEDULE AT ALL. Production runs from prospector-live, detached at
+    origin/main. Nothing rolled it forward, so it drifted: on 2026-08-17 it was 17 hours
+    behind, and later the same day 7 commits behind again, and both times the founder had
+    to run this by hand because it was reported to him rather than fixed. A fix that needs
+    a human to press it is not a fix; it is a dashboard.
+    """
     if not LIVE.exists():
         print(f"MISSING: {LIVE} — create it with: git clone {DEV} {LIVE}")
         return 1
+
+    if unattended and NO_AUTO_UPDATE.exists():
+        print(f"PAUSED: {NO_AUTO_UPDATE} exists — reporting only, not rolling forward.")
+        return report()
 
     _, dirty = run(["git", "status", "--porcelain"], cwd=LIVE)
     tracked = _code_changes(dirty)
@@ -215,6 +237,12 @@ def update() -> int:
         return 1
     _, after = run(["git", "rev-parse", "--short", "HEAD"], cwd=LIVE)
     print(f"live checkout {before} -> {after}")
+
+    if unattended and before == after:
+        # Already current. Restarting the daemons for nothing would kill a tick in flight
+        # every time the job runs, which is a worse outage than the drift it prevents.
+        print("already at origin/main — no restart")
+        return 0
 
     for rel in SECRETS:
         target = LIVE / rel
@@ -238,8 +266,15 @@ def main() -> int:
         "--update", action="store_true",
         help="fast-forward the live checkout to origin/main and restart the daemons",
     )
+    parser.add_argument(
+        "--unattended", action="store_true",
+        help="scheduled mode: honour the NO_AUTO_UPDATE kill switch and do not restart "
+             "the daemons when the live checkout is already at origin/main",
+    )
     args = parser.parse_args()
-    return update() if args.update else report()
+    if args.update or args.unattended:
+        return update(unattended=args.unattended)
+    return report()
 
 
 if __name__ == "__main__":
