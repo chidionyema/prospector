@@ -115,8 +115,19 @@ export const LEGAL = {
   // The full registered legal name + business address shown in the legal docs' "registered
   // details" lines. Single source of truth, set these once here before go-live (they are the
   // only operator-supplied legal facts left). `legalName` defaults to the operating entity.
-  legalName: 'Mumchimp',
-  address: 'Registered address available on request',
+  // Confirmed by the founder 2026-08-16 against Companies House: BYTESYNC LTD, company number
+  // 17182157, incorporated 27 April 2026, status active. Five dissolved companies share the name,
+  // which is why the number is recorded here and not just the name — the name alone does not
+  // identify the trader.
+  legalName: 'ByteSync Ltd',
+  companyNumber: '17182157',
+  /** Registered office as filed at Companies House. UK consumer law requires the trader's
+   * geographic address to be given, not offered on request, so this replaces the placeholder. */
+  address: 'Flat 26, 26 Golders Green Crescent, London, NW11 8LE, England',
+  /** Empty until the founder confirms registration. UK rules say a VAT number is shown only by a
+   * registered trader, so an invented or hopeful value here would be a false statement. Every
+   * surface must branch on this being non-empty rather than printing it unconditionally. */
+  vatNumber: '',
   governingLaw: 'England & Wales',
   // These must be a mailbox the operator actually reads: they are the only refund and privacy
   // contact a buyer is given, and they render on refund.tsx, terms.tsx, privacy.tsx, the footer

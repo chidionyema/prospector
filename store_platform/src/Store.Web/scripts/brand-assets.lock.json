@@ -1,6 +1,6 @@
 {
   "source": "public/icon.svg",
-  "sha256": "8c04105c5f615052f81984230c589e3b522f36aa8d08e637471253fb5e8670a4",
+  "sha256": "d37b80ae6332f76bfb78eb915e5378686c6dc22f940f8fb8397282689bd88afe",
   "generates": [
     "public/icon-192.png",
     "public/icon-512.png",

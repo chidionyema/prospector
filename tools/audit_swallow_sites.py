@@ -37,6 +37,7 @@ import ast
 import json
 import re
 import sys
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -118,9 +119,40 @@ def _walk_funcs(tree: ast.AST):
                 stack.append((child, prefix))
 
 
+def _index_tree(tree: ast.AST) -> tuple[list[ast.AST], dict[int, tuple[int, int]]]:
+    """One preorder list of every node, plus each node's slice of it.
+
+    `order[lo:hi]` for `span[id(node)] == (lo, hi)` is exactly the set `ast.walk(node)`
+    yields — same nodes, different order, and nothing downstream depends on the order
+    (`_returns_in` is counted, and the site list is re-sorted by (tier, callers, file, line)).
+
+    This exists for speed, and the speed is the whole cost of the tool. `scan_file` used to
+    call `ast.walk` twice per function — once for the returns, once for the try blocks — and
+    a function nested inside another was walked again by every enclosing function.
+    Measured 2026-08-17 over `prospector/`: 567,284 `ast.walk` calls, 56.8s of the tool's
+    116s under cProfile, 55.8s of real time. One walk per FILE replaces all of it.
+    """
+    order: list[ast.AST] = []
+    span: dict[int, tuple[int, int]] = {}
+
+    def visit(node: ast.AST) -> None:
+        start = len(order)
+        order.append(node)
+        for child in ast.iter_child_nodes(node):
+            visit(child)
+        span[id(node)] = (start, len(order))
+
+    visit(tree)
+    return order, span
+
+
 def _returns_in(node: ast.AST) -> list[str]:
+    return _returns_under(ast.walk(node))
+
+
+def _returns_under(nodes: Iterable[ast.AST]) -> list[str]:
     out = []
-    for n in ast.walk(node):
+    for n in nodes:
         if isinstance(n, ast.Return):
             out.append(_seg(n.value) if n.value is not None else "None")
     return out
@@ -257,9 +289,13 @@ def scan_file(path: Path) -> list[Site]:
     rel = str(path.relative_to(REPO))
     sites: list[Site] = []
 
+    order, span = _index_tree(tree)
+
     for func, qname in _walk_funcs(tree):
-        all_returns = _returns_in(func)
-        for tnode in ast.walk(func):
+        lo, hi = span[id(func)]
+        under = order[lo:hi]
+        all_returns = _returns_under(under)
+        for tnode in under:
             if not isinstance(tnode, ast.Try):
                 continue
             reraises = any(

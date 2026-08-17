@@ -146,20 +146,24 @@ public sealed class StorageWiringTests
     /// Exact equality here was flaky: measured 1 run in 6 of the full suite, and captured as
     /// <c>X-Amz-Expires=599</c> for a 10-minute request. The TTL crosses two clock reads — an
     /// absolute expiry instant is derived from the first, and the signer then re-derives
-    /// seconds-from-now against a later one — so any millisecond boundary between them costs a
-    /// second. It only shows under load (300 uncontended presigns in a row all gave exactly 600),
-    /// which is what made it look like cross-test interference rather than a timing artifact.
+    /// seconds-from-now against a later one — so whatever time passes between them is taken off
+    /// the TTL. Under load that gap is not a rounding boundary: on the self-hosted CI Mac running
+    /// four runner instances at once, the same test produced <c>X-Amz-Expires=596</c>, a four
+    /// second gap. A one-second tolerance therefore measures how busy the machine is.
     /// <para>
-    /// A URL that expires a second early is not a defect, so the tolerance is the correct
-    /// assertion. One second was still too tight: on 2026-08-16 the POPDD gate caught
+    /// A URL that expires a few seconds early is not a defect, so the tolerance is the correct
+    /// assertion. One second was too tight twice. On 2026-08-16 the POPDD gate caught
     /// <c>X-Amz-Expires=598</c> for a 600-second request and blocked a commit that had nothing
-    /// to do with storage. Two clock reads under a loaded machine can straddle two boundaries as
-    /// easily as one, so the tolerance is now 5 seconds. The reasoning behind the tight number
-    /// is unchanged and still holds at 5: the only TTLs asserted here are 300 and 600, and a
-    /// real regression — the TTL argument ignored, or a minutes/seconds mix-up — is off by
-    /// minutes. Five seconds cannot hide one.
+    /// to do with storage; on the self-hosted CI Mac, running four runner instances at once, the
+    /// same test produced 596. <see cref="ExpiresSlackSeconds"/> is the whole budget, and it is
+    /// far larger than any scheduling delay we have measured and far smaller than a real
+    /// regression here. The only TTLs asserted are 300 and 600, and the failures worth catching —
+    /// the TTL argument being ignored, which gives the 3600s default, or a minutes/seconds
+    /// mix-up — are off by minutes. Thirty seconds cannot hide either.
     /// </para>
     /// </remarks>
+    private const int ExpiresSlackSeconds = 30;
+
     private static void AssertExpiresApprox(int expectedSeconds, string url)
     {
         var marker = url.IndexOf("X-Amz-Expires=", StringComparison.Ordinal);
@@ -169,11 +173,10 @@ public sealed class StorageWiringTests
         Assert.True(
             int.TryParse(raw, System.Globalization.CultureInfo.InvariantCulture, out var actual),
             $"X-Amz-Expires was not a number: '{raw}' in {url}");
-        const int toleranceSeconds = 5;
         Assert.True(
-            actual <= expectedSeconds && actual >= expectedSeconds - toleranceSeconds,
+            actual <= expectedSeconds && actual >= expectedSeconds - ExpiresSlackSeconds,
             $"X-Amz-Expires was {actual}, expected {expectedSeconds} "
-            + $"(down to {expectedSeconds - toleranceSeconds}). URL: {url}");
+                + $"(down to {expectedSeconds - ExpiresSlackSeconds} under load). URL: {url}");
     }
 
     private static IConfiguration BuildR2Config() =>

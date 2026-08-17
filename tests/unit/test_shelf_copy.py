@@ -321,6 +321,9 @@ def test_an_expansion_in_one_field_does_not_excuse_a_bare_run_in_the_other():
     hit = [p for p in _errors(fields) if p.get("where") == "title"]
     assert hit, "the bare title run must still be a defect"
     assert not [p for p in _errors(fields) if p.get("where") == "oneLine"]
+
+
+# ---------------------------------------------------------------------------
 # The bare pronoun opener
 # ---------------------------------------------------------------------------
 

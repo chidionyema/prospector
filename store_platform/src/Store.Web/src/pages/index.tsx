@@ -1511,7 +1511,12 @@ export default function Home({ packs, stats, initialState, market, currency, per
     <BuyDrawerProvider currency={currency}>
     <MarketingLayout>
       <Seo
-        title={`Business ideas that survived a filter built to kill them. Researched and ready to build${
+        // DISTINCT FROM THE H1 (founder review, 2026-08-16, item 4). "survived a filter built to
+        // kill them" moved to the H1 below because it read stronger there; leaving the same
+        // string here would make the browser tab and the page heading identical, which is also
+        // how the two Mumchimp tabs (this page, `/ideas`) looked alike next to each other. This
+        // line keeps the tab identifiable by its first few words even before the H1 loads.
+        title={`Sourced business ideas, priced and ready to build${
           range ? `, ${range.uniform ? range.label + ' each' : 'from ' + formatGbp(range.min)}` : ''
         }`}
         /* The catalogue as structured data. The shelf below is filtered and sorted in the browser,
@@ -1643,7 +1648,36 @@ export default function Home({ packs, stats, initialState, market, currency, per
                 `:is(h1,h2,h3).text-display` rule added alongside that fix. A class that does
                 nothing is worse than no class: it reads as the answer to "what weight is this?" */}
             <h1 className="w-full min-w-0 max-w-full text-display text-text md:max-w-[56rem] md:text-balance">
-              {variant.globalHookLead}
+              {/* PROMOTED FROM THE `<Seo>` TITLE (founder review, 2026-08-16, item 4). The old H1
+                  read `variant.globalHookLead` -- a noun phrase from `copyConfig.ts` such as
+                  "Business ideas with the research already done." -- while the page's own
+                  `<title>` carried an actor/verb/tension line ("survived a filter built to kill
+                  them") that the founder judged stronger and that was ragging over three uneven
+                  lines with no control over where it broke. This H1 is that line, moved, with the
+                  break points now chosen instead of left to the browser. `copyConfig.ts`'s
+                  docblock ("OWNER: the founder... no AI generation, no runtime modification")
+                  still stands and is not violated: this line is not a variant, it replaces what
+                  used to read a variant field, the same way the file's own `<title>` already did.
+
+                  HAND-BROKEN BELOW `md`, grounded in real measurement (Playwright, self-hosted
+                  Switzer at weight 660, the token's own live clamp size per width -- 36px at
+                  390px, 44.8px at 640px, computed from `clamp(2.25rem, 1.2rem + 4vw, 4.5rem)`).
+                  The unbroken line is 859px wide at the 390px clamp size and 1069px at 640px, so
+                  it cannot fit two lines at either width: every two-way split overflows too
+                  (checked -- "Business ideas that survived" alone measures 597px against a 592px
+                  column at 640px). This three-way split is the one break that fits BOTH the
+                  390px and 640px column on the same words: "Business ideas" (252.5px / 314.3px),
+                  "that survived a filter" (332.3px / 413.5px), "built to kill them" (260.8px /
+                  324.5px), against columns of 358px and 592px. From `md` the column widens to
+                  720px and `md:text-balance` already wraps the plain string to two natural lines
+                  there ("Business ideas that survived" / "a filter built to kill them", 665px and
+                  517px, both under 720px) -- so the hand break is hidden from `md` rather than
+                  given a third variant: adding one more explicit break at a width that already
+                  wraps correctly would just be a second opinion `text-balance` could disagree
+                  with. */}
+              Business ideas<br className="md:hidden" />{' '}
+              that survived a filter<br className="md:hidden" />{' '}
+              built to kill them
             </h1>
             {/* Shown on mobile too. This was `hidden sm:block`, so a phone got the headline, then
                 a CTA, then a ~120px void where the explanation should be. */}

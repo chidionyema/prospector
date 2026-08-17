@@ -70,11 +70,30 @@ def test_the_overview_kpi_and_the_spend_page_report_the_same_metered_figure(monk
     from prospector.ops.readmodel import load_cfg
 
     cfg = load_cfg()
-    view = ops_spend.spend_view(cfg)
-    kpi = readers._today_spend_from_ledger.__wrapped__(0.0)   # unwrap st.cache_data
 
-    assert kpi["total_usd"] == round(float(view["legs"]["metered"]["usd"]), 4)
-    assert kpi["subscription_usd"] == round(float(view["legs"]["subscription"]["usd"]), 4)
+    # The two figures are read from the LIVE ledger, and the daemon appends to it while this test
+    # runs. A bare equality between two reads a second apart fails on the write in between, which
+    # says nothing about whether the two surfaces agree. Measured 2026-08-16 on this checkout:
+    # view_before=12.694156, kpi=12.695400, view_after=12.695410. So bracket it — read the view on
+    # both sides of the KPI and require the KPI to sit inside. A today-ledger only grows, so when
+    # nothing is written the bracket collapses to the original equality.
+    before = ops_spend.spend_view(cfg)
+    kpi = readers._today_spend_from_ledger.__wrapped__(0.0)   # unwrap st.cache_data
+    after = ops_spend.spend_view(cfg)
+
+    def _brackets(key: str, got: float) -> bool:
+        lo = round(float(before["legs"][key]["usd"]), 4)
+        hi = round(float(after["legs"][key]["usd"]), 4)
+        return lo - 1e-4 <= got <= hi + 1e-4
+
+    assert _brackets("metered", kpi["total_usd"]), (
+        f"the Overview KPI reports {kpi['total_usd']} metered, outside the Spend page's "
+        f"{before['legs']['metered']['usd']}..{after['legs']['metered']['usd']}"
+    )
+    assert _brackets("subscription", kpi["subscription_usd"]), (
+        f"the Overview KPI reports {kpi['subscription_usd']} subscription, outside the Spend "
+        f"page's {before['legs']['subscription']['usd']}..{after['legs']['subscription']['usd']}"
+    )
     assert kpi["source"] == "prospector.scheduler.guard.SchedulerGuard.scan_today()"
 
 

@@ -19,6 +19,19 @@ write what completed, and stamp `complete: false`. We never let a failed call be
 zero — E1 once printed `0/0` as its own kill bar
 (memory: `an-outage-is-the-end-of-the-measurement-not-a-datum.md`).
 
+That rule was written here and then broken here, because an outage does not always
+RAISE. The 2026-08-08 live run hit the Claude usage wall, `generate()` swallowed it and
+returned `[]`, and `batch_report([])` scored a perfectly well-formed `distinct_k=0/0`.
+Five such cells entered the paired deltas as real -6.00 observations and the run still
+printed `COMPLETE`. So an empty batch is now an `EmptyBatch` abort, not a data point:
+"the generator produced nothing" and "the generator produced nothing DIVERSE" are
+opposite findings and must never reach the arithmetic as the same number.
+
+DISTINCT_K SATURATES. It is capped at k, so once every cell scores k/k its deltas are
+zero by construction and a lever that helps is indistinguishable from one that does
+nothing. That is not a null result, it is a broken ruler, and the summary says so
+outright rather than printing `+0.00` and letting it read as evidence of no effect.
+
 FIXTURE FIRST. `--fixture` runs the whole harness against a MockOperator, so the
 arithmetic, the pairing, the call accounting and the receipt shape are all exercised
 before a single paid call
@@ -238,15 +251,56 @@ def _fixture_operator(k: int) -> Any:
     return MockOperator(router=router)
 
 
+def _serving_provider(op: Any) -> str:
+    """Which brain actually served this cell.
+
+    A FallbackOperator can change tier mid-run, and arms run in the OUTER loop, so a flip
+    lands BETWEEN arms rather than inside one: baseline entirely on claude_cli, the next
+    arm entirely on minimax. Every delta would then measure the BRAIN and be reported as
+    an effect of the lever. Recorded per cell so `_paired_deltas` can refuse those
+    comparisons instead of averaging across them.
+    """
+    served = getattr(op, "last_served", None)
+    if callable(served):
+        name = served()
+        if name:
+            return str(name)
+    return str(getattr(op, "name", "") or "unknown")
+
+
+class EmptyBatch(RuntimeError):
+    """Generation returned nothing. An outage, never a diversity score of zero.
+
+    Carries the calls already made so the receipt still reports what the aborted cell
+    cost — the run stops being a measurement, but it does not stop having been paid for.
+    """
+
+    def __init__(self, msg: str, calls: int = 0) -> None:
+        super().__init__(msg)
+        self.calls = calls
+
+
 def _run_cell(op: Any, cfg: Any, signal_text: str, k: int) -> tuple[dict[str, Any], int]:
-    """One (arm, signal, repeat) cell. Returns (batch_report, calls_made)."""
+    """One (arm, signal, repeat) cell. Returns (batch_report, calls_made).
+
+    Raises `EmptyBatch` on an empty batch rather than returning a `0/0` report. The
+    caller cannot tell the difference downstream: by the time it is a dict of numbers,
+    an outage looks exactly like a generator that produced six identical ideas.
+    """
     from prospector.generate import generate
 
     counted = _CountingOperator(op)
     cands = generate(counted, cfg, signal_text=signal_text, k=k, gen_op=counted)
+    if not cands:
+        raise EmptyBatch(
+            f"generation returned 0 of {k} candidates after {counted.calls} call(s) "
+            "— a usage wall, an exhausted chain or a refused batch, not a measurement",
+            calls=counted.calls,
+        )
     rep = batch_report(cands)
     rep["_calls"] = counted.calls
     rep["_call_kinds"] = dict(counted.kinds)
+    rep["_provider"] = _serving_provider(counted)
     return rep, counted.calls
 
 
@@ -258,18 +312,27 @@ def _paired_deltas(cells: dict[str, dict[str, dict[str, Any]]],
     zero delta and an absent delta are opposite findings and must never render the same.
     """
     diffs = []
+    mixed = 0
     for cell_id, by_arm in cells.items():
         base = by_arm.get("baseline")
         got = by_arm.get(arm)
         if base is None or got is None:
+            continue
+        # A pair served by two different brains compares the brains, not the lever.
+        bp, gp = base.get("_provider"), got.get("_provider")
+        if bp and gp and bp != gp:
+            mixed += 1
             continue
         b, g = base.get(metric), got.get(metric)
         if b is None or g is None:
             continue
         diffs.append(float(g) - float(b))
     if not diffs:
-        return None
+        return None if not mixed else {"n_pairs": 0, "mixed_provider_pairs": mixed,
+                                       "mean_delta": None, "median_delta": None,
+                                       "won": 0, "lost": 0, "tied": 0}
     return {
+        "mixed_provider_pairs": mixed,
         "n_pairs": len(diffs),
         "mean_delta": round(statistics.fmean(diffs), 4),
         "median_delta": round(statistics.median(diffs), 4),
@@ -283,6 +346,21 @@ def _axis_entropy(rep: dict[str, Any], axis: str) -> float | None:
     ax = (rep.get("axes") or {}).get(axis) or {}
     val = ax.get("entropy")
     return None if val is None else float(val)
+
+
+def _distinct_k_saturated(cells: dict[str, dict[str, dict[str, Any]]]) -> bool:
+    """True when every recorded cell scored distinct_k == n, i.e. a full house.
+
+    distinct_k cannot exceed k, so at a small k every arm hits the ceiling and every
+    paired delta is 0.00 whatever the levers did. The danger is that this reads exactly
+    like a confident "no lever has any effect". It is the opposite: the ruler ran out of
+    headroom before the levers ran out of effect. The 2026-08-08 live run scored 6/6 in
+    all 19 of its non-empty cells.
+    """
+    seen = [r for by in cells.values() for r in by.values()]
+    if not seen:
+        return False
+    return all(r.get("distinct_k") == r.get("n") for r in seen)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -335,9 +413,39 @@ def main(argv: list[str] | None = None) -> int:
         print("fixture mode: MockOperator; live retrieval "
               f"{'ON' if args.fixture_live_retrieval else 'OFF'}")
     else:
-        from prospector.operator import _build_operator
-        op = _build_operator("claude_cli", base_cfg, fast=True)
-        print(f"live mode: operator={getattr(op, 'name', '?')} — this run SPENDS")
+        # Build the SAME tiered chain production generation uses (`run.py:303`,
+        # `_NONCRITICAL_ORDER = ("claude_cli", "minimax")`), not a bare claude_cli. A
+        # harness that measures a path the daemon does not run is measuring the wrong
+        # thing, and a single operator also has no fallback: the 2026-08-08 k=12 run died
+        # on its first cell against the monthly spend limit while the daemon beside it
+        # still had a live tier to fall through to.
+        from prospector.operator import FallbackOperator, _build_operator
+        from prospector.run import _NONCRITICAL_ORDER
+
+        tiers = []
+        for kind in _NONCRITICAL_ORDER:
+            try:
+                tiers.append((kind, _build_operator(kind, base_cfg, fast=True)))
+            except RuntimeError as e:      # tier not configured / no API key
+                print(f"  tier {kind} unavailable: {e}")
+        if not tiers:
+            print(f"refusing to run: no tier in {_NONCRITICAL_ORDER} is available",
+                  file=sys.stderr)
+            return 2
+        if len(tiers) == 1:
+            op = tiers[0][1]
+        else:
+            # Same health store production uses (`run.py:616,635`). Without it the
+            # harness re-probes a tier already marked dead on disk and pays a guaranteed
+            # failure before every call until its in-run breaker trips.
+            from prospector.health import get_noncritical_health
+
+            r = base_cfg.retrieval
+            op = FallbackOperator(tiers,
+                                  failure_threshold=r.breaker_failure_threshold,
+                                  cooldown_s=r.breaker_cooldown_s,
+                                  health=get_noncritical_health())
+        print(f"live mode: chain={' -> '.join(n for n, _ in tiers)} — this run SPENDS")
 
     cells: dict[str, dict[str, dict[str, Any]]] = {}
     calls_by_arm: dict[str, int] = {}
@@ -364,6 +472,13 @@ def main(argv: list[str] | None = None) -> int:
                     break
                 try:
                     rep, made = _run_cell(op, cfg, sig_text, args.k)
+                except EmptyBatch as e:
+                    # Bank the spend, discard the "observation". Recording this cell is
+                    # the exact defect that produced the 2026-08-08 junk numbers.
+                    total_calls += e.calls
+                    calls_by_arm[name] = calls_by_arm.get(name, 0) + e.calls
+                    complete, stopped_because = False, f"{name} {cell_id}: {e}"
+                    break
                 except ProviderExhaustedError as e:
                     complete, stopped_because = False, f"generation chain exhausted: {e}"
                     break
@@ -391,16 +506,32 @@ def main(argv: list[str] | None = None) -> int:
         per_metric = {m: _paired_deltas(cells, name, m) for m in _METRICS}
         for axis in _AXES:
             key = f"entropy_{axis}"
-            flat = {c: {a: {key: _axis_entropy(r, axis)} for a, r in by.items()}
+            # `_provider` must survive the flattening, or the entropy metrics would
+            # silently keep comparing across brains after the guard rejected the rest.
+            flat = {c: {a: {key: _axis_entropy(r, axis),
+                            "_provider": r.get("_provider")}
+                        for a, r in by.items()}
                     for c, by in cells.items()}
             per_metric[key] = _paired_deltas(flat, name, key)
         report[name] = per_metric
+
+    saturated = _distinct_k_saturated(cells)
+    providers = sorted({r.get("_provider") or "unknown"
+                        for by in cells.values() for r in by.values()})
 
     receipts = {
         "harness": "g_generation_ab",
         "mode": "fixture" if args.fixture else "live",
         "complete": complete,
         "stopped_because": stopped_because,
+        # A reader of the JSON must be able to tell "distinct_k said +0.00" from
+        # "distinct_k could not say anything" without re-deriving it from `raw`.
+        "distinct_k_saturated": saturated,
+        "primary_metric": "mean_pairwise_overlap" if saturated else "distinct_k",
+        # Which brain(s) served the run. A result measured on the fallback tier is a
+        # result ABOUT that tier, and must never be read as a property of the shipped
+        # claude_cli-headed path.
+        "providers": providers,
         "elapsed_s": round(time.time() - t0, 1),
         "config": {"signals": [s for s, _ in signals], "repeats": args.repeats,
                    "k": args.k, "arms": [n for n, _ in arms]},
@@ -415,14 +546,42 @@ def main(argv: list[str] | None = None) -> int:
     out.write_text(json.dumps(receipts, indent=2), encoding="utf-8")
 
     print(f"\n--- paired deltas vs baseline ({'COMPLETE' if complete else 'PARTIAL'}) ---")
+    print(f"brain(s): {', '.join(providers) if providers else 'none'}")
+    if len(providers) > 1:
+        print("!! MIXED BRAINS: the chain changed tier mid-run. Arms run in the outer "
+              "loop, so a flip lands BETWEEN arms and any delta across it measures the "
+              "brain, not the lever. Those pairs are DROPPED, not averaged.")
+    elif providers and not any("claude" in p for p in providers):
+        print(f"!! served entirely by {providers[0]}, the FALLBACK tier. This measures "
+              "that brain's response to the levers, not the shipped claude_cli-headed "
+              "path. Valid as a paired result; label it with the brain.")
+    if saturated:
+        print("!! distinct_k is SATURATED: every cell scored k/k, so its deltas below "
+              f"are 0.00 by construction and discriminate nothing at --k {args.k}. "
+              "Re-run with a larger --k. Ranking is on overlap (lower = more diverse).")
+
+    def _fmt(d: dict | None, label: str, prec: int, note: str = "") -> str:
+        if d is None:
+            return f"{label} no paired observation"
+        if d.get("mean_delta") is None:
+            return (f"{label} UNCOMPARABLE — all "
+                    f"{d.get('mixed_provider_pairs', 0)} pair(s) crossed brains")
+        mixed = d.get("mixed_provider_pairs") or 0
+        drop = f", {mixed} dropped (mixed brains)" if mixed else ""
+        return (f"{label} {d['mean_delta']:+.{prec}f} "
+                f"(won {d['won']} / lost {d['lost']} / tied {d['tied']}, "
+                f"n={d['n_pairs']}{drop}){note}")
+
     for name, per_metric in report.items():
+        ov = per_metric.get("mean_pairwise_overlap")
         dk = per_metric.get("distinct_k")
-        if dk is None:
+        if ov is None and dk is None:
             print(f"{name:24} no paired observation")
             continue
-        print(f"{name:24} distinct_k {dk['mean_delta']:+.2f} "
-              f"(won {dk['won']} / lost {dk['lost']} / tied {dk['tied']}, "
-              f"n={dk['n_pairs']})")
+        # Overlap first: lower is more diverse, so its win/loss reads inverted.
+        print(f"{name:24} {_fmt(ov, 'overlap', 4)}")
+        print(f"{'':24}   {_fmt(dk, 'distinct_k', 2,
+                                '  [saturated - not evidence]' if saturated else '')}")
     print(f"\ncalls: {total_calls} total, by arm: {calls_by_arm}")
     print(f"receipts: {out}")
     return 0 if complete else 1

@@ -89,7 +89,16 @@ describe('the row gives the title the whole column', () => {
   it('clamps the description at two lines rather than truncating it at one', () => {
     // `truncate` is one line AND a mid-word cut. `cardLine` already ends the string on a word
     // boundary, and the one-line box then cut it again inside a word.
-    expect(row).toMatch(/line-clamp-2 block text-meta text-muted/);
+    //
+    // The two properties are asserted SEPARATELY since 2026-08-16. This used to require the
+    // literal run `line-clamp-2 block text-meta text-muted`, so inserting `min-h-[2.45rem]`
+    // between `block` and `text-meta` -- reserving the row's height, which changed no clamping
+    // behaviour at all -- failed a test named for the clamp. A class list is not an ordered
+    // contract, and pinning it as one makes every unrelated layout change look like a
+    // regression in whatever the test happens to be called.
+    const description = row.match(/className="[^"]*text-meta text-muted[^"]*"/);
+    expect(description, 'the row must still have a description span').toBeTruthy();
+    expect(description![0], 'two line boxes, not one').toContain('line-clamp-2');
     expect(row).not.toMatch(/block truncate text-meta/);
   });
 
