@@ -330,9 +330,17 @@ export function PackContentsSection({
             what separates them, because the difference is real and a buyer is entitled to it --
             above is what the pack SAYS, here is what lands in the folder. Every entry in the first
             of these two groups is audited on every pack before it may be listed. */}
+        {/* NO COUNT HERE ANY MORE (founder, 2026-08-16: "counting bugs").
+            This read `arrives as 5 files` directly under `14 documents`, and the two numbers are
+            both true of different things -- what you read, what lands in the folder. A buyer does
+            not carry that distinction down the page; they see 14 and then 5 and conclude one of
+            them is wrong about the product they are being sold. The label now says which group
+            this is and the entries below still list every file by name, so the falsifiable half
+            (check these against your zip) is untouched. One number leads on this card, and it is
+            the documents count in the header above. */}
         <div className="border-t border-border bg-surface2 px-5 py-2">
           <span className="font-mono text-caption text-subtle">
-            arrives as {PACK_CONTENTS.length} files
+            what lands in your folder
           </span>
         </div>
         <ul className="list-none p-0">
@@ -374,9 +382,18 @@ export function PackContentsSection({
           developers". The count beside the words counts DOCUMENTS, which is why the noun is
           "documents"; the files are counted in the tree above, where they are listed. */}
       <div className="mt-4 flex flex-col gap-3 rounded-md border border-border bg-surface2 p-6 sm:flex-row sm:items-center sm:justify-between">
+        {/* THE WORD COUNT IS GONE, and so is the second documents count (founder, 2026-08-16).
+            This line printed `14 documents, 5,000+ words` while the card header 80px above it
+            already printed `14 documents`. Two problems, one sentence. The count was the same
+            number twice, on a card whose other complaint is that it prints too many numbers. And
+            the pair invited a division nobody wants the answer to: 5,000 words across 14 documents
+            is 357 words each, which reads as fourteen thin pages rather than as a body of work.
+            The floor is real (the smallest live bundle measured 5,069 words, see the note at the
+            top of this file) -- it is just not an argument for buying when set beside a count.
+            What survives is the format answer, which is what this box exists for. */}
         <p className="max-w-[62ch] text-meta text-muted">
-          <span className="font-medium text-text">{PACK_DOCUMENTS.length} documents, 5,000+ words,
-          as a web page you can read, a PDF you can print and a spreadsheet you can open.</span>{' '}
+          <span className="font-medium text-text">A web page you can read, a PDF you can print and
+          a spreadsheet you can open.</span>{' '}
           Yours to keep, edit, or paste anywhere. No login, no subscription.
         </p>
         <span className="inline-flex flex-none items-center gap-2 text-meta font-medium text-text">
