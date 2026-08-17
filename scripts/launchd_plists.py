@@ -143,6 +143,13 @@ def cmd_check() -> int:
         print("LAUNCHD PLISTS UNPROVEN — no snapshot yet. Run --snapshot.")
         return 2
 
+    # A plist we could not parse is stored as its own error message. Two identical errors
+    # compare equal, so an unreadable job used to be reported as "matches the snapshot" —
+    # the check passed over a file it had never actually read. Measured 2026-08-17: two
+    # plists carried a `--` inside an XML comment, which plutil tolerates and plistlib
+    # refuses, and `--check` printed PASS 29 job(s) match over both of them.
+    unreadable = sorted(lbl for lbl, d in live.items() if "__unreadable__" in d)
+
     added = sorted(set(live) - set(tracked))
     gone = sorted(set(tracked) - set(live))
     changed = {}
@@ -160,13 +167,16 @@ def cmd_check() -> int:
         for line in d:
             print(line)
 
-    n = len(added) + len(gone) + len(changed)
+    for label in unreadable:
+        print("UNREADABLE   %s  %s" % (label, live[label]["__unreadable__"]))
+
+    n = len(added) + len(gone) + len(changed) + len(unreadable)
     if n == 0:
         print("LAUNCHD PLISTS PASS  %d job(s) match the tracked snapshot" % len(live))
         return 0
     print("LAUNCHD PLISTS FAIL  %d job(s) differ  "
-          "(new=%d missing=%d drifted=%d)  — review, then --snapshot to accept"
-          % (n, len(added), len(gone), len(changed)))
+          "(new=%d missing=%d drifted=%d unreadable=%d)  — review, then --snapshot to accept"
+          % (n, len(added), len(gone), len(changed), len(unreadable)))
     return 1
 
 

@@ -1,3 +1,26 @@
 {
-  "__unreadable__": "ExpatError: not well-formed (invalid token): line 39, column 75"
+  "Disabled": true,
+  "EnvironmentVariables": {
+    "HERMES_HOME": "/Users/chidionyema/.hermes",
+    "PATH": "/Users/chidionyema/.hermes/hermes-agent/venv/bin:/Users/chidionyema/.hermes/hermes-agent/node_modules/.bin:/usr/local/Cellar/node/26.3.0/bin:/Users/chidionyema/.local/bin:/usr/local/Cellar/node/23.7.0/bin:/usr/local/share/dotnet:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/mysql/bin:/opt/local/bin:/opt/local/sbin:/Users/chidionyema/anaconda3/bin:/Users/chidionyema/anaconda3/condabin:/System/Cryptexes/App/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:~/.dotnet/tools:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/chidionyema/.rvm/bin",
+    "VIRTUAL_ENV": "/Users/chidionyema/.hermes/hermes-agent/venv"
+  },
+  "KeepAlive": true,
+  "Label": "ai.hermes.gateway",
+  "LimitLoadToSessionType": [
+    "Aqua",
+    "Background"
+  ],
+  "ProgramArguments": [
+    "/Users/chidionyema/.hermes/hermes-agent/venv/bin/python",
+    "-m",
+    "hermes_cli.main",
+    "gateway",
+    "run",
+    "--replace"
+  ],
+  "RunAtLoad": true,
+  "StandardErrorPath": "/Users/chidionyema/.hermes/logs/gateway.error.log",
+  "StandardOutPath": "/Users/chidionyema/.hermes/logs/gateway.log",
+  "WorkingDirectory": "/Users/chidionyema/.hermes"
 }
