@@ -231,10 +231,10 @@ Append here. Each entry: what shipped, the receipt, and the stranded count befor
 | P3 | Generator reads the registry | **shipped** | `generate._shelf_line_directive`; 5 tests in `tests/unit/test_the_generator_is_told_the_shelf_rules.py` |
 | P4 | Park instead of buy | **shipped, measure-first** — logs always, parks only when `listing.park_unrepairable_shelf_lines` is on (default off) | `run._unrepaired_shelf_breaches`; 15 tests in `tests/unit/test_the_engine_does_not_buy_a_pack_the_gate_will_refuse.py` |
 | P5 | Ratchet + console promotion | not started | — |
-| P6 | Breach recording | not started | — |
+| P6 | Breach recording | **shipped as a READER** — nothing new is written; the counts were already in the 123 `*.lint.json` receipts | `prospector/ops/content_breaches.py`; 22 tests in `tests/unit/test_content_breach_rates_come_from_the_receipts.py` |
 | P7 | Shipping fence | not started | — |
 | C1 | Console: stranded by rule | **ALREADY EXISTS** — do not rebuild | `console_api.py:823` `_read_shelf` returns `by_reason`, `by_repair`, `stale_verdicts`; rendered on `shelf.tsx` |
-| C2 | Console: breach rate per rule | not started — blocked on P6 | — |
+| C2 | Console: breach rate per rule | **shipped** — `views content_rules` | `console_api._read_content_rules`, registered in `READS` |
 | C3 | Console: rules ready to promote | not started — blocked on P5 | — |
 | C4 | Console: shipping gap | partly in flight in PR #286 (console build age) | `scripts/live_checkout.py` |
 
@@ -295,3 +295,50 @@ Stranded PASS packs: **34**. By rule: title 20, shelf_copy 15, citation_urls 4, 
 placeholders 1, never gated 1. A pack can fail more than one. All 34 made within three days of
 the measurement. Source: the project state probe and
 `.venv/bin/python tools/verify_pass_shelf_coverage.py`.
+
+
+### P6 as built, 2026-08-17
+
+**It writes nothing.** The counts were already on disk. The publish gate leaves a
+`store/dossiers/<id>.lint.json` per pack it grades, each carrying `problems`, each problem naming
+its check. 123 receipts, 10,704 findings. `prospector/ops/content_breaches.py` reads them. A second
+recorder beside a receipt that already exists is how a dashboard gets two numbers for one fact, and
+the older one is usually the one people trust.
+
+**A rule that never ran looks exactly like a rule with a clean record.** Both are zero, and P5
+promotes on zero. That is the defect that would have made this module worse than useless, because
+promoting an unobserved rule puts a gate nobody has seen fire onto the money path. `breach_report`
+splits them: `ready_to_promote` requires evidence the rule has fired at least once in history AND a
+clean streak across every graded day; everything else with no findings goes to `never_observed`,
+which is a question for a human. `RuleBreaches.rate()` returns `None` rather than `0.0` when
+nothing was graded, for the same reason.
+
+**Blocking vs shadow is not in the receipt.** The same `house_quote` finding refuses a pack when
+`house_spec_block_quotes` is on and is a note in a file when it is off, so the split comes from
+`content_contract.blocking_checks(listing_cfg)` at read time. The module never restates a switch.
+
+**What it says about the live store right now** (2026-08-17, 123 graded packs, 3 grading days):
+
+| check | enforced | packs | rate | findings |
+|---|---|---|---|---|
+| `house_style` | shadow | 120 | 98% | 4,633 |
+| `house_quote` | shadow | 120 | 98% | 2,803 |
+| `human_register` | shadow | 120 | 98% | 300 |
+| `register` | shadow | 112 | 91% | 425 |
+| `grammar` | **blocking** | 111 | 90% | 111 |
+| `repetition` | shadow | 106 | 86% | 1,600 |
+| `citation_urls` | **blocking** | 85 | 69% | 254 |
+| `register_repeat` | shadow | 72 | 59% | 286 |
+| `shelf_copy` | shadow | 61 | 50% | 110 |
+| `title_new_word` | **blocking** | 51 | 41% | 51 |
+| `title` | **blocking** | 21 | 17% | 27 |
+
+Two things to read off it. The shadow rules are not idle — `house_style` and `house_quote` fire on
+98% of packs, so promoting either today would strand almost the whole catalogue, which is the
+measurement P5's ratchet exists to respect. And `ready_to_promote` is empty: nothing has both a
+history of firing and a clean recent streak. Three grading days is not enough evidence yet, and the
+module says so rather than offering a promotion it cannot justify.
+
+**Coverage, stated on the panel.** One receipt per pack GRADED, not per pack generated — a
+candidate that never reached the gate is not in the denominator. `by_day` is keyed on when a pack
+was linted, so a re-lint backfill lands on one day.

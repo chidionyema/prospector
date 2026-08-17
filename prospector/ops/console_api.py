@@ -1017,9 +1017,25 @@ def _read_method(cfg: Any, args: dict) -> dict:
     }
 
 
+def _read_content_rules(cfg, args: dict) -> dict:
+    """C2 of `docs/CONTENT_CONTRACT_PROGRAM.md`: how often each content rule is breached.
+
+    `shelf` answers "which packs are stuck and what fixes them". This answers the question
+    underneath it: which RULES are producing the breaches, how often, and which of them are
+    already grading with nobody acting on the result.
+
+    It reads the lint receipts the publish gate already writes. No new recorder, because a
+    second count of one fact is how a dashboard ends up with two numbers for it.
+    """
+    from prospector.ops import content_breaches
+
+    return content_breaches.breach_report(cfg)
+
+
 READS: dict[str, Callable[[Any, dict], Any]] = {
     "method": _read_method,
     "shelf": _read_shelf,
+    "content_rules": _read_content_rules,
     "status": _read_status,
     "queue": _read_queue,
     "providers": _read_providers,
