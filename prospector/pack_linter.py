@@ -688,6 +688,27 @@ TITLE_NAME_MAX_CHARS = 30
 #: do NOT match — they are words a reader already knows, which is the whole distinction.
 _TITLE_COINAGE = re.compile(r"\b[A-Z][a-z]+[A-Z][A-Za-z]*\b")
 
+#: Intercapped words the buyer already knows. Same distinction as the all-caps exemption
+#: above, applied to the other shape a known term comes in: a coinage is cryptic because the
+#: reader has never seen it, and "GitHub" is not that.
+#:
+#: Measured on the lint receipts of 2026-08-17, where 19 findings named a coined name: three
+#: were real-world vocabulary and all three were ERRORS holding a finished pack off the shelf.
+#: `f2734b0fcec9ca32` said "GitHub Advanced Security alert investigation summaries for lean
+#: dev teams", `7be1cb35e01902d7` said "AWS DevOps ops desk", `5597002395f8ea60` said
+#: "DIR-contract SaaS vendors". The rule told all three to "say the trade instead" — and the
+#: trade is what they were already saying. The other 16 are genuine coinages (`LicenceCraft`,
+#: `ComputeSheet`, `MouldBreak`) and still block, which is the point of the rule.
+#:
+#: Matched case-sensitively, on the whole word. `Github` is a misspelling, not this term, and
+#: the linter has no business quietly accepting it.
+KNOWN_PRODUCT_NAMES = frozenset("""
+    GitHub GitLab BigQuery PostgreSQL MongoDB PowerShell JavaScript TypeScript
+    NodeJS YouTube LinkedIn QuickBooks WordPress SharePoint PayPal DocuSign NetSuite
+    OpenAI DevOps DevSecOps SecOps FinOps SaaS PaaS IaaS AppSec InfoSec
+    HubSpot ServiceNow WooCommerce MailChimp DoorDash AirTable NextJS OneDrive
+""".split())
+
 #: Openers that are a register breach rather than a wording preference. The imperative
 #: ("Sell …", "Run …") was rejected by the founder as "overused and too blunt" for a £149
 #: pack; the article ("A …", "The …") spends the two characters a scanner reads first.
@@ -804,12 +825,19 @@ def check_title(title: str, *, max_chars: int = TITLE_MAX_CHARS,
     if t.endswith("."):
         problems.append(mk("title", "title", f"ends in a full stop: {t!r}"))
 
-    coined = _TITLE_COINAGE.search(t)
+    # The first intercapped word the reader does NOT already know. `KNOWN_PRODUCT_NAMES` is
+    # the same exemption the all-caps initialisms get, for the other shape a familiar term
+    # comes in; the receipts that produced it are at the constant.
+    coined = next((m.group(0) for m in _TITLE_COINAGE.finditer(t)
+                   if m.group(0) not in KNOWN_PRODUCT_NAMES), None)
     if coined:
         problems.append(mk(
             "title", "title",
-            f"leads with a coined product name {coined.group(0)!r}, which means nothing to a "
-            f"reader who does not own the pack: say the trade instead — {t!r}"))
+            # Say WHERE it is. This said "leads with" on a rule that searches the whole
+            # title, so a receipt could tell the writer to fix an opener that was fine.
+            f"{'leads with' if t.startswith(coined) else 'carries'} a coined product name "
+            f"{coined!r}, which means nothing to a reader who does not own the pack: say the "
+            f"trade instead — {t!r}"))
 
     opener = _title_word(t)
     if opener in _TITLE_ARTICLES:
@@ -928,7 +956,14 @@ _SHELF_WORD_RE = re.compile(r"[a-z][a-z'’]*")
 #: A run of two or more capitals inside a word. Catches the bare initialism (`FSA`) and the
 #: one hiding in a mixed-case token (`CalSTRS` → `STRS`) with the same rule, which matters
 #: because the second shape reads as a proper noun and slips past a token-equality test.
-_CAPS_RUN_RE = re.compile(r"[A-Z]{2,}")
+#:
+#: The leading digits belong to the run. Trade terms are built that way — `3PL`, `2FA`, `4PL`
+#: — and dropping the digit made the linter name a term that is not in the copy: the receipt
+#: on `19aaf66a4e9f7778` told the operator to spell out "PL" in the line "Savannah port
+#: container dwell forecasts for 3PLs", where no "PL" appears. An instruction that names a
+#: string the writer cannot find is not actionable, and `listing.initialism_glossary` is
+#: keyed on the reported term, so the operator's own expansion could never match it either.
+_CAPS_RUN_RE = re.compile(r"\d*[A-Z]{2,}")
 
 #: Words an expansion skips over, so `Driver and Vehicle Standards Agency (DVSA)` still reads
 #: as D-V-S-A. Every one is a joining word that no one puts in an initialism.
@@ -1008,16 +1043,22 @@ def expands_on_first_use(text: str, run: str) -> bool:
     return False
 
 
-def unexplained_initialisms(text: str) -> list[str]:
-    """Every caps run this line uses that the reader has never met and the line never introduces.
+def unexplained_initialisms(text: str, context: str | None = None) -> list[str]:
+    """Every caps run this line uses that the reader has never met and the page never introduces.
 
     The linter's rule 3 and the shelf-copy sweep both need exactly this list, and they must
     agree: the sweep repairs a line, then the linter judges it. Two copies of the same
     condition is how a sweep ships a "fix" the gate still refuses.
+
+    `context` is where the introduction may appear, defaulting to the line itself. The
+    linter passes the whole shelf, because the buyer reads those lines together and a term
+    the title spells out is introduced by the time the card line uses it. The terms REPORTED
+    are still only the ones this line uses; the context widens where an expansion counts,
+    never what is graded.
     """
     return sorted({run for run in _CAPS_RUN_RE.findall(text)
                    if run not in KNOWN_INITIALISMS
-                   and not expands_on_first_use(text, run)})
+                   and not expands_on_first_use(context if context is not None else text, run)})
 
 
 #: Our filing system, leaking onto the shelf. `voice.md`: "a reader who meets one of these
@@ -1215,9 +1256,14 @@ def check_shelf_copy(fields: Dict[str, str], *, block: bool = False,
     `SHELF_FIELDS` are graded, so passing a whole pack is safe.
 
     `block` is the actuator, exactly like `check_title`'s: off, every finding is a
-    `warning` and the receipt accrues on live packs; on, the mechanical five become
+    `warning` and the receipt accrues on live packs; on, the mechanical rules become
     `error`, which `lint_pack` turns into `ok=False` and the publish path ANDs into
     `is_listed`.
+
+    ONE rule is exempt from `block` and always warns: the duplicate-line check (rule 7).
+    It grades a line that is redundant, not one that is wrong, and it was refusing to sell
+    finished packs over copy our own fallback had written. Founder decision 2026-08-17;
+    the reasoning is at the rule itself.
 
     `report_residue` adds the "reads as a fragment" check, which is a reviewer's tool and
     never an actuator: it warns under either `block` setting, and it is off by default
@@ -1249,8 +1295,17 @@ def check_shelf_copy(fields: Dict[str, str], *, block: bool = False,
                                f"uses our internal vocabulary, not the reader's: "
                                f"{', '.join(vocab_hits + taxonomy_hits)} in {text!r}"))
 
-        # 3. An initialism the reader has never met AND the line never introduces.
-        unknown = unexplained_initialisms(text)
+        # 3. An initialism the reader has never met AND THE PAGE never introduces.
+        #
+        #    Scope is the whole shelf, not this line. The buyer reads the title, the
+        #    headline, the subhead and the card line at once, so a term the title spells out
+        #    has been introduced by the time the card line uses it. Grading each field alone
+        #    refused exactly that: `38029727242c23c9` titled itself "Cybersecurity Maturity
+        #    Model Certification (CMMC) Level 2 evidence packs" — the expansion the rule asks
+        #    for, in the field with the least room for it — and was then blocked because its
+        #    card line said "CMMC Level 2 evidence binders". The only copy that satisfied the
+        #    per-field rule spelled the term out four times on one page.
+        unknown = unexplained_initialisms(text, context=" \n".join(graded.values()))
         if unknown:
             problems.append(mk("shelf_copy", name,
                                f"unexplained initialism(s) {', '.join(unknown)} — spell it out in full; "
@@ -1325,6 +1380,25 @@ def check_shelf_copy(fields: Dict[str, str], *, block: bool = False,
     # 7. The same line twice. The shelf shows title and card line together and the pack page
     #    shows title and headline together, so a repeat spends the page's most valuable line
     #    saying nothing new. 13 of 48 live packs repeated their title as their headline.
+    #
+    #    THIS ONE NEVER BLOCKS, whatever `block` says. Founder decision 2026-08-17: "the
+    #    linter is wrong clearly". A repeated line is worth less than a fresh one; it is not
+    #    a reason to refuse to sell a pack whose evidence, artifacts and price are all sound.
+    #    The other six rules grade a line that is WRONG — cut off mid-clause, addressed to
+    #    the wrong reader, carrying an initialism the buyer has never seen. This one grades a
+    #    line that is merely redundant, and redundancy is a preference.
+    #
+    #    We were also the ones writing the duplicate. `pack_floors.py:258` fills a missing
+    #    listing with `headline = title` and `subhead = one_liner`, so when marketing
+    #    generation failed, our own fallback produced copy our own gate then refused. The
+    #    daemon's guardrail (`run._shelf_copy_breaches`) counts an error as a failed attempt,
+    #    so each such pack burned MAX_GEN_ATTEMPTS of generation and an escalation to the
+    #    expensive chain before landing UNLISTED anyway. Measured on the lint receipts of
+    #    2026-08-17: 7 of the 32 blocked packs carried this error, 2 of them carried nothing
+    #    else. Those two list the moment it stops blocking.
+    #
+    #    It stays REPORTED at warning, because `tools/sweep_shelf_copy.py` uses it to find
+    #    copy worth rewriting. Reporting it and acting on it are different decisions.
     keys: Dict[str, str] = {}
     ordered = sorted(graded.items(),
                      key=lambda kv: (_SHELF_DEDUP_ORDER.index(kv[0])
@@ -1335,8 +1409,8 @@ def check_shelf_copy(fields: Dict[str, str], *, block: bool = False,
         if not k:
             continue
         if k in keys:
-            problems.append(mk("shelf_copy", name,
-                               f"repeats `{keys[k]}` verbatim; the reader learns nothing new: {raw.strip()!r}"))
+            problems.append(_warn("shelf_copy", name,
+                                  f"repeats `{keys[k]}` verbatim; the reader learns nothing new: {raw.strip()!r}"))
         else:
             keys[k] = name
     return problems
@@ -1460,7 +1534,12 @@ def check_claims(text: str, sources: Iterable[str], *, market: str = "",
         seen.add(tok.lower())
         problems.append(hard("title_claim", where, detail))
 
-    for num in re.findall(r"\d[\d,.]*%?", text):
+    # A DIGIT INSIDE A WORD IS NOT A FIGURE. `_TOKEN_RE` splits on the alpha/digit boundary,
+    # so "3PLs" arrived here as the number 3, and the receipt on `19aaf66a4e9f7778` told the
+    # operator that "Savannah port container dwell forecasts for 3PLs" states a figure its
+    # copy does not: '3'. Trade terms are built that way — 3PL, 4PL, 2FA, K8s — and the pack
+    # was blocked over a claim nobody made. The guards below require the run to stand alone.
+    for num in re.findall(r"(?<![A-Za-z0-9])\d[\d,.]*%?(?![A-Za-z0-9])", text):
         bare = num.strip(".,")
         if bare and bare not in blob:
             report(bare, f"states a figure the pack's own copy does not: {bare!r}")
@@ -1502,6 +1581,13 @@ def check_claims(text: str, sources: Iterable[str], *, market: str = "",
             # every one of them the opening verb of a headline.
             before = text[: m.start()].rstrip()
             if not before or before[-1] in ".!?":
+                continue
+            # HALF A WORD IS NOT A PROPER NOUN. Same `_TOKEN_RE` split as the figure rule
+            # above: "3PLs" yields the token "PLs", and the receipt on `19aaf66a4e9f7778`
+            # told the operator that "PLs" appears nowhere in the pack's copy. It appears
+            # nowhere in the TITLE either — no writer can act on that. If the character
+            # immediately before the token is alphanumeric, the token is a fragment.
+            if m.start() and text[m.start() - 1].isalnum():
                 continue
             if tok[:1].isupper() and unsupported(tok):
                 report(tok, f"introduces the proper noun {tok!r}, which appears nowhere in "

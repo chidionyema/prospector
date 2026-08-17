@@ -79,6 +79,75 @@ def _dossier(candidate_id: str, *, financial_model: str = "Test financial model 
     return dossier
 
 
+class TestADryRunDoesNotMintWaybackCaptures(unittest.TestCase):
+    """A rehearsal must not mint a durable pointer, and not only because it sells nothing.
+
+    Minting is the slow half of the gate: every citation is a live POST to the Internet
+    Archive with 4s/12s/30s retries behind a shared rate limit. Measured 2026-08-17, one
+    pack gated by hand spent over ten minutes there. That is what made the recovery tool's
+    re-gate time out on 19 of its first 44 attempts, so a repaired pack was graded against
+    a lint record written the day before and recorded as blocked.
+
+    Lookups still run on a dry run, so an existing memento is still attached and the QA
+    report a real publish renders is unchanged.
+    """
+
+    def setUp(self):
+        os.environ["STORE_INTERNAL_API_KEY"] = "test-internal-key"
+        self._tmp = tempfile.TemporaryDirectory()
+        self.store_dir = Path(self._tmp.name)
+        self.cfg = MagicMock()
+        self.cfg.thresholds.confidence_floor = 0.0
+        self.cfg.store_dir = str(self.store_dir)
+        # Archiving ON and minting ON: the configuration under which the timeouts happened.
+        self.cfg.listing = {"archive_citations": True, "archive_save_new": True}
+        self.bridge = EngineBridge(self.cfg)
+        self.bridge.store_api_url = "http://localhost:5050"
+        self.bridge.entitlements_check = MagicMock(return_value=True)
+        self.bridge.stripe = MagicMock()
+        self.bridge.r2 = MagicMock()
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _dossier_with_no_sources(self, cid):
+        d = _dossier(cid)
+        # A real list, not a MagicMock: the archived_urls comprehension iterates this, and a
+        # MagicMock would raise there instead of exercising the branch under test.
+        d.all_sources = []
+        return d
+
+    def test_a_dry_run_asks_for_lookups_but_not_for_new_captures(self):
+        with patch("prospector.bridge.archive_sources") as mock_archive:
+            mock_archive.return_value = 0
+            self.bridge.publish_pass(self._dossier_with_no_sources("arc-001"), dry_run=True)
+
+        mock_archive.assert_called_once()
+        self.assertIs(
+            mock_archive.call_args.kwargs["save_new"], False,
+            "a dry run asked the Internet Archive to mint new captures",
+        )
+
+    def test_a_real_publish_still_mints(self):
+        """The saving is the dry run's alone. A pack that is actually sold still gets its
+        durable pointer, which is the whole reason archiving exists."""
+        with patch("prospector.bridge.archive_sources") as mock_archive:
+            mock_archive.return_value = 0
+            # The publish fails further down (no live money rail here). Irrelevant: the
+            # archive call has already happened by then, and its kwargs are the assertion.
+            with patch("prospector.bridge.price_for", side_effect=RuntimeError("no rail")):
+                try:
+                    self.bridge.publish_pass(self._dossier_with_no_sources("arc-002"))
+                except RuntimeError:
+                    pass
+
+        mock_archive.assert_called_once()
+        self.assertIs(
+            mock_archive.call_args.kwargs["save_new"], True,
+            "a real publish stopped minting durable pointers for its citations",
+        )
+
+
 class TestDryRunMintsNothing(unittest.TestCase):
     def setUp(self):
         os.environ["STORE_INTERNAL_API_KEY"] = "test-internal-key"

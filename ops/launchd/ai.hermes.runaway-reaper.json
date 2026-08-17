@@ -1,0 +1,22 @@
+{
+  "EnvironmentVariables": {
+    "HERMES_HOME": "/Users/chidionyema/.hermes",
+    "HOME": "/Users/chidionyema",
+    "PATH": "/usr/local/bin:/usr/bin:/bin:/Users/chidionyema/.local/bin"
+  },
+  "Label": "ai.hermes.runaway-reaper",
+  "ProgramArguments": [
+    "/usr/local/bin/python3",
+    "/Users/chidionyema/.hermes/scripts/launchd_receipt.py",
+    "--label",
+    "ai.hermes.runaway-reaper",
+    "--",
+    "/bin/bash",
+    "/Users/chidionyema/.hermes/scripts/runaway-reaper.sh"
+  ],
+  "RunAtLoad": true,
+  "StandardErrorPath": "/Users/chidionyema/.hermes/logs/runaway-reaper.err.log",
+  "StandardOutPath": "/Users/chidionyema/.hermes/logs/runaway-reaper.out.log",
+  "StartInterval": 300,
+  "WorkingDirectory": "/Users/chidionyema/.hermes"
+}

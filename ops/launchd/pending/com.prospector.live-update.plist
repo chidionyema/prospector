@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PROSPECTOR_STORE_DIR</key>
+		<string>/Users/chidionyema/Documents/code/prospector/store</string>
+	</dict>
+	<key>Label</key>
+	<string>com.prospector.live-update</string>
+	<key>Nice</key>
+	<integer>5</integer>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/chidionyema/Documents/code/prospector/.venv/bin/python</string>
+		<string>/Users/chidionyema/.hermes/scripts/launchd_receipt.py</string>
+		<string>--label</string>
+		<string>com.prospector.live-update</string>
+		<string>--</string>
+		<string>/Users/chidionyema/Documents/code/prospector/.venv/bin/python</string>
+		<string>/Users/chidionyema/Documents/code/prospector/scripts/live_checkout.py</string>
+		<string>--unattended</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/chidionyema/Documents/code/prospector/store/scheduler/live_update.err</string>
+	<key>StandardOutPath</key>
+	<string>/Users/chidionyema/Documents/code/prospector/store/scheduler/live_update.log</string>
+	<key>StartInterval</key>
+	<integer>60</integer>
+	<key>WorkingDirectory</key>
+	<string>/Users/chidionyema/Documents/code/prospector</string>
+</dict>
+</plist>

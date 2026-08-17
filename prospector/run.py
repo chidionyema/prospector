@@ -755,6 +755,25 @@ def _generate_pack_content(op, cand, checks, *, query_op, quality_op, cfg, score
             op, cand, checks, fast_op=query_op, quality_op=copy_op, check_op=op, cfg=cfg,
             deadline_mono=_art_deadline)
         complete, problems = validate_pack(artifacts, marketing)
+
+        # A GAP PRINTED WHERE A FIGURE BELONGS IS AN UNFINISHED ARTIFACT, and until now this
+        # loop could not see it. `validate_pack` grades that each artifact EXISTS and is long
+        # enough and has sections; it never reads what is inside one. So a financial model
+        # that printed `_(not specified)_` where the price should be counted as a successful
+        # attempt, the pack published UNLISTED, and the only way back was a hand-run of
+        # `tools/publish_passes.py`. Three live packs are stranded exactly that way
+        # (08dbe23f7be7af97, 25363e54b649587a, 82a9c38fea398376), all created before the
+        # renderer stopped emitting that string on 2026-08-14. The publish gate has always
+        # refused it (`pack_linter.check_placeholders`) — the generator just never asked.
+        #
+        # Named in `validate_pack`'s own `artifact '<name>' ...` shape on purpose: that prefix
+        # is what makes the block above regenerate the ARTIFACTS on the next attempt. A gap in
+        # a figure is an artifact defect, and re-paying the copy chain would not touch it.
+        from .pack_linter import check_placeholders
+        for gap in check_placeholders(artifacts):
+            complete = False
+            problems.append(f"artifact '{gap['where']}' {gap['detail']}")
+
         breaches = _shelf_copy_breaches(cand, marketing, cfg)
         if complete and not breaches:
             return artifacts, marketing
