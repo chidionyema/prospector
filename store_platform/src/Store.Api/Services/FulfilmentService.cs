@@ -52,7 +52,7 @@ public sealed class FulfilmentService(StoreDbContext db, ITokenGenerator tokens)
         PaymentTransaction txn, PurchasedItem item, List<Entitlement> created, List<string> unfulfilled)
     {
         // Resolve the deliverable pack from the identifier carried on the transaction.
-        // Stripe stamps the catalog pack id into checkout metadata (P0-1); Paddle carries
+        // Stripe stamps the catalog pack id into checkout metadata (P0-1); a provider without it carries
         // the provider product id on its line items. Match either, scoped to the provider.
         var pack = item.ProductId is null
             ? null

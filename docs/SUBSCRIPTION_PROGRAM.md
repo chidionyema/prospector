@@ -1,5 +1,9 @@
 # Subscription & Commerce-Mode Programme — Design
 
+> **Superseded 2026-08-16:** Paddle is gone. Stripe is the only payment provider; the
+> `PaddleProvider`, its web loader and its config were deleted. Read every Paddle passage
+> below as history, not as the current design.
+
 > Status: **DESIGN, not built.** No engine or store code changed by this document.
 >
 > **Implementing this? Start at §17 (Execution spec) and read §15 (edge cases) beside it.**

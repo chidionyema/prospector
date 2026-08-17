@@ -148,15 +148,15 @@ function CategoryRow({ node, href }: { node: CategoryNode; href: string }) {
               measured at 390px on 2026-08-13, the row used ~110px of 326 and had the room. Only
               the fixed 18ch column is held back to `sm`, because a fixed column is what makes the
               prices line up, and below `sm` there is nothing to line them up against. */}
-          {/* `PriceText`, not a hand-rolled mono span, and `--azure`, not `--subtle` (2026-08-15).
-              Founder, looking at /ideas: "why are the prices in black?" -- because this row
-              reproduced the price treatment instead of calling the component that owns it, so the
-              money colour applied to every `<PriceText>` on the shelf and the pack page stopped at
-              this page's door. The tree-wide test in `storefrontDesignContract.test.ts` could not
-              catch it either: it walks `<PriceText>` call sites, and this was not one. Calling the
-              component is what puts this row inside that fence. */}
+          {/* `PriceText`, not a hand-rolled mono span. This row used to reproduce the price
+              treatment instead of calling the component that owns it, so a repaint of every
+              `<PriceText>` on the shelf and the pack page stopped at this page's door, and the
+              tree-wide test in `storefrontDesignContract.test.ts` could not catch it either: it
+              walks `<PriceText>` call sites, and this was not one. Calling the component is what
+              puts this row inside that fence -- which is the whole reason the 2026-08-15 colour
+              directive (prices to ink, symbol to 0.8em) landed here for free, in Money.tsx. */}
           {node.price && (
-            <PriceText className="text-caption text-azure sm:w-[18ch] sm:text-right">
+            <PriceText className="text-caption sm:w-[18ch] sm:text-right">
               {node.price}
             </PriceText>
           )}

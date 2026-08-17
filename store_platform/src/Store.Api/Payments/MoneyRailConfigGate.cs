@@ -21,12 +21,6 @@ public sealed class MoneyRailConfigGate(
     // entitlements key outside Development.
     private const string DevPlaceholderEntitlementsKey = "dev-entitlements-key-change-in-production";
 
-    // P1-4 — the dev convenience value for the Paddle webhook signing secret, committed in
-    // appsettings.Development.json. Same trust class as the keys above: a webhook secret left
-    // at this committed value outside Development means anyone who can read this repo knows the
-    // HMAC secret and can forge a valid Paddle webhook (a free entitlement). Fail closed.
-    private const string DevPlaceholderPaddleWebhookSecret = "dev-paddle-webhook-secret";
-
     // Required config keys per provider. The active provider must have every listed key
     // present or the app refuses to start (fail-closed): a money rail missing its webhook
     // secret accepts unsigned webhooks, and one missing its API key boots fine but fails
@@ -34,7 +28,6 @@ public sealed class MoneyRailConfigGate(
     private static readonly Dictionary<string, string[]> RequiredKeys =
         new(StringComparer.Ordinal)
         {
-            ["paddle"] = ["Paddle:WebhookSecret"],
             ["stripe"] = ["Stripe:WebhookSecret", "Stripe:ApiKey"],
         };
 
@@ -43,7 +36,7 @@ public sealed class MoneyRailConfigGate(
         GuardInternalApiKey();
         GuardEntitlementsApiKey();
 
-        var activeProvider = config["payments:active_provider"] ?? "paddle";
+        var activeProvider = config["payments:active_provider"] ?? "stripe";
 
         if (!RequiredKeys.TryGetValue(activeProvider, out var requiredKeys))
         {
@@ -331,15 +324,22 @@ public sealed class MoneyRailConfigGate(
             return;
         }
 
-        if (string.Equals(activeProvider, "paddle", StringComparison.Ordinal)
-            && string.Equals(config["Paddle:WebhookSecret"], DevPlaceholderPaddleWebhookSecret, StringComparison.Ordinal))
+        // Any webhook secret carrying the committed "dev-" prefix is publicly known, so a
+        // forged webhook would verify. The committed dev placeholder that this checks for was
+        // removed with the provider; the rule is kept and generalised so a future committed dev
+        // value cannot slip through.
+        var secret = config[$"{Capitalise(activeProvider)}:WebhookSecret"];
+        if (!string.IsNullOrEmpty(secret) && secret.StartsWith("dev-", StringComparison.Ordinal))
         {
-            var msg = $"CRITICAL: Paddle:WebhookSecret is set to the dev placeholder in the "
+            var msg = $"CRITICAL: {Capitalise(activeProvider)}:WebhookSecret is a committed dev placeholder in the "
                 + $"'{environment.EnvironmentName}' environment. App refusing to start.";
             logger.LogCritical("{Message}", msg);
             throw new InvalidOperationException(msg);
         }
     }
+
+    private static string Capitalise(string s) =>
+        string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s[1..];
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }

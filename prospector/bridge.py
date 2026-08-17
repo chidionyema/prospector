@@ -1,11 +1,12 @@
 """
 EngineBridge — Connects Prospector PASS to the Store API and payment provider.
 Ships the £30 bundle (zip), provisions the product with the active payment provider
-(Paddle or Stripe), and updates the Catalog.
+(Stripe), and updates the Catalog.
 """
 from __future__ import annotations
 
 import hashlib
+import importlib
 import ipaddress
 import json
 import logging
@@ -21,6 +22,7 @@ import requests
 from . import facet_derive, indexnow
 from . import facets as facets_mod
 from .archive import archive_sources
+from .artifacts import unverified_claims_block_listing
 from .copy_lint import buyer_readable, is_prose_artifact
 from .marketing_assets import heading_for
 from .models import Decision, Dossier, ScoreResult
@@ -281,6 +283,16 @@ _MIN_BUNDLE_ENTRY_BYTES = 120
 # (docs/HANDOFF_PACK_CONTENTS_REVIEW.md). The one thing markdown carried that a rendered page
 # does not is EDITABILITY, and that is why `Marketing_Assets.txt` exists below — the marketing
 # copy is the document a buyer pastes elsewhere, so it keeps a plain-text form.
+#
+# THE NUMBERED FILENAMES DO NOT MATCH THE READING ORDER, AND MUST NOT BE RENUMBERED
+# ---------------------------------------------------------------------------------
+# `00_`..`05_` are historical. Since these stopped being archive entries they are internal
+# keys, and two renderers read them BY NAME to build the artefacts that are in the sellability
+# contract: `pack_card.render` takes `written["05_First_Week_Checklist.md"]` and
+# `written["04_Financial_Model.md"]` (see `_create_bundle`). Renumbering them to match the new
+# journey would silently hand those renderers an empty string — the card would still build,
+# still list, and be blank in the half a buyer prints. The buyer never sees these names;
+# `BUNDLE_READING_ORDER` and `_SECTION_TITLES` are what they read. Leave them alone.
 PACK_DOCUMENTS = (
     "00_Executive_Summary.md",
     "01_Blueprint_BuildSpec.md",
@@ -290,6 +302,13 @@ PACK_DOCUMENTS = (
     "05_First_Week_Checklist.md",
     "Marketing_Assets.md",
     "QA_Report.md",
+    # Added 2026-08-15 with the narrative restructure. Each is rendered deterministically from
+    # the dossier by its own module, so each can be backfilled onto a pack already sold.
+    "The_Offer.md",              # pack_offer
+    "The_Field.md",              # pack_field
+    "What_Would_Sink_This.md",   # pack_bear_case
+    "The_Toolkit.md",            # pack_toolkit
+    "How_To_Know_In_30_Days.md",  # pack_kicker
 )
 
 # Every file a complete bundle must contain — the sellability contract, drift-tested against
@@ -336,18 +355,47 @@ BUNDLE_BONUS_FILES = (
     "manifest.jsonld",               # the machine-readable half (pack_manifest.MANIFEST_FILENAME)
 )
 
-# Reading order for the in-bundle reader. `Evidence_and_Constraints.md` is composed like the
-# eight above but is not one of them, and it has a place in the read: immediately before the QA
-# report — the two evidence documents together, after the plans that apply them. Defined once
-# here because the generator and `tools/backfill_bundle_html.py` both order the reader, and two
-# orderings is how a backfilled pack comes to open on a different page from a freshly
-# generated one.
+# Reading order for the in-bundle reader — the buyer's journey through the pack, and since
+# 2026-08-15 an EXPLICIT tuple rather than a derivation from PACK_DOCUMENTS.
 #
-# Derived from PACK_DOCUMENTS, not from BUNDLE_FILES: since 2026-08-15 those are different
-# lists — one is what the pack SAYS, the other is what the archive HOLDS.
-BUNDLE_READING_ORDER = tuple(
-    x for name in PACK_DOCUMENTS
-    for x in (("Evidence_and_Constraints.md", name) if name == "QA_Report.md" else (name,))
+# It had to stop being derived. PACK_DOCUMENTS is a set of render inputs in the order they were
+# historically added, and using it as the reading order meant the pack was arranged by the
+# order the engine happened to produce things in. The founder's reading of that arrangement,
+# 2026-08-15: "there is no background, we ramble about composite scores, things our engine does
+# that do not concern us". A document ordered by its producer reads like a producer's log.
+#
+# The order below is the newspaper order (Roy Peter Clark's hourglass): the situation, the thing
+# itself, the world it lands in, the numbers, the case against — then the instructional body,
+# then the resolution, and the evidence as an appendix behind all of it. The two evidence
+# documents stay adjacent and stay LAST, which is a demotion: they were 52% of the words of the
+# pack the founder read, positioned as the payload. They are the receipts. Receipts go at the
+# back.
+#
+# Defined once here because the generator and `tools/backfill_bundle_html.py` both order the
+# reader, and two orderings is how a backfilled pack comes to open on a different page from a
+# freshly generated one. Entries absent from a given pack (a renderer that returned "" for a
+# thin dossier) are skipped by the reader, so this tuple is the superset, not a contract.
+BUNDLE_READING_ORDER = (
+    # --- the opening: situation, then the promise of the piece ---
+    "00_Executive_Summary.md",       # the lede and the nut graf
+    "The_Offer.md",                  # what would actually change hands for money
+    "The_Field.md",                  # who is already there, in their own words
+    # --- the stakes, before the instructions ---
+    "04_Financial_Model.md",         # the numbers
+    "What_Would_Sink_This.md",       # the case against, at full strength
+    # --- the body: how it is done ---
+    "01_Blueprint_BuildSpec.md",
+    "02_Marketing_Plan_GTM.md",
+    "03_Operations_Plan.md",
+    "05_First_Week_Checklist.md",
+    # --- the things a buyer uses rather than reads ---
+    "The_Toolkit.md",
+    "Marketing_Assets.md",
+    # --- the kicker: what resolves it ---
+    "How_To_Know_In_30_Days.md",
+    # --- appendix: the receipts ---
+    "Evidence_and_Constraints.md",
+    "QA_Report.md",
 )
 
 # Human-readable section titles for the in-bundle index.html reading experience
@@ -355,16 +403,29 @@ BUNDLE_READING_ORDER = tuple(
 # same filenames — kept as a plain dict rather than imported (that file is TypeScript); a
 # drift between the two is cosmetic (both label the same file) and NOT the sellability
 # drift the BUNDLE_FILES/PackContents pairing's own test guards, so it isn't pinned here.
+# Retitled 2026-08-15 alongside the reading order. A section title is the only part of a pack
+# that gets read by everyone, and these were named after the DOCUMENT ("The Financial Model",
+# "The QA Report") rather than after what the reader gets from it. Two of them printed the
+# engine's own vocabulary at a buyer who has no QA department and did not buy a blueprint.
+#
+# `pack_floors.QA_SECTION` and `pack_floors.CHECKLIST_SECTION` are the same two strings,
+# duplicated there to avoid an import cycle on the money rail and pinned to this dict by
+# `tests/unit/test_pack_floors.py`. Change one and that test fails, which is the point.
 _SECTION_TITLES = {
-    "00_Executive_Summary.md": "Executive Summary",
-    "01_Blueprint_BuildSpec.md": "The Blueprint (Build Spec)",
-    "02_Marketing_Plan_GTM.md": "The Go-To-Market Plan",
-    "03_Operations_Plan.md": "The Operations Plan",
-    "04_Financial_Model.md": "The Financial Model",
-    "05_First_Week_Checklist.md": "First-Week Checklist",
-    "Marketing_Assets.md": "Marketing Assets",
-    "Evidence_and_Constraints.md": "Evidence and Constraints",
-    "QA_Report.md": "The QA Report, with the receipts",
+    "00_Executive_Summary.md": "Where this starts",
+    "The_Offer.md": "What you would be selling",
+    "The_Field.md": "The field: who is already there",
+    "04_Financial_Model.md": "The numbers",
+    "What_Would_Sink_This.md": "What would sink this",
+    "01_Blueprint_BuildSpec.md": "What you build",
+    "02_Marketing_Plan_GTM.md": "How the first customers find you",
+    "03_Operations_Plan.md": "How it runs once it works",
+    "05_First_Week_Checklist.md": "Your first fortnight",
+    "The_Toolkit.md": "The toolkit",
+    "Marketing_Assets.md": "Copy you can paste",
+    "How_To_Know_In_30_Days.md": "How to know in 30 days",
+    "Evidence_and_Constraints.md": "Everything we read, once",
+    "QA_Report.md": "Every check, in full",
 }
 
 # Titles for the ARCHIVE entries, which since 2026-08-15 are a different list from the
@@ -517,7 +578,7 @@ class ExistingPrice(NamedTuple):
 
 
 class ProductProvisioner(Protocol):
-    """Provider-agnostic product provisioning. Implementations: PaddleClient, StripeProvisioner."""
+    """Provider-agnostic product provisioning. Implementation: StripeProvisioner."""
     def create_product(self, name: str, description: str, metadata: Dict[str, str]) -> str:
         """Returns the provider's product ID."""
         ...
@@ -556,14 +617,11 @@ class EngineBridge:
         # PROSPECTOR_ENTITLEMENTS_API_KEY env var). Empty = fail-closed.
         self.entitlements_api_key = getattr(cfg, "entitlements_api_key", "")
 
-        # Active provider selection (config-driven, matches .NET MoneyRailConfigGate)
-        self.active_provider = getattr(cfg, "store_payments", {}).get("active_provider", "paddle") if hasattr(cfg, "store_payments") else \
-            os.environ.get("PAYMENTS_ACTIVE_PROVIDER", "paddle")
-
-        # Paddle settings (kept for backward compat + fallback)
-        self.paddle_api_key = os.environ.get("PADDLE_API_KEY")
-        self.paddle_env = os.environ.get("PADDLE_ENVIRONMENT", "sandbox")
-        self.paddle = PaddleClient(self.paddle_api_key, self.paddle_env) if self.paddle_api_key else None
+        # Active provider selection (config-driven, matches .NET MoneyRailConfigGate).
+        # Stripe is the only rail we can mint on; the default matches the Store's own default
+        # so the two ends of the money rail cannot disagree about who is billing.
+        self.active_provider = getattr(cfg, "store_payments", {}).get("active_provider", "stripe") if hasattr(cfg, "store_payments") else \
+            os.environ.get("PAYMENTS_ACTIVE_PROVIDER", "stripe")
 
         # Stripe settings. The key must belong to the SAME Stripe account the deployed Store
         # bills through: a price minted anywhere else does not exist as far as checkout is
@@ -615,14 +673,17 @@ class EngineBridge:
     @property
     def provisioner(self) -> Optional[ProductProvisioner]:
         """Returns the active product provisioner, or None if unconfigured."""
+        # Any other provider name is a row from a rail we no longer hold a key for. None is
+        # the honest answer, and it publishes the pack UNLISTED instead of minting nothing and
+        # listing it with a stub price id.
         if self.active_provider == "stripe":
             return self.stripe
-        return self.paddle
+        return None
 
     def publish_pass(self, dossier: Dossier, *, dry_run: bool = False) -> bool:
         """
         Execute Phase 2 of the Build Plan:
-        PASS -> zip bundle -> Paddle API (Product/Price/Upload) -> Store API (Catalog).
+        PASS -> zip bundle -> Stripe API (Product/Price) -> R2 upload -> Store API (Catalog).
 
         ``dry_run=True`` runs every DETERMINISTIC gate — the guards above, the zip build,
         ``validate_pack``, ``audit_bundle`` and ``lint_pack`` — writes the usual
@@ -984,7 +1045,9 @@ class EngineBridge:
                         f"{len(dossier.all_sources)} citation(s)")
 
         # 2. Create the bundle (.zip)
-        bundle_path = self._create_bundle(dossier, artifacts, marketing)
+        pack_sections: Dict[str, str] = {}
+        bundle_path = self._create_bundle(dossier, artifacts, marketing,
+                                          sections_out=pack_sections)
         if not bundle_path:
             logger.error(f"EngineBridge: Failed to create bundle for {candidate_id}")
             return False
@@ -1087,6 +1150,50 @@ class EngineBridge:
             grammar_enabled=bool(listing_cfg.get("lint_grammar", False)),
             max_grammar_defects_per_1k=float(
                 listing_cfg.get("max_grammar_defects_per_1k", 0.0) or 0.0),
+            # The assembled read, as the buyer gets it. Filled by `_create_bundle` above;
+            # empty when the bundle failed to build, and `check_repetition` returns [] on
+            # empty rather than reporting a clean pack that does not exist.
+            pack_sections=pack_sections,
+            # OFF BY DEFAULT, and that is the repo's own pattern rather than timidity: this
+            # is the same shape as `grammar_enabled` and `shelf_copy_block_on_breach` — the
+            # check runs, the count lands in `<id>.lint.json`, and the threshold is turned on
+            # against numbers measured on live packs. Measured 2026-08-15 on the rewritten
+            # renderers, pack e698149e137fc164 went 33 blocking -> 0, but one pack is not a
+            # corpus and unlisting a paid pack over a repeated sentence is the expensive way
+            # to find that out. Flip `listing.lint_repetition_block` once the baseline is in.
+            repetition_block=bool(listing_cfg.get("lint_repetition_block", False)),
+            # HOUSE WRITING SPEC (docs/HOUSE_WRITING_SPEC.md). Every knob below is off in
+            # config.yaml and the checks run regardless — `lint_pack` returns the `house_spec`
+            # baseline on every pack, pass or fail, which is the number a threshold is
+            # eventually allowed to be set from. The code-side default is "measure only" for
+            # a harder reason than symmetry with the knobs above: the measured baseline says
+            # 43.9% of engine sentences already break R1, so a style knob that defaulted ON
+            # would unlist the catalogue the first time someone deployed without this block.
+            register_block=bool(listing_cfg.get("house_spec_block_register", False)),
+            max_register_per_1k=float(listing_cfg.get("max_register_per_1k", 0.0) or 0.0),
+            max_long_sentence_rate=float(
+                listing_cfg.get("max_long_sentence_rate", 0.0) or 0.0),
+            max_clause_load_rate=float(listing_cfg.get("max_clause_load_rate", 0.0) or 0.0),
+            house_block_predictions=bool(
+                listing_cfg.get("house_spec_block_predictions", False)),
+            house_block_quotes=bool(listing_cfg.get("house_spec_block_quotes", False)),
+            max_four_item_list_rate=float(
+                listing_cfg.get("max_four_item_list_rate", 0.0) or 0.0),
+            max_unsourced_figure_rate=float(
+                listing_cfg.get("max_unsourced_figure_rate", 0.0) or 0.0),
+            # Our filing system in the buyer's prose. Shadow-first on the same reasoning as
+            # every knob above, and for one more: this check is NEW, so its false-positive
+            # rate on the live corpus is measured on 296 documents and nothing else. It stays
+            # advisory until the baseline says what a real ceiling is.
+            engine_leak_block=bool(listing_cfg.get("engine_leak_block", False)),
+            max_engine_leak_per_1k=float(
+                listing_cfg.get("max_engine_leak_per_1k", 0.0) or 0.0),
+            # How far our writing sits from professional human writing in the same genre,
+            # measured against 270 ombudsman decisions. Off by the same rule as everything
+            # above: the intervals are the human 5th-95th percentile, so about one human
+            # document in ten falls outside on any single measure. Blocking on that today
+            # would unlist packs a human author would also have failed.
+            human_register_block=bool(listing_cfg.get("human_register_block", False)),
         )
         lint_ok = bool(lint_report.get("ok"))
         if not lint_ok:
@@ -1108,6 +1215,12 @@ class EngineBridge:
                     "completeness_problems": pack_problems,
                     "bundle_missing": bundle_gaps,
                     "bundle_stubs": bundle_stubs,
+                    # The paid artifacts' claim-check, written by `generate_artifacts` onto
+                    # the candidate's tags. Until 2026-08-15 its violations reached a
+                    # `logger.info` and nothing else, so "violations are recorded" was a
+                    # claim about a log line; this is the file on disk that makes it true.
+                    "unverified_claims": (getattr(candidate, "tags", None)
+                                          or {}).get("unverified_claims"),
                 }, indent=2, ensure_ascii=False))
             except OSError as exc:
                 logger.warning(
@@ -1117,7 +1230,20 @@ class EngineBridge:
         # Everything decidable without touching a payment provider or object storage. When
         # this is False the pack CANNOT list however provisioning goes, so minting for it
         # would only ever produce an orphan.
-        content_ok = pack_complete and bundle_complete and lint_ok
+        # The paid artifacts' claim-check, on the same footing as the lint. The documents are
+        # deliberately still IN the bundle (see artifacts.py) so the operator can see which
+        # claim failed; this line is what stops them selling. `listing.claim_check_block`, ON
+        # by default because this one grades TRUTH rather than style, and "no unsourced
+        # numbers ship, ever" has no exception for the document the buyer pays for.
+        claims_ok = not unverified_claims_block_listing(candidate)
+        if not claims_ok:
+            logger.error(
+                f"EngineBridge: {candidate_id} carries unverified claims in its PAID "
+                f"artifacts after the repair turn "
+                f"({sorted((candidate.tags or {})['unverified_claims']['artifacts'])}); "
+                f"publishing UNLISTED — no unsourced numbers ship, ever."
+            )
+        content_ok = pack_complete and bundle_complete and lint_ok and claims_ok
 
         # GATE-ONLY EXIT. Deliberately placed HERE and not one line later: `price_for` below
         # is the first step of the money rail, and everything after it — the provider Price
@@ -1127,11 +1253,13 @@ class EngineBridge:
         if dry_run:
             logger.info(
                 f"EngineBridge: DRY RUN for {candidate_id} — content_ok={content_ok} "
-                f"(complete={pack_complete}, bundle={bundle_complete}, lint={lint_ok}); "
+                f"(complete={pack_complete}, bundle={bundle_complete}, lint={lint_ok}, "
+                f"claims={claims_ok}); "
                 f"no price minted, no upload, no catalogue write.",
                 extra={"candidate_id": candidate_id, "dry_run": True,
                        "content_ok": content_ok, "pack_complete": pack_complete,
-                       "bundle_complete": bundle_complete, "lint_ok": lint_ok},
+                       "bundle_complete": bundle_complete, "lint_ok": lint_ok,
+                       "claims_ok": claims_ok},
             )
             return bool(content_ok)
 
@@ -1210,7 +1338,7 @@ class EngineBridge:
         applied_price_pence = price.price_pence
         # The USD amount actually MINTED onto the provider Price in this call, not the one the
         # ladder decided. It stays None on every path that does not mint — a reused live price
-        # (whose currency_options we did not write and cannot inspect from here), a Paddle rail,
+        # (whose currency_options we did not write and cannot inspect from here), a non-Stripe rail,
         # a missing provisioner — because the catalogue's USD figure is what the fulfilment fence
         # bills against, and recording a price the provider was never told about is how a buyer
         # is charged in a currency the rail then refuses. None costs a US buyer a GBP checkout;
@@ -1293,8 +1421,8 @@ class EngineBridge:
             # `priced` guard below; this branch only records why.
             logger.error(
                 f"EngineBridge: No {payment_provider} provisioner available for "
-                f"{candidate_id} (keys: stripe={'set' if self.stripe_api_key else 'unset'}, "
-                f"paddle={'set' if self.paddle_api_key else 'unset'}). Pack will be "
+                f"{candidate_id} (keys: stripe={'set' if self.stripe_api_key else 'unset'}). "
+                f"Pack will be "
                 f"published UNLISTED — a stub price id cannot take money. "
                 f"Stripe key selection: {self.stripe_key_reason}"
             )
@@ -1539,8 +1667,18 @@ class EngineBridge:
             )
             return False
 
-    def _create_bundle(self, dossier: Dossier, artifacts: Dict[str, str], marketing: List[Dict[str, str]]) -> Optional[Path]:
-        """Bundle the pack files into a zip."""
+    def _create_bundle(self, dossier: Dossier, artifacts: Dict[str, str],
+                       marketing: List[Dict[str, str]],
+                       sections_out: Optional[Dict[str, str]] = None) -> Optional[Path]:
+        """Bundle the pack files into a zip.
+
+        `sections_out`, when given, is FILLED with the assembled read — buyer-visible section
+        title -> markdown — so the caller can grade the document it just built. An out-param
+        rather than a second return value because every existing caller reads the zip path and
+        a tuple return would have made the lint wiring a change to each of them; and because
+        the dict must survive the failure paths below, where the function returns None but the
+        sections that did compose are still worth reporting on.
+        """
         candidate_id = dossier.candidate.candidate_id
         publish_dir = Path("publish") / "bundles" / candidate_id
         publish_dir.mkdir(parents=True, exist_ok=True)
@@ -1758,6 +1896,79 @@ class EngineBridge:
                     logger.warning(
                         f"{pack_reference.FILENAME} render failed for {candidate_id}: {e}; "
                         "shipping the bundle without it")
+
+                # 8b-2. The narrative sections (2026-08-15). Five documents that turn a set of
+                # plans into something with an opening, stakes and an ending: what would be
+                # sold, who is already in the field, the case against, the tools to use, and
+                # the one test that resolves it. All five are rendered from the dossier with no
+                # model call, which is what lets them be backfilled onto packs already sold and
+                # re-rendered offline for review before shipping.
+                #
+                # Each is guarded INDIVIDUALLY and on purpose. They are sections of the read,
+                # not entries in BUNDLE_FILES, so one that fails costs the pack that section
+                # and nothing else — it must never become an exception on the register-unlisted
+                # retry path, and it must never hold a listing. `pack_field` and
+                # `pack_bear_case` legitimately return "" on a thin dossier (no incumbency
+                # sources; nothing refuted or unproven), and "" means "omit the section", which
+                # is why the falsy check is not treated as a failure.
+                for module_name, kwargs in (
+                    ("pack_offer", {}),
+                    ("pack_field", {}),
+                    ("pack_bear_case",
+                     {"financial_md": written.get("04_Financial_Model.md", "")}),
+                    ("pack_toolkit", {}),
+                    ("pack_kicker", {}),
+                ):
+                    try:
+                        module = importlib.import_module(f".{module_name}", __package__)
+                        body = module.render(dossier, **kwargs)
+                        if body:
+                            # THE PROSE PASS APPLIES HERE TOO (2026-08-15). The block comment
+                            # above says "every engine-authored document below goes through
+                            # `prose_pass_document`", and until today that sentence was false
+                            # for five of the fourteen sections a buyer reads — these ones,
+                            # which are appended after the pass has already run on the rest.
+                            # It is safe for a deterministic renderer because the pass is
+                            # itself deterministic (`plain_text.publish_pass_document`, pure
+                            # Python, no model call), so the backfill that re-renders a pack
+                            # already sold produces the identical bytes. That is exactly the
+                            # property the checklist's own comment above is protecting, and
+                            # the reason it declines a REWRITE rather than this repair.
+                            body = prose_pass_document(body)
+                            written[module.FILENAME] = body
+                            # The bear case lifts two blocks out of the financial model
+                            # verbatim. Now that it HAS rendered, the model hands them over
+                            # and keeps a pointer, so the buyer stops reading fifteen
+                            # sentences twice. Only on success: if the render above returned
+                            # "" or raised, nothing absorbed them and the model keeps them.
+                            if module_name == "pack_bear_case" and \
+                                    written.get("04_Financial_Model.md"):
+                                written["04_Financial_Model.md"] = \
+                                    module.financial_md_after_absorbing(
+                                        written["04_Financial_Model.md"],
+                                        _SECTION_TITLES.get(module.FILENAME, "the bear case"))
+                    except Exception as e:  # noqa: BLE001 — one section, never the pack
+                        logger.warning(
+                            f"{module_name} render failed for {candidate_id}: {e}; "
+                            "shipping the bundle without that section")
+
+                # THE READ, HANDED BACK TO THE GATE (2026-08-15). Every section is composed by
+                # now, including the five above and the financial model AFTER the bear case
+                # absorbed its weaknesses, so this is the last moment at which the pack exists
+                # as a whole document rather than as files in a zip. `lint_pack` runs on the
+                # caller's side of `_create_bundle` (publish_pass:980 builds the bundle, :1024
+                # grades it) and until today it was handed `artifacts` — the four model-written
+                # documents — so the Q2 quality floor reported a pack clean while five of the
+                # fourteen sections the buyer actually reads had been graded by nothing at all.
+                # Keyed by buyer-visible title and drawn from BUNDLE_READING_ORDER so that what
+                # is graded is literally what `pack_html` renders three blocks below.
+                if sections_out is not None:
+                    sections_out.clear()
+                    sections_out.update({
+                        _SECTION_TITLES.get(name, name): written[name]
+                        for name in BUNDLE_READING_ORDER
+                        if written.get(name)
+                    })
 
                 # 8c. First_Fortnight.html + Assumptions.csv — P5: "markdown files is not the
                 # one." Eight .md files in a zip reads as an AI output dump; these are the two
@@ -2087,71 +2298,6 @@ class R2Uploader:
 
         return False
 
-
-class PaddleClient:
-    """Minimal Paddle Billing API client."""
-    def __init__(self, api_key: str, environment: str = "sandbox"):
-        self.api_key = api_key
-        self.base_url = "https://sandbox-api.paddle.com" if environment == "sandbox" else "https://api.paddle.com"
-        self.headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
-
-    def create_product(self, name: str, description: str, metadata: Dict[str, str]) -> str:
-        url = f"{self.base_url}/products"
-        payload = {
-            "name": name,
-            "tax_category": "digital-goods",
-            "description": description,
-            "custom_data": metadata
-        }
-        resp = requests.post(url, json=payload, headers=self.headers)
-        resp.raise_for_status()
-        return resp.json()["data"]["id"]
-
-    def create_price(self, product_id: str, amount_pence: int, currency: str = "GBP",
-                     usd_cents: Optional[int] = None) -> str:
-        """`usd_cents` is accepted to satisfy the ProductProvisioner protocol and DELIBERATELY
-        ignored: Paddle prices a product per-currency through its own overrides API, which this
-        client does not call. Ignoring it is safe because the catalogue only records a USD price
-        when the provisioner returns one (see EngineBridge's `minted_usd_cents`), so a Paddle
-        pack simply stays GBP-only and the fulfilment fence refuses USD for it — rather than the
-        pack being advertised in a currency Paddle was never told about.
-        """
-        url = f"{self.base_url}/prices"
-        payload = {
-            "product_id": product_id,
-            "description": "One-off Pack Purchase",
-            "unit_price": {
-                "amount": str(amount_pence),
-                "currency_code": currency
-            },
-            "quantity": {"minimum": 1, "maximum": 1}
-        }
-        resp = requests.post(url, json=payload, headers=self.headers)
-        resp.raise_for_status()
-        return resp.json()["data"]["id"]
-
-    def describe_price(self, price_id: str) -> Optional[ExistingPrice]:
-        """Resolve a live Paddle price to its product, amount and currency.
-
-        Paddle has no idempotency keys on these endpoints at all, so it does not even have
-        Stripe's 24-hour grace: EVERY republish would mint a duplicate without this lookup.
-        Returns None on any failure — the caller reads that as "cannot verify" and reuses the
-        catalogue's ids rather than minting.
-        """
-        try:
-            resp = requests.get(f"{self.base_url}/prices/{price_id}",
-                                headers=self.headers, timeout=10)
-            resp.raise_for_status()
-            data = resp.json()["data"]
-            unit = data["unit_price"]
-            return ExistingPrice(str(data["product_id"]), int(unit["amount"]),
-                                 str(unit.get("currency_code", "GBP")))
-        except Exception as e:
-            logger.error(f"PaddleClient: could not retrieve price {price_id}: {e}")
-            return None
 
 
 def _bundle_version(dossier, candidate) -> str:

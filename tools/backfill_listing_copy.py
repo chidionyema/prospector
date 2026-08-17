@@ -18,7 +18,7 @@ mints a FRESH provider product and price on every call (bridge.py:563-576), and 
 update (Program.cs:489-490) while only ever assigning PricePence on INSERT (Program.cs:461,468).
 So republishing a live pack to change its words either
 
-  * nulls the provider ids (omit them and `request.X ?? request.PaddleX` is null), which breaks
+  * nulls the provider ids (omit them and `request.X` is null), which breaks
     FulfilmentService's `p.ProviderProductId == item.ProductId` lookup — the buyer pays and
     delivery never resolves; ProviderProductId is returned by no GET projection, so a backfill
     cannot even read it back to echo it; or

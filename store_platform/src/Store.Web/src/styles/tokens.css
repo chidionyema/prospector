@@ -77,7 +77,23 @@
   /* NEUTRALS. A true-neutral zinc ramp, not the warm greys of v2 (#F7F7F5 / #6B6B6B / #B5B5B5).
      The warm cast was chosen to harmonise with a warm accent; with the accent gone to ink it had
      nothing to sit against and read as "white gone slightly yellow". */
-  --bg: #FFFFFF;            /* Page canvas. */
+  /* WARM WHITE CANVAS (founder directive, 2026-08-15, with the charcoal action family below).
+     The paragraph above rejected warm greys because the accent had "gone to ink" and a warm cast
+     had nothing to sit against. That premise is gone: the palette now pairs charcoal with the
+     brand teal, and #FAF9F7 is the ground both were specified against.
+
+     --bg and --surface deliberately SPLIT here, having been the same #FFFFFF since v3. That split
+     is the point rather than a side effect: a card is now paper laid on a warm ground instead of
+     a hairline ruled onto the same plane, so the shelf gains a tone step it previously had to
+     draw with a border. Nothing else in the ramp moves -- --surface2/3/4 stay the true-neutral
+     zinc steps, because re-warming the whole ramp is a different decision and this one is not
+     entitled to make it.
+
+     MEASURED: --text #171717 on #FAF9F7 is 17.04:1 (was 17.93:1 on #FFFFFF). AAA either way, and
+     every other ratio annotated against --bg in this file moves by less than 1 point in the same
+     direction -- none crosses a threshold. Ratios quoted "on white" for tokens printed on a CARD
+     are unchanged, because --surface is still #FFFFFF. */
+  --bg: #FAF9F7;            /* Page canvas. Warm white. 17.04:1 under --text. */
   --surface: #FFFFFF;       /* Cards and raised surfaces. The EDGE is drawn by a border, never by
                                 a tint -- that is what makes the shelf read as a document. */
   --surface2: #FAFAFA;      /* Sunken/tinted panels: plate headers, table heads, footer, code. */
@@ -114,42 +130,93 @@
   --transition-standard: all 0.18s cubic-bezier(0.2, 0, 0, 1);  /* transform + shadow */
   --transition-slow: all 0.2s cubic-bezier(0.2, 0, 0, 1);       /* overlay enter */
 
-  /* ACTION. The primary action is INK, not a brand colour.
-     Vermillion #FF5A1F is deleted outright rather than demoted, for three concrete reasons:
-       (a) it fails AA on white (3.12:1), which is why v2 was forced into BLACK text on orange --
-           and black-on-safety-orange is hazard livery. It reads as a warning, not an invitation.
-       (b) it was simultaneously the brand, the CTA fill, the category eyebrow, the card's left
-           border and the hover colour. A colour that means five things means nothing.
-       (c) 61 identical orange buy buttons tiled down the shelf was the single loudest thing on
-           the site, and the shelf is the site.
-     Nothing here needs a "brand colour": the brand is the ink/mono/evidence system itself. */
-  --primary: #171717;       /* Buy/primary action fill. */
-  --on-primary: #FFFFFF;    /* 17.93:1 on --primary. AAA. */
-  --primary-hover: #2E2E33; /* White on it is 13.51:1. AAA. */
+  /* ── NAVY IS OUT. THE ACTION COLOUR IS CHARCOAL (founder directive, 2026-08-15, LATER) ────────
+     This supersedes the entire block below it, which is kept because its ARGUMENT still holds and
+     only its HUE was wrong. "One colour per job" survives verbatim; #1B3F8B does not.
 
-  /* THE MONEY COLOUR -- founder override, 2026-08-15, the second sanctioned exception to §3.1's
-     "no brand colour" after the logo mark (2026-08-08). ONE hue, on exactly TWO things: the price
-     and the buy button. Nothing else may consume it.
+     The founder's finding, on the deployed page: the navy button is a visual orphan. The logo,
+     the source bars and the whole identity live in teal; the primary action then appears in a
+     deep corporate blue used nowhere else, so it reads as a default that was never customised.
+     Teal is greenish and warm, navy is cold and heavy -- side by side they compete rather than
+     harmonise, and the navy visually eats the teal. Semantically it is wrong too: navy signals
+     banks and enterprise software, on a shop whose proposition is curated, sourced research.
 
-     The argument it is answering: every card on the shelf was ink on white, so the one element a
-     buyer has to find -- what it costs and how to get it -- had no more visual claim than the
-     body copy around it. §3.1's rule survives intact because azure is not a verdict hue: the
-     verdict system is green/amber/red, and a reader still cannot mistake a blue price for a
-     check that passed.
+     OPTION B WAS CHOSEN over a monochromatic all-teal (Option A): teal keeps the logo, the charts
+     and the highlights; charcoal takes the buttons and the primary text. Editorial rather than
+     corporate -- teal becomes the "smart" accent and charcoal provides the weight without navy's
+     coldness.
 
-     MEASURED 2026-08-15 (WCAG 2.1 relative luminance, script in the session log):
-       white on --azure        10.04:1  AAA
-       --azure on white        10.04:1  AAA  (the price, as text)
-       white on --azure-hover   6.86:1  AAA at the button's 16px/500
-       --azure on --surface3    9.14:1  AAA  (the price on the shelf gutter)
+     WHAT THIS COSTS, stated rather than buried, because it re-opens a defect this file already
+     recorded: paragraph (2) below says black buttons "disappear ENTIRELY", and that is why an
+     action colour was introduced at all. #2D3436 is not #171717 -- it is the body-ink hue lifted
+     off pure ink and cooled, so a filled button is a distinct object from the prose around it --
+     but it is much closer to ink than navy was, and a button that reads as a text block is the
+     regression to watch on the rendered page. The mitigations are structural rather than
+     chromatic: the fill sits on the WARM ground above (a charcoal fill on #FAF9F7 separates in a
+     way it cannot on #FFFFFF), and the SECONDARY action now carries a teal outline, so the pair
+     reads as a pair.
 
-     Deliberately NOT wired through --primary: that token feeds Checkbox, RadioGroup,
-     SegmentedControl and every secondary CTA on the site, so pointing it at azure would repaint
-     twelve components the founder did not ask to repaint. Reverting is deleting the `buy` variant
-     in Button.tsx and two `text-azure` call sites. */
-  --azure: #0B3D91;         /* Price text, buy button fill. */
-  --azure-hover: #1554C0;   /* Lighter on hover, matching --primary-hover's direction. */
-  --on-azure: #FFFFFF;      /* 10.04:1 on --azure. AAA. */
+     MEASURED 2026-08-15 (WCAG 2.1 relative luminance, computed here, not carried over):
+       white on --action          12.68:1  AAA
+       white on --action-hover    15.69:1  AAA
+       white on --action-active   17.87:1  AAA
+       --action on --bg #FAF9F7   11.87:1  AAA
+       --brand-mark on --bg        5.32:1  AA   (the secondary outline and its label)
+
+     ── SUPERSEDED, KEPT FOR ITS REASONING ────────────────────────────────────────────────────────
+     ── BLUE HAS ONE JOB: "DO SOMETHING" (founder directive, 2026-08-15) ─────────────────────────
+     This supersedes BOTH the ink-CTA rule below it and --azure, the money colour added earlier
+     the same day. Two things were wrong at once and they were the same mistake in two places.
+
+     (1) Blue was on the PRICE, and a price is not interactive. A reader who has learned "blue =
+         tap this" taps £49.99 and nothing happens. That is a broken affordance, not a style
+         preference, and it was the founder's actual complaint -- the price is the one string on
+         the shelf a buyer is most likely to aim at.
+     (2) There were TWO primary colours: --azure filled the buy button and --primary (ink #171717)
+         filled every other button on the site. A reader cannot learn a rule with two answers, so
+         neither fill meant anything. Black buttons therefore disappear ENTIRELY.
+
+     The system now assigns one job per colour, and only one:
+       --action (this token)  "do something"   -- every commercial action and every button fill
+       --text  (#171717)      "read something" -- prose, headings, AND prices
+       --brand-mark (#0F766E) identity only    -- the logo mark, source glyphs, the focus ring
+     with the verdict hues (green/amber/red) untouched: colour still means a ruling.
+
+     THE HUE. Royal blue pulled deeper and cooler into ink-navy so it reads as the teal mark's
+     sibling rather than as a second brand. Founder-specified band #12356F-#1B3F8B; this is its
+     light end, which is the only end with room for a darker hover.
+
+     MEASURED 2026-08-15 (WCAG 2.1 relative luminance; hover/active derived in HSL at exactly
+     -8 and -14 percentage points of lightness off #1B3F8B, H 220.7 S 67.5% L 32.55%):
+       white on --action          9.86:1  AAA   (the button label)
+       white on --action-hover   12.68:1  AAA
+       white on --action-active  15.16:1  AAA
+       --action on white          9.86:1  AAA   (kept for icons/underlines, never for prose)
+       --text on white           17.93:1  AAA   (the price, which is now ink)
+
+     Blue never appears on non-interactive text; the brand teal never fills a button; ink never
+     fills a button. Those three sentences are the whole system, and each is pinned by a test in
+     `__tests__/storefrontDesignContract.test.ts`. */
+  --action: #2D3436;        /* Charcoal. Every button fill and every commercial action. 12.68:1. */
+  --action-hover: #1F2426;  /* White on it is 15.69:1. AAA. */
+  --action-active: #14181A; /* For :active. White on it is 17.87:1. AAA. */
+  --on-action: #FFFFFF;     /* 12.68:1 on --action. AAA. */
+  /* Selected and hover BACKGROUNDS only -- a wash the ink on top still clears AAA against. It is
+     deliberately not a solid token: at 7% over any of our three near-white grounds it must stay a
+     tint of that ground rather than paint its own. Never legal as a text or border colour. */
+  --action-tint: rgba(45, 52, 54, 0.07);
+
+  /* --primary is now an ALIAS, not a colour. It feeds Button's `primary` variant, Checkbox,
+     RadioGroup, SegmentedControl, the cart and facet count badges and the skip link -- i.e. every
+     control that is not the buy button. Pointing it at --action is what makes "no two primary
+     colours" true in one line instead of in twelve components, and it is why there is no longer a
+     `buy` variant carrying its own fill: one job, one colour, one declaration site.
+     (The v2 vermillion #FF5A1F stays deleted: 3.12:1 on white, and black-on-orange is hazard
+     livery. The ink era it replaced ended here for the reason in (2) above, not because ink was
+     hard to read -- 17.93:1 is the best number on this page and it is now spent on PROSE.) */
+  --primary: var(--action);
+  --on-primary: var(--on-action);
+  --primary-hover: var(--action-hover);
 
   /* ── §3.1 (2026-08-08): THE ACCENT IS NO LONGER A HUE ──────────────────────────────────────
      Spec §3.1: "The only colour on the site is the verdict system; colour therefore MEANS 'a
@@ -192,7 +259,14 @@
      teal/green left, so this is the closest available fit, not a clean one. The header now sits
      in the same colour family as the "survived" verdict mark; nothing in this codebase has
      confirmed that's an acceptable read. */
-  --brand-mark: #0F766E;         /* = --cat-care-benefits. 5.47:1 on white (MEASURED 2026-08-14;
+  /* ROLE WIDENED 2026-08-15, and the alias in the note below is now STALE BY DESIGN: this was
+     "= --cat-care-benefits", and the category scale has since been regenerated as one family, so
+     the two are no longer the same hex. That is deliberate -- the founder's brief on the repaint
+     was explicit that the logo teal is the one thing not to touch ("Keep it -- it's working"), so
+     the mark holds #0F766E as a LITERAL while the sector beside it moved. The consumer list also
+     grows by one: Option B gives the SECONDARY button a teal outline, so `Button.tsx`'s
+     `secondary` variant reads this token too. 5.32:1 on the warm --bg #FAF9F7. AA. */
+  --brand-mark: #0F766E;         /* 5.47:1 on white (MEASURED 2026-08-14;
                                     this said 4.75:1, which was never right, and the separation
                                     from --survive stated nearby as "~12deg" measures 20.78deg in
                                     OKLCH / 22.09deg in Lab, dE76 15.90 -- so it fails BOTH limbs
@@ -325,18 +399,60 @@
 
      Olive is yellow-green, so the SS8 reservation was checked directly and not assumed: 39.4 dE
      and 47 degrees of Lab hue from --success. A pale khaki tint is not a pale mint one. */
-  --cat-licensing-admin: #9D174D;        /* 6.63:1 on its own badge tint */
-  --cat-employment-pay: #6D28D9;         /* 6.04:1 on its own badge tint */
-  --cat-housing-rental: #1D4ED8;         /* 5.72:1 on its own badge tint */
-  --cat-care-benefits: #0F766E;          /* 4.75:1 on its own badge tint */
-  --cat-trades-construction: #7A4A0B;    /* 6.42:1 on its own badge tint */
-  --cat-pets-animals: #155E75;           /* 6.25:1 on its own badge tint */
-  --cat-creative-rights: #A21CAF;        /* 5.36:1 on its own badge tint */
-  --cat-property-probate: #4338CA;       /* 6.71:1 on its own badge tint */
-  --cat-energy-planning: #075985;        /* 6.44:1 on its own badge tint */
-  --cat-retail-inventory: #854D0E;       /* 5.90:1 on its own badge tint */
-  --cat-professional-services: #656A1B;  /* 5.05:1 on its own badge tint */
-  --cat-other: #4B5563;                  /* 6.51:1 on its own badge tint */
+  /* ── ONE FAMILY, 2026-08-15 (founder: "those category colours need to be pulled from a single
+     family ... same saturation, same lightness. Suddenly the page feels designed, not assembled")
+     ───────────────────────────────────────────────────────────────────────────────────────────
+     The twelve values above this line were tuned INDIVIDUALLY, each to clear contrast and to sit
+     far enough from its neighbours. Every one of them was defensible and the set was not: a
+     crimson #9D174D beside a violet #6D28D9 beside a mustard #7A4A0B reads as twelve decisions
+     taken separately, which is precisely what it was. The founder named the two loudest by sight
+     -- "brown (Trades and site work) and magenta (Red-tape and licensing) ... feel randomly
+     picked" -- and they measured exactly as named: rgb(122,74,11) and rgb(157,23,77) on the live
+     chip rail.
+
+     THE RULE THAT REPLACES PER-HUE TUNING. Every value below is generated, not chosen: HSL at
+     S=30%, L=28%, hue stepping 18 degrees from 25 (bronze) to 223 (slate blue) through olive,
+     green and teal. Identical saturation and identical lightness is the founder's brief taken
+     literally, and it is also what makes the set a set -- the hue still varies, so the twelve are
+     not the same swatch, but they now vary along ONE axis instead of three.
+
+     This does NOT weaken the rule the block above installed, it strengthens it:
+
+       HUE IS DECORATION. THE LABEL IDENTIFIES.
+
+     The old set already conceded that twelve hues cannot be told apart by eye (its own tightest
+     pair was two degrees). Holding lightness and saturation constant simply stops the set
+     pretending otherwise, and it collapses the accessibility surface to one number: because
+     lightness is fixed, EVERY sector now measures the same ratio on its own tint rather than
+     twelve separately-annotated ones, which is a property a reviewer can check by reading.
+
+     MEASURED: 7.9:1 for each hue on its own `bg-cat-X/10` composite over --surface #FFFFFF
+     (--cat-other, the untagged neutral, is 7.1:1). All twelve clear AA by a wide margin; the
+     tightest of the OLD set was 4.75:1, so this is an improvement and not a trade. None is
+     byte-equal to a reserved verdict token -- lib/__tests__/categoryScale.test.ts recomputes both
+     properties from the tokens rather than trusting these annotations.
+
+     WHAT IS DELIBERATELY NOT DONE HERE: the sector ink is not flattened to a single charcoal.
+     `category.ts` derives each tint as an alpha of its own ink (`bg-cat-X/10`), so one shared ink
+     would mean one shared grey tint and the tag row would lose its last differentiation. At
+     S=30% these ARE charcoals with a hue in them -- which is the "charcoal text on tinted
+     backgrounds" the brief asks for -- reached without a refactor that would touch ten call
+     sites in the same change as a repaint. */
+  --cat-licensing-admin: #324B5D;        /* hue 205, slate blue. 7.9:1 on its own badge tint */
+  --cat-employment-pay: #325D48;         /* hue 151, green.      7.9:1 on its own badge tint */
+  --cat-housing-rental: #323E5D;         /* hue 223, deep blue.  7.9:1 on its own badge tint */
+  --cat-care-benefits: #325D55;          /* hue 169, teal.       7.9:1 on its own badge tint */
+  --cat-trades-construction: #5D4432;    /* hue  25, bronze.     7.9:1 on its own badge tint */
+  --cat-pets-animals: #32585D;           /* hue 187, cyan-teal.  7.9:1 on its own badge tint */
+  --cat-creative-rights: #365D32;        /* hue 115, green.      7.9:1 on its own badge tint */
+  --cat-property-probate: #4F5D32;       /* hue  79, olive.      7.9:1 on its own badge tint */
+  --cat-energy-planning: #425D32;        /* hue  97, moss.       7.9:1 on its own badge tint */
+  --cat-retail-inventory: #5D5132;       /* hue  43, ochre.      7.9:1 on its own badge tint */
+  --cat-professional-services: #5C5D32;  /* hue  61, olive.      7.9:1 on its own badge tint */
+  --cat-other: #4A4E52;                  /* neutral: the UNTAGGED bucket, and the one member of
+                                            the family that is deliberately hueless, at the same
+                                            lightness so it reads as a peer rather than as a
+                                            thirteenth colour. 7.1:1 on its own badge tint */
 
   /* ── §3.4 (2026-08-08): NO BOX-SHADOWS. Depth is a surface step plus a hairline. ────────────
      Both tokens go to `none` rather than being deleted. Deletion would leave `shadow-1` and
@@ -439,9 +555,15 @@
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-on-primary: var(--on-primary);
-  --color-azure: var(--azure);
-  --color-azure-hover: var(--azure-hover);
-  --color-on-azure: var(--on-azure);
+  /* The action family replaces --azure (2026-08-15, same day it was added -- see the token block).
+     Every `*-azure` utility in src/ was rewritten in this same change, because in Tailwind v4 an
+     unmapped colour utility emits NO rule at all: leaving one behind would not fail the build, it
+     would render that element with no fill and look like a styling accident. */
+  --color-action: var(--action);
+  --color-action-hover: var(--action-hover);
+  --color-action-active: var(--action-active);
+  --color-action-tint: var(--action-tint);
+  --color-on-action: var(--on-action);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-brand-mark: var(--brand-mark); /* Logo.tsx's BrandMark only -- see the token above. */

@@ -13,6 +13,7 @@ never crashing the run.
 from __future__ import annotations
 
 import contextvars
+import datetime
 import hashlib
 import json
 import os
@@ -495,8 +496,199 @@ class RelevanceRankedProvider(SearchProvider):
         return kept
 
 
-def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
-                    max_bytes: int = 400_000, query: Optional[str] = None) -> Optional[str]:
+_ISO_DATE_RE = re.compile(r"^\s*(\d{4})-(\d{2})-(\d{2})")
+_SLASH_DATE_RE = re.compile(r"^\s*(\d{4})/(\d{2})/(\d{2})")
+
+
+def _normalise_date(raw) -> Optional[str]:
+    """'2024-03-11T09:00:00Z' -> '2024-03-11'. None when it is not a plausible date.
+
+    Deliberately anchored at the START of the string: an unanchored search would pull a
+    number out of a query string or an id and hand us a date the page never published.
+    """
+    if not isinstance(raw, str) or not raw.strip():
+        return None
+    m = _ISO_DATE_RE.match(raw) or _SLASH_DATE_RE.match(raw)
+    if not m:
+        return None
+    try:
+        y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        datetime.date(y, mo, d)
+    except ValueError:
+        return None
+    if not (1990 <= y <= datetime.date.today().year + 1):
+        return None
+    return f"{y:04d}-{mo:02d}-{d:02d}"
+
+
+def _jsonld_date(obj) -> Optional[str]:
+    """First `datePublished` anywhere in a JSON-LD blob, however nested."""
+    if isinstance(obj, dict):
+        got = _normalise_date(obj.get("datePublished"))
+        if got:
+            return got
+        for v in obj.values():
+            got = _jsonld_date(v)
+            if got:
+                return got
+    elif isinstance(obj, list):
+        for v in obj:
+            got = _jsonld_date(v)
+            if got:
+                return got
+    return None
+
+
+def _extract_published_at(doc) -> Optional[str]:
+    """Read a publication date from a parsed lxml document. NEVER raises.
+
+    MUST be called on the document BEFORE `etree.strip_elements` runs: that call deletes
+    `<script>` (where JSON-LD lives) and `<footer>`/`<header>` (where `<time>` usually
+    lives), so extracting after stripping silently finds nothing on most real pages.
+    """
+    try:
+        for xp in ('//meta[@property="article:published_time"]/@content',
+                   '//meta[@name="date"]/@content'):
+            for value in doc.xpath(xp):
+                got = _normalise_date(value)
+                if got:
+                    return got
+        for blob in doc.xpath('//script[@type="application/ld+json"]/text()'):
+            try:
+                got = _jsonld_date(json.loads(blob))
+            except (ValueError, TypeError):
+                continue
+            if got:
+                return got
+        for value in doc.xpath("//time/@datetime"):
+            got = _normalise_date(value)
+            if got:
+                return got
+    except (AttributeError, ValueError, TypeError):
+        # Narrow on purpose: these are the shapes malformed markup produces. None already
+        # means "this page declares no date", so the caller loses nothing it had, and the
+        # date must never cost us the passage we came for.
+        return None
+    return None
+
+
+# Below this, an extraction is a page title or an error page, not a passage. Set just under the
+# 222-char mean of the search snippets this function exists to REPLACE: returning less than the
+# snippet we already hold is a downgrade, and the caller reads None as "keep what you had".
+_MIN_PAGE_TEXT = 200
+
+
+#: Sentences carrying one of these read as a cookie/consent banner and never as evidence.
+#: Deliberately phrases, not the bare word "cookie": a page about cookie law, or an ICO ruling
+#: on consent, is a legitimate source and says "cookie" constantly.
+_CONSENT_PHRASES = [
+    r"cookies are small (?:text )?files",
+    r"cookies on [a-z0-9.\-]+\.(?:gov\.uk|co\.uk|com|org|net|uk)",
+    r"we use (?:some )?(?:essential|necessary|strictly necessary) cookies",
+    r"(?:essential|necessary) cookies to make (?:this|our) (?:website|site) work",
+    r"(?:we(?:'d| would) like to )?set additional cookies",
+    r"we use cookies",
+    r"(?:accept|reject|allow|decline) (?:all )?(?:additional |non-essential )?cookies",
+    r"cookie (?:settings|preferences|policy|consent|choices|banner)",
+    r"manage (?:your )?(?:cookies|cookie preferences)",
+    r"your (?:privacy|cookie) choices",
+    r"(?:enable|turn on) javascript",
+    r"javascript is (?:disabled|required|turned off)",
+    r"checking your browser",
+    r"verify (?:that )?you are (?:a )?human",
+]
+_CONSENT_RX = re.compile("|".join(_CONSENT_PHRASES), re.I)
+
+#: Attribute tokens a consent widget announces itself with, including the common vendor CMPs.
+#: Used only for the DOM pass, where a short matching container can be dropped outright.
+_CONSENT_ATTR_TOKENS = ("cookie", "consent", "gdpr", "onetrust", "cookiebot", "didomi",
+                        "usercentrics", "quantcast", "klaro", "osano", "trustarc")
+_LOWER = "translate(@{attr},'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')"
+_CONSENT_XPATH = "//*[" + " or ".join(
+    f"contains({_LOWER.format(attr=attr)},'{tok}')"
+    for attr in ("id", "class") for tok in _CONSENT_ATTR_TOKENS
+) + "]"
+
+#: A consent container is SHORT. Above this many characters the element is the page's actual
+#: subject (iubenda's home page, an ICO guidance note, Google's "manage your cookies" help
+#: article), and dropping it would delete the evidence rather than the furniture.
+CONSENT_CONTAINER_MAX_CHARS = 2_000
+
+#: If removing consent sentences would take more than this share of a passage, the page really
+#: is a consent wall or really is about cookies. Leave it whole either way: a wall must stay
+#: visibly empty so the check rules `unverifiable` honestly, and a page about cookie law must
+#: keep the sentences that make it a source.
+CONSENT_MAX_REMOVED_SHARE = 0.6
+
+
+def strip_consent_sentences(text: str) -> str:
+    """Drop the sentences of `text` that are cookie/consent banner boilerplate.
+
+    THE DEFECT THIS CLOSES. `select_passage` anchors the stored passage on the window holding
+    the most query terms, but a consent banner contains none of them, so on a page whose banner
+    survives extraction the anchor finds nothing and falls back to the head slice -- which IS
+    the banner. The verdict brain then reads 600 chars of cookie notice and rules the check
+    `unverifiable`, correctly, on evidence we never actually gave it.
+
+    MEASURED 2026-08-16 over 43,673 stored passages in `store/dossiers/`: 76 open with a banner
+    inside the 600 chars the verdict reads, 62 of them within the first 200 chars. In aggregate
+    that is 0.2%, which is why this is a small fix -- but it is not spread evenly. It is 8 of 65
+    passages from ons.gov.uk (12.3%) and 5 of 225 from legislation.gov.uk (2.2%), which are
+    precisely the authoritative sources the payer-solvency and legality checks depend on. One of
+    them reached the storefront: the live landing page spent a day telling buyers that the ASHE
+    earnings tables "contain only cookie consent screens with no actual wage data".
+
+    WHY SENTENCES AND NOT A BLOCK. There is no reliable marker for where a banner ENDS once the
+    markup is gone. A sentence carrying "we use some essential cookies" is never evidence no
+    matter where it sits, so removing the sentences is both simpler and safer than guessing a
+    boundary. The share guard above is what keeps a page ABOUT cookies intact.
+    """
+    if not text:
+        return text
+    # Split on sentence ends and on the blank-line boundaries that survive extraction; a banner
+    # is often a heading plus two sentences with no full stop between them.
+    parts = re.split(r"(?<=[.!?])\s+|\n{2,}", text)
+    kept = [p for p in parts if not _CONSENT_RX.search(p)]
+    if not kept:
+        return text
+    out = " ".join(" ".join(p.split()) for p in kept if p.strip())
+    if not out:
+        return text
+    removed_share = 1.0 - (len(out) / max(1, len(text)))
+    if removed_share > CONSENT_MAX_REMOVED_SHARE:
+        return text
+    return out
+
+
+def _strip_consent_elements(doc, etree) -> None:
+    """Remove consent widgets from a parsed document, in place, before any text is read.
+
+    Runs BEFORE `strip_consent_sentences` because it is the precise pass: a banner in a
+    `<div id="global-cookie-message">` is identified by what it IS, not by what it says, so it
+    goes without any phrase matching and without any risk to prose. Only SHORT containers are
+    dropped (`CONSENT_CONTAINER_MAX_CHARS`), which is what stops this deleting the body of a
+    page whose subject happens to be cookies.
+    """
+    try:
+        nodes = doc.xpath(_CONSENT_XPATH)
+    except (etree.XPathError, ValueError):
+        return
+    for node in nodes:
+        parent = node.getparent()
+        if parent is None:                      # never drop the root
+            continue
+        try:
+            if len(node.text_content()) > CONSENT_CONTAINER_MAX_CHARS:
+                continue
+            parent.remove(node)
+        except (ValueError, AttributeError):
+            continue
+
+
+def fetch_page(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
+               max_bytes: int = 400_000, query: Optional[str] = None,
+               strip_consent: bool = False
+               ) -> tuple[Optional[str], Optional[str]]:
     """GET a grounding URL and return its readable text, or None.
 
     THE DEFECT THIS CLOSES. `_resolve()` above sends a HEAD: it proves the host is real and
@@ -511,27 +703,31 @@ def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
     snippet whenever this returns None. A grounding fetch failing is our convenience failing;
     it must not cost a source, and it must not turn into a false `unverifiable` (this repo has
     already paid once for an outage that presented as a reasoned kill).
+
+    It also returns the page's publication date as `(text, published_at)` whenever the page
+    declares one, and None for that second element when it does not.
     """
     try:
         import requests
         from lxml import etree
         from lxml import html as lxml_html
     except ImportError:                     # no requests/lxml installed => keep snippets
-        return None
+        return None, None
 
     resp = None
+    published: Optional[str] = None
     try:
         resp = requests.get(url, timeout=timeout_s, allow_redirects=True, stream=True,
                             headers={"User-Agent": _RESOLVE_UA})
         if resp.status_code >= 400:
-            return None
+            return None, published
         # A PDF/image/zip is not something lxml can turn into prose. An absent Content-Type
         # is treated as HTML rather than skipped: the parse below is the real gate, and
         # dropping a page for a missing header would re-introduce the false-drop that the
         # HEAD-based `_resolve` docstring above spent so long getting rid of.
         ctype = (resp.headers.get("Content-Type") or "").lower()
         if ctype and not ("html" in ctype or "xml" in ctype or "text/plain" in ctype):
-            return None
+            return None, published
         buf = bytearray()
         for chunk in resp.iter_content(8192):
             if not chunk:
@@ -540,14 +736,14 @@ def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
             if len(buf) >= max_bytes:
                 break
         if not buf:
-            return None
+            return None, published
         raw = bytes(buf).decode(resp.encoding or "utf-8", errors="replace")
     except (requests.RequestException, OSError, UnicodeDecodeError, ValueError):
         # network / decode: keep the snippet. NARROWED from `except Exception` 2026-08-15 —
         # the bare form also caught our own bugs in the streaming loop above and returned the
         # same `None` that a dead host returns, so a refactor could silently stop the engine
         # ever reading a page and the only symptom would be thin grounding.
-        return None
+        return None, published
     finally:
         if resp is not None:
             try:
@@ -557,6 +753,7 @@ def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
 
     try:
         doc = lxml_html.fromstring(raw)
+        published = _extract_published_at(doc)
         # Strip the page furniture BEFORE reading any text. Script/style bodies are not prose,
         # and neither is the nav bar. Leaving either in feeds the verdict brain boilerplate
         # that dilutes the passage AND inflates the question/passage word overlap that
@@ -568,6 +765,11 @@ def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
         etree.strip_elements(doc, "script", "style", "noscript", "nav", "header", "footer",
                              "aside", "form", "svg", "iframe", "button", "select", "template",
                              with_tail=False)
+        # The consent widget is furniture too, but it is named rather than tagged, so it
+        # survives the call above. Dropped here, while the DOM still says which element
+        # it is -- after `text_content()` there is nothing left to identify it by.
+        if strip_consent:
+            _strip_consent_elements(doc, etree)
         # Prefer the region the page itself declares as its content. Falling back to the whole
         # document is deliberate — plenty of real pages (gov.uk guidance among them) use none
         # of these landmarks, and refusing those would re-create the false-drop problem.
@@ -585,10 +787,72 @@ def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
     except (etree.ParserError, etree.XMLSyntaxError, ValueError, UnicodeDecodeError):
         # unparseable markup. Narrowed for the same reason as the fetch above: an
         # AttributeError from changing the xpath list read exactly like a broken page.
-        return None
+        #
+        # MERGE 2026-08-15: origin/main narrowed this handler and this branch changed its
+        # BODY from `return None` to `text = ""`. Both, not either — the narrowing is about
+        # which exceptions may be swallowed, the body is about what happens after one is.
+        # Falling through rather than returning is what gives the fallback below its turn:
+        # trafilatura is a different parser and routinely reads a page lxml could not.
+        text = ""
+
+    # TRAFILATURA IS THE FALLBACK, NOT THE PRIMARY (2026-08-15, and the sizing is measured).
+    #
+    # The ladder above returns the page TITLE and nothing else on a page that carries its body
+    # outside every landmark it knows: measured on the 12 fetchable URLs cited by pack
+    # e698149e137fc164, it produced 15 chars for isbe.net/Pages/SOPPA-Contracts.aspx ("SOPPA
+    # Contracts"), 182 for edprivacy.com/state-guides/illinois and 96 for a geekwire article —
+    # 3 of 12 pages where the enrichment silently did nothing.
+    #
+    # It is a FALLBACK because the honest measurement of what it buys is small. `PageTextEnricher`
+    # (:630) only replaces a snippet on a gain of `min_gain_chars`, and 10 of those 12 passages
+    # were already at the 1500-char cap, so there was no headroom to win: swapping extractors
+    # upgrades ONE passage of twelve. Running it first would also cost ~0.55s/page of CPU on the
+    # 9 pages the cheap path already handles, for nothing. So it runs only where the cheap path
+    # came back with something too short to be a passage at all, which is the case it fixes.
+    #
+    # A page that yields under _MIN_PAGE_TEXT after both is NO PASSAGE, not a short one. The
+    # caller keeps the search snippet, which averages 222 chars — strictly more than a title.
+    # This is also what stops a 404 body ("Page not found – GeekWire", 25 chars) being handed
+    # to a verdict brain as the evidence for a check.
+    if len(text) < _MIN_PAGE_TEXT:
+        # Two handlers, not one, on origin/main's rule (2026-08-15): the absent optional
+        # dependency and a parser failure are different facts, and a bare `except Exception`
+        # over both would also swallow an AttributeError or NameError from a refactor of this
+        # very block — which would present as "no page on the open web has a passage", in
+        # silence, forever. That is the failure mode main's narrowing pass exists to end.
+        try:
+            import trafilatura  # declared in requirements.txt; lazy, same as requests above
+        except ImportError:     # not installed: keep whatever the ladder found
+            trafilatura = None  # type: ignore[assignment]
+        if trafilatura is not None:
+            try:
+                better = trafilatura.extract(raw, include_comments=False, include_tables=True,
+                                             favor_precision=True) or ""
+            except (etree.ParserError, etree.XMLSyntaxError, ValueError, TypeError,
+                    UnicodeDecodeError):
+                better = ""     # a third-party parser on hostile markup: keep what we have
+            better = " ".join(better.split())
+            if len(better) > len(text):
+                text = better
+    if len(text) < _MIN_PAGE_TEXT:
+        return None, published
     # Select the passage that answers the query rather than the top of the page. `query=None`
     # (any caller predating 2026-08-14) still gets the head slice, byte for byte.
-    return select_passage(text, max_chars, query=query) or None
+    if strip_consent:
+        # Second pass, on the text: a banner whose container carried no telltale id or
+        # class reaches this line intact, and it is the head of the string -- exactly
+        # where `select_passage` falls back to when the query matches nothing.
+        text = strip_consent_sentences(text)
+    return (select_passage(text, max_chars, query=query) or None), published
+
+
+def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
+                    max_bytes: int = 400_000, query: Optional[str] = None,
+                    strip_consent: bool = False) -> Optional[str]:
+    """Text-only view of `fetch_page`, kept for callers that do not want the date."""
+    return fetch_page(url, timeout_s=timeout_s, max_chars=max_chars,
+                      max_bytes=max_bytes, query=query,
+                      strip_consent=strip_consent)[0]
 
 
 class PageTextEnricher(SearchProvider):
@@ -605,12 +869,13 @@ class PageTextEnricher(SearchProvider):
     """
     def __init__(self, inner: SearchProvider, *, timeout_s: float = 8.0,
                  max_workers: int = 8, min_gain_chars: int = 400,
-                 max_bytes: int = 400_000) -> None:
+                 max_bytes: int = 400_000, strip_consent: bool = False) -> None:
         self._inner = inner
         self._timeout_s = timeout_s
         self._max_workers = max(1, int(max_workers))
         self._min_gain = max(0, int(min_gain_chars))
         self._max_bytes = max_bytes
+        self._strip_consent = bool(strip_consent)
 
     @track_latency(name="page_fetch")
     def search(self, query: str, k: int = 4, max_chars: int = 1500) -> list[Source]:
@@ -631,10 +896,11 @@ class PageTextEnricher(SearchProvider):
         # behaviour it exists to replace, while still reporting success.
         pairs = [(contextvars.copy_context(), s) for s in sources]
 
-        def _one(pair) -> Optional[str]:
+        def _one(pair) -> tuple[Optional[str], Optional[str]]:
             ctx, s = pair
-            return ctx.run(fetch_page_text, s.url, timeout_s=self._timeout_s,
-                           max_chars=max_chars, max_bytes=self._max_bytes, query=query)
+            return ctx.run(fetch_page, s.url, timeout_s=self._timeout_s,
+                           max_chars=max_chars, max_bytes=self._max_bytes, query=query,
+                           strip_consent=self._strip_consent)
 
         try:
             with ThreadPoolExecutor(max_workers=min(self._max_workers, len(sources))) as ex:
@@ -644,15 +910,20 @@ class PageTextEnricher(SearchProvider):
             return sources
 
         upgraded = 0
-        for s, page in zip(sources, pages):
+        dated = 0
+        for s, (page, published) in zip(sources, pages):
             if page and len(page) >= len(s.text or "") + self._min_gain:
                 s.text = page
                 upgraded += 1
+            if published and not s.published_at:
+                s.published_at = published
+                dated += 1
         audit("page_fetch", query=query[:200], n_sources=len(sources),
-              upgraded=upgraded, latency_ms=int((time.monotonic() - start) * 1000),
+              upgraded=upgraded, dated=dated,
+              latency_ms=int((time.monotonic() - start) * 1000),
               status="ok" if upgraded else "no_gain")
         logger.info(f"page fetch: upgraded {upgraded}/{len(sources)} passages",
-                    extra={"upgraded": upgraded, "n_sources": len(sources)})
+                    extra={"upgraded": upgraded, "n_sources": len(sources), "dated": dated})
         return sources
 
 
@@ -2164,7 +2435,9 @@ def make_provider(cfg, fixtures: dict | None = None) -> SearchProvider:
                                 timeout_s=getattr(r, "fetch_timeout_s", 8.0),
                                 max_workers=getattr(r, "fetch_max_workers", 8),
                                 min_gain_chars=getattr(r, "fetch_min_gain_chars", 400),
-                                max_bytes=getattr(r, "fetch_max_bytes", 400_000))
+                                max_bytes=getattr(r, "fetch_max_bytes", 400_000),
+                                strip_consent=bool(
+                                    getattr(r, "strip_consent_banners", False)))
     # `_pinned` bypasses the cross-tick DiskCache. Golden-set queries are stable strings,
     # and store/_cache is full of entries written by earlier UNPINNED runs against live DDG
     # and Exa — so a pinned run would be served yesterday's live web under a fixture chain,

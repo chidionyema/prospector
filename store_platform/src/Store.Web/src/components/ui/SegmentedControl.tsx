@@ -62,6 +62,19 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(opt.value)}
             onKeyDown={(e) => onKeyDown(e, index)}
             className={cx(
+              /*
+               * 44px on touch, unchanged from `sm` up. `px-3 py-1.5 text-caption` measured 28px
+               * tall at 390px on 2026-08-15 -- the account page's PRIMARY navigation, 16px under
+               * the 44x44 minimum WCAG 2.5.5 publishes and this codebase already enforces
+               * explicitly on `Button` (`md: h-11 ... sm:h-10`), on `chipClasses` and on the
+               * header's Search and Menu buttons. `inline-flex` goes with it: `min-h` alone grows
+               * the box and leaves the label sitting on its old baseline.
+               *
+               * The `sm:` guard is the bargain those two already struck -- a pointer does not need
+               * the target -- and this control has exactly ONE call site (the account tabs,
+               * `components/account/AccountPanel.tsx:111`), so nothing else moves either way.
+               */
+              'inline-flex min-h-11 items-center justify-center sm:min-h-0',
               'rounded-sm px-3 py-1.5 text-caption font-medium transition-colors duration-[120ms] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
               fullWidth && 'flex-1',
               active ? 'bg-primary text-on-primary' : 'text-muted hover:text-text',

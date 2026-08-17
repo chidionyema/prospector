@@ -75,7 +75,7 @@ public sealed class EmbeddedCheckoutTests : IClassFixture<StoreApiFactory>
     public async Task A_provider_without_an_embedded_surface_falls_back_to_the_hosted_url()
     {
         // THE test. A provider answering null must not produce an error, an empty body, or a
-        // 500 — it must produce the hosted checkout that existed before this feature. Paddle
+        // 500 — it must produce the hosted checkout that existed before this feature. A provider
         // answers null on every request, so this is the ordinary path, not an edge case.
         var id = await ListedPackAsync("pack-embedded-unsupported");
         _factory.Payments.EmbeddedHandle = null;

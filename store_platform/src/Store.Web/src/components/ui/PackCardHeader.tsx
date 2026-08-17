@@ -3,6 +3,28 @@ import React from 'react';
 import { cx } from './cx';
 
 /**
+ * THE CATEGORY LABEL, one string, used by both card formats.
+ *
+ * NOT MONOSPACE ANY MORE (2026-08-15, brief Part One item 3). The house rule this site actually
+ * holds is `tokens.css` §3.2 -- "Commit Mono for anything the engine produced ... monospace is
+ * the site's promise that a string is checkable". A sector is a TAXONOMY, not a measurement:
+ * nobody checks "Licensing and admin" against a source. Setting it in the same face as the source
+ * counts and the prices spent the promise on a label that makes none, which is what put four mono
+ * runs on one row and made the meta line read as a single run-on string.
+ *
+ * Caps at `text-caption` with `0.06em` of tracking is the replacement: it separates the label
+ * from the body text by RHYTHM rather than by face, so mono stays meaningful where it is still
+ * used (the figure, the price, the market flag, the "seen" marker).
+ *
+ * THE CAPS ARE NOT IN THIS STRING and must not be. `__tests__/weightAndCasePolicy.test.ts` bans
+ * the `uppercase` utility repo-wide: CSS caps leave the accessible name in sentence case while a
+ * screen reader may spell out the rendered form, so the house rule is to uppercase the VALUE
+ * (`label.toUpperCase()`). This constant carries the tracking and the weight only.
+ */
+export const CATEGORY_LABEL = 'tracking-[0.06em] font-medium';
+
+
+/**
  * THE header of a pack card. Every pack card on the site opens with this and only this.
  *
  * WHY IT IS A COMPONENT (2026-08-15). It was four hand-rolled headers in three files, and that
@@ -48,14 +70,25 @@ export function PackCardHeader({
         // reader is concerned -- a header at 20px over a body at 24px is a 4px step the eye reads
         // as a mistake rather than as two elements. The lead card, whose body opens out to `p-8`
         // from `sm`, passes `sm:px-8` through `className` so it keeps that edge too.
+        /* NO STRIP (2026-08-15, brief Part One item 3: "no background strip"). The band was
+           `bg-surface2` closed by a hairline, and the docblock above still carries the argument
+           for it -- it was the answer to a near-black media plate that read as a failed image
+           load. That is a real argument against the PLATE and it does not extend to a tinted bar:
+           on a card that now has no artwork at all, a filled strip above the title is a second
+           object competing with the one thing the card is for. The label stays where it was and
+           the fill goes.
+
+           THE HEIGHT STAYS, and it is the whole reason this is still a band rather than a line of
+           text in the body: 9 of 63 live packs carry no sector, and an empty box that reserves
+           the space keeps every title in a run on the same baseline. That is the jitter rule
+           below, unchanged -- it was never about the fill. */
         'flex h-10 w-full flex-none items-center gap-x-2 overflow-hidden px-6',
-        'border-b border-border bg-surface2',
         className,
       )}
     >
       {label && (
-        <span className={cx('truncate font-mono text-caption', labelClassName ?? 'text-subtle')}>
-          {label}
+        <span className={cx('truncate text-caption', CATEGORY_LABEL, labelClassName ?? 'text-subtle')}>
+          {label.toUpperCase()}
         </span>
       )}
     </span>

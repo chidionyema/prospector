@@ -85,12 +85,28 @@ export function isFacetValue(kind: FacetKind, value: string | null | undefined):
  * file is its only home, so a wording change happens in one place rather than five components.
  */
 const LABELS: Record<FacetKind, Record<string, string>> = {
+  /*
+   * FIRST PERSON, because "Suits ..." was two different sentences wearing one label (founder
+   * review, 2026-08-15). "Suits builders" means *suits people who build* -- the pack fits the
+   * buyer. "Suits an audience" means *the pack requires you to have an audience* -- the buyer
+   * fits the pack. Same prefix, opposite direction of fit, so the set reads as a mistake before
+   * you even weigh the word. The surrounding copy is already first person ("Show me packs I could
+   * actually run", "Tick what you're good at", `FacetBar.tsx:62`), so the register was available
+   * and the prefix was doing no work.
+   *
+   * `nocode` is mine, not the founder's list, which named four. It sits in the SAME 2x2 grid --
+   * `StepFlow` offers whichever advantage values the data actually carries
+   * (`offeredFacetValues`, FacetBar.tsx:220), so it appears whenever a pack is tagged with it --
+   * and leaving one third-person tile among four first-person ones would rebuild the exact
+   * collision this change removes. "I don't code" is the honest self-claim that selects the same
+   * packs.
+   */
   advantage: {
-    code: 'Suits builders',
-    nocode: 'No code needed',
-    sales: 'Suits sellers',
-    ops: 'Suits operators',
-    audience: 'Suits an audience',
+    code: 'I can build',
+    nocode: 'I don’t code',
+    sales: 'I can sell',
+    ops: 'I can run operations',
+    audience: 'I have an audience',
   },
   payer: {
     b2b: 'Sells to businesses',
@@ -182,6 +198,35 @@ export function label(kind: FacetKind, value: string | null | undefined): string
 export function shortLabel(kind: FacetKind, value: string | null | undefined): string | null {
   if (!value) return null;
   return SHORT_LABELS[kind]?.[value] ?? label(kind, value);
+}
+
+/**
+ * The same values as a fragment that survives being embedded in someone else's sentence.
+ *
+ * This is the `KIND_LABEL` / `KIND_NOUN` split one level down, and for the same reason: a string
+ * chosen to read well ON a control does not read well INSIDE a clause. `missLabelFor`
+ * (`components/discovery/EmptyState.tsx:121`) builds `${actual}, you said ${wanted.toLowerCase()}`,
+ * so the moment `advantage` went first person that sentence rendered "I can sell, you said i can
+ * build" -- ungrammatical twice over, and `.toLowerCase()` puts a lower-case "i" on a live page.
+ *
+ * Only `advantage` needs an entry, and its entry is the third-person copy the tiles used to
+ * carry, which was always correct in this slot -- the near-miss chip is the SITE describing a
+ * pack, not the buyer describing themselves. Everything else falls back to `label`.
+ */
+const CLAUSE_LABELS: Partial<Record<FacetKind, Record<string, string>>> = {
+  advantage: {
+    code: 'Suits builders',
+    nocode: 'No code needed',
+    sales: 'Suits sellers',
+    ops: 'Suits operators',
+    audience: 'Suits an audience',
+  },
+};
+
+/** As `label`, but the form that survives being embedded in a sentence. Same null contract. */
+export function clauseLabel(kind: FacetKind, value: string | null | undefined): string | null {
+  if (!value) return null;
+  return CLAUSE_LABELS[kind]?.[value] ?? label(kind, value);
 }
 
 /**

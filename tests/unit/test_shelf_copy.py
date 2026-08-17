@@ -321,3 +321,40 @@ def test_an_expansion_in_one_field_does_not_excuse_a_bare_run_in_the_other():
     hit = [p for p in _errors(fields) if p.get("where") == "title"]
     assert hit, "the bare title run must still be a defect"
     assert not [p for p in _errors(fields) if p.get("where") == "oneLine"]
+# The bare pronoun opener
+# ---------------------------------------------------------------------------
+
+def _pronoun(fields, **kw):
+    return [p for p in check_shelf_copy(fields, block=True, **kw)
+            if "bare pronoun" in p["detail"]]
+
+
+def test_the_live_one_liner_the_founder_rejected():
+    """`store/dossiers/b94760e86e62585a.pass.json`, verbatim. The founder read it on
+    <https://mumchimp.com/pack/b94760e86e62585a> on 2026-08-16: "i takes is no a good way
+    to stat, zero contet". The shelf shows this line BESIDE the title, so "It" has no
+    antecedent in anything the reader is reading as a sentence."""
+    assert _pronoun({"oneLine": (
+        "It takes a published NHS rota and timesheet, applies the worker's contract terms, "
+        "and returns the overtime, unsocial hours uplifts and Working Time holiday pay "
+        "they're owed.")})
+
+
+def test_a_named_subject_after_the_demonstrative_is_quiet():
+    """What makes the pronoun a defect is that it is BARE. "This service" names its own
+    subject in the same breath, so it reads alone and must not be flagged."""
+    assert not _pronoun({"oneLine": "This service reads a published NHS rota and returns the pay owed."})
+    assert not _pronoun({"oneLine": "A rota audit that returns the unsocial hours pay a doctor is owed."})
+    assert not _pronoun({"oneLine": "For NHS doctors, the unsocial hours pay their rota already proves."})
+
+
+def test_the_title_is_exempt():
+    """A title is a noun phrase by contract (`prompts/retitle.md`), so it cannot open on a
+    pronoun-plus-verb; grading it would only add a way to unlist a good pack."""
+    assert not _pronoun({"title": "It takes a rota and returns the pay owed"})
+
+
+def test_the_finding_follows_the_actuator():
+    bad = {"oneLine": "It takes a rota and returns the pay owed."}
+    assert all(p["severity"] == "warning" for p in check_shelf_copy(bad, block=False))
+    assert any(p["severity"] == "error" for p in check_shelf_copy(bad, block=True))

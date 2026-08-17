@@ -1,5 +1,22 @@
 name: CI
 
+# WHERE CI RUNS IS AN OPS SETTING, NOT A CODE CHANGE.
+#
+# Every job's `runs-on` reads the repo variable CI_RUNS_ON and falls back to GitHub's hosted
+# Ubuntu runners when it is unset. Point it at `self-hosted` and all five jobs move to our own
+# machine; unset it and they go straight back. One `gh variable set`, no commit, no review.
+#
+# It exists because on 2026-08-16 GitHub stopped starting jobs at all: "The job was not started
+# because recent account payments have failed or your spending limit needs to be increased."
+# Five jobs, zero steps, no logs, conclusion `failure`. A red PR that says nothing about the
+# code, on every PR at once. Hosted runner minutes are metered; self-hosted minutes are not, so
+# our own runner is the free path, and this variable is how we take it without rewriting the
+# workflow under pressure.
+#
+# The jobs are OS-portable already: no apt-get, no sudo, no docker, no service containers. They
+# use checkout, setup-python, setup-uv, setup-node, setup-dotnet and cache, every one of which
+# supports macOS, so the same five jobs run unchanged wherever CI_RUNS_ON points.
+
 on:
   push:
     branches: [main]
@@ -7,9 +24,38 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# One live run per branch. Pushing again to a PR cancels the run it just superseded.
+#
+# Measured 2026-08-16: 15 jobs queued at once on four self-hosted runner instances sharing ONE
+# 12-CPU, 16 GB Mac. Most of that queue was stale — three or four runs per branch, all but the
+# newest testing a commit nobody was waiting on any more. Without this block every push adds a
+# full five-job run and removes none, so the queue only ever grows and the newest commit waits
+# behind its own predecessors.
+#
+# cancel-in-progress is deliberately PR-only. A push to main must always finish: main's run is
+# the record of whether main is green, and cancelling it would leave that question unanswered.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   PYTHON_VERSION: "3.14"
   DOTNET_VERSION: "9.0"
+
+  # HOW WIDE PYTEST MAY RUN HERE. `pytest.ini:42` sets `-n auto`, and on this box auto is 12 —
+  # one worker per CPU. That is right for a developer running one suite alone, and wrong for CI:
+  # four runner instances share the SAME 12-CPU / 16 GB machine, so four concurrent python jobs
+  # ask for 48 pytest workers, each importing the whole engine, on twelve cores and sixteen
+  # gigabytes. What that looks like from GitHub is not a test failure. It is jobs dying with no
+  # logs at all (2026-08-16: `python`, `engine` and `dotnet` all failed at "Set up job" with an
+  # empty log blob) and MSBuild reporting MSB4166, "child node exited prematurely" — a worker
+  # killed by the OS, not a compile error.
+  #
+  # 3 workers x 4 runners = 12, one per core. pytest-xdist 3.8.0 reads this variable to resolve
+  # `-n auto`, so it applies to every pytest invocation in every job without editing a single
+  # command line. Proven locally: PYTEST_XDIST_AUTO_NUM_WORKERS=3 with `-n auto` prints
+  # "created: 3/3 workers".
+  PYTEST_XDIST_AUTO_NUM_WORKERS: "3"
 
 jobs:
   # ──────────────────────────────────────────────────────────────────
@@ -18,7 +64,7 @@ jobs:
   # Born from: account/social-login deleted unannounced inside a logo commit.
   # ──────────────────────────────────────────────────────────────────
   guard:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
@@ -33,15 +79,11 @@ jobs:
   # Python — full test suite + golden-set hard gate
   # ──────────────────────────────────────────────────────────────────
   python:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
@@ -54,10 +96,33 @@ jobs:
           restore-keys: |
             uv-${{ runner.os }}-
 
-      # Install from requirements.txt (there is no pyproject.toml, so `uv sync`
-      # cannot be used). --system installs into the setup-python interpreter.
+      # This used to be `actions/setup-python@v5` followed by `uv pip install --system`. Both
+      # halves broke when CI moved to our self-hosted Macs on 2026-08-16, and between then and
+      # 2026-08-17 not one run went green.
+      #
+      # setup-python: the macOS builds in actions/python-versions are not relocatable. Their
+      # installer writes to the hosted runner's fixed home, so the step ends with
+      # `mkdir: /Users/runner: Permission denied` and exit 1 (run 31955945283). Nothing in the
+      # workflow can grant that; the path belongs to a user who does not exist on our box.
+      #
+      # --system: with setup-python gone, "the system interpreter" on our Mac is
+      # /usr/local/bin/python3, one installation shared by all four runners AND by the founder's
+      # own shell. Four concurrent jobs pip-installing into one site-packages is a race, and it
+      # rewrites the machine's Python as a side effect of running CI.
+      #
+      # uv fixes both: it fetches its own interpreter into its writable cache and puts the
+      # dependencies in a venv inside the job's workspace, so jobs cannot collide and the box is
+      # left alone. One code path for hosted Ubuntu and for our Macs.
+      - name: Python ${{ env.PYTHON_VERSION }} in a per-job venv
+        run: |
+          uv venv --python "${PYTHON_VERSION}" .venv
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+          echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
+          .venv/bin/python --version
+
+      # There is no pyproject.toml, so `uv sync` cannot be used.
       - name: Install dependencies
-        run: uv pip install --system -r requirements.txt
+        run: uv pip install -r requirements.txt
 
       - name: Main test suite (excluding UI theme)
         # No -x. It stops at the first failure, so a run reports one problem and hides the
@@ -90,21 +155,26 @@ jobs:
   # about which files steer the daemon — and the job is ~1 minute.
   # ──────────────────────────────────────────────────────────────────
   engine:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
       - name: Install uv
         uses: astral-sh/setup-uv@v3
 
+      # Same reason as the python job above: setup-python cannot install on our self-hosted
+      # Macs, and --system would write into the box's shared /usr/local Python.
+      - name: Python ${{ env.PYTHON_VERSION }} in a per-job venv
+        run: |
+          uv venv --python "${PYTHON_VERSION}" .venv
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+          echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
+          .venv/bin/python --version
+
       - name: Install dependencies
-        run: uv pip install --system -r requirements.txt
+        run: uv pip install -r requirements.txt
 
       # --no-tick: a runner has no .env and no spend ledger, so the dry-run tick would fail on
       # its environment instead of on the change. Checks 1, 2 and 4 still run, and the script
@@ -121,7 +191,8 @@ jobs:
   # .NET — Store tests
   # ──────────────────────────────────────────────────────────────────
   dotnet:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v4
@@ -137,17 +208,24 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore store_platform/src/Store.Tests/Store.Tests.csproj
 
+      # -m:1 disables MSBuild's multi-process node reuse. MSBuild otherwise starts one worker
+      # node per core: 12 on our self-hosted Mac, times up to four concurrent jobs, on 16 GB.
+      # Six of the last eleven dotnet jobs died in Build or Test, the signature being
+      # `MSB4166: Child node exited prematurely` — a worker killed under memory pressure, not a
+      # compile error. One node is slower per job and finishes, which is the trade that matters
+      # when the alternative is a red check that says nothing about the code.
       - name: Build
-        run: dotnet build store_platform/src/Store.Tests/Store.Tests.csproj --no-restore
+        run: dotnet build store_platform/src/Store.Tests/Store.Tests.csproj --no-restore -m:1
 
       - name: Test
-        run: dotnet test store_platform/src/Store.Tests/Store.Tests.csproj --no-build --verbosity normal
+        run: dotnet test store_platform/src/Store.Tests/Store.Tests.csproj --no-build --verbosity normal -m:1
 
   # ──────────────────────────────────────────────────────────────────
   # Next.js — build check on store platform
   # ──────────────────────────────────────────────────────────────────
   nextjs:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 40
 
     defaults:
       run:

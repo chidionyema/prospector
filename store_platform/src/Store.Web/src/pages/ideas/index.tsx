@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { GetServerSideProps } from 'next';
 
 import MarketingLayout from '@/components/marketing/MarketingLayout';
-import { PageHero, Section } from '@/components/marketing/blocks';
+import { PageHero, Section, HeroList } from '@/components/marketing/blocks';
 import { Seo } from '@/components/Seo';
 import { Icon, SearchInput, buttonClasses, textLinkClass } from '@/components/ui';
 import { fetchCatalog } from '@/lib/api/client';
@@ -170,18 +170,41 @@ export default function IdeasHub({ categories, total, variant }: Props) {
         eyebrow="Categories"
         title="Business ideas, by category."
         /*
-         * THE WORDS ARE THE FOUNDER'S AND THEY STAY (2026-08-15).
+         * THE WORDS ARE THE FOUNDER'S AND THEY STAY (2026-08-15), and this is the promised fix.
          *
          * I rewrote this lead to stop it naming the six axes that `CategoryGraph.tsx:80-85` renders
          * as six group headings below. Founder's ruling on reading it: "there is nothing that wrong
          * with it, its just the format and presentation." So the defect here is not the sentence,
          * it is that a 34-word enumeration is being drawn as one undifferentiated paragraph of lead
          * type. Fix the setting, not the words -- see `PageHero`.
+         *
+         * SETTING FIXED 2026-08-16, and it closes the founder's second report on this page ("right
+         * first row/ish empty no content, looks odd on desktop") with the same move. Every word is
+         * still here and none has changed: the stem stays as the lead, the six clauses become the
+         * six items of the aside, verbatim and in their original order. The colon becomes a full
+         * stop because the list is no longer in the same sentence. Nothing was written for the
+         * right-hand column -- it is this paragraph, set as what it always was.
          */
         lead={
           total > 0
-            ? `${total} researched packs, sorted six ways: who pays for it, the hours it needs, how much of it is automated, the skills it suits, how it makes money, and the sector it sits in.`
+            ? `${total} researched packs, sorted six ways.`
             : 'Researched packs, sorted six ways.'
+        }
+        aside={
+          <HeroList
+            label="The six ways"
+            /* NOT ordered. The checks on /how-it-works are numbered because that run is a sequence
+               that stops at the first failure; these are six independent facets of the same
+               catalogue and numbering them would assert a precedence that does not exist. */
+            items={[
+              'who pays for it',
+              'the hours it needs',
+              'how much of it is automated',
+              'the skills it suits',
+              'how it makes money',
+              'the sector it sits in',
+            ]}
+          />
         }
       />
 

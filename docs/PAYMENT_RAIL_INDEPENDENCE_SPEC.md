@@ -1,5 +1,9 @@
 # Payment Rail Independence — Spec
 
+> **Superseded 2026-08-16:** Paddle is gone. Stripe is the only payment provider; the
+> `PaddleProvider`, its web loader and its config were deleted. Read every Paddle passage
+> below as history, not as the current design.
+
 **Status:** Draft for decision · **Date:** 2026-06-16 · **Owner:** founder (money-rail, stays on Claude)
 **Goal:** Remove single-vendor dependence on Paddle for the Prospector store, reusing payment
 infrastructure that already exists in `haworks-platform` and `the-introduction-exchange` (TIE).

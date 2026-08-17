@@ -26,8 +26,11 @@ import { Icon } from '@/components/ui';
  * So bridge.py now splits them (`PACK_DOCUMENTS` = what gets written, `BUNDLE_FILES` = what the
  * archive must contain) and this file splits the same way:
  *
- *   PACK_DOCUMENTS -- the nine documents a buyer READS. Sections of the reader, not files any more.
- *                    Pinned in order to `bridge.py::BUNDLE_READING_ORDER`.
+ *   PACK_DOCUMENTS -- the documents a buyer READS. Sections of the reader, not files any more.
+ *                    Pinned in order to `bridge.py::BUNDLE_READING_ORDER`, which as of the
+ *                    2026-08-15 narrative restructure is a literal tuple of fourteen and is read
+ *                    out of the Python source directly by the drift test. The order is the
+ *                    buyer's journey, not the order the engine happens to compose things in.
  *   PACK_CONTENTS  -- the five files the download CONTAINS. Pinned in order to `BUNDLE_FILES`.
  *   PACK_EXTRAS    -- the rest of the archive, deliberately not promises. Pinned to
  *                    `BUNDLE_BONUS_FILES`.
@@ -60,56 +63,92 @@ export const PACK_DOCUMENTS: {
   /** Appends the pack's real cited-source count. Only the QA report earns it. */
   showSourceCount?: boolean;
 }[] = [
+  // --- the opening: the situation, then the promise of the piece ---
   {
-    title: 'Executive Summary',
+    title: 'Where this starts',
     section: '00_Executive_Summary.md',
     desc:
       'The opportunity on one page: what it is, what checked out, and what we do not claim.',
   },
   {
-    title: 'The Blueprint (Build Spec)',
-    section: '01_Blueprint_BuildSpec.md',
+    title: 'What you would be selling',
+    section: 'The_Offer.md',
     desc:
-      'What to build, in what order, on what stack. Includes the non-goals for v1 and what would kill this.',
+      'The thing that changes hands for money, written as an offer a buyer could accept today.',
   },
   {
-    title: 'The Go-To-Market Plan',
-    section: '02_Marketing_Plan_GTM.md',
+    title: 'The field: who is already there',
+    section: 'The_Field.md',
     desc:
-      'Where your first customers come from. Named channels, the beachhead to start in, and the signals that say stop.',
+      'The people already selling into this, what they charge, and where they leave the door open.',
   },
+  // --- the stakes, before the instructions ---
   {
-    title: 'The Operations Plan',
-    section: '03_Operations_Plan.md',
-    desc:
-      'How it runs once someone pays. Delivery, capacity limits, the compliance you cannot skip, and where the manual work sits.',
-  },
-  {
-    title: 'The Financial Model',
+    title: 'The numbers',
     section: '04_Financial_Model.md',
     desc:
       'Pricing and the numbers behind it. Anything we could not verify is marked missing, never made up.',
   },
   {
-    title: 'First-Week Checklist',
+    title: 'What would sink this',
+    section: 'What_Would_Sink_This.md',
+    desc:
+      'The case against, at full strength, so you meet the objection here rather than from a customer.',
+  },
+  // --- the body: how it is done ---
+  {
+    title: 'What you build',
+    section: '01_Blueprint_BuildSpec.md',
+    desc:
+      'What to build, in what order, on what stack. Includes the non-goals for v1 and what would kill this.',
+  },
+  {
+    title: 'How the first customers find you',
+    section: '02_Marketing_Plan_GTM.md',
+    desc:
+      'Where your first customers come from. Named channels, the beachhead to start in, and the signals that say stop.',
+  },
+  {
+    title: 'How it runs once it works',
+    section: '03_Operations_Plan.md',
+    desc:
+      'How it runs once someone pays. Delivery, capacity limits, the compliance you cannot skip, and where the manual work sits.',
+  },
+  {
+    title: 'Your first fortnight',
     section: '05_First_Week_Checklist.md',
     desc:
       'Six steps for days one to seven: confirm the buyer, size the smallest paid offer, pick one channel.',
   },
+  // --- the things a buyer uses rather than reads ---
   {
-    title: 'Marketing Assets',
+    title: 'The toolkit',
+    section: 'The_Toolkit.md',
+    desc:
+      'The named tools, services and suppliers this runs on, with what each one is actually for.',
+  },
+  {
+    title: 'Copy you can paste',
     section: 'Marketing_Assets.md',
     desc:
       'Launch copy you can send today: listing page, outreach, social. Claim-checked like the research.',
   },
+  // --- the kicker: what resolves it ---
   {
-    title: 'Evidence and Constraints',
+    title: 'How to know in 30 days',
+    section: 'How_To_Know_In_30_Days.md',
+    desc:
+      'The one month test: what to run, what number to watch, and the reading that says walk away.',
+  },
+  // --- appendix: the receipts ---
+  {
+    title: 'Everything we read, once',
     section: 'Evidence_and_Constraints.md',
     desc:
       'Each check, what it found, and the source behind it, without hunting through the plans.',
   },
   {
-    title: 'The QA Report, with the receipts',
+    title: 'Every check, in full',
     section: 'QA_Report.md',
     showSourceCount: true,
     desc:
@@ -127,7 +166,7 @@ export const PACK_DOCUMENTS: {
  * is ANDed with its result, so a pack missing one cannot go on the shelf. That is why the list is
  * short and why nothing speculative belongs in it.
  *
- * These are formats, not extra content -- the same nine documents, rendered four ways for four
+ * These are formats, not extra content -- the same documents, rendered four ways for four
  * situations (read, print, work from, open in a spreadsheet), plus the one file a buyer EDITS.
  * Marketing_Assets.txt stays plain text for exactly that reason: it is copy to paste, and asking
  * someone to extract paragraphs out of a PDF to send an email is the developer-artefact problem in
@@ -247,7 +286,12 @@ export function PackContentsSection({
               is poor". */}
           <span className="text-caption font-medium text-text">Inside the pack</span>
           {/* "documents", not "files", and the two are now DIFFERENT NUMBERS rather than the same
-              number under a careful noun. Nine documents arrive as five files. Until 2026-08-15
+              number under a careful noun: `PACK_DOCUMENTS.length` documents arrive as
+              `PACK_CONTENTS.length` files -- 14 and 5 as counted on 2026-08-15, and written as the
+              expressions rather than the digits because the last version of this note said "Nine
+              documents arrive as five files" while the code beside it rendered 14. A comment that
+              hardcodes what the line below derives goes stale silently and then misinforms the
+              next reader about which number is load-bearing. Until 2026-08-15
               this count read `PACK_CONTENTS.length` and the noun had to do the work of hiding that
               the archive held more entries than the list showed (measured 2026-08-08 across the 45
               packs then live: 8 entries on 12 packs, 9 on 14, 10 on 19, against a stated eight).

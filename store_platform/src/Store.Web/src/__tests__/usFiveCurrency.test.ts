@@ -292,7 +292,7 @@ describe('currency is ambient, so no surface can be left behind', () => {
     // symbol -- the "££49" regression documented at its call site. It is covered instead by
     // "the canonical buy button can render a non-GBP label at all" above.
     for (const rel of [
-      '../components/discovery/DossierCard.tsx',
+      '../components/discovery/PackRow.tsx',
       '../components/discovery/CommandPalette.tsx',
     ]) {
       const src = read(rel);
@@ -304,7 +304,7 @@ describe('currency is ambient, so no surface can be left behind', () => {
   it('the cards read the currency from context rather than a prop', () => {
     // A prop would have to be added to SimilarPacks and PackGrid, and to the next layout
     // component anyone writes between a page and a card. That is the failure this replaces.
-    expect(read('../components/discovery/DossierCard.tsx')).toMatch(/useCurrency\(\)/);
+    expect(read('../components/discovery/PackRow.tsx')).toMatch(/useCurrency\(\)/);
     expect(read('../components/discovery/CommandPalette.tsx')).toMatch(/useCurrency\(\)/);
   });
 });

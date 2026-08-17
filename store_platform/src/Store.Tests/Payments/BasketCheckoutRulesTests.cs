@@ -62,7 +62,7 @@ public sealed class BasketCheckoutRulesTests
         // published against.
         var name = CheckoutEndpoints.ResolveProviderName(
             ConfigWith("stripe"),
-            [PackOn("paddle"), PackOn("paddle")]);
+            [PackOn("legacy"), PackOn("legacy")]);
 
         Assert.Equal("stripe", name);
     }
@@ -70,7 +70,7 @@ public sealed class BasketCheckoutRulesTests
     [Fact]
     public void ResolveProviderName_FallsBackToTheStoredProvider()
     {
-        Assert.Equal("paddle", CheckoutEndpoints.ResolveProviderName(ConfigWith(null), [PackOn("paddle")]));
+        Assert.Equal("legacy", CheckoutEndpoints.ResolveProviderName(ConfigWith(null), [PackOn("legacy")]));
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public sealed class BasketCheckoutRulesTests
         // 409 rather than silently charging everything through whichever pack came first.
         Assert.Null(CheckoutEndpoints.ResolveProviderName(
             ConfigWith(null),
-            [PackOn("stripe"), PackOn("paddle")]));
+            [PackOn("stripe"), PackOn("legacy")]));
     }
 
     private static IConfiguration ConfigWith(string? activeProvider) =>

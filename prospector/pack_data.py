@@ -59,6 +59,21 @@ except ImportError as exc:  # pragma: no cover
 
 # --- config block defaults (config.yaml `pack_data:`) -----------------------------------
 DEFAULT_ENABLED = False
+# Does the buyer receive OUR GRADING of the idea? Default no, and the default is the
+# founder's ruling of 2026-08-15 on a pack they downloaded from the live storefront:
+# "it has engine ifo like conposite score etc and even ai judge info".
+#
+# `scorecard.json` is that leak in full. Measured across 74 live PASS dossiers the same day,
+# it carried 325 engine-vocabulary hits, more than every prose document in the pack put
+# together: the axis name, our 0-5 score, the axis WEIGHT, the weighted contribution, and a
+# justification addressed to a reviewer rather than to a buyer. `scorecard.csv` and
+# `scorecard_radar.svg` are the same numbers again in two more formats.
+#
+# The other four files STAY, and that is the whole distinction. `financial.json`/`.csv` is
+# the buyer's own model and `comparables.json`/`.csv` is what other people already charge:
+# both are things they paid for. Our internal grade of their purchase is not, and it went
+# into the box by mistake.
+DEFAULT_INCLUDE_SCORECARD = False
 DEFAULT_FORMATS: Tuple[str, ...] = ("json", "csv", "svg")
 DEFAULT_CHROME_PATH = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 DEFAULT_PDF_TIMEOUT_S = 120
@@ -158,6 +173,7 @@ def settings(cfg: Any = None) -> Dict[str, Any]:
         radar.update(raw["radar"])
     return {
         "enabled": bool(raw.get("enabled", DEFAULT_ENABLED)),
+        "include_scorecard": bool(raw.get("include_scorecard", DEFAULT_INCLUDE_SCORECARD)),
         "formats": tuple(str(f).lower() for f in formats),
         "chrome_path": str(raw.get("chrome_path") or DEFAULT_CHROME_PATH),
         "pdf_timeout_s": int(raw.get("pdf_timeout_s") or DEFAULT_PDF_TIMEOUT_S),
@@ -819,16 +835,24 @@ def build_text_artifacts(dossier: Any, cfg: Any = None, *,
     comps = comparables(_anchors_for(candidate), _sources_for(dossier),
                         snippet_chars=conf["snippet_chars"])
 
+    # THE SCORECARD FAMILY IS GATED SEPARATELY FROM `formats`, and the gate is here rather
+    # than at the three call sites because all three formats say the same thing. `svg` has
+    # no other member: with the scorecard out, `radar_svg` is the whole of it, so the format
+    # produces nothing and that is correct, not a bug to route around.
+    show_card = conf["include_scorecard"]
+
     out: Dict[str, str] = {}
     if "json" in formats:
-        out[SCORECARD_JSON] = _dumps(card)
+        if show_card:
+            out[SCORECARD_JSON] = _dumps(card)
         out[FINANCIAL_JSON] = _dumps(model)
         out[COMPARABLES_JSON] = _dumps(comps)
     if "csv" in formats:
-        out[SCORECARD_CSV] = scorecard_csv(card)
+        if show_card:
+            out[SCORECARD_CSV] = scorecard_csv(card)
         out[FINANCIAL_CSV] = financial_csv(model)
         out[COMPARABLES_CSV] = comparables_csv(comps)
-    if "svg" in formats:
+    if "svg" in formats and show_card:
         out[RADAR_SVG] = radar_svg(card, title=str(getattr(candidate, "title", "") or ""),
                                    radar=conf["radar"])
     return out
