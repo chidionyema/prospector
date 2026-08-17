@@ -7,6 +7,32 @@ from prospector.config import Config, load_config
 
 
 @pytest.fixture(autouse=True)
+def _no_grammar_binary(monkeypatch):
+    """Keep the external grammar binary out of the suite.
+
+    `copy_lint.grammar_findings` shells out to `harper-cli`, `pack_linter.lint_pack` calls it
+    (`pack_linter.py:1461`) and `bridge.publish_pass` calls that (`bridge.py:1031`) — so every
+    publish-shaped test pays for it. Measured 2026-08-17 over the 69 publish-heavy tests:
+    476.4s with the binary installed, 404.7s with `harper_path()` returning None. 72 seconds,
+    15% of that set, for a result none of those tests reads.
+
+    This does not stub the check out. `grammar_findings` returns None when the binary is
+    absent (`copy_lint.py:389`), which is its fail-open contract and the path every machine
+    without harper-cli already takes — including CI, until CI moved onto this Mac on
+    2026-08-16 and started paying for a tool the founder happens to have installed. A suite
+    whose runtime depends on which optional binaries are on the box is the same defect class
+    as one whose colour depends on it.
+
+    No opt-out is needed. Every test that asserts anything about grammar already replaces
+    `harper_path` or `grammar_findings` itself (`test_copy_lint.py:176`, `:184`,
+    `test_a_swallowed_bug_is_not_a_missing_measurement.py:142`), and a monkeypatch in a test
+    body is applied after this one, so it wins.
+    """
+    import prospector.copy_lint as CL
+    monkeypatch.setattr(CL, "harper_path", lambda: None)
+
+
+@pytest.fixture(autouse=True)
 def _isolate_provider_health(tmp_path, monkeypatch):
     """Point the shared provider-health singleton at a per-test temp file.
 
