@@ -67,11 +67,15 @@ MAX_ATTEMPTS = 3
 MODEL_ROUTES = {"regenerate", "copy"}
 
 #: The floor on the RE-GATE's own budget, separate from the repair's `--timeout`.
-#: The gate re-checks every citation URL in the pack and measured over 120s on a single
-#: pack on 2026-08-17. A re-gate that does not finish leaves the STALE lint record on
-#: disk, so a repair that worked reads as "blocked" and the ledger learns a failure that
-#: never happened -- 19 of the first 44 attempts in this ledger were exactly that.
-REGATE_MIN_S = 900
+#: A re-gate that does not finish leaves the STALE lint record on disk, so a repair that
+#: worked reads as "blocked" and the ledger learns a failure that never happened -- 19 of
+#: the first 44 attempts in this ledger were exactly that.
+#:
+#: Measured 2026-08-17, one pack gated end to end with no pipe: **945 seconds**. The
+#: default --timeout of 900 sat just under that, which is why the failures looked random.
+#: Most of it was the Internet Archive, and `bridge.publish_pass` no longer mints new
+#: captures on a dry run, so this floor is headroom rather than the expected cost.
+REGATE_MIN_S = 1800
 
 
 def _now() -> str:

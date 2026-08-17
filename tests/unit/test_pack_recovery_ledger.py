@@ -67,8 +67,9 @@ class TestAnUnmeasuredAttemptIsNotAFailure:
     """
 
     def test_the_regate_gets_a_bigger_budget_than_the_repair(self):
-        """The gate re-checks every citation URL, so it outlives the repair it checks."""
-        assert recover.REGATE_MIN_S >= 900
+        """Measured 2026-08-17: one pack gated end to end took 945s, just over the 900s
+        default --timeout. A floor at or under the measurement is not a floor."""
+        assert recover.REGATE_MIN_S > 945
 
     def test_unmeasured_attempts_never_accumulate_to_a_skip(self):
         history = [_row(outcome="unmeasured") for _ in range(recover.MAX_ATTEMPTS + 3)]
