@@ -245,6 +245,65 @@ out to be `moat_ungrounded`, a retrieval outcome, not a verdict on the segment.
 * **Not proven.** `quality_weight: 0.0` ships inert. The milestone is a live sampler run with
   the weight above zero and the resulting cell plan compared against the V2 plan.
 
+### Chunk F — the A/B harness itself was measuring wrong (2026-08-08)
+
+The first live proof run (`--signals 2 --repeats 2 --k 6`, 180 calls) reported
+`shipped -6.00` and `g8_critique_revise -1.50` on distinct-k and stamped itself
+`complete: true`. **Both numbers were an outage, and the run should be treated as
+retracted.** Two defects in the harness, each verified from the receipts rather than
+reconstructed from the story:
+
+* **An empty batch was recorded as an observation.** The run hit the Claude usage wall.
+  The wall does not raise through `generate()` — it logs `"Claude CLI skipped: usage wall
+  is live"` (`prospector/claude_cli.py:270`) and returns `[]` — so the harness's
+  `except ProviderExhaustedError` / `except Exception` fence never fired.
+  `batch_report([])` returns a well-formed `distinct_k=0, n=0`, which entered the paired
+  deltas as a real `-6`. 5 of the 24 cells were `(0, 0)`: all four `shipped` cells and one
+  `g8_critique_revise`, reproducing the published figures exactly (4 pairs x -6 = -6.00;
+  1 of 4 x -6 = -1.50). The empties were a contiguous TAIL in `ARMS` order, which is what
+  rules out "the shipped arm is broken" in favour of "the wall opened mid-run".
+  Fixed: `_run_cell` raises `EmptyBatch` (carrying its call count, so an aborted cell still
+  reports what it cost); the caller banks the spend, discards the cell and sets
+  `complete = False`. The module docstring had asserted this rule since the file was
+  written — **a docstring stating an invariant is a claim, not a mechanism.**
+
+* **`distinct_k` was saturated and could not discriminate.** All 19 non-empty cells scored
+  exactly `6/6` (`raw` histogram `{(6,6): 19, (0,0): 5}`). The metric is capped at `k`, so
+  every delta was `0.00` by construction — which reads as a confident "no lever does
+  anything" when the truth is "the ruler hit its ceiling". `mean_pairwise_overlap` over the
+  same cells did vary (0.043-0.075), so the run was ranked on the one metric that could not
+  speak. Fixed: `_distinct_k_saturated()` gates the report, which now prints a `SATURATED`
+  banner, tags the row `[saturated - not evidence]`, ranks on `mean_pairwise_overlap`, and
+  writes `distinct_k_saturated` + `primary_metric` into the receipt. Saturation keeps exit
+  code 0 (overlap is still valid); only an abort is non-zero.
+
+* **The fixture could not have caught the saturation.** At k=6 fixture cells score 4/6, 3/6,
+  5/6 — healthy headroom. Saturation was a property of live data only. A fixture proves the
+  arithmetic; it never proves the headroom. Choose `k` from a fixture's `distinct_k=x/k`
+  column before paying: at `--k 12` live and fixture cells both sit well below the ceiling.
+
+* Receipts: `ruff check` -> `All checks passed!`;
+  `pytest tests/unit/test_g_generation_ab_harness.py -q` -> `8 passed`, which pins both
+  defects including `test_the_2026_08_08_outage_shape_would_now_abort` (replays
+  batches-then-empties, asserts `complete is False` and that no recorded cell has `n == 0`).
+  Fixture re-run at `--k 12` -> `COMPLETE`, 200 calls, no saturation.
+
+* **The fix validated itself on live data, immediately.** The k=12 re-run
+  (`--signals 2 --repeats 2 --max-calls 260`, 2026-08-08 08:36Z) aborted on its FIRST cell:
+  `MEASUREMENT ENDED EARLY: baseline ...#0: generation returned 0 of 12 candidates after 16
+  call(s)`, exit 1, `PARTIAL`, `no paired observation` on all five arms, 16 calls spent. Under
+  the old code this same situation produced 24 recorded cells and two publishable-looking
+  numbers. The cause was **not** the usage wall but a third rail: `api_error_status: 429`,
+  `"You've hit your monthly spend limit"`. `errors.looks_exhausted` -> True and
+  `classify_exhaustion` -> `permanent`, so `claude_cli` took a 1h dead mark in
+  `store/provider_health_noncritical.json` — the daemon is blocked on the same limit, not just
+  this harness. Note `usage_wall.looks_like_wall()` returns **False** for that text, so
+  `is_blocked()` is not a valid preflight for it.
+
+* **Still not proven.** The harness is now trustworthy; the levers are not yet measured.
+  G7/G8/G9 stay off until a COMPLETE live run at `k >= 12` shows an effect. That run is
+  blocked on the monthly spend limit being raised or reset — it is not blocked on any code.
+
 ## What is deliberately NOT here
 
 Anything that moves the verification bar: confidence-floor changes, claim reframing,
