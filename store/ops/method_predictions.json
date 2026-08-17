@@ -1,0 +1,35 @@
+[
+  {
+    "id": "P1-rule-guard",
+    "made_on": "2026-08-17",
+    "claim": "Turning the five written rules into PreToolUse refusals cuts how often the founder has to stop a tool call.",
+    "metric": "stop_rate_per_100",
+    "baseline": 1.7,
+    "target": 1.2,
+    "due": "2026-09-16",
+    "depends_on": "rule-guard.py wired into settings.json and Claude Code relaunched",
+    "if_wrong": "Delete the rules. A guard that does not move the rate is ceremony."
+  },
+  {
+    "id": "P2-surgical",
+    "made_on": "2026-08-17",
+    "claim": "Batching one round trip per intent and stopping at the deliverable cuts output tokens per tool call back below the July level.",
+    "metric": "output_tokens_per_call",
+    "baseline": 2274.8,
+    "target": 1686.3,
+    "due": "2026-09-16",
+    "depends_on": "nothing — this is behaviour, not a mechanism",
+    "if_wrong": "The behaviour rules do not bind without a mechanism, and the honest answer is to build one or stop claiming it."
+  },
+  {
+    "id": "P3-ci-wallclock",
+    "made_on": "2026-08-17",
+    "claim": "The CI long pole is the nextjs job at 1025s, not the python suite. Fixing the runner permission error and trimming the nextjs job takes a full run under 600s.",
+    "metric": "ci_slowest_job_seconds",
+    "baseline": 1025,
+    "target": 600,
+    "due": "2026-09-16",
+    "depends_on": "actions/setup-python failing with 'mkdir: /Users/runner: Permission denied' on the self-hosted mac runner",
+    "if_wrong": "The bottleneck was somewhere else and the measurement was read wrong."
+  }
+]

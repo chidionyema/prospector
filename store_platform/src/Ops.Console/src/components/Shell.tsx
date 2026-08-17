@@ -26,6 +26,7 @@ const TABS: { href: string; label: string }[] = [
   { href: '/shelf', label: 'Stranded' },
   { href: '/tools', label: 'Tools' },
   { href: '/audit', label: 'Audit' },
+  { href: '/method', label: 'Method' },
 ];
 
 export default function Shell({

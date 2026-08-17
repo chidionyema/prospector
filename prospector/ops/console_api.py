@@ -842,7 +842,61 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+#: How old the working-method scoreboard may be before the page says so. The nightly job
+#: writes it; a page that renders a three-week-old number as if it were today's is the
+#: same defect this whole view exists to fix.
+_METHOD_STALE_H = 36
+
+
+def _read_method(cfg: Any, args: dict) -> dict:
+    """How the agents are working: founder stop rate, complaint clusters, live rules.
+
+    The numbers come from `~/.claude/scripts/reflect.py --json`, which mines every session
+    transcript on this machine. This reader only presents them, and refuses to present them
+    silently when they are stale.
+    """
+    path = _repo_root() / "store" / "ops" / "method_metrics.json"
+    if not path.exists():
+        return {"present": False,
+                "note": "No scoreboard yet. Run:  python3 ~/.claude/scripts/reflect.py --json",
+                "generator": "python3 ~/.claude/scripts/reflect.py --json"}
+    try:
+        snap = json.loads(path.read_text())
+    except (OSError, ValueError) as exc:
+        return {"present": False, "note": f"unreadable scoreboard: {exc}"}
+
+    age_h = (time.time() - path.stat().st_mtime) / 3600.0
+    head = snap.get("headline", {})
+    themes = snap.get("themes", [])
+    untracked = [t["theme"] for t in themes if not t.get("tracked")]
+    unenforced = [t["theme"] for t in themes if not t.get("enforced_live")]
+    inert = [m["name"] for m in snap.get("mechanisms", []) if not m.get("live")]
+    return {
+        "present": True,
+        "generated_at": snap.get("generated_at"),
+        "age_hours": round(age_h, 1),
+        "stale": age_h > _METHOD_STALE_H,
+        "stale_note": (f"Scoreboard is {age_h:.0f}h old (limit {_METHOD_STALE_H}h). "
+                       "Treat every number below as history, not state."
+                       if age_h > _METHOD_STALE_H else ""),
+        "headline": head,
+        "stops": snap.get("stops", {}),
+        "efficiency": snap.get("efficiency", {}),
+        "predictions": snap.get("predictions", []),
+        "themes": themes,
+        "mechanisms": snap.get("mechanisms", []),
+        "untracked": untracked,
+        "unenforced": unenforced,
+        "inert_mechanisms": inert,
+        "generator": "python3 ~/.claude/scripts/reflect.py --json",
+        "note": ("Each theme is a complaint the founder made more than once, clustered from "
+                 "every session transcript. `check` is the command that reads its number; a "
+                 "theme with no check is not being tracked by anything."),
+    }
+
+
 READS: dict[str, Callable[[Any, dict], Any]] = {
+    "method": _read_method,
     "shelf": _read_shelf,
     "status": _read_status,
     "queue": _read_queue,
