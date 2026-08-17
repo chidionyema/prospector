@@ -58,11 +58,18 @@ import shutil
 import sqlite3
 import sys
 import tempfile
+import time
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_STORE = REPO_ROOT / "store"
+
+#: Where the run leaves proof it happened, relative to the store being drilled. The Data console
+#: screen reads exactly this file, and reports "never" when it is absent — which is the honest
+#: answer, and the reason the drill writes it even when it fails.
+RECEIPT_REL = Path("ops") / "restore_drill.json"
 DB_NAME = "prospector.db"
 DOSSIER_DIRNAME = "dossiers"
 
@@ -485,6 +492,30 @@ def run_drill(
     return (0 if ok else 1), f"{header}\n{body}{tail}\n{header} checks={len(drill.lines)} failures={len(drill.failures)}"
 
 
+def write_receipt(store_dir: Path, *, ok: bool, took_s: float, report: str) -> Path:
+    """Leave proof the drill ran, next to the store it drilled.
+
+    Written on failure as well as on success. A receipt only written on a pass turns a failing
+    drill into a screen that says "never run", which reads as nothing happened rather than as
+    something broke.
+    """
+    path = store_dir / RECEIPT_REL
+    path.parent.mkdir(parents=True, exist_ok=True)
+    header = report.splitlines()[0] if report else ""
+    payload = {
+        "ran_at": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+        "ok": bool(ok),
+        "took_s": round(took_s, 1),
+        "restored": str(store_dir),
+        "what": header,
+        "tool": "scripts/restore_drill.py",
+    }
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(payload, indent=2) + "\n")
+    tmp.replace(path)  # atomic, so a reader never sees half a receipt
+    return path
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -499,6 +530,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--keep", action="store_true",
                         help="do not delete the scratch directory")
     parser.add_argument("--seed", type=int, default=None, help="seed the spot-check sample")
+    parser.add_argument("--no-receipt", action="store_true",
+                        help=f"do not write {RECEIPT_REL} under the store")
     args = parser.parse_args(argv)
 
     if args.seed is not None:
@@ -520,8 +553,13 @@ def main(argv: list[str] | None = None) -> int:
     _guard_dest(dest, store_dir)
 
     try:
+        started = time.monotonic()
         code, report = run_drill(store_dir, dest, backup_dir=backup_dir, sample_n=args.sample)
         print(report)
+        if not args.no_receipt:
+            receipt = write_receipt(store_dir, ok=code == 0, took_s=time.monotonic() - started,
+                                    report=report)
+            print(f"  receipt {receipt}")
         return code
     finally:
         if ephemeral and not args.keep:

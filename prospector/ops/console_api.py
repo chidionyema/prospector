@@ -369,6 +369,21 @@ def _read_spend(cfg, args: dict) -> dict:
     return spend_view(cfg)
 
 
+def _read_money(cfg, args: dict) -> dict:
+    """PAY-1 on a screen. The rail's own answer, fetched through the gateway's own caller so the
+    view module can be tested without a network."""
+    from .money import money_view
+
+    return money_view(cfg, _store_call)
+
+
+def _read_data(cfg, args: dict) -> dict:
+    """DAT-1, DAT-2, DAT-4 and AST-1 on a screen, each read from the control that owns it."""
+    from .data import data_view
+
+    return data_view(cfg)
+
+
 def _read_metrics(cfg, args: dict) -> dict:
     from .metrics import snapshot
 
@@ -849,6 +864,8 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
     "providers": _read_providers,
     "routing": _read_routing,
     "spend": _read_spend,
+    "money": _read_money,
+    "data": _read_data,
     "metrics": _read_metrics,
     "runs": _read_runs,
     "run": _read_run,

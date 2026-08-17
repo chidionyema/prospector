@@ -99,6 +99,15 @@ first".
 | `/engine` | **Engine controls** | Pause, resume, routing, wave size, caps | `read controls` + `act …` |
 | `/tools` | **Tools** | Every operator CLI, what it does, how to run it | `read tools` |
 | `/audit` | **Audit** | Every write anyone made, newest first | `read intents` |
+| `/money` | **Rail** | Can the shop take money right now, and what is not measured yet | `read money` |
+| `/data` | **Backups** | What survives if the volume is lost, and how much goes with it | `read data` |
+
+Added 2026-08-17. The nav that carries these is not a flat strip any more: `src/lib/nav.ts` groups
+the routes above into Now · Engine · Shelf · Money · Data · Control, and `Shell.tsx` renders the
+groups on one wrapped row and the open group's screens on a second. Thirteen tabs in one strip ran
+off the side of a 390px phone, which put Audit behind a swipe with nothing on screen to say the
+swipe existed. `tests/nav.test.ts` pins both directions: no nav entry without a page, and no page
+without a nav entry.
 
 ### 3.1 `/` — Now
 
