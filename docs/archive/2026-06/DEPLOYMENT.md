@@ -139,8 +139,13 @@ For a **local-only** dev box (no R2), use the local equivalent instead:
 
 ## 9. Rollback
 
-- Fastest safe rollback: set `payments:active_provider=paddle` (or unset Stripe keys) → the
-  storefront reverts to "Notify me", no charges possible. Catalogue and content stay up.
+- Fastest safe rollback: unset the Stripe keys → the storefront reverts to "Notify me", no charges
+  possible. Catalogue and content stay up.
+  > **Correction, 2026-08-17.** This step used to say "set `payments:active_provider=paddle`". That
+  > provider was deleted on 2026-08-16 (PR #238) and the startup gate now refuses to boot on any
+  > provider it does not recognise, so following the old wording during an incident would take the
+  > API down rather than roll it back. There is no second rail. Live procedure:
+  > `store_platform/GO_LIVE_RUNBOOK.md` § Rollback.
 - Per-pack: `UPDATE Packs SET IsListed=0 WHERE Id=…;` to pull a single pack.
 
 ## 10. Definition of done (launch gate)

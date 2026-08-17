@@ -142,3 +142,36 @@ corpora/
 # Rollback snapshots taken before a console tool runs (prospector/ops/undo.py).
 # APFS clones of store/, so they cost almost no disk. Never source.
 .undo/
+
+# ---- Engine output. Git stopped tracking these on 2026-08-17. ----
+# The engine rewrites these every tick, so any commit made in a shared checkout swallowed a
+# day of ledger churn and the PR came out unreviewable. Nobody chose that; git simply took
+# what was in front of it, every time. Measured on the long-lived integration branch that day:
+# 197 files over origin/main, of which 171 were store/ and 25 were code, at 110,347 inserted
+# lines. The entries above this block were added the same way, one incident at a time, and
+# never finished the job -- 89 runtime files were still tracked.
+# What STAYS tracked is config the code READS, not output the code WRITES:
+# store/markets/, store/launch/, store/ops/.console_salt, store/.gitkeep, and the
+# hand-authored signals/*.txt inputs.
+store/pricing/
+store/scheduler/
+store/listings_archive/
+store/prescreen_shadow/
+store/numeric_citation_shadow/
+store/control_center/jobs.json
+store/control_center/config_history.jsonl
+store/ops/intents.jsonl
+store/ops/method_metrics.json
+store/ops/method_predictions.json
+store/catalog.sqlite3
+store/citation_archive.json
+store/incumbent_cache.json
+store/lint_url_cache.json
+store/exhausted_families.json
+store/retired_passes.json
+store/provider_health*.json
+store/provider_health*.lock
+signals/pending/
+# Signals the engine DISCOVERED. The hand-authored ones beside them stay tracked: they are
+# inputs a person wrote, not output a tick produced.
+signals/discovered_*
