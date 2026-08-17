@@ -42,6 +42,8 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
+import subprocess
+import time
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -65,6 +67,16 @@ DEFAULT_DAYS = 3
 #: Audit events that name a candidate, in the order the engine emits them.
 _CANDIDATE_EVENTS = ("candidate_start", "verify_search", "check_result",
                      "soft_early_exit", "candidate_done")
+
+#: A run whose newest audit row is older than this, while its process is still alive, has stopped
+#: working. The engine emits a search, fetch or check row every few seconds while it vets, so
+#: silence this long is a stall, not a slow call. Set far above the slowest verdict call seen in
+#: `store/scheduler/audit` (minutes, not a quarter of an hour) so a slow brain is never libelled.
+STALL_S = 900.0
+
+#: What a candidate with a `candidate_start` and no `candidate_done` actually is. The four are
+#: mutually exclusive and every one of them is a different instruction to the operator.
+UNFINISHED_STATES = ("in_flight", "stalled", "abandoned", "unknown")
 
 
 # --------------------------------------------------------------------------- #
@@ -150,7 +162,14 @@ def audit_rows(*, days: int = DEFAULT_DAYS, directory: Optional[Path] = None,
         torn_total += torn
     if run_id:
         rows = [r for r in rows if r.get("run_id") == run_id]
-    rows.sort(key=lambda r: (int(r.get("seq") or 0)))
+    # Sorted by TIMESTAMP first, `seq` only as the tie-break within one process.
+    #
+    # `seq` alone was wrong and it scrambled the log. The counter is per-process, and several
+    # processes append to the same day-file, so run A's seq 4 and run B's seq 4 are unrelated
+    # moments. Measured 2026-08-17 in `store/scheduler/audit/2026-08-17.jsonl`: candidate
+    # b79222746e5381b3 came back with its 13:12 `candidate_done` BEFORE its 12:49 `candidate_start`,
+    # which made a candidate that had been ruled `kill` read as work that died mid-flight.
+    rows.sort(key=lambda r: (str(r.get("ts") or ""), int(r.get("seq") or 0)))
     return {"rows": rows, "dir": str(d), "files": [str(f) for f in files],
             "unreadable_lines": torn_total,
             "note": ("no audit day-file exists in this window — the log is day-partitioned, so "
@@ -256,6 +275,151 @@ COST_NULL_REASON = (
 
 
 # --------------------------------------------------------------------------- #
+# Unfinished work — telling work still running apart from work that died
+# --------------------------------------------------------------------------- #
+def _epoch(ts) -> Optional[float]:
+    """Seconds since the epoch for an audit `ts`, or None when it cannot be read.
+
+    Audit rows carry an ISO-8601 string with an offset. A row with no `ts`, or with one this
+    cannot parse, must not be treated as "now" — that would make a dead run look alive.
+    """
+    if not ts:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(ts))
+    except (TypeError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.timestamp()
+
+
+def process_alive(pid: Optional[int]) -> Optional[bool]:
+    """Is this pid a LIVE prospector process? None when the question cannot be answered.
+
+    `os.kill(pid, 0)` on its own is not enough. macOS reuses pids, so a finished run's pid can
+    belong to an unrelated live process, and the run would read as still working forever. The
+    command line has to name this engine before the pid counts as the same run.
+
+    None is returned only when the probe itself failed. It is never collapsed into False: a
+    failed measurement said to be "abandoned" is the same lie in the other direction.
+    """
+    if not pid:
+        return None
+    try:
+        os.kill(int(pid), 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        pass  # alive, owned by another user — the command line below decides
+    except (TypeError, ValueError, OSError):
+        return None
+    try:
+        probe = subprocess.run(["ps", "-o", "command=", "-p", str(int(pid))],
+                               capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    command = (probe.stdout or "").strip()
+    if not command:
+        return False
+    return "prospector" in command
+
+
+def classify_unfinished(*, alive: Optional[bool], silent_s: Optional[float]) -> tuple[str, str]:
+    """One `candidate_start` with no `candidate_done`, named for what it actually is.
+
+    `vet_candidate` emits the closing row on its single return path and is deliberately not
+    wrapped in try/finally (`run.py:1063`), so a SIGKILLed daemon can NEVER write its own
+    `candidate_done`. That makes this the reader's job. Before this existed the reader printed one
+    sentence for all four cases — "the process ended, was paused, or the moat went blind" — which
+    described a candidate being vetted at that very moment as a possible crash.
+    """
+    if alive is False:
+        return "abandoned", (
+            "the process that started it is gone and it never wrote a verdict, so nothing will "
+            "finish it — re-vet the candidate to get an answer")
+    if alive is None:
+        return "unknown", (
+            "no pid was recorded on these rows, so whether the process that started it is still "
+            "running cannot be measured from the audit log alone")
+    if silent_s is not None and silent_s > STALL_S:
+        return "stalled", (
+            f"the process is still alive but its run has written nothing for "
+            f"{int(silent_s // 60)} minutes, which is longer than any call this engine makes")
+    return "in_flight", "still being vetted right now by a live process — nothing is wrong"
+
+
+def unfinished(*, days: int = DEFAULT_DAYS, directory: Optional[Path] = None,
+               now: Optional[float] = None,
+               alive: Optional[dict[int, Optional[bool]]] = None) -> dict:
+    """Every candidate that started and never finished, each classified by what stopped it.
+
+    `alive` overrides the process probe, keyed by pid. Tests pass it; nothing else should.
+    """
+    read = audit_rows(days=days, directory=directory, now=now)
+    clock = now if now is not None else time.time()
+
+    runs: dict[str, dict] = {}
+    open_work: dict[str, dict] = {}
+    for r in read["rows"]:
+        rid = str(r.get("run_id") or "")
+        stamp = _epoch(r.get("ts"))
+        if rid:
+            run = runs.setdefault(rid, {"pid": None, "last_ts": None, "last_epoch": None})
+            if r.get("pid") is not None:
+                run["pid"] = r.get("pid")
+            if stamp is not None and (run["last_epoch"] is None or stamp > run["last_epoch"]):
+                run["last_epoch"], run["last_ts"] = stamp, r.get("ts")
+        cid = str(r.get("candidate_id") or "")
+        if not cid:
+            continue
+        event = r.get("event")
+        if event == "candidate_start":
+            open_work[cid] = {"candidate_id": cid, "run_id": rid,
+                              "title": r.get("title") or "", "tier": r.get("tier") or "",
+                              "started_at": r.get("ts"), "started_epoch": stamp,
+                              "checks_seen": 0}
+        elif event == "candidate_done":
+            open_work.pop(cid, None)
+        elif event == "check_result" and cid in open_work:
+            open_work[cid]["checks_seen"] += 1
+
+    probed: dict[int, Optional[bool]] = dict(alive or {})
+    items = []
+    for entry in open_work.values():
+        run = runs.get(entry["run_id"]) or {}
+        pid = run.get("pid")
+        if pid is not None and pid not in probed:
+            probed[pid] = process_alive(pid)
+        is_alive = probed.get(pid) if pid is not None else None
+        silent_s = None if run.get("last_epoch") is None else max(0.0, clock - run["last_epoch"])
+        state, reason = classify_unfinished(alive=is_alive, silent_s=silent_s)
+        items.append({**entry, "pid": pid, "state": state, "reason": reason,
+                      "run_last_ts": run.get("last_ts"),
+                      "silent_s": None if silent_s is None else round(silent_s, 1),
+                      "age_s": None if entry["started_epoch"] is None
+                               else round(max(0.0, clock - entry["started_epoch"]), 1)})
+    items.sort(key=lambda e: str(e["started_at"] or ""), reverse=True)
+
+    counts = Counter(e["state"] for e in items)
+    return {
+        "items": items,
+        "counts": {state: counts.get(state, 0) for state in UNFINISHED_STATES},
+        "total": len(items),
+        # What the operator has to act on. `in_flight` is deliberately excluded: work in progress
+        # is not a fault, and counting it as one is how a real stall gets lost in the noise.
+        "needs_attention": counts.get("abandoned", 0) + counts.get("stalled", 0)
+                           + counts.get("unknown", 0),
+        "stall_after_s": STALL_S,
+        "window_days": days,
+        "dir": read["dir"],
+        "files": read["files"],
+        "unreadable_lines": read["unreadable_lines"],
+        "note": read["note"],
+    }
+
+
+# --------------------------------------------------------------------------- #
 # R18 — the run spine
 # --------------------------------------------------------------------------- #
 def run_index(*, days: int = DEFAULT_DAYS, directory: Optional[Path] = None,
@@ -276,7 +440,10 @@ def run_index(*, days: int = DEFAULT_DAYS, directory: Optional[Path] = None,
             "run_id": rid, "pid": r.get("pid"), "first_ts": r.get("ts"), "last_ts": r.get("ts"),
             "events": 0, "candidates": set(), "decisions": Counter(),
             "checks": 0, "outage_checks": 0, "searches": 0, "search_errors": 0,
+            "started_ids": set(), "done_ids": set(),
         })
+        if r.get("pid") is not None:
+            e["pid"] = r.get("pid")
         e["events"] += 1
         if r.get("ts"):
             if not e["first_ts"] or str(r["ts"]) < str(e["first_ts"]):
@@ -286,8 +453,11 @@ def run_index(*, days: int = DEFAULT_DAYS, directory: Optional[Path] = None,
         ev = r.get("event")
         if r.get("candidate_id"):
             e["candidates"].add(str(r["candidate_id"]))
-        if ev == "candidate_done":
+        if ev == "candidate_start":
+            e["started_ids"].add(str(r.get("candidate_id") or ""))
+        elif ev == "candidate_done":
             e["decisions"][str(r.get("decision") or "?")] += 1
+            e["done_ids"].add(str(r.get("candidate_id") or ""))
         elif ev == "check_result":
             e["checks"] += 1
             if r.get("retrieval_failed"):
@@ -297,10 +467,32 @@ def run_index(*, days: int = DEFAULT_DAYS, directory: Optional[Path] = None,
             if str(r.get("status") or "ok") != "ok":
                 e["search_errors"] += 1
 
+    clock = now if now is not None else time.time()
+    probed: dict[int, Optional[bool]] = {}
+    # Finished ANYWHERE in the window, not just in the run that started it. A candidate a dead
+    # daemon abandoned is routinely re-vetted by the next one, and counting it against the first
+    # run would report work as lost that already has a verdict on disk.
+    done_anywhere = {cid for e in runs.values() for cid in e["done_ids"]}
     out = []
     for e in runs.values():
-        out.append({**e, "candidates": len(e["candidates"]),
+        pid = e.get("pid")
+        if pid is not None and pid not in probed:
+            probed[pid] = process_alive(pid)
+        last = _epoch(e.get("last_ts"))
+        silent_s = None if last is None else max(0.0, clock - last)
+        unfinished_ids = e["started_ids"] - done_anywhere
+        state, reason = classify_unfinished(
+            alive=probed.get(pid) if pid is not None else None, silent_s=silent_s)
+        row = {k: v for k, v in e.items() if k not in ("started_ids", "done_ids")}
+        out.append({**row, "candidates": len(e["candidates"]),
                     "decisions": dict(e["decisions"]),
+                    "unfinished": len(unfinished_ids),
+                    # The run's own liveness, so the list itself shows which runs died with work
+                    # open. Without it a dead run and a working one render identically.
+                    "state": state if unfinished_ids else ("in_flight" if state == "in_flight"
+                                                           else "ended"),
+                    "state_reason": reason if unfinished_ids else "",
+                    "silent_s": None if silent_s is None else round(silent_s, 1),
                     "cost_usd": None, "cost_null_reason": COST_NULL_REASON})
     out.sort(key=lambda e: str(e["last_ts"] or ""), reverse=True)
     return {"runs": out, "window_days": days, "dir": read["dir"], "files": read["files"],
@@ -351,12 +543,21 @@ def run_view(cfg, run_id: str, *, store=None, days: int = DEFAULT_DAYS,
             e["gate"] = r.get("gate")
             e["provisional"] = r.get("provisional")
 
+    # A start with no done is FOUR different situations (see `classify_unfinished`). Probing the
+    # run's process once, here, is what lets the drill-down say which one, instead of printing the
+    # same crash-flavoured guess over a candidate that is being vetted at that very moment.
+    run_pid = next((r.get("pid") for r in rows if r.get("pid") is not None), None)
+    run_alive = process_alive(run_pid)
+    run_last = max((_epoch(r.get("ts")) or 0.0) for r in rows) if rows else None
+    clock = now if now is not None else time.time()
+    run_silent_s = None if not run_last else max(0.0, clock - run_last)
+
     candidates = []
     for cid, e in started.items():
         if e["decision"] is None:
-            e["decision_null_reason"] = (
-                "this run logged candidate_start but no candidate_done — the process ended, was "
-                "paused, or the moat went blind mid-candidate")
+            state, reason = classify_unfinished(alive=run_alive, silent_s=run_silent_s)
+            e["unfinished_state"] = state
+            e["decision_null_reason"] = f"no candidate_done was written: {reason}"
         doc = _load_dossier(store, cid)
         e["dossier"] = {"status": doc["status"], "reason": doc["reason"],
                         "path": doc["path"],

@@ -791,6 +791,19 @@ def _drain_pass(cfg, n_resume: int) -> dict | None:
     is why setting `PAUSE` at 10:30Z could not have cleared the 343 rows no matter how long it
     ran.
     """
+    # RECOVERY RUNS BEFORE THE DRAIN'S OWN OFF-SWITCH, and is not governed by it. Work abandoned
+    # by a killed process has no index row, so it is not backlog and no backlog policy is about
+    # it — `resume_per_tick: 0` turns the treadmill off, not the repair. This is the same
+    # coupling the drain was pulled out of `_default_generate` to break, one cause over.
+    # Measured 2026-08-17: 12 candidates abandoned in four days, 10 with no record in `store/`.
+    try:
+        from prospector.run import recover_abandoned
+        healed = recover_abandoned(cfg, publish=True)
+        if healed.get("orphans"):
+            logger.critical("Tick recovery pass: %s", healed, extra={"recovery": healed})
+    except Exception as exc:  # noqa: BLE001 — a failed repair must never stop the tick
+        logger.warning("Tick recovery pass failed: %s", exc)
+
     if not n_resume:
         return None
     from prospector.run import resume_deferred
