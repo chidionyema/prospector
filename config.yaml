@@ -1518,6 +1518,7 @@ listing:
     ADA: Americans with Disabilities Act
     AWS: Amazon Web Services
     BS: British Standard
+    BVRLA: British Vehicle Rental and Leasing Association
     CBP: Customs and Border Protection
     CIS: Construction Industry Scheme
     CMMC: Cybersecurity Maturity Model Certification
@@ -1533,6 +1534,7 @@ listing:
     FOI: Freedom of Information
     FSA: Food Standards Agency
     FTC: Federal Trade Commission
+    GPU: graphics processing unit
     HB: House Bill
     HSE: Health and Safety Executive
     HTS: Harmonized Tariff Schedule
@@ -1547,12 +1549,16 @@ listing:
     PCI: Payment Card Industry
     RMF: Risk Management Framework
     SKU: stock keeping unit
+    SOPPA: Student Online Personal Protection Act
     STRS: State Teachers' Retirement System
   # DELIBERATELY ABSENT, and each for its own reason. Do not fill these in to clear a row.
   #   METRC — a product name, not an initialism. No expansion has matching initials, so the
   #           copy has to DESCRIBE it ("the state cannabis track-and-trace system").
   #   DCB, SBS, CAP — real terms whose expansion the operator must confirm; several bodies
   #           use each of these letters and picking the wrong one publishes a false claim.
+  #   MCOL — the official expansion is "Money Claim Online", whose initials are MCO. The
+  #           check refuses it, correctly: a glossary entry may only SPELL OUT the letters
+  #           it replaces, and this line needs rewording instead (tried 2026-08-17).
   #   CI, PL, RTY — not initialisms at all. They are fragments the caps-run rule found inside
   #           `PA RTY-100` and similar. A glossary entry would be a lie; these need the LINE
   #           rewritten, or the rule taught about the pattern.
@@ -2266,6 +2272,30 @@ schedule:
   # justify touching either number.
   producer_mode: true
   market_rotation: "us-tx,us-ca,us-fl,us-ny,uk,us-il,us-pa,us-oh,us-ga,uk"
+
+  # PACK RECOVERY (run_scheduled._recover_pass, tools/recover_stranded_passes.py).
+  # A PASS the publish gate refused had no retry: `alerts.py` fired and the pack stayed off
+  # the shelf until a human ran a republish by hand. Measured 2026-08-17: 44 stranded PASSes,
+  # every one passed within that same month, so the strand re-accumulates continuously rather
+  # than being a legacy backlog. This rail pays it down on the same cadence the decay sweep
+  # uses, inside the tick deadline, and appends every attempt to store/ops/pack_recovery.jsonl.
+  #
+  # These keys live under `schedule:`, read by `run_scheduled._sched`. They were written under
+  # `consumer:` first and every one read back as its default — a config key in the wrong block
+  # is not an error in YAML, it is silence, so the test below asserts the parent.
+  #
+  # The ledger is what keeps it from becoming a treadmill: a route that has failed three times
+  # with an IDENTICAL failure signature is skipped, so a pack that cannot recover is paid for
+  # three times, not once per tick forever. It is also how two agent sessions working the same
+  # backlog stop paying for each other's failures.
+  #
+  # `recover_publish` lists what the deterministic gate now passes — the same money-rail action
+  # the engine already takes on any fresh PASS, applied to a repaired one. Set false to repair
+  # and gate only, leaving the listing to a human. 0 packs per tick disables the rail.
+  recover_stranded_packs: true
+  recover_per_tick: 3
+  recover_interval_s: 7200
+  recover_publish: true
 
 # The CONSUMER loop (`python -m prospector.run consume`) — the vetting half of the
 # producer/consumer split. It has NO deadline by design; these four numbers are its pacing.

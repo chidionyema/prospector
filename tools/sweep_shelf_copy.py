@@ -230,7 +230,14 @@ def listed_ids() -> set[str]:
     return out - {None}
 
 
-def live_rows():
+def live_rows(stranded: bool = False, only: set[str] | None = None):
+    """The rows this sweep may rewrite. On the shelf by default.
+
+    `stranded=True` inverts the membership test to the PASS packs that never listed.
+    Their copy fails the same gate for the same reason, and on 2026-08-17 it was what held
+    29 of the 44 stranded packs back — but they have no `store/listings/*.json`, so the
+    default selection can never see the copy that is blocking them.
+    """
     con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
     try:
         live = listed_ids()
@@ -238,8 +245,17 @@ def live_rows():
         for cid, title, one, created in con.execute(
                 "SELECT candidate_id, title, one_liner, created_at FROM dossiers "
                 "WHERE decision = 'pass'"):
-            if cid in live:
-                rows.append((cid, title or "", one or "", created or ""))
+            if only:
+                # An explicit id list wins over the membership test. `listed_ids()` reads
+                # local `store/listings/*.json`, which is NOT the shelf: 26 of the 29
+                # copy-blocked packs on 2026-08-17 had a listing file and were still absent
+                # from api.mumchimp.com/catalog, so the membership test hid exactly the
+                # packs the caller named.
+                if cid not in only:
+                    continue
+            elif (cid in live) is stranded:
+                continue
+            rows.append((cid, title or "", one or "", created or ""))
         return sorted(rows, key=lambda r: r[3])
     finally:
         con.close()
@@ -488,7 +504,12 @@ def main() -> int:
     ap.add_argument("--limit", type=int, default=0, help="stop after N rewrites")
     ap.add_argument("--jobs", type=int, default=8,
                     help="rewrites in flight at once (default 8, the measured-clean MiniMax figure)")
+    ap.add_argument("--stranded", action="store_true",
+                    help="sweep the PASS packs that never listed instead of the live shelf")
+    ap.add_argument("--only", default="",
+                    help="comma-separated pack ids; restricts the selection to these")
     args = ap.parse_args()
+    only = {c.strip() for c in args.only.split(",") if c.strip()}
 
     if args.pull:
         return pull_live(args.api_url, args.dry_run)
@@ -499,7 +520,7 @@ def main() -> int:
             return 2
         return push_live(args.api_url, key, args.dry_run)
 
-    rows = live_rows()
+    rows = live_rows(args.stranded, only)
     bad = [(cid, t, o, c, b) for cid, t, o, c in rows if (b := breaches(t, o))]
     # Split by what a rewrite can reach. A row whose ONLY breach is its title is reported
     # and skipped: rewriting the one-liner cannot clear it, and spending a call to find
@@ -543,7 +564,7 @@ def main() -> int:
                 print(f"  line  -> {new_o}")
             persist(cid, new_line=new_o, new_title=new_t)
         # The rows moved, so re-grade before spending anything on the half a model must do.
-        rows = live_rows()
+        rows = live_rows(args.stranded, only)
         bad = [(cid, t, o, c, b) for cid, t, o, c in rows if (b := breaches(t, o))]
         fixable = [r for r in bad if voice_breaches(r[2])]
         print(f"\nafter the glossary: defective {len(bad)}   "

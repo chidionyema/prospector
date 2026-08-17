@@ -2034,6 +2034,11 @@ TOOLS: list[dict] = [
        "/catalogue", risk="external"),
     _t("tools/verify_pass_shelf_coverage.py", "PASSes the shelf does not show", False,
        "/catalogue", run=True),
+    # Read-only by default: it reports the route each stranded pack needs and what the ledger
+    # already knows about it. `--apply` runs the repairs, `--publish` is the separate flag that
+    # lets it reach the money rail, so the default row here writes nothing.
+    _t("tools/recover_stranded_passes.py", "Repair PASSes the shelf does not show", False,
+       "/catalogue", run=True),
     _t("tools/verify_selling_catalogue.py", "Every selling pack backed by a PASS", False,
        "/catalogue", run=True),
     _t("tools/preview_packs.py", "Read any pack in full without buying", False, "/catalogue"),
