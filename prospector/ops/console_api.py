@@ -55,6 +55,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
 
+from prospector import pack_linter
+
 #: Bumped when the JSON contract changes shape. The web app asserts on it at boot, so a console
 #: talking to an older engine says so instead of rendering blanks.
 CONTRACT_VERSION = 1
@@ -809,6 +811,15 @@ _SHELF_REPAIR = {
 }
 
 
+def _lint_receipt(root: str, cid: str) -> Any:
+    """The pack's stored gate verdict, or None if there is not one this reader can parse."""
+    try:
+        return json.loads(
+            (Path(root) / "store" / "dossiers" / f"{cid}.lint.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
 def _read_shelf(cfg, args: dict) -> dict:
     """Every PASS the engine produced that a buyer cannot buy, and what is holding each one back.
 
@@ -837,20 +848,37 @@ def _read_shelf(cfg, args: dict) -> dict:
         checks = sorted({c.strip() for m in re.findall(r"error\(s\): ([^)]+)\)", why)
                          for c in m.split(",") if c.strip()})
         fix = next((a for k, a in _SHELF_REPAIR.items() if k in why), "manual")
+        # WHETHER TO BELIEVE `why` AT ALL. It is read from the pack's stored `<id>.lint.json`,
+        # and a receipt outlives the rules that wrote it: editing the linter touches no dossier,
+        # so every receipt stays byte-identical and reads as current forever. On 2026-08-17 five
+        # rules stopped blocking and seven stranded packs became sellable while every receipt on
+        # disk still said "blocked" — this page would have printed that, confidently, with no
+        # way for the operator to tell. `verdict` is the honest label, and `shelf.regate` is the
+        # button that resolves it. Same function the tool and the tick use.
+        current = pack_linter.receipt_is_current(_lint_receipt(root, cid))
+        if not current:
+            fix = "shelf.regate"
         rows.append({"id": cid, "created": str(created)[:10], "why": why,
-                     "checks": checks, "repair": fix})
+                     "checks": checks, "repair": fix,
+                     "verdict": "current" if current else "stale — rules changed since"})
         for c in checks or ["other"]:
             reasons[c] = reasons.get(c, 0) + 1
 
     by_repair: dict[str, int] = {}
     for r in rows:
         by_repair[r["repair"]] = by_repair.get(r["repair"], 0) + 1
+    stale = sum(1 for r in rows if r["verdict"] != "current")
     return {"reachable": True, "shelf_packs": len(shelf), "stranded": len(rows),
+            "stale_verdicts": stale,
             "rows": rows, "by_reason": dict(sorted(reasons.items(), key=lambda kv: -kv[1])),
             "by_repair": by_repair,
             "note": "Every row here is a pack that cleared every gate and earns nothing. "
                     "`repair` names the console action that fixes that class; `manual` means "
-                    "no tool repairs it today."}
+                    "no tool repairs it today."
+                    + (f" {stale} of {len(rows)} carry a verdict from rules that have since "
+                       f"changed — the reason shown for those is the OLD answer. Run "
+                       f"`shelf.regate` (a rehearsal: no Stripe object, nothing"
+                       f"listed) to find out what today's rules say." if stale else "")}
 
 
 def _repo_root() -> Path:
@@ -1878,6 +1906,49 @@ def _act_shelf_publish_pending(cfg, payload: dict, preview: bool) -> dict:
                               f"`--all`, which would re-publish packs already selling.")
 
 
+def _act_shelf_regate(cfg, payload: dict, preview: bool) -> dict:
+    """Re-ask the gate about packs whose stored verdict predates the current rules.
+
+    THE SAFEST ACTION ON THIS PAGE, and the one to run first. `--dry-run` returns at
+    `bridge.py:1261`, before `price_for` — no Stripe Price, no R2 upload, no catalogue row, and
+    nothing goes on sale.
+
+    It is also the cheapest: no model call either, because the generation loop under `--dry-run`
+    is `range(1, 1)`. The only thing it writes is `store/dossiers/<id>.lint.json`, which undo
+    covers in full. The cost is network — the linter probes the URLs each pack cites, ~124s a
+    pack measured 2026-08-17 — and `publish_passes` gates ~10 at a time, so 40 packs is minutes
+    rather than the hour and a quarter it was while the gate ran one at a time.
+
+    Why it exists: a receipt outlives the rules that wrote it. Editing the linter touches no
+    dossier, so every receipt stays byte-identical and the shelf page goes on printing an
+    answer nobody has re-asked. On 2026-08-17 five rules stopped blocking and seven stranded
+    packs became sellable while every receipt on disk still said "blocked".
+
+    It lists nothing. It replaces an out-of-date reason with a current one; putting a pack back
+    on sale stays a separate, deliberate act.
+    """
+    shelf = _read_shelf(cfg, {})
+    if not shelf.get("reachable"):
+        raise RuntimeError(
+            f"the live shelf could not be read, so which verdicts are stale is UNKNOWN, not "
+            f"none: {shelf.get('reason')}")
+    root = _repo_root()
+    paths = sorted(f"store/dossiers/{r['id']}.pass.json" for r in (shelf.get("rows") or [])
+                   if r.get("repair") == "shelf.regate"
+                   and (root / "store" / "dossiers" / f"{r['id']}.pass.json").exists())
+    if not paths:
+        return {"action": "shelf.regate", "applied": False, "changed": False,
+                "message": "Every stranded pack's verdict was produced by the rules running "
+                           "now, so re-gating would ask a question that is already answered."}
+    return _run_repair(cfg, "shelf.regate", ["-m", "tools.publish_passes", "--dry-run", *paths],
+                       preview, payload=payload,
+                       effect=f"re-runs the gate on the {len(paths)} stranded pack(s) whose "
+                              f"stored verdict came from rules that have since changed, and "
+                              f"rewrites each `.lint.json`. Mints nothing, publishes nothing, "
+                              f"lists nothing — it only replaces an out-of-date reason with a "
+                              f"current one.")
+
+
 def _act_daemon_restart(cfg, payload: dict, preview: bool) -> dict:
     """Restart a launchd-supervised engine process from the console.
 
@@ -1890,7 +1961,7 @@ def _act_daemon_restart(cfg, payload: dict, preview: bool) -> dict:
     Not destructive in the sense `index.reconcile` is: the worst case is a clean process replacing
     a running one, and the plists are the estate's own declaration of how these processes start.
     """
-    from .supervisor import JOBS, PRODUCER, job_state, restart
+    from .supervisor import JOBS, PRODUCER, deploy_plist_path, job_state, restart
 
     label = str(payload.get("label") or PRODUCER).strip()
     if label not in JOBS:
@@ -1901,10 +1972,17 @@ def _act_daemon_restart(cfg, payload: dict, preview: bool) -> dict:
         if state["loaded"] is None:
             effect = f"cannot ask launchctl ({state['reason']}) — this would do nothing"
         elif not state["loaded"]:
-            effect = (f"job is NOT loaded, so nothing can relaunch it — bootstraps "
-                      f"{state['plist']}, which starts it (RunAtLoad) and keeps it up (KeepAlive)"
-                      if state["plist_exists"] else
-                      f"job is NOT loaded and {state['plist']} does not exist — nothing to do")
+            if state["plist_exists"]:
+                effect = (f"job is NOT loaded, so nothing can relaunch it — bootstraps "
+                          f"{state['plist']}, which starts it (RunAtLoad) and keeps it up "
+                          f"(KeepAlive)")
+            else:
+                deploy = deploy_plist_path(label)
+                effect = (f"job has NEVER been installed — copies the tracked plist "
+                          f"{deploy.name} from deploy/ to {state['plist']}, then bootstraps it"
+                          if deploy.exists() else
+                          f"job is NOT loaded, {state['plist']} does not exist and there is no "
+                          f"tracked plist at {deploy} — nothing to do")
         else:
             effect = (f"SIGKILLs pid {state['pid'] or '—'} and lets launchd start a clean process "
                       f"(`launchctl kickstart -k`); in-flight work on this tick is lost")
@@ -1916,6 +1994,7 @@ def _act_daemon_restart(cfg, payload: dict, preview: bool) -> dict:
 ACTIONS: dict[str, Callable[[Any, dict, bool], dict]] = {
     "shelf.repair_copy": _act_shelf_repair_copy,
     "shelf.publish_pending": _act_shelf_publish_pending,
+    "shelf.regate": _act_shelf_regate,
     "daemon.restart": _act_daemon_restart,
     "pause.arm": _act_pause_arm,
     "pause.disarm": _act_pause_disarm,
@@ -2034,6 +2113,10 @@ TOOLS: list[dict] = [
        cmd=".venv/bin/python -m prospector.ops.spend"),
     _t("prospector/ops/runs.py", "Run and candidate internals", False, "/runs", run=True,
        cmd=".venv/bin/python -m prospector.ops.runs --runs"),
+    _t("scripts/ops_state.py", "Live value of every fact the ops programme asserts", False, "/",
+       run=True, cmd=".venv/bin/python scripts/ops_state.py"),
+    _t("scripts/launchd_plists.py", "Launchd job definitions, and drift against them", False,
+       "/engine", run=True, cmd=".venv/bin/python scripts/launchd_plists.py --check"),
     _t("tools/spend_today.py", "Today's spend against the cap", False, "/spend"),
     # --- publish / republish ---
     _t("publish/publish.py", "The single publish entry point", True, "/catalogue",
@@ -2042,6 +2125,16 @@ TOOLS: list[dict] = [
        "/catalogue", risk="external"),
     _t("tools/publish_passes.py", "Generate content then publish", True, "/catalogue",
        risk="external", danger="costs model calls"),
+    # The same tool with the money rail switched off. `--dry-run` returns at bridge.py:1261,
+    # before `price_for`, so no Stripe Price, no R2 upload and no catalogue row — it reuses the
+    # stored artifacts, runs every deterministic gate, and rewrites store/dossiers/<id>.lint.json.
+    # risk="local" is therefore exact, and undo covers all of it.
+    #
+    # It only re-gates packs whose stored verdict is stale, so running it after a linter change
+    # is how the catalogue's own answer to "why is this pack not on sale?" catches up with the
+    # rules. Before this row the operator's only route to that was a terminal.
+    _t("tools/publish_passes.py", "Re-gate stale verdicts (mints nothing)", True, "/catalogue",
+       risk="local", cmd=".venv/bin/python tools/publish_passes.py --dry-run --all"),
     _t("tools/backfill_missing_listings.sh", "Mass publish stranded PASSes", True, "/catalogue",
        risk="external", danger="bulk publish — review the stranded list first",
        cmd="bash tools/backfill_missing_listings.sh"),
@@ -2161,6 +2254,8 @@ TOOLS: list[dict] = [
 NOT_AN_OPS_TOOL: dict[str, str] = {
     # developer and CI tooling — it runs in a terminal or in GitHub Actions, never from an ops page
     "scripts/ci-gate.sh": "the POPDD CI gate; GitHub Actions runs it, not an operator",
+    "scripts/seed_action_cache.sh": "fills the self-hosted runners' action cache; CI plumbing, "
+                                    "run once on the runner box, not from an ops page",
     "scripts/setup_worktree.sh": "makes a git worktree usable; a developer's machine, not ops",
     "scripts/test_impacted.py": "picks the tests a local edit can affect; a developer's loop",
     "scripts/verify_engine_change.sh": "the pre-commit proof that an engine change is safe",
@@ -2188,9 +2283,6 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     # on disk but unclassified until now. `run_ops_console.sh` and `build_sample_fixture.py`
     # are covered above; these two are the remainder.
     "scripts/ci_local.py": "replays a CI job's shell steps on this machine; a developer's loop",
-    "tools/_audit_baseline_tmp.py": "a one-off inventory of failure-to-empty-answer sites, kept "
-                                    "for its findings; the leading underscore says it is not a "
-                                    "command",
 }
 
 

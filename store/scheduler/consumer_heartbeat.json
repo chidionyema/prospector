@@ -1,1 +1,1 @@
-{"ts": "2026-08-17T12:44:23.663454+00:00", "mono": 447787.038923514, "pid": 30686, "role": "consumer", "phase": "draining", "cycle": 42, "batch": 24, "resumed_total": 562, "errors": 0, "code": "7b0c54f504b7"}
+{"ts": "2026-08-17T18:45:41.282064+00:00", "mono": 469464.657519443, "pid": 94051, "role": "consumer", "phase": "idle", "cycle": 8, "idle_streak": 8, "resumed_total": 0, "next_check": 1786992401.2820559, "code": "47fc1e3a81d5"}

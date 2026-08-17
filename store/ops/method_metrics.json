@@ -1,22 +1,22 @@
 {
-  "generated_at": "2026-08-17T11:11:44+00:00",
+  "generated_at": "2026-08-17T15:43:37+00:00",
   "project": "-Users-chidionyema-Documents-code-prospector",
   "headline": {
-    "stop_rate_per_100": 1.7,
+    "stop_rate_per_100": 1.73,
     "target_30d": 1.2,
     "target_60d": 0.8,
     "verdict": "above target",
-    "complaints": 373,
-    "messages": 1690,
+    "complaints": 405,
+    "messages": 1773,
     "untracked_themes": 3,
-    "unenforced_themes": 12,
-    "inert_mechanisms": 8,
+    "unenforced_themes": 10,
+    "inert_mechanisms": 7,
     "orphaned_mechanisms": 0,
-    "output_tokens_per_call": 2274.6
+    "output_tokens_per_call": 2245.4
   },
   "stops": {
-    "events": 705,
-    "calls": 41459,
+    "events": 746,
+    "calls": 43225,
     "by_month": [
       {
         "month": "2026-07",
@@ -26,61 +26,76 @@
       },
       {
         "month": "2026-08",
-        "stops": 680,
-        "calls": 37512,
-        "rate": 1.81
+        "stops": 721,
+        "calls": 39278,
+        "rate": 1.84
       }
     ],
     "top_signatures": [
       {
         "signature": "Agent",
         "count": 54,
-        "share": 7.7
+        "share": 7.2
       },
       {
         "signature": "Bash:python -m pytest",
         "count": 42,
-        "share": 6.0
+        "share": 5.6
       },
       {
         "signature": "AskUserQuestion",
         "count": 34,
-        "share": 4.8
+        "share": 4.6
       },
       {
         "signature": "Bash:for i",
         "count": 30,
-        "share": 4.3
+        "share": 4.0
       },
       {
         "signature": "Bash:git add",
         "count": 20,
-        "share": 2.8
-      },
-      {
-        "signature": "Bash:python <<'PY'",
-        "count": 19,
         "share": 2.7
       },
       {
         "signature": "Bash:exit 1",
-        "count": 17,
-        "share": 2.4
+        "count": 19,
+        "share": 2.5
+      },
+      {
+        "signature": "Bash:python <<'PY'",
+        "count": 19,
+        "share": 2.5
       },
       {
         "signature": "Bash:python3 <<'PY'",
         "count": 14,
-        "share": 2.0
+        "share": 1.9
       },
       {
         "signature": "Edit:.py",
         "count": 14,
-        "share": 2.0
+        "share": 1.9
+      },
+      {
+        "signature": "Write:.md",
+        "count": 10,
+        "share": 1.3
       },
       {
         "signature": "Bash:python3 \"",
         "count": 10,
-        "share": 1.4
+        "share": 1.3
+      },
+      {
+        "signature": "Edit:.md",
+        "count": 9,
+        "share": 1.2
+      },
+      {
+        "signature": "Bash:gh pr",
+        "count": 9,
+        "share": 1.2
       },
       {
         "signature": "Bash:git commit",
@@ -88,22 +103,7 @@
         "share": 1.1
       },
       {
-        "signature": "Edit:.md",
-        "count": 8,
-        "share": 1.1
-      },
-      {
         "signature": "Bash:for f",
-        "count": 8,
-        "share": 1.1
-      },
-      {
-        "signature": "mcp__claude-in-chrome__browser_batch",
-        "count": 8,
-        "share": 1.1
-      },
-      {
-        "signature": "mcp__claude-in-chrome__javascript_tool",
         "count": 8,
         "share": 1.1
       }
@@ -121,9 +121,9 @@
       },
       {
         "month": "2026-08",
-        "output_tokens": 85324513,
-        "tool_calls": 37512,
-        "per_call": 2274.6
+        "output_tokens": 88195372,
+        "tool_calls": 39278,
+        "per_call": 2245.4
       }
     ]
   },
@@ -138,9 +138,9 @@
       "due": "2026-09-16",
       "depends_on": "rule-guard.py wired into settings.json and Claude Code relaunched",
       "if_wrong": "Delete the rules. A guard that does not move the rate is ceremony.",
-      "actual": 1.7004751682385006,
+      "actual": 1.725853094274147,
       "verdict": "pending",
-      "moved": 0.0
+      "moved": 0.03
     },
     {
       "id": "P2-surgical",
@@ -152,9 +152,9 @@
       "due": "2026-09-16",
       "depends_on": "nothing \u2014 this is behaviour, not a mechanism",
       "if_wrong": "The behaviour rules do not bind without a mechanism, and the honest answer is to build one or stop claiming it.",
-      "actual": 2274.6,
+      "actual": 2245.4,
       "verdict": "pending",
-      "moved": -0.2
+      "moved": -29.4
     },
     {
       "id": "P3-ci-wallclock",
@@ -173,11 +173,11 @@
   "themes": [
     {
       "theme": "(unclustered)",
-      "count": 89,
+      "count": 97,
       "months": 2,
       "by_month": {
         "2026-07": 2,
-        "2026-08": 87
+        "2026-08": 95
       },
       "check": null,
       "enforced_by": null,
@@ -200,10 +200,10 @@
     },
     {
       "theme": "efficiency / cost / speed",
-      "count": 78,
+      "count": 81,
       "months": 1,
       "by_month": {
-        "2026-08": 78
+        "2026-08": 81
       },
       "check": "python3 ~/.claude/scripts/token-audit.py -Users-chidionyema",
       "enforced_by": "tool-drip-guard.py, context-guard-hook.py",
@@ -226,11 +226,11 @@
     },
     {
       "theme": "proof / unverified claims",
-      "count": 77,
+      "count": 80,
       "months": 2,
       "by_month": {
         "2026-07": 4,
-        "2026-08": 73
+        "2026-08": 76
       },
       "check": "python3 ~/.claude/scripts/reflect.py --complaints",
       "enforced_by": "stop-hook: every number in a reply must appear in a tool result",
@@ -253,11 +253,11 @@
     },
     {
       "theme": "sloppiness / broken output",
-      "count": 75,
+      "count": 78,
       "months": 2,
       "by_month": {
         "2026-07": 3,
-        "2026-08": 72
+        "2026-08": 75
       },
       "check": ".venv/bin/python scripts/popdd_verify.py --staged",
       "enforced_by": "POPDD gate (CI only \u2014 the local hook is not installed)",
@@ -280,15 +280,15 @@
     },
     {
       "theme": "rushing / scope / firefighting",
-      "count": 67,
+      "count": 71,
       "months": 2,
       "by_month": {
         "2026-07": 4,
-        "2026-08": 63
+        "2026-08": 67
       },
       "check": "python3 ~/.claude/scripts/rule-guard.py --selftest",
       "enforced_by": "rule-guard.py rule_pr_size",
-      "enforced_live": false,
+      "enforced_live": true,
       "tracked": true,
       "samples": [
         {
@@ -307,11 +307,11 @@
     },
     {
       "theme": "process / no follow-up",
-      "count": 60,
+      "count": 61,
       "months": 2,
       "by_month": {
         "2026-07": 3,
-        "2026-08": 57
+        "2026-08": 58
       },
       "check": "python3 ~/.claude/scripts/reflect.py --trend",
       "enforced_by": null,
@@ -334,15 +334,15 @@
     },
     {
       "theme": "repeating the same mistake",
-      "count": 51,
+      "count": 53,
       "months": 2,
       "by_month": {
         "2026-07": 2,
-        "2026-08": 49
+        "2026-08": 51
       },
       "check": "python3 ~/.claude/scripts/rule-guard.py --selftest",
       "enforced_by": "rule-guard.py PreToolUse (5 rules)",
-      "enforced_live": false,
+      "enforced_live": true,
       "tracked": true,
       "samples": [
         {
@@ -361,10 +361,10 @@
     },
     {
       "theme": "cannot tell what you are doing",
-      "count": 42,
+      "count": 49,
       "months": 1,
       "by_month": {
-        "2026-08": 42
+        "2026-08": 49
       },
       "check": "curl -s localhost:8611/api/ops/read/method",
       "enforced_by": "Ops Console /method page",
@@ -387,11 +387,11 @@
     },
     {
       "theme": "items raised then dropped",
-      "count": 41,
+      "count": 43,
       "months": 2,
       "by_month": {
         "2026-07": 2,
-        "2026-08": 39
+        "2026-08": 41
       },
       "check": "python3 ~/.claude/scripts/reflect.py --json",
       "enforced_by": "this register \u2014 an item with no check is printed as untracked",
@@ -414,11 +414,11 @@
     },
     {
       "theme": "tracking / duplication / other agents",
-      "count": 32,
+      "count": 36,
       "months": 2,
       "by_month": {
         "2026-07": 2,
-        "2026-08": 30
+        "2026-08": 34
       },
       "check": "python3 ~/.claude/scripts/reflect.py --json",
       "enforced_by": null,
@@ -440,38 +440,12 @@
       ]
     },
     {
-      "theme": "is it actually shipped",
-      "count": 27,
-      "months": 1,
-      "by_month": {
-        "2026-08": 27
-      },
-      "check": "python3 scripts/ops_status.py",
-      "enforced_by": "Ops Console /method page",
-      "enforced_live": false,
-      "tracked": true,
-      "samples": [
-        {
-          "month": "2026-08",
-          "text": "founder first name Chidi, we eed to ship already"
-        },
-        {
-          "month": "2026-08",
-          "text": "also still seeing round prices on live, why?"
-        },
-        {
-          "month": "2026-08",
-          "text": "klook stop ranblig and actually get things done and concluded and finished and shipped"
-        }
-      ]
-    },
-    {
       "theme": "communication / format",
-      "count": 26,
+      "count": 32,
       "months": 2,
       "by_month": {
         "2026-07": 1,
-        "2026-08": 25
+        "2026-08": 31
       },
       "check": null,
       "enforced_by": null,
@@ -489,6 +463,32 @@
         {
           "month": "2026-08",
           "text": "(raw API: HTTP 400, *\"Your credit balance is too low to access the Anthropic API\"*), and it disables claude.ai connectors. It survives ONLY in the Nothing to unset or edit. footer email/legal/disclaimer/CTA row. does not"
+        }
+      ]
+    },
+    {
+      "theme": "is it actually shipped",
+      "count": 28,
+      "months": 1,
+      "by_month": {
+        "2026-08": 28
+      },
+      "check": "python3 scripts/ops_status.py",
+      "enforced_by": "Ops Console /method page",
+      "enforced_live": false,
+      "tracked": true,
+      "samples": [
+        {
+          "month": "2026-08",
+          "text": "founder first name Chidi, we eed to ship already"
+        },
+        {
+          "month": "2026-08",
+          "text": "also still seeing round prices on live, why?"
+        },
+        {
+          "month": "2026-08",
+          "text": "klook stop ranblig and actually get things done and concluded and finished and shipped"
         }
       ]
     },
@@ -575,6 +575,12 @@
       "orphaned": false
     },
     {
+      "name": "idle-guard.py",
+      "live": true,
+      "documented": true,
+      "orphaned": false
+    },
+    {
       "name": "memory-loop.py",
       "live": true,
       "documented": true,
@@ -588,7 +594,7 @@
     },
     {
       "name": "rule-guard.py",
-      "live": false,
+      "live": true,
       "documented": true,
       "orphaned": false
     },
@@ -607,7 +613,7 @@
     {
       "name": "tool-drip-guard.py",
       "live": true,
-      "documented": false,
+      "documented": true,
       "orphaned": false
     }
   ]
