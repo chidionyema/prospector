@@ -49,6 +49,7 @@ import { freshCatalog, lastKnownCatalog, rememberCatalog } from '@/lib/catalogCa
 import { formatPriceForMarket, currencyForCountry, type Currency } from '@/lib/fx';
 import { repairTruncation } from '@/lib/copy';
 import { track } from '@/lib/analytics';
+import { useCardImpressions } from '@/lib/useCardImpressions';
 import { priceRange, formatGbp } from '@/lib/priceRange';
 // `type Category` was imported here for `PackCoverArt`'s `category` prop and went with it
 // (2026-08-14). The card reads the object off `categoryFor(pack)` locally and never passes it.
@@ -697,6 +698,59 @@ function relaxLabelFor(kind: keyof typeof KIND_NOUN): string {
  * the packs are already here, so re-running `getServerSideProps` would be a network round trip
  * that changes nothing on screen.
  */
+/**
+ * The home shelf's own list of rows, and the reason it is not `PackRowList`.
+ *
+ * Rows past the fold are `hidden`, not unmounted, so their links stay in the server HTML for
+ * search. That per-row class is the one thing the shared list cannot express, which is why this
+ * list is written out separately.
+ *
+ * It is a component rather than inline JSX because it counts impressions, and counting needs a
+ * hook. The block it replaced sat inside an IIFE in the middle of `CatalogBrowser`'s render, where
+ * a hook call would be conditional on the branch above it and React forbids that.
+ *
+ * The spotlight above this list is deliberately NOT counted. It is a different card format, and a
+ * click-through rate that mixes a poster with a row measures the format, not the title. Whichever
+ * pack holds the spotlight therefore contributes no data to a title test that day.
+ */
+function ShelfRows({
+  rows,
+  currency,
+  viewerMarket,
+  viewedSet,
+  beyondFold,
+  belowSpotlight,
+}: {
+  rows: readonly Pack[];
+  currency: Currency;
+  viewerMarket: string;
+  viewedSet: ReadonlySet<string>;
+  /** True for rows the reader has not revealed yet; they render `hidden`. */
+  beyondFold: (pack: Pack) => boolean;
+  /** Adds the gap under the spotlight card when there is one. */
+  belowSpotlight: boolean;
+}) {
+  const { observe } = useCardImpressions();
+  return (
+    /* `divide-y` on the parent, no border on the child. The line between two rows is structural;
+       a box drawn around each row is not. */
+    <ul className={cx('divide-y divide-border', belowSpotlight && 'mt-8')}>
+      {rows.map((pack, i) => (
+        <li key={pack.id} className={cx(beyondFold(pack) && 'hidden')}>
+          <PackRow
+            pack={pack}
+            currency={currency}
+            viewerMarket={viewerMarket}
+            viewed={viewedSet.has(pack.id)}
+            observeRef={observe(pack.id)}
+            position={i + 1}
+          />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function CatalogBrowser({
   packs,
   initialState,
@@ -1238,27 +1292,14 @@ function CatalogBrowser({
                     )}
 
                     {rows.length > 0 && (
-                      /* `divide-y` on the parent, no border on the child. The line between two
-                         rows is structural; a box drawn around each row is not.
-
-                         Rendered here rather than through `PackRowList` for one reason: cards past
-                         the fold are `hidden`, NOT unmounted, so their internal links stay in the
-                         server HTML. That per-item class is the only thing the shared list does
-                         not express, and it is load-bearing for search. */
-                      <ul
-                        className={cx('divide-y divide-border', spotlight && 'mt-8')}
-                      >
-                        {rows.map((pack) => (
-                          <li key={pack.id} className={cx(beyondFold(pack) && 'hidden')}>
-                            <PackRow
-                              pack={pack}
-                              currency={currency}
-                              viewerMarket={market}
-                              viewed={viewedSet.has(pack.id)}
-                            />
-                          </li>
-                        ))}
-                      </ul>
+                      <ShelfRows
+                        rows={rows}
+                        currency={currency}
+                        viewerMarket={market}
+                        viewedSet={viewedSet}
+                        beyondFold={beyondFold}
+                        belowSpotlight={Boolean(spotlight)}
+                      />
                     )}
                   </>
                 );
