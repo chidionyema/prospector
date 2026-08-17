@@ -93,7 +93,7 @@ describe('rendered copy carries no engine vocabulary', () => {
   });
 
   /* The hero's ambient kill column was the second component rendering `gateLabel` and is gone
-     (replaced by `PopulationField`, which renders no per-idea copy at all, so a copy-register
+     (replaced by `KillGrid`, which renders no per-idea copy at all, so a copy-register
      assertion over it would pass whatever it did). `LiveKillCard` above is now the only surface
      that prints a gate's name, and the raw-data guard below still covers the file both read. */
 

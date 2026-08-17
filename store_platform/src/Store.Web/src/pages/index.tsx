@@ -26,7 +26,7 @@ import { PackSpecimen } from '@/components/marketing/PackSpecimen';
 // `LiveKillCard` is no longer imported here: its render site below the shelf was removed on
 // 2026-08-14 (see the record where it stood). The component is untouched and still used elsewhere.
 import { HeroEvidenceStrip } from '@/components/marketing/HeroEvidenceStrip';
-import PopulationField from '@/components/marketing/PopulationField';
+import KillGrid from '@/components/marketing/KillGrid';
 import TrustGuaranteesRow from '@/components/marketing/TrustGuaranteesRow';
 import { BuyDrawerProvider } from '@/components/checkout/BuyDrawer';
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
@@ -1541,7 +1541,7 @@ export default function Home({ packs, stats, initialState, market, currency, per
      `HeroEvidenceStrip` as well until 2026-08-13, which put "1,364" and an identically-worded
      "Read the kill log" link at y=735 and again at y~1180 of the same 1440x900 screen. The strip
      is the copy that stayed because it is the only one a phone ever reaches: `HeroEvidenceStrip`
-     is `hidden md:block` and `PopulationField` is desktop-and-tall only.
+     is `hidden md:block` and `KillGrid` is desktop only.
 
      The old rule still stands and is the reason the number is not typed anywhere: every surface
      reads `kill-log-totals.json` or `RESEARCH_STATS`, never its own copy, because a "1,168 killed"
@@ -1617,8 +1617,8 @@ export default function Home({ packs, stats, initialState, market, currency, per
             sceptical stranger can check. */}
         {/* The `relative` wrapper and the `z-10` on the row below are the last of the positioning
             scaffolding that `AmbientKillColumn` needed (it was `absolute inset-y-0 right-0 z-0`
-            behind this row). The column is gone -- see `PopulationField` below for what replaced
-            it and the measurement that condemned it -- and the stacking context is kept only
+            behind this row). The column is gone -- see `KillGrid` in the right-hand slot for what
+            replaced it and the measurement that condemned it -- and the stacking context is kept only
             because the featured card's opaque fill still relies on it. */}
         <div className="relative">
         <div className="relative z-10 flex flex-col gap-10 lg:grid lg:grid-cols-[1fr_420px] lg:items-start lg:gap-12">
@@ -1783,69 +1783,63 @@ export default function Home({ packs, stats, initialState, market, currency, per
                 phone this is the last object between the fold and a product. */}
             <HeroEvidenceStrip className="mt-5 hidden md:mt-6 md:block" />
           </div>
-          {/* THE PRODUCT, not the filter log.
-              What stood here was `LiveKillCard` -- the killed/survived ledger. Beside a headline
-              promising researched business ideas, the largest and only coloured object on the
-              first screen was three ideas we had thrown away. A shop's first screen shows the
-              thing you can buy.
+          {/* THE SIGNATURE DEVICE (MASTER-BRIEF §7, `mockups/index.html`). Every idea the
+              engine has researched, one square each, with the shelf in teal and every teal square
+              a link to its pack.
 
-              Desktop only, and there is no mobile duplicate any more: the whole `hidden lg:block`
-              / `lg:hidden` pair is gone, because the reason it existed was to place a panel that
-              is no longer in the hero.
+              IT TOOK THE HERO'S RIGHT COLUMN FROM THE FEATURED PACK, AND THE PACK DID NOT GO. It
+              moved to a band directly under this row, which is the slot `PopulationField` used to
+              hold. The brief gives each page one signature device and puts this one here; the
+              product is still on the first screen on any display tall enough to have shown the
+              old population band, one scroll-free row lower.
 
-              `featured.id` is handed to the shelf so this card and the shelf's "Newest survivors"
-              row cannot show the same pack at the same time -- they did, on the first screen at
-              1440x900, until the row was made breakpoint-aware (see `rowHasFeatured`). On mobile
-              this slot is not rendered and the pack is simply the first card in the grid. */}
-          {featured && (
-            /* `relative z-10 bg-surface` was added because this slot sat directly over
-               `AmbientKillColumn` (`absolute inset-y-0 right-0 z-0`): the card itself is opaque
-               (`bg-surface`, see `PackSpotlight`), but the heading above it and the
-               padding around it were not, so ticker text rendered legibly through the gap --
-               "...Builder  The value would n[ot last]" sitting directly above "New this week"
-               (ss_0456bw1wg, live mumchimp.com/, 2026-08-09). That column is gone, so nothing
-               shows through any more; the fill stays because `--surface` and `--bg` are the same
-               white (tokens.css:80,81) and removing it would be a no-op edit on a card whose
-               background is otherwise inherited from whatever band it is dropped into. */
-            <div className="relative z-10 hidden w-full rounded-md bg-surface p-4 lg:block">
-              {/* Sentence case, and the same `text-meta font-semibold` as every other row heading
-                  on the shelf below. It was `uppercase tracking-wide text-caption`, which the
-                  house policy forbids (`__tests__/weightAndCasePolicy.test.ts`): CSS caps leave
-                  the accessible name in sentence case while a screen reader may spell out the
-                  rendered form, and this label sits directly above the one product on screen. */}
-              <h2 className="mb-3 text-meta font-semibold text-text">
-                New this week
-              </h2>
-              <PackSpotlight
-                pack={featured}
-                currency={currency}
-                viewerMarket={market}
-                viewed={viewedIds.includes(featured.id)}
-              />
-            </div>
-          )}
+              THE OLD DOM-ORDER ARGUMENT DOES NOT APPLY TO IT. `PopulationField` had to sit after
+              this row because it was ~1,400 elements and the h1 is this page's LCP element. The
+              grid is one `<path>` plus one `<rect>` per listed pack -- around fifty nodes -- so
+              there is nothing to defer. */}
+          <KillGrid packs={packs} className="hidden lg:block" />
         </div>
-        {/* THE POPULATION, AT FULL WIDTH AND UNDER THE CLAIM IT SUPPORTS.
+        {/* THE PRODUCT, not the filter log.
+            What stood here was `LiveKillCard` -- the killed/survived ledger. Beside a headline
+            promising researched business ideas, the largest and only coloured object on the
+            first screen was three ideas we had thrown away. A shop's first screen shows the
+            thing you can buy.
 
-            AFTER the two-column row in DOM order, not behind it. The h1 is this page's LCP
-            element (see the `animate-settle` note on the band above, F-005), and the field is
-            ~1,400 elements: putting it first would make the browser lay all of them out before it
-            painted the headline. Here it costs the LCP nothing.
+            Desktop only, and there is no mobile duplicate any more: the whole `hidden lg:block`
+            / `lg:hidden` pair is gone, because the reason it existed was to place a panel that
+            is no longer in the hero.
 
-            THE HEIGHT GATE IS A FOLD DECISION AND USES THE SAME THRESHOLD AS THE BAND PADDING
-            ABOVE. The field costs ~150px including its captions. At 1280x720 -- Playwright's
-            Desktop Chrome and a real 720p laptop -- the first pack card already sits within ~50px
-            of the fold after the padding trim documented on the SectionBand, so 150px there would
-            put the product back off-screen, which is the exact regression that trim exists to
-            undo. `min-height:821px` is the complement of that `max-height:820px` query: on a tall
-            display the hero has the room, on a short one the shop keeps its product.
-
-            `lg:` because below it the layout is one column and every pixel here pushes the first
-            card down directly -- the same reason `HeroEvidenceStrip` beside it is `hidden md:block`. */}
-        <PopulationField
-          shelfCount={packs.length}
-          className="mt-10 hidden [@media(min-height:821px)]:lg:block"
-        />
+            `featured.id` is handed to the shelf so this card and the shelf's "Newest survivors"
+            row cannot show the same pack at the same time -- they did, on the first screen at
+            1440x900, until the row was made breakpoint-aware (see `rowHasFeatured`). On mobile
+            this slot is not rendered and the pack is simply the first card in the grid. */}
+        {featured && (
+          /* `relative z-10 bg-surface` was added because this slot sat directly over
+             `AmbientKillColumn` (`absolute inset-y-0 right-0 z-0`): the card itself is opaque
+             (`bg-surface`, see `PackSpotlight`), but the heading above it and the
+             padding around it were not, so ticker text rendered legibly through the gap --
+             "...Builder  The value would n[ot last]" sitting directly above "New this week"
+             (ss_0456bw1wg, live mumchimp.com/, 2026-08-09). That column is gone, so nothing
+             shows through any more; the fill stays because `--surface` and `--bg` are the same
+             white (tokens.css:80,81) and removing it would be a no-op edit on a card whose
+             background is otherwise inherited from whatever band it is dropped into. */
+          <div className="relative z-10 mt-10 hidden w-full max-w-[420px] rounded-card bg-surface p-4 lg:block">
+            {/* Sentence case, and the same `text-meta font-semibold` as every other row heading
+                on the shelf below. It was `uppercase tracking-wide text-caption`, which the
+                house policy forbids (`__tests__/weightAndCasePolicy.test.ts`): CSS caps leave
+                the accessible name in sentence case while a screen reader may spell out the
+                rendered form, and this label sits directly above the one product on screen. */}
+            <h2 className="mb-3 text-meta font-semibold text-text">
+              New this week
+            </h2>
+            <PackSpotlight
+              pack={featured}
+              currency={currency}
+              viewerMarket={market}
+              viewed={viewedIds.includes(featured.id)}
+            />
+          </div>
+        )}
         </div>
       </SectionBand>
 
@@ -2017,9 +2011,9 @@ export default function Home({ packs, stats, initialState, market, currency, per
           silently left: `TrustGuaranteesRow` hardcodes "<killed> ideas were killed to list these
           <live>" at `TrustGuaranteesRow.tsx:117` with no prop to suppress it, and the row itself is
           load-bearing for a different reason -- it is the page's single canonical statement of the
-          purchase terms. `PopulationField` states the kill total only in its `role="img"` label
-          (`PopulationField.tsx:132`), never in visible text, and its own docblock records that the
-          visible arithmetic was deliberately removed for exactly this reason. */}
+          purchase terms. `KillGrid` states the kill total only inside the SVG `<desc>` that
+          describes the picture to a screen reader, never in visible text, and its own docblock
+          records that the visible arithmetic was deliberately removed for exactly this reason. */}
 
       {/* 3. ONE REAL PACK, SHOWN. Format ambiguity is the biggest killer on a digital download
              page: the buyer's real fear is paying £49 for a two-page Google Doc. */}

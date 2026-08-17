@@ -138,9 +138,9 @@ describe('US-3 - Hero with a demonstration of the moat', () => {
     // SCOPE, stated so the next reader does not "fix" a failure this test cannot see. This
     // assertion owns index.tsx's own body and nothing else. Two components mounted by this page
     // also reach the same total, and both are deliberate: `MarketingLayout.tsx:472`, the
-    // site-wide footer ledger that renders on every route, and `PopulationField.tsx:132`, which
-    // names it inside an `aria-label` because the field is a graphic and a screen reader needs
-    // the figure it depicts. `TrustGuaranteesRow` printed a third ("N ideas were killed to list
+    // site-wide footer ledger that renders on every route, and `KillGrid`, which names it inside
+    // the SVG `<desc>` because the field is a graphic and a screen reader needs the figure it
+    // depicts. `TrustGuaranteesRow` printed a third ("N ideas were killed to list
     // these M") until the founder cut it on 2026-08-14. Counting renders across components would
     // make this test fail on another component's copy decision, which is how a guard test starts
     // being deleted rather than read.

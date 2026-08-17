@@ -128,10 +128,11 @@ export function HeroEvidenceStrip({ className }: { className?: string }) {
           under an identically-worded link to the same page: one number, twice, on one screen, on a
           site whose entire pitch is that it keeps track of its numbers.
 
-          The bridge itself is not lost, it MOVED ONTO THE PICTURE. `PopulationField` renders
-          immediately below this component and its caption reads "Every idea put through these same
-          checks, one mark each" over 1,444 marks -- the same sentence, doing the same work, said
-          once, beside the population it is about instead of 445px above a restatement of it. The
+          The bridge itself is not lost, it MOVED ONTO THE PICTURE. `KillGrid` renders in the
+          hero column beside this component and its caption reads "Every idea we have ever
+          researched, one square each" over 1,444 squares -- the same sentence, doing the same
+          work, said once, beside the population it is about instead of 445px above a restatement
+          of it. The
           prose statement of both totals stays in the proof strip, which is the only one of the
           three that a phone ever sees. */}
     </div>

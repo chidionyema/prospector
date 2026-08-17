@@ -65,7 +65,7 @@ export interface CategoryGraphProps {
  * what lets the description and the price range live in the same object instead of a second one.
  *
  * WHY MARKS AND NOT A BAR. One mark per pack is the same figure the home page draws for the whole
- * population (`PopulationField`, "one mark each") and the same one a pack's sources are drawn with
+ * population (`KillGrid`, "one square each") and the same one a pack's sources are drawn with
  * (`EvidenceBar`), in the same green that means "on the shelf" there. A category with 28 packs is
  * 28 marks: countable, not a length the eye has to trust. A bar of arbitrary scale would have been
  * a fifth way of drawing a quantity on a site that already has one.
