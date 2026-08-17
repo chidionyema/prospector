@@ -18,6 +18,19 @@ diff called it "14 files, 975 insertions", yet its merged tree equalled main's e
 and squash-merging both give the commits new patch-ids, so `git cherry` and `rev-list --count`
 see work that has already landed. The merged TREE is the only measure that sees through it.
 
+THE REMOTE IS WHERE MOST OF THE MESS IS. `--remote` applies the same rule to origin. On
+2026-08-17 the local sweep took 100 branches down to 64 and left 176 on origin untouched,
+because a deleted local branch does not delete its remote. Three fences guard the remote side,
+because the cost of a wrong deletion there is somebody else's work rather than a local ref the
+reflog can rebuild:
+
+  - a branch that heads an OPEN pull request is never deleted, and when `gh` cannot say which
+    those are, nothing on origin is deleted at all
+  - a branch any worktree has checked out is never deleted -- deleting a remote while a session
+    held the branch is exactly how commits were stranded on 2026-08-17
+  - every tip sha is written to the receipt first, so `git push origin <sha>:refs/heads/<name>`
+    brings any of them back
+
 Nothing here names a branch. A rule that knows one branch's name dies with that branch.
 """
 from __future__ import annotations
@@ -121,6 +134,44 @@ def worktree_is_idle(path: str) -> bool:
     return p.returncode == 0 and not p.stdout.strip()
 
 
+def remote_branches() -> list[tuple[str, str, str]]:
+    """(short name, tip sha, last commit date) for every branch on origin, newest last.
+
+    Short name, so it can be compared against local branch names and passed straight to
+    `git push origin --delete`. `origin/HEAD` is a symbolic ref, not a branch, and is skipped.
+    """
+    out = git("for-each-ref", "--sort=committerdate",
+              "--format=%(refname:short)\t%(objectname:short)\t%(committerdate:short)",
+              "refs/remotes/origin")
+    rows = []
+    for line in out.splitlines():
+        parts = line.split("\t")
+        if len(parts) != 3 or not parts[0].startswith("origin/"):
+            continue
+        short = parts[0][len("origin/"):]
+        if short == "HEAD" or short in PROTECTED:
+            continue
+        rows.append((short, parts[1], parts[2]))
+    return rows
+
+
+def open_pr_heads() -> set[str] | None:
+    """Head branches of every open pull request, or None when `gh` cannot answer.
+
+    A remote branch is not just storage: it is the head of any PR pointing at it, and deleting
+    it closes that PR and throws away its review. The merged-tree rule cannot see that -- a PR
+    whose content has already landed some other way still reads as retired. So this is a hard
+    exclusion, and when it cannot be established the remote sweep refuses to delete anything
+    rather than guessing.
+    """
+    p = subprocess.run(("gh", "pr", "list", "--state", "open", "--limit", "500",
+                        "--json", "headRefName", "--jq", ".[].headRefName"),
+                       cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=180)
+    if p.returncode != 0:
+        return None
+    return {line.strip() for line in p.stdout.splitlines() if line.strip()}
+
+
 def stale_worktrees() -> list[str]:
     """Registered worktrees whose directory is no longer on disk."""
     gone, path = [], ""
@@ -132,7 +183,8 @@ def stale_worktrees() -> list[str]:
     return gone
 
 
-def write_receipt(retired: list[tuple[str, str, str]], upstream_sha: str) -> Path:
+def write_receipt(retired: list[tuple[str, str, str]], upstream_sha: str,
+                  remote: list[tuple[str, str, str]] | None = None) -> Path:
     """Record every tip sha, so nothing here is unrecoverable.
 
     Same format as the 2026-08-09 cleanup, because the restore instructions are the point: the
@@ -161,6 +213,19 @@ def write_receipt(retired: list[tuple[str, str, str]], upstream_sha: str) -> Pat
     ]
     lines += [f"| `{n}` | `{sha}` | {when} |" for n, sha, when in retired]
     lines.append("")
+    if remote:
+        lines += [
+            "## Deleted on origin — merged tree identical to main",
+            "",
+            "Restore with: `git push origin <sha>:refs/heads/<name>`. The objects are still in",
+            "this clone, so a deleted remote branch is one push from being back.",
+            "No branch that headed an OPEN pull request is in this table.",
+            "",
+            "| branch | tip | last commit |",
+            "|---|---|---|",
+        ]
+        lines += [f"| `{n}` | `{sha}` | {when} |" for n, sha, when in remote]
+        lines.append("")
     path.write_text("\n".join(lines))
     return path
 
@@ -169,8 +234,13 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--fix", action="store_true",
                     help="delete the retired branches and prune stale worktrees")
+    ap.add_argument("--remote", action="store_true",
+                    help="also sweep branches on origin (176 of them on 2026-08-17, against "
+                         "100 local ones — the local sweep alone leaves most of the mess)")
     args = ap.parse_args()
 
+    if args.remote:
+        git("fetch", "origin", "--prune", "--quiet")
     git("fetch", "origin", "main", "--quiet")
     upstream_tree = git("rev-parse", f"{UPSTREAM}^{{tree}}", check=True).strip()
     upstream_sha = git("rev-parse", UPSTREAM, check=True).strip()
@@ -200,6 +270,29 @@ def main() -> int:
 
     gone = stale_worktrees()
 
+    # The remote sweep. Same rule, same evidence, three extra fences -- a remote branch is
+    # shared, so the cost of a wrong deletion is somebody else's work rather than a local ref
+    # that `git branch` could rebuild from the reflog.
+    remote_retired: list[tuple[str, str, str]] = []
+    remote_kept: list[tuple[str, str, str, str]] = []
+    pr_heads: set[str] | None = None
+    if args.remote:
+        pr_heads = open_pr_heads()
+        for name, sha, when in remote_branches():
+            if pr_heads is not None and name in pr_heads:
+                remote_kept.append((name, sha, when, "heads an OPEN pull request"))
+            elif name in live:
+                # A branch a worktree is sitting on is work in progress by definition, and
+                # deleting its remote while a session holds it is exactly how commits got
+                # stranded on 2026-08-17.
+                remote_kept.append((name, sha, when, f"checked out at {live[name]}"))
+            elif merged_tree_equals_upstream(f"origin/{name}", upstream_tree):
+                remote_retired.append((name, sha, when))
+            else:
+                files = git("diff", "--name-only",
+                            f"{UPSTREAM}...origin/{name}").count("\n")
+                remote_kept.append((name, sha, when, f"{files} file(s) not in main"))
+
     print(f"{UPSTREAM} at {upstream_sha[:12]}")
     print(f"\nRETIRED — merged tree identical to main ({len(retired)}):")
     for name, sha, when in retired:
@@ -214,6 +307,17 @@ def main() -> int:
     for path in gone:
         print(f"  {path}")
 
+    if args.remote:
+        if pr_heads is None:
+            print("\nREMOTE: `gh pr list` failed, so open pull requests cannot be identified. "
+                  "Nothing on origin will be deleted.")
+        print(f"\nREMOTE RETIRED — merged tree identical to main ({len(remote_retired)}):")
+        for name, sha, when in remote_retired:
+            print(f"  {sha}  {when}  origin/{name}")
+        print(f"\nREMOTE KEPT ({len(remote_kept)}):")
+        for name, sha, when, why in remote_kept:
+            print(f"  {sha}  {when}  origin/{name}  — {why}")
+
     if not args.fix:
         print("\nreport only. Re-run with --fix to remove the idle worktrees, delete the "
               "retired branches and prune the stale registrations.")
@@ -225,14 +329,25 @@ def main() -> int:
                              capture_output=True, text=True, timeout=300)
         print(f"  removed worktree {path}" if out.returncode == 0
               else f"  FAILED to remove {path}: {out.stderr.strip()}")
-    if retired:
-        receipt = write_receipt(retired, upstream_sha)
+    # `gh` could not answer, so every open PR's head is unknown. Delete nothing on origin.
+    if pr_heads is None:
+        remote_retired = []
+    if retired or remote_retired:
+        receipt = write_receipt(retired, upstream_sha, remote_retired)
         print(f"\nreceipt: {receipt.relative_to(REPO_ROOT)}")
         for name, _sha, _when in retired:
             p = subprocess.run(("git", "-C", str(REPO_ROOT), "branch", "-D", name),
                                capture_output=True, text=True, timeout=120)
             print(f"  deleted {name}" if p.returncode == 0
                   else f"  FAILED to delete {name}: {p.stderr.strip()}")
+        # One push, not one per branch: 100+ round trips to GitHub is minutes of rate-limited
+        # waiting, and a partial failure part-way through leaves no clean place to resume.
+        if remote_retired:
+            refspecs = [f":refs/heads/{name}" for name, _s, _w in remote_retired]
+            p = subprocess.run(("git", "-C", str(REPO_ROOT), "push", "origin", *refspecs),
+                               capture_output=True, text=True, timeout=900)
+            print(f"  deleted {len(refspecs)} branch(es) on origin" if p.returncode == 0
+                  else f"  FAILED to delete on origin: {p.stderr.strip()}")
     if gone:
         git("worktree", "prune")
         print(f"  pruned {len(gone)} stale worktree registration(s)")
