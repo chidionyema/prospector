@@ -265,6 +265,21 @@ def test_host_and_timeout_come_from_the_environment(monkeypatch):
 # Run it explicitly with: -k live_ollama
 # --------------------------------------------------------------------------- #
 
+def test_a_degraded_embedder_says_so():
+    """The property the live test's mid-run skip depends on, pinned without a daemon.
+
+    The live test below can only skip on `emb.degraded`, and it never runs on a box with no
+    ollama — so without this, the branch that keeps main green would itself be untested.
+    """
+    emb = pf.OllamaEmbedder(model=pf.OLLAMA_DEFAULT_MODEL)
+    assert emb.degraded is False
+    emb.degrade(TimeoutError("timed out"))
+    assert emb.degraded is True
+    assert emb.name == f"lexical<-ollama:{pf.OLLAMA_DEFAULT_MODEL}"
+    # And it still answers, with the shorter lexical vector that made CI read `67 == 768`.
+    assert 0 < len(emb.encode("probate clear-out concierge")) < 768
+
+
 def test_live_ollama_backend_discriminates_paraphrase_from_unrelated():
     """Proof the dense backend is real: 768 dims, and it ranks a rewording higher.
 
@@ -284,6 +299,20 @@ def test_live_ollama_backend_discriminates_paraphrase_from_unrelated():
     probate = emb.encode("Probate clear-out concierge sorting a deceased relative's home")
     reworded = emb.encode("Deceased estate clearance concierge for probate executors")
     unrelated = emb.encode("Weekly produce boxes from retired gardeners' allotments")
+
+    # The load-time probe above proves the daemon answered ONCE. It can still time out on a
+    # real embed a second later, and `encode` then calls `degrade()`, which swaps in the
+    # lexical fallback for the rest of the encoder's life and returns a 67-dim sparse
+    # vector. Asserting 768 on that measures the fallback while claiming to measure ollama:
+    # on 2026-08-17 this failed in CI as `assert 67 == 768` and left main red, which then
+    # blocked the deploy gate from shipping anything.
+    #
+    # A mid-run fallback is the same condition the docstring already skips for, so skip on
+    # it — but only on it. `emb.degraded` is exact (`_fallback is not None`), so a genuine
+    # discrimination regression still fails below and cannot hide behind this branch.
+    if emb.degraded:
+        pytest.skip(f"live ollama degraded mid-test — backend is now {emb.name!r}")
+
     assert len(probate) == 768
 
     near = pf._sparse_cosine(probate, reworded)

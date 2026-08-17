@@ -52,18 +52,20 @@ DOSSIERS = ROOT / "store" / "dossiers"
 from prospector.shelf_copy_repair import (  # noqa: E402
     SYSTEM,
     USER,
+    RewriteUnavailable,
     _new_facts,
     breaches,
     rewrite_one,
     voice_breaches,
 )
 
-__all__ = ["SYSTEM", "USER", "_new_facts", "breaches", "rewrite_one", "voice_breaches"]
+__all__ = ["SYSTEM", "USER", "RewriteUnavailable", "_new_facts", "breaches", "rewrite_one",
+           "voice_breaches"]
 
 log = logging.getLogger(__name__)
 
 
-def _rewrite_row(op, row) -> str | None:
+def _rewrite_row(op, row) -> str | RewriteUnavailable | None:
     """One row's rewrite, with the outage caught HERE rather than inside `rewrite_one`.
 
     The sweep runs the rows in a thread pool, so a dead call on one line must not abort the
@@ -71,16 +73,20 @@ def _rewrite_row(op, row) -> str | None:
     the only thing that tells an outage apart from "the brain refused this line" — swallowing
     it inside the shared function made a quota failure read as an unfixable candidate. So the
     catch lives at the caller that actually wants to continue.
+
+    It RETURNS the exception rather than `None`. `None` is what a refusal looks like, and the
+    summary prints a refused row as kept — finished work. An outage is not finished work, so it
+    is reported as NOT ATTEMPTED and the sweep exits non-zero.
     """
     try:
         return rewrite_one(op, row[1], row[2])
-    except Exception as exc:  # noqa: BLE001 — one row of a best-effort sweep
-        # swallow-ok: logged at ERROR and printed, and the row is reported as kept in the
-        # summary below. The line on the shelf is left exactly as it was.
+    except RewriteUnavailable as exc:
+        # swallow-ok: returned to the caller, which counts it, prints it and exits non-zero.
+        # The line on the shelf is left exactly as it was.
         log.error("rewrite call failed for %s: %s", row[0], exc,
                   extra={"candidate_id": row[0], "error": str(exc), "rewrite_failed": True})
         print(f"    rewrite call failed for {row[0]}: {exc}")
-        return None
+        return exc
 
 
 def glossary() -> dict[str, str]:
@@ -498,16 +504,25 @@ def main() -> int:
         done = list(pool.map(lambda r: (r, _rewrite_row(op, r)), todo))
 
     fixed = 0
+    outages = 0
     for (cid, title, one, created, why), new in done:
         print(f"\n{cid}  listed from {created[:10]}")
         print(f"  OLD: {one}")
-        if new:
+        if isinstance(new, RewriteUnavailable):
+            outages += 1
+            print(f"  NOT ATTEMPTED — {new}")
+        elif new:
             persist(cid, new)
             fixed += 1
             print(f"  NEW: {new}")
         else:
             print("  (kept — see the refusal above)")
     print(f"\nrewritten: {fixed} of {len(todo)}")
+    if outages:
+        # Non-zero, so a scripted caller cannot mistake a run that never reached the brain
+        # for a run that decided every line was fine.
+        print(f"{outages} line(s) were never attempted — the rewrite call failed. Re-run.")
+        return 1
     return 0
 
 

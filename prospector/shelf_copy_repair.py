@@ -82,6 +82,22 @@ def voice_breaches(one_liner: str) -> list[str]:
             if "second person" in d or "opens on" in d]
 
 
+class RewriteUnavailable(RuntimeError):
+    """The rewrite was never ATTEMPTED — the brain call itself failed.
+
+    This exists so a caller can tell two different things apart. `rewrite_one` returning
+    None means the rewrite ran and was refused on its merits: the line stays as it is, and
+    that is a finished, correct answer. This exception means we never got an answer at all.
+
+    They used to be the same value. The `except Exception: return None` this replaces
+    printed the error and handed back None, so `run.py`'s own error branch — which logs at
+    ERROR and records `one_liner_repair_failed` — could never fire, and an outage read as
+    "the copy could not be improved". That is the swallowed-failure class the ratchet in
+    `tests/unit/test_swallowed_failures_can_only_go_down.py` exists to stop, and it walled
+    main red on 2026-08-17.
+    """
+
+
 def rewrite_one(op, title: str, line: str, attempts: int = 2) -> str | None:
     """Rewrite until it grades clean, or keep the original.
 
@@ -92,7 +108,8 @@ def rewrite_one(op, title: str, line: str, attempts: int = 2) -> str | None:
     prompt is a coin flip; a retry that quotes the rejection is the cheapest correction
     available, at one extra call on failures only.
 
-    An outage RAISES out of here. It used to be caught and turned into `None`, which is the same
+    An outage raises `RewriteUnavailable` out of here. It used to be caught and turned into
+    `None`, which is the same
     answer this function gives when the brain refuses the line — so a quota failure read as "no
     rewrite is possible", and that is what parks a candidate for good. The engine's choke point
     (`field_write.repair`) records a raise as an outage and an empty answer as a refusal, and it
@@ -101,7 +118,10 @@ def rewrite_one(op, title: str, line: str, attempts: int = 2) -> str | None:
     """
     note = ""
     for attempt in range(max(1, attempts)):
-        got = op.complete_json(SYSTEM, USER.format(title=title, line=line) + note)
+        try:
+            got = op.complete_json(SYSTEM, USER.format(title=title, line=line) + note)
+        except Exception as exc:  # an outage is not a verdict on the copy
+            raise RewriteUnavailable(f"rewrite call failed: {exc}") from exc
         new = (got or {}).get("one_liner", "") if isinstance(got, dict) else ""
         new = re.sub(r"\s+", " ", str(new)).strip().strip('"')
         if not new:

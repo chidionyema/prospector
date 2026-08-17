@@ -194,18 +194,29 @@ def test_a_dead_brain_on_a_one_liner_is_an_outage_not_a_refusal():
     op.complete_json.side_effect = RuntimeError("all operators unavailable")
     cand = _Cand(one_liner="You should build this yourself.")
     out = fw.repair(cand, "one_liner", op=op)
-    assert out.failed == "all operators unavailable", out
+    # `rewrite_one` wraps the operator's error in `RewriteUnavailable`, so the recorded reason
+    # is prefixed. What matters is that the outage reached `failed` at all, and that the brain's
+    # own words survived the wrapping — assert on the cause, not on the exact sentence.
+    assert out.failed and "all operators unavailable" in out.failed, out
+    assert out.repaired is False
     assert cand.one_liner == "You should build this yourself."
 
 
 def test_the_sweep_still_survives_one_dead_call():
-    """The other half: a raise must not abort the pool, and must not be silent."""
+    """The other half: a raise must not abort the pool, and must not be silent.
+
+    It hands the exception BACK rather than `None`, because `None` is what a refusal returns and
+    the summary prints a refused row as kept. An outage has to reach the summary as NOT
+    ATTEMPTED, or a scripted caller reads a run that never got to the brain as a run that
+    decided every line was fine.
+    """
     import tools.sweep_shelf_copy as sweep
 
     op = mock.Mock()
     op.complete_json.side_effect = RuntimeError("429 overloaded")
     with mock.patch.object(sweep.log, "error") as err:
-        assert sweep._rewrite_row(op, ("cid-1", "A title", "A line")) is None
+        got = sweep._rewrite_row(op, ("cid-1", "A title", "A line"))
+    assert isinstance(got, sweep.RewriteUnavailable), got
     err.assert_called_once()
 
 
