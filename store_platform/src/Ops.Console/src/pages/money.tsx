@@ -10,6 +10,7 @@
  * route on the store API, so this page names the route that would close each gap instead of
  * showing an empty panel that reads as zero.
  */
+import Link from 'next/link';
 import Shell from '@/components/Shell';
 import { AsOf, Card, Note, Pill, Problem, Row, Stat } from '@/components/ui';
 import { ABSENT } from '@/lib/time';
@@ -91,9 +92,9 @@ export default function Money() {
             </div>
             <p className="wrap-any mt-3 text-[13px] text-muted">
               The gap is work that passed every gate and cannot be sold. It is repaired on the{' '}
-              <a className="underline" href="/shelf">
+              <Link className="underline" href="/shelf">
                 Stranded
-              </a>{' '}
+              </Link>{' '}
               screen.
             </p>
             {data.shelf.error ? <Note>{data.shelf.error}</Note> : null}

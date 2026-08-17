@@ -70,7 +70,9 @@ export default function ConfigPage() {
   const intents = useOps<{ rows: Intent[] }>('intents', { limit: 50 });
   const [q, setQ] = useState('');
 
-  const groups = cfg.data?.groups ?? [];
+  // `?? []` is a fresh array on every render, so the memo below never hit its cache and the whole
+  // knob list was re-filtered on every keystroke. Memo the fallback and the memo starts working.
+  const groups = useMemo(() => cfg.data?.groups ?? [], [cfg.data]);
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     if (!needle) return groups;
