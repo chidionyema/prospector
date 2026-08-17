@@ -68,10 +68,19 @@ ps -Ao pid,etime,command | grep <script>
 launchctl print gui/$UID/<label> | grep -E "state|pid|last exit"
 ```
 
-**Fix.** Two parts. Give the wrapper a hard ceiling so a stalled run cannot suppress the next
-one forever — `launchd_receipt.py --timeout` defaults to 3600s and records exit 124, which is
-a receipt the audit can see. Then fix whatever made the run slow, because a timeout is
-containment and not a cause.
+**Fix.** Three parts. Give the wrapper a hard ceiling so a stalled run cannot suppress the
+next one forever — `launchd_receipt.py --timeout` defaults to 3600s and records exit 124,
+which is a receipt the audit can see. Then fix whatever made the run slow, because a timeout
+is containment and not a cause.
+
+Third, and added 2026-08-17 because the founder had to be the one who noticed: a job now has
+a runtime BUDGET, and blowing it is a failure on its own. `launchd_receipt.py` works the
+budget out from the label's own `StartInterval` and halves it, so nothing has to opt in —
+`com.estate.costsentinel` at `StartInterval 900` gets 450s. A run over budget writes
+`over_budget: true` on its receipt, and `capability_audit.py` scores that **SLOW**, which is
+in `FAIL_VERDICTS`. Between "fresh" and "dark" there was nothing; a job could get ten times
+slower and stay green until it got slow enough to disappear. Now it goes red while the
+diagnosis is still cheap. Override with `--budget-s`; `--budget-s 0` disables.
 
 ---
 

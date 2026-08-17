@@ -447,24 +447,42 @@ Everything else in this document is a script.
 ## 6. Verification commands
 
 ```bash
-cd ~/Documents/code/prospector
-git status --porcelain | wc -l                                   # SRC-1: 201
-gh api repos/chidionyema/prospector/branches/main/protection      # SRC-2: 404 not protected
-gh repo view chidionyema/prospector --json isPrivate,visibility   # SRC-3: PUBLIC
-fly volumes show vol_4ql6dzwjylqeygnr --app prospector-store-api  # DAT-1: 1GB, lhr, snapshots 5d
-fly volumes snapshots list vol_4ql6dzwjylqeygnr --app prospector-store-api
-fly status --app prospector-store-api                             # INF-1: 1 machine
-tail -3 store/backup.log                                          # DAT-5: STORE_BACKUP PASS verified=8/8
-ls -l store/prospector.jsonl                                      # DAT-3: 216,974,821 bytes
-.venv/bin/python tools/verify_pass_shelf_coverage.py              # ENG-1: 35 stranded
-grep -c 'exceeded 600s hard deadline' store/scheduler/launchd.err.log   # ENG-4: 25
-# ENG-3: 8 today. Match the provider AND the code — a bare '402' over an unrotated log
-# counts ten days of a chain that no longer exists (see the correction under the ENG table).
-grep -c 'Exa search error.*402' store/scheduler/launchd.err.log   # ENG-3: 8
-rg -n '^\s+provider:' config.yaml                                 # ENG-3: [ddg, exa, searxng, claude_cli]
-curl -s https://api.mumchimp.com/catalog/stats                    # {"listed":62,"registered":146}
-whois mumchimp.com | grep -i 'expiry\|registrar\|name server'     # DNS-1: 123-Reg / GoDaddy NS
-dig +short TXT google._domainkey.mumchimp.com                     # DNS-3: empty
+.venv/bin/python scripts/ops_state.py             # local probes, seconds
+.venv/bin/python scripts/ops_state.py --network   # adds fly, gh, dns and the live API
+.venv/bin/python scripts/ops_state.py --json      # machine-readable
+```
+
+That is the whole of §6 now. It used to be a list of commands with the answer written beside
+each one as a comment, and every one of those answers was measured once and then rotted.
+Checked 2026-08-17, four were wrong: uncommitted files said 201 and were 48, visibility said
+PUBLIC and was PRIVATE, the catalogue said `{"listed":62,"registered":146}` and was
+`{"listed":68,"registered":158}`, and `ENG-1: 35 stranded` was already corrected to 7
+elsewhere in this document while §6 still said 35. A number written next to a command is a
+claim about the past wearing the clothes of a measurement.
+
+Each probe is bounded and independent. One that cannot answer prints `UNREACHABLE` and its
+reason, and never stops the others — `SRC-2` does exactly that today, because rulesets on a
+private repo need GitHub Pro, so branch protection can only be read in the web UI.
+
+Sample run, 2026-08-17, kept as a receipt rather than as the answer:
+
+```
+SRC-1   uncommitted paths in this checkout             48 uncommitted path(s)
+DAT-3   spend ledger size                              258,347,707 bytes (258.3 MB)
+DAT-5   last store backup line                         STORE_BACKUP PASS dossiers=2579 verified=8/8
+ENG-3   Exa 402s in the scheduler error log            14 line(s)
+ENG-3   retrieval chain declared in config.yaml        provider: [ddg, exa, searxng, claude_cli]
+ENG-4   hard-deadline kills in the scheduler error log 15 line(s)
+ENG-7   operator roster declared in config.yaml        operator: [minimax, claude_cli] | moat_primary: [minimax, claude_cli]
+KEY-1   which checkout production runs from            both daemons in prospector-live, 2 behind origin/main
+OPS-1   launchd job definitions vs snapshot            PASS, 29 job(s) match
+SRC-2   branch protection on main                      UNREACHABLE: private repo on a free plan
+SRC-3   repository visibility                          PRIVATE (isPrivate=True)
+INF-1   API machines and regions                       1 machine(s), regions=lhr, state=started
+DAT-1   the volume holding the catalogue               vol_4ql6dzwjylqeygnr 1GB lhr attached=True
+AST-1   live catalogue counts                          {"listed":68,"registered":158}
+DNS-1   domain registrar and nameservers               123-Reg Limited, NS03/NS04.DOMAINCONTROL.COM, expires 2027-06-16
+DNS-3   DKIM record                                    EMPTY — DKIM not published
 ```
 
 ---
