@@ -685,6 +685,58 @@ unmerged PR #250.
 
 ---
 
+### WM-6 — The agent goes idle while a run it started is still going
+
+*Raised as:* "this is another founder complaint, this is unacceptable, we need to enforce
+multi tasking, i should not be having to sit watch a tool run for 15 mins while agent is idle
+and there is work to do" (2026-08-17). Earlier form: "a lot of our time is spent waiting for
+tests, we should be able to multitask, we have lots to do" (2026-08-16).
+
+*Measured:* **15 minutes 50 seconds** of wall clock on one turn, one shell running, nothing
+else started. The rule "never sit and watch a long command" had been in the global `CLAUDE.md`
+since 2026-08-16 and was loaded in context at the moment it was broken. Backgrounding the
+command was done correctly; ending the turn afterwards is the part that wasted the clock.
+
+*Costs:* the founder watches a spinner instead of reading results, and pays for the context
+re-read when the turn resumes.
+
+*Number:* **turns ended with a background run still in flight.** Now zero by construction, if
+the guard is wired. Read it from the guard's own refusals.
+
+*State:* CODE WRITTEN, NOT YET LIVE. `~/.claude/scripts/idle-guard.py` is a Stop hook that
+blocks the stop once and names the runs still going; selftest 6/6. It cannot wire itself —
+the permission classifier refuses an agent editing `~/.claude/settings.json` — so
+`~/.claude/scripts/wire-idle-guard.sh` is the founder's one command, then quit and relaunch.
+
+---
+
+### WM-7 — A complaint is answered, then forgotten
+
+*Raised as:* "you lost track of all the process improvements we are trying to solve"; "in
+fact these appear to be two separate workstreams"; "including losing track of founder
+complaints, the transcripts, self improvements" (all 2026-08-17).
+
+*Measured:* `reflect.py --complaints` reads every transcript and finds **373 complaints across
+1,690 messages**, and it only ever PRINTED them. Nothing survived the terminal, so a complaint
+was live only while somebody was looking at it. Worse, on 2026-08-17 the agent started writing
+a second complaint scanner from scratch without noticing that reflect.py existed, and started
+a second working-method register without noticing this section existed. Losing track produces
+duplicate mechanisms, which is the same defect twice.
+
+*Costs:* the same complaint is made three and four times. Work is redone. The founder has to
+be the memory.
+
+*Number:* **complaints with no tracked owner.** Read it by diffing the ledger against the task
+list.
+
+*State:* PARTLY CLOSED. `~/.hermes/scripts/complaint_ledger.py` persists reflect.py's own scan
+to `~/.hermes/state/complaint_ledger.json` — it deliberately adds no scanner of its own.
+Registered as capability `founder_complaint_ledger` (period 24h) and scheduled daily at 07:40,
+so a stale ledger raises an alarm without being asked. The remaining half is the discipline of
+giving each themed complaint a task id.
+
+---
+
 ### The rule that closes all five
 
 **Name the number before you start.**
