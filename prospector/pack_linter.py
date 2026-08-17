@@ -779,6 +779,19 @@ def expands_on_first_use(text: str, run: str) -> bool:
                 return True
     return False
 
+
+def unexplained_initialisms(text: str) -> list[str]:
+    """Every caps run this line uses that the reader has never met and the line never introduces.
+
+    The linter's rule 3 and the shelf-copy sweep both need exactly this list, and they must
+    agree: the sweep repairs a line, then the linter judges it. Two copies of the same
+    condition is how a sweep ships a "fix" the gate still refuses.
+    """
+    return sorted({run for run in _CAPS_RUN_RE.findall(text)
+                   if run not in KNOWN_INITIALISMS
+                   and not expands_on_first_use(text, run)})
+
+
 #: Our filing system, leaking onto the shelf. `voice.md`: "a reader who meets one of these
 #: words has been handed our filing system by mistake". `pack` and `dossier` are NOT here —
 #: the storefront sells a thing it calls a pack, so that is the reader's word too.
@@ -898,9 +911,7 @@ def check_shelf_copy(fields: Dict[str, str], *, block: bool = False,
                                f"{', '.join(vocab_hits + taxonomy_hits)} in {text!r}"))
 
         # 3. An initialism the reader has never met AND the line never introduces.
-        unknown = sorted({run for run in _CAPS_RUN_RE.findall(text)
-                          if run not in KNOWN_INITIALISMS
-                          and not expands_on_first_use(text, run)})
+        unknown = unexplained_initialisms(text)
         if unknown:
             problems.append(mk("shelf_copy", name,
                                f"unexplained initialism(s) {', '.join(unknown)} — spell it out in full; "

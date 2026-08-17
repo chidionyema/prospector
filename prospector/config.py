@@ -64,6 +64,17 @@ class Retrieval:
     # overwrite a genuinely informative snippet with less than it replaced.
     fetch_min_gain_chars: int = 400
     fetch_max_bytes: int = 400_000      # stop reading; some pages are tens of MB
+    # DROP THE COOKIE BANNER BEFORE THE BRAIN READS IT (2026-08-16).
+    # `select_passage` anchors on query terms, a consent banner has none, so on a page whose
+    # banner survives extraction the anchor finds nothing and returns the head slice -- the
+    # banner itself. MEASURED over 43,673 stored passages: 76 hand the verdict a banner inside
+    # the 600 chars it reads, concentrated in the sources that matter most (12.3% of
+    # ons.gov.uk, 2.2% of legislation.gov.uk). One reached buyers: the live landing page said
+    # the ASHE earnings tables "contain only cookie consent screens with no actual wage data".
+    # Default OFF so fixtures, golden-set runs and any directly constructed Retrieval() stay
+    # byte-for-byte; config.yaml turns it on for the live engine, and the ops console toggles
+    # it there. Same pattern as `fetch_pages` and `relevance_overfetch` above.
+    strip_consent_banners: bool = False
     # RANK WHAT SEARCH RETURNED (2026-08-14). Every provider asks for exactly
     # `results_per_query` results and keeps the search engine's own first k, so relevance
     # was measured at the verdict (as `unverifiable`) and never enforced at the source.
@@ -95,6 +106,17 @@ class Retrieval:
     # 0.0 = OFF, a byte-for-byte no-op for fixtures, the golden set and any directly
     # constructed Retrieval().
     min_relevance: float = 0.0
+    # How a result set becomes the ONE coverage number compared against `min_relevance`:
+    # "best" scores the single best source, "mean" averages all of them.
+    #
+    # WHY "best" is the default (measured 2026-08-16). A check needs one passage that answers
+    # it, so averaging fails a result set that contains a perfect source next to two weak
+    # ones — the normal shape of a web search. Over 1500 real cached result sets the mean
+    # cleared the 0.35 floor 24.3% of the time and the best source 44.1%. On the live audit
+    # for that day NO provider cleared the floor even once: ddg averaged 0.184 coverage over
+    # 1576 resolutions and exa 0.276 over 149, so the floor was unreachable and the paid
+    # provider bought a better failure rather than a pass.
+    coverage_metric: str = "best"
     # Providers that may only be reached because an EARLIER provider FAILED — never because
     # an earlier provider merely answered below `min_relevance`.
     #
@@ -531,6 +553,12 @@ LISTING_DEFAULTS: dict[str, Any] = {
     # figure, so switching it on is a ~30% delisting. The honest copy shipped regardless of the
     # flag, so nothing here is load-bearing for a promise.
     "require_figure_verification": False,
+    # Initialism -> the words it stands for, for the shelf-copy sweep. An expansion is a FACT,
+    # so it is declared here by the operator and never guessed by a brain: a rewrite asked to
+    # "spell it out" invents a plausible gloss, and an invented gloss on the shelf is exactly
+    # the unsourced claim the source-or-die rule exists to stop. Empty by default — a term with
+    # no entry is reported for the operator to declare, and the row stays unlisted meanwhile.
+    "initialism_glossary": {},
 }
 
 
