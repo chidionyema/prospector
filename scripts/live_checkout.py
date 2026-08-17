@@ -205,9 +205,15 @@ def report() -> int:
             print(f"  {job:26s} NOT RUNNING")
             problems.append(f"{job} is not running")
             continue
-        flag = "" if cwd == str(LIVE) else "   <- NOT the live checkout"
+        # A subdirectory of the live checkout counts. The console runs `next start` from
+        # store_platform/src/Ops.Console, so an exact match reported the correctly deployed
+        # console as running from the wrong checkout, next to a real finding about the wrong
+        # checkout. A probe that cries wolf about its own healthy case teaches the reader to
+        # skip the section.
+        inside = cwd is not None and (cwd == str(LIVE) or cwd.startswith(str(LIVE) + os.sep))
+        flag = "" if inside else "   <- NOT the live checkout"
         print(f"  {job:26s} pid={pid:<7s} cwd={cwd}{flag}")
-        if cwd != str(LIVE):
+        if not inside:
             problems.append(f"{job} runs from {cwd}, not {LIVE}")
         store = plist_store_dir(job)
         if store != str(STORE):
