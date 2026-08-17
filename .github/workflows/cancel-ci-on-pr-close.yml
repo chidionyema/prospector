@@ -1,0 +1,53 @@
+name: Cancel CI when a PR closes
+
+# THE ROOT CAUSE THIS FIXES.
+#
+# GitHub does not cancel a pull request's CI when the pull request merges or closes. The run
+# stays queued, forever, waiting for a runner to test a commit nobody is waiting on. With four
+# self-hosted runner instances sharing one machine and jobs that take twenty minutes, every
+# merged PR leaves a ghost holding a slot.
+#
+# Measured 2026-08-17: 12 runs queued, 9 of them belonging to PRs that had already merged. Two
+# had been queued for 264 hours. The live PRs sat behind all of it, so `main` stayed red for
+# want of a runner rather than for want of a fix. Cancelling them by hand is cleanup; it does
+# not stop the next merge from doing the same thing.
+#
+# `ci.yml`'s concurrency block cannot help here. It groups on `github.ref`, so it only ever
+# supersedes a run with a NEWER run on the same branch. A merged PR produces no newer run --
+# there is nothing to supersede it with, so it is never collected.
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  actions: write        # the whole point: cancel runs
+  contents: read
+
+jobs:
+  cancel:
+    # Hosted, deliberately. This job exists to FREE self-hosted runners; queueing it behind the
+    # very backlog it clears would defeat it. It is one API call and runs in seconds, so it
+    # costs effectively nothing even while hosted minutes are metered.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel queued and in-progress runs for this PR's branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          # Both states, because a run already executing on a merged PR is just as wasteful as a
+          # queued one -- it holds a runner for its full twenty minutes to answer a dead question.
+          for status in queued in_progress; do
+            ids=$(gh api "repos/$REPO/actions/runs?branch=$BRANCH&status=$status&per_page=100" \
+                    --jq '.workflow_runs[].id' || true)
+            for id in $ids; do
+              # Never fail the job on one cancel. A run that finished between the list and the
+              # cancel returns 409, and that is success by any measure that matters here.
+              gh api -X POST "repos/$REPO/actions/runs/$id/cancel" >/dev/null 2>&1 \
+                && echo "cancelled $status run $id" \
+                || echo "could not cancel $id (already finished?)"
+            done
+          done
