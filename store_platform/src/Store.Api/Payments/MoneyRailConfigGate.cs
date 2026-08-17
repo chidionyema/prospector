@@ -5,8 +5,12 @@ namespace Store.Api.Payments;
 public sealed class MoneyRailConfigGate(
     IConfiguration config,
     IHostEnvironment environment,
-    ILogger<MoneyRailConfigGate> logger) : IHostedService
+    ILogger<MoneyRailConfigGate> logger,
+    MoneyRailStatus? status = null) : IHostedService
 {
+    // PAY-1 — `status` is optional so the existing gate tests keep constructing this with three
+    // arguments. In the app it is always resolved from DI (Program.cs registers the singleton
+    // next to this hosted service), so the endpoint always has a real decision to report.
     // P1-4 — the dev convenience value committed in appsettings.Development.json. It must
     // never be the effective internal key outside Development; the startup guard fails
     // closed if it (or an empty key) is present in any other environment.
@@ -73,6 +77,10 @@ public sealed class MoneyRailConfigGate(
     {
         if (!string.Equals(activeProvider, "stripe", StringComparison.Ordinal))
         {
+            // Still record it. A probe that answers "unknown" cannot tell a provider with no key
+            // shape from a gate that never ran, and those need different responses.
+            status?.Record(activeProvider, "not-applicable", environment.EnvironmentName,
+                DateTimeOffset.UtcNow);
             return;
         }
 
@@ -92,6 +100,11 @@ public sealed class MoneyRailConfigGate(
             logger.LogCritical("{Message}", msg);
             throw new InvalidOperationException(msg);
         }
+
+        // PAY-1 — record before the log line below, so the decision is readable even on the paths
+        // that only warn. Reached only after the malformed-key throw above, so this is live or test.
+        status?.Record(activeProvider, isLive ? "live" : "test", environment.EnvironmentName,
+            DateTimeOffset.UtcNow);
 
         if (isTest && !environment.IsDevelopment())
         {

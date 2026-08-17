@@ -140,7 +140,7 @@ public sealed class StorageWiringTests
     // ---- helpers ----------------------------------------------------------------------------
 
     /// <summary>
-    /// Asserts the presigned URL's lifetime is the requested one, allowing a one-second shortfall.
+    /// Asserts the presigned URL's lifetime is the requested one, allowing a small shortfall.
     /// </summary>
     /// <remarks>
     /// Exact equality here was flaky: measured 1 run in 6 of the full suite, and captured as
@@ -151,8 +151,13 @@ public sealed class StorageWiringTests
     /// which is what made it look like cross-test interference rather than a timing artifact.
     /// <para>
     /// A URL that expires a second early is not a defect, so the tolerance is the correct
-    /// assertion. It stays tight (1s) because a real regression here — the TTL argument being
-    /// ignored, or a unit mix-up between minutes and seconds — is off by minutes, not seconds.
+    /// assertion. One second was still too tight: on 2026-08-16 the POPDD gate caught
+    /// <c>X-Amz-Expires=598</c> for a 600-second request and blocked a commit that had nothing
+    /// to do with storage. Two clock reads under a loaded machine can straddle two boundaries as
+    /// easily as one, so the tolerance is now 5 seconds. The reasoning behind the tight number
+    /// is unchanged and still holds at 5: the only TTLs asserted here are 300 and 600, and a
+    /// real regression — the TTL argument ignored, or a minutes/seconds mix-up — is off by
+    /// minutes. Five seconds cannot hide one.
     /// </para>
     /// </remarks>
     private static void AssertExpiresApprox(int expectedSeconds, string url)
@@ -164,9 +169,11 @@ public sealed class StorageWiringTests
         Assert.True(
             int.TryParse(raw, System.Globalization.CultureInfo.InvariantCulture, out var actual),
             $"X-Amz-Expires was not a number: '{raw}' in {url}");
+        const int toleranceSeconds = 5;
         Assert.True(
-            actual == expectedSeconds || actual == expectedSeconds - 1,
-            $"X-Amz-Expires was {actual}, expected {expectedSeconds} (or {expectedSeconds - 1}). URL: {url}");
+            actual <= expectedSeconds && actual >= expectedSeconds - toleranceSeconds,
+            $"X-Amz-Expires was {actual}, expected {expectedSeconds} "
+            + $"(down to {expectedSeconds - toleranceSeconds}). URL: {url}");
     }
 
     private static IConfiguration BuildR2Config() =>
