@@ -175,7 +175,7 @@ numbers:** `publish/bundles/` is the BUILT bundle, not proof of what R2 serves t
 
 | Defect | Count | How it was verified |
 |---|---|---|
-| `## Grounded signals` heading shipped **completely empty** in the executive summary | **36 / 140** | verbatim from `96a6e230dc6ea48f/00_Executive_Summary.md:14-16` and `142717e797740247/…:14-16` — an `## ` heading immediately followed by the next `## ` |
+| `## Grounded signals` heading shipped **completely empty** in the executive summary | **36 / 140** | verbatim from `96a6e230dc6ea48f/00_Executive_Summary.md:14-16` and `142717e797740247/…:14-16` — an `## ` heading immediately followed by the next `## ` | <!-- doc-lint-ok: generated pack output from the 140-pack corpus study, not repo files -->
 | QA/audit report ≥40% of all pack words | 11 / 140 | `96a6e230dc6ea48f`: QA 5,983 of 11,516 md words = 52% |
 | Our own shop price used as the yardstick in the buyer's market analysis | 8 / 140 | see below |
 | `First_Fortnight.html` cross-references files that do not exist in the zip | 4 / 140 | emits `04FinancialModel.md`; the zip holds `04_Financial_Model.md`. Underscores stripped |
@@ -196,10 +196,10 @@ an invented figure with a real one. That reasoning is sound **about our own pric
 
 The two definitions cannot both hold, and the corpus shows which one the model resolves to:
 
-- `96a6e230dc6ea48f/QA_Report.md:107` — **PASSED** on *"UK agencies and their clients operate at
+- `96a6e230dc6ea48f/QA_Report.md:107` — **PASSED** on *"UK agencies and their clients operate at <!-- doc-lint-ok: generated pack output from the 140-pack corpus study, not repo files -->
   scale far above £29.99"*, for a venture whose own product is priced at £2,000
   (`04_Financial_Model.md`).
-- `142717e797740247/QA_Report.md:108` — *"whether such a founder would part with £29.99 for a
+- `142717e797740247/QA_Report.md:108` — *"whether such a founder would part with £29.99 for a <!-- doc-lint-ok: generated pack output from the 140-pack corpus study, not repo files -->
   one-off pack, so the buyer's willingness to pay is not addressed either way"*, for a venture
   selling a £1,250 audit.
 
@@ -234,7 +234,7 @@ what the buyer meets first.
 
 Specific findings beyond the six root causes:
 
-- **The best paragraph in the pack is filed in the appendix.** `96a6e230dc6ea48f/QA_Report.md`
+- **The best paragraph in the pack is filed in the appendix.** `96a6e230dc6ea48f/QA_Report.md` <!-- doc-lint-ok: generated pack output from the 140-pack corpus study, not repo files -->
   ("How it works") opens *"Agency owners who deliver AI work for UK enterprise or regulated clients
   run into the same wall on every project. The client's procurement or compliance team asks for
   proof the AI is safe, lawful and accountable, in their format, and often cites the ICO's AI
