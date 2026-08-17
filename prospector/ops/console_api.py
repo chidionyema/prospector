@@ -1942,7 +1942,50 @@ TOOLS: list[dict] = [
     _t("tools/govern.py", "Run a command under a concurrency ceiling", False, "/tools",
        danger="takes a command as an argument. The console only ever runs the command in this "
               "table, never one typed into the browser — that would be a web shell"),
+    # --- registered 2026-08-17, when the drift test below first measured the gap ---
+    _t("scripts/doc_lint.py", "Find docs that point at something no longer there", False,
+       "/audit"),
+    _t("scripts/copy_audit.sh", "Copy audit across the marketing and pack lanes", False, "/shelf",
+       cmd="bash scripts/copy_audit.sh"),
+    _t("scripts/backfill_packs_parallel.sh", "Backfill P5 pack artefacts into listed packs", True,
+       "/catalogue", cmd="bash scripts/backfill_packs_parallel.sh",
+       danger="runs N backfill processes in parallel — check the slot count first"),
 ]
+
+
+#: Every file in `tools/` and `scripts/` is either in TOOLS above or named here with the reason
+#: it is not an operator's button. Nothing may be in neither: `test_console_tool_registry_has_no_
+#: drift` walks the disk and fails on anything unclassified.
+#:
+#: This exists because on 2026-08-17 twenty tools were on disk and invisible from the console,
+#: and no test could tell. The registry was hand-written, so adding a tool and forgetting to
+#: register it was silent — which is how an operator ends up unable to see what the system can do.
+NOT_AN_OPS_TOOL: dict[str, str] = {
+    # developer and CI tooling — it runs in a terminal or in GitHub Actions, never from an ops page
+    "scripts/ci-gate.sh": "the POPDD CI gate; GitHub Actions runs it, not an operator",
+    "scripts/setup_worktree.sh": "makes a git worktree usable; a developer's machine, not ops",
+    "scripts/verify_engine_change.sh": "the pre-commit proof that an engine change is safe",
+    "tools/commit_mine.sh": "commits exactly the named paths; a developer's git helper",
+    # Claude Code hooks — the harness fires these, they have no operator-facing run
+    "scripts/graphify_query_hook.py": "a UserPromptSubmit hook; the harness fires it",
+    "scripts/graphify_session_hook.py": "a SessionStart hook; the harness fires it",
+    # the console itself, and its predecessor
+    "scripts/run_ops_console.sh": "launches this console; a button that starts the page you are already on",
+    "tools/build_sample_fixture.py": "builds an offline retrieval fixture for the test suite, not a live action",
+    # the legacy Streamlit console — superseded by this Next.js one
+    "scripts/run_control_center.sh": "launches the older Streamlit console that this one replaces",
+    "scripts/install_control_center_agent.sh": "installs that older console's launchd agent",
+    # libraries and experiments, not commands
+    "tools/_backfill_driver.py": "a library for backfill_missing_listings.sh, not a CLI",
+    "tools/l8_ab.sh": "the COST_PROGRAM §L8 A/B experiment harness",
+    "tools/l8_grade.py": "grades one L8 A/B run; the harness calls it",
+    "tools/l8_summary.py": "summarises L8 A/B rows; the harness calls it",
+    # wanted on the console, but not in this shape
+    "scripts/watch_engine.py": "a terminal live view that never exits, so it cannot be a request; "
+                               "the /engine screen is the console-native answer",
+    "tools/queue_yield_batch.sh": "chains a wait, a publish and a batch launch into one script; "
+                                  "split it before it becomes a single button",
+}
 
 
 # --------------------------------------------------------------------------- #

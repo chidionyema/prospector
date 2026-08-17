@@ -23,6 +23,54 @@ from prospector.ops import undo
 # --------------------------------------------------------------------------- #
 # The catalogue
 # --------------------------------------------------------------------------- #
+def test_console_tool_registry_has_no_drift():
+    """Every tool on disk is either a console button or is named as not being one.
+
+    The registry is hand-written, so before this test a new tool was invisible from the console
+    until someone remembered to add it, and nothing failed when they did not. Measured on
+    2026-08-17: twenty files in `tools/` and `scripts/` were in neither list, so the operator
+    could not see them and no test could say so.
+
+    A file in neither list fails here by name. Adding a tool now costs one line in TOOLS or one
+    line in NOT_AN_OPS_TOOL with the reason, and the choice is forced rather than forgotten.
+    """
+    root = Path(api.__file__).resolve().parents[2]
+    on_disk = {
+        str(p.relative_to(root))
+        for d in ("tools", "scripts")
+        for p in (root / d).glob("*")
+        if p.is_file() and p.suffix in (".py", ".sh") and p.name != "__init__.py"
+    }
+    registered = {t["path"] for t in api.TOOLS}
+    classified = registered | set(api.NOT_AN_OPS_TOOL)
+
+    unclassified = sorted(on_disk - classified)
+    assert not unclassified, (
+        "these tools are on disk but in neither TOOLS nor NOT_AN_OPS_TOOL, so the operator "
+        "cannot see them and cannot be told why:\n  " + "\n  ".join(unclassified)
+    )
+
+    # The other direction: an excuse for a file that no longer exists is rot of its own.
+    stale = sorted(p for p in api.NOT_AN_OPS_TOOL if not (root / p).exists())
+    assert not stale, "NOT_AN_OPS_TOOL names files that are gone:\n  " + "\n  ".join(stale)
+
+    overlap = sorted(registered & set(api.NOT_AN_OPS_TOOL))
+    assert not overlap, "these are both a button and excluded:\n  " + "\n  ".join(overlap)
+
+
+def test_every_excluded_tool_gives_a_reason():
+    """An exclusion with no reason is the same silence the drift test exists to end."""
+    for path, reason in api.NOT_AN_OPS_TOOL.items():
+        assert reason and len(reason) > 15, f"{path} is excluded with no usable reason"
+
+
+def test_registered_tool_paths_all_exist():
+    """A button pointing at a deleted file is a dead button the operator finds by clicking it."""
+    root = Path(api.__file__).resolve().parents[2]
+    missing = sorted({t["path"] for t in api.TOOLS if not (root / t["path"]).exists()})
+    assert not missing, "TOOLS points at files that are gone:\n  " + "\n  ".join(missing)
+
+
 def test_every_tool_id_is_unique():
     """Catches an id collision, which would make the console run the wrong tool.
 
