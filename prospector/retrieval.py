@@ -443,6 +443,52 @@ class ProviderStamped(SearchProvider):
         return getattr(self._inner, item)
 
 
+#: Hosts that answer "what is this word / where is this place", never "does this buyer pay
+#: for this". They are demoted below every other candidate passage in the relevance ranking.
+#:
+#: MEASURED 2026-08-17 over the last three days of kill dossiers: 39.7% of the source slots
+#: under an `unverifiable` check came from this list, against 6.6% under `supported` and 1.2%
+#: on the packs that actually passed. The receipts show why. A `payer_solvency` check searched
+#: "venture financing closing delay cap table conflict anti-dilution litigation dispute
+#: investor risk" and was handed the Cambridge Dictionary entry for the WORD "venture" and
+#: Merriam-Webster's "the meaning of VENTURE is to proceed especially in the face of danger".
+#: An `unauthorized practice of law` check searched "Illinois Supreme Court Rule practice of
+#: law software document analysis exception unauthorized" and was handed the Wikipedia and
+#: World Atlas pages for the STATE of Illinois — "Illinois borders on Lake Michigan to its
+#: northeast".
+#:
+#: `relevance_score` is the fraction of the query's content words the passage contains, so a
+#: state's encyclopedia entry scores well on a query that names that state a dozen times.
+#: Coverage cannot tell "about Illinois" from "about the law in Illinois". Host can.
+#:
+#: The trend this reverses, by week of created_at: 2.2% junk (Aug w1) -> 11.5% (w2) -> 27.8%
+#: (w3), with the unverifiable rate moving 51% -> 73% -> 80% alongside it.
+_REFERENCE_HOSTS = frozenset({
+    "en.wikipedia.org", "simple.wikipedia.org", "wikipedia.org",
+    "britannica.com", "worldatlas.com", "infoplease.com",
+    "dictionary.cambridge.org", "merriam-webster.com", "dictionary.com",
+    "thefreedictionary.com", "collinsdictionary.com", "vocabulary.com",
+    "urbandictionary.com", "wiktionary.org", "en.wiktionary.org",
+    "crazygames.com", "poki.com",
+})
+
+
+def is_reference_page(url: str) -> bool:
+    """True for a general-reference page: a definition, an encyclopedia or an atlas entry.
+
+    Matched on the host and its parent domain, so a locale subdomain of the same
+    encyclopedia is caught without listing every language.
+    """
+    m = re.match(r"https?://([^/:]+)", str(url or "").strip(), re.I)
+    if not m:
+        return False
+    host = m.group(1).lower().removeprefix("www.")
+    if host in _REFERENCE_HOSTS:
+        return True
+    parts = host.split(".")
+    return any(".".join(parts[i:]) in _REFERENCE_HOSTS for i in range(1, len(parts) - 1))
+
+
 class RelevanceRankedProvider(SearchProvider):
     """Over-fetch, then hand the verdict the k passages that actually answer the query.
 
@@ -488,14 +534,28 @@ class RelevanceRankedProvider(SearchProvider):
         if len(results) <= k:
             return results
         before = results[:k]
-        kept = sorted(results, key=lambda s: -relevance_score(query, s.text))[:k]
+        # DEMOTE, never drop. A dictionary entry for one word of the query outscores the
+        # trade page that actually answers it, because `relevance_score` counts content
+        # words and cannot tell "about Illinois" from "about the law in Illinois". Sorting
+        # reference pages to the bottom lets any real page win, and when EVERY result is a
+        # reference page the list is unchanged — so this can no more starve a check than the
+        # ranking it extends. `sorted` is stable, so ties keep the provider's own order.
+        kept = sorted(results,
+                      key=lambda s: (is_reference_page(s.url),
+                                     -relevance_score(query, s.text)))[:k]
         cov_before, cov_after = _mean_coverage(query, before), _mean_coverage(query, kept)
         logger.info("Relevance rank: kept %d of %d for %r (query coverage %.0f%% -> %.0f%%)",
                     len(kept), len(results), query[:80], 100 * cov_before, 100 * cov_after)
         audit("search_rank", query=query[:200], asked_k=k, fetched_n=len(results),
               kept_n=len(kept), cov_before=round(cov_before, 3),
               cov_after=round(cov_after, 3),
-              swapped_n=sum(1 for s in kept if s not in before))
+              swapped_n=sum(1 for s in kept if s not in before),
+              # Counted so the share of reference pages reaching a verdict is a number in
+              # the audit trail rather than something that has to be re-derived from
+              # dossiers three days later, which is how this defect stayed invisible.
+              ref_demoted_n=sum(1 for s in results if is_reference_page(s.url))
+              - sum(1 for s in kept if is_reference_page(s.url)),
+              ref_kept_n=sum(1 for s in kept if is_reference_page(s.url)))
         return kept
 
 
