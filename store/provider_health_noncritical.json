@@ -1,1 +1,10 @@
-{}
+{
+  "claude_cli": {
+    "dead_until": 1786012682.1544662,
+    "marked_at": 1786012622.1544662,
+    "dead_for_s": 60.0,
+    "strikes": 1,
+    "probe_at": 1786012682.1544662,
+    "last_error": "claude cli exhausted after 2 attempts: claude cli exit 1: e_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly "
+  }
+}
