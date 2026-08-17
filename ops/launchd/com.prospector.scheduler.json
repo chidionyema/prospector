@@ -1,0 +1,24 @@
+{
+  "EnvironmentVariables": {
+    "HOME": "/Users/chidionyema",
+    "PATH": "/Users/chidionyema/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "PROSPECTOR_STORE_DIR": "/Users/chidionyema/Documents/code/prospector/store"
+  },
+  "KeepAlive": true,
+  "Label": "com.prospector.scheduler",
+  "ProgramArguments": [
+    "/Users/chidionyema/Documents/code/prospector-live/.venv/bin/python",
+    "-m",
+    "prospector.scheduler.run_scheduled",
+    "--daemon",
+    "--interval",
+    "7200",
+    "--config",
+    "/Users/chidionyema/Documents/code/prospector-live/config.yaml"
+  ],
+  "RunAtLoad": true,
+  "StandardErrorPath": "/Users/chidionyema/Documents/code/prospector/store/scheduler/launchd.err.log",
+  "StandardOutPath": "/Users/chidionyema/Documents/code/prospector/store/scheduler/launchd.out.log",
+  "ThrottleInterval": 30,
+  "WorkingDirectory": "/Users/chidionyema/Documents/code/prospector-live"
+}

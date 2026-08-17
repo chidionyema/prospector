@@ -1,0 +1,13 @@
+{
+  "KeepAlive": true,
+  "Label": "ai.hermes.otto-server",
+  "ProgramArguments": [
+    "/bin/bash",
+    "/Users/chidionyema/.hermes/scripts/otto-daemon.sh"
+  ],
+  "RunAtLoad": true,
+  "StandardErrorPath": "/Users/chidionyema/.hermes/logs/otto-server.err",
+  "StandardOutPath": "/Users/chidionyema/.hermes/logs/otto-server.log",
+  "ThrottleInterval": 10,
+  "WorkingDirectory": "/Users/chidionyema/.hermes"
+}

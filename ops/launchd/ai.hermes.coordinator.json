@@ -1,0 +1,22 @@
+{
+  "EnvironmentVariables": {
+    "COORD_AGENTIC_EXEC": "1",
+    "COORD_EXEC_DIRS": "/Users/chidionyema/Documents/code:/Users/chidionyema/.hermes:/Users/chidionyema/.claude",
+    "COORD_EXEC_TIMEOUT": "900",
+    "COORD_INTERVAL_S": "60",
+    "COORD_MAX_INFLIGHT": "6",
+    "COORD_MAX_INGEST": "3",
+    "HERMES_CRON_TIMEOUT": "1800"
+  },
+  "KeepAlive": true,
+  "Label": "ai.hermes.coordinator",
+  "ProgramArguments": [
+    "/bin/zsh",
+    "/Users/chidionyema/.hermes/scripts/coordinator-daemon.sh",
+    "daemon"
+  ],
+  "RunAtLoad": true,
+  "StandardErrorPath": "/Users/chidionyema/.hermes/logs/coordinator.error.log",
+  "StandardOutPath": "/Users/chidionyema/.hermes/logs/coordinator.log",
+  "WorkingDirectory": "/Users/chidionyema/.hermes/scripts"
+}

@@ -1,0 +1,19 @@
+{
+  "EnvironmentVariables": {
+    "HOME": "/Users/chidionyema",
+    "PATH": "/Users/chidionyema/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "PYTHONUNBUFFERED": "1"
+  },
+  "KeepAlive": true,
+  "Label": "com.signalengine.daemon",
+  "ProgramArguments": [
+    "/Users/chidionyema/Documents/code/signalengine/.venv/bin/python",
+    "-m",
+    "signal_engine.daemon"
+  ],
+  "RunAtLoad": true,
+  "StandardErrorPath": "/Users/chidionyema/.hermes/logs/signalengine-daemon.err.log",
+  "StandardOutPath": "/Users/chidionyema/.hermes/logs/signalengine-daemon.out.log",
+  "ThrottleInterval": 30,
+  "WorkingDirectory": "/Users/chidionyema/Documents/code/signalengine"
+}

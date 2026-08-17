@@ -1,0 +1,22 @@
+{
+  "EnvironmentVariables": {
+    "GIT_TERMINAL_PROMPT": "0",
+    "HOME": "/Users/chidionyema",
+    "PATH": "/Users/chidionyema/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+  },
+  "Label": "ai.hermes.submodule-backup",
+  "ProgramArguments": [
+    "/usr/local/bin/python3",
+    "/Users/chidionyema/.hermes/scripts/launchd_receipt.py",
+    "--label",
+    "ai.hermes.submodule-backup",
+    "--",
+    "/bin/bash",
+    "/Users/chidionyema/.hermes/recovery/backup-submodule.sh"
+  ],
+  "RunAtLoad": false,
+  "StandardErrorPath": "/Users/chidionyema/.hermes/logs/submodule-backup.log",
+  "StandardOutPath": "/Users/chidionyema/.hermes/logs/submodule-backup.log",
+  "StartInterval": 86400,
+  "WorkingDirectory": "/Users/chidionyema/.hermes/hermes-agent"
+}

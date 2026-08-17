@@ -167,13 +167,23 @@ def test_a_shelf_line_that_trails_off_errors_even_when_the_cut_was_clean():
     assert _errors({"oneLine": "A fixed-fee service for parents of closed nurseries..."})
 
 
-def test_the_same_line_twice_errors():
-    """13 of 48 live packs repeated their title as their headline, spending the pack
-    page's most valuable line saying nothing new. Case and punctuation do not rescue it."""
-    problems = _errors({
+def test_the_same_line_twice_warns_and_never_blocks():
+    """13 of 48 live packs repeated their title as their headline, spending the pack page's
+    most valuable line saying nothing new. That is worth reporting and not worth refusing a
+    sale over: founder decision 2026-08-17, "the linter is wrong clearly", on reading that
+    two finished packs were being held off the shelf by this rule and nothing else.
+
+    Case and punctuation still do not rescue it — the finding is unchanged, its severity is
+    not. Full reasoning at the rule, and at
+    `tests/unit/test_duplicate_shelf_lines_never_block.py`."""
+    fields = {
         "title": "Unpaid-hours audits for NHS doctors and nurses",
         "headline": "unpaid hours audits for nhs doctors and nurses.",
-    })
+    }
+    assert not _errors(fields), "a duplicate line must never set ok=False"
+
+    problems = [p for p in check_shelf_copy(fields, block=True)
+                if p["severity"] == "warning" and "repeats" in p["detail"]]
     # Attributed to the REPEAT, never to the title: the title is the canonical line.
     assert problems and problems[0]["where"] == "headline"
     assert "title" in problems[0]["detail"]
@@ -311,16 +321,28 @@ def test_words_that_are_not_the_term_spelled_out_are_still_a_defect():
         assert _errors({"oneLine": text}), f"should have errored: {text!r}"
 
 
-def test_an_expansion_in_one_field_does_not_excuse_a_bare_run_in_the_other():
-    """The two shelf strings are graded independently: a title is read on its own, so an
-    expansion in the one-liner does nothing for it."""
+def test_an_expansion_anywhere_on_the_shelf_introduces_the_term():
+    """The shelf is one page, so the buyer reads these lines together. A term the one-liner
+    spells out has been introduced by the time the title uses it.
+
+    This test used to assert the opposite, and that per-field grading blocked a finished pack:
+    `38029727242c23c9` spelled "Cybersecurity Maturity Model Certification (CMMC)" out in its
+    title and was refused because its card line said "CMMC Level 2 evidence binders". The only
+    copy that satisfied the old rule spelled a 46-character term out four times on one page,
+    under a 60-character title cap. Founder decision 2026-08-17. Full reasoning at rule 3 and
+    at `tests/unit/test_initialism_scope_is_the_whole_shelf.py`."""
     fields = {
         "title": "CMMC binder for Georgia defense vendors",
         "oneLine": "A binder of Cybersecurity Maturity Model Certification (CMMC) evidence.",
     }
-    hit = [p for p in _errors(fields) if p.get("where") == "title"]
-    assert hit, "the bare title run must still be a defect"
-    assert not [p for p in _errors(fields) if p.get("where") == "oneLine"]
+    assert not _errors(fields), "the shelf explains CMMC; neither line may be refused for it"
+
+    # Scope, not amnesty: a term nothing on the shelf expands is still a defect.
+    bare = {
+        "title": "CMMC binder for Georgia defense vendors",
+        "oneLine": "A binder of evidence for defense software firms.",
+    }
+    assert [p for p in _errors(bare) if p.get("where") == "title"]
 
 
 # ---------------------------------------------------------------------------

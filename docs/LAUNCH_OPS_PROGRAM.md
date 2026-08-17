@@ -80,7 +80,7 @@ unattended. Kill switch (`store/scheduler/PAUSE`) plus two half-stops. Daily spe
 watchdog that SIGKILLs a wedged daemon. Escalating 5m/10m/20m retries. Alerts on four channels
 including Telegram, with a delivery test. A nightly R2 backup that **verifies its own uploads**
 (`verified=8/8`) and prunes on retention. Payments abstracted behind `IPaymentProvider` with a
-Stripe as its one real implementation. Email abstracted behind `IEmailSender` and **optional** —
+Paddle implementation already written. Email abstracted behind `IEmailSender` and **optional** —
 the buyer gets download links on the success page, not by email. Both web and API ship as plain
 Dockerfiles. Legal pages exist: terms, privacy, refund, a Consumer Contracts Regulations 2013
 waiver, an AI-generated disclosure, a licence grant, Stripe automatic tax.
@@ -447,24 +447,42 @@ Everything else in this document is a script.
 ## 6. Verification commands
 
 ```bash
-cd ~/Documents/code/prospector
-git status --porcelain | wc -l                                   # SRC-1: 201
-gh api repos/chidionyema/prospector/branches/main/protection      # SRC-2: 404 not protected
-gh repo view chidionyema/prospector --json isPrivate,visibility   # SRC-3: PUBLIC
-fly volumes show vol_4ql6dzwjylqeygnr --app prospector-store-api  # DAT-1: 1GB, lhr, snapshots 5d
-fly volumes snapshots list vol_4ql6dzwjylqeygnr --app prospector-store-api
-fly status --app prospector-store-api                             # INF-1: 1 machine
-tail -3 store/backup.log                                          # DAT-5: STORE_BACKUP PASS verified=8/8
-ls -l store/prospector.jsonl                                      # DAT-3: 216,974,821 bytes
-.venv/bin/python tools/verify_pass_shelf_coverage.py              # ENG-1: 35 stranded
-grep -c 'exceeded 600s hard deadline' store/scheduler/launchd.err.log   # ENG-4: 25
-# ENG-3: 8 today. Match the provider AND the code — a bare '402' over an unrotated log
-# counts ten days of a chain that no longer exists (see the correction under the ENG table).
-grep -c 'Exa search error.*402' store/scheduler/launchd.err.log   # ENG-3: 8
-rg -n '^\s+provider:' config.yaml                                 # ENG-3: [ddg, exa, searxng, claude_cli]
-curl -s https://api.mumchimp.com/catalog/stats                    # {"listed":62,"registered":146}
-whois mumchimp.com | grep -i 'expiry\|registrar\|name server'     # DNS-1: 123-Reg / GoDaddy NS
-dig +short TXT google._domainkey.mumchimp.com                     # DNS-3: empty
+.venv/bin/python scripts/ops_state.py             # local probes, seconds
+.venv/bin/python scripts/ops_state.py --network   # adds fly, gh, dns and the live API
+.venv/bin/python scripts/ops_state.py --json      # machine-readable
+```
+
+That is the whole of §6 now. It used to be a list of commands with the answer written beside
+each one as a comment, and every one of those answers was measured once and then rotted.
+Checked 2026-08-17, four were wrong: uncommitted files said 201 and were 48, visibility said
+PUBLIC and was PRIVATE, the catalogue said `{"listed":62,"registered":146}` and was
+`{"listed":68,"registered":158}`, and `ENG-1: 35 stranded` was already corrected to 7
+elsewhere in this document while §6 still said 35. A number written next to a command is a
+claim about the past wearing the clothes of a measurement.
+
+Each probe is bounded and independent. One that cannot answer prints `UNREACHABLE` and its
+reason, and never stops the others — `SRC-2` does exactly that today, because rulesets on a
+private repo need GitHub Pro, so branch protection can only be read in the web UI.
+
+Sample run, 2026-08-17, kept as a receipt rather than as the answer:
+
+```
+SRC-1   uncommitted paths in this checkout             48 uncommitted path(s)
+DAT-3   spend ledger size                              258,347,707 bytes (258.3 MB)
+DAT-5   last store backup line                         STORE_BACKUP PASS dossiers=2579 verified=8/8
+ENG-3   Exa 402s in the scheduler error log            14 line(s)
+ENG-3   retrieval chain declared in config.yaml        provider: [ddg, exa, searxng, claude_cli]
+ENG-4   hard-deadline kills in the scheduler error log 15 line(s)
+ENG-7   operator roster declared in config.yaml        operator: [minimax, claude_cli] | moat_primary: [minimax, claude_cli]
+KEY-1   which checkout production runs from            both daemons in prospector-live, 2 behind origin/main
+OPS-1   launchd job definitions vs snapshot            PASS, 29 job(s) match
+SRC-2   branch protection on main                      UNREACHABLE: private repo on a free plan
+SRC-3   repository visibility                          PRIVATE (isPrivate=True)
+INF-1   API machines and regions                       1 machine(s), regions=lhr, state=started
+DAT-1   the volume holding the catalogue               vol_4ql6dzwjylqeygnr 1GB lhr attached=True
+AST-1   live catalogue counts                          {"listed":68,"registered":158}
+DNS-1   domain registrar and nameservers               123-Reg Limited, NS03/NS04.DOMAINCONTROL.COM, expires 2027-06-16
+DNS-3   DKIM record                                    EMPTY — DKIM not published
 ```
 
 ---
@@ -498,6 +516,7 @@ dig +short TXT google._domainkey.mumchimp.com                     # DNS-3: empty
 | 2026-08-17 | ENG: moving the code split live state in two | **FIXED.** `PROSPECTOR_STORE_DIR` kept the ledger and dossiers canonical, but four constants derived the store from `Path(__file__)` and so followed the CODE: `provider_health.json`, `provider_health_noncritical.json`, `store/_cache/` and `store/scheduler/audit/`. For twenty minutes the daemon wrote health marks in one directory while every probe read the other — the state in which a benched provider can never be seen to recover. `config.store_root()` is the single resolver now (health, retrieval, audit, golden). With the env var unset the paths are byte-identical to before | leaked writes measured after the 13:52 clone: health 14:04, `_cache` 14:12, audit 14:13, against 948 files in the canonical store in the same window. 1748 audit rows and 237 cache files carried back; the four live paths are symlinks until the fix reaches main. `pytest -k "health or audit or store_dir or golden or cache or console_tools"` → 172 passed |
 | 2026-08-17 | CI: `origin/main` was red, so every PR inherited the failures | **FIXED.** Four separate faults, none of them in any PR's own diff. (1) `MoneyRailStatusTests.NonStripeProvider_RecordsNotApplicable` asserted a state that could not exist: `MoneyRailConfigGate.StartAsync` throws for any provider missing from `RequiredKeys`, and stripe is the only entry, so `GuardStripeApiKeyShape` never saw a non-Stripe provider. The fail-closed throw is right and stays; the dead branch, the mode and the test went, and the test now pins the throw. (2) One em dash in `Store.Web/src/lib/config.ts:120`. (3) Four CI scripts landed unclassified in the console tool registry. (4) `PADDLE_API_KEY` was the last mention of the retired provider, in `test_dotenv_fence.py`. Also removed: an unresolved merge conflict committed into this file at lines 494-497, with a test so the next one cannot reach main | `dotnet test --filter MoneyRail` → 40 passed; `vitest dashFree` → 8 passed; `pytest test_console_tools_run test_retired_terms test_dotenv_fence` → 46 passed; `pytest test_no_conflict_markers` → 1 passed |
 | 2026-08-17 | OPS: the console tool registry had drifted | **FIXED.** Three runnable scripts had no button and nothing stopped the hand-written registry drifting again. Buttons added, plus `NOT_AN_OPS_TOOL` so every file in `tools/` and `scripts/` is either registered or carries a written reason it is not. A test walks both directories and fails on a file in neither list, and on a stale exclusion naming a file that no longer exists | `pytest tests/unit/test_console_tools_run.py -q` → 25 passed; PR #255 |
+| 2026-08-17 | Main carried conflict markers in this file, and a page fell out of the nav | `origin/main` at `81bca3f` (PR #260) committed three literal conflict-marker lines into this section, so every branch that merges main inherits them. Removed here. The same PR rewrote `lib/nav.ts` as grouped data and gave it no entry for `pages/method.tsx`, which exists only on this branch, so the merged tree broke the `every screen is reachable from the nav` assertion in `tests/nav.test.ts`. `/method` is in the Control group now | `git show origin/main:docs/LAUNCH_OPS_PROGRAM.md` greps 3 marker lines at 494, 496, 497; after this merge the same grep over every tracked file returns nothing. Nav checked without node_modules by replicating the test: nav entries with no page 0, pages with no nav entry 0, duplicates 0 |
 
 ---
 
@@ -559,4 +578,374 @@ file and a session's notes survived about ten minutes.
 **6. Bulk mechanical implementation goes through the pi-bridge**, with Claude planning and
 verifying. Money rail, identity, contract and migration work never leaves Claude; the bridge
 refuses it in the server rather than in a prompt.
+
+## 9. Working-method defects — the register
+
+On 2026-08-17 the founder raised about twenty-five distinct complaints in a single session.
+None of them was written down anywhere. They were answered one at a time, each answer was a
+piece of code, and the next session would have started from zero. That is the defect this
+section exists to stop: **an issue that is felt but not tracked is an issue that recurs.**
+
+The complaints are not twenty-five problems. They are five, and they share one root cause.
+
+**Nothing we produce is graded by anything except the person who produced it.** Every item
+below is a consequence of that. An agent asserts a claim and grades it itself. An agent ships
+a script and decides itself that it works. An agent picks a route and judges its own
+efficiency. There is no independent, automatic grader anywhere in the loop, so nothing can
+fail, so nothing improves.
+
+Each cluster carries the one number that says whether it is fixed. **A cluster with no number
+is not being worked on; it is being complained about.** Where a number does not exist yet,
+that is stated rather than papered over.
+
+---
+
+### WM-1 — Claims made without proof
+
+*Raised as:* "you need to be careful"; "delete ~23,000 lines. wtf"; "look this is really
+irresponsible"; status reported without checking.
+
+*Measured:* three false claims in one session — "PR #247 passed the gate" (no gate ran;
+`core.hooksPath` is unset and `.git/hooks/pre-commit` does not exist), "merging deletes
+~23,000 lines" (a two-point diff against a moved branch, read backwards; the true figure is
+198 files / 31,522 insertions), "~22 items open, 4 console screens missing" (there are 44 ids
+and 11 console pages; the search looked for App Router files in a Pages Router app).
+
+*Costs:* a wrong claim was minutes from being published into a PR body, where it would have
+justified closing work that was fine.
+
+*Number:* false claims per session, counted from the transcript. **No probe exists yet.**
+`scripts/reflect.py` finds where the founder stopped an agent, which is a proxy, not this.
+
+*State:* OPEN.
+
+### WM-2 — Work that is never graded, and quietly goes inert
+
+*Raised as:* "no spec no trace lots of invisible solutions broken"; "we write code for
+everything but never follow up to see if its effective"; "half baked code and forgotten
+about".
+
+*Measured:* **10 of 16 mechanisms in `~/.claude/scripts/` have nothing that invokes them** —
+`rule-guard.py` and `reflect.py` among them, both written the same day they were measured as
+inert. `batching-compliance.py`, `cost-baseline.py`, `cost-guard-probe.sh`,
+`cli-cache-experiment.py`, `estate-cost.py`, `estate_spend.py`, `cc-token-report.py` are the
+archaeology of earlier programmes. The repo itself is healthy by comparison: 22 scripts, one
+unreferenced.
+
+*Costs:* every one of those was a day that felt like progress and changed nothing.
+
+*Number:* **inert mechanisms: 10 of 16 (62%).** Target: every mechanism either wired to an
+invoker or deleted. The audit is the loop in §9's closing rule.
+
+*State:* OPEN, and it is the cheapest of the five to close.
+
+### WM-3 — Knowledge that does not act
+
+*Raised as:* "all the rules you enforced, are they working?"; "we have no way of enforcing
+violations"; "repeating same failures"; "junior engineer forever, no improvement or
+learning".
+
+*Measured:* 333 memory files, two of which describe the exact two-point-diff mistake that was
+then made twice in one day with both memories loaded in context. 13 hook scripts installed and
+exactly one (`hang-guard.py`) that can refuse anything. The rules that RUN are obeyed; the
+rules that are READ are not.
+
+*Costs:* the same mistakes at the same cost, indefinitely.
+
+*Number:* **1.68 founder-stop events per 100 tool calls** across 343 transcripts and 41,319
+calls, from `scripts/reflect.py`. July 0.63, August 1.79 — the rate nearly tripled. Any
+behaviour rule that lands must move that number or be deleted.
+
+*State:* OPEN. `~/.claude/scripts/rule-guard.py` exists, passes its own selftest, and **has
+never run** — the `settings.json` wiring was refused by the permission classifier twice and
+the founder has to paste it.
+
+### WM-4 — No route discipline
+
+*Raised as:* "we always take the longest and convoluted route which gets us distracted, wastes
+tokens and time, does the wrong thing, wrong outcome and ignores the problem"; "why tf u
+getting distracted"; "this is what I mean about efficiency"; "just firefighting".
+
+*Measured:* asked why a gate took fifteen minutes, the answer was already visible in
+`scripts/popdd_verify.py:246` and `pytest.ini:42`. Instead: a 30-minute suite re-run was
+launched for a number that signed receipts already held, followed by an unrelated CI log dive,
+followed by a round trip to load a tool to kill the job. Four detours before a one-paragraph
+answer. What the founder actually stops, from the transcripts: `Agent` launches 7.8%,
+`pytest` runs 6.0%, `AskUserQuestion` 4.9%, shell loops 4.3% — that is 23% of all stops, and
+every one of them is *starting something expensive before checking whether the answer already
+exists*.
+
+*Note:* the obvious theory was wrong and the data killed it. Read-only drift causes **1%** of
+stops. A delegation guard would have been built, would have felt productive, and would have
+fixed nothing.
+
+*Number:* the same 1.68 per 100. Same scoreboard as WM-3.
+
+*State:* OPEN.
+
+### WM-5 — Nothing is tracked, grouped, or de-duplicated
+
+*Raised as:* "who is tracking? do they overlap"; "no reasoning about cluster of issues and
+grouping"; "just goes into ether"; "are you checking other agent sessions' work and PRs to
+ensure no overlaps and duplicated work"; "what happened to all your work from other sessions".
+
+*Measured:* 8 PRs open with nothing merged to `main` since **2026-08-16 14:13**; six blocked.
+56 branches under `origin/pr/*` and `origin/fix/*`. Of 44 programme ids, only 3 are provably
+done on `origin/main` and 24 have no mechanical check at all. `main` and
+`integrate/minimax-into-main` differ by 63 files, so every session picks its own base and
+"is it done?" has two true answers.
+
+*Costs:* duplicated work between concurrent sessions, and this register itself — twenty-five
+complaints that existed only in a chat window.
+
+*Number:* **items with no mechanical check: 24 of 44.** Target: zero, either by writing the
+check or by recording that a human must judge it.
+
+*State:* OPEN. `scripts/ops_status.py` and its claim register are the mechanism; they are in
+unmerged PR #250.
+
+---
+
+### WM-6 — The agent goes idle while a run it started is still going
+
+*Raised as:* "this is another founder complaint, this is unacceptable, we need to enforce
+multi tasking, i should not be having to sit watch a tool run for 15 mins while agent is idle
+and there is work to do" (2026-08-17). Earlier form: "a lot of our time is spent waiting for
+tests, we should be able to multitask, we have lots to do" (2026-08-16).
+
+*Measured:* **15 minutes 50 seconds** of wall clock on one turn, one shell running, nothing
+else started. The rule "never sit and watch a long command" had been in the global `CLAUDE.md`
+since 2026-08-16 and was loaded in context at the moment it was broken. Backgrounding the
+command was done correctly; ending the turn afterwards is the part that wasted the clock.
+
+*Costs:* the founder watches a spinner instead of reading results, and pays for the context
+re-read when the turn resumes.
+
+*Number:* **turns ended with a background run still in flight.** Now zero by construction, if
+the guard is wired. Read it from the guard's own refusals.
+
+*State:* CODE WRITTEN, NOT YET LIVE. `~/.claude/scripts/idle-guard.py` is a Stop hook that
+blocks the stop once and names the runs still going; selftest 6/6. It cannot wire itself —
+the permission classifier refuses an agent editing `~/.claude/settings.json` — so
+`~/.claude/scripts/wire-idle-guard.sh` is the founder's one command, then quit and relaunch.
+
+---
+
+### WM-7 — A complaint is answered, then forgotten
+
+*Raised as:* "you lost track of all the process improvements we are trying to solve"; "in
+fact these appear to be two separate workstreams"; "including losing track of founder
+complaints, the transcripts, self improvements" (all 2026-08-17).
+
+*Measured:* `reflect.py --complaints` reads every transcript and finds **373 complaints across
+1,690 messages**, and it only ever PRINTED them. Nothing survived the terminal, so a complaint
+was live only while somebody was looking at it. Worse, on 2026-08-17 the agent started writing
+a second complaint scanner from scratch without noticing that reflect.py existed, and started
+a second working-method register without noticing this section existed. Losing track produces
+duplicate mechanisms, which is the same defect twice.
+
+*Costs:* the same complaint is made three and four times. Work is redone. The founder has to
+be the memory.
+
+*Number:* **complaints with no tracked owner.** Read it by diffing the ledger against the task
+list.
+
+*State:* PARTLY CLOSED. `~/.hermes/scripts/complaint_ledger.py` persists reflect.py's own scan
+to `~/.hermes/state/complaint_ledger.json` — it deliberately adds no scanner of its own.
+Registered as capability `founder_complaint_ledger` (period 24h) and scheduled daily at 07:40,
+so a stale ledger raises an alarm without being asked. The remaining half is the discipline of
+giving each themed complaint a task id.
+
+---
+
+### The rule that closes all five
+
+**Name the number before you start.**
+
+1. **Before** — state the number that is wrong, its value now, the target, and the command
+   that reads it. If you cannot name the command, do not start.
+2. **Do the work.**
+3. **After** — run the same command and record the result next to the prediction, *including
+   when it did not move.*
+
+Nothing is done until step 3 exists. A prediction written afterwards is not a prediction — it
+cannot catch the case where the number improved for unrelated reasons and the fix took the
+credit. That is the difference between a process and a habit, and it is the only thing on this
+page that produces learning rather than activity.
+
+Baselines cannot be predicted, only changes. The numbers above are baselines; predictions
+attach to the fixes that follow them.
+
+---
+
+### 9.1 — Every session, not one session
+
+The five clusters above were read off ONE session. That was the wrong sample and the founder
+said so: "we have all transcripts of sessions, founder complaints etc, not just ur session".
+
+`~/.claude/scripts/reflect.py --complaints` now reads all of them. **1,690 messages he
+actually typed, de-duplicated; 373 of them are complaints (22%).** Getting to a number worth
+trusting took four passes, and each failure is worth recording because each one is a way a
+text measurement lies:
+
+1. Counting every `role: user` record. `role: user` is not "he typed this" — it also covers
+   tool results, task notifications, subagent turns, compaction summaries and replayed
+   context. First run: 716 complaints, and the verbatim sample was a task-notification block.
+2. Filtering those out but still counting whole messages. **He complains by pasting the reply
+   he is complaining about**, so the classifier was reading the agent's vocabulary. The tell
+   was that all nine themes scored between 173 and 284 — a flat ranking is what matching noise
+   looks like.
+3. Stripping pasted text by shape (line length, bullets, capitalisation). Better, still leaky:
+   he pastes a reply as one long run-on line, so the whole paste survived as a single "line".
+4. **Matching the paste against what an assistant actually wrote.** The paste is a copy, so
+   the original is in the transcript one turn earlier. `_own_words()` drops any segment of 40
+   characters or more that an assistant emitted somewhere on this machine. This is the one that
+   works, and it needed no heuristic about his writing style.
+
+The ranking, and the three clusters §9 missed:
+
+| count | theme | tracked by |
+|---:|---|---|
+| 78 | efficiency / cost / speed | `token-audit.py`, tool-drip-guard |
+| 77 | proof / unverified claims | nothing yet — WM-1 |
+| 75 | sloppiness / broken output | POPDD gate (CI only) |
+| 67 | rushing / scope / firefighting | `rule-guard.py` rule_pr_size — **not wired** |
+| 60 | process / no follow-up | this register |
+| 51 | repeating the same mistake | `rule-guard.py` — **not wired** |
+| 42 | **cannot tell what you are doing** | Ops Console `/method` |
+| 41 | **items raised then dropped** | this register |
+| 32 | tracking / duplication / other agents | nothing yet |
+| 27 | **is it actually shipped** | Ops Console `/method`, `ops_status.py` |
+| 26 | communication / format | nothing mechanical |
+| 22 | not following instruction | nothing mechanical |
+| 89 | (unclustered) | — |
+
+The three in bold were not in §9. They came out of reading the leftover bucket, which is
+printed for exactly that reason: **a silent "other" bucket is how a new problem stays
+invisible for months.** Together they are 110 complaints — roughly a third of the total — and
+they are all one thing: *he cannot see the state without asking.* "hours later i dont even
+know wat you are working on and if it is done." "is anything passing? has pricing been fied
+and deployed?" "wtf are you even talking about."
+
+That is not a communication problem to be solved with better prose. Prose is what caused it.
+
+### 9.2 — The loop
+
+Four pieces. Each is a command or a page, and none of them is a paragraph.
+
+| # | piece | where | state |
+|---|---|---|---|
+| 1 | the number | `reflect.py --json` → `store/ops/method_metrics.json` | **live**, `com.chidionyema.reflect` every 4h |
+| 2 | the register | `REGISTER` in `reflect.py`, one row per theme | **live**, carried in the snapshot |
+| 3 | enforcement | `rule-guard.py`, 5 PreToolUse rules | written, selftest 19/19, **not wired** |
+| 4 | visibility | Ops Console `/method` | **live**, `console_api.READS["method"]` |
+
+The register lives in code rather than in this table on purpose. A row here cannot be
+executed, so a row here cannot tell you it has gone stale. Every theme carries the command
+that reads its number; a theme with no command renders as **untracked** on the page, so the
+gap is visible instead of implied.
+
+Staleness is handled the same way: the page refuses to present a scoreboard older than 36
+hours without saying so. A dashboard quietly rendering a three-week-old number as state is the
+defect this whole section exists to fix.
+
+**Piece 3 is blocked on the founder.** The Claude Code permission classifier refuses an agent
+editing `~/.claude/settings.json` — attempted through Bash and through Edit, refused all three
+times. He has to paste this into `hooks.PreToolUse`, in the entry whose `matcher` is `Bash`,
+next to `hang-guard.py`:
+
+```json
+{ "type": "command",
+  "command": "python3 /Users/chidionyema/.claude/scripts/rule-guard.py" }
+```
+
+`settings.json` is read once at process start, so it takes effect on relaunch, not on
+`/clear`. Until it is pasted, nothing about the enforcement layer can be proven — a rule that
+has never executed has no evidence behind it, and the honest state is "written", not "done".
+
+### 9.3 — What would prove this worked
+
+**Falsifiable, dated, and it is one command.**
+
+- Number: founder stops per 100 tool calls. **1.70 now** (July 0.63, August 1.82).
+- Command: `python3 ~/.claude/scripts/reflect.py --trend`, or the `/method` page.
+- Target: **below 1.20 by 2026-09-16. Below 0.80 by 2026-10-16.**
+- If it does not fall, the rules were wrong and get **deleted, not defended.**
+
+That last line is the part that matters. Every mechanism in WM-2 went inert because nothing
+was ever going to declare it a failure.
+
+### 9.4 — Tokens per move
+
+*Raised as:* "we need to enforce getting the job done with the fewest possible tokens without
+impact to quality or speed"; "efficient, surgical, military approach always, for everything,
+as behaviour".
+
+The measurable form of that is a **ratio, not a total.** A raw token total falls in a quiet
+month, which would reward doing less rather than doing it in fewer moves.
+
+| month | output tokens | tool calls | per call |
+|---|---:|---:|---:|
+| 2026-07 | 6,655,903 | 3,947 | **1,686.3** |
+| 2026-08 | 85,319,454 | 37,506 | **2,274.6** |
+
+**35% worse, month on month.** Output tokens only: an assistant record's input and cache_read
+fields describe the whole resident context that turn, so summing them across records counts
+the same context once per turn and inflates the total several times over.
+
+Target: back under 1,686.3 by 2026-09-16. That is prediction P2.
+
+### 9.5 — Predictions, and being told you were wrong
+
+"Get better at getting better" is the goal, and it is only real if something can grade it.
+`store/ops/method_predictions.json` holds one row per claim: the number it should move, the
+value now, the target, and the date it gets scored. `reflect.py` grades every row whose date
+has passed and renders `hit`, `missed`, `pending` or `unmeasured` on the `/method` page.
+
+`unmeasured` is deliberate and it is not a failure state to hide. P3 below reads `unmeasured`
+because nothing yet writes CI job times into the snapshot. That is visible on the page instead
+of being quietly scored as pending.
+
+| id | claim | number | now → target | due |
+|---|---|---|---|---|
+| P1 | Rules as refusals cut how often he has to stop a call | stop rate | 1.70 → 1.20 | 2026-09-16 |
+| P2 | One round trip per intent cuts tokens per move | output tokens/call | 2,274.6 → 1,686.3 | 2026-09-16 |
+| P3 | The CI long pole is the nextjs job, not the python suite | slowest job | 1025s → 600s | 2026-09-16 |
+
+A prediction's `made_on` is recorded and never edited. One added after the fact cannot catch
+the case where the number improved for unrelated reasons and the fix took the credit.
+
+### 9.6 — CI, carried forward so it does not evaporate
+
+Measured on run `31952065675`, and it overturns the assumption that the test suite is the
+problem:
+
+| job | time | outcome |
+|---|---:|---|
+| python | 96s | **FAIL** — `mkdir: /Users/runner: Permission denied` from `actions/setup-python` on the self-hosted mac runner. Not a test failure. |
+| dotnet | 602s | FAIL |
+| nextjs | **1025s** | PASS — the real wall-clock long pole |
+| engine | 97s | FAIL |
+
+The local test suite is already parallel (`pytest.ini:42 addopts = -n auto --dist loadfile`,
+measured 493s at `-n 8`, 324s at `-n auto`), so that lever is spent. The gate is slow for a
+different reason: `scripts/popdd_verify.py:246-247` runs ruff and pytest with **no path
+arguments**, so any staged `.py` file runs all 4,189 tests. Collection alone is 68s.
+
+This is P3. It is the one open item here that is engineering rather than method, and it is
+recorded here so it stops living in one session's head.
+
+### 9.7 — Wiring the guard, since the agent is not allowed to
+
+`~/.claude/scripts/wire-rule-guard.sh`. It runs the selftest first, backs up `settings.json`
+with a timestamp, adds the hook to the `Bash` matcher next to `hang-guard.py`, validates the
+JSON before writing, and is idempotent. Dry-run against a copy on 2026-08-17 produced:
+
+```
+matcher None -> ['tool-drip-guard.py']
+matcher Bash -> ['hang-guard.py', 'rule-guard.py']
+```
+
+Then **quit and relaunch Claude Code.** `settings.json` is read once at process start; `/clear`
+does not reload it. Prove it fired by running `git add -A` — it must refuse.
 

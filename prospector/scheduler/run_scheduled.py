@@ -1007,6 +1007,78 @@ def _unlist_pass(cfg) -> dict | None:
     return out
 
 
+_RECOVER_TIMEOUT_S = 900
+
+
+def _recover_pass(cfg) -> dict | None:
+    """Retry the PASSes the publish gate refused. None when it is not this tick's turn.
+
+    WHY THIS EXISTS. `alerts.py` already says it, and said it before this rail was built: "a
+    PASS that is not on the shelf stays off it forever on its own — the engine has no retry
+    that republishes, so the state is permanent until a human runs a republish." That is why
+    44 packs were stranded on 2026-08-17, every one of them passed within the same month:
+    the strand is not a legacy backlog, it re-accumulates continuously. An alert names the
+    problem; only a retry pays it down.
+
+    Bounded three ways, because this runs inside a tick that has a hard deadline:
+    `schedule.recover_per_tick` caps the packs, `_RECOVER_TIMEOUT_S` caps the wall clock,
+    and `schedule.recover_interval_s` caps the cadence. `regenerate` is deliberately NOT in
+    the route list — it is full artifact generation and belongs to the generation budget,
+    not to a repair pass.
+
+    The ledger (`store/ops/pack_recovery.jsonl`) is what stops this becoming a treadmill: a
+    route that has failed MAX_ATTEMPTS times on an identical failure signature is skipped,
+    so a pack that genuinely cannot recover is paid for at most three times, not once per
+    tick forever.
+    """
+    import subprocess  # local, matching this module's existing convention
+
+    if not _sched(cfg, "recover_stranded_packs", True):
+        return None
+    limit = int(_sched(cfg, "recover_per_tick", 3) or 0)
+    if limit <= 0:
+        return None
+
+    marker = Path(str(cfg.store_dir)) / "scheduler" / "last_pack_recovery"
+    interval = int(_sched(cfg, "recover_interval_s", 3600) or 0)
+    try:
+        if interval and marker.exists() and (time.time() - marker.stat().st_mtime) < interval:
+            return None
+    except OSError:
+        pass                                   # an unreadable marker means "run it", not "skip"
+
+    script = Path(__file__).resolve().parents[2] / "tools" / "recover_stranded_passes.py"
+    if not script.exists():
+        logger.error("Pack recovery skipped: %s is missing", script)
+        return {"error": f"missing {script.name}"}
+
+    # --timeout below _RECOVER_TIMEOUT_S, not equal to it: the gate resolves every citation
+    # URL over the network (`lint_check_urls`) and a pack with 30+ citations, some of them
+    # timing out, runs for minutes. Without a per-pack cap the FIRST slow pack eats the whole
+    # budget and the outer timeout kills the run before it writes a single ledger row.
+    cmd = [sys.executable, str(script), "--apply", "--routes", "audit,rebundle,copy",
+           "--limit", str(limit), "--jobs", "2", "--timeout", "240"]
+    if _sched(cfg, "recover_publish", True):
+        # The same money-rail action the engine already takes on any fresh PASS, applied to
+        # a repaired one: it lists only what the deterministic gate now passes.
+        cmd.append("--publish")
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=_RECOVER_TIMEOUT_S)
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        logger.error("Pack recovery FAILED (tick continues): %s: %s", type(exc).__name__, exc)
+        return {"error": f"{type(exc).__name__}: {exc}"}
+    finally:
+        try:
+            marker.parent.mkdir(parents=True, exist_ok=True)
+            marker.touch()
+        except OSError:
+            pass                               # cadence is an optimisation, not a correctness rail
+
+    out = {"rc": proc.returncode, "tail": (proc.stdout or proc.stderr).strip()[-300:]}
+    logger.info("Pack recovery: %s", out["tail"])
+    return out
+
+
 def _decay_pass(cfg, n_decay: int) -> dict | None:
     """Re-verify up to `n_decay` SLA-expired PASSes, then unlist whatever that killed.
 
@@ -1606,9 +1678,13 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
                 # swallows every exception by design, so an uncovered sweep could wedge the tick
                 # invisibly.
                 decayed = _decay_pass(cfg, _decay_sweep_budget(cfg))
+                # Recovery runs on the braked tick too, and deliberately: a brake stops
+                # MAKING passes, it does not make the ones already paid for sellable.
+                recovered = _recover_pass(cfg)
             finally:
                 deadline.cancel()
-        tick["result"] = {"dossiers": 0, "resumed": resumed, "decayed": decayed}
+        tick["result"] = {"dossiers": 0, "resumed": resumed, "decayed": decayed,
+                          "recovered": recovered}
         _append_tick(cfg, tick)
         _emit_tick_alerts(cfg, tick)
         _emit_tick_digest(cfg, tick)
@@ -1642,6 +1718,9 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
             decayed = _decay_pass(cfg, _decay_sweep_budget(cfg))
             if isinstance(tick.get("result"), dict) and decayed is not None:
                 tick["result"]["decayed"] = decayed
+            recovered = _recover_pass(cfg)
+            if isinstance(tick.get("result"), dict) and recovered is not None:
+                tick["result"]["recovered"] = recovered
             logger.info("Tick complete: %s", tick["result"])
         except GroundingInfrastructureError as exc:
             # Record the tick + fire the CRITICAL alert BEFORE exiting — a silent exit here

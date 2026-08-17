@@ -119,13 +119,21 @@ one.
 
 ## Working in a git worktree
 
-**The pre-commit gate is LIVE. This section used to say it was disabled, and that was wrong.**
+**As of 2026-08-17 there is NO pre-commit gate in this checkout. Nothing stops a bad commit
+locally. Run the gate yourself.** This paragraph has now been wrong in both directions, which
+is exactly why the two commands below exist — read them, never this prose.
 
-The founder did disable it on 2026-08-14 by moving `.git/hooks/pre-commit` aside to
-`pre-commit.DISABLED-2026-08-14`. On 2026-08-15 at 18:57 someone set `core.hooksPath` to
-`.git/hooks-active`, which symlinks `pre-commit` straight to `.lux/hooks/pre-commit`.
-**`core.hooksPath` overrides the hooks directory entirely, so moving the old hook aside now does
-nothing.** The gate has been running on every commit since.
+Measured 2026-08-17: `git config --get core.hooksPath` is empty, and
+`.git/hooks/` contains only `pre-commit.DISABLED-2026-08-14` and `pre-commit.sample`. There is
+no `pre-commit` file, so `git commit` runs no gate.
+
+History, because both states have happened: the founder disabled the gate on 2026-08-14 by
+moving `.git/hooks/pre-commit` aside. On 2026-08-15 at 18:57 someone set `core.hooksPath` to
+`.git/hooks-active`, which symlinked `pre-commit` to `.lux/hooks/pre-commit` — and
+**`core.hooksPath` overrides the hooks directory entirely, so moving the old hook aside did
+nothing while it was set.** That cost a session on 2026-08-16: a commit failed with only
+"exit code 1" while the doc said no gate could have refused it. The setting has since been
+unset again.
 
 Check which it is, never trust this paragraph:
 

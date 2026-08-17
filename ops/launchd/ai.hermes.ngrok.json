@@ -1,0 +1,14 @@
+{
+  "Disabled": true,
+  "KeepAlive": true,
+  "Label": "ai.hermes.ngrok",
+  "ProgramArguments": [
+    "/bin/bash",
+    "/Users/chidionyema/.hermes/scripts/ngrok-daemon.sh"
+  ],
+  "RunAtLoad": true,
+  "StandardErrorPath": "/Users/chidionyema/.hermes/logs/ngrok.err",
+  "StandardOutPath": "/Users/chidionyema/.hermes/logs/ngrok.log",
+  "ThrottleInterval": 10,
+  "WorkingDirectory": "/Users/chidionyema/.hermes"
+}

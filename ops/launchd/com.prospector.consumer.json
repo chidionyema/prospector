@@ -1,0 +1,23 @@
+{
+  "EnvironmentVariables": {
+    "HOME": "/Users/chidionyema",
+    "PATH": "/Users/chidionyema/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "PROSPECTOR_STORE_DIR": "/Users/chidionyema/Documents/code/prospector/store"
+  },
+  "KeepAlive": true,
+  "Label": "com.prospector.consumer",
+  "ProgramArguments": [
+    "/Users/chidionyema/Documents/code/prospector-live/.venv/bin/python",
+    "-m",
+    "prospector.run",
+    "--config",
+    "/Users/chidionyema/Documents/code/prospector-live/config.yaml",
+    "consume",
+    "--publish"
+  ],
+  "RunAtLoad": true,
+  "StandardErrorPath": "/Users/chidionyema/Documents/code/prospector/store/scheduler/consumer.err.log",
+  "StandardOutPath": "/Users/chidionyema/Documents/code/prospector/store/scheduler/consumer.out.log",
+  "ThrottleInterval": 120,
+  "WorkingDirectory": "/Users/chidionyema/Documents/code/prospector-live"
+}

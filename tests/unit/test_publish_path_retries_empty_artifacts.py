@@ -105,3 +105,54 @@ class TestEmptyArtifactsAreRetried:
         """One discipline, one number: a drift here is how the asymmetry came back."""
         import tools.publish_passes as pp
         assert run_mod._MAX_PACK_GEN_ATTEMPTS == pp.MAX_GEN_ATTEMPTS
+
+
+class TestAPrintedGapIsAnUnfinishedArtifact:
+    """A financial model that prints `_(not specified)_` where the price belongs is long
+    enough, sectioned, and useless. `validate_pack` grades size and shape and never reads the
+    text, so this loop counted it a success and the pack published UNLISTED with no retry.
+
+    Three live packs are stranded that way — `08dbe23f7be7af97`, `25363e54b649587a`,
+    `82a9c38fea398376` — all created before the renderer stopped emitting the string on
+    2026-08-14. The publish gate has always refused it (`pack_linter.check_placeholders`);
+    the generator simply never asked, which is the same asymmetry as the empty artifact
+    above, one class of defect later.
+    """
+
+    _GAPPY = ("# financial_model\n\n## Unit economics\n\nPrice: _(not specified)_\n\n"
+              + _BODY + "\n\n## Second section\n\n" + _BODY)
+
+    def test_a_printed_gap_is_regenerated_not_published(self, spy):
+        calls, plan = spy
+        plan.append({**_GOOD_ARTIFACTS, "financial_model": self._GAPPY})
+        plan.append(dict(_GOOD_ARTIFACTS))
+        artifacts, _ = _run()
+        assert calls["artifacts"] == 2, "accepted a financial model with no price in it"
+        assert "not specified" not in artifacts["financial_model"]
+
+    def test_it_regenerates_the_artifacts_and_not_just_the_copy(self, spy):
+        """Attribution matters: re-paying the COPY chain cannot put a figure in a document.
+
+        The gap is reported in `validate_pack`'s own `artifact '<name>' ...` shape, which is
+        what makes the loop's artifact-regeneration test fire.
+        """
+        calls, plan = spy
+        plan.append({**_GOOD_ARTIFACTS, "financial_model": self._GAPPY})
+        _run()
+        assert calls["artifacts"] == calls["marketing"] == run_mod._MAX_PACK_GEN_ATTEMPTS
+
+    def test_the_final_line_names_the_artifact_with_the_gap(self, spy, caplog):
+        calls, plan = spy
+        plan.append({**_GOOD_ARTIFACTS, "financial_model": self._GAPPY})
+        with caplog.at_level("ERROR"):
+            _run()
+        errors = [r for r in caplog.records if r.levelname == "ERROR"]
+        assert any("financial_model" in r.message and "STILL" in r.message for r in errors), \
+            [r.message for r in errors]
+
+    def test_a_clean_pack_still_costs_exactly_one_generation(self, spy):
+        """The new check must not read a gap into prose that has none."""
+        calls, plan = spy
+        plan.append(dict(_GOOD_ARTIFACTS))
+        _run()
+        assert calls["artifacts"] == 1

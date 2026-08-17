@@ -1,0 +1,25 @@
+{
+  "EnvironmentVariables": {
+    "HERMES_HOME": "/Users/chidionyema/.hermes",
+    "HOME": "/Users/chidionyema",
+    "PATH": "/usr/local/bin:/usr/bin:/bin:/Users/chidionyema/.local/bin"
+  },
+  "Label": "ai.hermes.rsi",
+  "ProgramArguments": [
+    "/usr/local/bin/python3",
+    "/Users/chidionyema/.hermes/scripts/launchd_receipt.py",
+    "--label",
+    "ai.hermes.rsi",
+    "--",
+    "/bin/bash",
+    "/Users/chidionyema/.hermes/scripts/rsi-autorun.sh"
+  ],
+  "RunAtLoad": false,
+  "StandardErrorPath": "/Users/chidionyema/.hermes/logs/rsi-autorun.err.log",
+  "StandardOutPath": "/Users/chidionyema/.hermes/logs/rsi-autorun.out.log",
+  "StartCalendarInterval": {
+    "Hour": 4,
+    "Minute": 30
+  },
+  "WorkingDirectory": "/Users/chidionyema/.hermes/scripts"
+}
