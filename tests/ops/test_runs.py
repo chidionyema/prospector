@@ -522,6 +522,128 @@ def test_a_candidate_started_and_never_finished_is_kept_with_its_reason(tmp_path
     assert row["dossier"]["status"] == "missing"
 
 
+# --------------------------------------------------------------------------- #
+# Unfinished work — the four states, and the ordering defect that invented them
+# --------------------------------------------------------------------------- #
+def _ts(hh_mm_ss: str) -> str:
+    """A timestamp on the audit file's own day, so `_day_files` picks the file up."""
+    from datetime import datetime, timezone
+
+    return f"{datetime.now(timezone.utc).strftime('%Y-%m-%d')}T{hh_mm_ss}+00:00"
+
+
+def test_audit_rows_are_ordered_by_time_not_by_a_per_process_counter(tmp_path):
+    """Measured on the live log 2026-08-17: a `candidate_done` came back BEFORE its own start.
+
+    `seq` is counted per PROCESS, and several processes append to one day-file, so run A's seq 4
+    and run B's seq 4 are unrelated moments. Sorting on it alone put a dead daemon's 12:49 rows
+    after a live daemon's 13:12 rows, and a candidate that had been ruled `kill` read as work
+    that died mid-flight. This goes red if the sort key loses its timestamp.
+    """
+    adir = _audit(
+        tmp_path,
+        # Written second by the live run, but carrying the LOWER per-process seq.
+        {"event": "candidate_done", "candidate_id": "c1", "run_id": "live", "pid": 2, "seq": 2,
+         "ts": _ts("13:12:12"), "decision": "kill", "gate": "source_or_die"},
+        {"event": "candidate_start", "candidate_id": "c1", "run_id": "dead", "pid": 1, "seq": 9,
+         "ts": _ts("12:49:02"), "title": "t"},
+        {"event": "candidate_start", "candidate_id": "c1", "run_id": "live", "pid": 2, "seq": 1,
+         "ts": _ts("13:09:35"), "title": "t"},
+    )
+    got = [(r["ts"], r["event"]) for r in R.audit_rows(directory=adir)["rows"]]
+    assert got == sorted(got), got
+    # And the consequence: the candidate has a verdict, so nothing is unfinished.
+    assert R.unfinished(directory=adir)["total"] == 0
+
+
+def test_a_candidate_whose_process_is_gone_is_abandoned_not_in_flight(tmp_path):
+    adir = _audit(tmp_path,
+                  {"event": "candidate_start", "candidate_id": "z1", "run_id": "r8", "pid": 6,
+                   "seq": 1, "ts": _ts("03:00:00"), "title": "t", "tier": "smb"})
+    v = R.unfinished(directory=adir, alive={6: False})
+
+    assert v["counts"]["abandoned"] == 1 and v["needs_attention"] == 1
+    row = v["items"][0]
+    assert row["state"] == "abandoned" and row["pid"] == 6 and row["tier"] == "smb"
+    assert "re-vet" in row["reason"]
+
+
+def test_a_candidate_on_a_live_busy_process_is_in_flight_and_not_an_alarm(tmp_path):
+    """The defect the founder hit: work being vetted right now was described as a possible crash."""
+    import time as _time
+
+    adir = _audit(tmp_path,
+                  {"event": "candidate_start", "candidate_id": "z2", "run_id": "r9", "pid": 7,
+                   "seq": 1, "ts": _ts("03:00:00"), "title": "t"},
+                  {"event": "check_result", "candidate_id": "z2", "run_id": "r9", "pid": 7,
+                   "seq": 2, "ts": _ts("03:00:10")})
+    from datetime import datetime
+
+    just_after = datetime.fromisoformat(_ts("03:00:12")).timestamp()
+    v = R.unfinished(directory=adir, now=just_after, alive={7: True})
+
+    assert v["counts"]["in_flight"] == 1
+    assert v["needs_attention"] == 0, "work in progress is not a fault"
+    assert v["items"][0]["state"] == "in_flight"
+    assert _time.time() > 0  # the clock is injected, never read behind the caller's back
+
+
+def test_a_live_process_that_has_written_nothing_for_an_hour_is_stalled(tmp_path):
+    from datetime import datetime
+
+    adir = _audit(tmp_path,
+                  {"event": "candidate_start", "candidate_id": "z3", "run_id": "rA", "pid": 8,
+                   "seq": 1, "ts": _ts("03:00:00"), "title": "t"})
+    an_hour_later = datetime.fromisoformat(_ts("04:00:00")).timestamp()
+    v = R.unfinished(directory=adir, now=an_hour_later, alive={8: True})
+
+    assert v["items"][0]["state"] == "stalled" and v["needs_attention"] == 1
+    assert "60 minutes" in v["items"][0]["reason"]
+
+
+def test_an_unprobeable_pid_is_unknown_and_still_needs_attention(tmp_path):
+    """A failed measurement is never rendered as health. It is also never rendered as death."""
+    adir = _audit(tmp_path,
+                  {"event": "candidate_start", "candidate_id": "z4", "run_id": "rB",
+                   "seq": 1, "ts": _ts("03:00:00"), "title": "t"})
+    v = R.unfinished(directory=adir)
+
+    assert v["items"][0]["state"] == "unknown" and v["needs_attention"] == 1
+    assert "cannot be measured" in v["items"][0]["reason"]
+
+
+def test_a_candidate_a_later_run_finished_is_not_counted_against_the_run_that_died(tmp_path):
+    adir = _audit(
+        tmp_path,
+        {"event": "candidate_start", "candidate_id": "c1", "run_id": "dead", "pid": 1, "seq": 1,
+         "ts": _ts("12:49:02"), "title": "t"},
+        {"event": "candidate_start", "candidate_id": "c1", "run_id": "live", "pid": 2, "seq": 1,
+         "ts": _ts("13:09:35"), "title": "t"},
+        {"event": "candidate_done", "candidate_id": "c1", "run_id": "live", "pid": 2, "seq": 2,
+         "ts": _ts("13:12:12"), "decision": "kill", "gate": "source_or_die"},
+    )
+    by_run = {r["run_id"]: r for r in R.run_index(directory=adir)["runs"]}
+    assert by_run["dead"]["unfinished"] == 0
+    assert by_run["live"]["unfinished"] == 0
+
+
+def test_the_run_list_says_which_runs_died_with_work_open(tmp_path):
+    adir = _audit(
+        tmp_path,
+        {"event": "candidate_start", "candidate_id": "c1", "run_id": "dead", "pid": 4242424,
+         "seq": 1, "ts": _ts("12:49:02"), "title": "t"},
+    )
+    row = R.run_index(directory=adir)["runs"][0]
+    assert row["unfinished"] == 1
+    assert row["state"] in ("abandoned", "unknown")
+    assert row["state_reason"]
+
+
+def test_process_alive_is_false_for_a_pid_that_cannot_exist():
+    assert R.process_alive(4242424) is False
+    assert R.process_alive(None) is None
+
+
 def test_an_unknown_run_id_answers_with_a_reason(tmp_path):
     store = _write(tmp_path, _dossier("k9", "pass", [_check("buyer_intent")]))
     v = R.run_view(_cfg(tmp_path), "does-not-exist", store=store, directory=tmp_path / "audit")

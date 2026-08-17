@@ -154,6 +154,7 @@ def _read_status(cfg, args: dict) -> dict:
     from .routing import routing_view
 
     out: dict[str, Any] = {"heartbeats": _heartbeats(cfg), "alerts": _alerts(cfg)}
+    out["stuck"] = _stuck(cfg, args)
     out["supervisor"] = _supervisor_view()
     out["pause"] = pause_view(cfg)
     out["providers"] = provider_view(cfg)
@@ -320,6 +321,65 @@ def _alerts(cfg) -> dict:
         "banner": banner.read_text(errors="replace")[:4000] if banner.exists() else None,
         "banner_path": str(banner),
     }
+
+
+def _stuck(cfg, args: dict) -> dict:
+    """Candidates that started and never finished, on the front page instead of three clicks in.
+
+    The engine cannot write its own `candidate_done` when it is killed (`run.py:1063`), so work
+    that died leaves no error anywhere — only a missing row. That made a dead batch invisible
+    until someone opened the run. `runs.unfinished` names each one, and only the ones that need
+    a human are counted: work still being vetted is not a fault.
+    """
+    from .runs import unfinished
+
+    try:
+        view = unfinished(days=int(args.get("days") or 3))
+    except Exception as exc:  # noqa: BLE001 — a broken audit read is information, not a 500
+        return {"error": f"{exc}", "error_kind": type(exc).__name__, "needs_attention": None,
+                "needs_attention_null_reason": "the audit log could not be read, so whether work "
+                                               "is stuck is unmeasured — treat this as unknown, "
+                                               "not as clear"}
+    worst = [e for e in view["items"] if e["state"] != "in_flight"]
+    return {
+        "needs_attention": view["needs_attention"],
+        "in_flight": view["counts"]["in_flight"],
+        "counts": view["counts"],
+        "window_days": view["window_days"],
+        "stall_after_min": int(view["stall_after_s"] // 60),
+        # Capped for the front page. `needs_attention` above is the FULL count, so a long tail
+        # is never silently reported as a short one.
+        "items": worst[:8],
+        "shown": min(len(worst), 8),
+        "note": view["note"],
+        # WHAT THE ENGINE WILL FIX BY ITSELF, separated from what it cannot. `unfinished` above
+        # is read from the audit log and is a HISTORY: it still names work that died four days
+        # ago even after the candidate has been recovered. The in-flight ledger is the LIVE
+        # answer — a record is deleted the moment a verdict exists — so this is the count that
+        # actually falls to zero, and the one that says whether a human has to do anything.
+        "awaiting_recovery": _awaiting_recovery(cfg),
+    }
+
+
+def _awaiting_recovery(cfg) -> dict:
+    """Abandoned work the next `vet --resume` will re-vet on its own.
+
+    Every drain pass starts with `run._recover_orphans`, so this number needs no operator action
+    and falls without one. It is reported anyway: work that is queued for repair and work that is
+    lost look identical from the audit log, and the founder has to be able to tell them apart.
+    """
+    from .. import inflight
+    from .runs import _store
+
+    try:
+        view = inflight.survey(_store(cfg).root)
+    except Exception as exc:  # noqa: BLE001
+        return {"count": None, "count_null_reason": f"the in-flight ledger could not be read: "
+                                                    f"{exc}"}
+    return {"count": view["counts"]["orphaned"], "in_progress": view["counts"]["live"],
+            "unreadable": view["counts"]["unreadable"], "dir": view["dir"],
+            "note": "these are re-vetted automatically at the start of every drain pass; "
+                    "nothing to do"}
 
 
 def _spend_headline(cfg) -> dict:
