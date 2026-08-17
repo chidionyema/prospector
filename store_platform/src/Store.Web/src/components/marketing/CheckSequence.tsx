@@ -2,6 +2,7 @@ import Link from 'next/link';
 import report from '@/data/sample-report.json';
 import { SourceChip, textLinkClass } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
+import { plainEnglish } from '@/lib/plainEnglish';
 
 /*
   ONE REAL IDEA, RUN THROUGH THE CHECKS IN ORDER.
@@ -142,7 +143,7 @@ export function CheckSequence({ className }: { className?: string }) {
                   </span>
                 </div>
                 <p className="mt-1.5 max-w-[62ch] text-meta leading-relaxed text-muted">
-                  {check.rationale}
+                  {plainEnglish(check.rationale)}
                 </p>
                 {domains.length > 0 && (
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">

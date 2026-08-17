@@ -2,7 +2,7 @@
 """
 Re-provision listed packs onto Stripe (create Product + one-time Price, point the Store DB at them).
 
-The 11 launch packs were provisioned as Paddle with `price_stub_*` ids. The Stripe checkout endpoint
+The 11 launch packs were provisioned on a rail we held no key for, with `price_stub_*` ids. The Stripe checkout endpoint
 builds a Checkout Session with `Price = pack.ProviderPriceId`, so each pack needs a real Stripe price
 id before it can take money. This is the existing-pack equivalent of bridge.py's StripeProvisioner
 (which only runs at publish time). It mirrors that logic: Product(name=Title, metadata.pack_id),

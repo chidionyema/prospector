@@ -343,7 +343,7 @@ public sealed class CopyPatchTests : IClassFixture<StoreApiFactory>
     /// damage: a copy job routed through POST /internal/catalog has to re-send the whole publish
     /// body, the provider ids are returned by no GET projection so a backfill cannot echo them,
     /// and omitting them did not leave them alone — it NULLED them
-    /// (<c>pack.ProviderProductId = request.ProviderProductId ?? request.PaddleProductId</c>).
+    /// (<c>pack.ProviderProductId = request.ProviderProductId</c>).
     /// A null ProviderProductId breaks FulfilmentService's product lookup
     /// (<c>p.ProviderProductId == item.ProductId</c>): the buyer is charged and delivery never
     /// resolves.
@@ -382,7 +382,7 @@ public sealed class CopyPatchTests : IClassFixture<StoreApiFactory>
         Assert.True(root.GetProperty("isListed").GetBoolean());
 
         // The provider label must not drift either. Nothing in that body named a provider, and
-        // the legacy default is "paddle" — which on a pack holding price_* ids would describe a
+        // the default is "stripe" — on a pack holding price_* ids anything else would describe a
         // rail that does not exist.
         Assert.Equal("stripe", root.GetProperty("paymentProvider").GetString());
 

@@ -26,6 +26,36 @@ function downloadHref(path: string | null): string | undefined {
 }
 
 /**
+ * Every date on this surface, in the site's locale.
+ *
+ * WHAT WAS HERE. `new Date(x).toLocaleDateString()` in three places (the library card, the receipt
+ * row, the session row) with NO locale argument. On the founder's 2026-08-15 review that rendered
+ * `8/11/2026` on a storefront that prices in £: a date a British buyer reads as 8 November and an
+ * American reads as 11 August, on the one page whose whole job is proving what was bought and
+ * when. Every other date and number on this site already passes `'en-GB'` explicitly (25 call
+ * sites; `pages/kill-log.tsx:175` is this exact shape) -- these three were the only ones that did
+ * not, so this is the file rejoining a convention rather than inventing one.
+ *
+ * The bare call was also a hydration hazard: with no locale the format is the RUNTIME's, so the
+ * server's and the browser's need not agree, and React reconciles a text-node mismatch silently.
+ *
+ * `timeZone: 'UTC'` because `created_at` is an instant, not a calendar day. Without it a 00:30 UTC
+ * purchase renders as the PREVIOUS day for a buyer in Los Angeles, and the card then disagrees
+ * with the receipt for the same order.
+ *
+ * Month as `short` rather than numeric removes the ambiguity at the source, instead of relying on
+ * the reader knowing which convention the site picked.
+ */
+function accountDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+/**
  * The signed-in account: orders, details, security. One route, three tabs.
  *
  * Tabs rather than routes because all three are short and all three are read far more often than
@@ -172,11 +202,20 @@ function OrdersTab() {
 
   return (
     <div className="space-y-10">
-      <div>
-        <h2 className="font-mono text-caption text-subtle">
-          your library · {purchases.length} pack{purchases.length === 1 ? '' : 's'}
-        </h2>
-        <ul className="mt-4 grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2">
+      <section>
+        {/* A HEADING, not a caption. Both section labels were `font-mono text-caption text-subtle`
+            lowercase -- "your library · 4 packs" and "receipts" -- which is this kit's DEBUG-label
+            idiom, the same styling the store uses for ids and timestamps. They are the only
+            structure the page has, and they were set quieter than the rows they govern, so the
+            page read as one undifferentiated column of grey. The count keeps the mono, because a
+            count IS a checkable quantity (tokens.css: "monospace means you can verify this"). */}
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <h2 className="text-body font-semibold text-text">Your library</h2>
+          <p className="font-mono text-caption text-subtle">
+            {purchases.length} pack{purchases.length === 1 ? '' : 's'}
+          </p>
+        </div>
+        <ul className="mt-4 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2">
           {purchases.map(({ order, item }) => {
             const href = downloadHref(item.download_path);
             return (
@@ -184,35 +223,93 @@ function OrdersTab() {
               // refund) is two rows, and `pack_id` alone would collide and drop one.
               <li
                 key={`${order.id}-${item.pack_id}`}
-                className="flex flex-col overflow-hidden rounded-md bg-surface"
+                className="flex overflow-hidden rounded-md border border-border bg-surface"
               >
-                {/* `morph={false}`, which is the default and is worth not disturbing: a customer
-                    who bought the same pack twice would otherwise have two elements claiming one
-                    `view-transition-name`, and a duplicate name silently disables every view
-                    transition on the document rather than just this one (see `PackMark`). */}
-                <div className="h-16 w-full overflow-hidden bg-surface2">
-                  <PackMark id={item.pack_id} />
+                {/*
+                  THE MARK IS A SPINE NOW, AND THE AXIS IS THE WHOLE FIX.
+
+                  This is the ONLY `<PackMark>` call site left in the app (verified by search,
+                  2026-08-15), and it was calling it in exactly the configuration the component's
+                  own doc comment forbids. `PackMark.tsx` states the rule -- "bands run
+                  PERPENDICULAR TO THE BOX'S LONG AXIS" -- and names this failure: stretched along
+                  a WIDE box the bands "become flat lines of RAGGED WIDTH with varying left insets
+                  ... precisely, the geometry of a text-line loading placeholder". The box here was
+                  `h-16 w-full`, measured 353x64 at 1280 (a 5.5:1 wide box) with the default
+                  `axis="across"`, and no `emphasis`, so the bands drew at 0.10-0.34 opacity in
+                  inherited grey on `bg-surface2`. That is `components/ui/Skeleton.tsx` -- pale
+                  rounded bars of ragged width -- rendered four times over. The founder's word for
+                  the page was "a complete shambles"; a library of unloaded skeletons is what he
+                  was looking at.
+
+                  A ~48px-wide, full-height spine is the orientation the geometry was drawn for
+                  (PackMark's comment cites the row card's 32x48 spine as the one call site where
+                  `across` was correct), so the default axis becomes right rather than being
+                  overridden, and `emphasis` lifts it to 0.26-0.88 so it reads as a drawn graphic.
+
+                  COLOUR. `currentColor` means the mark takes its ink from this wrapper. The
+                  catalogue gives it the twelve-hue SECTOR ink, and `OrderItem` (lib/api/auth.ts:
+                  114-121) carries no category, so that ink is not available here without a second
+                  fetch per row. Teal is the identity colour and is honest about what it encodes:
+                  the FORM still means this pack, and no hue claims a sector we were not told.
+
+                  `morph` stays false (the default) and that is worth not disturbing: a customer
+                  who bought the same pack twice would have two elements claiming one
+                  `view-transition-name`, and a duplicate name silently disables every view
+                  transition on the document rather than just this one.
+                */}
+                <div
+                  aria-hidden
+                  className="w-12 shrink-0 self-stretch bg-brand-mark/10 text-brand-mark"
+                >
+                  {/* `bleed` because the spine fixed the aspect ratio and left the ragged edge:
+                      bands of different lengths on a shared baseline read as a bar chart, on the
+                      one surface with nothing to measure. See PackMark's `bleed` docblock. */}
+                  <PackMark id={item.pack_id} emphasis bleed />
                 </div>
-                <div className="flex flex-1 flex-col gap-3 p-4">
-                  <div>
+                <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
+                  <div className="min-w-0">
                     <p className="text-meta font-semibold leading-snug text-text">
                       {item.pack_title}
                     </p>
+                    {/* The order number is on the card because it is the JOIN. Price lives in the
+                        receipt below and cannot be split per pack (order 2988 is £128.00 for two
+                        packs, and the API sends no line amount), so putting a figure here would
+                        mean inventing one on the money surface. Printing the reference instead
+                        makes the cross-reference exact rather than making the reader match on a
+                        date. */}
                     <p className="mt-1 font-mono text-caption text-subtle">
-                      {new Date(order.created_at).toLocaleDateString()}
+                      {accountDate(order.created_at)} · order {order.id}
                     </p>
                   </div>
                   <div className="mt-auto">
                     {href ? (
                       // A plain anchor, not a fetch: /download/{token} answers with a 302 to a
                       // short-lived presigned URL, and the browser must follow it as a navigation.
-                      <a href={href} className={textLinkClass('font-medium')}>
+                      //
+                      // It is a BUTTON now, not `textLinkClass`. Measured at 390px on 2026-08-15:
+                      // three "Download" targets 20px tall, against the 44px floor this codebase
+                      // enforces explicitly on `Button` (`md: h-11 ... sm:h-10`), on `chipClasses`
+                      // and on both footer link columns. The single action the whole page exists
+                      // for was the smallest target on it, and set as quiet inline prose.
+                      <a href={href} className={buttonClasses({ variant: 'primary' })}>
                         Download
                       </a>
+                    ) : item.status === 'revoked' ? (
+                      // A bare lowercase "refunded" in the slot where the button goes is a dead
+                      // end: it names a state without saying what happened to the money or what
+                      // the buyer may do next, and it looks like a failed render.
+                      <p className="text-caption text-muted">
+                        <span className="font-medium text-text">Refunded.</span> The download was
+                        withdrawn when the payment went back. The receipt below is the record.
+                      </p>
                     ) : (
-                      <span className="font-mono text-caption text-subtle">
-                        {item.status === 'revoked' ? 'refunded' : 'unavailable'}
-                      </span>
+                      <p className="text-caption text-muted">
+                        <span className="font-medium text-text">Download unavailable.</span> Email{' '}
+                        <a href="mailto:support@mumchimp.com" className={textLinkClass()}>
+                          support@mumchimp.com
+                        </a>{' '}
+                        quoting order {order.id} and we will re-issue it.
+                      </p>
                     )}
                   </div>
                 </div>
@@ -220,10 +317,22 @@ function OrdersTab() {
             );
           })}
         </ul>
-      </div>
+      </section>
 
-      <div>
-        <h2 className="font-mono text-caption text-subtle">receipts</h2>
+      <section>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <h2 className="text-body font-semibold text-text">Receipts</h2>
+          <p className="font-mono text-caption text-subtle">
+            {orders.length} order{orders.length === 1 ? '' : 's'}
+          </p>
+        </div>
+        {/* The two blocks are the same purchases counted two ways, and nothing said so: the shelf
+            showed 4 packs, the ledger showed 3 rows, and a reader is left to work out whether one
+            went missing. One sentence is cheaper than the support mail. */}
+        <p className="mt-1 max-w-prose text-caption text-muted">
+          One row per payment, so an order that carried two packs is one row here and two on the
+          shelf above. The order number is the join.
+        </p>
         <ul className="mt-4 list-none p-0">
           {orders.map((order) => (
             <li
@@ -231,14 +340,22 @@ function OrdersTab() {
               className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border/60 py-3 last:border-b-0"
             >
               <span className="font-mono text-caption text-muted">
-                {new Date(order.created_at).toLocaleDateString()} · {order.status} ·{' '}
+                order {order.id} · {accountDate(order.created_at)} · {order.status} ·{' '}
                 {order.items.length} pack{order.items.length === 1 ? '' : 's'}
               </span>
-              <Money cents={order.amount_pence} currency={order.currency} />
+              {/* `ml-auto` because the row WRAPS at 390px: `justify-between` only right-aligns the
+                  amount while both children share a line, so on a narrow screen the money column
+                  alternated between the right edge and the left, which reads as a broken table
+                  rather than a ledger. */}
+              <Money
+                cents={order.amount_pence}
+                currency={order.currency}
+                className="ml-auto"
+              />
             </li>
           ))}
         </ul>
-      </div>
+      </section>
     </div>
   );
 }
@@ -448,7 +565,7 @@ function SecurityTab() {
               <li key={s.family_id} className="flex flex-wrap items-center justify-between gap-3">
                 <span className="text-caption text-muted">
                   {s.ip_address || 'unknown address'} · started{' '}
-                  {new Date(s.created_at).toLocaleDateString()}
+                  {accountDate(s.created_at)}
                   {s.is_current && ' · this device'}
                 </span>
                 <Button

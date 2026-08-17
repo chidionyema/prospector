@@ -71,7 +71,7 @@ jobs:
   # The image build runs `next build`, which typechecks — so a type error already fails the deploy.
   # It does NOT run vitest, so the unit suite is gated here rather than discovered in production.
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     defaults:
       run:
         working-directory: store_platform/src/Store.Web
@@ -88,7 +88,7 @@ jobs:
 
   deploy:
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
 

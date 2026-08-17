@@ -7,7 +7,7 @@ namespace Store.Api.Contracts;
 ///
 /// It is separate from <see cref="PublishRequest"/> for a sharper reason than the facets one.
 /// POST /internal/catalog is an upsert, and on the update path it assigns ProviderProductId and
-/// ProviderPriceId unconditionally (from <c>request.X ?? request.PaddleX</c>) while never
+/// ProviderPriceId unconditionally (from <c>request.X ?? request.LegacyX</c>) while never
 /// reassigning PricePence at all — that only happens on INSERT. A copy job routed through
 /// publish therefore has two ways to break a live pack, both silent:
 /// <list type="bullet">

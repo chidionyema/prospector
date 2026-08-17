@@ -137,6 +137,8 @@ tools/experiments/_hhem_score_cache.json
 .cache/
 publish/preview/
 
+# Corpus text is never committed. Only manifests and derived tables are.
+corpora/
 # Rollback snapshots taken before a console tool runs (prospector/ops/undo.py).
 # APFS clones of store/, so they cost almost no disk. Never source.
 .undo/

@@ -97,7 +97,7 @@ class TestDryRunMintsNothing(unittest.TestCase):
         # Both provisioners and the object store, so the assertion does not depend on which
         # provider happens to be active in this environment.
         self.bridge.stripe = MagicMock()
-        self.bridge.paddle = MagicMock()
+        self.bridge.stripe = MagicMock()
         self.bridge.r2 = MagicMock()
 
     def tearDown(self):
@@ -116,7 +116,7 @@ class TestDryRunMintsNothing(unittest.TestCase):
         # drifted below the line it was put above.
         mock_price_for.assert_not_called()
         self.bridge.stripe.assert_not_called()
-        self.bridge.paddle.assert_not_called()
+        self.bridge.stripe.assert_not_called()
         self.bridge.r2.upload.assert_not_called()
         # entitlements_check is mocked out, so any surviving POST would be the catalogue push.
         mock_post.assert_not_called()
@@ -151,6 +151,63 @@ class TestDryRunMintsNothing(unittest.TestCase):
         errors = " ".join(p["detail"] for p in report["problems"]
                           if p["severity"] == "error")
         self.assertIn("$", errors, f"currency defect not named in the receipt: {errors!r}")
+
+    def _content_ok_with_only_the_claim_gate_live(self, candidate_id, record):
+        """Run the gate with every OTHER gate forced green, so `content_ok` is the claim gate.
+
+        The stub fixture in this file fails completeness on its own (its artifacts are 21-28
+        characters), so asserting `content_ok is False` on it would have been true before this
+        gate existed and true after — a vacuous green, and the exact failure mode this repo
+        keeps paying for. Forcing the other three terms True is what makes the assertion below
+        measure the violation rather than the property.
+        """
+        dossier = _dossier(candidate_id)
+        if record is not None:
+            dossier.candidate.tags["unverified_claims"] = record
+        with patch("prospector.bridge.validate_pack", return_value=(True, [])), \
+                patch("prospector.bridge.audit_bundle", return_value=([], [])), \
+                patch("prospector.bridge.lint_pack",
+                      return_value={"ok": True, "problems": []}):
+            return self.bridge.publish_pass(dossier, dry_run=True)
+
+    def test_unverified_claims_in_the_paid_artifacts_hold_the_pack_off_the_shelf(self):
+        """The claim-check gate, pinned at the seam where it reaches the money rail.
+
+        Added 2026-08-15. `generate_artifacts` had run this check since it was wired and sent
+        its violations to a `logger.info` and nowhere else — `artifacts.py:686-691` was the
+        only reader, and `generate_artifacts` returns the documents alone. So the paid pack
+        shipped with claims the checker had already refuted, while the FREE marketing copy on
+        the same gate was dropped: same check, opposite consequence, and the one we let through
+        was the document the buyer pays for.
+        """
+        content_ok = self._content_ok_with_only_the_claim_gate_live("dry-cand-006", {
+            "artifacts": {"gtm_plan": [{"claim": "90-day filing window",
+                                        "why": "cited source states 20 statutory days"}]},
+            "count": 1,
+            "blocks_listing": True,
+        })
+
+        self.assertFalse(
+            content_ok,
+            "a pack whose PAID artifacts carry refuted claims read as sellable")
+        report = json.loads(
+            (self.store_dir / "dossiers" / "dry-cand-006.lint.json").read_text(encoding="utf-8"))
+        self.assertEqual(report["unverified_claims"]["count"], 1,
+                         "the operator cannot see WHICH claim failed from the receipt")
+
+    def test_a_clean_claim_check_does_not_hold_the_pack_back(self):
+        """The negative control, and the reason the record carries `blocks_listing` rather
+        than a count: a candidate that ran the check and survived it must be indistinguishable
+        from one that never ran it. Without this pair, the gate above would be satisfied by a
+        change that simply unlists everything.
+        """
+        self.assertTrue(
+            self._content_ok_with_only_the_claim_gate_live("dry-cand-007", {
+                "artifacts": {}, "count": 0, "blocks_listing": False}),
+            "a pack that PASSED the claim check was held back anyway")
+        self.assertTrue(
+            self._content_ok_with_only_the_claim_gate_live("dry-cand-008", None),
+            "a pack that never ran the claim check at all was held back")
 
     @patch("requests.get")
     @patch("requests.post")

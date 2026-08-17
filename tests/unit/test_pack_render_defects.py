@@ -15,8 +15,8 @@ import re
 import pytest
 
 from prospector import dossier as dz
+from prospector import pack_field, trimming
 from prospector import plain_text as pt
-from prospector import trimming
 from prospector.models import Candidate, CheckResult, Decision, Dossier, Source, Verdict
 
 # The two real citation ids from that dossier, verified on disk.
@@ -95,6 +95,26 @@ def _dossier(checks, decision=Decision.PASS, model_version="fallback(cursor_cli+
 
 SRC = Source(source_id=CIT_A, url="https://www.socialstorytemplates.com/free",
              text="Over 100 free personalisable social stories.")
+
+# The block quotes moved to `pack_field` (2026-08-15), whose `_readable_excerpt` refuses
+# anything under `_MIN_EXCERPT_WORDS` (14) — a cookie banner is short, so shortness is how it
+# is recognised. The 47-character quote above therefore cannot be the fixture for the
+# truncation defect any more; these two are the same page's text at quotable length.
+WHOLE_PASSAGE = ("Over 100 free personalisable social stories are available to download, and "
+                 "the library is updated every month by the therapists who write them.")
+FIELD_SRC = Source(source_id=CIT_A, url="https://www.socialstorytemplates.com/free",
+                   text=WHOLE_PASSAGE)
+# 449 characters in one segment — over `_MAX_EXCERPT_CHARS` (420), so this one is genuinely
+# cut and MUST carry the marker the test above forbids on a complete quote.
+CUT_PASSAGE = (
+    "The catalogue lists printable visual timetables for classrooms and picture cards that "
+    "teachers cut out and laminate, alongside a subscription tier that adds a printing "
+    "service for schools which want the packs delivered already bound, plus a small "
+    "consultancy arm that visits a school for a day and writes the stories with the staff "
+    "who will read them, which is the part every competitor in this space quietly makes "
+    "most of its money from in practice")
+CUT_SRC = Source(source_id=CIT_A, url="https://www.socialstorytemplates.com/free",
+                 text=CUT_PASSAGE)
 
 
 # --- P0(7) the banner claimed a pass the lane never granted ------------------------------
@@ -182,13 +202,58 @@ def test_the_source_appendix_is_headed_by_the_site_not_our_internal_key():
     assert f"Source [{CIT_A}]" not in md
 
 
-def test_a_quote_that_was_never_truncated_is_not_marked_as_truncated():
-    """The appendix appended `...` unconditionally to a 500-char slice, so a complete
-    47-character quote shipped as `social stories....` — four dots and a false claim."""
+def test_the_source_appendix_does_not_reprint_a_passage_the_reader_already_read():
+    """`## Every source we used` reprinted every source's passage a SECOND time, as a block
+    quote under its heading, having already printed it in the "What those sources said" list of
+    whichever check cited it. `all_sources` is `models.distinct_sources(checks)`, so that was
+    true of every entry without exception (`dossier.py:820-828`): measured on pack
+    `e698149e137fc164` on 2026-08-15, the QA section alone was 5,082 words — 35.7% of the whole
+    pack — and its own largest component was this appendix quoting text already read.
+
+    Both halves are pinned, because deleting a quote is only right if the quote survives
+    somewhere: the passage is still printed once, above, and the appendix entry now carries the
+    back-reference that is what an appendix is actually for ("I have opened this page, what did
+    you use it for").
+    """
     md = dz.render_markdown(_dossier([
         _check("pain_reality", Verdict.SUPPORTED, [CIT_A], [SRC])]))
-    assert "> Over 100 free personalisable social stories." in md
-    assert "stories...." not in md
+    above, appendix = md.split("## Every source we used")
+    appendix = appendix.split("## Run details")[0]
+    assert SRC.text in above, "the passage must still be printed once, under its own check"
+    assert SRC.text not in appendix, "the appendix is reprinting the passage a second time"
+    assert not [ln for ln in appendix.splitlines() if ln.startswith(">")]
+    assert "**Used to answer:** Is the problem real?" in appendix
+
+
+def test_a_quote_that_was_never_truncated_is_not_marked_as_truncated():
+    """The appendix appended `...` unconditionally to a 500-char slice, so a complete
+    47-character quote shipped as `social stories....` — four dots and a false claim.
+
+    Moved 2026-08-15 with the quoting itself. `dossier.render_markdown`'s appendix no longer
+    quotes anything (see the test above), so the only place the pack still puts a retrieved
+    passage in a block quote is `pack_field.py:188`, fed by `_readable_excerpt`
+    (`pack_field.py:148`). Same defect, same argument — an ellipsis is a CLAIM about the quote
+    — asserted where the quoting now happens.
+    """
+    md = pack_field.render(_dossier([
+        _check("incumbency", Verdict.SUPPORTED, [CIT_A], [FIELD_SRC])]))
+    assert f"> {WHOLE_PASSAGE}" in md
+    assert "…" not in md and "..." not in md
+
+
+def test_a_quote_that_really_was_cut_still_says_so():
+    """The paired case, and the reason the test above is not vacuous: dropping the marker
+    altogether would pass it while trading a false "truncated" for a false "complete" — the
+    worse of the two lies in a document whose whole job is receipts.
+
+    One ellipsis CHARACTER, never the four dots the old slice produced.
+    """
+    md = pack_field.render(_dossier([
+        _check("incumbency", Verdict.SUPPORTED, [CIT_A], [CUT_SRC])]))
+    assert md.count("…") == 1
+    assert "...." not in md
+    assert CUT_PASSAGE[:80] in md
+    assert CUT_PASSAGE[-40:] not in md, "the tail is what was cut; the marker says so"
 
 
 def test_the_buyer_is_never_shown_the_internal_operator_chain():

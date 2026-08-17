@@ -45,7 +45,39 @@ CHECK_LABELS = {
 # "byte-for-byte identical" (see the header of
 # `store_platform/src/Store.Web/src/lib/text.ts`) and only two of the three were.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from make_kill_log import CITATION_REF, citation_ids, nodash  # noqa: E402
+
+from prospector.plain_text import publish_pass  # noqa: E402
+
+
+def readable(text: str, *, sentences: bool) -> str:
+    """A dossier string as a buyer may see it: the publish pass, then the dash rule.
+
+    THE GATE THIS PAGE WAS SKIPPING
+    -------------------------------
+    `plain_text.publish_pass` describes itself as "the single gate every engine-authored string
+    passes before a buyer can read it" (:429). This tool never called it. `resolve_citations`
+    below handles the ONE shape it was written for — a parenthesised or bracketed run of full
+    16-hex ids — and everything else the pass repairs went straight to the page::
+
+        $ .venv/bin/python - <<'PY'   # on the baked fixture, 2026-08-15
+        ... 30 bracket ids across 9 of 9 check rationales, e.g. pain_reality -> 5, incumbency -> 5
+        ... incumbency ends: "...chasing retention on its due date in the UK [c33885f45"
+
+    Those rationales are the body text of the free sample and of the home page's evidence strip.
+    A 16-hex blob in brackets reads as a fabricated citation to anyone who does not know the
+    internal format, which is the exact impression the page exists to prevent — the same finding
+    `resolve_citations` records for the premortem panel, arrived at again one field over.
+
+    `sentences=True` is for prose that is meant to be sentences and enforces a complete ending;
+    it returns "" when none survives, so it is wrong for the short candidate fields (a one-liner
+    legitimately ends on a noun) and right for a rationale.
+
+    `nodash` runs AFTER, not before: the pass repairs punctuation left behind by its own
+    removals, and the dash rule is a house style applied to whatever text survives that.
+    """
+    return nodash(publish_pass(text or "", sentences=sentences))
 
 
 def sources_by_id(dossier: dict) -> dict[str, dict]:
@@ -83,7 +115,10 @@ def resolve_citations(text: str, index: dict[str, dict]) -> tuple[str, list[dict
         found.append(source_chip(src))
     cleaned = CITATION_REF.sub("", text or "")
     cleaned = re.sub(r"\s+([.,;])", r"\1", cleaned)
-    return nodash(cleaned), found
+    # `readable` after the chip lift, not instead of it: this function's job is to turn ids into
+    # CHIPS, and the publish pass's job is everything else an engine-authored string carries.
+    # Running both is safe because the pass is idempotent by construction (plain_text.py:446).
+    return readable(cleaned, sentences=True), found
 
 
 # A first line that is a document TITLE, versus one that is the first heading inside the document.
@@ -118,12 +153,25 @@ def source_chip(src: dict) -> dict:
     }
 
 
-def main() -> int:
-    if len(sys.argv) < 2:
-        print("usage: make_sample_report.py <pack_id>", file=sys.stderr)
-        return 2
-    pid = sys.argv[1]
-    d = json.load(open(f"store/dossiers/{pid}.pass.json", encoding="utf-8"))
+def report_fields(pid: str, d: dict) -> dict:
+    """Every field the storefront's evidence components read, derived from one dossier dict.
+
+    Split out of `main` on 2026-08-15 so `tools/build_sample_fixture.py` can emit a SUPERSET of
+    this shape rather than a replacement. The fixture is read by five components, not one::
+
+        $ rg -l "data/sample-report" store_platform/src/Store.Web/src
+        components/marketing/CheckSequence.tsx
+        components/marketing/EvidenceRecordPanel.tsx
+        components/marketing/HeroEvidenceStrip.tsx
+        components/marketing/PackSpecimen.tsx
+        __tests__/sampleReportData.test.ts
+
+    `HeroEvidenceStrip` is on the HOME page. Emitting the new /sample shape alone would therefore
+    have broken the homepage's evidence strip while looking like a change to /sample — which is
+    what happened in draft on 2026-08-15, caught by `rg` before anything was committed. One
+    function with two callers is what stops that recurring: the shape those five components read
+    can no longer be dropped by editing the other generator.
+    """
     c = d["candidate"]
     tags = c.get("tags", {}) or {}
     pm = tags.get("commodity_premortem")
@@ -150,7 +198,7 @@ def main() -> int:
             "key": name,
             "verdict": v,
             "confidence": round(float(ch.get("confidence") or 0), 2),
-            "rationale": nodash(ch.get("rationale", "")),
+            "rationale": readable(ch.get("rationale", ""), sentences=True),
             "sources": srcs,
         })
 
@@ -171,12 +219,14 @@ def main() -> int:
         seen_urls.add(src["url"])
         premortem_srcs.append(src)
 
-    report = {
+    return {
         "id": pid,
         "title": c.get("title"),
-        "oneLiner": nodash(c.get("one_liner", "")),
-        "whoPays": nodash(c.get("who_pays", "")),
-        "whyNow": nodash(c.get("why_now", "")),
+        # sentences=False: these three are card lines and legitimately end on a noun, so the
+        # complete-sentence rule would blank them rather than clean them.
+        "oneLiner": readable(c.get("one_liner", ""), sentences=False),
+        "whoPays": readable(c.get("who_pays", ""), sentences=False),
+        "whyNow": readable(c.get("why_now", ""), sentences=False),
         "verifiedAt": d.get("created_at"),
         "supported": supported,
         "total": len(d.get("checks", [])),
@@ -194,11 +244,20 @@ def main() -> int:
         "checks": checks_out,
     }
 
+
+def main() -> int:
+    if len(sys.argv) < 2:
+        print("usage: make_sample_report.py <pack_id>", file=sys.stderr)
+        return 2
+    pid = sys.argv[1]
+    d = json.load(open(f"store/dossiers/{pid}.pass.json", encoding="utf-8"))
+    report = report_fields(pid, d)
+
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
-    print(f"wrote {OUT}: {report['title']!r}  {supported}/{report['total']} supported, "
-          f"{total_sources} sources across {len(checks_out)} checks")
+    print(f"wrote {OUT}: {report['title']!r}  {report['supported']}/{report['total']} supported, "
+          f"{report['sourceCount']} sources across {len(report['checks'])} checks")
     return 0
 
 

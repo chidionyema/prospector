@@ -36,6 +36,36 @@ export function lastKnownCatalog(): CachedCatalog | null {
   return lastGood;
 }
 
+/**
+ * How long a catalogue counts as CURRENT, not merely last-known-good.
+ *
+ * Measured 2026-08-16 against the live API: `GET /catalog` takes 0.37-0.48s and `/catalog/stats`
+ * 0.36s, and the home page awaits both inside `getServerSideProps` -- so every visitor waited
+ * roughly half a second before the first byte of HTML left the server (live TTFB on
+ * https://mumchimp.com/: 0.495s). Nothing about that call is per-visitor: the identical catalogue
+ * is fetched again for the next arrival.
+ *
+ * Sixty seconds is chosen against what the staleness actually costs. The engine publishes a pack
+ * at most a few times a day, so the window's realistic effect is a newly listed pack appearing up
+ * to a minute late -- the same order of lateness /kill-log already accepts with its 300s ISR
+ * revalidate. A price change is the one edit where staleness would matter, and the money rail does
+ * not read this cache: checkout re-reads the pack, so a stale shelf cannot mis-charge anyone.
+ */
+export const CATALOG_FRESH_MS = 60_000;
+
+/**
+ * The catalogue if it was fetched recently enough to serve without asking again, else null.
+ *
+ * Distinct from `lastKnownCatalog`, and the two must not be merged: that one answers "what is the
+ * best thing I can show during an outage" and has no expiry BY DESIGN, this one answers "can I
+ * skip the round trip". A caller that confused them would either serve a six-hour-old shelf as
+ * current, or refuse to serve anything during exactly the outage the other function exists for.
+ */
+export function freshCatalog(now: number = Date.now()): CachedCatalog | null {
+  if (!lastGood) return null;
+  return now - lastGood.fetchedAt < CATALOG_FRESH_MS ? lastGood : null;
+}
+
 /** Test seam only. Production has no reason to forget a catalogue it successfully fetched. */
 export function resetCatalogCache(): void {
   lastGood = null;

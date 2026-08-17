@@ -22,7 +22,7 @@ import re
 
 import pytest
 
-from prospector import pack_manifest, pack_reference
+from prospector import pack_bear_case, pack_manifest, pack_reference
 from prospector.bridge import (
     BUNDLE_BONUS_FILES,
     BUNDLE_FILES,
@@ -71,6 +71,16 @@ def md() -> str:
     return pack_reference.render(_dossier())
 
 
+@pytest.fixture
+def bear() -> str:
+    """The other renderer of the same dossier — the one that now owns the register."""
+    return pack_bear_case.render(_dossier())
+
+
+#: The register's heading, in the one module that prints it (`pack_bear_case.py:125`).
+_REGISTER = "## What we could not settle, and what it would take"
+
+
 class TestItSaysTheEvidenceOnce:
     def test_the_settled_checks_are_named_in_the_buyers_words(self, md):
         """Same label map as the QA report (`dossier.check_label`) — two maps is how the same
@@ -104,25 +114,79 @@ class TestItSaysTheEvidenceOnce:
         assert "None of them re-argues the evidence. It is here." in md
 
 
-class TestTheAssumptionsRegister:
-    def test_unproven_checks_are_gathered_once_instead_of_hedged_in_three_plans(self, md):
+class TestTheAssumptionsRegisterHasExactlyOneOwner:
+    """Renamed 2026-08-15 from `TestTheAssumptionsRegister`, when the register moved out.
+
+    It used to be rendered HERE under `## What we could not prove` and by
+    `pack_bear_case._unproven_block` as well: the same `unverifiable` rows, the same
+    `check_label` headings, the same rationales and the same searches, in two sections of one
+    pack. That is not a paraphrase needing judgement — it is one list printed twice, and it was
+    the largest structural duplicate in the pack the founder read.
+
+    So the property worth pinning is no longer "the register renders". It is that EXACTLY ONE
+    module renders it, and which one: the bear case, because an unproven assumption is an
+    argument about whether to build (`pack_reference.py:142-154`). Tests that only assert the
+    presence of the register in the bear case would pass while this document quietly grew a
+    second copy, which is why the absence half is asserted on the rows and not just the heading.
+    """
+
+    def test_the_evidence_document_no_longer_carries_the_register(self, md, bear):
         from prospector.dossier import check_label
-        block = md.split("## What we could not prove")[1]
-        assert f"### {check_label('payer_solvency')}" in block
+        assert _REGISTER in bear, "the register has to exist somewhere for absence to mean this"
+        assert _REGISTER not in md
+        # The rows, not just the title: a duplicate under a different heading is the same
+        # duplicate, and renaming the section is the cheapest way to defeat a heading check.
+        assert f"### {check_label('payer_solvency')}" not in md
+        assert "No accounts filed for the segment." not in md
+        assert "uk shellfish farm accounts" not in md
+
+    def test_the_bear_case_gathers_the_unproven_checks_once(self, bear):
+        """Where the register went, and the receipt that "moved" was not "deleted"."""
+        from prospector.dossier import check_label
+        assert _REGISTER in bear, "the register is in neither document"
+        block = bear.split(_REGISTER)[1]
+        assert block.count(f"### {check_label('payer_solvency')}") == 1
+        assert "No accounts filed for the segment." in block
         assert "uk shellfish farm accounts" in block
 
-    def test_it_prices_nothing_and_says_why(self, md):
+    def test_the_register_prices_nothing_and_offers_the_searches_instead(self, bear):
         """`source-or-die`: the programme doc asks for a cost-to-confirm column, and nothing on
         disk prices a test. An invented column is the exact failure the catalogue exists to
-        avoid, so the register states the omission rather than filling it."""
-        block = md.split("## What we could not prove")[1].split("## Every source")[0]
-        assert not re.search(r"£\s?\d|\$\s?\d|\bcost[s]? about\b", block)
-        assert "Nothing we retrieved tells us what a test costs" in block
+        avoid, so the register omits it.
 
-    def test_a_dossier_with_nothing_unproven_omits_the_section_entirely(self):
+        The "and says why" half of this test's old name went with the move and did NOT survive
+        as rendered text anywhere: the explanation is now prose in two module docstrings
+        (`pack_reference.py:42-47`, `pack_table.py:5-11`) and `Nothing we retrieved tells us
+        what a test costs` is in no module at all — asserting it here would have been asserting
+        a comment. What IS rendered, and is the honest substitute for a price, is the searches
+        the engine actually ran (`pack_bear_case.py:142-147`; the same column is `how_to_settle`
+        in `Assumptions.csv`, `pack_table.HEADER`). So: no money, and a real answer to "what
+        would it take" in its place.
+        """
+        block = bear.split(_REGISTER)[1]
+        assert not re.search(r"£\s?\d|\$\s?\d|\bcost[s]? about\b", block)
+        assert "these are the angles already tried" in block
+        assert "- uk shellfish farm accounts" in block
+
+    def test_a_dossier_with_nothing_unproven_omits_the_register_from_both_documents(self):
+        """Was `..._omits_the_section_entirely`, and was passing for the wrong reason: after the
+        move it looked for `What we could not prove` in `pack_reference.render`, a string that
+        module no longer emits under ANY dossier, so it would have passed against "".
+
+        The section is now checked in the module that owns it, and against the populated render
+        of the same fixture — the bear case still returns a document here (the refuted check
+        keeps it alive), so this pins the omission of the REGISTER rather than the omission of
+        the whole file, which is the thing that could actually regress.
+        """
+        from prospector.dossier import check_label
         d = _dossier()
         d.checks = [c for c in d.checks if c.verdict is not Verdict.UNVERIFIABLE]
-        assert "What we could not prove" not in pack_reference.render(d)
+        thin = pack_bear_case.render(d)
+        assert _REGISTER in pack_bear_case.render(_dossier())
+        assert thin.startswith("# What would sink this")
+        assert _REGISTER not in thin
+        assert f"### {check_label('payer_solvency')}" not in thin
+        assert _REGISTER not in pack_reference.render(d)
 
 
 class TestItReadsBothRecordShapes:

@@ -515,7 +515,7 @@ public sealed class StripeProvider(IConfiguration config, ILogger<StripeProvider
     }
 
     // Stripe expands the literal token {CHECKOUT_SESSION_ID} in the success URL. Applied here
-    // rather than by the caller because the token is Stripe-specific — Paddle would receive it
+    // rather than by the caller because the token is Stripe-specific — another provider would receive it
     // verbatim and hand the buyer a broken link.
     private static string AppendSessionIdTemplate(string successUrl)
         => DeliveryUrls.AppendSessionIdTemplate(successUrl);

@@ -1,5 +1,9 @@
 import { API_FETCH_BASE } from '@/lib/config';
 import { nodash } from '@/lib/text';
+// `import type` only, and that is the whole reason a `.server` module may be named here: the
+// statement is erased at compile time, so none of killLog.server's filesystem reads reach the
+// browser bundle.
+import type { KillDetail } from '@/lib/killLog.server';
 import type {
   Advantage,
   Commitment,
@@ -362,7 +366,7 @@ export interface CheckoutSession {
  * Open a checkout session for a pack, asking for the embedded surface.
  *
  * Asking is not getting: the API answers with a hosted URL whenever the provider cannot render
- * embedded (Paddle, or a Stripe account without it). That is why this returns a session rather
+ * embedded (a Stripe account without it enabled). That is why this returns a session rather
  * than a client secret, there is no failure to report when the answer is "use the hosted page",
  * and turning it into one would block a buyer from paying over a cosmetic difference.
  */
@@ -477,6 +481,27 @@ export async function fetchCatalogStats(): Promise<CatalogStats | null> {
     const res = await fetch(`${API_FETCH_BASE}/catalog/stats`);
     if (!res.ok) return null;
     return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+/** The kill log's expanded arguments, fetched on demand from this app's own API route
+ *  (`src/pages/api/kill-log-detail.ts`) rather than from the store API, hence a relative path
+ *  here instead of `API_FETCH_BASE`.
+ *
+ *  It lives in this file because `/kill-log` called `fetch` inline and drew the
+ *  `no-restricted-syntax` error UI-STANDARDS §4 exists to raise: every request routed through
+ *  one module is what makes the app's network surface greppable in one place.
+ *
+ *  Best effort by design, matching the call site it replaced. A failure returns `null` and the
+ *  table, its filters and its sort all keep working; only the expanded prose is missing, and
+ *  the row says so rather than rendering an empty panel. */
+export async function fetchKillLogDetail(): Promise<Record<string, KillDetail> | null> {
+  try {
+    const res = await fetch('/api/kill-log-detail');
+    if (!res.ok) return null;
+    return (await res.json()) as Record<string, KillDetail>;
   } catch {
     return null;
   }

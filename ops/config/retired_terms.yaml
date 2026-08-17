@@ -1,0 +1,76 @@
+# Retired terms — this startup's declaration.
+#
+# Every business fact for the `retired_terms` automation lives here. The engine
+# (`ops/automations/retired_terms.py`) contains none of it. Moving this check to another
+# startup means writing a new copy of THIS file and nothing else.
+#
+# A term is a name that was removed and must not come back. Each `allow:` prefix is a path
+# where the name may still appear, with the reason it may. No prefix goes in without a reason
+# that survives being read out loud.
+
+terms:
+  - term: paddle
+    # Removed 2026-08-16. Paddle had never taken a payment: all 62 live packs were on Stripe,
+    # no Paddle secret existed in the deployment, and PaddleProvider.CreateProductAsync threw
+    # NotSupportedException. What it did do was sit in the code as the literal DEFAULT
+    # (`?? "paddle"` in five places, two of them per-pack), so a catalogue row with a null
+    # provider routed a buyer to a rail nobody could bill.
+    reason: >-
+      Stripe is the only payment provider. A Paddle reference in live code, config or copy
+      points a buyer or a reader at a rail that does not exist.
+    allow:
+      # EF migrations are applied history. Editing one rewrites what the database was told.
+      - store_platform/src/Store.Catalog/Migrations/
+      # The regression test that pins the removal: a stale config naming paddle must not boot.
+      - store_platform/src/Store.Tests/Payments/MoneyRailConfigGateTests.cs
+      # The engine-side twin: an unknown provider must mint nothing.
+      - tests/test_engine_bridge.py
+      # This declaration, and the test that drives the engine.
+      - ops/config/retired_terms.yaml
+      - tests/unit/test_retired_terms.py
+      # Dated records. A June document describing June is not a stale instruction.
+      - docs/archive/
+      - docs/decisions/
+      - docs/PAYMENT_P0_GEMINI_BRIEF.md
+      - docs/PIPELINE_REVIEW_2026-06-18.md
+      - docs/ENGINE_AUDIT_2026-08-10.md
+      - docs/HARDCODED_MODEL_AUDIT_TICKET.md
+      - docs/REMAINING_WORK_NINA_BRIEF.md
+      - docs/CONTROL_CENTER_SPEC.md
+      - docs/COMMERCIAL_READINESS_PROGRAM.md
+      - STORY_SCALE_AND_QUALITY.md
+      # Specs carrying a "superseded" banner at the top; the body is kept as history.
+      - docs/PAYMENT_RAIL_INDEPENDENCE_SPEC.md
+      - docs/SUBSCRIPTION_PROGRAM.md
+      - specs/
+      # The runbook names it once, to say it is gone and there is nothing to roll back to.
+      - store_platform/GO_LIVE_RUNBOOK.md
+      # The principles doc uses the removal as its worked example, and the runbook names it
+      # to explain what red means and what it cost last time.
+      - docs/OPS_AUTOMATION_PRINCIPLES.md
+      - docs/RUNBOOKS.md
+      # Tracked runtime state written by the engine and by pytest.
+      - store/
+      - storage/
+
+# Binary and log-shaped files. Scanning them finds nothing actionable and costs the whole
+# runtime of the check. Omit to accept the engine's defaults.
+skip_suffixes:
+  - .jsonl
+  - .gz
+  - .zip
+  - .tar
+  - .db
+  - .sqlite
+  - .png
+  - .jpg
+  - .jpeg
+  - .gif
+  - .webp
+  - .ico
+  - .pdf
+  - .woff
+  - .woff2
+  - .ttf
+  - .eot
+  - .lock

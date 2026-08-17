@@ -197,7 +197,11 @@ def test_the_archive_is_written_in_contract_order_not_the_sources():
 def test_titles_match_the_generator_not_the_filenames():
     src = zipfile.ZipFile(io.BytesIO(_full_bundle()))
     titles = [t for t, _ in ordered_md_entries(src)]
-    assert titles[0] == "Executive Summary"
+    # Read from `_SECTION_TITLES` rather than spelled out. The literal "Executive Summary" was
+    # here until 2026-08-15 and went stale the moment the sections were retitled for the
+    # narrative restructure — failing as though the ORDER had broken when only a string moved.
+    # A test that pins a title it does not own reports the wrong defect.
+    assert titles[0] == _SECTION_TITLES["00_Executive_Summary.md"]
     assert "00_Executive_Summary" not in titles
 
 
@@ -493,10 +497,19 @@ def test_a_dossier_adds_the_consolidated_evidence_section():
 def test_the_new_document_is_read_before_the_qa_report_not_appended_last():
     """A file appended to the end of a zip lands at the end of the read. The reader order comes
     from BUNDLE_READING_ORDER, so the evidence arrives immediately before the report that
-    scores it — which is the whole point of consolidating it."""
+    scores it — which is the whole point of consolidating it.
+
+    Both sides read from `_SECTION_TITLES` for the same reason as
+    `test_titles_match_the_generator_not_the_filenames`: the literal "Evidence and Constraints"
+    on the left was the section title until 2026-08-15, when it became "Everything we read,
+    once". After the rename the literal still matched — the DOCUMENT's own `# Evidence and
+    Constraints` heading, deep in the body — so the test compared a body position against a
+    nav position and failed on an ordering that was correct.
+    """
     out = rebuild_zip_with_index(_full_bundle(), META, _dossier(), "x" * 16)
     html = zipfile.ZipFile(io.BytesIO(out)).read("index.html").decode("utf-8")
-    assert html.index("Evidence and Constraints") < html.index(_SECTION_TITLES["QA_Report.md"])
+    assert (html.index(_SECTION_TITLES[pack_reference.FILENAME])
+            < html.index(_SECTION_TITLES["QA_Report.md"]))
 
 
 def test_with_nothing_proven_the_evidence_section_is_not_invented():

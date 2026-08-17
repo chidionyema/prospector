@@ -47,6 +47,16 @@ async function openFirstSourcedRecord(page: import('@playwright/test').Page) {
       await record.locator('button[aria-expanded]').first().click();
       const detail = record.locator('tr').nth(1);
       await expect(detail).toBeVisible();
+      // The row is visible the instant it is expanded, but the argument inside it comes from
+      // /api/kill-log-detail, one ~400KB fetch for the whole page (`kill-log.tsx:495`). Until it
+      // lands the row renders the single line "Loading the argument…", which is 21 characters and
+      // carries no links. A caller that read the row here therefore saw a length of 21 against an
+      // expectation of >40, and a link count of 0. That is what failed this suite on live for six
+      // consecutive deploys from #227 onward. Waiting for the placeholder to clear is the whole
+      // fix. A fetch that FAILS renders different copy ("This argument could not be loaded.
+      // Reload the page to try again.", 64 characters), so this wait cannot hide a real outage.
+      // It only removes the race.
+      await expect(detail).not.toContainText('Loading the argument');
       return detail;
     }
   }

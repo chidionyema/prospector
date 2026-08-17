@@ -152,3 +152,40 @@ def test_the_crown_jewel_path_holds_no_tier1_swallows(sites):
     assert not offenders, (
         "a tier-1 swallowed failure on the verdict path — this is how our own outage "
         "becomes a candidate's KILL:\n  " + "\n  ".join(offenders))
+
+
+def _flagged(src: str) -> bool:
+    """Does the auditor see a failure flag in this handler? Imported, not shelled out.
+
+    The tests above shell out on purpose, because they grade the whole repo and must run the
+    command a human runs. This one grades one rule on one snippet, so it calls the function.
+    """
+    import ast
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("_audit_swallow", AUDIT)
+    mod = importlib.util.module_from_spec(spec)
+    # Registered before exec: @dataclass resolves its own annotations through
+    # sys.modules[cls.__module__], and an unregistered module makes that lookup None.
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+    handler = next(n for n in ast.walk(ast.parse(src)) if isinstance(n, ast.ExceptHandler))
+    return mod._sets_failure_flag(handler)
+
+
+def test_writing_the_failure_into_a_response_dict_counts_as_telling_the_caller():
+    """`rec["error"] = ...` reaches the caller exactly as `rec = {"error": ...}` does.
+
+    Until 2026-08-16 the auditor counted the literal and missed the subscript, so the same
+    act scored tier 3 or tier 1 depending on which line the handler happened to be written
+    on. Two sites in `prospector/ops/console_api.py` were graded tier 1 for that reason
+    while both already shipped the error in the JSON body.
+    """
+    assert _flagged("try:\n    f()\nexcept Exception as e:\n    rec['error'] = str(e)\n")
+    assert _flagged("try:\n    f()\nexcept Exception as e:\n    rec = {'error': str(e)}\n")
+
+
+def test_a_subscript_that_is_not_a_failure_flag_still_does_not_count():
+    """The hole is closed, not widened. Any key at all would make the check meaningless."""
+    assert not _flagged("try:\n    f()\nexcept Exception as e:\n    rec['note'] = str(e)\n")
+    assert not _flagged("try:\n    f()\nexcept Exception as e:\n    rec[k] = str(e)\n")

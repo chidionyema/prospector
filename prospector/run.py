@@ -2063,7 +2063,11 @@ def _cmd_vet(args: argparse.Namespace, log_path: Path) -> None:
         n_pass=1 if d.decision == Decision.PASS else 0,
         n_kill=1 if d.decision == Decision.KILL else 0,
         n_defer=1 if d.decision == Decision.DEFER else 0)
-    print(render_markdown(d))
+    # The operator's own terminal is the ONE surface that keeps our grade: this is the
+    # command you run to decide whether the engine ruled sensibly, and the composite plus
+    # the six axis marks are the whole point of looking. The buyer's copy of the same
+    # document (`bridge.py` -> QA_Report.md) takes the default and gets neither.
+    print(render_markdown(d, include_our_grade=True))
     from .report import costs_report
     print(f"\n{costs_report(log_path or '')}")
 

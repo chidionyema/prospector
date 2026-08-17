@@ -1,5 +1,9 @@
 # Platform Modules — compose, don't rebuild
 
+> **Superseded 2026-08-16:** Paddle is gone. Stripe is the only payment provider; the
+> `PaddleProvider`, its web loader and its config were deleted. Read every Paddle passage
+> below as history, not as the current design.
+
 **Status:** spec (manager-authored) — **ACTIVE as an independent track (Track 2).** Decoupled from the £30 store as of 2026-06-15.
 **Author role:** manager (Claude). **Implements:** delegate, except the Identity & Payments modules (founder-fenced — money/identity → Claude). See `AGENTS.md` §0.
 **Date:** 2026-06-15.

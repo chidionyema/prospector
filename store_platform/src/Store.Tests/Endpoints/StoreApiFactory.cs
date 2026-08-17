@@ -58,12 +58,19 @@ public sealed class StoreApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Jwt:Audience", "store-test");
         builder.UseSetting("Email:WebBaseUrl", "http://localhost:3000");
 
+        // MoneyRailConfigGate refuses to start when the active provider is missing a required
+        // key, and the active provider now defaults to stripe. Same reason
+        // as the signing key above: the test host supplies its own rather than the repo carrying
+        // a committed secret. These values never reach Stripe — ConfigureServices below replaces
+        // the "stripe" rail with FakePaymentProvider — but they must pass the shape guard, so the
+        // key keeps the sk_test_ prefix a real key would have.
+        builder.UseSetting("Stripe:WebhookSecret", "whsec_storeapifactory_not_a_real_secret");
+        builder.UseSetting("Stripe:ApiKey", "sk_test_storeapifactory_not_a_real_key");
+
         builder.ConfigureServices(services =>
         {
-            // Replace both keyed rails: a test must never reach the real Stripe, and a pack's
-            // stored provider decides which key is resolved.
+            // Replace the keyed rail: a test must never reach the real Stripe.
             services.AddKeyedSingleton<IPaymentProvider>("stripe", (_, _) => Payments);
-            services.AddKeyedSingleton<IPaymentProvider>("paddle", (_, _) => Payments);
         });
     }
 
