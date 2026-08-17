@@ -131,12 +131,15 @@ def render():
         status = j.get("status", "?")
         ts = j.get("start_ts", 0)
         dt = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M") if ts else "—"
+        # One dtype per column — see _overview._render_recent_runs: an em-dash beside ints
+        # makes Arrow refuse the whole table.
+        raw_elapsed = j.get("elapsed_s")
         display.append({
             "job_id": j.get("job_id", ""),
             "status": status,
             "command": readers.summarize_job_command(j.get("argv")),
             "started": dt,
-            "elapsed_s": j.get("elapsed_s", "—"),
+            "elapsed_s": f"{int(raw_elapsed)}s" if isinstance(raw_elapsed, (int, float)) else "—",
             "outcome": readers.job_outcome_summary(j),
         })
     st.dataframe(display, use_container_width=True, hide_index=True, height=240)

@@ -324,9 +324,13 @@ def _render_recent_runs():
         status = j.get("status", "?")
         start = j.get("start_ts", 0) or 0
         if status == "running" and start:
-            elapsed = round(time.time() - start)
+            elapsed = f"{round(time.time() - start)}s"
         else:
-            elapsed = j.get("elapsed_s") or "—"
+            # One dtype per column. Mixing the em-dash placeholder with ints made Arrow
+            # raise `Could not convert '—' with type str: tried to convert to int64` on
+            # every render that had one unfinished job in the window.
+            raw = j.get("elapsed_s")
+            elapsed = f"{int(raw)}s" if isinstance(raw, (int, float)) else "—"
         rows.append({
             "job_id": j.get("job_id", ""),
             "status": _status_label(status),

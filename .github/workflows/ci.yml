@@ -24,14 +24,16 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# There was no concurrency block until 2026-08-17, so every push ADDED a five-job run and removed
-# none. With four self-hosted runners serving the whole repo, the backlog never drained: measured
-# over the last twelve completed runs, the median job spent 1292-1915s queued against 56-962s
-# actually running. Queueing was 83% of wall clock. Superseded PR runs are now cancelled, because
-# nobody needs the result of a commit that has already been replaced.
+# One live run per branch. Pushing again to a PR cancels the run it just superseded.
 #
-# cancel-in-progress is deliberately PR-only. A push to main is the record of whether main is
-# green, so it must always finish even when the next merge lands on top of it.
+# Measured 2026-08-16: 15 jobs queued at once on four self-hosted runner instances sharing ONE
+# 12-CPU, 16 GB Mac. Most of that queue was stale — three or four runs per branch, all but the
+# newest testing a commit nobody was waiting on any more. Without this block every push adds a
+# full five-job run and removes none, so the queue only ever grows and the newest commit waits
+# behind its own predecessors.
+#
+# cancel-in-progress is deliberately PR-only. A push to main must always finish: main's run is
+# the record of whether main is green, and cancelling it would leave that question unanswered.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -40,10 +42,19 @@ env:
   PYTHON_VERSION: "3.14"
   DOTNET_VERSION: "9.0"
 
-  # pytest.ini sets `-n auto`, which resolves to one worker per core. On GitHub's 2-core Ubuntu
-  # that is 2. On our self-hosted Mac it is 12 — and up to four jobs share that one 12-core,
-  # 16 GB box, so `auto` asks for 48 pytest workers, each importing the whole engine. pytest-xdist
-  # 3.8 reads this variable when resolving `auto`; 3 workers x 4 jobs = 12, which is the machine.
+  # HOW WIDE PYTEST MAY RUN HERE. `pytest.ini:42` sets `-n auto`, and on this box auto is 12 —
+  # one worker per CPU. That is right for a developer running one suite alone, and wrong for CI:
+  # four runner instances share the SAME 12-CPU / 16 GB machine, so four concurrent python jobs
+  # ask for 48 pytest workers, each importing the whole engine, on twelve cores and sixteen
+  # gigabytes. What that looks like from GitHub is not a test failure. It is jobs dying with no
+  # logs at all (2026-08-16: `python`, `engine` and `dotnet` all failed at "Set up job" with an
+  # empty log blob) and MSBuild reporting MSB4166, "child node exited prematurely" — a worker
+  # killed by the OS, not a compile error.
+  #
+  # 3 workers x 4 runners = 12, one per core. pytest-xdist 3.8.0 reads this variable to resolve
+  # `-n auto`, so it applies to every pytest invocation in every job without editing a single
+  # command line. Proven locally: PYTEST_XDIST_AUTO_NUM_WORKERS=3 with `-n auto` prints
+  # "created: 3/3 workers".
   PYTEST_XDIST_AUTO_NUM_WORKERS: "3"
 
 jobs:
