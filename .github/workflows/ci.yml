@@ -260,6 +260,8 @@ jobs:
   # about which files steer the daemon — and the job is ~1 minute.
   # ──────────────────────────────────────────────────────────────────
   engine:
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
     runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 30
 
