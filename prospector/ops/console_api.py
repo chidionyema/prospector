@@ -2385,6 +2385,13 @@ TOOLS: list[dict] = [
        cmd="python3 scripts/launchd_plists.py --snapshot",
        danger="overwrites the tracked copies with whatever is live, so run --check first "
               "or an unwanted change becomes the new baseline"),
+    # --- registered 2026-08-18 ---
+    # An operator button, not a developer's script, because the number it reports is a business
+    # number: work that is finished and not shipped. On 2026-08-17 the repo held 61 local
+    # branches and 49 worktrees, and nobody could say how much of that was unlanded work without
+    # running three probes by hand and getting three different answers.
+    _t("scripts/branch_backlog.py", "How much finished work is sitting unmerged on a branch?",
+       False, "/audit"),
 ]
 
 
