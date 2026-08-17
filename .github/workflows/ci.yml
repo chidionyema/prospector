@@ -34,8 +34,26 @@ on:
 #
 # cancel-in-progress is deliberately PR-only. A push to main must always finish: main's run is
 # the record of whether main is green, and cancelling it would leave that question unanswered.
+#
+# That was not enough, and `cancel-in-progress: false` is why. GitHub keeps at most ONE run
+# PENDING per concurrency group: when a new run enters a group that already has one waiting,
+# the waiting one is cancelled. So with four self-hosted runners and a deep queue, main's runs
+# never started at all — they sat pending until the next merge evicted them.
+#
+# Measured 2026-08-17. Four merges landed on main between 20:11 and 20:36:
+#   20:35:39  fe2a345a  cancelled
+#   20:35:50  8d1a8bfe  cancelled
+#   20:36:01  8973d07c  cancelled
+#   20:36:10  5b8d0106  pending
+# `5b8d010` had zero check runs and was what the production daemons were executing, because the
+# follower ships main within 60 seconds. Six of the twelve most recent main runs read the same.
+#
+# Giving each push-to-main commit its OWN group is what fixes it: a group with one member can
+# never evict anything. Pull requests keep sharing a per-ref group, which is where the queue
+# pressure this block was written for actually comes from — pushing twice to a PR should still
+# cancel the run it superseded.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'push' && github.sha || 'shared' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
