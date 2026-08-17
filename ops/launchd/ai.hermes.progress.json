@@ -1,0 +1,21 @@
+{
+  "EnvironmentVariables": {
+    "HERMES_HOME": "/Users/chidionyema/.hermes",
+    "HOME": "/Users/chidionyema"
+  },
+  "Label": "ai.hermes.progress",
+  "ProgramArguments": [
+    "/usr/local/bin/python3",
+    "/Users/chidionyema/.hermes/scripts/launchd_receipt.py",
+    "--label",
+    "ai.hermes.progress",
+    "--",
+    "/bin/bash",
+    "/Users/chidionyema/.hermes/scripts/progress-snapshot.sh"
+  ],
+  "RunAtLoad": true,
+  "StandardErrorPath": "/Users/chidionyema/.hermes/logs/progress-snapshot.err.log",
+  "StandardOutPath": "/Users/chidionyema/.hermes/logs/progress-snapshot.out.log",
+  "StartInterval": 3600,
+  "WorkingDirectory": "/Users/chidionyema/.hermes/scripts"
+}

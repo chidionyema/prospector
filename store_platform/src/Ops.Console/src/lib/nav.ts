@@ -52,6 +52,7 @@ export const GROUPS: Group[] = [
     screens: [
       { href: '/config', label: 'Settings', what: 'the knobs, and their history' },
       { href: '/tools', label: 'Tools', what: 'run a tool, and undo it' },
+      { href: '/method', label: 'Method', what: 'how the agents work, and if it is improving' },
     ],
   },
 ];

@@ -1,0 +1,21 @@
+{
+  "EnvironmentVariables": {
+    "PATH": "/Users/chidionyema/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+  },
+  "Label": "com.chidionyema.reflect",
+  "Nice": 5,
+  "ProgramArguments": [
+    "/Users/chidionyema/Documents/code/prospector/.venv/bin/python",
+    "/Users/chidionyema/.hermes/scripts/launchd_receipt.py",
+    "--label",
+    "com.chidionyema.reflect",
+    "--",
+    "/Users/chidionyema/Documents/code/prospector/.venv/bin/python",
+    "/Users/chidionyema/.claude/scripts/reflect.py",
+    "--json"
+  ],
+  "RunAtLoad": true,
+  "StandardErrorPath": "/Users/chidionyema/.claude/reflect.log",
+  "StandardOutPath": "/Users/chidionyema/.claude/reflect.log",
+  "StartInterval": 14400
+}

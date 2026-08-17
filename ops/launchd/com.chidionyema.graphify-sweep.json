@@ -1,0 +1,21 @@
+{
+  "EnvironmentVariables": {
+    "PATH": "/Users/chidionyema/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+  },
+  "Label": "com.chidionyema.graphify-sweep",
+  "Nice": 5,
+  "ProgramArguments": [
+    "/Users/chidionyema/Documents/code/prospector/.venv/bin/python",
+    "/Users/chidionyema/.hermes/scripts/launchd_receipt.py",
+    "--label",
+    "com.chidionyema.graphify-sweep",
+    "--",
+    "/Users/chidionyema/Documents/code/prospector/.venv/bin/python",
+    "/Users/chidionyema/Documents/code/prospector/scripts/graphify_sweep.py",
+    "--fix"
+  ],
+  "RunAtLoad": false,
+  "StandardErrorPath": "/Users/chidionyema/.claude/graphify-refresh.log",
+  "StandardOutPath": "/Users/chidionyema/.claude/graphify-refresh.log",
+  "StartInterval": 1800
+}

@@ -76,6 +76,22 @@ def git(repo: str, *args: str) -> str | None:
     return out.stdout if out.returncode == 0 else None
 
 
+def main_checkout(repo: str) -> str | None:
+    """The main working tree behind `repo`, or None if repo IS the main one.
+
+    In a linked worktree `.git` is a file containing `gitdir:`, and the common dir points
+    at the main checkout's `.git`. Asking git is the only safe way — reading `.git` as a
+    directory is the bug this estate has already hit twice.
+    """
+    if os.path.isdir(os.path.join(repo, ".git")):
+        return None  # a real clone, not a linked worktree
+    common = git(repo, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    if not common:
+        return None
+    parent = os.path.dirname(common.strip().rstrip("/"))
+    return parent or None
+
+
 def discover(root: str) -> list[str]:
     """Every git repo one level under root. Enumerated at run time — never a hardcoded
     list — so a repo created tomorrow is covered without editing this file (spec G-DISCOVER)."""
@@ -129,6 +145,21 @@ def assess(repo: str) -> dict:
     if os.path.exists(os.path.join(repo, SKIP_MARKER)):
         row["state"] = "SKIP"
         row["skipped"] = True
+        return row
+
+    # A linked worktree is covered by its main checkout's graph. Measured 2026-08-17:
+    # all 12 ABSENT and both STALE rows were linked worktrees of repos that were
+    # themselves FRESH, so the sweep's verdict was permanently red on transient
+    # checkouts that get created and deleted several times a day. Building a graph in
+    # each one costs ~120 MB and is stale the moment the worktree is removed. Skip only
+    # when the MAIN checkout actually carries a graph — if the main repo is uncovered,
+    # the worktree still reports, so this can never hide a real gap.
+    main = main_checkout(repo)
+    if main and main != repo and os.path.exists(
+            os.path.join(main, "graphify-out", "graph.json")):
+        row["state"] = "SKIP"
+        row["skipped"] = True
+        row["reason"] = f"linked worktree of {os.path.basename(main)}"
         return row
 
     tracked = git(repo, "ls-files", "graphify-out")

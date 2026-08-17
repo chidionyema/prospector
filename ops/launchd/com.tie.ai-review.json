@@ -1,0 +1,26 @@
+{
+  "EnvironmentVariables": {
+    "DEEPSEEK_API_KEY": "<REDACTED>",
+    "PATH": "/Users/chidionyema/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+  },
+  "KeepAlive": false,
+  "Label": "com.tie.ai-review",
+  "ProgramArguments": [
+    "/usr/local/bin/python3",
+    "/Users/chidionyema/.hermes/scripts/launchd_receipt.py",
+    "--label",
+    "com.tie.ai-review",
+    "--",
+    "/usr/local/bin/python3",
+    "/Users/chidionyema/Documents/code/the-introduction-exchange/consensus/engine.py",
+    "run"
+  ],
+  "RunAtLoad": false,
+  "StandardErrorPath": "/Users/chidionyema/Documents/code/the-introduction-exchange/consensus/logs/stderr.log",
+  "StandardOutPath": "/Users/chidionyema/Documents/code/the-introduction-exchange/consensus/logs/stdout.log",
+  "StartCalendarInterval": {
+    "Hour": 2,
+    "Minute": 0
+  },
+  "WorkingDirectory": "/Users/chidionyema/Documents/code/the-introduction-exchange"
+}
