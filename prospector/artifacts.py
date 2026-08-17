@@ -1069,6 +1069,12 @@ def _normalize_listing(data: Dict[str, Any]) -> Dict[str, Any]:
     that only returns ``copy`` still yields a valid piece (structured fields empty), and when
     ``copy`` is missing we assemble a prose fallback from the parts. ``copy`` is always set so
     the completeness gate (which checks copy length) and the bundle keep working unchanged.
+
+    ``copy`` is DERIVED whenever any structured field survived, and the model's own ``copy``
+    is used only when nothing structured did. It used to be the other way round, which
+    re-opened the hole ``_derive_copy`` was written to close: a claim dropped from
+    ``proof_point`` by the salvage path stayed in the model's prose, and the storefront
+    renders the prose. A concatenation of the parts cannot disagree with the parts.
     """
     # Operators occasionally return a JSON array (e.g. [{...}]) instead of the object, or a
     # bare string. Coerce to the dict the contract expects rather than crashing on .get().
@@ -1084,7 +1090,7 @@ def _normalize_listing(data: Dict[str, Any]) -> Dict[str, Any]:
 
     what = [str(x).strip() for x in (data.get("what_you_get") or []) if str(x).strip()][:5]
     effort = _s("effort_tag").lower()
-    copy = _s("copy") or _derive_copy(_s("headline"), _s("subhead"), what, _s("proof_point"))
+    copy = _derive_copy(_s("headline"), _s("subhead"), what, _s("proof_point")) or _s("copy")
     return {
         "type": "listing_page",
         "copy": copy,
