@@ -1062,8 +1062,16 @@ def _recover_pass(cfg) -> dict | None:
         # The same money-rail action the engine already takes on any fresh PASS, applied to
         # a repaired one: it lists only what the deterministic gate now passes.
         cmd.append("--publish")
+    # Pin the child to THIS tick's store. `recover_stranded_passes.py:56` reads
+    # PROSPECTOR_STORE_DIR and falls back to the store beside its own file, so a child launched
+    # without it repairs and republishes whatever store the ambient environment happens to name --
+    # not the one the tick is running against. That is a money-rail action (`--publish` above) on
+    # someone else's catalogue, and it is how a unit test with a tmp_path store reached the
+    # operator's real one on 2026-08-17.
+    env = dict(os.environ, PROSPECTOR_STORE_DIR=str(cfg.store_dir))
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=_RECOVER_TIMEOUT_S)
+        proc = subprocess.run(cmd, capture_output=True, text=True,
+                              timeout=_RECOVER_TIMEOUT_S, env=env)
     except (subprocess.TimeoutExpired, OSError) as exc:
         logger.error("Pack recovery FAILED (tick continues): %s: %s", type(exc).__name__, exc)
         return {"error": f"{type(exc).__name__}: {exc}"}

@@ -15,7 +15,11 @@ def _cfg(tmp_path, cap=20.0, batch=3):
         spend=types.SimpleNamespace(daily_cap_usd=cap, warn_at_usd=cap * 0.75),
         # decay off: these are GENERATION tests, and a real decay sweep would try to build a
         # brain from this SimpleNamespace. The decay rail has its own file, test_tick_decay.py.
-        schedule={"batch_size": batch, "decay_per_tick": 0},
+        # Pack recovery off for the same reason: it shells out to recover_stranded_passes.py,
+        # which needs a real catalogue. Left on, the child's sqlite error came back as a
+        # `recovered` key on every tick result, so these assertions failed on any machine
+        # without the operator's own store -- every clone, and CI.
+        schedule={"batch_size": batch, "decay_per_tick": 0, "recover_per_tick": 0},
     )
 
 
