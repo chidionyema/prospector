@@ -24,9 +24,38 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# One live run per branch. Pushing again to a PR cancels the run it just superseded.
+#
+# Measured 2026-08-16: 15 jobs queued at once on four self-hosted runner instances sharing ONE
+# 12-CPU, 16 GB Mac. Most of that queue was stale — three or four runs per branch, all but the
+# newest testing a commit nobody was waiting on any more. Without this block every push adds a
+# full five-job run and removes none, so the queue only ever grows and the newest commit waits
+# behind its own predecessors.
+#
+# cancel-in-progress is deliberately PR-only. A push to main must always finish: main's run is
+# the record of whether main is green, and cancelling it would leave that question unanswered.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   PYTHON_VERSION: "3.14"
   DOTNET_VERSION: "9.0"
+
+  # HOW WIDE PYTEST MAY RUN HERE. `pytest.ini:42` sets `-n auto`, and on this box auto is 12 —
+  # one worker per CPU. That is right for a developer running one suite alone, and wrong for CI:
+  # four runner instances share the SAME 12-CPU / 16 GB machine, so four concurrent python jobs
+  # ask for 48 pytest workers, each importing the whole engine, on twelve cores and sixteen
+  # gigabytes. What that looks like from GitHub is not a test failure. It is jobs dying with no
+  # logs at all (2026-08-16: `python`, `engine` and `dotnet` all failed at "Set up job" with an
+  # empty log blob) and MSBuild reporting MSB4166, "child node exited prematurely" — a worker
+  # killed by the OS, not a compile error.
+  #
+  # 3 workers x 4 runners = 12, one per core. pytest-xdist 3.8.0 reads this variable to resolve
+  # `-n auto`, so it applies to every pytest invocation in every job without editing a single
+  # command line. Proven locally: PYTEST_XDIST_AUTO_NUM_WORKERS=3 with `-n auto` prints
+  # "created: 3/3 workers".
+  PYTEST_XDIST_AUTO_NUM_WORKERS: "3"
 
 jobs:
   # ──────────────────────────────────────────────────────────────────
