@@ -1,0 +1,15 @@
+{
+  "KeepAlive": true,
+  "Label": "ai.hermes.idle-engine",
+  "ProgramArguments": [
+    "/usr/local/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
+    "/Users/chidionyema/.hermes/scripts/idle_engine.py",
+    "--daemon",
+    "--interval",
+    "120"
+  ],
+  "RunAtLoad": true,
+  "StandardErrorPath": "/Users/chidionyema/.hermes/logs/idle-engine.err.log",
+  "StandardOutPath": "/Users/chidionyema/.hermes/logs/idle-engine.out.log",
+  "WorkingDirectory": "/Users/chidionyema/.hermes"
+}

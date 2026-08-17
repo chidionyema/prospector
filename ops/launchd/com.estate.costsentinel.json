@@ -1,0 +1,21 @@
+{
+  "EnvironmentVariables": {
+    "PATH": "/Users/chidionyema/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+  },
+  "Label": "com.estate.costsentinel",
+  "Nice": 5,
+  "ProgramArguments": [
+    "/usr/bin/python3",
+    "/Users/chidionyema/.hermes/scripts/launchd_receipt.py",
+    "--label",
+    "com.estate.costsentinel",
+    "--",
+    "/usr/bin/python3",
+    "/Users/chidionyema/.claude/scripts/estate_cost_sentinel.py",
+    "--digest"
+  ],
+  "RunAtLoad": true,
+  "StandardErrorPath": "/Users/chidionyema/.claude/logs/cost-sentinel.err.log",
+  "StandardOutPath": "/Users/chidionyema/.claude/logs/cost-sentinel.log",
+  "StartInterval": 900
+}

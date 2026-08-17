@@ -101,8 +101,25 @@ Nothing would show they had reverted.
 
 **Check.** `ls ~/Library/LaunchAgents/*.plist | wc -l` against any tracked copy. There is none.
 
-**Fix.** Open — task #13. Needs a tracked directory plus an install and verify script, so the
-live plists can be diffed against source.
+**Fix.** Closed 2026-08-17. `scripts/launchd_plists.py` snapshots every owned job to
+`ops/launchd/*.json` and reports drift against it.
+
+```bash
+python3 scripts/launchd_plists.py --check      # exit 0 match, 1 drift, 2 no snapshot yet
+python3 scripts/launchd_plists.py --snapshot   # accept what is installed now
+```
+
+29 jobs tracked. Vendor agents (Adobe, ExpressVPN, Steam and the like) are excluded, because
+drift on a job we did not install trains the reader to ignore the output.
+
+**Secrets.** Plists carry real credentials — `CONTROL_CENTER_PASSWORD` in two of them and
+`DEEPSEEK_API_KEY` in a third. Any value under a credential-shaped key name is written as
+`<REDACTED>`, and two redacted values compare equal. Drift in a secret's value is therefore
+invisible to this tool by design. It tracks job definitions, not the secret store.
+
+Proven on both paths: `--check` before any snapshot exits 2; after `--snapshot` it exits 0 with
+29 matches; reverting the tracked copy of `com.estate.costsentinel` to its pre-fix state
+printed exactly the three keys that make up the fix and exited 1.
 
 ---
 

@@ -1,0 +1,16 @@
+{
+  "EnvironmentVariables": {
+    "ACTIONS_RUNNER_SVC": "1"
+  },
+  "Label": "actions.runner.chidionyema-prospector.mumchimp-mac-4",
+  "ProcessType": "Interactive",
+  "ProgramArguments": [
+    "/Users/chidionyema/actions-runner-4/runsvc.sh"
+  ],
+  "RunAtLoad": true,
+  "SessionCreate": true,
+  "StandardErrorPath": "/Users/chidionyema/Library/Logs/actions.runner.chidionyema-prospector.mumchimp-mac-4/stderr.log",
+  "StandardOutPath": "/Users/chidionyema/Library/Logs/actions.runner.chidionyema-prospector.mumchimp-mac-4/stdout.log",
+  "UserName": "chidionyema",
+  "WorkingDirectory": "/Users/chidionyema/actions-runner-4"
+}

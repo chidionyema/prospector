@@ -1,0 +1,12 @@
+{
+  "KeepAlive": true,
+  "Label": "ai.hermes.keepawake",
+  "ProcessType": "Background",
+  "ProgramArguments": [
+    "/usr/bin/caffeinate",
+    "-dims"
+  ],
+  "RunAtLoad": true,
+  "StandardErrorPath": "/Users/chidionyema/.hermes/logs/keepawake.err.log",
+  "StandardOutPath": "/Users/chidionyema/.hermes/logs/keepawake.out.log"
+}
