@@ -90,23 +90,28 @@ else
 fi
 
 # ------------------------------------------------------------------- 2. node_modules
-WEB="$TARGET/store_platform/src/Store.Web"
-SRC_MODULES="$MAIN_CHECKOUT/store_platform/src/Store.Web/node_modules"
-if [ -d "$WEB" ]; then
+# EVERY npm project the POPDD gate has a lane for, not just the storefront. On 2026-08-17
+# this block copied Store.Web only, so the gate refused a commit with
+# "missing store_platform/src/Ops.Console/node_modules — cannot prove this lane" —
+# a FAIL on a lane it never actually inspected. Add a project here when you add a lane.
+for REL in store_platform/src/Store.Web store_platform/src/Ops.Console; do
+  WEB="$TARGET/$REL"
+  SRC_MODULES="$MAIN_CHECKOUT/$REL/node_modules"
+  [ -d "$WEB" ] || continue
   if [ -L "$WEB/node_modules" ]; then
-    echo "[deps] removing a SYMLINKED node_modules — Turbopack rejects it (see header)"
+    echo "[deps] $REL: removing a SYMLINKED node_modules — Turbopack rejects it (see header)"
     rm -f "$WEB/node_modules"
   fi
   if [ -d "$WEB/node_modules" ]; then
-    echo "[deps] already a real directory ($(ls "$WEB/node_modules" | wc -l | tr -d ' ') entries)"
+    echo "[deps] $REL: already a real directory ($(ls "$WEB/node_modules" | wc -l | tr -d ' ') entries)"
   elif [ -d "$SRC_MODULES" ]; then
-    echo "[deps] cloning node_modules from the main checkout (APFS copy-on-write)..."
+    echo "[deps] $REL: cloning node_modules from the main checkout (APFS copy-on-write)..."
     cp -Rc "$SRC_MODULES" "$WEB/node_modules"
-    echo "[deps] done: $(ls "$WEB/node_modules" | wc -l | tr -d ' ') entries"
+    echo "[deps] $REL: done ($(ls "$WEB/node_modules" | wc -l | tr -d ' ') entries)"
   else
-    echo "[deps] no node_modules in the main checkout; run 'npm ci' in $WEB"
+    echo "[deps] $REL: no node_modules in the main checkout; run 'npm ci' in $WEB"
   fi
-fi
+done
 
 # ------------------------------------------------------------------- 3. python venv
 # A symlink IS fine here: python resolves sys.executable through it, so the worktree gets
