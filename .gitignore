@@ -160,9 +160,11 @@ store/prescreen_shadow/
 store/numeric_citation_shadow/
 store/control_center/jobs.json
 store/control_center/config_history.jsonl
-store/ops/intents.jsonl
-store/ops/method_metrics.json
-store/ops/method_predictions.json
+# Every file under store/ops/ is an operator receipt written at runtime — intents, method
+# metrics, automation logs. Naming them one at a time is how store/pricing/ and
+# store/scheduler/ ended up with 194 files in git: the pattern only covered what existed the
+# day it was written, and the next receipt file was tracked by default.
+store/ops/
 store/catalog.sqlite3
 store/citation_archive.json
 store/incumbent_cache.json
