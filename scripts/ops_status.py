@@ -262,7 +262,6 @@ ITEMS: dict[str, tuple] = {
     "PAY-2": (None, "Refunds and disputes have code, no runbook"),
     "PAY-3": (None, "Price change breaks fulfilment if catalogue drifts"),
     "PAY-4": (None, "Stripe automatic tax enabled"),
-    "PAY-5": (None, "Paddle is dead weight with a live default"),
     "ENG-1": (c_eng1, "Finished packs that cannot be bought"),
     "ENG-2": (None, "The loudest alert names the wrong cause"),
     "ENG-3": (None, "Grounding runs on one fast provider"),
