@@ -215,7 +215,6 @@ describe('each rendered count names the right noun', () => {
     // Without this the assertions below pass on an empty string — the vacuous-guard failure mode,
     // which is how a guard reports green while guarding nothing.
     expect(copySource()).toContain('PACK_DOCUMENTS.length');
-    expect(copySource()).toContain('PACK_CONTENTS.length');
   });
 
   it('never puts the word "files" beside the document count', () => {
@@ -225,10 +224,24 @@ describe('each rendered count names the right noun', () => {
     expect(offenders.map((t) => t.replace(/\s+/g, ' ').trim())).toEqual([]);
   });
 
-  it('never puts the word "documents" beside the file count', () => {
-    const nearCount = Array.from(copySource().matchAll(/PACK_CONTENTS\.length\}([\s\S]{0,80})/g));
-    expect(nearCount.length, 'the count must actually be rendered somewhere').toBeGreaterThan(0);
-    const offenders = nearCount.map((m) => m[1]).filter((tail) => /\bdocuments?\b/i.test(tail));
-    expect(offenders.map((t) => t.replace(/\s+/g, ' ').trim())).toEqual([]);
+  /**
+   * THE FILE COUNT IS NOT RENDERED AT ALL ANY MORE, and that is now the rule.
+   *
+   * This used to be "never call the file count documents", the mirror of the assertion above it.
+   * On 2026-08-16 the founder's verdict on this card was "counting bugs": `arrives as 5 files` sat
+   * directly beneath `14 documents`. Neither was false. The card had asked a buyer to hold a
+   * distinction -- what you READ against what LANDS IN THE FOLDER -- that nobody carries down a
+   * sales page, so the two numbers read as one of them being wrong about the product.
+   *
+   * The file group keeps its LIST and loses its COUNT. Every file is still named, one per row, and
+   * still checkable one for one against the buyer's zip, which is the falsifiable half; the count
+   * was never carrying that. One number leads this card and it is the documents count.
+   *
+   * The old assertion is subsumed, not dropped: a count that is not rendered cannot be given the
+   * wrong noun. What replaces it is stricter, because it also forbids rendering the file count
+   * correctly.
+   */
+  it('renders no file count at all, so no second number can disagree with the first', () => {
+    expect(copySource()).not.toContain('{PACK_CONTENTS.length}');
   });
 });

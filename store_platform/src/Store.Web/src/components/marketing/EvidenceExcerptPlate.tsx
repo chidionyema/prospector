@@ -111,11 +111,31 @@ export function recordReference(ref: string | null | undefined): string | null {
   return id === '' ? null : id;
 }
 
+/**
+ * Index of the first extract line that resolves a citation, or -1 when none does.
+ *
+ * EXPORTED SO THE OTHER SLOTS CAN SHOW A DIFFERENT LINE. Four surfaces on the pack page read
+ * `pack.sampleExtract` -- this pull-quote, the blurred contents preview, "A look inside", and the
+ * receipts list -- and three of them started at index 0, so a buyer met the same source four times
+ * on one page (founder, 2026-08-16). The repeat between this plate and "A look inside" is the one
+ * intended case (pull-quote and section, see the note at the top of this file); the preview and the
+ * receipts are not, and they now skip or demote whatever line this returns.
+ *
+ * The index rather than the line, because the callers need to EXCLUDE it, and matching a line back
+ * by string equality would drop a genuine duplicate line elsewhere in the extract.
+ */
+export function firstCitedIndex(lines: string[] | null | undefined): number {
+  const list = lines ?? [];
+  for (let i = 0; i < list.length; i += 1) {
+    if (parseCitations(list[i]).citations.length > 0) return i;
+  }
+  return -1;
+}
+
 /** The first extract line that actually resolves a citation, or null when none does. */
 function firstCitedLine(lines: string[] | null | undefined) {
-  for (const line of lines ?? []) {
-    const parsed = parseCitations(line);
-    if (parsed.citations.length > 0) return { line, citations: parsed.citations };
-  }
-  return null;
+  const i = firstCitedIndex(lines);
+  if (i < 0) return null;
+  const line = (lines ?? [])[i];
+  return { line, citations: parseCitations(line).citations };
 }

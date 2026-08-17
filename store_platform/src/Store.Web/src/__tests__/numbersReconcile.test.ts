@@ -81,8 +81,35 @@ describe('the survivor count is not available to any page', () => {
     // survivor figure had a sanctioned way to print one.
     const stats = RESEARCH_STATS as Record<string, unknown>;
     expect(Object.keys(stats).sort()).toEqual(
-      ['killed', 'publishedKills', 'rejectRateLabel', 'researched'],
+      ['killed', 'publishedKills', 'rejectRateLabel', 'researched', 'survivorBoundLabel'],
     );
+  });
+
+  /**
+   * `survivorBoundLabel` was added on 2026-08-16 so the pack page could LEAD with the survivor
+   * reading. It used to lead with the kill rate and then spend its next sentence turning it round,
+   * and a reader scanning a rail of figures gets the headline, not the correction.
+   *
+   * It is the only figure on the survivor side of the partition the 2026-08-13 directive allows,
+   * and the only reason it is allowed is that it is a BOUND and not a rate. So the bound-ness is
+   * asserted rather than assumed: a decimal place, or a rounding that landed near the true figure,
+   * would make this the deleted `passRateLabel` under a new name, and multiplying it back would
+   * hand the reader the 80 we do not claim.
+   */
+  it('the survivor bound is a BOUND, so it cannot be read back as the survivor count', () => {
+    const { researched, killed, survivorBoundLabel } = RESEARCH_STATS;
+    const trueSurvivors = researched - killed;
+    const impliedByBound = (parseInt(survivorBoundLabel, 10) / 100) * researched;
+
+    // A whole number in 100. A decimal place is what makes a rate reproducible, which is the
+    // virtue of `rejectRateLabel` two describes down and the defect here.
+    expect(survivorBoundLabel).toMatch(/^\d+ in 100$/);
+    // Rounded UP, so "this many or fewer get through" is true rather than nearly true.
+    expect(impliedByBound).toBeGreaterThan(trueSurvivors);
+    // And far enough above that the reader who multiplies does not land on the count. The sister
+    // test below asserts the exact opposite of `rejectRateLabel` -- within one idea -- for the
+    // opposite reason. The two together are the whole policy.
+    expect(impliedByBound - trueSurvivors).toBeGreaterThan(1);
   });
 });
 

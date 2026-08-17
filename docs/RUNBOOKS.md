@@ -231,3 +231,65 @@ record and reports every pack as stranded. A zero match is a naming change, neve
 
 **Adding this to another startup.** Point `dossier_dir`, `pass_glob` and `lint_suffix` at its own
 layout. The engine has no fact about this business in it.
+
+---
+
+## human-register
+
+**What it checks.** Every `<id>.lint.json` in the dossier store, for the `human_register` block
+that `pack_linter.lint_pack` writes (`pack_linter.py:1858`) and the ops dashboard panel reads.
+The store path, the document types and the shape of a dossier are declared in
+`ops/config/human_register.yaml`; the engine holds none of them.
+
+**Run it.**
+
+```bash
+cd /Users/chidionyema/Documents/code/prospector
+.venv/bin/python -m ops.automations.human_register          # human output, writes nothing
+.venv/bin/python -m ops.automations.human_register --json   # what the console calls
+.venv/bin/python -m ops.automations.human_register --fix    # write the missing blocks
+```
+
+**What red means.** Lint records exist that carry no `human_register` block, so the panel that
+reads it draws nothing for those packs. It happened because the block shipped after every pack on
+disk had already been linted. It will happen again after any change to what the block contains.
+
+**What to do.** Run it with `--fix`. That is the whole fix, and it costs no model call: the block
+is pure measurement over text (`register_lint.register_metrics`), so the numbers come from the
+prose already on disk. Do **not** answer this by running a batch. A generation cycle costs three
+model calls per document to produce a number a re-read produces for free.
+
+Every block `--fix` writes carries `"backfilled": true` and `"corpus": "prose_artifacts"`, so a
+backfilled record is never read as a fresh lint. The provenance matters because a live lint grades
+`pack_sections or prose` — the assembled 14-section read when the caller has it, the four prose
+documents otherwise — and a dossier on disk does not store the assembled read. The backfill takes
+the same fallback `lint_pack` itself takes, not a shortcut invented for the backfill.
+
+**Unmeasurable records are not findings.** A lint record whose dossier is gone, or whose dossier
+holds no prose, cannot be measured by anything. Those are listed under `unmeasurable` with the
+reason, and they do not make the check red. A red line nobody can act on is how a check stops
+being read. As of 2026-08-16 there were 22 of them out of 112 records: 15 with no dossier for the
+id, 7 with a dossier and no prose.
+
+**Prose outside the human range is not a finding either.** That is the generator's business, and
+it is tracked in `docs/PROSE_CORPUS_PROGRAM.md`. This automation only guarantees the number exists
+to look at. It reports the tally under `summary.outside_the_human_range` and the per-measure split
+under `summary.per_measure`, which is how you see at a glance that (for example) `mattr` and
+`punct_hyphen_per_1k` are the two measures failing on nearly every document.
+
+**How long.** Seconds. It reads JSON off local disk and does arithmetic. 112 records took under a
+minute including the writes.
+
+**If it exits 2 (could not establish).** The check could not run, and the state is unknown.
+
+- `declaration not found` — you are in the wrong directory, or the YAML was moved. Pass
+  `--config <path>`.
+- `store directory not found` — `store_dir` in the declaration does not exist under the repo root.
+- `not a git repository` — the automation resolves the root through `git rev-parse`. Run it inside
+  the repo or a worktree of it.
+- `prospector.register_lint.register_metrics is not importable` — you are on a branch that predates
+  the human register, or not using the project virtualenv. Use `.venv/bin/python`.
+- `PyYAML is not installed` — same cause: use `.venv/bin/python`, not system python.
+
+**When it should run.** On the console's scheduled sweep, and after any batch. It is pure CPU over
+local files, so there is no reason to run it rarely.

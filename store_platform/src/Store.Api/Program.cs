@@ -101,6 +101,10 @@ builder.Services.AddScoped<DeliveryDrain>();
 builder.Services.AddHostedService<DeliverySweeper>();
 
 builder.Services.AddKeyedScoped<IPaymentProvider, StripeProvider>("stripe");
+// PAY-1 — the gate writes its live/test decision here and /healthz/money-rail reads it back.
+// Singleton because the decision is made once, at startup, and must outlive the request that
+// asks for it.
+builder.Services.AddSingleton<MoneyRailStatus>();
 builder.Services.AddHostedService<MoneyRailConfigGate>();
 
 // Customer accounts: registration, login, refresh/revoke, password reset, email verification,
@@ -390,6 +394,21 @@ app.MapGet("/catalog/{id}", async (string id, StoreDbContext db) =>
 // Catalogue-wide proof: how many packs cleared every gate and are live, against how many
 // were registered (the held-back ones never list). The storefront renders this as honest
 // survivorship social proof. Counts only what this layer actually knows.
+// PAY-1 — is this deployment taking real money? Public and secret-free: it reports "live" or
+// "test", never the key. It exists because a test key in production is silent — the app boots,
+// the catalogue serves, checkout completes, and no money arrives. The deploy workflow asserts
+// on this after every deploy (.github/workflows/deploy-api.yml).
+//
+// `decidedAtUtc: null` is the important case: it means the startup gate never ran, so nothing
+// checked the money rail at all. A probe must be able to tell that from a healthy "live".
+app.MapGet("/healthz/money-rail", (MoneyRailStatus status) => Results.Ok(new
+{
+    provider = status.Provider,
+    mode = status.Mode,
+    environment = status.Environment,
+    decidedAtUtc = status.DecidedAtUtc,
+}));
+
 app.MapGet("/catalog/stats", async (StoreDbContext db) =>
 {
     // Both counts exclude hidden packs. This number is shown to buyers as survivorship proof,

@@ -329,6 +329,10 @@ retrieval:
   # and aisi.gov.uk). COSTS one extra metered Exa search on a below-floor query; the best
   # set seen is always returned, so it can never reduce a check's sources or DEFER it.
   min_relevance: 0.35
+  # "best" scores the single best source in a result set; "mean" averages all of them.
+  # Measured 2026-08-16 on 1500 real cached result sets: mean cleared this 0.35 floor 24.3%
+  # of the time, best 44.1%. See prospector/config.py Retrieval.coverage_metric.
+  coverage_metric: best
   cache: true
   cache_ttl_s: 1209600   # 14 days; cached grounding older than this is re-fetched (0 = never expire)
   # BATCHED LLM query-gen on the fast/non-critical tier (deepseek→minimax). ONE call per
@@ -1507,6 +1511,59 @@ listing:
   # found in no retrieved passage, and that is a revenue decision. Review queue:
   # `python -m tools.review_figures list` / `... decide`.
   require_figure_verification: false
+  # THE INITIALISM GLOSSARY. The shelf-copy rule says an initialism a stranger has never met
+  # must be spelled out on first use. Spelling it out is a FACT about the term, so it is
+  # declared here by the operator and never guessed: a rewrite told to "spell it out" invents a
+  # plausible gloss, and an invented gloss on the shelf is the unsourced claim source-or-die
+  # exists to stop. `tools/sweep_shelf_copy.py` expands from this list deterministically — no
+  # model call — and `pack_linter.expands_on_first_use` checks the result really is the term
+  # spelled out. A term with no entry here is REPORTED, not guessed, and its row stays unlisted.
+  #
+  # Seeded 2026-08-16 from the 39 terms holding 31 of the 33 defective live rows. Every value is
+  # the body's or the standard's own name and is the operator's to correct; changing one changes
+  # live shelf copy the next time the sweep runs.
+  initialism_glossary:
+    ADA: Americans with Disabilities Act
+    AWS: Amazon Web Services
+    BS: British Standard
+    CBP: Customs and Border Protection
+    CIS: Construction Industry Scheme
+    CMMC: Cybersecurity Maturity Model Certification
+    COSHH: Control of Substances Hazardous to Health
+    DCC: Department of Cannabis Control
+    DIR: Department of Information Resources
+    DMCC: Digital Markets, Competition and Consumers
+    DSS: Data Security Standard
+    DTC: direct to consumer
+    DVSA: Driver and Vehicle Standards Agency
+    EPR: Extended Producer Responsibility
+    ERP: enterprise resource planning
+    FOI: Freedom of Information
+    FSA: Food Standards Agency
+    FTC: Federal Trade Commission
+    HB: House Bill
+    HSE: Health and Safety Executive
+    HTS: Harmonized Tariff Schedule
+    ICO: Information Commissioner's Office
+    IFA: independent financial adviser
+    IP: intellectual property
+    ISV: independent software vendor
+    LLM: large language model
+    NIST: National Institute of Standards and Technology
+    OCRS: Operator Compliance Risk Score
+    PAC: political action committee
+    PCI: Payment Card Industry
+    RMF: Risk Management Framework
+    SKU: stock keeping unit
+    STRS: State Teachers' Retirement System
+  # DELIBERATELY ABSENT, and each for its own reason. Do not fill these in to clear a row.
+  #   METRC — a product name, not an initialism. No expansion has matching initials, so the
+  #           copy has to DESCRIBE it ("the state cannabis track-and-trace system").
+  #   DCB, SBS, CAP — real terms whose expansion the operator must confirm; several bodies
+  #           use each of these letters and picking the wrong one publishes a false claim.
+  #   CI, PL, RTY — not initialisms at all. They are fragments the caps-run rule found inside
+  #           `PA RTY-100` and similar. A glossary entry would be a lie; these need the LINE
+  #           rewritten, or the rule taught about the pattern.
   # Q2 pack linter (bridge.py publish gate). URL resolution is the linter's only networked
   # check; off = the pure-text checks (currency, arithmetic, truncation, sections) still
   # run. A definitive 404/410 blocks listing; a timeout is only a warning — our outage is

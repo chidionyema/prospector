@@ -260,6 +260,17 @@ def _inline_runs(children: Sequence[Dict[str, Any]],
             runs.append((_substitute(node.get("raw", "")), style, None))
         elif kind == "link":
             url = (node.get("attrs") or {}).get("url") or None
+            # An anchor-only link points inside the page it was written for. fpdf2 reads a
+            # leading "#" as a NAMED DESTINATION and raises at output time if nothing ever
+            # called set_link(name=...) — "Named destination 'main-content' was referenced but
+            # never set". That killed Complete_Pack.pdf for pack 83f2e75faa80bb60 on
+            # 2026-08-16, which failed the structural audit and left the pack unlisted. The
+            # anchor is model-written copy, so we cannot stop it appearing; a standalone PDF
+            # has no such destination to point at either way. Keep the words, drop the link —
+            # the same trade the font rail below makes, and for the same reason: fpdf raises
+            # during the write, so one dead anchor otherwise costs the whole document.
+            if url and url.startswith("#"):
+                url = None
             for text, st, _ in _inline_runs(node.get("children"), style):
                 runs.append((text, st, url))
         elif kind in ("linebreak", "softbreak"):
