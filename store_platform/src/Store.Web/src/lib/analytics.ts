@@ -97,8 +97,9 @@ const SESSION_KEY = 'mc_sid';
 
 /**
  * A random per-tab id, minted on first use. Returns '' when storage is unavailable
- * (Safari private mode throws on setItem) — the beacons still fire, they just cannot be
- * joined into a ratio, which is strictly better than dropping the count.
+ * (Safari private mode throws on setItem). The beacons still fire, they just cannot be
+ * joined into a ratio. A raw count with no session id is still a count; dropping the beacon
+ * would lose it altogether.
  */
 export function sessionId(): string {
   if (typeof window === 'undefined') return '';

@@ -7,14 +7,14 @@ import { trackCardImpressions } from '@/lib/analytics';
  *
  * This is the denominator half of catalogue click-through. It exists because the storefront
  * could previously tell you that a card was clicked but never that it was seen, so there was
- * no ratio to compare one title form against another — only raw click totals, which mostly
+ * no ratio to compare one title form against another. There were only raw click totals, which
  * measure how far down the page a card sits.
  *
  * Three decisions worth knowing before changing this:
  *
  * A card counts when it is 50% visible, not when it is rendered. The catalogue mounts every
  * card at once, so "rendered" would count all 60-odd on every page load and make the
- * denominator a constant — the ratio would then just be the click count wearing a rate's
+ * denominator a constant. The ratio would then just be the click count wearing a rate's
  * clothes.
  *
  * Each card counts at most once per mount, tracked in a Set. Scrolling a card in and out of

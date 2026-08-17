@@ -13,6 +13,8 @@ import { repairTruncation } from '@/lib/copy';
 import { formatPriceForMarket, type Currency } from '@/lib/fx';
 import { packMarket } from '@/lib/market';
 import { packLeadStat, type PackLeadStat } from '@/lib/packStat';
+import { trackCardClick } from '@/lib/analytics';
+import { useCardImpressions } from '@/lib/useCardImpressions';
 
 /**
  * ONE OF THE SITE'S TWO CARD FORMATS. The other is the Spotlight (`PackCard` in `pages/index.tsx`).
@@ -47,6 +49,8 @@ export function PackRow({
   currency,
   viewerMarket,
   viewed = false,
+  observeRef,
+  position,
 }: {
   pack: Pack;
   /**
@@ -60,6 +64,20 @@ export function PackRow({
   viewerMarket?: string;
   /** True when this pack is in the reader's `recentlyViewed` cookie. */
   viewed?: boolean;
+  /**
+   * Counts this row as seen when it scrolls into view. Comes from `useCardImpressions().observe`
+   * in the list that renders the row, so one observer serves the whole list.
+   *
+   * Optional, and absent means the row is not counted. A row that reports a click but no sighting
+   * would push the click-through rate above 100% for that surface, so any new call site that
+   * tracks clicks must pass this too.
+   */
+  observeRef?: (node: HTMLElement | null) => void;
+  /**
+   * 1-based place in the list, sent with the click. Position is most of what a raw click count
+   * measures on a long shelf, so the title A/B needs it to tell a better title from a higher one.
+   */
+  position?: number;
 }) {
   const ambient = useCurrency();
   const cur = currency ?? ambient;
@@ -96,6 +114,13 @@ export function PackRow({
   return (
     <Link
       href={`/pack/${pack.id}`}
+      /* THE WHOLE ROW IS THE THING SEEN AND THE THING CLICKED, so both halves of the measurement
+         hang off this one element. `ref` counts the row as seen when half of it enters the
+         viewport; `onClick` counts the click. Rows past the fold on the home shelf are `hidden`
+         rather than unmounted, and a `display: none` element never intersects, so a card the
+         reader never revealed is correctly not counted as seen. */
+      ref={observeRef}
+      onClick={() => trackCardClick(pack.id, position)}
       className={cx(
         'group flex items-center gap-4 px-3 py-4 sm:gap-5 sm:px-4',
         // Hover LIFTS to paper (`--surface`) rather than sinking to `--surface3`, which is now
@@ -295,16 +320,24 @@ export function PackRowList({
   viewedIds?: ReadonlySet<string>;
   className?: string;
 }) {
+  /* ONE OBSERVER FOR THE WHOLE LIST, and it is created before the empty-list return because a
+     hook cannot run conditionally. Every surface that lists packs comes through here, so wiring
+     the count once here covers the related rail, the landing grids and the recently-viewed strip
+     without each of them remembering to. The home shelf's own tail is the exception: it renders
+     `PackRow` directly to keep its per-row `hidden` class, so it runs its own copy of this hook. */
+  const { observe } = useCardImpressions();
   if (packs.length === 0) return null;
   return (
     <ul className={cx('divide-y divide-border', className)}>
-      {packs.map((pack) => (
+      {packs.map((pack, i) => (
         <li key={pack.id}>
           <PackRow
             pack={pack}
             currency={currency}
             viewerMarket={viewerMarket}
             viewed={viewedIds?.has(pack.id) ?? false}
+            observeRef={observe(pack.id)}
+            position={i + 1}
           />
         </li>
       ))}
