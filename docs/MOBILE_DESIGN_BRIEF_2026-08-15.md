@@ -51,7 +51,7 @@ preferrable"*. Contrast on white text, both AAA: charcoal **12.68:1**, navy **9.
 The comparison was made on `http://localhost:3131` with a throwaway `:root` override, not with
 screenshots, so what was judged was the whole button system moving together (`--primary:
 var(--action)`, `tokens.css:217`) rather than one crop. The harness was
-`src/components/dev/VariantSwitch.tsx` plus a four-line mount in `_app.tsx`, both deliberately
+`src/components/dev/VariantSwitch.tsx` plus a four-line mount in `_app.tsx`, both deliberately <!-- doc-lint-ok: the next line says this harness was deliberately never committed -->
 uncommitted.
 
 The history, kept because it is the argument and not just the outcome: Part Two set `--action:
