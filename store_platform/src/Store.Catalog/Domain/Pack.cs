@@ -94,7 +94,7 @@ public class Pack
         return null;
     }
 
-    public string PaymentProvider { get; set; } = "paddle";
+    public string PaymentProvider { get; set; } = "stripe";
     public string? ProviderProductId { get; set; }
     public string? ProviderPriceId { get; set; }
     public bool IsListed { get; set; }

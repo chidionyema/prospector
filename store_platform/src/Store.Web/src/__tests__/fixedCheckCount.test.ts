@@ -152,6 +152,56 @@ describe('the methodology surfaces hedge the count where they enumerate it', () 
     );
   });
 
+  /**
+   * A BARE CARDINAL MAKES THE CLAIM WITHOUT A DETERMINER, AND THAT IS HOW ONE SHIPPED.
+   *
+   * Every pattern in FORBIDDEN above requires a word in front of the numeral -- a determiner
+   * ("all six checks"), a verb ("survived nine"), or an adjective ("six rigorous gates"). So
+   * `copyConfig.ts` variant a carried `sixChecksTitle: 'Six checks, in order. One hard fail and
+   * it stops.'` through every run of this file, green, from the day the sweep was written until
+   * 2026-08-15. It was live on /how-it-works as an <h2>, immediately below a worked evidence
+   * record rendering NINE checks from `data/sample-report.json` -- the strongest position on the
+   * page, asserting a denominator the page had just disproved two hundred pixels above.
+   *
+   * Banning `cardinal + noun` outright is not available: the docblock at the top of this file
+   * protects "Six fronts are common to every idea" as the correct sentence, and the founder's
+   * 2026-08-15 vocabulary pass rewrites `fronts` to `checks`, which would put the honest sentence
+   * squarely inside a context-free ban. So the rule is scoped to the SENTENCE: a cardinal beside
+   * a checks-noun is legal only where the same sentence qualifies it. That is the same HEDGE
+   * vocabulary the test above already trusts, applied to a window instead of a whole field.
+   */
+  it('no copy surface puts a bare cardinal beside a checks-noun without qualifying it', () => {
+    const CARDINAL_COUNT = /\b(six|seven|eight|nine|ten)\s+(checks|gates|criteria|fronts)\b/gi;
+    const violations: string[] = [];
+
+    for (const file of copySurfaces()) {
+      const body = stripComments(readFileSync(file, 'utf8'));
+      for (const hit of body.matchAll(CARDINAL_COUNT)) {
+        // The sentence around the phrase, not a fixed character window: a hedge in the NEXT
+        // sentence is a different claim ("Six checks. Some ideas face more." reads as a
+        // correction, and shipped once as exactly that). Bounded by sentence punctuation, and by
+        // the string quote, since most of these live inside a copy literal.
+        const start = Math.max(0, hit.index - 200);
+        const before = body.slice(start, hit.index);
+        const after = body.slice(hit.index, Math.min(body.length, hit.index + 200));
+        const sentence =
+          before.slice(before.search(/[.!?'"`\n][^.!?'"`\n]*$/) + 1) +
+          after.slice(0, (after.search(/[.!?'"`\n]/) + 1 || after.length));
+
+        if (!HEDGE.test(sentence)) {
+          const line = body.slice(0, hit.index).split('\n').length;
+          violations.push(
+            `${file.slice(SRC.length)}:${line} "${hit[0]}" in "${sentence.trim()}" -- ` +
+              'a cardinal beside a checks-noun promises a closed set unless the same sentence ' +
+              'says the set varies (common / depends / some ideas / which checks / faced)',
+          );
+        }
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
   it('the homepage method band has no fixed-count claim to hedge', () => {
     /*
      * UPDATED 2026-08-07 per the sitewide copy rewrite (email §1). The previous version of this

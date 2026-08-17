@@ -58,7 +58,7 @@ jobs:
   # gate the suite here rather than discover a regression against live buyers. This is the money
   # rail: fulfilment, checkout and the content pointer all live in this app.
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -74,7 +74,7 @@ jobs:
   deploy:
     needs: test
     if: ${{ !inputs.dry_run }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
@@ -137,4 +137,37 @@ jobs:
             401) echo "content door is live and refuses unauthenticated callers" ;;
             404) echo "route missing — the machines are serving an older image"; exit 1 ;;
             *)   echo "unexpected status from the content door"; exit 1 ;;
+          esac
+
+      # PAY-1 — is the deployed app taking REAL money?
+      #
+      # A test key in production is the quietest failure this app has. Everything above still
+      # passes: the machines take the image, /catalog answers 200, the content door answers 401,
+      # checkout completes, the buyer gets a receipt, and no money arrives. It was only ever a log
+      # line (MoneyRailConfigGate), and nobody reads the log on a green deploy.
+      #
+      # This workflow deploys the PRODUCTION app only, so "live" is the only acceptable answer.
+      # Staging deploys elsewhere and is expected to be test-mode, which is why the app reports
+      # the mode rather than refusing to start on it.
+      #
+      # `decidedAtUtc: null` means the startup gate never ran — a different fault from a test key,
+      # and it fails here too rather than being read as "not live yet".
+      - name: Prove the money rail is in live mode
+        env:
+          API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+        run: |
+          set -euo pipefail
+          base="${API_URL:-https://api.mumchimp.com}"
+
+          body=$(curl -s --max-time 30 --retry 5 --retry-delay 5 --retry-all-errors \
+                   "$base/healthz/money-rail")
+          echo "GET $base/healthz/money-rail -> $body"
+
+          # No jq dependency and no secret in the output: the endpoint returns the mode, never
+          # the key. A missing route (older image) yields an empty or HTML body and fails here.
+          case "$body" in
+            *'"mode":"live"'*) echo "money rail is LIVE — real payments will be taken" ;;
+            *'"mode":"test"'*) echo "FAIL: production is running a TEST Stripe key. Buyers pay nothing."; exit 1 ;;
+            *'"decidedAtUtc":null'*) echo "FAIL: the money-rail startup gate never ran."; exit 1 ;;
+            *) echo "FAIL: /healthz/money-rail did not answer — the machines are serving an older image."; exit 1 ;;
           esac

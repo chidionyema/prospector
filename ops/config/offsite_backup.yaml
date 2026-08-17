@@ -1,0 +1,65 @@
+# Offsite backup — this startup's declaration.
+#
+# Every business fact for the `offsite_backup` automation lives here. The engine
+# (`ops/automations/offsite_backup.py`) contains none of it. Moving this check to another
+# startup means writing a new copy of THIS file and nothing else.
+#
+# The rule this encodes: a provider snapshot is not a backup. Fly's snapshots of
+# vol_4ql6dzwjylqeygnr live in the same Fly account as the volume, keep 5 days, and have
+# never been restored. Everything listed below is copied OUT of that account, into storage
+# on a different provider, and opened to prove it is readable before it counts.
+
+storage:
+  # Cloudflare R2, S3-compatible. Same bucket and credentials as scripts/backup_store.py,
+  # which already backs up the ENGINE store (dossiers, ledger, index) — a different bucket
+  # from the delivery bucket R2_BUCKET on purpose, because the delivery bucket is reachable
+  # by the storefront's own credentials and can have a public r2.dev domain attached.
+  endpoint: "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+  access_key_env: R2_ACCESS_KEY_ID
+  secret_key_env: R2_SECRET_ACCESS_KEY
+  bucket: prospector-backup
+  prefix: "offsite/"
+  region: auto
+
+# How old the newest copy may be before the monitor goes red. A day, because the daemon
+# publishes and sells continuously and a lost day is a lost day of orders.
+max_age_hours: 24
+
+sources:
+  - name: money-db
+    why: >-
+      Orders, entitlements, grant tokens and download counts. This is the only record of who
+      bought what. It lives at /data/store.db on a single 1 GB Fly volume in lhr, and until
+      this automation existed nothing in this repo ever pulled it off Fly.
+    fetch:
+      - fly
+      - ssh
+      - sftp
+      - get
+      - /data/store.db
+      - "{dest}"
+      - --app
+      - prospector-store-api
+    key: money-db/store.db
+    # Opened with PRAGMA integrity_check before it is allowed to count. A live SQLite file
+    # copied byte-for-byte can be torn; a torn copy fails this check and no backup is
+    # recorded, which is the correct outcome — a bad copy must never displace a good one.
+    verify: sqlite
+    keep: 30
+
+  - name: data-protection-keys
+    why: >-
+      The ASP.NET Data Protection key ring at /data/keys. Losing it does not lose data, it
+      makes data unreadable: anything the API encrypted with it (grant tokens, cookies)
+      cannot be decrypted by a restored instance holding a fresh key. A restore of the
+      database alone would look successful and hand every buyer a broken download link.
+    fetch:
+      - sh
+      - -c
+      - >-
+        fly ssh console --app prospector-store-api
+        -C "tar -czf /tmp/keyring.tgz -C /data keys" >/dev/null &&
+        fly ssh sftp get /tmp/keyring.tgz "{dest}" --app prospector-store-api
+    key: data-protection-keys/keyring.tgz
+    verify: nonempty
+    keep: 30

@@ -293,6 +293,24 @@ retrieval:
   # with less than it replaced.
   fetch_min_gain_chars: 400
   fetch_max_bytes: 400000
+  # Drop the cookie banner before the verdict brain reads it (2026-08-16).
+  # `select_passage` anchors the stored passage on the window with the most query terms. A
+  # consent banner has none, so the anchor finds nothing and falls back to the head slice,
+  # which on ons.gov.uk and gov.uk IS the banner. The brain then reads 600 chars of cookie
+  # notice and rules `unverifiable` on evidence we never gave it.
+  # MEASURED 2026-08-16 over 43,673 stored passages in store/dossiers/: 76 hand the brain a
+  # banner inside its 600-char read window, 62 of those within the first 200 chars. Only 0.2%
+  # overall, but 12.3% of ons.gov.uk passages and 2.2% of legislation.gov.uk — the sources the
+  # payer-solvency and legality checks lean on hardest. One reached the shop: the live landing
+  # page told buyers the ASHE earnings tables "contain only cookie consent screens with no
+  # actual wage data".
+  # Two passes, both bounded so they cannot eat a real page. The DOM pass drops short
+  # containers whose id/class names a consent widget; the text pass drops sentences carrying a
+  # banner phrase, and gives up if that would remove more than 60% of the passage (a page
+  # genuinely ABOUT cookie law keeps its content, and a true consent wall stays visibly empty
+  # so the check rules `unverifiable` honestly).
+  # Toggle it from the ops console: Parameters -> Retrieval -> "Strip cookie banners".
+  strip_consent_banners: true
   # Rank what search returned instead of taking DuckDuckGo's first 3 (2026-08-14).
   # 3 x 3 = 9 results fetched per query, best 3 by query-term coverage kept. One wider
   # search call; no extra page fetch (ranking runs on the snippet, before the fetch) and
@@ -311,6 +329,10 @@ retrieval:
   # and aisi.gov.uk). COSTS one extra metered Exa search on a below-floor query; the best
   # set seen is always returned, so it can never reduce a check's sources or DEFER it.
   min_relevance: 0.35
+  # "best" scores the single best source in a result set; "mean" averages all of them.
+  # Measured 2026-08-16 on 1500 real cached result sets: mean cleared this 0.35 floor 24.3%
+  # of the time, best 44.1%. See prospector/config.py Retrieval.coverage_metric.
+  coverage_metric: best
   cache: true
   cache_ttl_s: 1209600   # 14 days; cached grounding older than this is re-fetched (0 = never expire)
   # BATCHED LLM query-gen on the fast/non-critical tier (deepseek→minimax). ONE call per
@@ -600,6 +622,14 @@ lanes:
       - legality: [refuted]
       - pain_reality: [refuted]
       - adversarial_decisive: false
+    score_checks:                  # run + score, never kill
+      # WHY-NOW, added 2026-08-16. `currency` is the "is this live right now" check.
+      # side_hustle gates on it, smb and growth score it, and venture ran it nowhere — so the
+      # most expensive lane was the one lane that never asked whether its idea was five years
+      # late. Soft, not a gate: a durable thesis with a stale trigger should lose composite,
+      # not die. The check now rules on the publication dates carried by the passages
+      # (models.py CHECKS["currency"], rendered by verify.py::verdict_for).
+      - currency
     thresholds:
       confidence_floor: 0.4   # minimum confidence for a supported check to count as grounded
       min_composite_to_pass: 2.5
@@ -1481,6 +1511,59 @@ listing:
   # found in no retrieved passage, and that is a revenue decision. Review queue:
   # `python -m tools.review_figures list` / `... decide`.
   require_figure_verification: false
+  # THE INITIALISM GLOSSARY. The shelf-copy rule says an initialism a stranger has never met
+  # must be spelled out on first use. Spelling it out is a FACT about the term, so it is
+  # declared here by the operator and never guessed: a rewrite told to "spell it out" invents a
+  # plausible gloss, and an invented gloss on the shelf is the unsourced claim source-or-die
+  # exists to stop. `tools/sweep_shelf_copy.py` expands from this list deterministically — no
+  # model call — and `pack_linter.expands_on_first_use` checks the result really is the term
+  # spelled out. A term with no entry here is REPORTED, not guessed, and its row stays unlisted.
+  #
+  # Seeded 2026-08-16 from the 39 terms holding 31 of the 33 defective live rows. Every value is
+  # the body's or the standard's own name and is the operator's to correct; changing one changes
+  # live shelf copy the next time the sweep runs.
+  initialism_glossary:
+    ADA: Americans with Disabilities Act
+    AWS: Amazon Web Services
+    BS: British Standard
+    CBP: Customs and Border Protection
+    CIS: Construction Industry Scheme
+    CMMC: Cybersecurity Maturity Model Certification
+    COSHH: Control of Substances Hazardous to Health
+    DCC: Department of Cannabis Control
+    DIR: Department of Information Resources
+    DMCC: Digital Markets, Competition and Consumers
+    DSS: Data Security Standard
+    DTC: direct to consumer
+    DVSA: Driver and Vehicle Standards Agency
+    EPR: Extended Producer Responsibility
+    ERP: enterprise resource planning
+    FOI: Freedom of Information
+    FSA: Food Standards Agency
+    FTC: Federal Trade Commission
+    HB: House Bill
+    HSE: Health and Safety Executive
+    HTS: Harmonized Tariff Schedule
+    ICO: Information Commissioner's Office
+    IFA: independent financial adviser
+    IP: intellectual property
+    ISV: independent software vendor
+    LLM: large language model
+    NIST: National Institute of Standards and Technology
+    OCRS: Operator Compliance Risk Score
+    PAC: political action committee
+    PCI: Payment Card Industry
+    RMF: Risk Management Framework
+    SKU: stock keeping unit
+    STRS: State Teachers' Retirement System
+  # DELIBERATELY ABSENT, and each for its own reason. Do not fill these in to clear a row.
+  #   METRC — a product name, not an initialism. No expansion has matching initials, so the
+  #           copy has to DESCRIBE it ("the state cannabis track-and-trace system").
+  #   DCB, SBS, CAP — real terms whose expansion the operator must confirm; several bodies
+  #           use each of these letters and picking the wrong one publishes a false claim.
+  #   CI, PL, RTY — not initialisms at all. They are fragments the caps-run rule found inside
+  #           `PA RTY-100` and similar. A glossary entry would be a lie; these need the LINE
+  #           rewritten, or the rule taught about the pattern.
   # Q2 pack linter (bridge.py publish gate). URL resolution is the linter's only networked
   # check; off = the pure-text checks (currency, arithmetic, truncation, sections) still
   # run. A definitive 404/410 blocks listing; a timeout is only a warning — our outage is
@@ -1534,6 +1617,122 @@ listing:
   # Note the rate is least stable exactly where it bites hardest: the worst offenders are
   # 300-800 word packs where a handful of findings dominates the ratio.
   max_grammar_defects_per_1k: 6.0
+  # REPETITION (pack_linter.check_repetition, graded over the assembled 14-section read that
+  # `_create_bundle` hands back). The founder read a pack on 2026-08-15 and said "repititons
+  # occur"; measured on e698149e137fc164 the same sentence was printed in two or more sections
+  # 33 times. Five renderers were fixed and it is 0 blocking / 12 warnings now.
+  #
+  # OFF, on the same terms lint_grammar and title_block_on_breach were both introduced: the
+  # check runs, `repetition_findings` and `readability_grade` accrue in <id>.lint.json, and the
+  # actuator turns on against a number measured across live packs rather than the one pack that
+  # motivated it. Unlisting a paid pack over a repeated sentence is an expensive way to discover
+  # the threshold was wrong.
+  lint_repetition_block: false
+  # HOUSE WRITING SPEC (docs/HOUSE_WRITING_SPEC.md, enforced by prospector/register_lint.py
+  # and prospector/house_style.py, both wired into pack_linter.lint_pack on 2026-08-15).
+  #
+  # Every knob here is 0.0 or false, and every one of them is MEASURED anyway: the report
+  # writes a `house_spec` block into <id>.lint.json on every pack, pass or fail. That is
+  # deliberate, and it is the lesson of `register_lint` itself — it shipped with 67 banned
+  # phrases, a full test suite, three rate actuators and ZERO callers, so it neither blocked
+  # anything nor accrued a single number that could have earned it a threshold.
+  #
+  # THE BASELINE THAT SAYS WHY NOT ONE OF THEM IS ON. Measured 2026-08-15 across 2,187
+  # dossiers / 41,168 sentences / 1.16M words of engine prose:
+  #   R1 sentence over 28 words   43.9%   mean sentence 28.2 words — the corpus average
+  #                                       sits exactly ON the spec's hard ceiling
+  #   R4 four-item parallel list  13.8%
+  #   R2 semicolon in claim text  10.4%
+  #   R9 banned register           4.1%   compounds x354, increasingly x238, wedge x218,
+  #                                       moat x208, at scale x91, ecosystem x81
+  #   R8 opens on that/which       2.4%
+  #   R6 quantity word, no figure  1.4%
+  #   R10 prediction as fact       0.1%
+  # A rate ceiling set above 0 today fails essentially every pack in the catalogue. The prose
+  # has to move first, which is why the rules belong in the generator prompt (spec Part Five,
+  # Stage 2) and this gate is the backstop rather than the fix.
+  #
+  # The booleans sit apart from the rates because their defects are decidable rather than
+  # statistical: an unsourced claim about the future is wrong once, not wrong at a rate, and
+  # a "quote" that is a cookie banner is not evidence at any frequency. They are the first
+  # two that should flip, once `house_spec` in the live reports shows what they would block.
+  house_spec_block_predictions: false   # R10 -> error
+  house_spec_block_quotes: false        # Q1/Q2/Q3 -> error
+  house_spec_block_register: false      # R9 banned register -> error
+  max_register_per_1k: 0.0              # R9 rate ceiling; 0 = measure only
+  max_long_sentence_rate: 0.0           # R1, at register_lint's 25-word ceiling
+  max_clause_load_rate: 0.0             # R2
+  max_four_item_list_rate: 0.0          # R4
+  max_unsourced_figure_rate: 0.0        # R5
+  # ENGINE VOCABULARY IN THE BUYER'S PROSE. Added 2026-08-15, after the founder downloaded a
+  # live pack: "it has engine ifo like conposite score etc and even ai judge info". The score
+  # itself is gone from the zip (`pack_data.include_scorecard`, and four fields removed from
+  # manifest.jsonld); this catches the engine talking about itself in the WRITING, which no
+  # check had ever read — `INTERNAL_VOCAB` grades six shelf lines and stops there.
+  # Measured baseline on 296 live documents / 427,687 words: 24 hits, 0.06 per 1,000 words,
+  # every one the same shape ("value_durability 0.438, distribution 0.430").
+  engine_leak_block: false              # findings -> error
+  max_engine_leak_per_1k: 0.0           # rate ceiling; 0 = measure only
+  # HUMAN WRITING PATTERNS. Added 2026-08-16 (docs/PROSE_CORPUS_PROGRAM.md). Every pack is
+  # measured the way 270 Financial Ombudsman decisions were measured — the same tokeniser,
+  # the same function (`prospector/prose_measure.py`) — and graded against the committed
+  # target `prospector/data/prose_target.json`. The measures and any findings land in
+  # <id>.lint.json under `human_register`, on every pack, pass or fail.
+  #
+  # We adopt the FORM of human writing, not its subject matter. The target only carries
+  # measures of how sentences are built; words about complaints, the NHS or the FCA are
+  # excluded by construction (`prose_measure.classify_item`), so no rule here can ever push
+  # our prose towards someone else's topic.
+  #
+  # SIX MEASURES ARE ARMED, and a measure only arms when our mean sits outside the human
+  # 5th-95th percentile by at least 10% of that interval's width:
+  #   hyphen rate        31.8 per 1k vs human  2.7   compound stacking; z = 11.3
+  #   comma rate         61.3 per 1k vs human 31.8
+  #   semicolon rate      4.6 per 1k vs human  0.7
+  #   heavy sentences    47%  of sentences vs human 16%   two or more comma-clauses
+  #   MATTR (vocabulary) 0.77 vs human 0.67       a different word where a human repeats
+  #   hedges              3.5 per 1k vs human 13.8   we assert more flatly than a human
+  # The 25-word sentence rule is deliberately NOT armed: a human breaks it in 31% of
+  # sentences and the human 95th percentile is 52%, which is exactly our rate.
+  #
+  # OFF, on the same terms as every knob above, plus one specific to this check: the
+  # interval is the human 5th-95th percentile, so roughly one human document in ten falls
+  # outside it on any single measure. Blocking today would unlist packs a human author
+  # would also have failed. Turn it on against the baseline that accrues in the reports.
+  human_register_block: false           # outside the human range -> error
+  # APPLYING the same measurement, rather than only reporting it. Two switches, because
+  # they are two different acts:
+  #   human_register_block  (above)  refuses to SELL a finished pack.        OFF.
+  #   human_register_repair (below)  spends one rewrite turn on a draft.     ON.
+  # A rewrite costs one model call and risks nothing. Unlisting on a measure whose interval
+  # is the human 5th-95th percentile, where one human document in ten falls outside, risks
+  # the pack. The armed measures also reach the WRITER now, through the house voice guide
+  # (`prose_target.prompt_block` -> `prompts.style_kwargs`), so the first draft is aimed at
+  # the target instead of being graded against a rubric it was never shown.
+  human_register_repair: true           # outside the human range -> one rewrite turn
+  # PAID-ARTIFACT CLAIM CHECK (artifacts.claim_check_blocks_listing). Added 2026-08-15.
+  #
+  # What it is: when build_spec / gtm_plan / ops_plan still carry claim-check violations after
+  # their repair turn (`artifacts.py::_gen_one_artifact`), the pack does not list. The
+  # documents are KEPT and the violations are recorded on `candidate.tags["unverified_claims"]`
+  # — deleting the document would trip the completeness gate as "generation produced nothing",
+  # which is an outage's signature, not an invention's, and would destroy the evidence.
+  #
+  # Why it is ON while every lint_* knob above is OFF: those grade STYLE, where a false
+  # positive unlists a good pack, so they wait for a corpus. This grades TRUTH. The same
+  # `verify_claims_detail` has DROPPED an unverified marketing piece since the beginning
+  # (`artifacts.py::_gen_one_content`) while the £49 documents shipped theirs merely logged —
+  # one gate, opposite consequences, and the lenient side was the side the buyer pays for.
+  # Measured on the same checker: the three paid artifacts fail attempt 1 at 88-92% vs 74% for
+  # marketing copy (so this is not a short-copy artefact), and sampled violations are real
+  # invention — a 90-day figure contradicting a cited 20-day statutory deadline, a citation
+  # naming `voxa.com` where the source is `voxamtd.com`. "Publish only on PASS" and "no
+  # unsourced numbers ship, ever" have no exception for the expensive document.
+  #
+  # Set false to restore the pre-2026-08-15 behaviour: violations recorded, pack still lists.
+  # This is NOT `artifacts.claim_check` (:1769), which decides whether the check runs at all —
+  # turning the gate off must not also turn off the measurement that justifies turning it back on.
+  claim_check_block: true
   # TITLE FORMAT (pack_linter.check_title). The title is the only string that reaches every
   # surface at once — shelf card, pack page H1, the <title> in search results, the OG image
   # on a shared link — and until 2026-08-09 nothing bounded it or shaped it. The declared
@@ -1789,8 +1988,8 @@ listing:
 # Storefront payment rail. MUST match the provider the Store API bills through: checkout
 # builds a Stripe Checkout Session from the pack's ProviderPriceId, so a pack provisioned
 # under any other rail lists with a `price_stub_*` id and its checkout returns HTTP 500.
-# This was unset before 2026-07-31, so EngineBridge defaulted to `paddle`, found no
-# PADDLE_API_KEY, and shipped six listed-but-unbuyable packs. Explicit now, and
+# This was unset before 2026-07-31, so EngineBridge defaulted to a rail we held no key
+# for and shipped six listed-but-unbuyable packs. Explicit now, and
 # bridge.py refuses to LIST anything still carrying a stub price id.
 store_payments:
   active_provider: stripe
@@ -1951,10 +2150,24 @@ artifacts:
   words_per_evidence_word: 1.0 # the part that restates retrieved evidence
   floor_words: 600             # never collapse below the existing anti-stub gate
   ceiling_words: 3600          # binds only on the best-evidenced packs
+  # Added 2026-08-15 against the founder's "hurried and cryptic" reading. A flat per-artifact
+  # allowance for SIGNPOSTING — one sentence per section saying what that section decides.
+  # It is deliberately NOT folded into base_words: base buys operational judgement, which is
+  # claim-bearing, and this buys connective tissue, which is not. Keeping them separate is
+  # what lets a future sweep say which of the two the pack actually spent.
+  # This is a reallocation, not a cap lift: words_per_evidence_word is unchanged, so no extra
+  # room is created for asserting things, and the claim-check still governs what may be said.
+  narrative_words: 150
 
 pack_data:
   enabled: true              # founder 2026-08-07 — the data files now ship in the bundle
   formats: [json, csv, svg]  # add xlsx / pdf once F3/F4 are exercised on a real pack
+  # Our grading of the idea, in the buyer's zip. OFF, founder 2026-08-15, on a pack
+  # downloaded from the live storefront: "it has engine ifo like conposite score etc".
+  # This drops scorecard.json, scorecard.csv and scorecard_radar.svg. The financial model
+  # and the price comparables still ship — those are the buyer's, the grade is ours.
+  # Turning this back on is a decision to show a buyer how we ranked what they bought.
+  include_scorecard: false
   chrome_path: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
 # Second dedup signal: content-word overlap (Jaccard, 0..1). Char ratio above is blind to

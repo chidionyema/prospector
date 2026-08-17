@@ -92,8 +92,10 @@ python -m prospector.run vet --title "Haulage HMRC fuel-duty PTO rebate" \
 
 **Resume after moat exhaustion:**
 ```bash
-# Re-vet all candidates that were DEFERRED because the moat (Claude+Gemini) was down.
-# Safe to run when Claude/Gemini quota has recovered.
+# Re-vet all candidates that were DEFERRED because the moat was down. The moat is whatever
+# `config.yaml moat_primary:` declares — MiniMax then claude_cli as of 2026-08-15. Naming a
+# brand here is how this line went stale: it said Gemini, which no config has selected since.
+# Safe to run once any trusted tier has recovered.
 python -m prospector.run vet --resume
 
 # Re-run the full pipeline for all signals that failed at generation time

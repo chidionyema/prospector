@@ -100,8 +100,11 @@ builder.Services.AddHttpClient<IEmailSender, MailjetEmailSender>();
 builder.Services.AddScoped<DeliveryDrain>();
 builder.Services.AddHostedService<DeliverySweeper>();
 
-builder.Services.AddKeyedScoped<IPaymentProvider, PaddleProvider>("paddle");
 builder.Services.AddKeyedScoped<IPaymentProvider, StripeProvider>("stripe");
+// PAY-1 — the gate writes its live/test decision here and /healthz/money-rail reads it back.
+// Singleton because the decision is made once, at startup, and must outlive the request that
+// asks for it.
+builder.Services.AddSingleton<MoneyRailStatus>();
 builder.Services.AddHostedService<MoneyRailConfigGate>();
 
 // Customer accounts: registration, login, refresh/revoke, password reset, email verification,
@@ -391,6 +394,21 @@ app.MapGet("/catalog/{id}", async (string id, StoreDbContext db) =>
 // Catalogue-wide proof: how many packs cleared every gate and are live, against how many
 // were registered (the held-back ones never list). The storefront renders this as honest
 // survivorship social proof. Counts only what this layer actually knows.
+// PAY-1 — is this deployment taking real money? Public and secret-free: it reports "live" or
+// "test", never the key. It exists because a test key in production is silent — the app boots,
+// the catalogue serves, checkout completes, and no money arrives. The deploy workflow asserts
+// on this after every deploy (.github/workflows/deploy-api.yml).
+//
+// `decidedAtUtc: null` is the important case: it means the startup gate never ran, so nothing
+// checked the money rail at all. A probe must be able to tell that from a healthy "live".
+app.MapGet("/healthz/money-rail", (MoneyRailStatus status) => Results.Ok(new
+{
+    provider = status.Provider,
+    mode = status.Mode,
+    environment = status.Environment,
+    decidedAtUtc = status.DecidedAtUtc,
+}));
+
 app.MapGet("/catalog/stats", async (StoreDbContext db) =>
 {
     // Both counts exclude hidden packs. This number is shown to buyers as survivorship proof,
@@ -514,22 +532,18 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
         pack.DossierRef = request.DossierRef;
     }
 
-    // PaymentProvider defaults to "paddle" for backward compatibility with
-    // engine publishes that only send the legacy PaddleProductId/PaddlePriceId.
-    // An EXISTING pack keeps the provider that minted its ids: since those ids are no longer
-    // nulled by an omission (below), defaulting to "paddle" here would leave a live Stripe
-    // pack labelled paddle while holding price_* ids — a mismatch no reader could resolve.
+    // Stripe is the only payment provider. An EXISTING pack keeps whatever provider minted
+    // its ids, so a historical row is never relabelled by a republish.
     pack.PaymentProvider = request.PaymentProvider
-        ?? (request.PaddleProductId is not null ? "paddle" : null)
         ?? pack.PaymentProvider
-        ?? "paddle";
+        ?? "stripe";
 
     // Only overwrite when the publish actually CARRIED an id. Omitting them used to null them,
     // and no GET projection returns them, so a copy job routed through this endpoint could not
     // echo back what it must not disturb. A null ProviderProductId breaks FulfilmentService's
     // product lookup (p.ProviderProductId == item.ProductId): charged, never delivered.
     // Sending a different id still moves it — this guards omission, not change.
-    var sentProductId = request.ProviderProductId ?? request.PaddleProductId;
+    var sentProductId = request.ProviderProductId;
     if (sentProductId is not null)
     {
         pack.ProviderProductId = sentProductId;
@@ -556,7 +570,7 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
     // already stored and takes the equality branch. Actually changing a price is what
     // PATCH /internal/catalog/{id}/price is for, and it moves the number, the pointer, the floor
     // and the history row in one transaction, which is the only combination that is ever correct.
-    var sentPriceId = request.ProviderPriceId ?? request.PaddlePriceId;
+    var sentPriceId = request.ProviderPriceId;
     if (sentPriceId is not null)
     {
         var storedPriceId = pack.ProviderPriceId;
@@ -654,7 +668,7 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
     var wantsListing = request.IsListed && !string.IsNullOrEmpty(pack.ContentKey);
     if (wantsListing)
     {
-        var provider = sp.GetKeyedService<IPaymentProvider>(pack.PaymentProvider ?? "paddle");
+        var provider = sp.GetKeyedService<IPaymentProvider>(pack.PaymentProvider ?? "stripe");
         if (provider is null)
         {
             logger.LogError(
@@ -773,7 +787,7 @@ app.MapPatch("/internal/catalog/{id}/facets", async (
 // Same reasoning as the facets PATCH above, with a sharper edge. Routing a copy job through
 // POST /internal/catalog would let it rewrite the money-bearing fields of a live listing, and
 // on this endpoint that is not a hypothetical: the upsert assigns ProviderProductId and
-// ProviderPriceId unconditionally on update (`request.X ?? request.PaddleX`, so omitting them
+// ProviderPriceId unconditionally on update (so omitting them
 // NULLS them) while PricePence is only ever assigned on INSERT. So a copy job that re-published
 // would either null the provider ids — breaking FulfilmentService's `p.ProviderProductId ==
 // item.ProductId` lookup, i.e. the buyer pays and delivery never resolves — or carry freshly
@@ -1115,7 +1129,7 @@ app.MapPatch("/internal/catalog/{id}/price", async (
         {
             return Results.BadRequest(new { error = "a listed pack needs a billable providerPriceId to re-price" });
         }
-        var provider = sp.GetKeyedService<IPaymentProvider>(pack.PaymentProvider ?? "paddle");
+        var provider = sp.GetKeyedService<IPaymentProvider>(pack.PaymentProvider ?? "stripe");
         if (provider is null)
         {
             logger.LogError("Refusing to re-price {PackId}: no payment provider registered for {Provider}.",

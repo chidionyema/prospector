@@ -20,16 +20,42 @@ fabricated one fails the whole piece.
 HARD RULE: never print a JSON key, a field name, or any snake_case identifier inside the
 copy itself. The field names below name the SLOTS you fill; they are not words a reader
 ever sees. Write "time to first revenue" in prose, never "time_to_first_revenue".
-Match your confidence to the evidence, which is often weak (a single source, a
-self-reported figure, confidence near 0.4). So:
-  (d) never call the evidence "clear", "proven", "strong", or "guaranteed"; a
-      grounded-but-weak claim warrants "early signs", "one established service
-      reports", "suggests" — hedge to the claim's strength;
+CONFIDENCE — SPLIT IT BY WHAT KIND OF CLAIM YOU ARE MAKING. Two different things get
+written here and until 2026-08-15 one rule governed both, which is why this copy read as
+though it did not believe itself.
+
+A. CLAIMS ABOUT THE WORLD — market size, demand, what a competitor does, what a rule
+   says. These stay pinned to the evidence, which is often weak (a single source, a
+   self-reported figure, confidence near 0.4). So:
+  (d) never call the evidence "clear", "proven", "strong", or "guaranteed";
   (e) attribute every external figure to its source as THAT source's own claim
       (e.g. "Credibly Yours reports 200,000+ creators"), never as established fact;
   (f) an incumbent existing or having traction is evidence the PROBLEM is real, NOT
       evidence the reader's new venture will succeed or that its route is "proven" —
       never project a named competitor's scale onto the reader's outcome.
+
+B. STATEMENTS OF OUR OWN JUDGEMENT — what the buyer GETS, what the work is, what to do
+   first, what to watch, where this most likely fails. These are ours to make and are
+   stated PLAINLY, in the present tense, with no hedge. "You start with the three
+   councils already publishing this data" — not "you might consider potentially
+   starting with". Hedging our own recommendation is not honesty, it is a category
+   error: there is no external source that could confirm our advice, so a hedge there
+   points at nothing. Deliverables need no market-proof to be true.
+
+HEDGING LANGUAGE IS BANNED; STATED UNCERTAINTY IS REQUIRED. These are not the same thing
+and confusing them is what produced copy that says nothing at length. Uncertainty is
+carried by NAMING THE EVIDENCE, never by softening the verb.
+  - Never write: "may to some extent suggest", "it could be argued", "in some cases",
+    "to a certain degree", "it is widely regarded", "research has shown", "potentially",
+    "arguably", "relatively", "somewhat", "fairly", "generally speaking".
+  - Instead write what is actually known and who said it: "One source, dated 2024, says
+    X. Nothing else we retrieved corroborates it." That sentence is MORE honest than any
+    hedge and it is readable.
+  - The test: if you delete the hedging word, does the sentence claim more than the
+    evidence supports? If yes, the fix is to name the evidence's limit explicitly. If no
+    — and it is usually no — the word was noise and goes.
+  - You always have the attribution, because nothing reaches you unsourced. Spend it on
+    precision rather than on padding.
 On the listing_page, describe what the buyer GETS (the plan, the method, the
 deliverables) rather than asserting the venture's success; deliverables need no
 market-proof to be true. On the other three pieces there is no plan and no pack to

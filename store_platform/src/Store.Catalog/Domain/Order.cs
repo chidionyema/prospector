@@ -10,7 +10,7 @@ namespace Store.Catalog.Domain;
 public class Order
 {
     public long Id { get; set; }
-    public string PaymentProvider { get; set; } = "paddle";
+    public string PaymentProvider { get; set; } = "stripe";
     public required string ProviderTransactionId { get; set; }
     public string BuyerEmail { get; set; } = "";
     public string? PackId { get; set; }

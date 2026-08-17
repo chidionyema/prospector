@@ -41,6 +41,9 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List, Mapping, Tuple
 
+from . import prose_target
+from .prose_measure import HEAVY_SENTENCE_COMMAS, LONG_SENTENCE_WORDS, document_measures
+
 #: Same shape every other check in this codebase returns. See `copy_lint.Problem`.
 Problem = Dict[str, str]
 
@@ -64,7 +67,11 @@ def _warn(check: str, where: str, detail: str) -> Problem:
 # THE BAR FOR ADDING A WORD is that it has no legitimate use anywhere in this catalogue,
 # which sells businesses in every sector. That bar is why `foster`, `leverage`, `bespoke`
 # and `ecosystem` are NOT here: foster care, financial leverage, bespoke tailoring and a
-# supplier ecosystem are all real subjects a pack may be about. Words that are merely
+# supplier ecosystem are all real subjects a pack may be about. The founder confirmed this
+# bar on 2026-08-15 against the spec's own R9 list, which named `leverage` and `ecosystem`:
+# the spec's list lost, and docs/HOUSE_WRITING_SPEC.md was amended to match this file rather
+# than the other way round. `leveraging` stays banned because the tic is the -ing form and
+# "using" replaces it everywhere. Words that are merely
 # OVERUSED go in `ADVISORY` below, which never blocks.
 
 BANNED_SPEC = """
@@ -153,7 +160,6 @@ crucial -> (say what breaks without it)
 pivotal -> (say what turns on it)
 vital -> (say what fails without it)
 streamline -> (say which step goes away)
-ecosystem -> (name the parties)
 journey -> (name the steps)
 value proposition -> what it is worth to them
 scalable -> (say how big it can get before it breaks)
@@ -298,6 +304,16 @@ def _words(text: str) -> List[str]:
     return _WORD_RE.findall(text)
 
 
+def measurable_prose(text: str) -> str:
+    """The part of a document that may be compared against the human corpus.
+
+    The same strip `sentences()` does — fenced code, inline code, URLs, tables, blockquoted
+    lines and heading markers — for the same reason: a quoted passage is the source's
+    writing, and "correcting" it would falsify the citation. What is left is what we wrote.
+    """
+    return _HEADING_RE.sub(" ", _normalise(text))
+
+
 # ---------------------------------------------------------------------------
 # Cross-document repetition
 # ---------------------------------------------------------------------------
@@ -349,10 +365,18 @@ def cross_document_repeats(texts: Mapping[str, str]) -> List[Tuple[str, str, str
 # Metrics
 # ---------------------------------------------------------------------------
 
-#: `voice.md`: "ONE IDEA PER SENTENCE. Aim under 25 words."
-LONG_SENTENCE_WORDS = 25
-#: `voice.md`: "If a sentence needs a second comma-clause to stay upright, split it in two."
-CLAUSE_LOAD_COMMAS = 2
+#: THESE TWO NUMBERS USED TO BE INVENTED HERE. `voice.md` said "aim under 25 words" and
+#: "split a sentence that needs a second comma-clause", and this file turned both into
+#: gates. Nobody had measured either. They now live in `prose_measure` as MEASUREMENT
+#: BOUNDARIES — they define what the rate counts, on our prose and on the human corpus
+#: identically — and what is ALLOWED comes from `data/prose_target.json`.
+#:
+#: The measurement said the 25-word rule was stricter than the genre it was written for. A
+#: human ombudsman runs over 25 words in 31% of sentences, the human 95th percentile is 52%,
+#: and our rate is 52% — the top of the human range, inside it. So `long_sentence_rate` is
+#: NOT armed in the target, and the ceiling that used to sit here has no authority any more.
+#: The comma rate is armed: we run 61 per 1,000 words against a human 32.
+CLAUSE_LOAD_COMMAS = HEAVY_SENTENCE_COMMAS
 #: Below this the rates are noise, so they are computed but never blocked on. Mirrors
 #: `copy_lint.check_grammar`, which returns [] under 200 words for the same reason.
 MIN_WORDS_FOR_RATES = 200
@@ -365,6 +389,7 @@ def register_metrics(texts: Mapping[str, str]) -> Dict[str, Any]:
     from and the number the gate enforces are produced by one piece of code.
     """
     per_doc: Dict[str, Dict[str, Any]] = {}
+    measurable: List[str] = []
     total_words = 0
     total_sentences = 0
     long_sentences = 0
@@ -378,6 +403,7 @@ def register_metrics(texts: Mapping[str, str]) -> Dict[str, Any]:
         if not isinstance(text, str) or not text.strip():
             continue
         clean = _normalise(text)
+        measurable.append(measurable_prose(text))
         sents = sentences(text)
         words = sum(len(_words(s)) for s in sents)
         d_long = [s for s in sents if len(_words(s)) > LONG_SENTENCE_WORDS]
@@ -416,6 +442,23 @@ def register_metrics(texts: Mapping[str, str]) -> Dict[str, Any]:
     construction_count = sum(h["count"] for h in construction_hits)
     per_1k = ((banned_count + construction_count) / total_words * 1000.0) if total_words else 0.0
 
+    # The pack measured the way the human corpus was measured, and graded against it. The
+    # whole pack is one document here on purpose: the target's intervals were measured on
+    # whole ombudsman decisions, so grading a 200-word section against them would compare a
+    # section to a document. `document_measures` is the same function that built the target,
+    # so the two cannot drift apart.
+    prose_measures: Dict[str, float] = {}
+    human_register: List[Dict[str, Any]] = []
+    human_register_error = ""
+    if measurable:
+        prose_measures = document_measures("\n\n".join(measurable))
+        try:
+            human_register = prose_target.grade(prose_measures)
+        except prose_target.TargetUnreadable as exc:
+            # Caught narrowly and RECORDED, never swallowed. A missing target must not
+            # strand the shelf, and it must not read as a clean pack either.
+            human_register_error = str(exc)
+
     return {
         "words": total_words,
         "sentences": total_sentences,
@@ -435,6 +478,11 @@ def register_metrics(texts: Mapping[str, str]) -> Dict[str, Any]:
         "repeats": [{"first_seen_in": a, "repeated_in": b, "sentence": s}
                     for _k, a, b, s in repeats],
         "per_document": per_doc,
+        # Measured against 270 human ombudsman decisions. Every measure is reported; only the
+        # armed ones can appear in `human_register`.
+        "prose_measures": {k: round(v, 3) for k, v in prose_measures.items()},
+        "human_register": human_register,
+        "human_register_error": human_register_error,
     }
 
 
@@ -446,6 +494,7 @@ def check_register(texts: Mapping[str, str], *, block: bool = False,
                    max_per_1k: float = 0.0,
                    long_sentence_max_rate: float = 0.0,
                    clause_load_max_rate: float = 0.0,
+                   human_register_block: bool = False,
                    metrics: Dict[str, Any] | None = None) -> List[Problem]:
     """Report register defects in a pack's long-form prose.
 
@@ -503,4 +552,23 @@ def check_register(texts: Mapping[str, str], *, block: bool = False,
                 "register_rate", "pack",
                 f"{m['clause_load_rate']:.0%} of sentences carry two or more comma-clauses, "
                 f"over the {clause_load_max_rate:.0%} allowed — split them in two"))
+
+        # Where this pack sits outside professional human writing in the same genre. One
+        # finding per ARMED measure the pack falls outside the human 5th-95th percentile on.
+        # Roughly one human document in ten falls outside on any single measure, so these
+        # are warnings until an operator turns `human_register_block` on.
+        hmk = _err if human_register_block else _warn
+        for f in m.get("human_register") or []:
+            advice = prose_target.advice_for(f["measure"], f["side"])
+            problems.append(hmk(
+                "human_register", "pack",
+                f"{f['measure']} = {f['value']}, {f['side']} the human range "
+                f"{f['p5']}–{f['p95']} (human mean {f['human_mean']})"
+                + (f" — {advice}" if advice else "")))
+    err = m.get("human_register_error")
+    if err:
+        # The target could not be read, so this pack was NOT graded against human writing.
+        # Said out loud, because a check that reports nothing looks exactly like a pass.
+        problems.append(_warn("human_register", "pack",
+                              f"not measured against the human corpus: {err}"))
     return problems

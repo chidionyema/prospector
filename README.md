@@ -62,8 +62,11 @@ the audit trail and the basis for the engine's self-tuning.
 
 The entire engine runs **locally or inside your Claude Code / Gemini CLI
 subscription**. There are no hosted inference calls and no API-key billing in the
-default path — the brain and grounding are driven through the installed `gemini`
-and `claude` CLIs. This is an operating rule, not an accident (see `CLAUDE.md`).
+default path — the brain and grounding are driven through the installed `claude`
+CLI and the MiniMax adapter. This is an operating rule, not an accident (see
+`CLAUDE.md`). The live roster is `config.yaml operator:` and `moat_primary:`;
+read those, not this sentence. It said "the `gemini` and `claude` CLIs" until
+2026-08-16, long after any config selected Gemini. doc-lint-ok
 
 **Provider failover is built in.** Both the verdict brain and web grounding take an
 *ordered chain* of providers. If one runs out of quota/credit mid-run, the next
@@ -415,13 +418,17 @@ operators (e.g. Claude Code → an API operator) needs only a config change, no 
 
 | Env var | Purpose | Default |
 |---------|---------|---------|
-| `GEMINI_BIN` / `CLAUDE_BIN` | CLI binary paths | `gemini` / `claude` |
-| `PROSPECTOR_GEMINI_CONCURRENCY` / `PROSPECTOR_CLAUDE_CONCURRENCY` | max concurrent CLI subprocesses | `2` |
+| `CLAUDE_BIN` | CLI binary path | `claude` |
+| `PROSPECTOR_CLAUDE_CONCURRENCY` | max concurrent CLI subprocesses | `2` |
+| `PROSPECTOR_MINIMAX_CONCURRENCY` | max concurrent MiniMax calls; also `config.yaml minimax_concurrency` | `8` |
+| `GEMINI_BIN` / `PROSPECTOR_GEMINI_CONCURRENCY` | read by an adapter no config selects; kept so a stale env cannot change behaviour silently | unused doc-lint-ok |
 | `PROSPECTOR_JSON_LOG` | emit structured JSON audit log to `store/prospector.jsonl` | off |
 | `PROSPECTOR_QUIET` | suppress console logging | off |
 
-`GEMINI_API_KEY` / `ANTHROPIC_API_KEY` are used **only** by the API-direct `gemini`
-/ `claude` operators, which are *not* part of the default subscription-CLI path.
+`MINIMAX_API_KEY` is the one key the default path needs. `GEMINI_API_KEY` and
+`ANTHROPIC_API_KEY` are read by API-direct adapters that no config selects — the
+paid `claude` tier was deleted on 2026-08-15, and there is no `gemini` key in
+`config.yaml`. Setting either changes nothing. doc-lint-ok
 The CLI adapters deliberately strip `GEMINI_API_KEY` from the child env to force the
 free OAuth quota.
 

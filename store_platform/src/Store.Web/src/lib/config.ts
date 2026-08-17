@@ -68,6 +68,48 @@ export const FOUNDER = {
 /** True only when there is a real person to name. Every founder surface branches on this. */
 export const hasFounder = (): boolean => FOUNDER.name.trim().length > 0;
 
+/**
+ * WHAT THE ALTERNATIVE COSTS: the price anchor on the pack page, and the only figure on this site
+ * that is about somebody else's market rather than our own record.
+ *
+ * WHY THERE IS AN ANCHOR AT ALL. The buy rail printed a price and nothing to read it against
+ * (founder, 2026-08-16: "the price is sitting there naked"). What used to sit there was worse than
+ * nothing -- "the pack's own model puts month one at 13x what the pack costs" -- which divided a
+ * modelled month of TURNOVER by a one-off PRICE. Those are not the same kind of thing, so no
+ * ceiling on the multiple could have made it true; it is deleted, not retuned.
+ *
+ * WHY THIS FIGURE IS THE HONEST REPLACEMENT. A day rate and a pack price ARE the same kind of
+ * thing: both are what you pay to obtain research. The reader is left to do the comparison, and
+ * the page states no number of days, because how long this pack would take a contractor to
+ * reproduce is not a fact we have.
+ *
+ * IT IS CITED, AND THE CITATION IS THE POINT. This is a storefront whose first rule is that every
+ * claim carries a retrievable source, so an uncited "consultants charge thousands" would fail our
+ * own filter on the page that asks for money. The link renders beside the figure.
+ *
+ * VERIFIED AT SOURCE 2026-08-16, and the verification changed the number: a search summary
+ * reported £491/day (2024). Fetching the page returned £372 from the 2026 report. The stale figure
+ * is what would have shipped had the summary been trusted.
+ *
+ * KNOWN LIMIT, recorded rather than hidden: the source page states the rate but not its sample
+ * size or methodology. That is why the copy attributes it by name ("YunoJuno") instead of
+ * presenting it as an industry-wide fact, and why the link is there to be clicked.
+ *
+ * RE-CHECK IT. The report is annual, so this goes stale by design. Refetch the URL, and if the
+ * figure moved, change it here -- it renders in exactly one place.
+ */
+export const RESEARCH_RATE_ANCHOR = {
+  /** Formatted with its currency: this is a GBP rate and it is not FX-converted for display. */
+  dayRateLabel: '£372',
+  /** Who says so, as the reader should see it attributed. */
+  source: 'YunoJuno',
+  /** What the source is, for the link text. */
+  sourceDetail: '2026 Freelancer Rates Report',
+  url: 'https://www.yunojuno.com/freelancer-rates-report/market-research',
+  /** When a human last opened that URL and read the figure off it. */
+  verifiedOn: '2026-08-16',
+} as const;
+
 export const LEGAL = {
   entity: 'Mumchimp',
   // The full registered legal name + business address shown in the legal docs' "registered
@@ -95,11 +137,6 @@ export const LEGAL = {
   // therefore fails DMARC. Receiving is unaffected. See verify_store.sh step 6.
   contactEmail: 'support@mumchimp.com',
   supportEmail: 'support@mumchimp.com',
-} as const;
-
-export const PADDLE_SETTINGS = {
-  environment: process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT || 'sandbox',
-  clientToken: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN || '',
 } as const;
 
 /**

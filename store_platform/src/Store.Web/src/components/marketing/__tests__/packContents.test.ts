@@ -35,7 +35,18 @@ function tupleFromPython(name: string): string[] {
 
 const bundleFilesFromPython = () => tupleFromPython('BUNDLE_FILES');
 const bonusFilesFromPython = () => tupleFromPython('BUNDLE_BONUS_FILES');
-const packDocumentsFromPython = () => tupleFromPython('PACK_DOCUMENTS');
+/**
+ * The buyer's journey through the pack, read straight out of the engine.
+ *
+ * Was `PACK_DOCUMENTS` until 2026-08-15. That tuple is the set of render INPUTS in the order they
+ * were historically added, and pinning the shelf to it meant the shop listed the pack in the order
+ * the engine happened to produce things in — which is exactly the arrangement the narrative
+ * restructure exists to end. `BUNDLE_READING_ORDER` was a derivation then, so it could not be read
+ * out by regex; it is now a literal tuple (bridge.py:378) and this is a strengthening rather than a
+ * swap: it pins the shelf to the order a buyer actually reads, and it covers
+ * `Evidence_and_Constraints.md`, which is in the reading order and in no other tuple.
+ */
+const readingOrderFromPython = () => tupleFromPython('BUNDLE_READING_ORDER');
 
 const COMPONENT_TSX = fileURLToPath(new URL('../PackContents.tsx', import.meta.url));
 
@@ -53,22 +64,20 @@ function copySource(): string {
 }
 
 describe('the documents a buyer reads agree with prospector/bridge.py', () => {
-  it('finds a non-trivial PACK_DOCUMENTS tuple to compare against', () => {
+  it('finds a non-trivial BUNDLE_READING_ORDER tuple to compare against', () => {
     // Guards the regex itself: a silently-empty match would make every assertion below vacuous.
-    expect(packDocumentsFromPython().length).toBeGreaterThan(1);
+    expect(readingOrderFromPython().length).toBeGreaterThan(1);
   });
 
-  it('describes every composed document, in the order the engine composes them', () => {
-    // The engine's `BUNDLE_READING_ORDER` is derived, not a literal tuple, so it cannot be read out
-    // by regex the way the others can. What IS literal is PACK_DOCUMENTS, and the derivation adds
-    // exactly one entry to it — asserted separately below — so pinning against PACK_DOCUMENTS and
-    // then pinning the insertion point covers the whole reading order without re-implementing it.
-    const fromPython = packDocumentsFromPython();
-    const shown = PACK_DOCUMENTS.map((d) => d.section);
-    expect(shown.filter((s) => fromPython.includes(s))).toEqual(fromPython);
+  it('describes every document a buyer reads, in the order they read them', () => {
+    // Exact equality in both directions, which is what the previous `filter(...)` shape could not
+    // do: it only asserted that whatever the page happened to show, showed in order. A document
+    // added to the reading order and never advertised passed that test. Five were added by the
+    // narrative restructure and this is the assertion that caught the shop still listing nine.
+    expect(PACK_DOCUMENTS.map((d) => d.section)).toEqual(readingOrderFromPython());
   });
 
-  it('shows the evidence document where the engine inserts it', () => {
+  it('shows the evidence document without advertising it as a file in the archive', () => {
     // `BUNDLE_READING_ORDER` puts `pack_reference.FILENAME` immediately before the QA report, so
     // the receipts land next to the checks that produced them. It is a document, not a file: it is
     // in neither BUNDLE_FILES nor BUNDLE_BONUS_FILES, and listing it as an archive entry — which
@@ -78,6 +87,17 @@ describe('the documents a buyer reads agree with prospector/bridge.py', () => {
     expect(shown.indexOf('Evidence_and_Constraints.md')).toBe(shown.indexOf('QA_Report.md') - 1);
     const archive = [...bundleFilesFromPython(), ...bonusFilesFromPython()];
     expect(archive).not.toContain('Evidence_and_Constraints.md');
+  });
+
+  it('advertises every document the engine can compose', () => {
+    // The reading order is a SUPERSET (bridge.py:377): a renderer that returns "" for a thin
+    // dossier is skipped, so a pack may hold fewer sections than this. What must never be true is
+    // the reverse — a document the engine composes for every pack and the shop never names. Kept
+    // as its own assertion because PACK_DOCUMENTS is the tuple a new renderer gets added to.
+    const shown = PACK_DOCUMENTS.map((d) => d.section);
+    for (const doc of tupleFromPython('PACK_DOCUMENTS')) {
+      expect(shown, `${doc} is composed by the engine but not advertised`).toContain(doc);
+    }
   });
 
   it('never renders a document name to a buyer', () => {
@@ -195,7 +215,6 @@ describe('each rendered count names the right noun', () => {
     // Without this the assertions below pass on an empty string — the vacuous-guard failure mode,
     // which is how a guard reports green while guarding nothing.
     expect(copySource()).toContain('PACK_DOCUMENTS.length');
-    expect(copySource()).toContain('PACK_CONTENTS.length');
   });
 
   it('never puts the word "files" beside the document count', () => {
@@ -205,10 +224,24 @@ describe('each rendered count names the right noun', () => {
     expect(offenders.map((t) => t.replace(/\s+/g, ' ').trim())).toEqual([]);
   });
 
-  it('never puts the word "documents" beside the file count', () => {
-    const nearCount = Array.from(copySource().matchAll(/PACK_CONTENTS\.length\}([\s\S]{0,80})/g));
-    expect(nearCount.length, 'the count must actually be rendered somewhere').toBeGreaterThan(0);
-    const offenders = nearCount.map((m) => m[1]).filter((tail) => /\bdocuments?\b/i.test(tail));
-    expect(offenders.map((t) => t.replace(/\s+/g, ' ').trim())).toEqual([]);
+  /**
+   * THE FILE COUNT IS NOT RENDERED AT ALL ANY MORE, and that is now the rule.
+   *
+   * This used to be "never call the file count documents", the mirror of the assertion above it.
+   * On 2026-08-16 the founder's verdict on this card was "counting bugs": `arrives as 5 files` sat
+   * directly beneath `14 documents`. Neither was false. The card had asked a buyer to hold a
+   * distinction -- what you READ against what LANDS IN THE FOLDER -- that nobody carries down a
+   * sales page, so the two numbers read as one of them being wrong about the product.
+   *
+   * The file group keeps its LIST and loses its COUNT. Every file is still named, one per row, and
+   * still checkable one for one against the buyer's zip, which is the falsifiable half; the count
+   * was never carrying that. One number leads this card and it is the documents count.
+   *
+   * The old assertion is subsumed, not dropped: a count that is not rendered cannot be given the
+   * wrong noun. What replaces it is stricter, because it also forbids rendering the file count
+   * correctly.
+   */
+  it('renders no file count at all, so no second number can disagree with the first', () => {
+    expect(copySource()).not.toContain('{PACK_CONTENTS.length}');
   });
 });

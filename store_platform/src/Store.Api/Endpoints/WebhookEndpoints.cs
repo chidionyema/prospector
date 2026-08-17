@@ -11,13 +11,6 @@ public static class WebhookEndpoints
     public static void MapWebhookEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapPost("/webhooks/{provider}", HandleWebhook);
-        app.MapPost("/webhooks/paddle", (
-            HttpRequest request,
-            IConfiguration config,
-            ILogger<Program> logger,
-            FulfilmentService fulfilmentService,
-            StoreDbContext db,
-            IServiceProvider sp) => HandleWebhook("paddle", request, config, logger, fulfilmentService, db, sp));
     }
 
     private static async Task<IResult> HandleWebhook(

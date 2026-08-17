@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
 /**
  * Discovery UX smoke (spec `specs/discovery-ux-2026-07-30.md`).
@@ -171,7 +171,19 @@ test('the free sample opens without giving an email', async ({ page }) => {
   await expect(page).toHaveURL(/\/sample/);
   // The report itself, not just a 200: a gate that renders a capture panel at /sample would
   // still be a page load. The evidence section is the thing being given away.
-  const evidence = page.getByRole('heading', { name: /Every check, every source/i });
+  //
+  // THE ANCHOR MOVED, AND THAT IS THE FIX, NOT A WORKAROUND (2026-08-15).
+  //
+  // This pinned a heading over a table of our own gate results. That table is what the founder
+  // read as "we ramble about composite scores, things our engine does that does not concern
+  // us", and the page now gives away three whole sections of the pack's PROSE instead: the
+  // situation, the offer, and the field with its quoted competitor passages. Pinning the
+  // scorecard would hold the page to the shape it was rewritten to escape.
+  //
+  // So the anchor is the last section actually handed over. It is the strongest form of the
+  // same claim -- a capture panel cannot be mistaken for it, and it is the section the source
+  // quotes hang under, so the external-link assertion below has something to be true about.
+  const evidence = page.getByRole('heading', { name: /The field: who is already there/i });
   await expect(evidence).toBeVisible();
   await expect(page.locator('a[href^="http"]').first()).toBeVisible();
 
@@ -185,7 +197,7 @@ test('the free sample opens without giving an email', async ({ page }) => {
   if (await asks.count()) {
     const askIsAfterEvidence = await page.evaluate(() => {
       const heading = [...document.querySelectorAll('h2')].find((h) =>
-        /Every check, every source/i.test(h.textContent || ''),
+        /The field: who is already there/i.test(h.textContent || ''),
       );
       const input = document.querySelector('input[type="email"]');
       if (!heading || !input) return false;
@@ -375,6 +387,40 @@ for (const id of QUARANTINED_2026_07_31) {
  * drift that buried it the first time.
  */
 const FAB = '[data-testid="filter-fab"]';
+const SHELF_END = '[data-testid="shelf-end"]';
+
+/* THE FOOT OF THE SHELF IS NOT THE FOOT OF THE DOCUMENT (2026-08-15).
+
+   Both tests below used to scroll to `document.documentElement.scrollHeight`, which is the bottom
+   of the marketing tail -- the footer. FacetBar's rule is `scrolledPast && !pastEnd && !open`
+   (FacetBar.tsx:688), and `pastEnd` is exactly "the shelf-end sentinel has risen into the top half
+   of the viewport". So the old scroll landed in the one region where the trigger is CORRECTLY
+   hidden, then asserted it was there. The tests were pinning a jurisdiction the filter had already
+   been given, on purpose, and they went red when it was.
+
+   This lands the sentinel one pixel below the viewport's bottom edge: past the controls (so
+   `scrolledPast`), not yet past the shelf (so not `pastEnd`). Still a property and not a
+   coordinate -- it is read off the page at runtime, so it survives the catalogue growing.
+
+   It re-measures in a loop because the shelf GROWS UNDER THE SCROLL: cards and their images
+   arrive after first paint, so a position measured once is stale by the time the browser has
+   moved to it, and a single measurement taken early lands near y=0, where the trigger is
+   correctly absent. Measured 2026-08-15: one-shot scroll failed this test and passed the next
+   one on the same page, which is the signature of a race rather than a rule. */
+async function scrollToFootOfShelf(page: Page) {
+  await page.locator(SHELF_END).waitFor({ state: 'attached' });
+  await page.evaluate(async (sel) => {
+    const target = () => {
+      const end = document.querySelector(sel);
+      if (!end) throw new Error(`${sel} is missing: the shelf has no measurable end`);
+      return end.getBoundingClientRect().top + window.scrollY - window.innerHeight + 1;
+    };
+    for (let i = 0; i < 25 && Math.abs(target() - window.scrollY) > 2; i += 1) {
+      window.scrollTo(0, target());
+      await new Promise((done) => setTimeout(done, 100));
+    }
+  }, SHELF_END);
+}
 
 test('the filter is reachable from the foot of the shelf without scrolling back', async ({ page }) => {
   await page.goto('/');
@@ -383,7 +429,7 @@ test('the filter is reachable from the foot of the shelf without scrolling back'
   // where no product has been seen yet is the control-panel-first defect in a smaller box.
   await expect(page.locator(FAB)).toHaveCount(0);
 
-  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await scrollToFootOfShelf(page);
   await expect(page.locator(FAB)).toBeVisible();
 
   await page.locator(FAB).click();
@@ -400,7 +446,7 @@ test('the router is mounted exactly once when the filter sheet is open', async (
   // pages/index.tsx calls "two sources of truth".
   const ROUTER_COPY = 'Show me packs I could actually run';
   await page.goto('/');
-  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await scrollToFootOfShelf(page);
   await page.locator(FAB).click();
   await expect(page.locator('[role="dialog"]')).toBeVisible();
 

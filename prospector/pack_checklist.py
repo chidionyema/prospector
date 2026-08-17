@@ -58,10 +58,23 @@ FINANCIAL_MODEL = "04_Financial_Model.md"
 # `tests/unit/test_pack_checklist.py` pins them to it. They are duplicated here rather than
 # imported because `bridge` imports this module, and a cosmetic import cycle on the money rail is
 # not worth the DRY -- the same trade `pack_floors.QA_SECTION` makes.
-BUILD_SPEC_SECTION = "The Blueprint (Build Spec)"
-GTM_PLAN_SECTION = "The Go-To-Market Plan"
-OPS_PLAN_SECTION = "The Operations Plan"
-FINANCIAL_MODEL_SECTION = "The Financial Model"
+#
+# Re-titled 2026-08-15 with the reading order itself, and the duplication did its job: the pin
+# above FAILED (`assert 'The Blueprint (Build Spec)' == 'What you build'`) the moment the reader's
+# headings moved, instead of the checklist quietly telling a buyer to find a section that no
+# longer exists under that name. That failure is the whole reason the copies are held equal by a
+# test rather than by care.
+BUILD_SPEC_SECTION = "What you build"
+GTM_PLAN_SECTION = "How the first customers find you"
+OPS_PLAN_SECTION = "How it runs once it works"
+FINANCIAL_MODEL_SECTION = "The numbers"
+
+# The fifth cross-reference, promoted from a string literal on 2026-08-15. It was the one written
+# by hand — twice, as "*Evidence and Constraints*" — and being hand-written is exactly why the
+# re-title missed it while the four interpolated ones failed loudly. A correct reference and a
+# stale one look identical in the source; only the pin can tell them apart.
+EVIDENCE = "Evidence_and_Constraints.md"
+EVIDENCE_SECTION = "Everything we read, once"
 
 _HEADING_RE = re.compile(r"^##\s+(?P<body>\S.*?)\s*$", re.M)
 # "## 4. The council file" — the numbering is the document's own, and quoting a heading with
@@ -141,7 +154,6 @@ def render(dossier: Any, docs: Optional[Dict[str, str]] = None) -> str:
     docs = docs or {}
     cand = getattr(dossier, "candidate", None)
     title = str(getattr(cand, "title", "") or "").strip()
-    one_liner = str(getattr(cand, "one_liner", "") or "").strip()
     # The whole description when it does not break into a sentence inside the cap. Measured on
     # disk: 24 of 75 buyer descriptions are a single clause longer than 200 characters, and
     # returning "" for those dropped a THIRD of the catalogue back onto the generic template —
@@ -172,14 +184,14 @@ def render(dossier: Any, docs: Optional[Dict[str, str]] = None) -> str:
                 [f"*{q}*" for q in unproven[1:]]) + ".")
         week_one.append(
             f"Put the question we could not answer to them directly: **{unproven[0]}** We "
-            "searched and found nothing that settles it, which is why it sits in *Evidence and "
-            f"Constraints* as an assumption rather than a finding.{rest} Five buyers can answer "
-            "in an afternoon what the open web could not.")
+            f"searched and found nothing that settles it, which is why it sits in "
+            f"*{EVIDENCE_SECTION}* as an assumption rather than a finding.{rest} Five buyers can "
+            "answer in an afternoon what the open web could not.")
     if refuted:
         week_one.append(
             "Read what the evidence says AGAINST this before you build anything — "
             f"{_join([f'*{q}*' for q in refuted])} came back the wrong way. It is at the top of "
-            "*Evidence and Constraints*, marked to be read first, and it is the cheapest place "
+            f"*{EVIDENCE_SECTION}*, marked to be read first, and it is the cheapest place "
             "in this pack to change your mind.")
     if FINANCIAL_MODEL in docs:
         week_one.append(
@@ -219,8 +231,10 @@ def render(dossier: Any, docs: Optional[Dict[str, str]] = None) -> str:
 
     lines: List[str] = [f"# Your first fortnight — {title}" if title else "# Your first fortnight",
                         ""]
-    if one_liner:
-        lines += [one_liner, ""]
+    # The one-liner is NOT reprinted here. It is the standfirst of section 1, and by the time a
+    # reader reaches the fortnight plan they have met it once already; printing it a fourth time
+    # (offer, marketing copy, here) is what `pack_linter.check_repetition` blocks on. The title
+    # above already carries the candidate's name, which is all this heading needed it for.
     lines += [
         "Ten working days, in order. Every step points at the document in this pack that tells "
         "you how, so nothing here needs reading twice.",

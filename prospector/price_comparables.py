@@ -141,6 +141,40 @@ def _appears_in(amount: float, text: str) -> bool:
     return False
 
 
+# How much of the run-up to a price to keep, so the window carries what the number is FOR
+# ("Pro plan, per seat") and not just the digits.
+_PRICE_WINDOW_LEAD = 120
+_PRICE_FIGURE = re.compile(
+    r"[$£€]\s?\d[\d,]*(?:\.\d\d)?|\b\d[\d,]*(?:\.\d\d)?\s?(?:usd|gbp|eur)\b", re.I)
+
+
+def price_window(text: str, limit: int = PASSAGE_TRUNCATE) -> str:
+    """The `limit` chars of `text` most likely to CONTAIN a price.
+
+    Every other check reads `text[:limit]`, and for them the head of the page is the right
+    slice. For this one it is the wrong slice: the head of a pricing page is navigation, a
+    headline and a cookie notice, while the numbers sit further down.
+
+    MEASURED 2026-08-16 over the 1,809 stored passages in the last 120 dossiers: 223 carry
+    a price figure at all, and for 100 of them (45%) the first one falls past char 600 —
+    outside the window the extractor was handed, so the model could not have transcribed it
+    however well it read. Median first-price offset 580, against a 600-char budget.
+
+    Same budget, different slice. A price in the head means the head is already right and is
+    returned unchanged; otherwise the window opens just before the first price figure. The
+    literal-appearance rail in `_appears_in` still checks the FULL passage text, so a
+    narrower window can never launder a fabricated number.
+    """
+    text = text or ""
+    if len(text) <= limit:
+        return text
+    m = _PRICE_FIGURE.search(text)
+    if m is None or m.start() < limit:
+        return text[:limit]
+    start = max(0, m.start() - _PRICE_WINDOW_LEAD)
+    return "…" + text[start:start + limit]
+
+
 def to_pence_gbp(amount: float, currency: str, fx_to_gbp: dict[str, float]) -> Optional[int]:
     """Convert to GBP pence using a CONFIG-DECLARED rate, or return None.
 
@@ -177,7 +211,7 @@ def extract_anchors(op: Operator, cand: Candidate, sources: list[Source],
             degraded=True,
             rationale="No retrieved passages; no price anchors (graceful degradation).")
 
-    passages = "\n".join(f"[{s.source_id}] {s.text[:PASSAGE_TRUNCATE]}" for s in live)
+    passages = "\n".join(f"[{s.source_id}] {price_window(s.text)}" for s in live)
     system, user = render("price_comparables",
                           candidate_json=json.dumps(cand.to_dict()),
                           check_name=PRICING_CHECK,

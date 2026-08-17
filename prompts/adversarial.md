@@ -21,6 +21,16 @@ specific condition. "The market has competitors" is NOT incumbent_monopoly.
 {rationale_style}
 USER: Candidate: {candidate_json}   All claims + passages: {verification_json}
 Identify which objective risk vectors are present in the evidence. Be precise.
+Also write the OBJECTION MEMO: the 2-4 strongest specific objections a hard-nosed
+investor would raise against this candidate, strongest first. One objection per entry,
+each about a DIFFERENT thing. Every objection must rest on the passages: cite the
+source_ids it comes from, and drop any objection you cannot cite — an uncited objection
+will be discarded. For each, state plainly what would have to be true for it NOT to bite,
+so a reader knows what to go and check. Do not repeat the risk_summary.
+
 Output ONLY: {{"critical_regulatory_blocker":bool, "impossible_unit_economics":bool,
  "incumbent_monopoly":bool, "risk_summary":"<=2 sentences",
- "citations":["source_id",...]}}
+ "citations":["source_id",...],
+ "objections":[{{"objection":"<one sentence, specific>",
+   "what_would_have_to_be_true":"<one sentence>",
+   "severity":"high|medium|low", "citations":["source_id",...]}}]}}

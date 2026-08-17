@@ -250,3 +250,111 @@ def test_both_spellings_of_the_card_line_are_graded():
     bad = "£149 per parent, from FOI tribunal outcome data"
     assert _errors({"cardLine": bad})
     assert _errors({"card_line": bad})
+
+
+# ---------------------------------------------------------------------------
+# "Spell it out in full" has to be an instruction a line can obey
+# ---------------------------------------------------------------------------
+
+def test_the_rule_used_to_refuse_the_copy_that_obeyed_it():
+    """The regression this file exists for, stated as the fix.
+
+    Rule 3 told the writer to spell the initialism out in full, then asked only whether
+    the CAPS RUN was in the known list. `Amazon Web Services (AWS)` failed exactly as
+    `AWS` did, so the only compliant copy DELETED the letters. That is not a style miss:
+    a shelf-copy error fails the content gate, the pack skips Stripe provisioning and
+    publishes UNLISTED. On 2026-08-16 it held 31 of the 33 defective live rows.
+    """
+    bare = "A managed service for AWS infrastructure."
+    spelled = "A managed service for Amazon Web Services (AWS) infrastructure."
+    assert _errors({"oneLine": bare}), "a bare initialism is still a defect"
+    assert not _errors({"oneLine": spelled}), (
+        "the line spells it out in full, which is what the error message asks for")
+
+
+def test_either_order_reads_fine_so_both_pass():
+    for text in [
+        "A managed service for Amazon Web Services (AWS) infrastructure.",
+        "A managed service for AWS (Amazon Web Services) infrastructure.",
+    ]:
+        assert not _errors({"oneLine": text}), f"false positive on: {text!r}"
+
+
+def test_a_joining_word_does_not_break_the_expansion():
+    """`Driver and Vehicle Standards Agency (DVSA)` still reads as D-V-S-A. DVSA was one
+    of the live offenders, three rows of it."""
+    text = "A filing service for the Driver and Vehicle Standards Agency (DVSA)."
+    assert not _errors({"oneLine": text})
+
+
+def test_the_live_offenders_can_now_be_written_compliantly():
+    """Every one of these is a term from a real defective row on 2026-08-16. Before the
+    fix there was no way to write any of them and pass."""
+    for text in [
+        "A binder of Cybersecurity Maturity Model Certification (CMMC) Level 2 evidence.",
+        "A readiness binder for an independent software vendor (ISV) selling with Microsoft.",
+        "A filing service for a political action committee (PAC) in Georgia.",
+        "An anomaly feed for enterprise resource planning (ERP) vendors in cannabis.",
+    ]:
+        assert not _errors({"oneLine": text}), f"still unsellable: {text!r}"
+
+
+def test_words_that_are_not_the_term_spelled_out_are_still_a_defect():
+    """The check is on INITIALS, so it cannot be satisfied by putting any old words next
+    to the brackets. This is what stops a rewrite passing by inventing a gloss that does
+    not match the term."""
+    for text in [
+        "A managed service for Cloud Hosting Help (AWS).",
+        "A service for the Agency (DVSA).",
+        "A binder for Level 2 (CMMC) evidence.",
+    ]:
+        assert _errors({"oneLine": text}), f"should have errored: {text!r}"
+
+
+def test_an_expansion_in_one_field_does_not_excuse_a_bare_run_in_the_other():
+    """The two shelf strings are graded independently: a title is read on its own, so an
+    expansion in the one-liner does nothing for it."""
+    fields = {
+        "title": "CMMC binder for Georgia defense vendors",
+        "oneLine": "A binder of Cybersecurity Maturity Model Certification (CMMC) evidence.",
+    }
+    hit = [p for p in _errors(fields) if p.get("where") == "title"]
+    assert hit, "the bare title run must still be a defect"
+    assert not [p for p in _errors(fields) if p.get("where") == "oneLine"]
+# The bare pronoun opener
+# ---------------------------------------------------------------------------
+
+def _pronoun(fields, **kw):
+    return [p for p in check_shelf_copy(fields, block=True, **kw)
+            if "bare pronoun" in p["detail"]]
+
+
+def test_the_live_one_liner_the_founder_rejected():
+    """`store/dossiers/b94760e86e62585a.pass.json`, verbatim. The founder read it on
+    <https://mumchimp.com/pack/b94760e86e62585a> on 2026-08-16: "i takes is no a good way
+    to stat, zero contet". The shelf shows this line BESIDE the title, so "It" has no
+    antecedent in anything the reader is reading as a sentence."""
+    assert _pronoun({"oneLine": (
+        "It takes a published NHS rota and timesheet, applies the worker's contract terms, "
+        "and returns the overtime, unsocial hours uplifts and Working Time holiday pay "
+        "they're owed.")})
+
+
+def test_a_named_subject_after_the_demonstrative_is_quiet():
+    """What makes the pronoun a defect is that it is BARE. "This service" names its own
+    subject in the same breath, so it reads alone and must not be flagged."""
+    assert not _pronoun({"oneLine": "This service reads a published NHS rota and returns the pay owed."})
+    assert not _pronoun({"oneLine": "A rota audit that returns the unsocial hours pay a doctor is owed."})
+    assert not _pronoun({"oneLine": "For NHS doctors, the unsocial hours pay their rota already proves."})
+
+
+def test_the_title_is_exempt():
+    """A title is a noun phrase by contract (`prompts/retitle.md`), so it cannot open on a
+    pronoun-plus-verb; grading it would only add a way to unlist a good pack."""
+    assert not _pronoun({"title": "It takes a rota and returns the pay owed"})
+
+
+def test_the_finding_follows_the_actuator():
+    bad = {"oneLine": "It takes a rota and returns the pay owed."}
+    assert all(p["severity"] == "warning" for p in check_shelf_copy(bad, block=False))
+    assert any(p["severity"] == "error" for p in check_shelf_copy(bad, block=True))

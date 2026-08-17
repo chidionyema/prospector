@@ -561,3 +561,39 @@ def test_summarise_reports_no_split_rate_rather_than_a_fake_zero(tmp_path):
                    encoding="utf-8")
     s = nc.summarise_shadow_log(log)
     assert s["untraceable_rate_excl_self"] is None, "None means unmeasured, 0.0 means clean"
+
+
+# --------------------------------------------------------------------------- #
+# A citation marker is not a number
+# --------------------------------------------------------------------------- #
+#
+# Rationales cite their evidence by source id: "(459782dc95f977cf, adbc554c247b7413)".
+# `_FIGURE_RE` guards the START of a match with `(?<![\w.,])` but nothing guarded the
+# end, so the bare-count branch lifted "459782" out of the first id and called it a
+# claim. No passage can ever contain it, so a rationale was penalised for citing its
+# sources. Measured 2026-08-16 over the 87 published packs: 205 of 698 extracted
+# figures were id fragments, and the untraceable rate read 36.1% instead of 3.7%.
+
+def test_a_source_id_is_not_a_numeric_claim():
+    rationale = ("The passages confirm 3PLs are under cost pressure "
+                 "(459782dc95f977cf, adbc554c247b7413) and the port moved cargo "
+                 "[4152974bb65ef7d2, 8761785ac8af4d09].")
+    figs = nc.extract_figures(rationale)
+    assert figs == [], f"citation markers were read as figures: {[f.surface for f in figs]}"
+
+
+def test_a_short_hex_id_is_not_a_numeric_claim():
+    figs = nc.extract_figures("Freelancers evaluate platforms (27298c7d, 473689b8).")
+    assert figs == [], f"short ids were read as figures: {[f.surface for f in figs]}"
+
+
+@pytest.mark.parametrize("text,surface", [
+    ("The scheme paid 1,761 claims last year.", "1,761"),
+    ("Roughly 459782 businesses are registered.", "459782"),
+    ("The market is worth £1.2m a year.", "£1.2m"),
+    ("Take-up sits at 72% of the sector.", "72%"),
+    ("Volumes reached 5.7 million TEUs.", "5.7 million"),
+])
+def test_a_real_figure_still_survives_the_identifier_guard(text, surface):
+    surfaces = [f.surface for f in nc.extract_figures(text)]
+    assert surface in surfaces, f"lost a genuine figure: {text} -> {surfaces}"

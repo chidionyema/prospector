@@ -3,7 +3,6 @@ import { trackPriceEvent } from '@/lib/analytics';
 import { createEmbeddedCheckout, createStripeCheckout } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { resolveStripeCheckout } from '@/lib/checkoutRoute';
-import { initPaddle, openPaddleCheckout, paddleConfigured } from '@/lib/paddle';
 import { stripeConfigured } from '@/lib/stripe';
 
 /** Everything the buy path needs about a pack, satisfied by both `Pack` and `PackDetails`. */
@@ -66,7 +65,10 @@ export function usePackCheckout(pack: PackCheckoutTarget, preopenedSecret?: stri
   const { account } = useAuth();
   const buyerEmail = account?.email ?? null;
 
-  const provider = pack.paymentProvider || 'paddle';
+  // Stripe is the only rail. A pack with any other provider name is a historical row that no
+  // longer has a way to be charged, so it fails the checkout gate below rather than opening
+  // a checkout nobody can complete.
+  const provider = pack.paymentProvider || 'stripe';
 
   const handleStripeCheckout = async () => {
     // Embedded is preferred but never required. Two separate reasons it may not happen, no
@@ -98,12 +100,10 @@ export function usePackCheckout(pack: PackCheckoutTarget, preopenedSecret?: stri
     trackPriceEvent('checkout_started', pack);
 
     try {
-      if (provider === 'stripe') {
-        await handleStripeCheckout();
-      } else {
-        await initPaddle();
-        openPaddleCheckout(pack.providerPriceId);
+      if (provider !== 'stripe') {
+        throw new Error('This pack cannot be bought right now. Please contact support.');
       }
+      await handleStripeCheckout();
     } catch (err) {
       const message = err instanceof Error ? err.message : '';
       setCheckoutError(message || 'Checkout failed. Please try again.');
@@ -139,9 +139,7 @@ export function usePackCheckout(pack: PackCheckoutTarget, preopenedSecret?: stri
     pack.providerPriceId.length > 0 &&
     !pack.providerPriceId.startsWith('price_stub');
 
-  const canCheckout =
-    (provider === 'stripe' && hasProvisionedPrice) ||
-    (provider !== 'stripe' && paddleConfigured);
+  const canCheckout = provider === 'stripe' && hasProvisionedPrice;
 
   return {
     checkingOut,

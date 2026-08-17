@@ -34,6 +34,14 @@ information-preserving: every decision, fact, and promise in the original surviv
 counts are defaults, not gates. The one absolute rule: **say each thing once, sitewide** — one page
 owns each fact; every other page links to it.
 
+**Open delta on this spec:** `docs/MOBILE_DESIGN_BRIEF_2026-08-15.md` — the founder's mobile
+design, polish and visual-system brief (card system, one button system, typography, overlays,
+colour tokens, Lucide icons, image policy), with its own status ledger. It carries two direct
+contradictions of decisions already recorded in THIS file, and both must be resolved with the
+founder before any colour work: it sets `--action: #1B3F8B` (navy) where the 2026-08-15 palette
+review chose charcoal `#2D3436`, and it says "drop category colour-coding entirely" where §3 here
+records the 12 `--cat-*` hues as a deliberate, documented exception.
+
 ---
 
 ## Status ledger — last verified 2026-08-08

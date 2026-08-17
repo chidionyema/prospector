@@ -280,3 +280,44 @@ def test_removing_an_uncoverable_letter_leaves_a_trace(caplog):
         assert pack_pdf._substitute("독서교육 market") == "market"
     said = [r.getMessage() for r in caplog.records]
     assert any("uncoverable" in m and "U+B3C5" in m for m in said), said
+
+
+class TestAnAnchorLinkDoesNotCostTheWholeDocument:
+    """A `#anchor` link in model-written copy used to raise and lose the entire PDF.
+
+    fpdf2 reads a leading "#" as a NAMED DESTINATION, not a URL, and raises at output time
+    when nothing registered it: "Named destination 'main-content' was referenced but never
+    set with set_link(name=...)". On 2026-08-16 that killed `Complete_Pack.pdf` for pack
+    `83f2e75faa80bb60`; the pack then failed its structural audit and published UNLISTED, so
+    one anchor in one sentence cost a sale.
+
+    We cannot stop the anchor being written — the body is generated prose. A standalone PDF
+    has no such destination to jump to either way, so the words stay and the link goes.
+    """
+
+    ANCHORED = (
+        "# Executive Summary\n\n"
+        "Skip to [the main content](#main-content) or read [our site](https://example.com).\n"
+    )
+
+    def test_a_pack_containing_an_anchor_link_still_renders(self):
+        out = pack_pdf.render_pack_pdf([("Executive Summary", self.ANCHORED)], META)
+        assert out.startswith(b"%PDF")
+
+    def test_the_anchor_text_survives_even_though_the_link_does_not(self):
+        out = pack_pdf.render_pack_pdf([("Executive Summary", self.ANCHORED)], META)
+        assert "the main content" in _text(out)
+
+    def test_a_real_url_is_still_a_link(self):
+        """The fix must not flatten every link — a cited source stays clickable, which is the
+        one thing a sourced pack cannot afford to lose."""
+        runs = pack_pdf._inline_runs(
+            [{"type": "link", "attrs": {"url": "https://example.com"},
+              "children": [{"type": "text", "raw": "our site"}]}], "")
+        assert [link for _, _, link in runs] == ["https://example.com"]
+
+    def test_an_anchor_url_is_dropped_before_it_reaches_fpdf(self):
+        runs = pack_pdf._inline_runs(
+            [{"type": "link", "attrs": {"url": "#main-content"},
+              "children": [{"type": "text", "raw": "the main content"}]}], "")
+        assert [link for _, _, link in runs] == [None]

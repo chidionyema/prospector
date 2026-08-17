@@ -98,7 +98,19 @@ export default function AccountPage() {
               <Skeleton className="h-4 w-3/4" />
             </div>
           )}
-          {status === 'anonymous' && <AuthPanel initial={initial} returnTo={returnTo} />}
+          {/* THE FORM IS NOT A PAGE-WIDTH OBJECT. The wrapper is `max-w-3xl` because the SIGNED-IN
+              branch needs it -- library cards and receipts are wide rows. The signed-out branch is
+              two fields, and at that width it drew a 704px card holding a 638px email input
+              (measured on prod at 1280 viewport, 2026-08-16), the widest input on the site by a
+              factor of two, which reads as an unstyled form rather than a designed one. Capping
+              the panel keeps its left edge flush with the heading, so the column still reads as
+              one block. Capped HERE rather than on the wrapper so the authenticated branch is
+              untouched and the session resolving cannot shift the layout sideways. */}
+          {status === 'anonymous' && (
+            <div className="max-w-md">
+              <AuthPanel initial={initial} returnTo={returnTo} />
+            </div>
+          )}
           {status === 'authenticated' && <AccountPanel />}
         </div>
       </div>
