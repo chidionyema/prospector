@@ -726,3 +726,67 @@ function that uses them. `requirements.txt:73-97` carries the measurements.
 | Readability | recorded only, no actuator by design |
 | Paid-artifact claim gate | **shipped, ON** — expect held listings on regeneration |
 | Storefront editorial proposal (§"Storefront") | still a proposal; nothing in `store_platform/` changed |
+
+## Three checks graded the shelf card and called it the pack (2026-08-17)
+
+Every one of the 34 stranded PASS packs was at most three days old, and every one was made
+AFTER the rule that blocked it went live. Dating the packs against the rules is what turned a
+list of symptoms into one cause:
+
+| blocker | packs | rule landed | made after the rule |
+|---|---|---|---|
+| title | 20 | 2026-08-14 | 20/20 |
+| shelf_copy | 15 | 2026-08-13 | 15/15 |
+| title_claim | 9 | 2026-08-14 | 9/9 |
+| citation_urls | 4 | — | external 404s, real |
+| currency | 3 | 2026-08-07 | 3/3 |
+| placeholders | 1 | 2026-08-14 | 1/1 |
+
+So this was never old stock meeting a new rule. The engine kept producing packs that broke
+rules already in force, because the rules ran only at the publish gate, at the end of the line,
+after generation and vetting were paid for. The split proves it: checks with an upstream caller
+blocked one or two packs each; checks with none blocked nine to twenty.
+
+**`check_title_claims` graded the title against about 40 words of shelf copy.** `lint_pack`
+passed it `house` minus the title — the card line and the listing texts. The rule's own
+docstring says the sources are "the pack's own description and structured fields", and a shelf
+card is not that. A title naming something too specific to fit on a card was reported as a claim
+the pack never made, while the pack discussed it at length. Measured over the nine packs it
+blocked: 18 blocking errors, and all 14 distinct flagged tokens — House, Bill, Department,
+Information, Resources, ISVs, DevOps, Spine, Markets, Competition, GA, CTOs, HB and the figure 4
+— appear in their own pack's copy. Every error was false. They could not be switched off on
+their own either, because `check_title` and `check_title_claims` share `title_block_on_breach`.
+The sources are now the pack's artifacts, and the nine go from 18 blocking errors to 0.
+
+**Every artifact counts as evidence, not only the prose ones.** `is_prose_artifact` exists to
+choose what may be graded AS WRITING. Whether a pack mentions a term at all is a different
+question, and a scorecard row answers it. Restricting the corpus to prose left HB, ISVs and
+DevOps blocked on packs that named them only in `scorecard.json` and `scorecard_radar.svg`.
+Checked before trusting those two files: neither contains the title verbatim, so it is the
+pack's own evidence and not the title supporting itself.
+
+**A shelf line that copies the title is not evidence for the title.** Excluding `title` by key
+was never enough. Thirteen live headlines are verbatim copies of their own title and `cardLine`
+can be too, so the title came back into its own sources under another name and supported itself.
+Only exact self-copies are dropped, so a card line that genuinely restates the pack still counts.
+This hole predates the change above; a test caught it.
+
+**`check_currency` had the same defect in its listing_page half.** Its notes half was fixed on
+2026-08-09 with a wider home haystack, on the stated grounds that "a £ in a rendered row above
+satisfies 'they can see their own currency'". The listing_page half never got one: its haystack
+was the listing copy itself. The price on that page is rendered from the catalogue row, not from
+that prose, so the one field carrying the home symbol was the one field left out of the evidence.
+Two of the three currency blocks were this. `c8da2ba4` is a `uk` pack with 34 '£' across its
+artifacts, blocked because its listing page quotes Microsoft's ISV Success programme — "$50K in
+Azure credits", "$126,000 of first-year value" — which Microsoft denominates in USD. `f2ac7df9`
+quotes a US pricing ladder. Rewriting either into £ falsifies a citation on a source-or-die
+storefront, which is the exact trap the notes half was fixed for. The third, `48977b86`, is a
+real defect and still blocks: one stray '£' in the rendered rows of a `us` financial model.
+
+**The general rule this leaves behind.** Grade a claim against the corpus that could support it,
+not against the field it happens to sit in. Every one of these was a check reading a field in
+isolation and reporting the absence of context as a defect.
+
+Pinned by `tests/unit/test_title_claims_are_graded_against_the_pack.py`, which asserts both
+directions: a term the pack uses is not a claim, and a term that appears nowhere still is.
+Widening the corpus must not switch source-or-die off.

@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Rewrite live pack titles into the declared format: `Name, what it does`, at most 60 chars.
+"""Rewrite live pack titles into the declared format: `what it does for who pays`, <=60 chars.
+
+The format this line names moved on 2026-08-13 (founder: "the title tells me nothing, it feels
+cryptic"). It used to be `Name, what it does`; the coined name is gone entirely, because the
+opening characters are what a scanner reads and a made-up word spends them. The code below has
+always been correct — it calls the live `pack_linter.check_title` — but this docstring named
+the dead format until 2026-08-17. Read `pack_linter.check_title`, never this paragraph.
+
 
 Why
 ---
@@ -21,9 +28,10 @@ shipped under the old one.
 
 How the format is guaranteed
 ----------------------------
-The model is never asked for a formatted string. `prompts/retitle.md` returns `name` and
-`does` as separate fields and THIS FILE joins them with ", ", so a malformed separator is
-unrepresentable. Only the length can be got wrong, and every draft is put through the real
+`prompts/retitle.md` returns `title` as one field. It used to return `name` and `does`
+separately for this file to join with ", ", which made a malformed separator unrepresentable;
+since 2026-08-13 there is no name and so no separator to get wrong. Every draft is put through
+the real
 `pack_linter.check_title` before it is accepted — the same function the publish gate runs, so
 a title that passes here cannot fail there. A breach is fed back verbatim and re-asked, up to
 `--attempts` times; a pack that never converges is REPORTED AND SKIPPED, never truncated.

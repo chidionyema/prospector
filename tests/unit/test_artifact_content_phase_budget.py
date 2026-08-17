@@ -32,6 +32,12 @@ from prospector.scheduler import run_scheduled as rs_mod
 
 class _Cand:
     candidate_id = "c" * 16
+    # The real Candidate always carries both (`models.py:172`), and `_generate_pack_content`
+    # now repairs them before it builds anything. Clean values on purpose: a breach here
+    # would call the operator and make a budget/retry test grade the repair instead.
+    title = "Weatherproof bin store signs for a single block of flats"
+    one_liner = ("A printing business that makes weatherproof bin store signs for one "
+                 "specific block of flats.")
     market = "us"
 
     def to_dict(self):
