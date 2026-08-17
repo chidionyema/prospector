@@ -27,6 +27,7 @@ export const ACTIONS = [
   'catalogue.set_listing',
   'shelf.repair_copy',
   'shelf.publish_pending',
+  'shelf.regate',
   'daemon.restart',
   'tools.run',
   'tools.undo',

@@ -15,6 +15,7 @@ a definitive 404/410 is).
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import time
@@ -687,6 +688,56 @@ TITLE_NAME_MAX_CHARS = 30
 #: while spending up to half the character budget. All-caps initialisms (`NHS`, `HMRC`, `FSA`)
 #: do NOT match — they are words a reader already knows, which is the whole distinction.
 _TITLE_COINAGE = re.compile(r"\b[A-Z][a-z]+[A-Z][A-Za-z]*\b")
+
+def _ruleset_version() -> str:
+    """A fingerprint of the rules themselves, so nobody has to remember to bump a number.
+
+    This is stamped into every `<id>.lint.json` receipt, and `tools/publish_passes.py::
+    _fresh_lint` refuses a receipt whose fingerprint differs — so a stored verdict can never
+    outlive the rules that produced it.
+
+    WHY IT IS DERIVED AND NOT A HAND-EDITED CONSTANT. The first cut of this was
+    `RULESET_VERSION = 2`, and a hand-bumped constant is a rule that depends on someone
+    remembering. That is the same shape as the defect it was written to fix: freshness was
+    mtime alone, which answers "has the PACK changed" and cannot answer "have the RULES
+    changed", because a linter edit touches no dossier. On 2026-08-17 five rules stopped
+    blocking, every receipt on disk stayed byte-identical and newer than its pack, and seven
+    freed packs would have gone on reading as blocked forever. A forgotten bump reproduces
+    that exactly, silently, and only shows up as packs that never come back on sale.
+
+    The fingerprint is the file's own bytes. A comment-only edit therefore invalidates every
+    receipt too, and that is the deliberate trade: a re-gate is a rehearsal — no model call, no
+    Stripe object, no listing — so the cost of an unnecessary one is a few seconds of daemon
+    time, while the cost of a missed one is a finished pack off the shelf indefinitely.
+
+    Same lesson as `_PROBE_LOGIC_VERSION` below, which exists because a cached 404 outlived
+    the probe fix that would have cleared it.
+    """
+    try:
+        return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:12]
+    except OSError:
+        # Unreadable source (a zipimport, a stripped deploy). Refusing every receipt forever
+        # would be the safe direction but turns a packaging quirk into permanent re-gating, so
+        # fall back to a fixed stamp: freshness degrades to mtime, which is where it started.
+        return "unfingerprinted"
+
+
+RULESET_VERSION = _ruleset_version()
+
+
+def receipt_is_current(receipt: Any) -> bool:
+    """Was this stored `<id>.lint.json` verdict produced by the rules running right now?
+
+    ONE definition, three callers, because three copies of this comparison is how they drift:
+    `tools/publish_passes.py::_fresh_lint` decides whether to re-gate,
+    `scheduler/run_scheduled.py::_stale_verdicts` decides what the tick re-gates, and
+    `ops/console_api.py::_read_shelf` decides whether to tell the operator "blocked by X" or
+    "nobody has asked under today's rules". A console confidently printing a retired verdict is
+    the same defect as the tool doing it, one screen further out.
+
+    A receipt with no `ruleset` key predates the stamp and is not current by definition.
+    """
+    return isinstance(receipt, dict) and receipt.get("ruleset") == RULESET_VERSION
 
 #: Intercapped words the buyer already knows. Same distinction as the all-caps exemption
 #: above, applied to the other shape a known term comes in: a coinage is cryptic because the
@@ -1994,6 +2045,7 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
     return {
         "ok": not any(p["severity"] == "error" for p in problems),
         "checked_at": datetime.now(timezone.utc).isoformat(),
+        "ruleset": RULESET_VERSION,
         "market": market,
         "urls_checked": urls_seen,
         # Recorded pass or fail so the receipt accrues a real baseline while the actuator
