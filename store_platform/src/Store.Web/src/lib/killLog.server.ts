@@ -39,6 +39,17 @@ export type KillSummary = {
   date: string;
   /** The count, not the list. The list is in the detail payload. */
   sources: number;
+  /**
+   * The opening of the real argument, in the page's own HTML.
+   *
+   * MASTER-BRIEF §7: "the argument is the row". Everything above deliberately keeps the reasoning
+   * OUT of the initial payload, and that was right for the full 198 KB of `reason`; it was wrong
+   * for the first sentence of it. A table of 400 titles and a cause label is a list of assertions:
+   * the reader has to open a row to find a single piece of evidence, and on a phone that means
+   * tapping blind to find out whether any of this is real. The excerpt is the cheapest possible
+   * answer -- roughly 140 characters x 400 rows, ~56 KB, against the 371 KB the split saved.
+   */
+  excerpt: string;
 };
 
 /** What an expanded row shows, keyed by slug. Prose is already translated. */
@@ -161,6 +172,35 @@ export function isStageLabel(label: string): boolean {
   return false;
 }
 
+/** How much of the argument goes in the row. Two lines at the table's width, near enough. */
+const EXCERPT_CHARS = 150;
+
+/**
+ * The opening of a kill's argument, cut to fit a table row.
+ *
+ * CUT ON A SENTENCE WHERE THERE IS ONE, ON A WORD OTHERWISE, NEVER MID-WORD. This page's entire
+ * claim is that we are careful with evidence, so a row reading "the incumbent already bund…" makes
+ * the argument look as carelessly handled as the sentence.
+ *
+ * A short reason is returned WHOLE and with no ellipsis. An ellipsis on a complete sentence says
+ * there is more to read behind the row when there is not, and a reader who opens it finds the same
+ * words again -- which teaches them the rest of the rows are not worth opening either.
+ */
+export function excerptOf(reason: string): string {
+  const text = reason.replace(/\s+/g, ' ').trim();
+  if (text.length <= EXCERPT_CHARS) return text;
+
+  const window = text.slice(0, EXCERPT_CHARS + 1);
+
+  // A full stop that ends a sentence, not one inside "3.2" or "e.g." -- it has to be followed by a
+  // space and a capital, which is also why the search starts past the first few characters.
+  const sentence = window.search(/[.!?]\s+[A-Z(]/);
+  if (sentence > EXCERPT_CHARS / 3) return text.slice(0, sentence + 1);
+
+  const space = window.lastIndexOf(' ');
+  return `${text.slice(0, space > 0 ? space : EXCERPT_CHARS).replace(/[,;:]$/, '')}…`;
+}
+
 /** Everything the page needs at load. Called from `getStaticProps`, never from a component. */
 export function buildKillIndex(): KillIndex {
   const slugList = slugs();
@@ -173,6 +213,11 @@ export function buildKillIndex(): KillIndex {
     gateLabel: entry.gateLabel,
     date: entry.date,
     sources: entry.citations.length,
+    // `plainEnglish` FIRST, then cut. The other way round, a translation that lengthens a phrase
+    // ("the candidate" -> "the idea" shortens, but `payer_solvency` -> "whether the buyer can pay"
+    // does not) would push the row past the width the cut was measured for, and the ellipsis would
+    // land in a different place than the one that was checked.
+    excerpt: excerptOf(plainEnglish(entry.reason)),
   }));
 
   // Every REASON present in what we publish, ordered by how many kills it accounts for, so the

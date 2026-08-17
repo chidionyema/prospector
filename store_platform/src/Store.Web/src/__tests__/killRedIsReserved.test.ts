@@ -51,6 +51,15 @@ const ALLOWED: Record<string, string> = {
   'pages/kill-log.tsx':
     'The page the colour exists for. Its table cells and chart bars are kills by definition. ' +
     'The header stat composes VerdictChip; the row-level uses are the corpus itself.',
+  'components/marketing/CauseGrid.tsx':
+    'The kill-log signature. Every red cell in it IS a killed idea, one cell each, and the ' +
+    'ramp encodes which check killed it. A categorical palette was rejected here for exactly ' +
+    'the reason this rule exists: it would have put new meanings on colours a reader has ' +
+    'already learned.',
+  'components/marketing/AttritionCascade.tsx':
+    'The how-it-works signature. The only red on it is the subtraction at each gate, which is ' +
+    'a count of ideas that died there. What survives each gate is neutral ink and the final ' +
+    'band is teal.',
 };
 
 /** Every `.ts`/`.tsx` under `src/`, tests and styles excluded, as `{ rel, src }`. */

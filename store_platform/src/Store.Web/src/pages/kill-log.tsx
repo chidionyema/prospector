@@ -4,6 +4,7 @@ import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
 import { buttonClasses, chipClasses, Glyph, SearchInput, SourceChip, VerdictChip, textLinkClass } from '@/components/ui';
 import { Section, SectionBand } from '@/components/marketing/blocks';
+import { CauseGrid } from '@/components/marketing/CauseGrid';
 import { WaitlistCallout } from '@/components/waitlist/WaitlistCallout';
 import { tightDecimal } from '@/components/ui/Money';
 import { RESEARCH_STATS } from '@/lib/stats';
@@ -303,6 +304,17 @@ export default function KillLogPage({
             fired first. The checks stop at the first hard failure, so each idea is counted once,
             against the cheapest gate that killed it.
           </p>
+          {/* ── THE SIGNATURE (MASTER-BRIEF §7) ────────────────────────────────────────────────
+              The grid FIRST, the bars second, and they are the same numbers twice on purpose.
+
+              A bar chart answers "which cause is biggest" and it answers it by asking the reader
+              to compare lengths. It cannot show SCALE: nothing in a row of bars says whether this
+              is a hundred ideas or fourteen hundred. The grid draws one cell per idea, so the size
+              of the claim is the size of the picture, and the reader gets it before reading a
+              single label. The bars then give the ranking precisely, with the counts, which the
+              grid cannot do. Neither is redundant; the brief asks for both, in this order. */}
+          <CauseGrid distribution={distribution} className="mt-6" />
+
           {/* The label column is fixed at 15rem so the bars share one baseline and the chart
               compares -- but 15rem plus a bar plus a count does not fit 390px, and measured on
               2026-08-13 at that width the row rendered "The defensibility claim was not
@@ -473,6 +485,23 @@ export default function KillLogPage({
                       >
                         {entry.title}
                       </button>
+                      {/* THE ARGUMENT IS THE ROW (MASTER-BRIEF §7). Before this, a row carried a
+                          title and a cause label, and the reasoning was behind a click. That makes
+                          400 rows of assertion: the reader is told an idea failed on incumbency and
+                          has no evidence in front of them that we did any work, so the only way to
+                          find out whether the page is real is to open a row and hope. On a phone
+                          that is a tap, a wait on a fetch, and a scroll. Two lines of the actual
+                          finding on every row means the reader can scan twenty of them and see the
+                          arguments are specific, before deciding whether to open one.
+
+                          IT DISAPPEARS WHEN THE ROW OPENS, because the panel below starts with the
+                          same sentence. Two copies of one sentence three lines apart reads as a
+                          rendering fault on the page whose subject is our own carefulness. */}
+                      {!isOpen && entry.excerpt && (
+                        <p className="mt-1 max-w-[60ch] text-caption leading-relaxed text-subtle">
+                          {entry.excerpt}
+                        </p>
+                      )}
                     </td>
                     <td className="py-2.5 pr-4 font-mono text-caption text-kill-strong">
                       {entry.gateLabel}

@@ -49,6 +49,12 @@ describe('the kill log ships the table, not the corpus', () => {
   it('sends no prose in the props', () => {
     // The fields, named. A summary that regrows `reason` would still pass a size check on a small
     // fixture; this fails on the first row that carries one.
+    //
+    // `excerpt` is NOT on this list and that is a decision, taken 2026-08-17 under MASTER-BRIEF §7
+    // ("the argument is the row"). The split was never about prose being expensive; it was about
+    // 371 KB of prose nobody could see. The first 150 characters of each argument is 65 KB and it
+    // is the only evidence on the page a reader gets without a tap. The full 198 KB of `reason`
+    // stays behind the fetch, which is what the ban above holds in place.
     const banned = ['reason', 'oneLiner', 'citations'];
     const offenders = index.summaries
       .flatMap((s) => banned.filter((k) => k in s).map((k) => `${s.slug}.${k}`))
@@ -57,11 +63,15 @@ describe('the kill log ships the table, not the corpus', () => {
   });
 
   it('keeps the props under the size they were measured at', () => {
-    // A RATCHET on the payload that lands in the page's own HTML. 84,497 bytes measured
-    // 2026-08-16 for 400 rows of slug, title, cause, date and source count; the ceiling has room
-    // for the log to grow but not for a prose field to come back (`reason` alone is 198 KB).
+    // A RATCHET on the payload that lands in the page's own HTML.
+    //
+    //   84,497 bytes  2026-08-16  slug, title, cause, date, source count
+    //  149,153 bytes  2026-08-17  + `excerpt`, MASTER-BRIEF §7 -- 64,656 bytes, ~162 a row
+    //
+    // Both numbers measured by this line. The ceiling has room for the log to grow but not for a
+    // prose field to come back: `reason` alone is 198 KB and would blow straight through it.
     const bytes = JSON.stringify(index).length;
-    expect(bytes, 'the kill-log page props grew -- did a prose field return?').toBeLessThan(120_000);
+    expect(bytes, 'the kill-log page props grew -- did a prose field return?').toBeLessThan(175_000);
   });
 
   it('gives every row an argument to open, under the same slug', () => {
