@@ -35,12 +35,15 @@ import urllib.request
 
 from .audit import audit
 from .breaker import CircuitBreaker
+from .config import store_root
 from .copy_lint import extract_urls
 from .errors import FixtureMiss, ProviderExhaustedError, ProviderUnavailable, SearchProviderError
 from .models import Source
 from .telemetry import logger, record_usage, track_latency
 
-CACHE_DIR = Path(__file__).resolve().parent.parent / "store" / "_cache"
+# store_root(), not __file__: the cache belongs to the store, not to the checkout the code
+# was loaded from. See config.store_root for what anchoring it to __file__ cost.
+CACHE_DIR = store_root() / "_cache"
 
 # Cache entry format. v2 is an envelope {"v", "fetched_at", "sources"} so TTL is
 # judged on the recorded FETCH time rather than on mtime alone; v1 (a bare JSON
