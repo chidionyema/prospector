@@ -166,6 +166,9 @@ jobs:
     # CI_UV_CACHE_DIR. See the `Install uv` step for why this replaced actions/cache.
     env:
       UV_CACHE_DIR: ${{ vars.CI_UV_CACHE_DIR || format('{0}/.uv-cache', github.workspace) }}
+      # Where the shared venv lives. Empty on a hosted runner, which falls back to the
+      # workspace and behaves like the old per-job venv.
+      VENV_ROOT: ${{ vars.CI_VENV_ROOT }}
 
     strategy:
       # One shard's failure must not cancel the other two. Same reason the suite runs without
@@ -214,16 +217,46 @@ jobs:
       # uv fixes both: it fetches its own interpreter into its writable cache and puts the
       # dependencies in a venv inside the job's workspace, so jobs cannot collide and the box is
       # left alone. One code path for hosted Ubuntu and for our Macs.
-      - name: Python ${{ env.PYTHON_VERSION }} in a per-job venv
+      # ONE venv, built once, reused by every job. This replaced a per-job `uv venv` +
+      # `uv pip install`, which four jobs (three test shards plus engine) each paid in full:
+      # 214s x 4 = 856s of identical work per run, measured on run 32042202900.
+      #
+      # The venv is content-addressed by the requirements file and the Python version, so a
+      # dependency change makes a new one automatically and no job can run against a stale
+      # tree. It is built with `--relocatable`, which is what makes build-then-move safe:
+      # without it a uv venv hardcodes its own absolute path into every console script, so
+      # moving it breaks `pytest`.
+      #
+      # The race is handled by `mv -n` rather than a lock. macOS has no flock, and a lock a
+      # killed job never releases is worse than duplicated work. Two jobs may build in
+      # parallel; the first to land wins, the loser deletes its copy. Wasteful once, never
+      # wrong.
+      #
+      # If VENV_ROOT is unset (a GitHub-hosted runner) this falls back to the workspace and
+      # behaves exactly like the old per-job venv.
+      - name: Python ${{ env.PYTHON_VERSION }} in a shared venv
         run: |
-          uv venv --python "${PYTHON_VERSION}" .venv
-          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
-          echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
-          .venv/bin/python --version
-
-      # There is no pyproject.toml, so `uv sync` cannot be used.
-      - name: Install dependencies
-        run: uv pip install -r requirements.txt
+          set -euo pipefail
+          ROOT="${VENV_ROOT:-$PWD/.ci-venvs}"
+          mkdir -p "$ROOT"
+          KEY="py${PYTHON_VERSION}-$(shasum -a 256 requirements.txt | cut -c1-16)"
+          VENV="$ROOT/$KEY"
+          if [ ! -x "$VENV/bin/python" ]; then
+            TMP="$ROOT/.building-$KEY-$$"
+            rm -rf "$TMP"
+            uv venv --relocatable --python "${PYTHON_VERSION}" "$TMP"
+            VIRTUAL_ENV="$TMP" uv pip install -r requirements.txt
+            mv -n "$TMP" "$VENV" 2>/dev/null || true
+            rm -rf "$TMP"
+            echo "built $VENV"
+          else
+            echo "reused $VENV"
+          fi
+          # Fail loudly rather than run the suite against a half-built tree.
+          "$VENV/bin/python" -c 'import pytest' || { echo "shared venv is incomplete"; exit 1; }
+          echo "$VENV/bin" >> "$GITHUB_PATH"
+          echo "VIRTUAL_ENV=$VENV" >> "$GITHUB_ENV"
+          "$VENV/bin/python" --version
 
       - name: Test suite, shard ${{ matrix.shard }} of 3
         # No -x. It stops at the first failure, so a run reports one problem and hides the
@@ -283,6 +316,9 @@ jobs:
     # a wheel built by either one is already there for the other.
     env:
       UV_CACHE_DIR: ${{ vars.CI_UV_CACHE_DIR || format('{0}/.uv-cache', github.workspace) }}
+      # Where the shared venv lives. Empty on a hosted runner, which falls back to the
+      # workspace and behaves like the old per-job venv.
+      VENV_ROOT: ${{ vars.CI_VENV_ROOT }}
 
     steps:
       - uses: actions/checkout@v4
@@ -296,15 +332,46 @@ jobs:
 
       # Same reason as the python job above: setup-python cannot install on our self-hosted
       # Macs, and --system would write into the box's shared /usr/local Python.
-      - name: Python ${{ env.PYTHON_VERSION }} in a per-job venv
+      # ONE venv, built once, reused by every job. This replaced a per-job `uv venv` +
+      # `uv pip install`, which four jobs (three test shards plus engine) each paid in full:
+      # 214s x 4 = 856s of identical work per run, measured on run 32042202900.
+      #
+      # The venv is content-addressed by the requirements file and the Python version, so a
+      # dependency change makes a new one automatically and no job can run against a stale
+      # tree. It is built with `--relocatable`, which is what makes build-then-move safe:
+      # without it a uv venv hardcodes its own absolute path into every console script, so
+      # moving it breaks `pytest`.
+      #
+      # The race is handled by `mv -n` rather than a lock. macOS has no flock, and a lock a
+      # killed job never releases is worse than duplicated work. Two jobs may build in
+      # parallel; the first to land wins, the loser deletes its copy. Wasteful once, never
+      # wrong.
+      #
+      # If VENV_ROOT is unset (a GitHub-hosted runner) this falls back to the workspace and
+      # behaves exactly like the old per-job venv.
+      - name: Python ${{ env.PYTHON_VERSION }} in a shared venv
         run: |
-          uv venv --python "${PYTHON_VERSION}" .venv
-          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
-          echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
-          .venv/bin/python --version
-
-      - name: Install dependencies
-        run: uv pip install -r requirements.txt
+          set -euo pipefail
+          ROOT="${VENV_ROOT:-$PWD/.ci-venvs}"
+          mkdir -p "$ROOT"
+          KEY="py${PYTHON_VERSION}-$(shasum -a 256 requirements.txt | cut -c1-16)"
+          VENV="$ROOT/$KEY"
+          if [ ! -x "$VENV/bin/python" ]; then
+            TMP="$ROOT/.building-$KEY-$$"
+            rm -rf "$TMP"
+            uv venv --relocatable --python "${PYTHON_VERSION}" "$TMP"
+            VIRTUAL_ENV="$TMP" uv pip install -r requirements.txt
+            mv -n "$TMP" "$VENV" 2>/dev/null || true
+            rm -rf "$TMP"
+            echo "built $VENV"
+          else
+            echo "reused $VENV"
+          fi
+          # Fail loudly rather than run the suite against a half-built tree.
+          "$VENV/bin/python" -c 'import pytest' || { echo "shared venv is incomplete"; exit 1; }
+          echo "$VENV/bin" >> "$GITHUB_PATH"
+          echo "VIRTUAL_ENV=$VENV" >> "$GITHUB_ENV"
+          "$VENV/bin/python" --version
 
       # --no-tick: a runner has no .env and no spend ledger, so the dry-run tick would fail on
       # its environment instead of on the change. Checks 1, 2 and 4 still run, and the script
