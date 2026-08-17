@@ -162,6 +162,11 @@ jobs:
     runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 25
 
+    # One shared uv cache on a path that survives between jobs, set by the repo variable
+    # CI_UV_CACHE_DIR. See the `Install uv` step for why this replaced actions/cache.
+    env:
+      UV_CACHE_DIR: ${{ vars.CI_UV_CACHE_DIR || format('{0}/.uv-cache', github.workspace) }}
+
     strategy:
       # One shard's failure must not cancel the other two. Same reason the suite runs without
       # -x: a push should learn everything it is wrong about, not the first thing.
@@ -172,22 +177,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # enable-cache: false stops setup-uv pointing UV_CACHE_DIR at $RUNNER_TEMP. The job env
+      # above owns that path instead.
+      #
+      # There used to be an actions/cache step here caching ~/.cache/uv. It could not work, and
+      # it was the single biggest cost in the job. setup-uv had already set UV_CACHE_DIR to
+      # $RUNNER_TEMP/setup-uv-cache (run 32038516212, job 95413653114, "Set UV_CACHE_DIR to
+      # /Users/chidionyema/actions-runner-3/_work/_temp/setup-uv-cache"), so uv never read
+      # ~/.cache/uv at all. The step spent 11 minutes — 14:18:09 to 14:29:09 — untarring 4.5 GB
+      # into a directory nothing then opened, and on the engine job the same tar failed outright
+      # ("Failed to restore: /usr/bin/tar failed with exit code 1").
+      #
+      # A self-hosted runner does not need actions/cache for this. Its disk persists between
+      # jobs, so pointing every job at one directory is the whole mechanism: no tar, no restore,
+      # no re-download. On GitHub-hosted runners the fallback path is per-workspace and cold,
+      # which is the same as having no cache — acceptable, because we do not run there.
       - name: Install uv
         uses: astral-sh/setup-uv@v3
-
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
-        run: |
-          uv venv --python "${{ env.PYTHON_VERSION }}" "$RUNNER_TEMP/venv"
-          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
-          echo "VIRTUAL_ENV=$RUNNER_TEMP/venv" >> "$GITHUB_ENV"
-
-      - name: Cache uv cache
-        uses: actions/cache@v4
         with:
-          path: ~/.cache/uv
-          key: uv-${{ runner.os }}-${{ hashFiles('requirements.txt', 'pyproject.toml') }}
-          restore-keys: |
-            uv-${{ runner.os }}-
+          enable-cache: false
 
       # This used to be `actions/setup-python@v5` followed by `uv pip install --system`. Both
       # halves broke when CI moved to our self-hosted Macs on 2026-08-16, and between then and
@@ -271,22 +279,20 @@ jobs:
     runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 30
 
+    # Same shared cache directory as the python job. Both install the same requirements.txt, so
+    # a wheel built by either one is already there for the other.
+    env:
+      UV_CACHE_DIR: ${{ vars.CI_UV_CACHE_DIR || format('{0}/.uv-cache', github.workspace) }}
+
     steps:
       - uses: actions/checkout@v4
 
+      # The actions/cache step that was here had the same defect as the python job's: it tarred
+      # ~/.cache/uv, which uv was not configured to read. See the long note there.
       - name: Install uv
         uses: astral-sh/setup-uv@v3
-
-      # This job had no dependency cache while `python` did, so it re-downloaded the whole
-      # requirements set on every run. Same key as the python job on purpose: both install
-      # from the same requirements.txt, so they share one warm cache.
-      - name: Cache uv cache
-        uses: actions/cache@v4
         with:
-          path: ~/.cache/uv
-          key: uv-${{ runner.os }}-${{ hashFiles('requirements.txt', 'pyproject.toml') }}
-          restore-keys: |
-            uv-${{ runner.os }}-
+          enable-cache: false
 
       # Same reason as the python job above: setup-python cannot install on our self-hosted
       # Macs, and --system would write into the box's shared /usr/local Python.
