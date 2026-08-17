@@ -189,7 +189,8 @@ human corpus on at least one measure.** No gate is armed; this is the number one
    over-used items by log-likelihood are `passages` (G2 4004, 1342x), `the passages`
    (G2 2956), `none of`, `passages show`, `no passage`, `passages describe`, `but none`. A
    human decision says what happened to the complainant. Ours says what the passages did or
-   did not do. Full table: `corpora/keyness.json`, 4,448 rows over G2 15.13 and 2x.
+   did not do. Full table: the keyness.json that `tools/corpus/keyness.py` writes (generated
+   output, not in the repo), 4,448 rows over G2 15.13 and 2x.
 
 #### Two defects in the measurement, found and fixed
 
@@ -252,7 +253,7 @@ form, and form is adopted. What is excluded is the content column, by constructi
 Three surfaces, three genres. They do not share a target and must not share one.
 
 1. **Packs** — FOS is the reference. Tier A lands here first.
-2. **The storefront** (`store_platform/.../lib/copyConfig.ts`) — sales copy. A judicial
+2. **The storefront** (`store_platform/src/Store.Web/src/lib/copyConfig.ts`) — sales copy. A judicial
    corpus is the wrong target for a headline that has to sell. It needs its own reference
    corpus chosen before it gets any measured gate. Until then it keeps
    `__tests__/copyRegister.test.tsx`.
