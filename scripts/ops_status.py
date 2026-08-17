@@ -125,9 +125,38 @@ def c_src5():
     return MANUAL, "20 secrets in one .env; a vault or escrow is an operator decision"
 
 
+#: Files under `store/` that are DELIBERATELY tracked. They are not engine output: the launch
+#: proofs are dated evidence that a money path worked, and the market baseline is the golden
+#: input a test compares against. Untracking them would lose them.
+STORE_KEEP = {
+    "store/.gitkeep",
+    "store/launch/checkout-proof.md",
+    "store/launch/storefront-proof.md",
+    "store/launch/test-card-proof.md",
+    "store/markets/_baseline/golden-pre-market.txt",
+    "store/markets/us/READINESS.json",
+}
+
+
 def c_src6():
-    n = _lines(sh("git", "ls-files", "store/"))
-    return (DONE if n == 0 else OPEN), f"{n} runtime files tracked under store/"
+    """Runtime state tracked under `store/` — on `origin/main`, not in this checkout.
+
+    This check read `git ls-files`, which is the LOCAL INDEX. On 2026-08-17 that made it report
+    "226 runtime files tracked" and hold SRC-6 open, while `origin/main` carried six files and
+    every one of them was deliberate. The 226 were a stale dev branch, 14 commits behind the
+    merge of PR #270 that untracked them. A check that grades the branch a session happens to
+    have checked out reports another session's housekeeping as an estate defect.
+    """
+    rc, out = sh("git", "ls-tree", "-r", "--name-only", "origin/main", "store/")
+    if rc != 0:
+        return MANUAL, "could not read origin/main:store/ (fetch origin first)"
+    tracked = [ln.strip() for ln in out.splitlines() if ln.strip()]
+    runtime = sorted(set(tracked) - STORE_KEEP)
+    if not runtime:
+        return DONE, (f"0 runtime files tracked under store/ on origin/main "
+                      f"({len(tracked)} deliberate: launch proofs + market baseline)")
+    return OPEN, (f"{len(runtime)} runtime files tracked under store/ on origin/main, "
+                  f"e.g. {runtime[0]}")
 
 
 #: Not at the repo root. The first version of this check looked for `api.fly.toml` there,
