@@ -187,6 +187,11 @@ PRICING = {
     "claude": {"input": 3.00, "output": 15.00},
     "deepseek": {"input": 0.27, "output": 1.10},
     "minimax": {"input": 0.30, "output": 0.30}, # Flat rate for MiniMax M2.7/M3
+    # Same MiniMax account and adapter as `minimax`, pinned to a different model
+    # (config.yaml:131-136), and the rate above is already the flat M2.7/M3 rate — so this is
+    # that price, not a new one. Absent this key every m27 call priced at $0 and the tier read
+    # as free in every cost report (6 such warnings in one console session, 2026-08-16).
+    "minimax_m27": {"input": 0.30, "output": 0.30},
     "ollama": {"input": 0.00, "output": 0.00},
     "mock": {"input": 0.00, "output": 0.00},
 }
