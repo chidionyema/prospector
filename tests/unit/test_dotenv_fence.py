@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import ast
 import os
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -31,7 +32,7 @@ import prospector.run as R
 REPO = Path(__file__).resolve().parents[2]
 
 # Money-rail keys the conftest fence deletes. Re-arming ANY of these from disk is the bug.
-FENCED_KEYS = ("STRIPE_API_KEY", "STRIPE_LIVE_API_KEY",
+FENCED_KEYS = ("STRIPE_API_KEY", "STRIPE_LIVE_API_KEY", "PADDLE_API_KEY",
                "STORE_INTERNAL_API_KEY")
 
 
@@ -128,15 +129,38 @@ def test_load_dotenv_does_fill_gaps_when_the_guard_is_cleared(tmp_path, monkeypa
 
 def _repo_python_files() -> list[Path]:
     """Repo sources only. `.claude/worktrees/` holds other sessions' checkouts of this same
-    repo and `.venv/` holds third-party code; neither is ours to gate."""
+    repo and `.venv/` holds third-party code; neither is ours to gate.
+
+    Ask git, do not walk. `REPO.rglob("*.py")` descends into every skipped directory before
+    the filter below can reject it, and in this checkout that is about 169,000 files — 1.7 GB
+    of `.claude/worktrees`, 387 MB of `store/`, 120 MB of `graphify-out/`. Filtering the OUTPUT
+    does not stop the walk. Measured 2026-08-17: this single test was the slowest in the whole
+    suite at 116s, against 542s for all 4180 tests.
+
+    `--cached --others --exclude-standard` is tracked files plus untracked ones git would not
+    ignore, so a new source file is still gated the moment it is written, and everything the
+    skip list used to remove is already gitignored.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z", "*.py"],
+            cwd=REPO, capture_output=True, text=True, check=True, timeout=60,
+        ).stdout
+        paths = [REPO / rel for rel in out.split("\0") if rel]
+        if paths:
+            return paths
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+    # No git (a tarball, a stripped container). Walk, and accept the cost.
     skip = (".venv", "node_modules", ".claude/worktrees", ".git")
-    out = []
+    walked = []
     for p in REPO.rglob("*.py"):
         rel = p.relative_to(REPO).as_posix()
         if any(rel.startswith(s) or f"/{s}/" in f"/{rel}" for s in skip):
             continue
-        out.append(p)
-    return out
+        walked.append(p)
+    return walked
 
 
 def _guards_disable_dotenv(fn: ast.FunctionDef) -> bool:
