@@ -1078,9 +1078,10 @@ GROUP_BLURBS = {
 #: several keys whose meaning is load-bearing in ways a form cannot express; a console that could
 #: set any path would eventually set one of those from a phone at 2am.
 #:
-#: `high_blast` marks the three keys that decide which brain rules a verdict. They get a second,
-#: explicit acknowledgement on top of the confirmation token — a casual dropdown is exactly what
-#: they must not be.
+#: `high_blast` marks the keys that can stop the engine producing anything sellable: the three
+#: that decide which brain rules a verdict, and `producer_mode`, which decides whether this daemon
+#: vets at all. They get a second, explicit acknowledgement on top of the confirmation token — a
+#: casual dropdown is exactly what they must not be.
 KNOBS: list[dict] = [
     # ---- work ----
     {"path": ["generation", "candidates_per_signal"], "group": "work",
@@ -1089,8 +1090,34 @@ KNOBS: list[dict] = [
              "pay for, so this and the wave size together set the cost of a tick."},
     {"path": ["schedule", "batch_size"], "group": "work",
      "label": "Wave size — ideas per batch", "kind": "int", "min": 1, "max": 200,
-     "help": "How many candidates one producer tick mints. Bigger waves risk the 3-hour tick "
+     "help": "How many candidates one producer tick mints. Bigger waves risk the tick "
              "deadline; scripts/gen_budget_guard.py is the check."},
+    {"path": ["schedule", "interval_s"], "group": "work",
+     "label": "How often a wave starts (seconds)", "kind": "int", "min": 60, "max": 604800,
+     "help": "The production cadence. With the wave size above, this is the whole answer to how "
+             "much the engine invents and how often — 3600 is hourly, 300 is near-continuous. It "
+             "lived in a launchd plist argument until 2026-08-17, which is why it read as fixed. "
+             "Floored at 60s: the daemon takes no cross-cycle lock, so a shorter cadence starts a "
+             "second batch beside the first."},
+    {"path": ["schedule", "queue_target_depth"], "group": "work",
+     "label": "Hold the queue at N rows (0 = off)", "kind": "int", "min": 0, "max": 100000,
+     "help": "OPTIONAL and off by default. On, a tick mints only the shortfall below N and skips "
+             "generation entirely when the queue is full. Off, the wave size above is exactly what "
+             "gets minted every cadence. Off is the default on purpose: following the queue makes "
+             "the production rate a consequence of how fast the consumer happens to be draining, "
+             "instead of a number you set."},
+    {"path": ["schedule", "tick_deadline_s"], "group": "work",
+     "label": "Hard deadline for one tick (seconds)", "kind": "int", "min": 60, "max": 86400,
+     "help": "A tick running longer than this force-exits the daemon and launchd relaunches it. "
+             "Every time budget below is a fraction of this number. Sized for the old world where "
+             "one tick generated, vetted and published; a producer tick only generates. "
+             "PROSPECTOR_TICK_DEADLINE_S still overrides it for one manual run."},
+    {"path": ["schedule", "producer_mode"], "group": "work", "high_blast": True,
+     "label": "Producer/consumer split", "kind": "bool",
+     "help": "On, this daemon only invents and parks rows; a separate consumer vets and publishes. "
+             "Off, one tick does all of it inside the deadline. Turning it ON without a running "
+             "consumer fills the queue and nothing drains it, and that failure is QUIET by design "
+             "— a producer tick is all-DEFER, so the usual alert is suppressed."},
     {"path": ["schedule", "lease_ttl_s"], "group": "work",
      "label": "How long a worker may hold a row (seconds)", "kind": "int",
      "min": 60, "max": 86400,
@@ -1148,6 +1175,28 @@ KNOBS: list[dict] = [
      "label": "Claude CLI calls at once", "kind": "int", "min": 1, "max": 16,
      "help": "Bounds the failover brain only, since MiniMax leads. At 2, a saturated queue once "
              "accounted for 1514s of a 1731s run."},
+    # The four fractions below divide ONE tick deadline between its phases. They are fractions,
+    # not seconds, so changing the deadline rescales all of them together rather than silently
+    # leaving a phase budgeted for a tick length that no longer exists.
+    {"path": ["schedule", "gen_budget_frac"], "group": "speed",
+     "label": "Share of a tick for inventing", "kind": "float", "min": 0.0, "max": 1.0,
+     "help": "Fraction of the tick deadline generation may spend before it stops and hands the "
+             "rest of the tick on. 0 removes the bound."},
+    {"path": ["schedule", "vet_budget_frac"], "group": "speed",
+     "label": "Share of a tick for vetting", "kind": "float", "min": 0.0, "max": 1.0,
+     "help": "Fraction of the tick deadline the vetting phase may spend. Only bites when the "
+             "producer/consumer split is OFF — a producer tick does not vet."},
+    {"path": ["schedule", "drain_budget_frac"], "group": "speed",
+     "label": "Share of a tick for draining", "kind": "float", "min": 0.0, "max": 1.0,
+     "help": "Fraction of the tick deadline for re-vetting parked rows. Also inert under the "
+             "split, where a separate consumer owns the drain."},
+    {"path": ["schedule", "artifact_budget_frac"], "group": "speed",
+     "label": "Share of a tick for writing packs", "kind": "float", "min": 0.0, "max": 1.0,
+     "help": "Fraction of the tick deadline for building the buyer-facing pack of a PASS."},
+    {"path": ["schedule", "artifact_budget_floor_s"], "group": "speed",
+     "label": "Minimum pack-writing time (seconds)", "kind": "int", "min": 0, "max": 86400,
+     "help": "A floor under the fraction above, so a short deadline cannot leave a PASS with too "
+             "little time to render the artifact a buyer actually reads."},
     # ---- money ----
     {"path": ["spend", "daily_cap_usd"], "group": "money",
      "label": "Daily spend ceiling (USD)", "kind": "float", "min": 0.0, "max": 1000.0,

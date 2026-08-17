@@ -2351,6 +2351,37 @@ dedup_token_threshold: 0.34
 schedule:
   cadence: daily
   batch_size: 50
+  # `interval_s` — seconds between production cycles. With `batch_size` above, these two are the
+  # whole answer to how much this engine invents and how often. Until 2026-08-17 this number did
+  # not exist here: the cadence was `--interval 7200` in com.prospector.scheduler.plist, so the
+  # one control over production rate sat outside config, outside the console, and could only be
+  # changed by editing a plist and reloading the job. Set to 7200 to match exactly what the plist
+  # was passing, so landing the key changed nothing on its own.
+  #
+  # The plist argv is still the fallback when this is unset. This wins when both exist, and it is
+  # re-read at the end of every cycle, so a change from the console takes effect at the next wake
+  # without a restart. Floored at 60s (`_MIN_INTERVAL_SECONDS`): the daemon holds no cross-cycle
+  # lock, so a cadence shorter than one batch starts a second batch beside the first and pays for
+  # both. "Continuous" is a small interval, not a zero one.
+  interval_s: 7200
+  # `queue_target_depth: 0` — OFF, and off is the default on purpose. Above 0, a tick mints only
+  # the shortfall below the target and skips generation when the queue already holds it, which
+  # ties the production rate to how fast the consumer happens to be draining. That is a useful
+  # policy for a stalled consumer and a bad default: it turns the rate into something you observe
+  # rather than something you set. `batch_size` on `interval_s` stays the plain answer.
+  queue_target_depth: 0
+  # `tick_deadline_s` — a tick running longer force-exits the daemon, and launchd relaunches it.
+  # Every `*_budget_frac` below is a fraction of this. It was `PROSPECTOR_TICK_DEADLINE_S` in the
+  # environment with no config key at all, so the number bounding every phase of every tick was
+  # the one scheduler number the console could not reach. 10800 is what the environment default
+  # already was.
+  #
+  # It is sized for the world before the producer/consumer split, where one tick generated,
+  # vetted, published and drained. A producer tick only generates. It is also LONGER than the
+  # 7200s interval above, which is worth fixing once tick durations have been measured — they are
+  # recorded in store/scheduler/ticks.jsonl as `duration_s` from 2026-08-17, and were recorded
+  # nowhere before that, which is why this has never been sized from data.
+  tick_deadline_s: 10800
   backlog_cap: 0
   max_resume_attempts: 5
   artifact_budget_frac: 0.40
