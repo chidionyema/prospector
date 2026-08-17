@@ -144,7 +144,7 @@ export const LANDINGS: Landing[] = [
     metaDescription:
       'Researched business ideas where being able to build software is the unfair advantage. Every claim sourced, one payment per pack.',
     intro:
-      'These reward the ability to build the thing yourself rather than pay someone to. That advantage is usually not the code itself, it is being able to try five versions of the product in the time it takes a competitor to specify one, in a market where the incumbent tooling is old.',
+      'These reward the ability to build the thing yourself rather than pay someone to. That advantage is usually not the code itself, it is being able to try five versions of the product in the time it takes a competitor to specify one, in a market where the established tooling is old.',
   },
   {
     slug: 'business-ideas-for-operators',

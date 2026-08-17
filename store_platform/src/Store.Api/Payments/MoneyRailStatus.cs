@@ -18,7 +18,7 @@ public sealed class MoneyRailStatus
     /// <summary>The active payment provider, e.g. "stripe".</summary>
     public string Provider { get; private set; } = "unknown";
 
-    /// <summary>"live" or "test". Stays "unknown" until the startup gate records a decision.</summary>
+    /// <summary>"live", "test", or "not-applicable" for a provider with no key shape to read.</summary>
     public string Mode { get; private set; } = "unknown";
 
     /// <summary>The ASP.NET environment name the decision was made in.</summary>

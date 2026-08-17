@@ -97,6 +97,11 @@ MIN_SUPPORTED_CLAIMS = 3
 # floor-copy defect, so it is omitted — and omitted means left alone.
 COPY_FIELDS = (
     "cardLine", "headline", "subhead", "whatYouGet",
+    # `theProblem` and `marketSize` are the opportunity fields added on 2026-08-16. They are
+    # empty on every pack generated before that date, so this backfill is how a live pack gets
+    # them without being re-vetted: it re-runs content_gen against the stored dossier and
+    # patches the catalogue row. An empty `marketSize` is a correct result and stays empty.
+    "theProblem", "marketSize",
     "proofPoint", "whoPays", "effortTag", "timeToFirstRevenue",
 )
 
@@ -152,6 +157,8 @@ def catalog_payload(listing: Dict[str, Any]) -> Dict[str, Any]:
         "headline": to_plain_text(listing.get("headline"), collapse=True)[:140],
         "subhead": to_plain_text(listing.get("subhead"), collapse=True)[:280],
         "whatYouGet": plain_lines(listing.get("what_you_get"))[:5],
+        "theProblem": to_plain_text(listing.get("the_problem"), collapse=True),
+        "marketSize": to_plain_text(listing.get("market_size"), collapse=True),
         "proofPoint": to_plain_text(listing.get("proof_point"), collapse=True),
         "whoPays": to_plain_text(listing.get("who_pays"), collapse=True),
         "effortTag": (listing.get("effort_tag") or "").strip(),

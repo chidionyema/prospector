@@ -82,26 +82,13 @@ public sealed class MoneyRailStatusTests
     }
 
     [Fact]
-    public async Task UnrecognisedProvider_RefusesToStartAndRecordsNothing()
+    public async Task NonStripeProvider_RecordsNotApplicable()
     {
-        // This test used to assert Mode == "not-applicable" for a non-Stripe provider, and it
-        // failed on every build: the gate throws for any provider missing from RequiredKeys, so
-        // that state was unreachable. The throw is the correct behaviour and stays. A provider
-        // with no declared required keys cannot be checked, so the app refuses to start rather
-        // than boot a rail nothing verified.
-        var status = new MoneyRailStatus();
-        var gate = new MoneyRailConfigGate(
-            Config("paddle", null),
-            new FakeEnvironment("Development"),
-            NullLogger<MoneyRailConfigGate>.Instance,
-            status);
+        var status = await RunGateAsync("paddle", null, "Development");
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => gate.StartAsync(CancellationToken.None));
-
-        Assert.Contains("not a recognised provider", ex.Message, StringComparison.Ordinal);
-        Assert.Equal("unknown", status.Mode);
-        Assert.Null(status.DecidedAtUtc);
+        Assert.Equal("paddle", status.Provider);
+        Assert.Equal("not-applicable", status.Mode);
+        Assert.NotNull(status.DecidedAtUtc);
     }
 
     [Fact]

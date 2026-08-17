@@ -83,11 +83,15 @@ export const COMMON_CHECKS: readonly Check[] = [
   {
     id: 'incumbency',
     aliases: [],
-    name: 'Room past the incumbents',
+    // "Incumbent" is banned in reader-facing copy (founder, 2026-08-16). It is the word a
+    // consultant uses for "the companies already selling this", and the reader has to translate
+    // it before they can judge the check. These four strings are what the site prints for this
+    // gate, so they are where the ban has to hold.
+    name: 'Room past the competition',
     question: 'Have the big players already won?',
-    refutation: 'Whether incumbents already own the space',
-    prose: 'room past the incumbents',
-    verdict: 'Incumbents already own the space',
+    refutation: 'Whether the space is already taken',
+    prose: 'room past the competition',
+    verdict: 'The space is already taken',
   },
   {
     id: 'payer_solvency',

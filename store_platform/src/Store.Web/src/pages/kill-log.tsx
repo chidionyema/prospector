@@ -222,7 +222,13 @@ export default function KillLogPage({
           the CLAIM IT CORRECTS -- the implied 1,364-row page -- and it still does, by a whole
           screen, since the table is far below. */}
       <SectionBand bg="white" width="6xl" className="pt-14 pb-8 md:pt-20 md:pb-10">
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,46rem)_minmax(0,1fr)] lg:items-start lg:gap-16">
+        {/* THE RIGHT COLUMN WAS TOO NARROW TO READ. At `max-w-6xl` with `lg:px-10` the content box
+            is 1072px; a 46rem left column and a 4rem gap left the caveat 272px, so a 40-word
+            paragraph became a tall strip jammed against the container's right edge (founder,
+            2026-08-16: "content is squashed against container esp on the right"). Narrowing the
+            left column to 40rem and closing the gap to 3rem gives the caveat 384px, which is about
+            38 characters a line instead of 27. */}
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,40rem)_minmax(0,1fr)] lg:items-start lg:gap-12">
         <div className="max-w-3xl">
           <p className="text-caption font-medium text-subtle">The kill log</p>
           {/* THE HERO: ONE COUNT. It read "1,364 killed. 80 survived.", and the second half was
