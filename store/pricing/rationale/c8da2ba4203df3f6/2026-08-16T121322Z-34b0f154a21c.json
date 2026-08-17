@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "pack_id": "c8da2ba4203df3f6",
+  "created_at": "2026-08-16T12:13:22Z",
+  "actor": "price-engine",
+  "source": "prospector/bridge.py",
+  "reason": null,
+  "decision": {
+    "price_pence": 2999,
+    "rung": "depth band 2 of 5 (25–29 sources)",
+    "segment": {
+      "ambition_tier": "venture",
+      "market": "uk",
+      "priced_by": "source_count",
+      "source_count": "25"
+    },
+    "rationale": "Priced by cited depth: this pack cites 25 distinct sources, which falls in band 2 of 5 (25–29 sources), so it lists at 2999p. Band edges are [25, 30, 35, 45] sources (config listing.pricing.source_count_bands). Every pack citing more sources costs the same or more; tier 'venture' and market 'uk' are recorded but do not move the price, because a buyer cannot see either one.",
+    "evidence": null
+  },
+  "ladder": {
+    "rungs": [
+      1999,
+      2999,
+      4999,
+      7999,
+      9999
+    ],
+    "default_rung_index": 2,
+    "tier_rung_index": {
+      "side_hustle": 1,
+      "smb": 2,
+      "growth": 3,
+      "venture": 4
+    },
+    "market_rung_offset": {
+      "uk": 0,
+      "us": 1
+    },
+    "flat_price_pence": 4999,
+    "comparables": {
+      "enabled": true,
+      "rung_adjust_enabled": false
+    },
+    "version": "L1-ladder-2026-08-09-charm",
+    "fingerprint": "sha256:376c16340bc6c964"
+  },
+  "content_digest": "sha256:34b0f154a21c365a99c7f68047beffd4cac6b98d6dab3e49ef94c60f941c93e5"
+}

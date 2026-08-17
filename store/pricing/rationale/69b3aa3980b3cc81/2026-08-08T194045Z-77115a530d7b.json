@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "pack_id": "69b3aa3980b3cc81",
+  "created_at": "2026-08-08T19:40:45Z",
+  "actor": "price-engine",
+  "source": "prospector/bridge.py",
+  "reason": null,
+  "decision": {
+    "price_pence": 4900,
+    "rung": "default (unclassified) at rung index 2",
+    "segment": {
+      "ambition_tier": "",
+      "market": "uk"
+    },
+    "rationale": "Unclassified pack (ambition_tier='', market='uk') held at the default rung of 4900p because the tier is empty or not declared on the ladder; market is not evidence for an unclassified pack, so it is ignored.",
+    "evidence": null
+  },
+  "ladder": {
+    "rungs": [
+      1900,
+      2900,
+      4900,
+      7900,
+      9900,
+      14900,
+      19900
+    ],
+    "default_rung_index": 2,
+    "tier_rung_index": {
+      "side_hustle": 1,
+      "smb": 2,
+      "growth": 3,
+      "venture": 5
+    },
+    "market_rung_offset": {
+      "uk": 0,
+      "us": 1
+    },
+    "flat_price_pence": 4900,
+    "comparables": {
+      "enabled": true,
+      "rung_adjust_enabled": false
+    },
+    "version": "L1-ladder-2026-08-05",
+    "fingerprint": "sha256:9a609ef2e6772b02"
+  },
+  "content_digest": "sha256:77115a530d7be7a19ace400ed868d3a612e8c6ed0087821d23cdd43d228d504b"
+}

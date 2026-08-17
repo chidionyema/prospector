@@ -1,0 +1,614 @@
+{
+  "generated_at": "2026-08-17T11:11:44+00:00",
+  "project": "-Users-chidionyema-Documents-code-prospector",
+  "headline": {
+    "stop_rate_per_100": 1.7,
+    "target_30d": 1.2,
+    "target_60d": 0.8,
+    "verdict": "above target",
+    "complaints": 373,
+    "messages": 1690,
+    "untracked_themes": 3,
+    "unenforced_themes": 12,
+    "inert_mechanisms": 8,
+    "orphaned_mechanisms": 0,
+    "output_tokens_per_call": 2274.6
+  },
+  "stops": {
+    "events": 705,
+    "calls": 41459,
+    "by_month": [
+      {
+        "month": "2026-07",
+        "stops": 25,
+        "calls": 3947,
+        "rate": 0.63
+      },
+      {
+        "month": "2026-08",
+        "stops": 680,
+        "calls": 37512,
+        "rate": 1.81
+      }
+    ],
+    "top_signatures": [
+      {
+        "signature": "Agent",
+        "count": 54,
+        "share": 7.7
+      },
+      {
+        "signature": "Bash:python -m pytest",
+        "count": 42,
+        "share": 6.0
+      },
+      {
+        "signature": "AskUserQuestion",
+        "count": 34,
+        "share": 4.8
+      },
+      {
+        "signature": "Bash:for i",
+        "count": 30,
+        "share": 4.3
+      },
+      {
+        "signature": "Bash:git add",
+        "count": 20,
+        "share": 2.8
+      },
+      {
+        "signature": "Bash:python <<'PY'",
+        "count": 19,
+        "share": 2.7
+      },
+      {
+        "signature": "Bash:exit 1",
+        "count": 17,
+        "share": 2.4
+      },
+      {
+        "signature": "Bash:python3 <<'PY'",
+        "count": 14,
+        "share": 2.0
+      },
+      {
+        "signature": "Edit:.py",
+        "count": 14,
+        "share": 2.0
+      },
+      {
+        "signature": "Bash:python3 \"",
+        "count": 10,
+        "share": 1.4
+      },
+      {
+        "signature": "Bash:git commit",
+        "count": 8,
+        "share": 1.1
+      },
+      {
+        "signature": "Edit:.md",
+        "count": 8,
+        "share": 1.1
+      },
+      {
+        "signature": "Bash:for f",
+        "count": 8,
+        "share": 1.1
+      },
+      {
+        "signature": "mcp__claude-in-chrome__browser_batch",
+        "count": 8,
+        "share": 1.1
+      },
+      {
+        "signature": "mcp__claude-in-chrome__javascript_tool",
+        "count": 8,
+        "share": 1.1
+      }
+    ]
+  },
+  "efficiency": {
+    "unit": "output tokens per tool call",
+    "note": "Output tokens only. Input and cache_read describe the whole resident context each turn, so summing them across records counts the same context once per turn and inflates the total several times over.",
+    "by_month": [
+      {
+        "month": "2026-07",
+        "output_tokens": 6655903,
+        "tool_calls": 3947,
+        "per_call": 1686.3
+      },
+      {
+        "month": "2026-08",
+        "output_tokens": 85324513,
+        "tool_calls": 37512,
+        "per_call": 2274.6
+      }
+    ]
+  },
+  "predictions": [
+    {
+      "id": "P1-rule-guard",
+      "made_on": "2026-08-17",
+      "claim": "Turning the five written rules into PreToolUse refusals cuts how often the founder has to stop a tool call.",
+      "metric": "stop_rate_per_100",
+      "baseline": 1.7,
+      "target": 1.2,
+      "due": "2026-09-16",
+      "depends_on": "rule-guard.py wired into settings.json and Claude Code relaunched",
+      "if_wrong": "Delete the rules. A guard that does not move the rate is ceremony.",
+      "actual": 1.7004751682385006,
+      "verdict": "pending",
+      "moved": 0.0
+    },
+    {
+      "id": "P2-surgical",
+      "made_on": "2026-08-17",
+      "claim": "Batching one round trip per intent and stopping at the deliverable cuts output tokens per tool call back below the July level.",
+      "metric": "output_tokens_per_call",
+      "baseline": 2274.8,
+      "target": 1686.3,
+      "due": "2026-09-16",
+      "depends_on": "nothing \u2014 this is behaviour, not a mechanism",
+      "if_wrong": "The behaviour rules do not bind without a mechanism, and the honest answer is to build one or stop claiming it.",
+      "actual": 2274.6,
+      "verdict": "pending",
+      "moved": -0.2
+    },
+    {
+      "id": "P3-ci-wallclock",
+      "made_on": "2026-08-17",
+      "claim": "The CI long pole is the nextjs job at 1025s, not the python suite. Fixing the runner permission error and trimming the nextjs job takes a full run under 600s.",
+      "metric": "ci_slowest_job_seconds",
+      "baseline": 1025,
+      "target": 600,
+      "due": "2026-09-16",
+      "depends_on": "actions/setup-python failing with 'mkdir: /Users/runner: Permission denied' on the self-hosted mac runner",
+      "if_wrong": "The bottleneck was somewhere else and the measurement was read wrong.",
+      "actual": null,
+      "verdict": "unmeasured"
+    }
+  ],
+  "themes": [
+    {
+      "theme": "(unclustered)",
+      "count": 89,
+      "months": 2,
+      "by_month": {
+        "2026-07": 2,
+        "2026-08": 87
+      },
+      "check": null,
+      "enforced_by": null,
+      "enforced_live": false,
+      "tracked": false,
+      "samples": [
+        {
+          "month": "2026-08",
+          "text": "your solution to pricing is crapi dont thik we should have iventory over 99.99"
+        },
+        {
+          "month": "2026-08",
+          "text": "still only seeing 45 packs listed , are we geeratinvg?"
+        },
+        {
+          "month": "2026-08",
+          "text": "still seeing 45 packs on website"
+        }
+      ]
+    },
+    {
+      "theme": "efficiency / cost / speed",
+      "count": 78,
+      "months": 1,
+      "by_month": {
+        "2026-08": 78
+      },
+      "check": "python3 ~/.claude/scripts/token-audit.py -Users-chidionyema",
+      "enforced_by": "tool-drip-guard.py, context-guard-hook.py",
+      "enforced_live": true,
+      "tracked": true,
+      "samples": [
+        {
+          "month": "2026-08",
+          "text": "we have spend days on end on hernes agent , ny expectaions when i started if an intelligent self inproving agent who understands ny estate annd works autononously 24/7 to keep eveything runing proprly with strong enginne"
+        },
+        {
+          "month": "2026-08",
+          "text": "(raw API: HTTP 400, *\"Your credit balance is too low to access the Anthropic API\"*), and it disables claude.ai connectors. It survives ONLY in the Nothing to unset or edit. footer email/legal/disclaimer/CTA row. does not"
+        },
+        {
+          "month": "2026-08",
+          "text": "also wiritng tests on a ui that is active changing is a waste of resouce and tine, we need to ship"
+        }
+      ]
+    },
+    {
+      "theme": "proof / unverified claims",
+      "count": 77,
+      "months": 2,
+      "by_month": {
+        "2026-07": 4,
+        "2026-08": 73
+      },
+      "check": "python3 ~/.claude/scripts/reflect.py --complaints",
+      "enforced_by": "stop-hook: every number in a reply must appear in a tool result",
+      "enforced_live": false,
+      "tracked": true,
+      "samples": [
+        {
+          "month": "2026-08",
+          "text": "no need to verify and waste resources, already veridied"
+        },
+        {
+          "month": "2026-08",
+          "text": "RSI runs weekly against the replay benchmark, POPDD receipt + rollback needs to be nore frequent initially and fully configurable fron telegran also, wwe need full nanagnent of rsi fron telegran ui"
+        },
+        {
+          "month": "2026-08",
+          "text": "(raw API: HTTP 400, *\"Your credit balance is too low to access the Anthropic API\"*), and it disables claude.ai connectors. It survives ONLY in the Nothing to unset or edit. footer email/legal/disclaimer/CTA row. does not"
+        }
+      ]
+    },
+    {
+      "theme": "sloppiness / broken output",
+      "count": 75,
+      "months": 2,
+      "by_month": {
+        "2026-07": 3,
+        "2026-08": 72
+      },
+      "check": ".venv/bin/python scripts/popdd_verify.py --staged",
+      "enforced_by": "POPDD gate (CI only \u2014 the local hook is not installed)",
+      "enforced_live": false,
+      "tracked": true,
+      "samples": [
+        {
+          "month": "2026-08",
+          "text": "ur desigh is just stupid"
+        },
+        {
+          "month": "2026-08",
+          "text": "no-stock-photography rule t who nade this rulee? you are stupid"
+        },
+        {
+          "month": "2026-08",
+          "text": "this eed ultra serious and careful work as it literally spans the stack I read the homepage, /how-it-works, /sample, and /about in full. Nobody is behind this. \u201c63 packs\u201d in the hero. \u201cShowing 13 of 52\u201d in the catalogue."
+        }
+      ]
+    },
+    {
+      "theme": "rushing / scope / firefighting",
+      "count": 67,
+      "months": 2,
+      "by_month": {
+        "2026-07": 4,
+        "2026-08": 63
+      },
+      "check": "python3 ~/.claude/scripts/rule-guard.py --selftest",
+      "enforced_by": "rule-guard.py rule_pr_size",
+      "enforced_live": false,
+      "tracked": true,
+      "samples": [
+        {
+          "month": "2026-08",
+          "text": "why is this so huge? you are lacking connon sene and have spend 24 hours on redesign and still looks crap, lets get a professioal designer in"
+        },
+        {
+          "month": "2026-08",
+          "text": "a;so i dont think the narketing title work is live , still seeeing inconsistent titles"
+        },
+        {
+          "month": "2026-08",
+          "text": "klook stop ranblig and actually get things done and concluded and finished and shipped"
+        }
+      ]
+    },
+    {
+      "theme": "process / no follow-up",
+      "count": 60,
+      "months": 2,
+      "by_month": {
+        "2026-07": 3,
+        "2026-08": 57
+      },
+      "check": "python3 ~/.claude/scripts/reflect.py --trend",
+      "enforced_by": null,
+      "enforced_live": false,
+      "tracked": true,
+      "samples": [
+        {
+          "month": "2026-08",
+          "text": "TASK: **Read it in full first.** Every numbered item, every file, every acceptance clause is the contract. Do not paraphrase. **Do NOT modify it.** It is protected; restoring byte-for-byte at verify time. **Change 2: Ref"
+        },
+        {
+          "month": "2026-08",
+          "text": "i nneed a teann of staff enginners and world class nachine learning experts do do bleeding edge reseach and ultra zealouslyy focus son every aspect inn depth of the engine, we need a series of stories that nake this defi"
+        },
+        {
+          "month": "2026-08",
+          "text": "he shared index already holds another session's 11 staged files, and a pathspec commit would take their in-progress MiniMax hunks from the working tree. agent appear stuck nid work"
+        }
+      ]
+    },
+    {
+      "theme": "repeating the same mistake",
+      "count": 51,
+      "months": 2,
+      "by_month": {
+        "2026-07": 2,
+        "2026-08": 49
+      },
+      "check": "python3 ~/.claude/scripts/rule-guard.py --selftest",
+      "enforced_by": "rule-guard.py PreToolUse (5 rules)",
+      "enforced_live": false,
+      "tracked": true,
+      "samples": [
+        {
+          "month": "2026-08",
+          "text": "Cut the repeat searches. 35% of all searches are second attempts after the first results scored below the relevance floor."
+        },
+        {
+          "month": "2026-08",
+          "text": "RSI runs weekly against the replay benchmark, POPDD receipt + rollback needs to be nore frequent initially and fully configurable fron telegran also, wwe need full nanagnent of rsi fron telegran ui"
+        },
+        {
+          "month": "2026-08",
+          "text": "(raw API: HTTP 400, *\"Your credit balance is too low to access the Anthropic API\"*), and it disables claude.ai connectors. It survives ONLY in the Nothing to unset or edit. footer email/legal/disclaimer/CTA row. does not"
+        }
+      ]
+    },
+    {
+      "theme": "cannot tell what you are doing",
+      "count": 42,
+      "months": 1,
+      "by_month": {
+        "2026-08": 42
+      },
+      "check": "curl -s localhost:8611/api/ops/read/method",
+      "enforced_by": "Ops Console /method page",
+      "enforced_live": false,
+      "tracked": true,
+      "samples": [
+        {
+          "month": "2026-08",
+          "text": "why is the bar black and wtf u writing tests for colours"
+        },
+        {
+          "month": "2026-08",
+          "text": "wtf are you o about? lots of issues were raised"
+        },
+        {
+          "month": "2026-08",
+          "text": "klook stop ranblig and actually get things done and concluded and finished and shipped"
+        }
+      ]
+    },
+    {
+      "theme": "items raised then dropped",
+      "count": 41,
+      "months": 2,
+      "by_month": {
+        "2026-07": 2,
+        "2026-08": 39
+      },
+      "check": "python3 ~/.claude/scripts/reflect.py --json",
+      "enforced_by": "this register \u2014 an item with no check is printed as untracked",
+      "enforced_live": false,
+      "tracked": true,
+      "samples": [
+        {
+          "month": "2026-08",
+          "text": "Kill the dead badge. \u201c8 documents\u201d on every single card is zero-information ink. Your best asset is buried. That\u2019s the brand. 1,285 dead ideas is your visual, and it costs nothing to photograph. What you want instead: Su"
+        },
+        {
+          "month": "2026-08",
+          "text": "(raw API: HTTP 400, *\"Your credit balance is too low to access the Anthropic API\"*), and it disables claude.ai connectors. It survives ONLY in the Nothing to unset or edit. footer email/legal/disclaimer/CTA row. does not"
+        },
+        {
+          "month": "2026-08",
+          "text": "i dont koww what ur o abou, u need to take responsibilty ad eure work outstanding is safely and carefully nerged"
+        }
+      ]
+    },
+    {
+      "theme": "tracking / duplication / other agents",
+      "count": 32,
+      "months": 2,
+      "by_month": {
+        "2026-07": 2,
+        "2026-08": 30
+      },
+      "check": "python3 ~/.claude/scripts/reflect.py --json",
+      "enforced_by": null,
+      "enforced_live": false,
+      "tracked": true,
+      "samples": [
+        {
+          "month": "2026-08",
+          "text": "4 shell commands Called claude-in-chrome Read 1 file, ran 3 shell commands So the origin is correct. Ran 3 shell commands 1. 2. 3. 4. 5. \u23fa User declined to answer questions \u00b7 Where did you check, and what did it look lik"
+        },
+        {
+          "month": "2026-08",
+          "text": "he shared index already holds another session's 11 staged files, and a pathspec commit would take their in-progress MiniMax hunks from the working tree. agent appear stuck nid work"
+        },
+        {
+          "month": "2026-08",
+          "text": "we have spend days on end on hernes agent , ny expectaions when i started if an intelligent self inproving agent who understands ny estate annd works autononously 24/7 to keep eveything runing proprly with strong enginne"
+        }
+      ]
+    },
+    {
+      "theme": "is it actually shipped",
+      "count": 27,
+      "months": 1,
+      "by_month": {
+        "2026-08": 27
+      },
+      "check": "python3 scripts/ops_status.py",
+      "enforced_by": "Ops Console /method page",
+      "enforced_live": false,
+      "tracked": true,
+      "samples": [
+        {
+          "month": "2026-08",
+          "text": "founder first name Chidi, we eed to ship already"
+        },
+        {
+          "month": "2026-08",
+          "text": "also still seeing round prices on live, why?"
+        },
+        {
+          "month": "2026-08",
+          "text": "klook stop ranblig and actually get things done and concluded and finished and shipped"
+        }
+      ]
+    },
+    {
+      "theme": "communication / format",
+      "count": 26,
+      "months": 2,
+      "by_month": {
+        "2026-07": 1,
+        "2026-08": 25
+      },
+      "check": null,
+      "enforced_by": null,
+      "enforced_live": false,
+      "tracked": false,
+      "samples": [
+        {
+          "month": "2026-08",
+          "text": "4 shell commands Called claude-in-chrome Read 1 file, ran 3 shell commands So the origin is correct. Ran 3 shell commands 1. 2. 3. 4. 5. \u23fa User declined to answer questions \u00b7 Where did you check, and what did it look lik"
+        },
+        {
+          "month": "2026-08",
+          "text": "we have spend days on end on hernes agent , ny expectaions when i started if an intelligent self inproving agent who understands ny estate annd works autononously 24/7 to keep eveything runing proprly with strong enginne"
+        },
+        {
+          "month": "2026-08",
+          "text": "(raw API: HTTP 400, *\"Your credit balance is too low to access the Anthropic API\"*), and it disables claude.ai connectors. It survives ONLY in the Nothing to unset or edit. footer email/legal/disclaimer/CTA row. does not"
+        }
+      ]
+    },
+    {
+      "theme": "not following instruction",
+      "count": 22,
+      "months": 1,
+      "by_month": {
+        "2026-08": 22
+      },
+      "check": null,
+      "enforced_by": null,
+      "enforced_live": false,
+      "tracked": false,
+      "samples": [
+        {
+          "month": "2026-08",
+          "text": "TASK: **Read it in full first.** Every numbered item, every file, every acceptance clause is the contract. Do not paraphrase. **Do NOT modify it.** It is protected; restoring byte-for-byte at verify time. **Change 2: Ref"
+        },
+        {
+          "month": "2026-08",
+          "text": "we have not old any unit ad i asked for cost of geeration why do u need stripe?"
+        },
+        {
+          "month": "2026-08",
+          "text": "dont get distracted , address it afterward this si a hernes ageent probel"
+        }
+      ]
+    }
+  ],
+  "mechanisms": [
+    {
+      "name": "batching-compliance.py",
+      "live": false,
+      "documented": true,
+      "orphaned": false
+    },
+    {
+      "name": "cc-token-report.py",
+      "live": false,
+      "documented": true,
+      "orphaned": false
+    },
+    {
+      "name": "cli-cache-experiment.py",
+      "live": false,
+      "documented": true,
+      "orphaned": false
+    },
+    {
+      "name": "context-guard-hook.py",
+      "live": true,
+      "documented": true,
+      "orphaned": false
+    },
+    {
+      "name": "cost-baseline.py",
+      "live": false,
+      "documented": true,
+      "orphaned": false
+    },
+    {
+      "name": "estate-cost.py",
+      "live": false,
+      "documented": true,
+      "orphaned": false
+    },
+    {
+      "name": "estate_cost_sentinel.py",
+      "live": true,
+      "documented": false,
+      "orphaned": false
+    },
+    {
+      "name": "estate_spend.py",
+      "live": false,
+      "documented": true,
+      "orphaned": false
+    },
+    {
+      "name": "hang-guard.py",
+      "live": true,
+      "documented": true,
+      "orphaned": false
+    },
+    {
+      "name": "memory-loop.py",
+      "live": true,
+      "documented": true,
+      "orphaned": false
+    },
+    {
+      "name": "reflect.py",
+      "live": true,
+      "documented": true,
+      "orphaned": false
+    },
+    {
+      "name": "rule-guard.py",
+      "live": false,
+      "documented": true,
+      "orphaned": false
+    },
+    {
+      "name": "statusline-context.py",
+      "live": true,
+      "documented": false,
+      "orphaned": false
+    },
+    {
+      "name": "token-audit.py",
+      "live": false,
+      "documented": true,
+      "orphaned": false
+    },
+    {
+      "name": "tool-drip-guard.py",
+      "live": true,
+      "documented": false,
+      "orphaned": false
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "pack_id": "cee21a292219c61a",
+  "created_at": "2026-08-09T01:02:06Z",
+  "actor": "price-engine",
+  "source": "prospector/bridge.py",
+  "reason": null,
+  "decision": {
+    "price_pence": 2900,
+    "rung": "side_hustle at rung index 1 (base 1, offset 0)",
+    "segment": {
+      "ambition_tier": "side_hustle",
+      "market": "uk"
+    },
+    "rationale": "Tier 'side_hustle' sets the base rung at index 1 (2900p); market 'uk' adds an offset of 0 rung(s), landing at index 1 (2900p).",
+    "evidence": null
+  },
+  "ladder": {
+    "rungs": [
+      1900,
+      2900,
+      4900,
+      7900,
+      9900,
+      14900,
+      19900
+    ],
+    "default_rung_index": 2,
+    "tier_rung_index": {
+      "side_hustle": 1,
+      "smb": 2,
+      "growth": 3,
+      "venture": 5
+    },
+    "market_rung_offset": {
+      "uk": 0,
+      "us": 1
+    },
+    "flat_price_pence": 4900,
+    "comparables": {
+      "enabled": true,
+      "rung_adjust_enabled": false
+    },
+    "version": "L1-ladder-2026-08-05",
+    "fingerprint": "sha256:9a609ef2e6772b02"
+  },
+  "content_digest": "sha256:da4aaeab6acea5abafe5d9a24877de9a22ac5d7da5dca8a62eb6e338d6a114c8"
+}

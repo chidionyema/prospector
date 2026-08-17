@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "pack_id": "d4ef1efc5328d8cf",
+  "created_at": "2026-08-13T22:19:38Z",
+  "actor": "price-engine",
+  "source": "prospector/bridge.py",
+  "reason": null,
+  "decision": {
+    "price_pence": 7999,
+    "rung": "smb at rung index 3 (base 2, offset 1)",
+    "segment": {
+      "ambition_tier": "smb",
+      "market": "us"
+    },
+    "rationale": "Tier 'smb' sets the base rung at index 2 (4999p); market 'us' adds an offset of 1 rung(s), landing at index 3 (7999p).",
+    "evidence": null
+  },
+  "ladder": {
+    "rungs": [
+      1999,
+      2999,
+      4999,
+      7999,
+      9999,
+      14999,
+      19999
+    ],
+    "default_rung_index": 2,
+    "tier_rung_index": {
+      "side_hustle": 1,
+      "smb": 2,
+      "growth": 3,
+      "venture": 5
+    },
+    "market_rung_offset": {
+      "uk": 0,
+      "us": 1
+    },
+    "flat_price_pence": 4999,
+    "comparables": {
+      "enabled": true,
+      "rung_adjust_enabled": false
+    },
+    "version": "L1-ladder-2026-08-09-charm",
+    "fingerprint": "sha256:8201472f60792e8d"
+  },
+  "content_digest": "sha256:8941721473bd8d7f8d5218c716b8f47e4fae87c2c4bc18b2aff039107da75bb2"
+}

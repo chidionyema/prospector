@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "pack_id": "a884727a1b90447c",
+  "created_at": "2026-08-15T09:36:46Z",
+  "actor": "claude:C1-ladder-backfill",
+  "source": "scripts/backfill_ladder_prices.py",
+  "reason": "L1-ladder-2026-08-09-charm: segment venture/uk -> venture at rung index 4 (base 4, offset 0). Tier 'venture' sets the base rung at index 4 (9999p); market 'uk' adds an offset of 0 rung(s), landing at index 4 (9999p).",
+  "decision": {
+    "price_pence": 9999,
+    "rung": "venture at rung index 4 (base 4, offset 0)",
+    "segment": {
+      "ambition_tier": "venture",
+      "market": "uk"
+    },
+    "rationale": "Tier 'venture' sets the base rung at index 4 (9999p); market 'uk' adds an offset of 0 rung(s), landing at index 4 (9999p).",
+    "evidence": null
+  },
+  "ladder": {
+    "rungs": [
+      1999,
+      2999,
+      4999,
+      7999,
+      9999
+    ],
+    "default_rung_index": 2,
+    "tier_rung_index": {
+      "side_hustle": 1,
+      "smb": 2,
+      "growth": 3,
+      "venture": 4
+    },
+    "market_rung_offset": {
+      "uk": 0,
+      "us": 1
+    },
+    "flat_price_pence": 4999,
+    "comparables": {
+      "enabled": true,
+      "rung_adjust_enabled": false
+    },
+    "version": "L1-ladder-2026-08-09-charm",
+    "fingerprint": "sha256:376c16340bc6c964"
+  },
+  "content_digest": "sha256:aec62b535ef6fe2544ddb2d7c0db170b06afe20ee62df09c4ce35227fbee77b3"
+}
