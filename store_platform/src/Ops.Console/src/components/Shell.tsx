@@ -4,30 +4,27 @@
  * Mobile first, and specifically Telegram-first: the founder opens this from a link inside
  * Telegram, which is a WKWebView with its own toolbar overlaying the bottom of the viewport. So
  * navigation lives at the TOP, not in a bottom bar — a bottom bar is exactly the strip that
- * webview hides. The nav is a horizontally scrolling strip of tabs; it is the one element
- * allowed to scroll sideways, inside itself.
+ * webview hides.
  *
- * There is no hamburger. A menu behind a tap is a menu that costs a tap on every navigation, and
- * this console has nine destinations, not ninety.
+ * The nav is two short rows, not one long strip. It used to be a single horizontally scrolling
+ * list of every destination; at thirteen screens the last four were off-screen at 390px width, so
+ * reaching Audit meant swiping a strip that gave no sign there was anything to swipe to. Now the
+ * first row is six groups that fit without scrolling, and the second row is the screens inside the
+ * group you are in. Both rows wrap. Nothing here scrolls sideways.
+ *
+ * Still no hamburger. Every destination is at most two taps and the current one is always visible,
+ * which a menu behind a tap cannot do.
  */
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import type { ReactNode } from 'react';
 
-const TABS: { href: string; label: string }[] = [
-  { href: '/', label: 'Now' },
-  { href: '/engine', label: 'Engine' },
-  { href: '/config', label: 'Settings' },
-  { href: '/queue', label: 'Queue' },
-  { href: '/runs', label: 'Runs' },
-  { href: '/spend', label: 'Spend' },
-  { href: '/metrics', label: 'Yield' },
-  { href: '/catalogue', label: 'Shelf' },
-  { href: '/shelf', label: 'Stranded' },
-  { href: '/tools', label: 'Tools' },
-  { href: '/audit', label: 'Audit' },
-  { href: '/method', label: 'Method' },
-];
+import { GROUPS, activeScreen } from '@/lib/nav';
+
+const TAB_BASE =
+  'tap inline-flex items-center rounded-sm border px-3 text-[13px] font-[520] transition-colors';
+const TAB_ON = 'border-action bg-action text-on-action';
+const TAB_OFF = 'border-border bg-surface text-muted hover:bg-surface3';
 
 export default function Shell({
   title,
@@ -39,40 +36,70 @@ export default function Shell({
   intro?: ReactNode;
 }) {
   const router = useRouter();
-  const path = router.pathname;
+  const here = activeScreen(router.pathname);
+  const openGroup = here?.group ?? GROUPS[0];
+  const showScreens = openGroup.screens.length > 1;
 
   return (
     <div className="min-h-dvh bg-bg">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-20 focus:rounded-sm focus:border focus:border-action focus:bg-surface focus:px-3 focus:py-2 focus:text-[13px]"
+      >
+        skip to content
+      </a>
+
       <header className="sticky top-0 z-10 border-b border-border bg-bg/95 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-baseline justify-between gap-3 px-4 pb-2 pt-3">
           <span className="font-mono text-[13px] font-[520] tracking-tight">prospector ops</span>
           <SignOut />
         </div>
-        <nav className="scroll-x mx-auto max-w-3xl px-4 pb-2" aria-label="Sections">
-          <ul className="flex gap-1 whitespace-nowrap">
-            {TABS.map((t) => {
-              const active = t.href === '/' ? path === '/' : path.startsWith(t.href);
+
+        <nav className="mx-auto max-w-3xl px-4 pb-2" aria-label="Sections">
+          <ul className="flex flex-wrap gap-1">
+            {GROUPS.map((g) => {
+              const on = g.label === openGroup.label;
               return (
-                <li key={t.href}>
+                <li key={g.label}>
                   <Link
-                    href={t.href}
-                    aria-current={active ? 'page' : undefined}
-                    className={`tap inline-flex items-center rounded-sm border px-3 text-[13px] font-[520] ${
-                      active
-                        ? 'border-action bg-action text-on-action'
-                        : 'border-border bg-surface text-muted hover:bg-surface3'
-                    }`}
+                    href={g.screens[0].href}
+                    aria-current={on ? 'true' : undefined}
+                    className={`${TAB_BASE} ${on ? TAB_ON : TAB_OFF}`}
                   >
-                    {t.label}
+                    {g.label}
                   </Link>
                 </li>
               );
             })}
           </ul>
+
+          {showScreens ? (
+            <ul className="mt-1 flex flex-wrap gap-1" aria-label={`${openGroup.label} screens`}>
+              {openGroup.screens.map((s) => {
+                const on = here?.screen.href === s.href;
+                return (
+                  <li key={s.href}>
+                    <Link
+                      href={s.href}
+                      title={s.what}
+                      aria-current={on ? 'page' : undefined}
+                      className={`tap inline-flex items-center rounded-sm px-2.5 text-[13px] ${
+                        on
+                          ? 'bg-surface3 font-[560] text-text'
+                          : 'text-subtle hover:bg-surface3 hover:text-text'
+                      }`}
+                    >
+                      {s.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
         </nav>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 pb-16 pt-4">
+      <main id="main" className="mx-auto max-w-3xl px-4 pb-16 pt-4">
         <h1 className="text-[20px] font-[560] leading-tight">{title}</h1>
         {intro ? <p className="mt-1 text-[13px] text-muted">{intro}</p> : null}
         <div className="mt-4 flex flex-col gap-4">{children}</div>

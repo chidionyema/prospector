@@ -369,6 +369,21 @@ def _read_spend(cfg, args: dict) -> dict:
     return spend_view(cfg)
 
 
+def _read_money(cfg, args: dict) -> dict:
+    """PAY-1 on a screen. The rail's own answer, fetched through the gateway's own caller so the
+    view module can be tested without a network."""
+    from .money import money_view
+
+    return money_view(cfg, _store_call)
+
+
+def _read_data(cfg, args: dict) -> dict:
+    """DAT-1, DAT-2, DAT-4 and AST-1 on a screen, each read from the control that owns it."""
+    from .data import data_view
+
+    return data_view(cfg)
+
+
 def _read_metrics(cfg, args: dict) -> dict:
     from .metrics import snapshot
 
@@ -903,6 +918,8 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
     "providers": _read_providers,
     "routing": _read_routing,
     "spend": _read_spend,
+    "money": _read_money,
+    "data": _read_data,
     "metrics": _read_metrics,
     "runs": _read_runs,
     "run": _read_run,
@@ -2127,6 +2144,10 @@ TOOLS: list[dict] = [
     _t("scripts/backfill_packs_parallel.sh", "Backfill P5 pack artefacts into listed packs", True,
        "/catalogue", cmd="bash scripts/backfill_packs_parallel.sh",
        danger="runs N backfill processes in parallel — check the slot count first"),
+    _t("scripts/live_checkout.py", "Which commit is production running?", False, "/tools"),
+    _t("scripts/live_checkout.py", "Roll production forward to origin/main", True, "/tools",
+       cmd=".venv/bin/python scripts/live_checkout.py --update", risk="external",
+       danger="restarts the scheduler and consumer daemons; a tick in flight is killed"),
 ]
 
 
@@ -2148,6 +2169,9 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     "scripts/graphify_query_hook.py": "a UserPromptSubmit hook; the harness fires it",
     "scripts/graphify_session_hook.py": "a SessionStart hook; the harness fires it",
     "scripts/handoff.py": "writes an agent session handoff; not an operator action",
+    # the console itself, and its predecessor
+    "scripts/run_ops_console.sh": "launches this console; a button that starts the page you are already on",
+    "tools/build_sample_fixture.py": "builds an offline retrieval fixture for the test suite, not a live action",
     # the legacy Streamlit console — superseded by this Next.js one
     "scripts/run_control_center.sh": "launches the older Streamlit console that this one replaces",
     "scripts/install_control_center_agent.sh": "installs that older console's launchd agent",
@@ -2161,12 +2185,9 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
                                "the /engine screen is the console-native answer",
     "tools/queue_yield_batch.sh": "chains a wait, a publish and a batch launch into one script; "
                                   "split it before it becomes a single button",
-    # arrived on main while this registry lived on a branch, so nothing could have caught them
-    # at the time. Classified here now.
+    # on disk but unclassified until now. `run_ops_console.sh` and `build_sample_fixture.py`
+    # are covered above; these two are the remainder.
     "scripts/ci_local.py": "replays a CI job's shell steps on this machine; a developer's loop",
-    "scripts/run_ops_console.sh": "launches this console itself — it cannot be one of its rows",
-    "tools/build_sample_fixture.py": "rebuilds the /sample fixture from a real pack; it is part "
-                                     "of the storefront build, run from a terminal",
     "tools/_audit_baseline_tmp.py": "a one-off inventory of failure-to-empty-answer sites, kept "
                                     "for its findings; the leading underscore says it is not a "
                                     "command",

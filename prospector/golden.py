@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .config import Config, load_config
+from .config import Config, load_config, store_root
 from .models import Candidate, Dossier
 from .operator import Operator, make_operator
 from .retrieval import SearchProvider, make_provider
@@ -392,8 +392,7 @@ def _audit_path(operator_name: str, timestamp: str,
     nothing is worse than no flag: it reads, in a test, as isolation that was
     never applied.
     """
-    root = Path(store_dir) if store_dir is not None else (
-        Path(__file__).resolve().parent.parent / "store")
+    root = Path(store_dir) if store_dir is not None else store_root()
     run_dir = root / "golden_runs"
     run_dir.mkdir(parents=True, exist_ok=True)
     return run_dir / f"{operator_name}_{timestamp}.json"

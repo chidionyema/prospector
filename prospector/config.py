@@ -11,6 +11,25 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
+
+def store_root() -> Path:
+    """The store directory, for module-level constants that have no Config in hand.
+
+    `PROSPECTOR_STORE_DIR` wins, exactly as `Config.store_dir` resolves it below. A
+    constant anchored to `__file__` instead resolves to the store inside whichever
+    checkout the code was loaded FROM, which ties the location of the state to the
+    location of the code.
+
+    That is not theoretical. On 2026-08-17 production moved off the shared developer
+    checkout onto a dedicated one pinned to origin/main, with PROSPECTOR_STORE_DIR set
+    so state would stay put. The provider health marks, the retrieval cache and the
+    scheduler audit trail moved with the code anyway, because each was a `__file__`
+    constant. Live state was split across two directories for 20 minutes: the ledger
+    in one, the dead-provider marks in the other.
+    """
+    override = os.environ.get("PROSPECTOR_STORE_DIR", "").strip()
+    return Path(override) if override else REPO_ROOT / "store"
+
 # Keys a market block may NEVER contain. A market configures the EVIDENCE TERRAIN
 # (where to look, in what language, under whose authority) and the FRAMING — never the
 # BAR. Only an ambition LANE moves the bar. Allowing a market to set these would make

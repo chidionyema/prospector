@@ -818,11 +818,24 @@ describe('Design contract — favicon (public/icon.svg)', () => {
     expect(box![1]).toBe(box![2]);
   });
 
-  it('is drawn in ink, not the old teal', () => {
-    // Was the #042F2E teal -- a colour that appears nowhere in the v3 palette, on the one mark
-    // that sits in a tab strip beside every other site the buyer has open.
-    expect(svg).toMatch(/fill="#171717"/);
-    expect(readStripped('../../public/icon.svg'), 'the old teal must be gone').not.toMatch(
+  it('is drawn in the brand mark colour, and that colour is the token', () => {
+    // REVERSED on 2026-08-16 (founder, viewing the live tab next to Gmail and Mail). This test
+    // used to require `fill="#171717"` -- ink -- on the argument that the favicon should match
+    // every other static icon in this directory. That argument was about internal consistency
+    // and it cost the actual goal: at 16px three near-black slabs on a white tab carry no hue,
+    // so both Mumchimp tabs read as grey smudges and could not be told apart from each other.
+    //
+    // The colour is READ FROM `tokens.css` rather than written here as a literal. An SVG file
+    // cannot reference a CSS custom property, so the hex has to be duplicated in `icon.svg`;
+    // asserting it against the token is what stops that duplicate becoming a second source of
+    // truth for the brand colour the day someone retunes `--brand-mark`.
+    const token = readSource('../styles/tokens.css').match(/--brand-mark:\s*(#[0-9a-f]{6})/i);
+    expect(token, 'tokens.css must declare --brand-mark').toBeTruthy();
+    expect(svg).toMatch(new RegExp(`fill="${token![1]}"`, 'i'));
+
+    // #042F2E is a THIRD teal, from v2, that appears nowhere in the v3 palette. Still banned:
+    // the point was never "no teal", it was "no colour that is not in the palette".
+    expect(readStripped('../../public/icon.svg'), 'the old v2 teal must be gone').not.toMatch(
       /#042F2E/i,
     );
   });
@@ -837,8 +850,13 @@ describe('Design contract — favicon (public/icon.svg)', () => {
     // white, and are now three solid slabs with no container at all (option D of six). The
     // property under test did not change with the shape -- a favicon that falls back to a letter,
     // or that loses a stratum, still fails here.
+    //
+    // Counted by SHAPE, not by colour, since 2026-08-16: this matched `fill="#171717"` and so
+    // failed when the mark was recoloured to the brand teal, reporting "the favicon lost its
+    // strata" about a change that moved no vertex. The colour has its own test above; a count
+    // that is really a colour assertion accuses the wrong thing.
     expect(svg, 'a favicon must not fall back to a letterform').not.toMatch(/<text[\s>]/);
-    const strata = svg.match(/<path[^>]*fill="#171717"[^>]*\/>/g) ?? [];
+    const strata = svg.match(/<path[^>]*\bd="[^"]+"[^>]*\/>/g) ?? [];
     expect(strata).toHaveLength(3);
   });
 
@@ -862,8 +880,14 @@ describe('Design contract — favicon (public/icon.svg)', () => {
     // strings (deliberately: the geometry is written out in both rather than derived twice), so
     // the strings can be compared directly, and any drift at all -- a moved vertex, a changed
     // taper, a dropped `Z` -- fails here instead of only the three numbers a parser looked at.
+    //
+    // GEOMETRY ONLY. The `svg` side matched `fill="#171717"` until 2026-08-16 and so broke on a
+    // recolour, which is the one difference between these two files that is EXPECTED: BrandMark
+    // takes its colour from `currentColor` and the favicon has to carry a literal hex because an
+    // SVG file cannot read a CSS custom property. This test is about the two marks being the
+    // same SHAPE; the colour is asserted against the token in its own test above.
     const logoStrata = [...logo.matchAll(/<path d="([^"]+)" fill="currentColor"/g)].map((m) => m[1]);
-    const svgStrata = [...svg.matchAll(/<path d="([^"]+)" fill="#171717"/g)].map((m) => m[1]);
+    const svgStrata = [...svg.matchAll(/<path d="([^"]+)" fill="#[0-9a-f]{6}"/gi)].map((m) => m[1]);
     expect(logoStrata.length, 'BrandMark slab paths must be readable').toBe(3);
     expect(svgStrata).toEqual(logoStrata);
   });
