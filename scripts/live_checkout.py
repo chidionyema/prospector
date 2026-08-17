@@ -33,15 +33,25 @@ JOBS = ("com.prospector.scheduler", "com.prospector.consumer")
 SECRETS = (".env", ".lux/keys/agent.pem")
 
 
-def run(cmd: list[str], cwd: Path | None = None) -> tuple[int, str]:
-    """Run a command with a clean git environment and return (rc, output)."""
+def run(cmd: list[str], cwd: Path | None = None, timeout: int = 30) -> tuple[int, str]:
+    """Run a command with a clean git environment and return (rc, output).
+
+    stdin is closed and the credential prompt disabled: a git subprocess that asks for a
+    password with no terminal attached hangs until the timeout, which is how the first
+    version of this probe took 180 seconds to print nothing.
+    """
     env = dict(os.environ)
     env.pop("GIT_DIR", None)
     env.pop("GIT_WORK_TREE", None)
-    proc = subprocess.run(
-        cmd, cwd=str(cwd) if cwd else None, env=env,
-        capture_output=True, text=True, timeout=180,
-    )
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    env["GIT_ASKPASS"] = "/usr/bin/true"
+    try:
+        proc = subprocess.run(
+            cmd, cwd=str(cwd) if cwd else None, env=env,
+            stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return 124, f"timed out after {timeout}s: {' '.join(cmd)}"
     return proc.returncode, (proc.stdout + proc.stderr).strip()
 
 
@@ -98,7 +108,10 @@ def report() -> int:
     if not LIVE.exists():
         print(f"  MISSING: {LIVE}")
         return 1
-    run(["git", "fetch", "--quiet", "origin", "main"], cwd=LIVE)
+    rc, out = run(["git", "fetch", "--quiet", "origin", "main"], cwd=LIVE, timeout=25)
+    if rc != 0:
+        print(f"  (could not reach origin: {out.splitlines()[0] if out else 'rc=%d' % rc})")
+        print("  comparing against the last fetched origin/main instead")
     _, head = run(["git", "rev-parse", "HEAD"], cwd=LIVE)
     _, main = run(["git", "rev-parse", "origin/main"], cwd=LIVE)
     _, subject = run(["git", "log", "-1", "--format=%h %ad %s", "--date=short"], cwd=LIVE)
