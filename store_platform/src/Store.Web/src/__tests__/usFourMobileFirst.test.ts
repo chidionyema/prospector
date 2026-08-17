@@ -32,17 +32,25 @@ describe('US-4 — Mobile-first pack detail', () => {
     ).toBe(true);
   });
 
-  it('renders the mobile purchase block above the methodology', () => {
-    // On mobile, the buy block (price + PackBuyButton) sits above the six
-    // checks, the scored axes, and the rest. The desktop purchase card is
-    // still in the right rail.
-    const buyBlockAboveChecks =
-      page.indexOf('mt-8 border border-border bg-surface p-6 lg:hidden') <
-      page.indexOf('How we tried to kill it');
-    expect(
-      buyBlockAboveChecks,
-      'pack/[id].tsx must render the mobile purchase block above the six checks section',
-    ).toBe(true);
+  it('keeps the price and the buy action reachable on mobile at any scroll position', () => {
+    // REWRITTEN 2026-08-17, and the old version is the reason. It read:
+    //
+    //   page.indexOf('mt-8 border border-border bg-surface p-6 lg:hidden')
+    //     < page.indexOf('How we tried to kill it')
+    //
+    // That class string never appeared in the page -- the live element carried `rounded-md` in
+    // the middle of it -- so `indexOf` returned -1 and the assertion passed as `-1 < 4213`. It
+    // was green for as long as it existed and it never once checked anything. A source scan for
+    // a literal class string is exactly the assertion that fails this way, which is why the
+    // replacement asserts on the STRUCTURE instead.
+    //
+    // MASTER-BRIEF §7 then deleted the block it was named after: "one sticky buy box, one
+    // closing bar", against a live page rendering the full price panel twice plus a bar. The
+    // inline `lg:hidden` copy is gone. What guarantees the audit's property now is the fixed
+    // bar, which keeps price and button within a thumb from ANY scroll position -- strictly
+    // more than a block that happened to sit above the methodology.
+    expect(page).toContain('fixed inset-x-0 bottom-0');
+    expect(page).not.toContain('lg:hidden">\n              {checkoutBody}');
   });
 
   it('collapses the six-check methodology behind a <details> disclosure', () => {
