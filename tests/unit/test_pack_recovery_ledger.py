@@ -53,6 +53,38 @@ class TestVerdict:
         assert recover.verdict(history, "copy", "shelf_copy")[0] == "run"
 
 
+class TestAnUnmeasuredAttemptIsNotAFailure:
+    """A re-gate that never finished proves nothing, and must not count as a failure.
+
+    The tool repairs a pack, then re-runs the gate so the lint record on disk describes the
+    REPAIR and not the state before it. When that re-gate is cut short the old lint record
+    survives, the signature is unchanged, and the attempt is indistinguishable from "the
+    repair did nothing". Measured 2026-08-17: 19 of the first 44 attempts in
+    store/ops/pack_recovery.jsonl carry `regate: "timed out"`, and
+    store/dossiers/7be1cb35e01902d7.pass.json had fully repaired copy written at 14:47 while
+    its .lint.json still read `checked_at: 2026-08-16T06:40:33`. Counting those towards
+    MAX_ATTEMPTS retires packs whose repair was never actually measured.
+    """
+
+    def test_the_regate_gets_a_bigger_budget_than_the_repair(self):
+        """The gate re-checks every citation URL, so it outlives the repair it checks."""
+        assert recover.REGATE_MIN_S >= 900
+
+    def test_unmeasured_attempts_never_accumulate_to_a_skip(self):
+        history = [_row(outcome="unmeasured") for _ in range(recover.MAX_ATTEMPTS + 3)]
+        assert recover.verdict(history, "copy", "shelf_copy")[0] == "run"
+
+    def test_unmeasured_does_not_help_real_failures_reach_the_cap(self):
+        history = [_row(outcome="unmeasured"), _row(outcome="blocked"),
+                   _row(outcome="unmeasured"), _row(outcome="blocked")]
+        assert recover.verdict(history, "copy", "shelf_copy")[0] == "run"
+
+    def test_real_failures_still_reach_the_cap_alongside_unmeasured_ones(self):
+        history = ([_row(outcome="unmeasured")]
+                   + [_row(outcome="blocked") for _ in range(recover.MAX_ATTEMPTS)])
+        assert recover.verdict(history, "copy", "shelf_copy")[0] == "skip"
+
+
 class TestSignature:
     def test_two_identical_lint_records_give_the_same_signature(self):
         lint = {"pack_complete": True, "problems": [

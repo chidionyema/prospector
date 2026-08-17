@@ -66,6 +66,13 @@ MAX_ATTEMPTS = 3
 #: Routes that spend money on model calls, so a report can price a run before it starts.
 MODEL_ROUTES = {"regenerate", "copy"}
 
+#: The floor on the RE-GATE's own budget, separate from the repair's `--timeout`.
+#: The gate re-checks every citation URL in the pack and measured over 120s on a single
+#: pack on 2026-08-17. A re-gate that does not finish leaves the STALE lint record on
+#: disk, so a repair that worked reads as "blocked" and the ledger learns a failure that
+#: never happened -- 19 of the first 44 attempts in this ledger were exactly that.
+REGATE_MIN_S = 900
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -264,12 +271,15 @@ def repair(cid: str, route: str, publish: bool, timeout: int) -> dict:
     # RE-GATE. A repair tool writes the dossier; only the gate writes the lint record, so
     # without this the ledger would grade every repair against a stale verdict and call a
     # successful rewrite "blocked". The gate is free: no model call, no money rail.
+    regate_timed_out = False
+    regate_budget = max(timeout, REGATE_MIN_S)
     if route not in ("audit", "publish"):
         try:
             subprocess.run([PY, "-m", "tools.publish_passes", "--dry-run", path],
                            cwd=str(REPO), capture_output=True, text=True,
-                           timeout=timeout, stdin=subprocess.DEVNULL, check=False)
+                           timeout=regate_budget, stdin=subprocess.DEVNULL, check=False)
         except subprocess.TimeoutExpired:
+            regate_timed_out = True
             row["regate"] = "timed out"
 
     after = _signature(_lint(cid))
@@ -278,6 +288,14 @@ def repair(cid: str, route: str, publish: bool, timeout: int) -> dict:
         row.update(outcome="published", why="listed")
     elif after == "clean":
         row.update(outcome="gate_clean", why="deterministic gate passes; needs --publish to list")
+    elif regate_timed_out and after == before:
+        # The verdict was never MEASURED: the repair may have worked and the lint record on
+        # disk predates it. Recording this as "blocked" is how a working repair gets counted
+        # towards MAX_ATTEMPTS and promoted to unrecoverable. `verdict()` counts only
+        # "blocked" and "failed", so "unmeasured" costs the pack nothing and it runs again.
+        row.update(outcome="unmeasured",
+                   why=f"re-gate did not finish in {regate_budget}s; the lint record on disk "
+                       f"is older than the repair, so this attempt proves nothing")
     elif after == before:
         # No movement at all. Count it, and let the ledger decide when to give up.
         prior = [r for r in read_ledger().get(cid, [])
