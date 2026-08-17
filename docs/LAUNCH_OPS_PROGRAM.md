@@ -322,10 +322,11 @@ goal 4; a screen with no control behind it fails goal 1.
 
 ### P0 — Stop being one bad day away from losing the business (this week)
 1. **DAT-1**: hourly copy of `/data/store.db` off Fly into R2, verified, alerting if the newest
-   copy is over 26h old. **NOT done — corrected 2026-08-16.** This line read "Done, PR #240". It is
-   built, but on a branch: `git ls-tree --name-only HEAD` has no `ops` entry and `gh pr list` shows
-   #240 still OPEN. A claim about a branch is not a claim about `main`. What follows describes the
-   branch. Shipped daily rather than hourly: the
+   copy is over 26h old. **DONE — measured 2026-08-17.** `git ls-tree --name-only origin/main` now
+   lists `ops`, and `origin/main:ops/config` carries `offsite_backup.yaml`; the newest line in
+   `store/offsite_backup.log` reads `OK data-protection-keys: 0.0h old`. (This line said "NOT done"
+   from 2026-08-16, when #240 was still an open branch. It merged. The correction is the measurement
+   above, not this sentence.) Shipped daily rather than hourly: the
    database changes on a purchase, and at 3 orders total an hourly copy buys nothing over a daily
    one and costs 24x the R2 calls. The window is declared in `ops/config/offsite_backup.yaml`
    (`max_age_hours: 24`), so raising the cadence is a YAML edit, not a code change. Alerting is the
@@ -334,6 +335,13 @@ goal 4; a screen with no control behind it fails goal 1.
 2. **SRC-1**: commit the branch in slices by explicit path (never `git add -A` — `store/` and
    `storage/` are tracked runtime state pytest writes to), merge `origin/main`, tag `launch-rc1`.
 3. **SRC-2**: turn on branch protection for `main` — required checks, no force push, signed commits.
+   **BLOCKED on a paid plan — measured 2026-08-17.** Both server-side routes refuse on a private repo
+   on the Free plan. `gh api -X PUT repos/chidionyema/prospector/branches/main/protection` and
+   `gh api -X POST repos/chidionyema/prospector/rulesets` (rules `deletion`, `non_fast_forward`,
+   `required_signatures`) each return HTTP 403 `Upgrade to GitHub Pro or make this repository public
+   to enable this feature.` This is a founder decision, not an engineering one: GitHub Pro is about
+   $4/month, and making the repo public is not an option. Until it is paid for, nothing on the GitHub
+   side stops a force push or a delete of `main`, and the only fence is local to this machine.
 4. **SRC-4**: a second remote mirror, pushed by the nightly job.
 5. **PAY-1**: a live-mode assertion that runs on every deploy and every probe.
 6. **BIZ-1**: real company number, registered address and VAT status on the site.
