@@ -161,6 +161,21 @@ RULES: tuple[Rule, ...] = (
         ),
         note="Grades the title against the pack, not against the shelf card.",
     ),
+    Rule(
+        check="title_claim",
+        fields=(TITLE,),
+        repair=REPAIR_COPY,
+        gate_param="title_block_on_breach",
+        config_key="title_block_on_breach",
+        enforced_by_default=True,
+        prompt_rule=(
+            "Do not put a figure in the title unless the pack's own sources state that figure. "
+            "A number on the shelf is a claim, and it is checked against the pack's copy."
+        ),
+        note="`check_title_claims` (`pack_linter.py:1675`), wired at `pack_linter.py:1994` on the "
+             "SAME actuator as `title`. Not a legacy alias of `title_new_word` — this is live and "
+             "shares the title switch, which is why turning that switch off frees both.",
+    ),
     # ---- the pack documents -----------------------------------------------------------------
     Rule(
         check="placeholders",
@@ -257,13 +272,25 @@ RULES: tuple[Rule, ...] = (
         note="SHADOW.",
     ),
     Rule(
-        check="register_rate",
+        check="register_repeat",
         fields=(ARTIFACTS,),
         repair=REGENERATE,
         gate_param="register_block",
         config_key="house_spec_block_register",
         enforced_by_default=False,
-        note="SHADOW. Rate knob: max_register_per_1k.",
+        note="SHADOW. The one DECIDABLE register finding — the same sentence sold in two "
+             "documents (`register_lint.py:530`) — and the only one `register_block` governs.",
+    ),
+    Rule(
+        check="register_rate",
+        fields=(ARTIFACTS,),
+        repair=REGENERATE,
+        gate_param=None,
+        config_key=None,
+        enforced_by_default=True,
+        note="Rate knob: max_register_per_1k. NO actuator: `register_lint.py:540` emits this as "
+             "a hard error whenever a rate bar is breached. Its off switch is the bar itself — a "
+             "rate of 0.0 cannot be breached — which is why `register_block` does not reach it.",
     ),
     Rule(
         check="human_register",
@@ -285,14 +312,27 @@ RULES: tuple[Rule, ...] = (
              "cannot be switched on until the generator has been taught it.",
     ),
     Rule(
-        check="house_rate",
+        check="house_quote",
         fields=(ARTIFACTS,),
         repair=REGENERATE,
         gate_param="house_block_quotes",
         config_key="house_spec_block_quotes",
         enforced_by_default=False,
-        note="SHADOW. Rate knobs: max_long_sentence_rate, max_clause_load_rate, "
-             "max_four_item_list_rate, max_unsourced_figure_rate.",
+        note="SHADOW. A quote the house spec refuses (`house_style.py:339`). This is the check "
+             "`house_block_quotes` actually governs — the most frequent finding in the live "
+             "receipts after `house_style`, at 2,803 across 123 packs on 2026-08-17.",
+    ),
+    Rule(
+        check="house_rate",
+        fields=(ARTIFACTS,),
+        repair=REGENERATE,
+        gate_param=None,
+        config_key=None,
+        enforced_by_default=True,
+        note="Rate knobs: max_long_sentence_rate, max_clause_load_rate, "
+             "max_four_item_list_rate, max_unsourced_figure_rate. NO actuator: "
+             "`house_style.py:365` emits this as a hard error whenever a bar is breached. Its "
+             "off switch is the bar, which is why `house_block_quotes` does not reach it.",
     ),
     Rule(
         check="hedging",

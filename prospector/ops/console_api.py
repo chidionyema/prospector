@@ -869,7 +869,12 @@ _SHELF_LIFECYCLE_REPAIR = {
 
 #: Check names the stranded survey still prints under an older spelling than the linter emits
 #: today. Kept so an archived receipt does not lose its button.
-_LEGACY_CHECK_ALIASES = {"title_claim": "title_new_word"}
+#: Check names the registry does not declare, mapped to the rule that covers them. Empty as of
+#: 2026-08-17: `title_claim` was in here as a supposed alias of `title_new_word`, and it is not
+#: an alias — `pack_linter.check_title_claims` is a live check with its own emission site. It is
+#: declared in its own right now. `test_every_check_the_linters_emit_is_declared` is what keeps
+#: this empty; an entry here means a real check went undeclared.
+_LEGACY_CHECK_ALIASES: dict[str, str] = {}
 
 #: Longest name first, so `title_new_word` cannot be shadowed by a bare `title` match.
 _SUBSTRING_FALLBACK = tuple(sorted(

@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import ast
 import inspect
+import re
 from pathlib import Path
 
 import pytest
@@ -297,3 +298,82 @@ def test_the_contract_imports_nothing_from_the_engine():
 def test_the_gate_module_is_the_one_the_bridge_calls():
     """Guards the premise of every test above: that `bridge` really calls THIS `lint_pack`."""
     assert bridge.lint_pack is pack_linter.lint_pack
+
+
+# --------------------------------------------------------------------------------------------
+# The hole this file had until 2026-08-17.
+#
+# Everything above checks the registry's ACTUATORS against `lint_pack`'s signature. Nothing
+# checked its CHECK NAMES against what the linters emit, and three had drifted: `house_quote`
+# and `register_repeat` were never declared, and `title_claim` was declared in the console as a
+# "legacy alias" of `title_new_word` when it is a live check with its own emission site
+# (`pack_linter.check_title_claims`). Two actuators were attached to the wrong rule as a result:
+# `house_block_quotes` and `register_block` govern the decidable checks, not the rate ones.
+#
+# A check nobody declared has no repair, no prompt rule and no console route. It is a rule the
+# programme cannot see.
+# --------------------------------------------------------------------------------------------
+
+_LINT_MODULES = ("pack_linter", "copy_lint", "register_lint", "house_style", "prose_target")
+_CHECK_NAME = re.compile(r"^[a-z][a-z0-9_]*$")
+
+
+def _checks_the_linters_emit() -> dict[str, set[str]]:
+    """Every check name emitted by a `_err`/`_warn`-shaped call, with where it is emitted.
+
+    The helpers are `_err(check, where, detail)` and `_warn(check, where, detail)`, three
+    positional arguments with a literal check name first. They are routinely bound to a local
+    first — `quote = _err if block_quotes else _warn`, `hard = _err if block else _warn` — so
+    matching on the callee NAME misses them. Match on the shape instead.
+    """
+    found: dict[str, set[str]] = {}
+    for mod in _LINT_MODULES:
+        path = _REPO / "prospector" / f"{mod}.py"
+        if not path.exists():
+            continue
+        for node in ast.walk(ast.parse(path.read_text())):
+            if (isinstance(node, ast.Call) and len(node.args) == 3
+                    and isinstance(node.args[0], ast.Constant)
+                    and isinstance(node.args[0].value, str)
+                    and _CHECK_NAME.match(node.args[0].value)):
+                found.setdefault(node.args[0].value, set()).add(f"{mod}.py:{node.lineno}")
+    return found
+
+
+def test_the_scan_finds_the_checks_we_know_are_there():
+    """Guard the guard. A scan that silently matches nothing passes every test below it."""
+    emitted = _checks_the_linters_emit()
+    assert len(emitted) >= 20, f"the emission scan found only {len(emitted)} checks: {emitted}"
+    for known in ("title", "shelf_copy", "house_quote", "register_repeat", "title_claim"):
+        assert known in emitted, f"the scan missed {known}, which is emitted in the source"
+
+
+def test_every_check_the_linters_emit_is_declared():
+    emitted = _checks_the_linters_emit()
+    declared = {r.check for r in content_contract.RULES}
+    missing = {c: sorted(v) for c, v in emitted.items() if c not in declared}
+    assert not missing, (
+        "these checks can block a pack and the contract does not declare them, so they have no "
+        "repair, no prompt rule and no console route:\n"
+        + "\n".join(f"  {c} at {', '.join(w)}" for c, w in sorted(missing.items()))
+    )
+
+
+def test_the_contract_declares_no_check_the_linters_cannot_emit():
+    """The other direction. A rule for a check that no longer exists is a rule that never fires,
+    and it will sit in the registry looking enforced."""
+    emitted = set(_checks_the_linters_emit())
+    stale = sorted({r.check for r in content_contract.RULES} - emitted)
+    assert not stale, f"the contract declares checks nothing emits: {stale}"
+
+
+def test_the_console_needs_no_alias_for_a_declared_check():
+    """`_LEGACY_CHECK_ALIASES` exists to route a check the registry does not declare. Once every
+    emitted check is declared it must be empty, or it is silently re-pointing a live rule at
+    another rule's repair."""
+    from prospector.ops import console_api
+
+    assert console_api._LEGACY_CHECK_ALIASES == {}, (
+        "an alias here means a real check is being routed to another rule's repair: "
+        f"{console_api._LEGACY_CHECK_ALIASES}"
+    )
