@@ -2102,6 +2102,10 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     "scripts/ci-gate.sh": "the POPDD CI gate; GitHub Actions runs it, not an operator",
     "scripts/setup_worktree.sh": "makes a git worktree usable; a developer's machine, not ops",
     "scripts/verify_engine_change.sh": "the pre-commit proof that an engine change is safe",
+    "scripts/ci_local.py": "runs the CI lanes on a developer's machine before pushing",
+    "scripts/test_impacted.py": "picks the tests a diff can affect; a developer's and CI's shortcut",
+    "scripts/seed_action_cache.sh": "seeds the CI runner's action archive cache; runs on the runner",
+    "scripts/warm_ci_uv_cache.sh": "warms the CI runner's uv cache; runs on the runner",
     "tools/commit_mine.sh": "commits exactly the named paths; a developer's git helper",
     # Claude Code hooks — the harness fires these, they have no operator-facing run
     "scripts/graphify_query_hook.py": "a UserPromptSubmit hook; the harness fires it",

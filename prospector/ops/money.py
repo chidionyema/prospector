@@ -96,9 +96,10 @@ def _rail(call: Callable[..., dict]) -> dict:
         state = "never-ran"
     elif mode == "live":
         state = "live"
-    elif mode == "not-applicable":
-        state = "not-applicable"
     else:
+        # Anything else is treated as test, which the console shows as a fault. There used to be
+        # a "not-applicable" branch for a non-Stripe provider; the API can never send that mode,
+        # because the startup gate refuses to boot on a provider it does not recognise.
         state = "test"
 
     return {
