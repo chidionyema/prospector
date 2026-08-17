@@ -44,6 +44,7 @@ import os
 import random
 import shutil
 import sqlite3
+import subprocess
 import sys
 import tempfile
 import time
@@ -57,6 +58,7 @@ DB = REPO_ROOT / "store" / "prospector.db"
 DOSSIER_PREFIX = "dossiers/"
 LEDGER_PREFIX = "ledger/"
 DB_PREFIX = "db/"
+REPO_PREFIX = "repo/"
 
 # How many dated db snapshots to keep. 1.4M compresses to a few hundred K, so this is a
 # storage decision worth about a dollar a year — the reason it is bounded at all is that an
@@ -64,6 +66,13 @@ DB_PREFIX = "db/"
 # Pruning happens ONLY after the current run's snapshot has been read back and verified, so a
 # corrupt local db cannot delete the good copies on its way past.
 DEFAULT_DB_KEEP = 30
+
+# How many dated git bundles to keep. The repo is already in git, so this is a second copy
+# of every ref, not a second copy of every byte — the 14-day window fits in single-digit MB
+# and gives a fortnight of overlap if an upload silently corrupts for a night. Same prune-
+# after-readback rule as DEFAULT_DB_KEEP: only after the current run's bundle has been
+# confirmed on R2, so a sick git cannot delete the good copies on its way past.
+DEFAULT_BUNDLE_KEEP = 14
 
 # A DIFFERENT bucket from R2_BUCKET (prospector-packs), on purpose. The delivery bucket is
 # reachable by the storefront's credentials and could have a public r2.dev domain attached in
@@ -556,6 +565,69 @@ def _snapshot_ledger(out: Path) -> int:
     return written - len(tail)
 
 
+def mirror_repo(s3, bucket: str, *, keep: int = DEFAULT_BUNDLE_KEEP) -> tuple[str, int, str]:
+    """Bundle every ref in REPO_ROOT and upload it to R2, pruning to the newest `keep`.
+
+    The only git remote is GitHub. If that account is lost — billing failure, suspension,
+    take-down — every branch, tag and commit goes with it. `sync()` already runs nightly at
+    03:40 via launchd and already uploads to the "prospector-backup" bucket with credentials
+    that work, so the mirror rides that job rather than becoming a second job that can rot
+    separately. Returns (key, size_bytes, sha256).
+    """
+    stamp = time.strftime("%Y-%m-%dT%H%M%SZ", time.gmtime())
+    key = f"{REPO_PREFIX}{stamp}.bundle"
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_bundle = Path(tmp) / "mirror.bundle"
+        # `git bundle create` --all walks every ref under REPO_ROOT. The exit code is the
+        # only honest signal — a swallowed stderr would let a sick repo pass green.
+        create = subprocess.run(
+            ["git", "bundle", "create", str(tmp_bundle), "--all"],
+            cwd=REPO_ROOT, capture_output=True, text=True, check=False,
+        )
+        if create.returncode != 0:
+            raise RuntimeError(
+                f"git bundle create failed (rc={create.returncode}): "
+                f"{create.stderr.strip() or '<no stderr>'}"
+            )
+
+        # Verify BEFORE uploading: uploading an unreadable bundle is the same failure as not
+        # backing up at all, and it would look green because the upload itself succeeded.
+        verify = subprocess.run(
+            ["git", "bundle", "verify", str(tmp_bundle)],
+            cwd=REPO_ROOT, capture_output=True, text=True, check=False,
+        )
+        if verify.returncode != 0:
+            raise RuntimeError(
+                f"git bundle verify failed (rc={verify.returncode}): "
+                f"{verify.stderr.strip() or '<no stderr>'}"
+            )
+
+        size = tmp_bundle.stat().st_size
+        local_sha = _sha256(tmp_bundle)
+        s3.upload_file(str(tmp_bundle), bucket, key)
+        # Uploading is not backing up. Read it back and compare digests before declaring the
+        # new object part of the backup set.
+        body = s3.get_object(Bucket=bucket, Key=key)["Body"].read()
+        if _sha256_bytes(body) != local_sha:
+            raise RuntimeError(
+                f"{key} reads back differently than it was written — uploading is not backing up"
+            )
+
+    # Prune ONLY after the read-back passed, so a corrupt upload cannot delete the good
+    # copies on its way past. Lexical order is chronological because the stamps are
+    # zero-padded; "newest" needs no metadata call.
+    if keep > 0:
+        keys = sorted(_remote_index(s3, bucket, REPO_PREFIX))
+        stale = keys[:-keep] if len(keys) > keep else []
+        for old in stale:
+            s3.delete_object(Bucket=bucket, Key=old)
+        if stale:
+            print(f"  pruned {len(stale)} repo bundle(s), keeping the newest {keep}")
+
+    return key, size, local_sha
+
+
 def verify_sample(s3, bucket: str, n: int = DEFAULT_SAMPLE) -> tuple[int, int, list[str]]:
     """Download a random sample and compare SHA-256 with the local file."""
     local = _dossier_files()
@@ -686,6 +758,11 @@ def main() -> int:
     parser.add_argument("--db-keep", type=int, default=DEFAULT_DB_KEEP,
                         help=f"dated db snapshots to retain, 0 = keep every one "
                              f"(default {DEFAULT_DB_KEEP})")
+    parser.add_argument("--skip-mirror", action="store_true",
+                        help="do not push the git mirror")
+    parser.add_argument("--bundle-keep", type=int, default=DEFAULT_BUNDLE_KEEP,
+                        help=f"dated git bundles to retain, 0 = keep every one "
+                             f"(default {DEFAULT_BUNDLE_KEEP})")
     args = parser.parse_args()
 
     s3, bucket = _client()
@@ -696,11 +773,16 @@ def main() -> int:
         return 0
 
     uploaded = skipped = 0
-    ledger_key = db_key = ""
+    ledger_key = db_key = mirror_key = ""
+    mirror_bytes = 0
     if not args.verify_only:
         uploaded, skipped, ledger_key, db_key = _retry_on_skew(
             sync, s3, bucket, db_keep=args.db_keep
         )
+        if not args.skip_mirror:
+            mirror_key, mirror_bytes, _ = _retry_on_skew(
+                mirror_repo, s3, bucket, keep=args.bundle_keep
+            )
 
     ok, total, problems = _retry_on_skew(verify_sample, s3, bucket, args.sample)
     for problem in problems:
@@ -712,6 +794,7 @@ def main() -> int:
         f"uploaded={uploaded} unchanged={skipped} verified={ok}/{total}"
         + (f" ledger={ledger_key}" if ledger_key else "")
         + (f" db={db_key}" if db_key else "")
+        + (f" mirror={mirror_key} bytes={mirror_bytes}" if mirror_key else "")
     )
     return 0 if verdict == "PASS" else 1
 

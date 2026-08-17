@@ -99,7 +99,7 @@ Severity: **BLOCKER** (do not launch), **HIGH** (launch degraded), **MEDIUM**, *
 |---|---|---|
 | SRC-1 | **Nothing is committed.** **Re-measured 2026-08-16: 158 uncommitted paths, 55 ahead / 31 behind `origin/main`** (was 201 / 52 / 29). The daemon runs code that exists in exactly one working tree, and a second session is writing to it. No rollback point exists. Still a blocker: the count fell because work was committed on branches, not because the main checkout was cleaned. | BLOCKER |
 | SRC-2 | ~~No branch protection~~ **CORRECTED 2026-08-16: `main` IS protected.** Ruleset `strict` (id 20109556), enforcement `active`, target `~DEFAULT_BRANCH`, rules: `deletion`, `non_fast_forward`, `pull_request`, `code_quality`, `required_status_checks`. My first probe used the legacy `/branches/main/protection` endpoint, which returns 404 when protection comes from a **ruleset** rather than a classic rule. Ask `gh api repos/…/rulesets`, never the legacy path. | RESOLVED |
-| SRC-3 | **The repo is PUBLIC under MIT.** The whole engine — prompts, filter, generation strategy, pricing ladder — is readable and legally reusable by anyone. This may be deliberate. It is a business decision that must be made on purpose before launch, not discovered after. | HIGH (decision) |
+| SRC-3 | ~~**The repo is PUBLIC under MIT.**~~ **CLOSED 2026-08-17. The premise was wrong.** `gh repo view chidionyema/prospector --json visibility,licenseInfo` returns `{"visibility":"PRIVATE","licenseInfo":{"key":"mit"}}`. The repo is already private, so the engine is not readable by anyone; only the MIT `LICENSE` file remains, and it binds nobody who cannot fetch the source. The founder confirmed the public state was never deliberate, which is consistent with it not existing. Nothing to do. | CLOSED |
 | SRC-4 | **One remote, no mirror.** `origin` is the only copy off this laptop. GitHub account loss = source loss. `.git` is 87 MB; a mirror costs nothing. | HIGH |
 | SRC-5 | **20 secrets live in one plaintext `.env` on one laptop.** No vault, no escrow. Verified clean: `.env` was never committed and no real key appears anywhere in git history. Fly holds its own copy as app secrets, so the API survives; the engine does not. | HIGH |
 | SRC-6 | 62 runtime-state files under `store/` are tracked and therefore public, including `store/control_center/config_history.jsonl` and launch proofs. No customer data among them, checked. | MEDIUM |
@@ -405,13 +405,12 @@ Cost is a constraint, so each one gets its free-or-near-free answer. **Every P0 
 free**: the off-Fly database copy lands in an R2 bucket we already pay for (pennies at this size),
 and commit, mirror, live-mode assert and company details cost nothing but time.
 
-- **SRC-3 — public or private?** The choice now costs something, because protection came free with
-  public. HYPOTHESIS to check before flipping: on the GitHub Free plan, repository **rulesets**
-  (which is what protects `main` today, SRC-2) may not apply to *private* repos — that is a paid
-  feature on some tiers. Check by reading the plan page before making the repo private, not after.
-  If rulesets do not survive, private costs either a paid tier or the protection. **Recommendation:
-  stay public unless the engine itself is the product** — the moat is the catalogue and the shelf,
-  not the source, and public is the option that is free *and* protected.
+- ~~**SRC-3 — public or private?**~~ **Answered, and there was never a question.** The repo is
+  already `PRIVATE` (`gh repo view chidionyema/prospector --json visibility`, 2026-08-17), and the
+  founder confirms the public state was not deliberate. The rulesets worry was hypothetical and is
+  moot: the rulesets protecting `main` are live on the private repo today (SRC-2). The only
+  leftover is the MIT `LICENSE` file, which grants terms to people who cannot fetch the source.
+  Deleting or changing it is cosmetic and can wait.
 - **BIZ-2 — solicitor?** Split it. **BIZ-1 is free and mandatory**: publishing a company number, a
   real registered address and VAT status is typing facts you already have. Do that this week. The
   *review* is the optional, paid half — defer it until revenue justifies it, and record that as a
@@ -491,4 +490,71 @@ dig +short TXT google._domainkey.mumchimp.com                     # DNS-3: empty
 | 2026-08-16 | P0.7: the live ops console was in no commit | `store_platform/src/Ops.Console` was absent from the working tree and from `HEAD`, while launchd job `com.prospector.ops-console` served it from `.claude/worktrees/agent-aaecfffaa54620133`. Its own receipts re-run and green, then copied into the repo | `tsc --noEmit` clean; `vitest run` 46 passed / 5 files. Full branch merge measured 20 conflicts (`git merge-tree`), so the subtree was taken alone; the repo's `prospector/ops/` is the superset (console_api 2031 lines vs 1507, plus `supervisor.py` and `undo.py`) |
 | 2026-08-16 | Shelf: publishing the backlog does NOT clear it | **The stranded PASSes are not waiting for a publish button; they fail the content lint.** Every pack the run reached was published UNLISTED and skipped Stripe: each `has no billable price id ('price_stub_…')`. Reasons, one per pack: `482d0cdb9ec04d27` cites a URL that now returns 404; `7ba29bd2956e7e04` repeats `title` and `subhead` verbatim in the one-liner and leads with a coined name; `83f2e75faa80bb60` fails both the structural audit and the lint. So the work is the lint repair loop, not the publish path | run pid 49352 timed out at 1800.3s (`applied:false, changed:true, timed_out:true, exit_code:null`); reached 4 packs — `482d0cdb9ec04d27`, `7ba29bd2956e7e04`, `83f2e75faa80bb60`, `c763afa7fdd424b6`; shelf still reports 5 pending after the run |
 | 2026-08-16 | Shelf: `Complete_Pack.pdf` cannot render for some packs | A code defect, not a copy defect, and it blocks the whole bundle for any pack it hits: `Named destination 'main-content' was referenced but never set with set_link(name=...)`. The renderer emits an internal link to an anchor it never registers, so the PDF raises instead of writing | seen on `83f2e75faa80bb60` in the same run; blocks its structural audit |
+| 2026-08-17 | Shelf copy: the linter was the blocker | The content lint held 31 of 33 defective live rows off the shelf. Fixed, plus the `pack_pdf` fpdf2 anchor crash that blocked whole bundles, and `doc_lint` machine-dependence (88 findings in this checkout vs 91 in a worktree, same commit) | PR #247 `pr/pack-pdf-anchor-doc-lint-repo-mirror`, gate PASSED at `67a4ff2` |
+| 2026-08-17 | Shelf copy: initialisms spelled out from a declared glossary | A glossary lives in `config.yaml listing.initialism_glossary`. The sweep never guesses an expansion: an unknown term is REPORTED, and a proposed rewrite is dropped unless it strictly lowers the errors the gate would raise. Measured `live packs: 104  defective: 33  rows the glossary alone repairs: 25`, zero provider spend | PR #248 `pr/shelf-copy-glossary` at `519ce28`; `131 passed in 36.26s`. Eight terms remain unexplained — CAP, CI, DCB, METRC, PL, RTY, SBS, STRS — and four are not initialisms at all (`CI`/`PL` are caps-run fragments, `RTY` is from the model number `PA RTY-100`, `METRC` is a product name), so that copy needs rewording |
+| 2026-08-17 | Programme status made mechanical | `scripts/ops_status.py` grades all 44 ids against `origin/main`, never against the working tree. It caught two of my own wrong claims on first run: SRC-4 and PAY-1 were reported closed and live only in the unmerged PR #247 | `ACCEPTED: 7  DONE: 3  MANUAL: 24  OPEN: 10  TOTAL: 44`. Provably done on `origin/main`: SRC-3, DAT-1, ENG-5 |
+| 2026-08-17 | Handoffs no longer collide | `checkpoints/LATEST.md` was overwritten by another session minutes after it was written, with 18 Claude processes and 59 worktrees on one checkout. Each session now writes `checkpoints/session-<id>.md` and `LATEST.md` is a generated index of all of them | `scripts/handoff.py --write / --index / --read` |
+| 2026-08-17 | Duplicate work made visible | `ops_status.py --claim ID` writes a claim to `<git-common-dir>/ops-claims.jsonl`, which every worktree of this repo sees. A second session claiming a held item is refused by name and branch. Claims go stale after 12h so a dead session cannot block an item forever | `--claim ENG-6` then a second claim from another session exits 1 with the holder's id; verified the register is shared via `git rev-parse --git-common-dir` |
 | 2026-08-16 | P0.8: daemon visibility AND admin on the ops console | `status` read now carries a `supervisor` block — per launchd job: held / not held / could-not-ask, pid, plist. That is the fact a heartbeat cannot give: a process can be beating and still unheld, which is exactly how the engine stayed dead. Engine page gains a Processes card rendering it beside the heartbeat, with a Restart button on the existing `daemon.restart` action | `console_api.py::_supervisor_view`; `read status` returns both jobs `loaded:true`, pids 30686 and 18296 |
+
+---
+
+## 8. How this programme is run
+
+Added 2026-08-17, after the founder said the team was "inefficient and chaotic". Every rule
+below is a COMMAND, not a convention, because the conventions already existed in prose and
+were not followed. If a rule here cannot be run, it does not belong in this section.
+
+**1. Status comes from the probe, never from this document.**
+
+```bash
+.venv/bin/python scripts/ops_status.py --fetch
+```
+
+It grades all 44 ids against `origin/main`. A file in your working tree proves nothing: it
+may be uncommitted, on a branch, or in another session's worktree. `MANUAL` means no
+mechanical check is written yet and is never counted as done — it is a gap in the probe, not
+a claim about the work. When this document and the probe disagree, the probe is right and the
+document gets fixed.
+
+**2. Claim an item before you start it.**
+
+```bash
+.venv/bin/python scripts/ops_status.py --claims             # who holds what
+.venv/bin/python scripts/ops_status.py --claim ENG-6 --note "what you are doing"
+.venv/bin/python scripts/ops_status.py --release ENG-6
+```
+
+The register is `<git-common-dir>/ops-claims.jsonl`, shared by every worktree of this repo.
+Claiming an item someone else holds is refused, with their session id and branch. Claims go
+stale after 12 hours, so a dead session cannot hold an item forever. This is the only thing
+stopping two agents building the same item — `chore/remove-paddle` (PAY-5) sat pushed and
+unnoticed for 20 hours while PAY-5 read as open.
+
+**3. Check what the other sessions hold before picking work.**
+
+```bash
+.venv/bin/python scripts/ops_status.py --agents
+```
+
+Open PRs, live worktrees, and every branch pushed in the last three days. Read it first.
+A branch pushed yesterday is somebody's work in progress, not an open item.
+
+**4. Land before you start something new.** An open PR is unfinished work, not finished work.
+Six PRs were open at once on 2026-08-17 and none of what they contained was on `origin/main`,
+which is why the status was wrong in both directions at the same time.
+
+**5. Write the handoff to your own file, not the shared one.**
+
+```bash
+.venv/bin/python scripts/handoff.py --write notes.md   # -> checkpoints/session-<id>.md
+.venv/bin/python scripts/handoff.py --read             # everyone's, newest first
+```
+
+`LATEST.md` is generated from those and must not be hand-edited. It used to be one shared
+file and a session's notes survived about ten minutes.
+
+**6. Bulk mechanical implementation goes through the pi-bridge**, with Claude planning and
+verifying. Money rail, identity, contract and migration work never leaves Claude; the bridge
+refuses it in the server rather than in a prompt.
+

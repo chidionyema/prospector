@@ -39,9 +39,21 @@
     "marked_at": 1786004745.475863,
     "dead_for_s": 3600.0
   },
+  "standardcompute": {
+    "dead_until": 1786741076.038643,
+    "marked_at": 1786737476.038643,
+    "dead_for_s": 3600.0,
+    "strikes": 2,
+    "probe_at": 1786737716.038643,
+    "last_error": "StandardCompute returned an out-of-allowance notice instead of a completion: You've used up your free trial — let's keep going.\n\nContinue at a flat monthly price — no per-token billing, no surprise ch"
+  },
   "claude_cli": {
-    "dead_until": 1786008360.181159,
-    "marked_at": 1786004760.1814,
-    "dead_for_s": 3600.0
+    "dead_until": 1786960335.1292942,
+    "marked_at": 1786956735.1292942,
+    "dead_for_s": 3600.0,
+    "strikes": 1,
+    "probe_at": 1786957265.3788102,
+    "last_error": "claude cli exhausted after 2 attempts: claude cli exit 1: e\":\"success\",\"api_error_status\":429,\"result\":\"You've hit your monthly spend limit · raise it at claude.ai/settings/usage?from=cc_cli_limit_m |",
+    "probes": 1
   }
 }
