@@ -1950,6 +1950,10 @@ TOOLS: list[dict] = [
     _t("scripts/backfill_packs_parallel.sh", "Backfill P5 pack artefacts into listed packs", True,
        "/catalogue", cmd="bash scripts/backfill_packs_parallel.sh",
        danger="runs N backfill processes in parallel — check the slot count first"),
+    _t("scripts/live_checkout.py", "Which commit is production running?", False, "/tools"),
+    _t("scripts/live_checkout.py", "Roll production forward to origin/main", True, "/tools",
+       cmd=".venv/bin/python scripts/live_checkout.py --update", risk="external",
+       danger="restarts the scheduler and consumer daemons; a tick in flight is killed"),
 ]
 
 
