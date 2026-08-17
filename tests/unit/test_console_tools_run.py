@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -176,6 +177,113 @@ def test_an_unknown_id_is_refused():
     """Catches an id off the wire selecting nothing and falling through to a default."""
     with pytest.raises(ValueError, match="no tool with id"):
         api._act_tools_run(None, {"id": "deadbeef00"}, True)
+
+
+# --------------------------------------------------------------------------- #
+# the background job
+# --------------------------------------------------------------------------- #
+def _audit(tool_path: str = "scripts/store_audit.py") -> dict:
+    return next(t for t in api.TOOLS if t["path"] == tool_path)
+
+
+def test_running_a_tool_returns_a_job_id_instead_of_waiting_for_it(monkeypatch):
+    """Catches the run going back to a blocking HTTP request.
+
+    `scripts/store_audit.py` measured 239.9s. Holding the request open for that gives the operator
+    a spinner, kills the run if the tab closes, and puts every timeout between here and the browser
+    in a position to lose a job that was working.
+    """
+    spawned: list[dict] = []
+    monkeypatch.setattr(api.subprocess, "Popen",
+                        lambda cmd, **kw: spawned.append({"cmd": cmd, **kw}) or object())
+
+    out = api._act_tools_run(None, {"id": _audit()["id"], "reason": "test"}, False)
+
+    assert out["state"] == "running" and len(out["job"]) >= 8
+    assert out["exit_code"] is None, "a job that has not finished cannot have an exit code"
+    assert len(spawned) == 1
+    cmd = spawned[0]["cmd"]
+    assert "run-tool" in cmd and out["job"] in cmd
+    # Its own session, so the console killing the gateway does not kill a running tool with it.
+    assert spawned[0]["start_new_session"] is True
+
+
+def test_the_background_worker_writes_the_finishing_receipt(monkeypatch):
+    """Catches a job that starts and never reports. The started receipt is not an outcome; without
+    the second one, `read job` says "running" forever and nobody learns the tool failed."""
+    written: list[dict] = []
+    monkeypatch.setattr(api, "_record_intent", lambda cfg, rec: written.append(rec))
+    monkeypatch.setattr(api, "_exec", lambda cmd, cwd, timeout: ("STORE_AUDIT FAIL", 1, False))
+
+    out = api._run_tool_job(None, _audit()["id"], "job123", {"reason": "test", "undo_id": "u1"})
+
+    assert written == [out]
+    assert out["job"] == "job123" and out["state"] == "finished"
+    assert out["applied"] is False and out["exit_code"] == 1, "exit 1 is not a success"
+    assert out["undo_id"] == "u1", "the snapshot taken before the run must stay on the receipt"
+    assert "STORE_AUDIT FAIL" in out["message"]
+
+
+def test_a_timed_out_worker_says_so_rather_than_reporting_a_failure(monkeypatch):
+    """Catches a timeout rendered as exit-code failure. The tool wrote whatever it wrote before the
+    kill; "we stopped waiting" and "it failed" are different facts."""
+    monkeypatch.setattr(api, "_record_intent", lambda cfg, rec: None)
+    monkeypatch.setattr(api, "_exec", lambda cmd, cwd, timeout: ("half done", None, True))
+
+    out = api._run_tool_job(None, _audit()["id"], "job456", {})
+    assert out["state"] == "timed_out" and out["timed_out"] is True and out["exit_code"] is None
+
+
+def _write_receipts(tmp_path: Path, rows: list[dict]) -> None:
+    (tmp_path / "intents.jsonl").write_text(
+        "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+
+
+def test_reading_a_job_reports_the_latest_receipt_for_it(tmp_path, monkeypatch):
+    """Catches the reader picking the started receipt over the finished one."""
+    monkeypatch.setattr(api, "_store_ops_dir", lambda cfg: tmp_path)
+    _write_receipts(tmp_path, [
+        {"job": "j1", "state": "running", "ts": api._now_iso()},
+        {"job": "other", "state": "finished", "ts": api._now_iso()},
+        {"job": "j1", "state": "finished", "ts": api._now_iso(), "exit_code": 0},
+    ])
+    out = api._read_job(None, {"job": "j1"})
+    assert out["state"] == "finished" and out["receipt"]["exit_code"] == 0 and out["rows"] == 2
+
+
+def test_a_job_whose_worker_died_is_lost_not_running(tmp_path, monkeypatch):
+    """Catches "running" being asserted about a process nobody can see. A reboot or a SIGKILL
+    leaves the started receipt as the last word; past the tool's own ceiling that is not progress,
+    and a console that shows a spinner forever is the prose-drift failure in UI form."""
+    monkeypatch.setattr(api, "_store_ops_dir", lambda cfg: tmp_path)
+    old = datetime.now(timezone.utc) - timedelta(seconds=api._JOB_LOST_AFTER_S + 60)
+    _write_receipts(tmp_path, [{"job": "j2", "state": "running", "ts": old.isoformat()}])
+    assert api._read_job(None, {"job": "j2"})["state"] == "lost"
+
+    _write_receipts(tmp_path, [{"job": "j3", "state": "running", "ts": api._now_iso()}])
+    assert api._read_job(None, {"job": "j3"})["state"] == "running"
+
+
+def test_an_unknown_job_says_unknown_rather_than_inventing_a_state(tmp_path, monkeypatch):
+    monkeypatch.setattr(api, "_store_ops_dir", lambda cfg: tmp_path)
+    _write_receipts(tmp_path, [])
+    assert api._read_job(None, {"job": "nope"})["state"] == "unknown"
+    with pytest.raises(ValueError, match="job id is required"):
+        api._read_job(None, {})
+
+
+def test_the_browser_view_allowlist_matches_the_gateway():
+    """The same drift as the actions list, on the read door. `job` was added to the gateway and the
+    console's own copy would have 404ed it, so the job would run and be unwatchable."""
+    route = (Path(__file__).resolve().parents[2] / "store_platform" / "src" / "Ops.Console"
+             / "src" / "pages" / "api" / "ops" / "read" / "[view].ts")
+    if not route.exists():
+        pytest.skip("the Next console is not in this checkout")
+    block = route.read_text(encoding="utf-8").split("export const VIEWS = [", 1)[1]
+    listed = set(re.findall(r"'([a-z_]+)'", block.split("]", 1)[0]))
+    assert listed == set(api.READS), (
+        f"only in the browser: {sorted(listed - set(api.READS))}; "
+        f"only in the gateway: {sorted(set(api.READS) - listed)}")
 
 
 # --------------------------------------------------------------------------- #

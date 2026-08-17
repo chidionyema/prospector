@@ -24,6 +24,8 @@ type Intent = Record<string, unknown> & {
   applied?: boolean;
   changed?: boolean;
   nonce?: string;
+  state?: string;
+  exit_code?: number | null;
 };
 
 type IntentsView = {
@@ -34,7 +36,7 @@ type IntentsView = {
   rows: Intent[];
 };
 
-const KNOWN = new Set(['ts', 'actuator', 'actor', 'reason', 'applied', 'changed', 'nonce']);
+const KNOWN = new Set(['ts', 'actuator', 'actor', 'reason', 'applied', 'changed', 'nonce', 'state']);
 
 export default function Audit() {
   const [limit, setLimit] = useState(200);
@@ -134,7 +136,36 @@ export default function Audit() {
         const extra = Object.fromEntries(
           Object.entries(r).filter(([k, v]) => !KNOWN.has(k) && v !== null && v !== ''),
         );
-        const tone = r.applied === false ? 'bad' : r.changed === false ? 'warn' : 'ok';
+        // A background tool run writes two rows for one job: "running" when it starts and
+        // "finished"/"timed_out" when it ends. Reading those through `applied` alone is wrong in
+        // both directions — a job that has only started would read "applied", and a tool that ran
+        // to completion and exited non-zero would read "refused", which is what the console says
+        // when a fence STOPPED an action. Rows carrying a state are labelled by it.
+        const state = typeof r.state === 'string' ? r.state : null;
+        const tone = state
+          ? state === 'finished'
+            ? r.applied === false
+              ? 'warn'
+              : 'ok'
+            : state === 'running'
+              ? 'ok'
+              : 'bad'
+          : r.applied === false
+            ? 'bad'
+            : r.changed === false
+              ? 'warn'
+              : 'ok';
+        const label = state
+          ? state === 'finished'
+            ? r.applied === false
+              ? `exit ${r.exit_code ?? '?'}`
+              : 'finished'
+            : state
+          : r.applied === false
+            ? 'refused'
+            : r.changed === false
+              ? 'no change'
+              : 'applied';
         return (
           <div
             key={`${r.ts ?? i}-${r.nonce ?? i}`}
@@ -144,9 +175,7 @@ export default function Audit() {
           >
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <span className="font-mono text-[13px] font-[520]">{r.actuator ?? 'unnamed'}</span>
-              <Pill tone={tone}>
-                {r.applied === false ? 'refused' : r.changed === false ? 'no change' : 'applied'}
-              </Pill>
+              <Pill tone={tone}>{label}</Pill>
             </div>
             <div className="mt-1 text-[12px] text-subtle">
               {r.ts ? `${clock(r.ts)} · ${ago(r.ts)}` : ABSENT} · by {r.actor ?? ABSENT}
