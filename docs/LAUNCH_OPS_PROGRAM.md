@@ -80,7 +80,7 @@ unattended. Kill switch (`store/scheduler/PAUSE`) plus two half-stops. Daily spe
 watchdog that SIGKILLs a wedged daemon. Escalating 5m/10m/20m retries. Alerts on four channels
 including Telegram, with a delivery test. A nightly R2 backup that **verifies its own uploads**
 (`verified=8/8`) and prunes on retention. Payments abstracted behind `IPaymentProvider` with a
-Paddle implementation already written. Email abstracted behind `IEmailSender` and **optional** —
+Stripe as its one real implementation. Email abstracted behind `IEmailSender` and **optional** —
 the buyer gets download links on the success page, not by email. Both web and API ship as plain
 Dockerfiles. Legal pages exist: terms, privacy, refund, a Consumer Contracts Regulations 2013
 waiver, an AI-generated disclosure, a licence grant, Stripe automatic tax.
@@ -160,7 +160,7 @@ Severity: **BLOCKER** (do not launch), **HIGH** (launch degraded), **MEDIUM**, *
 | PAY-1 | **Nothing proves production is in live Stripe mode.** `.env` holds both test and live keys; Fly holds `Stripe__ApiKey` whose value is not readable; the live page exposes no publishable key to inspect. The `deploy-web.yml` gate is the only control, and no probe answers "is the shop taking real money right now?" | BLOCKER |
 | PAY-2 | Refunds, disputes and chargebacks have code (`StripeProvider` handles `Charge`, `Dispute`, `Event`) but no operational runbook and no alert. A dispute arrives in Stripe email only. | HIGH |
 | PAY-3 | A price change breaks fulfilment if the catalogue and the provider drift. `bridge.py` mints both from one `PriceDecision`, which is the right design. It stays a human action on purpose. | ACCEPTED |
-| PAY-4 | Stripe automatic tax is enabled (`StripeProvider.cs:432-442`) and Paddle carries `tax_category: digital-goods`. Registration thresholds are a business decision, not a code one. | ACCEPTED |
+| PAY-4 | Stripe automatic tax is enabled (`StripeProvider.cs:432-442`). Registration thresholds are a business decision, not a code one. | ACCEPTED |
 
 ### ENG — engine operations
 
@@ -250,9 +250,12 @@ is still correct after any later move to Postgres.**
 
 **Move object storage.** Credentials and an endpoint. The client is plain S3. **Estimate: an hour.**
 
-**Move payments.** `IPaymentProvider` already has a Paddle implementation and a fake for tests.
-Swap the DI registration and the credentials. Re-provisioning every product and price at the new
-provider is the real work. **Estimate: a day, mostly re-provisioning.**
+**Move payments.** `IPaymentProvider` has one real implementation, Stripe, plus a fake for tests.
+A second provider has to be written first: the stub that used to sit here threw
+`NotSupportedException` and had never billed anyone, so it was not a head start. After that, swap
+the DI registration and the credentials. Re-provisioning every product and price at the new
+provider is the real work. **Estimate: a day of writing the provider, then a day of
+re-provisioning.**
 
 **Move the engine off this Mac.** The blocker is KEY-1: absolute paths in two plists, launchd, and
 `osascript`. Fix by reading the root from an env var, shipping a systemd unit next to the plists,

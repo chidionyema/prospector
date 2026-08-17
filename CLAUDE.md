@@ -101,6 +101,17 @@ whose `pre-commit` links to `.lux/hooks/pre-commit`.
 This cost a session on 2026-08-16: a commit failed with only "exit code 1", and the doc said no
 gate could have refused it. The gate had refused it, on one test out of 4124.
 
+**The gate CAN pass, and the number that said otherwise is dead.** This file used to carry "the
+suite measures ~3185s serially against a 2400s ceiling, so the gate cannot pass". That sentence
+was prose, not a measurement, and it was quoted as fact in a session on 2026-08-16 before anyone
+checked it. `pytest.ini:42` sets `addopts = -n auto --dist loadfile`, so nothing runs serially.
+Two timings, both real: the gate's own python-lane commands on clean `main` (`0e1e939`) measured
+**1.7s of ruff plus 445.5s of pytest, 3925 passed and 3 skipped — 7m25s against the 2400s
+ceiling at `scripts/popdd_verify.py:86`, 19% of it**; the merged tree on 2026-08-16, timed while
+four CI jobs shared the box, measured **1281.41s, 4612 passed and 3 skipped — 21m21s, 53% of the
+ceiling**. Both pass. If you are about to repeat a timing claim from this paragraph, time it
+again: the suite grows, and the ceiling does not.
+
 **Install it where git actually LOOKS.** `core.hooksPath` is set in `.git/config` to
 `.git/hooks-active`, which makes `.git/hooks/` inert as a DIRECTORY — anything written there is
 never read, so the re-enable line this file carried until 2026-08-15
