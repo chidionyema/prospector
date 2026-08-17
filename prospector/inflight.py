@@ -81,9 +81,14 @@ def open_(store_root: Path, cand, *, run_id: str = "", label: str = "",
         tmp.replace(path)  # atomic: a reader never sees half a record
         return path
     except Exception as exc:  # noqa: BLE001
-        logger.warning("could not record in-flight candidate",
-                       extra={"candidate_id": getattr(cand, "candidate_id", "?"),
-                              "error": f"{exc}"})
+        # swallow-ok: best-effort by contract, stated in this function's docstring. This writes the
+        # recovery note; it does not do the work. Raising here would stop a vet because the note
+        # about the vet could not be written, which is the cure causing the disease. The caller has
+        # no recovery to attempt either — it gets None and carries on vetting. Logged at ERROR
+        # because a store this process cannot write is a real fault, just not this vet's fault.
+        logger.error("could not record in-flight candidate",
+                     extra={"candidate_id": getattr(cand, "candidate_id", "?"),
+                            "error": f"{exc}"})
         return None
 
 
@@ -249,6 +254,11 @@ def candidate_of(record: dict):
     try:
         return Candidate.from_dict(dict(record.get("candidate") or {}))
     except Exception as exc:  # noqa: BLE001
-        logger.warning("in-flight record cannot rebuild its candidate",
-                       extra={"candidate_id": record.get("candidate_id"), "error": f"{exc}"})
+        # swallow-ok: this reads one orphaned record during recovery, and the callers sweep a whole
+        # directory of them. One record written by an older schema, or truncated by the SIGKILL that
+        # orphaned it, must not stop the other records from being recovered. None means "skip this
+        # one", and every caller already handles it. Logged at ERROR: the record is unrecoverable
+        # work, which is exactly what the ledger exists to prevent.
+        logger.error("in-flight record cannot rebuild its candidate",
+                     extra={"candidate_id": record.get("candidate_id"), "error": f"{exc}"})
         return None

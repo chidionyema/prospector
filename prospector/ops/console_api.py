@@ -2208,6 +2208,14 @@ TOOLS: list[dict] = [
     _t("scripts/live_checkout.py", "Roll production forward to origin/main", True, "/tools",
        cmd=".venv/bin/python scripts/live_checkout.py --update", risk="external",
        danger="restarts the scheduler and consumer daemons; a tick in flight is killed"),
+    _t("scripts/ops_state.py", "Live value of every fact the launch-ops programme asserts", False,
+       "/audit", cmd="python3 scripts/ops_state.py"),
+    _t("scripts/launchd_plists.py", "Has a scheduler's job definition drifted?", False, "/engine",
+       cmd="python3 scripts/launchd_plists.py --check"),
+    _t("scripts/launchd_plists.py", "Record the current job definitions", True, "/engine",
+       cmd="python3 scripts/launchd_plists.py --snapshot",
+       danger="overwrites the tracked copies with whatever is live, so run --check first "
+              "or an unwanted change becomes the new baseline"),
 ]
 
 
@@ -2222,13 +2230,13 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     # developer and CI tooling — it runs in a terminal or in GitHub Actions, never from an ops page
     "scripts/ci-gate.sh": "the POPDD CI gate; GitHub Actions runs it, not an operator",
     "scripts/setup_worktree.sh": "makes a git worktree usable; a developer's machine, not ops",
-    "scripts/test_impacted.py": "picks the tests a local edit can affect; a developer's loop",
-    "scripts/verify_engine_change.sh": "the pre-commit proof that an engine change is safe",
-    "scripts/ci_local.py": "runs the CI lanes on a developer's machine before pushing",
     "scripts/test_impacted.py": "picks the tests a diff can affect; a developer's and CI's shortcut",
+    "scripts/verify_engine_change.sh": "the pre-commit proof that an engine change is safe",
     "scripts/seed_action_cache.sh": "seeds the CI runner's action archive cache; runs on the runner",
     "scripts/warm_ci_uv_cache.sh": "warms the CI runner's uv cache; runs on the runner",
     "tools/commit_mine.sh": "commits exactly the named paths; a developer's git helper",
+    "scripts/prune_branches.py": "retires git branches already merged into main; git hygiene on a "
+                                 "developer's machine, nothing an operator runs",
     # Claude Code hooks — the harness fires these, they have no operator-facing run
     "scripts/graphify_query_hook.py": "a UserPromptSubmit hook; the harness fires it",
     "scripts/graphify_session_hook.py": "a SessionStart hook; the harness fires it",
@@ -2251,6 +2259,10 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
                                   "split it before it becomes a single button",
     # on disk but unclassified until now. `run_ops_console.sh` and `build_sample_fixture.py`
     # are covered above; these two are the remainder.
+    #
+    # Two keys were written twice in this dict (`ci_local.py`, `test_impacted.py`), each with a
+    # different reason. Python keeps the last one, so the first reason was dead text nobody could
+    # see. Deduplicated 2026-08-17; the drift test counts keys, so it could not catch this.
     "scripts/ci_local.py": "replays a CI job's shell steps on this machine; a developer's loop",
     "tools/_audit_baseline_tmp.py": "a one-off inventory of failure-to-empty-answer sites, kept "
                                     "for its findings; the leading underscore says it is not a "

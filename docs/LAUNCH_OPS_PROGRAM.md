@@ -351,7 +351,7 @@ and the founder can read all six on the console without a terminal.
 2. Publish sweep every tick: any PASS without a listing gets one attempt.
 3. ~~Clear the 35 — read-only report first~~ **read-only half done 2026-08-16**: `ops/automations/stranded_packs.py` reports 38 with the blocking rule per pack. The `--fix` half is deliberately NOT in that automation (repair costs model calls; R8/P3) and is still to build.
 5. **Console:** the Catalogue screen gets a one-click 'repair and republish' on any stranded pack.
-**Done when:** stranded count is 0, the check runs per tick, and the count is a line on the console home. **The console line is done**: the automations view (`prospector/ops/automations_view.py`) discovers every engine that has a declaration and runs its `--json` live, so this check appears with no console edit.
+**Done when:** stranded count is 0, the check runs per tick, and the count is a line on the console home. **The console line is NOT done** (corrected 2026-08-17): this said an automations view at `prospector/ops/automations_view.py` discovered every engine and ran its `--json`, so the check would appear with no console edit. That file has never existed and no discovery layer does. Each caller imports one automation by name — `prospector/ops/data.py` imports `ops.automations.offsite_backup`, `scripts/ops_status.py` runs `ops.automations.stranded_packs`. So a new automation still needs a console edit, and the stranded count is not on the console home.
 
 ### P2 — Make the meters honest
 1. Ledger rotation into `store/ledger/YYYY-MM.jsonl` plus a compacted `daily_totals.json` the guard
@@ -615,7 +615,9 @@ and 11 console pages; the search looked for App Router files in a Pages Router a
 justified closing work that was fine.
 
 *Number:* false claims per session, counted from the transcript. **No probe exists yet.**
-`scripts/reflect.py` finds where the founder stopped an agent, which is a proxy, not this.
+`~/.claude/scripts/reflect.py` finds where the founder stopped an agent, which is a proxy, not
+this. It lives in the harness config, not in this repo — `ops/launchd/com.chidionyema.reflect.json`
+is what runs it.
 
 *State:* OPEN.
 
@@ -653,7 +655,7 @@ rules that are READ are not.
 *Costs:* the same mistakes at the same cost, indefinitely.
 
 *Number:* **1.68 founder-stop events per 100 tool calls** across 343 transcripts and 41,319
-calls, from `scripts/reflect.py`. July 0.63, August 1.79 — the rate nearly tripled. Any
+calls, from `~/.claude/scripts/reflect.py`. July 0.63, August 1.79 — the rate nearly tripled. Any
 behaviour rule that lands must move that number or be deleted.
 
 *State:* OPEN. `~/.claude/scripts/rule-guard.py` exists, passes its own selftest, and **has
