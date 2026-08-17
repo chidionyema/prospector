@@ -51,13 +51,15 @@ DOSSIERS = ROOT / "store" / "dossiers"
 from prospector.shelf_copy_repair import (  # noqa: E402
     SYSTEM,
     USER,
+    RewriteUnavailable,
     _new_facts,
     breaches,
     rewrite_one,
     voice_breaches,
 )
 
-__all__ = ["SYSTEM", "USER", "_new_facts", "breaches", "rewrite_one", "voice_breaches"]
+__all__ = ["SYSTEM", "USER", "RewriteUnavailable", "_new_facts", "breaches", "rewrite_one",
+           "voice_breaches"]
 
 def glossary() -> dict[str, str]:
     """The operator's declared expansions, `config.yaml listing.initialism_glossary`.
@@ -470,20 +472,42 @@ def main() -> int:
     # SQLite is the one part of this that is not idle-waiting.
     todo = fixable[:args.limit] if args.limit else fixable
     print(f"\nrewriting {len(todo)} line(s), {args.jobs} in flight")
+    def _attempt(row):
+        """One row's rewrite, with an outage kept separate from a refusal.
+
+        `rewrite_one` raises `RewriteUnavailable` when the brain call failed, so one dead
+        call no longer takes the whole sweep down with it, and — the point — it is not
+        reported as "the line could not be improved". The two outcomes need different
+        actions: a refusal is finished work, an outage means run the sweep again.
+        """
+        try:
+            return rewrite_one(op, row[1], row[2])
+        except RewriteUnavailable as exc:
+            return exc
+
     with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
-        done = list(pool.map(lambda r: (r, rewrite_one(op, r[1], r[2])), todo))
+        done = list(pool.map(lambda r: (r, _attempt(r)), todo))
 
     fixed = 0
+    outages = 0
     for (cid, title, one, created, why), new in done:
         print(f"\n{cid}  listed from {created[:10]}")
         print(f"  OLD: {one}")
-        if new:
+        if isinstance(new, RewriteUnavailable):
+            outages += 1
+            print(f"  NOT ATTEMPTED — {new}")
+        elif new:
             persist(cid, new)
             fixed += 1
             print(f"  NEW: {new}")
         else:
             print("  (kept — see the refusal above)")
     print(f"\nrewritten: {fixed} of {len(todo)}")
+    if outages:
+        # Non-zero, so a scripted caller cannot mistake a run that never reached the brain
+        # for a run that decided every line was fine.
+        print(f"{outages} line(s) were never attempted — the rewrite call failed. Re-run.")
+        return 1
     return 0
 
 
