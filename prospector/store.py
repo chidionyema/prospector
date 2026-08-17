@@ -252,6 +252,10 @@ class Store:
                 if "duplicate column name" not in str(e).lower():
                     raise
 
+        # Indexes AFTER the columns, because they name columns the loop above may have just
+        # added. A database opened at the older schema would fail the CREATE INDEX otherwise.
+        conn.executescript(_CREATE_INDEXES)
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------

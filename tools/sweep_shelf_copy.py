@@ -35,7 +35,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from prospector.pack_linter import check_shelf_copy  # noqa: E402
+from prospector.pack_linter import (  # noqa: E402
+    check_shelf_copy,
+    expands_on_first_use,
+    unexplained_initialisms,
+)
 
 DB = ROOT / "store" / "prospector.db"
 LISTINGS = ROOT / "store" / "listings"
@@ -100,6 +104,120 @@ def voice_breaches(one_liner: str) -> list[str]:
     reported and left."""
     return [d for f, d in breaches("", one_liner)
             if "second person" in d or "opens on" in d]
+
+
+def glossary() -> dict[str, str]:
+    """The operator's declared expansions, `config.yaml listing.initialism_glossary`.
+
+    Empty is a valid answer and means "expand nothing" — the sweep then reports every
+    unexplained term and changes no copy, which is the honest outcome when nobody has said
+    what the letters stand for."""
+    from prospector.config import load_config
+    return dict(load_config().listing.get("initialism_glossary") or {})
+
+
+def _plural(words: str) -> str | None:
+    """`independent software vendor` -> `independent software vendors`.
+
+    Only regular plurals. A last word already ending in `s` gets None, and the caller then
+    reports the term instead of writing `Resourcess` onto the shelf — the operator rewords
+    it, which is the same answer we give for a term with no entry at all."""
+    head, _, last = words.rpartition(" ")
+    if not last or last.endswith("s"):
+        return None
+    if last.endswith("y") and last[-2:-1].lower() not in "aeiou":
+        last = last[:-1] + "ies"
+    elif last.endswith(("x", "ch", "sh", "z")):
+        last += "es"
+    else:
+        last += "s"
+    return f"{head} {last}".strip()
+
+
+#: `a` before a consonant, `an` before a vowel. The article sits OUTSIDE the run, so
+#: expanding in place leaves it agreeing with the letters and not with the words: the live
+#: line `an HSE improvement notice` became `an Health and Safety Executive (HSE) notice`.
+#: Letter-based, not sound-based, which is right for every term in the glossary today.
+_ARTICLE_RE = re.compile(r"\b(a|an|A|An)\s+$")
+
+
+def expand_initialisms(text: str, gloss: dict[str, str]):
+    """Spell out the initialisms the operator has declared. No model call, no judgement.
+
+    Returns `(new_text, unresolved, rejected, embedded)`.
+
+    This exists because `voice_breaches` deliberately refuses to send an initialism to a
+    brain: an expansion is a FACT, and a rewrite that invents one ships an unsourced claim on
+    a source-or-die storefront. A declared glossary is the safe half of the same job — the
+    words come from the operator, and this only pastes them in.
+
+    Three things it will not do, each reported rather than guessed at:
+
+    * `unresolved` — no glossary entry, or a plural this cannot form regularly.
+    * `rejected` — an entry whose initials do not spell the run, judged by
+      `expands_on_first_use`, the same function the publish gate uses. A typo in
+      `config.yaml` cannot put a wrong gloss on the shelf.
+    * `embedded` — the run only ever appears inside a longer word, as `STRS` does in
+      `CalSTRS`. Pasting an expansion into the middle of a word is worse than leaving it,
+      so the copy needs a human, not a substitution.
+    """
+    out, unresolved, rejected, embedded = text, [], [], []
+    for run in unexplained_initialisms(text):
+        words = gloss.get(run)
+        if not words:
+            unresolved.append(run)
+            continue
+        # A trailing `s` is the plural of the term (`IFAs`, `PACs`), and a following hyphen
+        # is a compound (`FOI-sourced`, `RMF-ready`) — both are the term in use. A LEADING
+        # letter or digit is not: `STRS` in `CalSTRS` is part of another word.
+        pattern = re.compile(rf"(?<![A-Za-z0-9]){re.escape(run)}(s?)(?![A-Za-z0-9])")
+        match = pattern.search(out)
+        if match is None:
+            embedded.append(run)
+            continue
+        if match.group(1):
+            words = _plural(words)
+            if words is None:
+                unresolved.append(run)
+                continue
+        replacement = f"{words} ({run}{match.group(1)})"
+        # Sentence start: the glossary holds common nouns in lower case (`independent
+        # software vendor`), and the line it replaces began the sentence.
+        head = out[:match.start()]
+        if not head.strip() or head.rstrip().endswith((".", "!", "?")):
+            replacement = replacement[:1].upper() + replacement[1:]
+        else:
+            article = _ARTICLE_RE.search(head)
+            if article:
+                want = "an" if replacement[0].lower() in "aeiou" else "a"
+                if article.group(1)[0].isupper():
+                    want = want.capitalize()
+                head = head[:article.start()] + want + " "
+        candidate = head + replacement + out[match.end():]
+        if not expands_on_first_use(candidate, run):
+            rejected.append(run)
+            continue
+        out = candidate
+    return out, unresolved, rejected, embedded
+
+
+def expand_row(title: str, one: str, gloss: dict[str, str]):
+    """Apply the glossary to both shelf strings, keeping only a change that helps.
+
+    Returns `(new_title|None, new_line|None, needs_operator, rejected)`; None means "leave
+    it". An expansion makes a line longer and the gate has a length limit, so it can trade
+    one error for another. The test is the gate's own count: a field is only rewritten when
+    the errors it would raise strictly go down."""
+    new_t, unres_t, rej_t, emb_t = expand_initialisms(title, gloss)
+    if new_t != title and len(breaches(new_t, one)) >= len(breaches(title, one)):
+        new_t = title
+    new_o, unres_o, rej_o, emb_o = expand_initialisms(one, gloss)
+    if new_o != one and len(breaches(new_t, new_o)) >= len(breaches(new_t, one)):
+        new_o = one
+    return (new_t if new_t != title else None,
+            new_o if new_o != one else None,
+            sorted(set(unres_t) | set(unres_o) | set(emb_t) | set(emb_o)),
+            sorted(set(rej_t) | set(rej_o)))
 
 
 def listed_ids() -> set[str]:
@@ -387,10 +505,51 @@ def main() -> int:
     # and skipped: rewriting the one-liner cannot clear it, and spending a call to find
     # that out — 44 rows' worth on the first run — is the whole cost of the sweep.
     fixable = [r for r in bad if voice_breaches(r[2])]
+
+    # The free half, first: spelling out a term the operator has DECLARED costs no model
+    # call and cannot invent a fact. On 2026-08-16 initialisms alone held 31 of the 33
+    # defective rows, so this is the larger half of the sweep and the cheaper one.
+    gloss = glossary()
+    expandable, unresolved, rejected = [], {}, set()
+    for cid, title, one, created, why in bad:
+        new_t, new_o, unres, rej = expand_row(title, one, gloss)
+        for run in unres:
+            unresolved[run] = unresolved.get(run, 0) + 1
+        rejected |= set(rej)
+        if new_t or new_o:
+            expandable.append((cid, title, one, created, new_t, new_o))
+
     print(f"live packs: {len(rows)}   defective: {len(bad)}   "
-          f"one-liners a rewrite can fix: {len(fixable)}")
+          f"one-liners a rewrite can fix: {len(fixable)}   "
+          f"rows the glossary alone repairs: {len(expandable)}")
+    if unresolved:
+        print(f"\nterms this cannot spell out ({len(unresolved)}) — declare them in "
+              f"config.yaml listing.initialism_glossary, or reword the copy:")
+        for run, n in sorted(unresolved.items(), key=lambda kv: (-kv[1], kv[0])):
+            print(f"  {run:<8} on {n} row(s)")
+    if rejected:
+        print(f"\nDECLARED BUT WRONG — the initials do not spell the run, so these were "
+              f"dropped rather than published: {', '.join(sorted(rejected))}")
     if not bad:
         return 0
+
+    if args.fix and expandable:
+        print(f"\nspelling out declared terms on {len(expandable)} row(s) — no model call")
+        for cid, title, one, created, new_t, new_o in expandable:
+            print(f"\n{cid}  listed from {created[:10]}")
+            if new_t:
+                print(f"  title -> {new_t}")
+            if new_o:
+                print(f"  line  -> {new_o}")
+            persist(cid, new_line=new_o, new_title=new_t)
+        # The rows moved, so re-grade before spending anything on the half a model must do.
+        rows = live_rows()
+        bad = [(cid, t, o, c, b) for cid, t, o, c in rows if (b := breaches(t, o))]
+        fixable = [r for r in bad if voice_breaches(r[2])]
+        print(f"\nafter the glossary: defective {len(bad)}   "
+              f"one-liners a rewrite can fix: {len(fixable)}")
+        if not fixable:
+            return 0
 
     op = None
     if args.fix:
@@ -414,11 +573,17 @@ def main() -> int:
             return 1
 
     if not args.fix:
+        proposed = {cid: (nt, no) for cid, _t, _o, _c, nt, no in expandable}
         for cid, title, one, created, why in bad:
             print(f"\n{cid}  listed from {created[:10]}")
             print(f"  OLD: {one}")
             for field, detail in why:
                 print(f"   ! [{field}] {detail.split(':')[0]}")
+            new_t, new_o = proposed.get(cid, (None, None))
+            if new_t:
+                print(f"   > glossary title: {new_t}")
+            if new_o:
+                print(f"   > glossary line:  {new_o}")
         return 0
 
     # In flight together. Each rewrite is one independent call about one line, sharing

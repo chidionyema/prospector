@@ -2419,6 +2419,48 @@ def _kill_stale_daemon(cfg) -> None:
         logger.error("Watchdog: not permitted to kill pid %d: %s", pid, exc)
 
 
+def _ensure_supervisor_loaded(cfg) -> dict:
+    """Make "launchd KeepAlive will relaunch it" true before relying on it.
+
+    Returns the supervisor receipt so a caller (or a test) can read the outcome. `ok` is False
+    when the check itself failed, which is a different thing from "the job was already loaded".
+
+    Every exit in `_kill_stale_daemon` promises launchd will bring the daemon back. That promise
+    holds only while `com.prospector.scheduler` is bootstrapped into the user's launchd domain.
+
+    On 2026-08-16 it was not. The plist was on disk with KeepAlive=1 and RunAtLoad=1, the service
+    was absent from the domain, and the daemon stayed dead from 12:52 UTC while this watchdog went
+    on logging that launchd had it in hand. The check is one `launchctl print`; the assumption it
+    replaces cost hours of dead engine.
+    """
+    from prospector.ops.supervisor import PRODUCER, ensure_loaded
+
+    try:
+        rec = ensure_loaded(cfg, PRODUCER, actor="watchdog")
+    except Exception as exc:  # noqa: BLE001 — a broken repair must not take the watchdog with it
+        logger.error("Watchdog: supervisor check failed: %s", exc)
+        rec = {"changed": False, "message": str(exc)}
+        rec["ok"] = False  # in the RETURN value: a caller cannot read the log line above
+        return rec
+
+    if rec.get("changed"):
+        from prospector.scheduler.alerts import CRITICAL, emit_alert
+
+        logger.critical("Watchdog: %s was NOT loaded in launchd — bootstrapped it. %s",
+                        PRODUCER, rec.get("message"))
+        print(f"⚠ {PRODUCER} was not loaded; watchdog bootstrapped it")
+        emit_alert(cfg, severity=CRITICAL, key="supervisor",
+                   title="Daemon launchd job was missing",
+                   message=(f"{PRODUCER} was not loaded, so KeepAlive could not relaunch the "
+                            f"daemon and every 'launchd will restart it' line in the log was "
+                            f"false. The watchdog re-bootstrapped it: {rec.get('message')}"),
+                   throttle_s=3600)
+    elif rec.get("ok") is False:
+        logger.error("Watchdog: launchd cannot relaunch %s — %s", PRODUCER, rec.get("message"))
+
+    return rec
+
+
 def _check_consumer(cfg) -> None:
     """Page when the CONSUMER has died, which no other alarm in this estate can see.
 
@@ -2438,8 +2480,8 @@ def _check_consumer(cfg) -> None:
     looks like, and paging for that on every box that has never run a consumer is how a channel
     gets muted.
     """
-    from prospector.scheduler.alerts import CRITICAL, WARNING, emit_alert, resolve_alert
     from prospector.consumer import consumer_liveness
+    from prospector.scheduler.alerts import CRITICAL, WARNING, emit_alert, resolve_alert
 
     try:
         live = consumer_liveness(cfg)
@@ -2497,6 +2539,9 @@ def _run_watchdog(cfg) -> int:
                title="Generation daemon is DOWN", message=reason, throttle_s=3600)
     print(f"⚠ daemon DOWN: {reason}")
     _kill_stale_daemon(cfg)
+    # AFTER the kill, not before: killing converts "hung" into "exited", and this is the check
+    # that there is a supervisor to notice. Without it the kill is just a kill.
+    _ensure_supervisor_loaded(cfg)
     return 1
 
 
