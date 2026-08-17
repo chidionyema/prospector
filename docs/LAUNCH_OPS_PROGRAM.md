@@ -80,7 +80,7 @@ unattended. Kill switch (`store/scheduler/PAUSE`) plus two half-stops. Daily spe
 watchdog that SIGKILLs a wedged daemon. Escalating 5m/10m/20m retries. Alerts on four channels
 including Telegram, with a delivery test. A nightly R2 backup that **verifies its own uploads**
 (`verified=8/8`) and prunes on retention. Payments abstracted behind `IPaymentProvider` with a
-Stripe as its one real implementation. Email abstracted behind `IEmailSender` and **optional** —
+Paddle implementation already written. Email abstracted behind `IEmailSender` and **optional** —
 the buyer gets download links on the success page, not by email. Both web and API ship as plain
 Dockerfiles. Legal pages exist: terms, privacy, refund, a Consumer Contracts Regulations 2013
 waiver, an AI-generated disclosure, a licence grant, Stripe automatic tax.
