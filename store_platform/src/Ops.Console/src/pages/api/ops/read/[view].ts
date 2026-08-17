@@ -28,6 +28,7 @@ export const VIEWS = [
   'tools',
   'catalogue',
   'pack',
+  'shelf',
 ] as const;
 
 /** Arguments each view accepts. Anything else in the query string is dropped, not forwarded. */

@@ -172,9 +172,9 @@ def queue_view(cfg, *, store=None, now: Optional[float] = None,
     explanation beside it is what sent an operator looking at the wrong process for a day
     (`run.py::_with_exclusions`).
     """
+    from prospector import drain_state
     from prospector import run as _run
     from prospector.store import Store
-    from prospector import drain_state
 
     now = time.time() if now is None else now
     store = store or Store(cfg)

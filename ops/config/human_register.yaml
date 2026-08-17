@@ -1,0 +1,42 @@
+# Human register coverage — this startup's declaration.
+#
+# Every business fact for the `human_register` automation lives here. The engine
+# (`ops/automations/human_register.py`) contains none of it.
+#
+# WHAT THIS IS FOR. `pack_linter.lint_pack` writes a `human_register` block into each
+# `<id>.lint.json` (pack_linter.py:1858). The block shipped after every pack on disk had
+# already been linted, so no record on disk carries one and the ops dashboard panel that reads
+# it has nothing to draw. The obvious answer, "run a batch", costs a full generation cycle for
+# a number that needs no model at all: `register_lint.register_metrics` is pure measurement
+# over text.
+
+# Where the lint records and dossiers live, relative to the repo root.
+store_dir: store/dossiers
+
+# The lint records to cover.
+lint_glob: "*.lint.json"
+
+# Where a dossier for an id may be found, in the order tried.
+dossier_suffixes:
+  - .pass.json
+  - .kill.json
+  - .defer.json
+
+# The model-written documents that make up the style corpus.
+#
+# ONE HONEST DIFFERENCE FROM A LIVE LINT, and the reason `--fix` stamps `"corpus"` into every
+# block it writes. `lint_pack` grades `pack_sections or prose`: the assembled 14-section read
+# when the caller has it, these four documents otherwise. A dossier on disk does not store the
+# assembled read, so a backfill grades the prose artifacts. That is the same fallback
+# `lint_pack` itself takes when a caller has no sections, not a shortcut invented here.
+prose_types:
+  - build_spec
+  - gtm_plan
+  - ops_plan
+  - financial_model
+
+# Where the prose artifacts sit inside a dossier document.
+artifacts_path:
+  - candidate
+  - tags
+  - artifacts

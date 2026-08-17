@@ -236,12 +236,26 @@ def test_a_stopped_flag_means_no_pass_runs_at_all(monkeypatch):
 def test_the_pacing_is_read_from_the_live_config():
     """Not just declared in config.yaml — READ from it. A config knob nobody reads is the
     defect class that made `candidates_per_signal: 50` mean 5 for as long as the line existed."""
+    from pathlib import Path
+
+    import yaml
+
     from prospector.config import load_config
 
+    # Compare against what config.yaml SAYS, not against a literal. The literal pinned the
+    # tuning value: raising `batch` 5 -> 24 on 2026-08-16 (three idle worker slots per wave,
+    # measured 1.54 rows in flight against 8) failed this test, which is the knob being tuned
+    # working exactly as intended. What must never regress is that the loop READS the file.
+    raw = yaml.safe_load(
+        (Path(__file__).resolve().parents[2] / "config.yaml").read_text()
+    )["consumer"]
     conf = C.consumer_config(load_config())
-    assert conf.batch == 5
-    assert conf.idle_s == 60.0
-    assert conf.blocked_s == 300.0
+    assert conf.batch == raw["batch"]
+    assert conf.idle_s == float(raw["idle_s"])
+    assert conf.blocked_s == float(raw["blocked_s"])
+    # And it must be a real read, not a default that happens to match: the dataclass default
+    # is 5, so a `batch` that equals the default proves nothing about the file being read.
+    assert raw["batch"] != C.ConsumerConfig.batch
 
 
 def test_a_missing_consumer_block_runs_at_defaults():

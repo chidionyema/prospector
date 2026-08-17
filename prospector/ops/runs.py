@@ -41,11 +41,11 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterable, Optional
-import sqlite3
 
 #: The engine's own fail-safe rationale when a verdict CALL raised (`verify.py:561`). Dossiers
 #: written before 2026-08-06 carry it with `retrieval_failed` UNSET — the flag was added by the
