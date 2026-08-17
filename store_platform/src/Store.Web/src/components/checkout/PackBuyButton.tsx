@@ -154,7 +154,10 @@ export default function PackBuyButton({
    * would have been synthesised by the browser -- a smeared 600 -- on the single most important
    * control on the site. `weightAndCasePolicy.test.ts` now guards that tree-wide.
    */
-  const shapeClasses = buttonClasses({ variant: 'buy', size: 'lg' });
+  // `primary`, not a `buy` variant of its own: as of 2026-08-15 there is exactly ONE filled button
+  // on the site and this is it (founder: "black buttons disappear entirely -- no two primary
+  // colours"). See the note above VARIANTS.primary in ui/Button.tsx.
+  const shapeClasses = buttonClasses({ variant: 'primary', size: 'lg' });
 
   // Not buyable yet. The card / drawer flow cannot tell from here whether the drawer
   // WILL be buyable (the drawer's own `usePackCheckout` may differ), so it always

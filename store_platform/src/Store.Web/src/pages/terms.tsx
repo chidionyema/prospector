@@ -87,8 +87,8 @@ export default function TermsPage() {
       <LegalHeading>4. Prices and payment</LegalHeading>
       <LegalText>
         All prices are shown in GBP (£) and are inclusive of VAT where applicable. Payment is
-        processed by our third-party payment processor (currently Paddle or Stripe, see the
-        checkout page for the active processor). We do not store your full card details.
+        processed by our third-party payment processor, Stripe. We do not store your full
+        card details.
         A transaction is complete when you receive an order-confirmation email.
       </LegalText>
 
@@ -108,7 +108,7 @@ export default function TermsPage() {
       <LegalHeading>6. Nature of AI-generated content, no warranty</LegalHeading>
       <LegalText>
         Packs are produced by automated AI systems and are provided <strong>&ldquo;as
-        is&rdquo;</strong>. While we use source-grounding and editorial processes to improve
+        is&rdquo;</strong>. While we cite a retrievable source for every claim, and edit for
         accuracy, <strong>we make no warranty, express or implied, that the Pack content is
         accurate, complete, current, or fit for any particular purpose.</strong> AI-generated
         content may contain errors, omissions, or outdated information. You are responsible for

@@ -3,7 +3,7 @@ import React from 'react';
 import { Button, chipClasses } from '@/components/ui';
 import { WaitlistForm } from '@/components/waitlist/WaitlistForm';
 import type { DiscoveryState } from '@/lib/discovery';
-import { KIND_NOUN, label, type FacetKind } from '@/lib/facets';
+import { clauseLabel, KIND_NOUN, label, type FacetKind } from '@/lib/facets';
 
 /**
  * Near miss before empty, and only then the waitlist (spec Part 7).
@@ -120,8 +120,12 @@ export function DiscoveryWaitlist({ query, onReset }: { query: string; onReset?:
 
 /** Human-readable name of the constraint a near-miss pack fails, for the chip copy. */
 export function missLabelFor(kind: FacetKind, wanted: string, actual: string | null | undefined): string {
-  const wantedText = label(kind, wanted) ?? wanted;
-  const actualText = label(kind, actual);
+  // `clauseLabel`, NOT `label`: both halves land inside a sentence here, and one of them is
+  // lower-cased on the way in. `advantage` went first person on 2026-08-15 for the filter tiles,
+  // which turned this string into "I can sell, you said i can build". See the note on
+  // CLAUSE_LABELS (`lib/facets.ts`) for why the two forms cannot be one string.
+  const wantedText = clauseLabel(kind, wanted) ?? wanted;
+  const actualText = clauseLabel(kind, actual);
   if (!actualText) return `Not tagged for ${KIND_NOUN[kind]}, you said ${wantedText.toLowerCase()}`;
   return `${actualText}, you said ${wantedText.toLowerCase()}`;
 }

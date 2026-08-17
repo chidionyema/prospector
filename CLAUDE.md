@@ -4,12 +4,17 @@
 > (`reference-project-claude-md-full-2026-08-06.md` is the verbatim pre-compression text).
 > This file carries the RULE; the memory files carry the incident that produced it.
 >
-> Three programmes have their own tracked specs — read and append there, never here:
+> Four programmes have their own tracked specs — read and append there, never here:
 > `docs/COST_PROGRAM.md` (all cost work, all measurements),
-> `docs/GRAPHIFY_ENFORCEMENT_SPEC.md` (estate-wide graph freshness) and
+> `docs/GRAPHIFY_ENFORCEMENT_SPEC.md` (estate-wide graph freshness),
 > `docs/SITE_SPEC_PROGRAM.md` (the mumchimp.com design/UX/copy spec + its live status ledger —
 > it lived only in a chat transcript until 2026-08-07, which is why its status kept evaporating
-> between sessions; read it before touching the storefront).
+> between sessions; read it before touching the storefront) and
+> `docs/PACK_NARRATIVE_PROGRAM.md` (what the buyer actually reads: the 14-section reading order,
+> the eight deterministic renderers and why they must stay model-free, the three gates that were
+> grading less than they appeared to, and the switches that are deliberately OFF. Read it before
+> touching a `pack_*.py` renderer, the pack linter, or `tools/backfill_bundle_html.py` — the
+> diagnosis is the top half, the implementation ledger is the bottom half).
 
 **Source-or-die:** every factual claim and quantitative figure must cite a retrievable source or be marked `unverifiable`. No unsourced numbers ship, ever.
 
@@ -104,13 +109,48 @@ whose `pre-commit` links to `.lux/hooks/pre-commit`.
 This cost a session on 2026-08-16: a commit failed with only "exit code 1", and the doc said no
 gate could have refused it. The gate had refused it, on one test out of 4124.
 
-The reason is arithmetic, not preference: the suite measures ~3185s serially against a 2400s
-ceiling, so the gate could not pass — every commit paid ~40 minutes to be refused. It also runs
-inside the hook, so `git commit` holds `.git/index.lock` for the whole run and one wedged gate
-blocked every session in the checkout (2026-08-14: 49 minutes, three sessions, zero commits,
-cleared by a human killing a PID). **Nothing now blocks a bad commit locally — CI is the only
-net.** Run the suite yourself when a change deserves it: `.venv/bin/python scripts/popdd_verify.py
---staged`.
+**The gate CAN pass, and the number that said otherwise is dead.** This file used to carry "the
+suite measures ~3185s serially against a 2400s ceiling, so the gate cannot pass". That sentence
+was prose, not a measurement, and it was quoted as fact in a session on 2026-08-16 before anyone
+checked it. `pytest.ini:42` sets `addopts = -n auto --dist loadfile`, so nothing runs serially.
+Two timings, both real: the gate's own python-lane commands on clean `main` (`0e1e939`) measured
+**1.7s of ruff plus 445.5s of pytest, 3925 passed and 3 skipped — 7m25s against the 2400s
+ceiling at `scripts/popdd_verify.py:86`, 19% of it**; the merged tree on 2026-08-16, timed while
+four CI jobs shared the box, measured **1281.41s, 4612 passed and 3 skipped — 21m21s, 53% of the
+ceiling**. Both pass. If you are about to repeat a timing claim from this paragraph, time it
+again: the suite grows, and the ceiling does not.
+
+**Install it where git actually LOOKS.** `core.hooksPath` is set in `.git/config` to
+`.git/hooks-active`, which makes `.git/hooks/` inert as a DIRECTORY — anything written there is
+never read, so the re-enable line this file carried until 2026-08-15
+(`ln -s ../../.lux/hooks/pre-commit .git/hooks/pre-commit`) was silently a no-op. The live
+control point is:
+
+```bash
+# ON. Two deliberate choices. The target is ABSOLUTE, because the link lives in
+# .git/hooks-active/ and a relative target would resolve against THAT directory. And it is the
+# MAIN checkout's copy, not `--show-toplevel`, because hooks-active sits in the COMMON git dir
+# and is shared by every worktree — one link, so the gate cannot be half-on.
+ln -sfn "$(dirname "$(cd "$(git rev-parse --git-common-dir)" && pwd -P)")/.lux/hooks/pre-commit" \
+        "$(git rev-parse --git-path hooks)/pre-commit"
+# OFF
+rm "$(git rev-parse --git-path hooks)/pre-commit"
+```
+
+Two things the gate now depends on, both of which fail by accusing something else. **`ruff` runs
+REPO-WIDE** (`scripts/popdd_verify.py:166`), so one unformatted file anywhere walls every commit
+in every worktree — `main` itself carried 12 such errors until they were cleared for this
+(2b38ca3), and a worktree still sitting on an older base will fail ruff until it rebases. And
+**every worktree needs `.venv` and `.lux/keys/agent.pem`**, neither of which `git worktree add`
+creates; without them the gate is BLOCKED over a missing interpreter or an unsigned receipt.
+`./scripts/setup_worktree.sh <path>` is the only correct way to make a worktree, and now it is
+load-bearing rather than a convenience.
+
+The wedge risk is smaller but not gone: the gate runs INSIDE the hook, so `git commit` holds
+`.git/index.lock` for the whole run — now bounded at ~7.5 minutes rather than the 49 minutes that
+blocked three sessions on 2026-08-14. `_run_step` kills the process GROUP and drains the pipes,
+which is what fixed that specific hang. Preflight a change without committing:
+`.venv/bin/python scripts/popdd_verify.py --staged`.
 
 **One session, one worktree** still stands, for the index rather than the gate: sessions sharing
 this checkout share one `.git/index`, and `git worktree add` succeeds even while that index is

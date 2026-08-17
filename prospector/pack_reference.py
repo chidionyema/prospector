@@ -32,13 +32,18 @@ re-explaining what this document now holds is a GENERATION change (the prompts),
 effect on new packs only. Said plainly rather than implied: this file makes the evidence
 readable once; it does not shorten the pack a buyer already owns.
 
-THE ASSUMPTIONS REGISTER HAS NO COST COLUMN, ON PURPOSE
---------------------------------------------------------
-The programme doc asks for "assumption, cost to confirm, test, cost of test". Three of those
-four are real and are rendered. The money is not: nothing in the dossier prices what a test
-costs, and a priced column would be a number we made up — the exact failure the whole catalogue
-is built to avoid (`source-or-die`). What IS on disk is the searches the engine actually ran
-for the check that came back unproven, so the register says what would settle it instead of
+THE ASSUMPTIONS REGISTER MOVED OUT OF THIS FILE (2026-08-15)
+------------------------------------------------------------
+It was rendered here AND by `pack_bear_case._unproven_block` — same `unverifiable` rows, same
+`check_label` headings, same rationales, same searches, in two sections of the same pack. It
+now lives only in the bear case, because an unproven assumption is an argument about whether
+to build and that is what "What would sink this" is for, while this document is the appendix.
+
+The reasoning that shaped it still holds and still applies there: the programme doc asks for
+"assumption, cost to confirm, test, cost of test", and the money column is deliberately absent.
+Nothing in the dossier prices what a test costs, so a priced column would be a number we made
+up — the exact failure the catalogue exists to avoid (`source-or-die`). What IS on disk is the
+searches the engine actually ran, so the register says what would settle a question instead of
 guessing what settling it costs.
 
 Shape-agnostic by construction: every read is a `getattr`, because two objects reach here — a
@@ -109,7 +114,6 @@ def render(dossier: Any) -> str:
     out.append("")
 
     settled = [c for c in checks if _verdict(c) in ("supported", "refuted")]
-    unproven = [c for c in checks if _verdict(c) == "unverifiable"]
 
     if settled:
         out.append("---")
@@ -135,45 +139,21 @@ def render(dossier: Any) -> str:
                 out.extend(lines)
                 out.append("")
 
-    out.extend(_assumptions_register(unproven, index))
+    # The assumptions register USED to be emitted here as well.
+    #
+    # `pack_bear_case._unproven_block` walks the same `unverifiable` rows, prints the same
+    # `check_label` heading, the same rationale and the same searches. Two sections of the same
+    # pack rendering the same rows from the same fields is not a paraphrase problem that needs
+    # judgement — it is one list, printed twice, and it was the largest structural duplicate in
+    # the pack the founder read on 2026-08-15.
+    #
+    # The bear case keeps it. An unproven assumption is an argument about whether to build, and
+    # that is what "What would sink this" is for; this document is the evidence appendix. The
+    # ownership is safe rather than conditional: `pack_bear_case.render` returns a body whenever
+    # `unproven` is non-empty (`pack_bear_case.py:193-196`), so the register cannot vanish by
+    # both sections deciding the other has it.
     out.extend(_all_sources(checks))
     return "\n".join(out).rstrip() + "\n"
-
-
-def _assumptions_register(unproven: Iterable[Any], index: dict) -> List[str]:
-    """Every check that came back unproven, once, with the searches that would settle it.
-
-    This replaces the `assumption — unverified` note repeated through the plans (measured:
-    11 such lines per pack on average, 58 in the worst). One register beats fifteen hedges —
-    past the fifteenth the honesty stops reading as honesty and starts reading as a template.
-    """
-    rows = list(unproven)
-    if not rows:
-        return []
-    out = ["---", "", "## What we could not prove", "",
-           "These are assumptions, not findings. We searched and did not find enough to rule "
-           "either way, so they are listed here rather than buried as a caveat in three "
-           "different plans.", "",
-           "We do not put a price on testing them. Nothing we retrieved tells us what a test "
-           "costs, and a number we invented would be exactly the thing this pack promises not "
-           "to do.", ""]
-    for chk in rows:
-        name = str(getattr(chk, "check_name", "") or "")
-        out.append(f"### {check_label(name)}")
-        out.append("")
-        rationale = link_inline_citations(
-            str(getattr(chk, "rationale", "") or "").strip(), index)
-        if rationale:
-            out.append(rationale)
-            out.append("")
-        queries = [str(q).strip() for q in (getattr(chk, "queries", None) or []) if str(q).strip()]
-        if queries:
-            out.append("**What we searched for.** Start here if you want to settle it yourself:")
-            out.append("")
-            for q in queries[:6]:
-                out.append(f"- {q}")
-            out.append("")
-    return out
 
 
 def _all_sources(checks: Iterable[Any]) -> List[str]:

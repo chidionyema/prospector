@@ -37,7 +37,12 @@ describe('the drawer carries the pre-contract set', () => {
   });
 
   it('keeps the honesty note that a pack is research, not a promise', () => {
-    expect(drawer).toContain('evidence-backed research, not a promise of business success');
+    // Was `toContain('evidence-backed research, not a promise of business success')`. The
+    // sentence moved to `lib/disclaimer.ts` because four surfaces had drifted into three
+    // wordings; this now checks the drawer still RENDERS it, which is what the test was ever
+    // about. `disclaimerSaidOnce.test.ts` owns the wording itself.
+    expect(drawer).toContain("from '@/lib/disclaimer'");
+    expect(drawer).toContain('{PACK_DISCLAIMER}');
   });
 
   it('always offers the full evidence one click away', () => {

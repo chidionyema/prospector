@@ -216,7 +216,7 @@ public sealed class DeliveryOutboxTests : IDisposable
             Title = id,
             OneLine = "x",
             DossierRef = "d",
-            PaymentProvider = "paddle",
+            PaymentProvider = "stripe",
             ProviderProductId = productId,
             ContentKey = contentKey,
             ContentVersion = 1,
@@ -226,7 +226,7 @@ public sealed class DeliveryOutboxTests : IDisposable
     }
 
     private static PaymentTransaction Txn(string id, params PurchasedItem[] items) =>
-        new("paddle", id, "buyer@example.com", "GBP", "GB", 3000,
+        new("stripe", id, "buyer@example.com", "GBP", "GB", 3000,
             new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), items);
 
     private StoreDbContext NewContext() => new(_options);

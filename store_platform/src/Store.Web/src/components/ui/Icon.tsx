@@ -1,5 +1,6 @@
 import {
   LockIcon,
+  Link2Icon,
   UnlockIcon,
   BadgeCheckIcon,
   UserCheckIcon,
@@ -107,6 +108,10 @@ const ICON_MAP = {
   key: KeyIcon,
   package: PackageIcon,
   palette: PaletteIcon,
+  /* Copy-link affordance. Was a hand-inlined <svg> on the pack page carrying the SAME two
+     lucide `link-2` paths at strokeWidth 2 -- a second drawing hand for an icon we already
+     ship. Brief 2026-08-15 Part Three: one family, sitewide. */
+  link: Link2Icon,
 } as const;
 
 export type IconName = keyof typeof ICON_MAP;
@@ -117,6 +122,27 @@ interface IconProps {
   size?: number;
 }
 
+/**
+ * OPTICAL stroke weight, not nominal (brief 2026-08-15, Part Three: "Stroke: 1.5px @ 16/20px,
+ * 2px @ 24px").
+ *
+ * `strokeWidth` is expressed in the 24-unit viewBox, so the RENDERED stroke is
+ * `strokeWidth * size / 24`. A single hardcoded `1.5` therefore drew a different weight at every
+ * size the site uses: 1.0px at 16, 1.25px at 20, 1.5px at 24 -- the small icons, the ones that sit
+ * inline with text, were the LIGHTEST, which is backwards. This solves for the brief's rendered
+ * target instead.
+ *
+ * Sizes above 24 are left at the previous nominal 1.5 deliberately: the pack cover draws a sector
+ * mark at 40 and 96 (`PackCover.tsx`), and holding a 2px rendered stroke there would take it from
+ * 6px to 0.5 nominal. That is outside the three sizes the brief specifies and it is a visible
+ * change to the largest element on a card, so it needs a browser call, not an inferred one.
+ */
+function opticalStrokeWidth(size: number): number {
+  if (size > 24) return 1.5;
+  const targetPx = size >= 24 ? 2 : 1.5;
+  return (targetPx * 24) / size;
+}
+
 export function Icon({ name, className, size = 20 }: IconProps) {
   const LucideIcon = ICON_MAP[name];
 
@@ -124,7 +150,7 @@ export function Icon({ name, className, size = 20 }: IconProps) {
     <LucideIcon
       className={className}
       size={size}
-      strokeWidth={1.5}
+      strokeWidth={opticalStrokeWidth(size)}
       aria-hidden="true"
       focusable="false"
       color="currentColor"

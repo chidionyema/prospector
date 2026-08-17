@@ -149,6 +149,33 @@ def test_the_step_runs_in_its_own_process_group(tmp_path):
 # --- fault 2: one gate per working tree -------------------------------------------------
 
 
+@pytest.fixture
+def isolated_lock(tmp_path, monkeypatch):
+    """A lock file of this test's own, NEVER the live one.
+
+    Added 2026-08-15, the day the gate was turned back on, because that is the day these tests
+    started running INSIDE the thing they test. The gate holds its single-flight lock for its
+    whole run and then runs this suite; against the real path the six tests below were both
+    broken and dangerous, in opposite directions:
+
+      * The three that acquire (`... as first: assert first is True`) can never succeed — the
+        gate is already the holder — so `git commit` failed on the gate's own regression tests,
+        every time, with a message that reads as if single-flight were broken.
+      * The three that seed a holder are worse for passing: they `write_text` and then
+        `unlink` `_gate_lock_path()`, i.e. they DELETE THE RUNNING GATE'S LOCK mid-suite. The
+        rail is silently off for the rest of the run and a second gate in this tree could
+        start — the exact ~100-minute serialised commit cycle single_flight exists to stop.
+
+    Patching the path keeps every assertion below intact; what changes is only which file they
+    are about. `test_the_lock_lives_in_this_working_trees_own_git_dir` deliberately does NOT
+    take this fixture, because the real path is the thing it asserts.
+    """
+    path = tmp_path / "popdd-gate.lock"
+    monkeypatch.setattr(pv, "_gate_lock_path", lambda: path)
+    return path
+
+
+
 def test_the_lock_lives_in_this_working_trees_own_git_dir():
     """So two worktrees never collide and two sessions in ONE tree always do.
 
@@ -158,28 +185,6 @@ def test_the_lock_lives_in_this_working_trees_own_git_dir():
     path = pv._gate_lock_path()
     assert path.name == "popdd-gate.lock"
     assert path.parent.is_dir(), f"{path.parent} is not a directory — .git treated as a path?"
-
-
-@pytest.fixture
-def isolated_lock(monkeypatch, tmp_path):
-    """Point the single-flight lock at tmp_path for the tests that ACQUIRE it.
-
-    THE GATE WAS FAILING BECAUSE IT WAS RUNNING. These three tests took the REAL lock, in the
-    real working tree, and asserted they got it — but the pre-commit gate runs this suite while
-    holding exactly that lock, so `single_flight()` correctly returned False and the gate failed
-    on its own liveness. Measured 2026-08-15: 12/12 pass standalone, the same 3 fail inside the
-    gate. That is not flake and it is not concurrency between sessions (the lock is per-worktree
-    by construction, `popdd_verify.py:332-341`) — it is one tree colliding with itself, so the
-    gate could never go green in any tree, for anyone.
-
-    The lock's REAL path is still pinned, by `test_the_lock_lives_in_this_working_trees_own_git_
-    dir` above, which only READS it. Reading is safe; acquiring is what collides. Isolating the
-    acquirers keeps both properties: the path is verified, and the exclusion mechanism is
-    exercised without the test needing to be the only gate on the machine.
-    """
-    lock = tmp_path / "popdd-gate.lock"
-    monkeypatch.setattr(pv, "_gate_lock_path", lambda: lock)
-    return lock
 
 
 def test_a_second_gate_in_the_same_tree_is_refused_not_queued(capsys, isolated_lock):
@@ -198,7 +203,7 @@ def test_a_second_gate_in_the_same_tree_is_refused_not_queued(capsys, isolated_l
 def test_the_lock_is_released_when_the_gate_finishes(isolated_lock):
     with pv.single_flight() as acquired:
         assert acquired is True
-    assert not pv._gate_lock_path().exists()
+    assert not isolated_lock.exists()
     with pv.single_flight() as again:
         assert again is True
 
@@ -208,13 +213,13 @@ def test_the_lock_is_released_even_when_the_gate_raises(isolated_lock):
         with pv.single_flight() as acquired:
             assert acquired is True
             raise RuntimeError("lane exploded")
-    assert not pv._gate_lock_path().exists()
+    assert not isolated_lock.exists()
 
 
 def test_a_dead_holder_does_not_brick_the_repo(isolated_lock):
     """A crash or a SIGKILL must not leave a lock that blocks every future commit — that
     would just be a new way to be stuck. PID 2^31-1 does not exist."""
-    path = pv._gate_lock_path()
+    path = isolated_lock
     path.write_text(json.dumps({"pid": 2147483647, "started": time.time(), "tree": "x"}))
     try:
         with pv.single_flight() as acquired:
@@ -225,7 +230,7 @@ def test_a_dead_holder_does_not_brick_the_repo(isolated_lock):
 
 
 def test_an_unreadable_lock_is_treated_as_stale(isolated_lock):
-    path = pv._gate_lock_path()
+    path = isolated_lock
     path.write_text("{ this is not json")
     try:
         with pv.single_flight() as acquired:
@@ -237,7 +242,7 @@ def test_an_unreadable_lock_is_treated_as_stale(isolated_lock):
 def test_a_wedged_holder_is_named_so_it_can_be_cleared(capsys, isolated_lock):
     """Past its own ceiling, the holder is not slow, it is wedged. The operator needs the PID
     and the command, not a suggestion to be patient."""
-    path = pv._gate_lock_path()
+    path = isolated_lock
     ancient = time.time() - (pv.TEST_TIMEOUT_SECONDS + pv.DRAIN_TIMEOUT_SECONDS + 3600)
     path.write_text(json.dumps({"pid": os.getpid(), "started": ancient, "tree": "x"}))
     try:

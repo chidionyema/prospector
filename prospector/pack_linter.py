@@ -31,7 +31,9 @@ from .copy_lint import (
     extract_urls,
     is_prose_artifact,
 )
+from .house_style import check_house_style, house_style_metrics
 from .marketing_assets import BUSINESS_VOICE_TYPES, PACK_VOICE_RE, has_subject_line
+from .register_lint import check_register, register_metrics
 
 Problem = Dict[str, str]  # {"check", "severity", "where", "detail"}
 
@@ -72,6 +74,232 @@ def _err(check: str, where: str, detail: str) -> Problem:
 
 def _warn(check: str, where: str, detail: str) -> Problem:
     return {"check": check, "severity": "warning", "where": where, "detail": detail}
+
+
+# ---------------------------------------------------------------------------
+# Repetition across the assembled pack (the "why wasn't this caught at root" check)
+# ---------------------------------------------------------------------------
+#
+# WHY THIS DID NOT EXIST UNTIL 2026-08-15
+# ---------------------------------------
+# The founder read a rebuilt pack and said "repetitions occur", then asked why nothing had
+# caught it. The answer is structural rather than an oversight in any one rule: EVERY check in
+# this module before this one grades a single document or a single field. `check_currency` is
+# the only one that ever sees two texts at once, and it compares currency symbols.
+#
+# So nothing in this repo had ever read the pack as ONE DOCUMENT. Each renderer was verified
+# on its own — word counts, unit tests, its own output — and each was correct on its own. The
+# defect only exists BETWEEN them: `pack_reference` and `pack_bear_case` both walked the same
+# `unverifiable` rows; `dossier.render_markdown` reprinted every passage its own per-check
+# lists had already printed; `pack_bear_case` lifted two whole blocks out of the financial
+# model. Measured on pack e698149e137fc164: 43 sentences appearing in two or more sections,
+# 26 repeated inside a single section, 34 near-duplicate pairs.
+#
+# A per-document linter cannot see any of that, however many rules it has. This one takes the
+# assembled reading order and is the only check here that does.
+#
+# WHAT IS DELIBERATELY NOT GRADED
+# --------------------------------
+# Block quotes are skipped. This module's own standing rule is that quoted third-party
+# passages are never linted — two checks citing the same page SHOULD quote the same sentence,
+# and "correcting" that would falsify the citation on a source-or-die storefront.
+#
+# Short sentences are skipped. Section furniture recurs by design ("Read this one before you
+# build.") and a floor on length is what separates a repeated FACT from a repeated signpost.
+# Sections whose JOB is to restate the pack. Membership is an argument, not a category, and
+# the list is expected to stay at one entry: "Copy you can paste" hands the buyer a headline,
+# a one-line description and a proof point to lift into a landing page, and every one of those
+# is by definition a line printed elsewhere in the pack. See `check_repetition` for what
+# membership actually buys (a downgrade to warning, and only when exactly one other section is
+# involved) and why it is keyed on the buyer-visible title.
+_REPETITION_RESTATES_ON_PURPOSE = frozenset({"Copy you can paste"})
+
+_REPETITION_MIN_WORDS = 9
+_REPETITION_NEAR_RATIO = 88.0     # rapidfuzz ratio, 0-100
+_REPETITION_MD = re.compile(r"[*_`#\[\]()]|https?://\S+")
+_REPETITION_LIST = re.compile(r"^\s*(?:\d+[.)]|[-•*])\s*")
+
+
+def _repetition_sentences(markdown: str) -> List[str]:
+    """Engine-authored sentences of a section, normalised for comparison."""
+    out: List[str] = []
+    fenced = False
+    for line in str(markdown or "").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            fenced = not fenced
+            continue
+        # Headings carry no claim; block quotes are somebody else's words (see above).
+        if fenced or not stripped or stripped.startswith(("#", ">", "|")):
+            continue
+        body = _REPETITION_MD.sub(" ", _REPETITION_LIST.sub("", stripped))
+        for sentence in re.split(r"(?<=[.!?])\s+", body):
+            words = sentence.split()
+            if len(words) >= _REPETITION_MIN_WORDS:
+                out.append(" ".join(words))
+    return out
+
+
+def _repetition_key(sentence: str) -> str:
+    return re.sub(r"[^a-z0-9 ]", "", sentence.lower())
+
+
+def readability_grades(sections: Optional[Mapping[str, str]]) -> Dict[str, float]:
+    """US reading-grade per section, recorded and never actuated.
+
+    Measured 2026-08-15 on pack e698149e137fc164, the fourteen sections spread from grade 5.9
+    to grade 17.3, and the spread is not noise: the three sections rendered deterministically
+    from the dossier came in at 5.9-7.3, and the four model-written documents at 12.6-13.8.
+    The worst was "Copy you can paste" at 17.3 — the one section whose entire job is to hand
+    the buyer sentences to put on a landing page.
+
+    That is the finding, and it is the reason this returns numbers rather than problems. A
+    grade ceiling would block a pack for quoting a statute, and the honest reading of the
+    spread is that it grades WHO WROTE a section, not whether the writing is any good. It
+    accrues in `<id>.lint.json` until there is enough of it to say something a threshold
+    could act on.
+
+    Returns {} when textstat is absent or when nothing is long enough to score — a readability
+    number over two sentences is arithmetic, not a measurement.
+    """
+    if not sections:
+        return {}
+    try:
+        import textstat  # declared in requirements.txt; pure Python, no build
+    except ImportError:
+        # The optional metric is absent. NARROWED from `except Exception` on merging
+        # origin/main 2026-08-15, which brought the tier-1 swallow ratchet
+        # (`tools/audit_swallow_sites.py`) that flagged this line: `{}` here is the SAME value
+        # the success path returns for a pack with nothing long enough to score, so a broad
+        # handler made "textstat is not installed" and "this pack has no scoreable section"
+        # the same fact to every caller — and the whole point of this function is that the
+        # numbers accrue in `<id>.lint.json` until there are enough of them to say something.
+        # Accruing nothing, silently, because of an unrelated exception is how that never
+        # happens. ImportError is the one condition this handler is actually for.
+        return {}
+    out: Dict[str, float] = {}
+    for title, body in sections.items():
+        plain = " ".join(_REPETITION_MD.sub(" ", str(body or "")).split())
+        if len(plain.split()) < 60:
+            continue
+        try:
+            out[title] = round(float(textstat.flesch_kincaid_grade(plain)), 1)
+        except Exception:              # noqa: BLE001 — one unscoreable section, not the pack
+            # Deliberately still broad, and NOT the same defect as the import above: this
+            # skips ONE section of fourteen and the other thirteen still record their grade,
+            # so a caller can see that a number is missing. `textstat` is a third party
+            # scoring arbitrary prose and its failure modes are not enumerable from here;
+            # widening a metric's blast radius to the whole publish would be the worse trade.
+            continue
+    return out
+
+
+def check_repetition(sections: Optional[Mapping[str, str]],
+                     *, block: bool = True) -> List[Problem]:
+    """Grade the assembled pack for text the buyer reads twice.
+
+    `sections` is the reading order the buyer actually gets — section TITLE -> markdown body,
+    exactly what `bridge` hands the HTML renderer. Keyed by title rather than by filename
+    because the title is what the report has to name for the defect to be actionable.
+
+    Three findings, and only the first blocks:
+
+      * the same sentence in TWO OR MORE sections. There is no case where this is right: two
+        renderers each decided a fact was worth stating and neither knew about the other.
+      * the same sentence twice INSIDE one section — a warning, because a genuinely long
+        section can restate a premise on purpose.
+      * a near-duplicate across sections (rapidfuzz >= 88) — a warning, because a rephrase is
+        a judgement about meaning and this check is not the place to make it. It is the
+        paraphrase problem `pack_reference`'s docstring measured at 3.5% of the corpus, and
+        blocking on a similarity score would unlist packs over a style the model chose.
+
+    `block=False` grades without the actuator, which is how `check_grammar` and
+    `check_shelf_copy` earn their thresholds in this module: the report still carries the
+    count, so a baseline accrues on live packs before anything refuses to sell one.
+    """
+    if not sections:
+        return []
+    from rapidfuzz import fuzz  # declared in requirements.txt; a wheel, no build step
+
+    problems: List[Problem] = []
+    by_key: Dict[str, List[Tuple[str, str]]] = {}
+    for title, body in sections.items():
+        counts: Dict[str, int] = {}
+        for sentence in _repetition_sentences(body):
+            key = _repetition_key(sentence)
+            counts[key] = counts.get(key, 0) + 1
+            by_key.setdefault(key, []).append((str(title), sentence))
+        for key, n in counts.items():
+            if n > 1:
+                example = next(s for t, s in by_key[key] if t == str(title))
+                problems.append(_warn(
+                    "repetition", str(title),
+                    f"one sentence printed {n} times in this section: {example[:160]!r}"))
+
+    make = _err if block else _warn
+    for key, hits in by_key.items():
+        titles = sorted({t for t, _ in hits})
+        if len(titles) > 1:
+            # THE ONE EXEMPTION, AND WHY IT IS NARROW. A section that exists to hand the buyer
+            # lines to paste elsewhere is restating on purpose; blocking it would mean the only
+            # way to ship is to make the paste-ready copy differ from the pack it came out of,
+            # which is a worse pack and a false claim. So restatement BY that section is
+            # downgraded, not waived — the finding is still reported, so a renderer that starts
+            # copying whole sections into it is still visible in the report.
+            #
+            # It is keyed on the section title rather than on a filename or a flag because the
+            # title is what the exemption is an argument about: "Copy you can paste" earns it,
+            # and a future section does not inherit it by being added to the reading order.
+            # Two sections neither of which is exempt still block, even if one is adjacent to
+            # the exempt one in the pack.
+            exempt = _REPETITION_RESTATES_ON_PURPOSE.intersection(titles)
+            downgraded = bool(exempt) and (len(titles) - len(exempt)) < 2
+            report = _warn if downgraded else make
+            note = (f" (allowed: {' + '.join(sorted(exempt))} exists to restate)"
+                    if downgraded else "")
+            problems.append(report(
+                "repetition", " + ".join(titles),
+                f"the same sentence is printed in {len(titles)} sections{note}: "
+                f"{hits[0][1][:160]!r}"))
+
+    # Near-duplicates. Compared once per unordered pair, over the SAME population the exact
+    # rule uses. There was a second floor here (`len(k) >= 60`) justified as keeping two short
+    # sentences of similar shape from scoring high, but `_repetition_sentences` has already
+    # made that judgement at `_REPETITION_MIN_WORDS` = 9, and nine words is about 45-50
+    # characters — so the floor was silently exempting the shortest third of real sentences
+    # from the only check that catches a REPHRASE. Two gates answering one question is how a
+    # corpus ends up smaller than the rule that defines it.
+    keys = list(by_key)
+    pairs = 0
+    for i, a in enumerate(keys):
+        for b in keys[i + 1:]:
+            # THE PREFILTER IS DERIVED FROM THE THRESHOLD, NOT A ROUND NUMBER (2026-08-15).
+            # It was `abs(len(a) - len(b)) > 40`, and 40 is not conservative at ratio 88.
+            # rapidfuzz's ratio is 2*matches/(la+lb), so reaching T needs the longer string
+            # within `m*(200-T)/T` of the shorter — 1.27x at T=88, i.e. 43 characters apart at
+            # m=160, not 40. A 160/205-character pair scoring 91 was skipped before it was
+            # ever compared, which is a false CLEAN and the expensive direction to be wrong in.
+            la, lb = len(a), len(b)
+            if abs(la - lb) * _REPETITION_NEAR_RATIO > \
+                    min(la, lb) * (200.0 - 2 * _REPETITION_NEAR_RATIO):
+                continue
+            titles_a = {t for t, _ in by_key[a]}
+            titles_b = {t for t, _ in by_key[b]}
+            if titles_a == titles_b and len(titles_a) == 1:
+                continue  # one section: the within-section rule above already has it
+            if fuzz.ratio(a, b) < _REPETITION_NEAR_RATIO:
+                continue
+            pairs += 1
+            if pairs <= 20:   # the report names the worst; the count carries the rest
+                problems.append(_warn(
+                    "repetition", " + ".join(sorted(titles_a | titles_b)),
+                    "near-duplicate sentences: "
+                    f"{by_key[a][0][1][:110]!r} / {by_key[b][0][1][:110]!r}"))
+    if pairs > 20:
+        problems.append(_warn("repetition", "pack",
+                              f"{pairs} near-duplicate sentence pairs across sections; "
+                              "the first 20 are listed above"))
+    return problems
 
 
 # ---------------------------------------------------------------------------
@@ -852,6 +1080,17 @@ handles prepares drafts submits appeals spots catches stops starts keeps holds
 lets helps needs wants gets puts sits comes goes means counts
 """.split())
 
+#: Pronouns that carry no antecedent when a shelf line is read on its own. A shelf line is
+#: shown beside the title, never inside a paragraph, so "It takes a published NHS rota..."
+#: (the live `b94760e86e62585a` one-liner the founder rejected on 2026-08-16 as "zero
+#: content") points at nothing the sentence itself has named.
+#:
+#: Fires ONLY when the pronoun is followed immediately by a finite verb, which is what
+#: makes it BARE. "This service reads your rota" names its subject and stays quiet; "It
+#: takes" and "They read" do not. That pairing is why the check needs no exception list:
+#: measured over the 75 live one-liners on 2026-08-16 it named exactly one, the founder's.
+_BARE_PRONOUN_OPENERS = frozenset({"it", "they", "this", "that", "these", "those"})
+
 #: Dedup attribution order: the title is the canonical line, so when a headline or card
 #: line repeats it the finding is reported against the REPEAT, not against the title. Any
 #: field not named here sorts after these, alphabetically.
@@ -866,6 +1105,106 @@ _DEDUP_STRIP_RE = re.compile(r"[^a-z0-9 ]+")
 
 def _dedup_key(text: str) -> str:
     return " ".join(_DEDUP_STRIP_RE.sub(" ", (text or "").lower()).split())
+
+
+# ==============================================================================================
+# Engine vocabulary in the BODY of the pack.
+#
+# WHY THIS IS A SECOND LIST AND NOT `INTERNAL_VOCAB`. That list grades `SHELF_FIELDS` — six
+# short lines — where a single word out of register is fatal and `candidate` can only mean our
+# candidate. The body is 5,800 words per pack of ordinary business English, and every loose word
+# on the shelf list means something else there. Measured on 296 live buyer documents (427,687
+# words) on 2026-08-15, a loose list scored 461 hits for "composite/score" and 191 for the check
+# names, and the FIRST FIVE examples pulled at random were all false positives: "aluminum
+# composite" in a signage build spec, a council "pre-screening addresses", "adversarial" used to
+# describe a marketing tone, "churn signal", "no grounding in specific search volume". A check
+# that cries wolf 90% of the time is how a rate ceiling gets set to a number that means nothing.
+#
+# So this list holds only tokens with NO other meaning in a business document. Retested against
+# the same corpus it found 24 real hits and no false positives, all of the same shape — the
+# engine quoting its own scoresheet at the buyer:
+#
+#     "The confidence scores on the supporting checks are low (value_durability 0.438,
+#      distribution 0.430), and nothing retrieved demonstrates that…"
+#
+# `distribution`, `incumbency` and `legality` are check names and are ABSENT on purpose: they are
+# also three of the commonest nouns in the corpus. They are caught in the sentence above by their
+# neighbour, which is the correct precision to buy.
+BODY_ENGINE_TOKENS = frozenset("""
+pain_reality value_durability payer_solvency pain_acuity money_provability
+min_composite ambition_tier durable_wedge_type weak_monetisation composite_score
+provider_chain retrieval_failed score_failed prescreen prescreened unverifiable
+""".split())
+
+#: Multi-word engine phrases. Each is checked as a whole phrase because each has a harmless
+#: single word inside it: "composite" (a material), "chain" (of shops), "judge" (a person),
+#: "gate" (a milestone), "fail" (a test). The phrase is ours; the words are not.
+BODY_ENGINE_PHRASES: Tuple[str, ...] = (
+    "composite score", "kill filter", "kill-filter", "provider chain",
+    "ai judge", "ai-judge", "adversarial review", "adversarial pass",
+    "vetting pass", "grounding pass", "provisional verdict", "hard fail",
+    "confidence score of", "our internal score",
+)
+
+_BODY_PHRASE_RE = re.compile(
+    "|".join(re.escape(p) for p in sorted(BODY_ENGINE_PHRASES, key=len, reverse=True)),
+    re.I,
+)
+
+
+def check_engine_leak(sections: Optional[Mapping[str, str]], *,
+                      block: bool = False, max_per_1k: float = 0.0) -> List[Problem]:
+    """Grade the assembled buyer read for OUR filing system leaking into the prose.
+
+    `sections` is the same corpus `check_register` takes — the fourteen-section assembled
+    read when the caller has it, the four prose artifacts otherwise. Nothing had ever graded
+    it for engine vocabulary: `check_shelf_copy` reads six short lines and `INTERNAL_VOCAB`
+    is scoped to them, so a financial model could print `value_durability 0.438` at a buyer
+    and every check in this module passed.
+
+    SHADOW-FIRST, like every other rate actuator here. `block` off, every finding is a
+    warning and the receipt accrues on live packs; `max_per_1k` at 0.0 means the rate is
+    measured and never enforced. A threshold is set from the baseline, not before it.
+    """
+    problems: List[Problem] = []
+    if not sections:
+        return problems
+
+    mk = _err if block else _warn
+    total_words = 0
+    hits: List[Tuple[str, str]] = []          # (section, the offending text)
+
+    for name, body in sorted((sections or {}).items()):
+        if not isinstance(body, str) or not body.strip():
+            continue
+        total_words += len(body.split())
+        lowered = body.lower()
+
+        found = sorted({w for w in _SHELF_WORD_RE.findall(lowered) if w in BODY_ENGINE_TOKENS})
+        # Underscored identifiers do not survive `_SHELF_WORD_RE`, which splits on the
+        # underscore. Match them on the raw text instead — they are the whole point of the
+        # token list, and every one of the 24 measured hits has this shape.
+        found += sorted({t for t in _TAXONOMY_TOKEN_RE.findall(lowered)
+                         if t in BODY_ENGINE_TOKENS})
+        found += sorted({m.group(0).lower() for m in _BODY_PHRASE_RE.finditer(body)})
+
+        for term in sorted(set(found)):
+            i = lowered.find(term)
+            window = body[max(0, i - 70):i + 90].replace("\n", " ").strip()
+            hits.append((name, term))
+            problems.append(mk("engine_leak", name,
+                               f"our filing system in the buyer's prose: {term!r} — "
+                               f"say what the thing does instead: …{window}…"))
+
+    # The rate, reported whether or not it fires, so the baseline accrues.
+    if total_words and max_per_1k > 0:
+        rate = 1000.0 * len(hits) / total_words
+        if rate > max_per_1k:
+            problems.append(mk("engine_leak", "pack",
+                               f"engine vocabulary at {rate:.2f} per 1,000 words over the whole "
+                               f"pack, above the {max_per_1k:.2f} ceiling "
+                               f"({len(hits)} in {total_words:,} words)"))
+    return problems
 
 
 def check_shelf_copy(fields: Dict[str, str], *, block: bool = False,
@@ -953,7 +1292,37 @@ def check_shelf_copy(fields: Dict[str, str], *, block: bool = False,
                                   f"reads as a fragment, with no finite verb — a short line is still a "
                                   f"sentence: {text!r}"))
 
-    # 6. The same line twice. The shelf shows title and card line together and the pack page
+        # 6. A bare pronoun opener. The title is not a sentence the line can continue from,
+        #    so a shelf line that starts "It takes ..." spends its first two words pointing
+        #    at nothing. `title` is exempt: it is a noun phrase by contract
+        #    (`prompts/retitle.md`), so it cannot open on a pronoun-plus-verb anyway.
+        if name != "title":
+            opener_words = _SHELF_WORD_RE.findall(lowered)
+            if (len(opener_words) >= 2
+                    and opener_words[0] in _BARE_PRONOUN_OPENERS
+                    and opener_words[1] in _FINITE_VERBS):
+                # WORDED TO AVOID "opens on", and that is load-bearing rather than stylistic.
+                # Check 5 above (`_BARE_OPENER_RE`) and this check were added independently on
+                # 2026-08-16 — one on this branch, one on main — for the same rule, and both
+                # phrased their finding "opens on ...". Every caller that filters findings does
+                # so BY SUBSTRING (`tools/sweep_shelf_copy.py:102`,
+                # `tools/retitle_catalogue.py:223`, and the tests), so a line that trips both
+                # was reported twice under one name and
+                # `test_it_errors_under_the_actuator_and_warns_without_it` counted two errors
+                # where it asserts one.
+                #
+                # Neither check can simply be deleted: check 5 catches "We handle ..." (a line
+                # the founder rejected, and `handle` is a bare infinitive absent from
+                # `_FINITE_VERBS` by design), while this one is the only check that stays quiet
+                # on "This service reads ..." and exempts `title` — both pinned by
+                # `tests/unit/test_shelf_copy.py:275-292`. Distinct wording keeps both findings
+                # and gives each filter exactly one thing to match.
+                problems.append(mk("shelf_copy", name,
+                                   f"starts on the bare pronoun {opener_words[0]!r}, which has no "
+                                   f"antecedent when the line is read beside the title rather than "
+                                   f"after it; name the subject: {text!r}"))
+
+    # 7. The same line twice. The shelf shows title and card line together and the pack page
     #    shows title and headline together, so a repeat spends the page's most valuable line
     #    saying nothing new. 13 of 48 live packs repeated their title as their headline.
     keys: Dict[str, str] = {}
@@ -1389,7 +1758,20 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
               title_block_on_breach: bool = TITLE_BLOCK_ON_BREACH_DEFAULT,
               shelf_copy_block_on_breach: bool = False,
               grammar_enabled: bool = False,
-              max_grammar_defects_per_1k: float = 0.0) -> Dict[str, Any]:
+              max_grammar_defects_per_1k: float = 0.0,
+              pack_sections: Optional[Mapping[str, str]] = None,
+              repetition_block: bool = False,
+              register_block: bool = False,
+              max_register_per_1k: float = 0.0,
+              max_long_sentence_rate: float = 0.0,
+              max_clause_load_rate: float = 0.0,
+              house_block_predictions: bool = False,
+              house_block_quotes: bool = False,
+              max_four_item_list_rate: float = 0.0,
+              max_unsourced_figure_rate: float = 0.0,
+              engine_leak_block: bool = False,
+              max_engine_leak_per_1k: float = 0.0,
+              human_register_block: bool = False) -> Dict[str, Any]:
     """Run every lint check; return the machine-readable report.
 
     `report["ok"]` is False iff any problem has severity "error" — that is the half the
@@ -1397,6 +1779,14 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
 
     `archived_urls` maps citation URL -> Wayback memento, so a dead citation whose evidence
     is still reachable warns instead of blocking. Callers build it from `Source.archived_url`.
+
+    `pack_sections` is the assembled read — buyer-visible section title -> markdown, in
+    reading order — which is a DIFFERENT corpus from `artifacts` and the reason this
+    parameter exists. `artifacts` holds the four model-written documents; the pack a buyer
+    opens has fourteen sections, five of them rendered deterministically after those four,
+    and until 2026-08-15 nothing in this module had ever seen them. Only `check_repetition`
+    reads it, because repetition is the one defect that is invisible section by section and
+    exists only in the assembly.
 
     `house_fields` carries engine-authored single-line copy that is NOT already in
     `listing_texts` — `title` above all. Its absence was the second half of the 2026-08-08
@@ -1414,6 +1804,11 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
     # would ask each piece to agree with a label this engine wrote over it.
     problems += check_marketing(marketing)
     problems += check_truncation(listing_texts or {}, truncation_caps)
+    # Graded on the ASSEMBLY, not on any one document, which is why it takes its own corpus
+    # and why it had none until 2026-08-15: `check_repetition` existed, was commented as live
+    # in four renderers, and had zero callers. A sentence printed once in each of two sections
+    # is correct in both files and a defect in the pack.
+    problems += check_repetition(pack_sections, block=repetition_block)
 
     # --- copy quality -----------------------------------------------------------------
     # Engine-authored prose only. Quoted third-party passages are never linted: a cited
@@ -1456,6 +1851,42 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
              if isinstance(v, str) and is_prose_artifact(k, v)}
     problems += check_identifier_leak({**prose, **house})
 
+    # --- the house writing spec -------------------------------------------------------
+    # `docs/HOUSE_WRITING_SPEC.md`, on the corpus the buyer actually reads. Both checks run
+    # unconditionally and both are ACTUATED by thresholds that default to off, which is a
+    # deliberate choice over an `enabled` flag: `check_register` shipped fully tested in
+    # 2026-08 with a rate actuator, no caller, and nothing measuring it, so nobody could ever
+    # say what threshold to set. A check that always measures accrues the baseline that earns
+    # its own threshold; a check behind a default-off flag accrues nothing.
+    #
+    # Graded on `pack_sections` when the caller has assembled the read, because that is what
+    # a buyer opens, and on the prose artifacts otherwise so a caller that predates
+    # `pack_sections` is still graded rather than silently exempt.
+    style_corpus: Mapping[str, str] = pack_sections or prose
+    register_metrics_ = register_metrics(style_corpus)
+    problems += check_register(
+        style_corpus, block=register_block, max_per_1k=max_register_per_1k,
+        long_sentence_max_rate=max_long_sentence_rate,
+        clause_load_max_rate=max_clause_load_rate,
+        human_register_block=human_register_block, metrics=register_metrics_)
+    # Same corpus, third question: is our own filing system in the buyer's prose? Nothing
+    # asked it before 2026-08-15 — `INTERNAL_VOCAB` is scoped to the six shelf lines, so a
+    # financial model could print `value_durability 0.438` and every check here passed.
+    problems += check_engine_leak(style_corpus, block=engine_leak_block,
+                                  max_per_1k=max_engine_leak_per_1k)
+
+    house_metrics = house_style_metrics(style_corpus)
+    problems += check_house_style(
+        style_corpus, metrics=house_metrics,
+        block_predictions=house_block_predictions, block_quotes=house_block_quotes,
+        # R1 has ONE actuator, and it is `check_register`'s at 25 words. `house_style`
+        # measures the spec's own 28-word ceiling and never blocks on it, so a pack cannot
+        # be failed twice for one sentence under two limits, and so the report can still say
+        # what the rate looks like at the number the spec actually writes down.
+        max_over_28_rate=0.0,
+        max_four_item_list_rate=max_four_item_list_rate,
+        max_unsourced_figure_rate=max_unsourced_figure_rate)
+
     grammar_rate: Optional[float] = None
     if grammar_enabled:
         gp = check_grammar(prose, max_per_1k=max_grammar_defects_per_1k)
@@ -1483,5 +1914,40 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
         # is still off — the number you turn `max_grammar_defects_per_1k` on with should be
         # one you have seen on live packs, not one guessed from a sample.
         "grammar_rate_per_1k": grammar_rate,
+        # Same reason as `grammar_rate_per_1k`: the actuator is off, so the receipt is the
+        # only thing that can earn it a threshold. Counted from the problems rather than
+        # returned by the check so it stays right whether the finding blocked or warned.
+        "repetition_findings": sum(1 for p in problems if p.get("check") == "repetition"),
+        "sections_graded": len(pack_sections or {}),
+        "readability_grade": readability_grades(pack_sections),
+        # The house-spec baseline, recorded on every pack whether or not any actuator is on.
+        # This is the receipt the LEDGER in docs/HOUSE_WRITING_SPEC.md gets filled from: a
+        # threshold is only allowed to be set from a number seen on live packs, and 43.9% of
+        # corpus sentences broke R1 on 2026-08-15, so a ceiling switched on today would fail
+        # every pack rather than improve one.
+        "house_spec": {
+            "sentences": house_metrics["sentences"],
+            "words": house_metrics["words"],
+            "R1_over_25_rate": register_metrics_["long_sentence_rate"],
+            "R1_over_28_rate": house_metrics["over_28_rate"],
+            "R2_clause_load_rate": register_metrics_["clause_load_rate"],
+            "R4_four_item_list_rate": house_metrics["four_item_list_rate"],
+            "R5_unsourced_figures": house_metrics["unsourced_figures"],
+            "R6_vague_quantities": house_metrics["vague_quantities"],
+            "R8_orphan_openers": house_metrics["orphan_openers"],
+            "R9_register_per_1k": register_metrics_["register_per_1k"],
+            "R10_flat_predictions": house_metrics["flat_predictions"],
+            "quotes": house_metrics["quotes"],
+            "Q_bad_quotes": house_metrics["bad_quotes"],
+        },
+        # This pack measured the way 270 human ombudsman decisions were measured, and the
+        # armed measures it sits outside the human range on. Recorded on every pack whether
+        # or not `human_register_block` is on, for the same reason `house_spec` is: a
+        # threshold may only be set from numbers seen on live packs.
+        "human_register": {
+            "measures": register_metrics_["prose_measures"],
+            "outside": register_metrics_["human_register"],
+            "error": register_metrics_["human_register_error"],
+        },
         "problems": problems,
     }

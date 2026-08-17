@@ -32,7 +32,7 @@ import prospector.run as R
 REPO = Path(__file__).resolve().parents[2]
 
 # Money-rail keys the conftest fence deletes. Re-arming ANY of these from disk is the bug.
-FENCED_KEYS = ("STRIPE_API_KEY", "STRIPE_LIVE_API_KEY", "PADDLE_API_KEY",
+FENCED_KEYS = ("STRIPE_API_KEY", "STRIPE_LIVE_API_KEY",
                "STORE_INTERNAL_API_KEY")
 
 

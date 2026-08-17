@@ -64,7 +64,15 @@ export const FAQS: FaqItem[] = [
       // with what the buyer now actually opens, which is the more concrete claim anyway -- the
       // founder's objection was "we are not selling to developers", and "Markdown you can edit"
       // was the single most developer-facing sentence on the site.
-      `One vetted business opportunity, as ${PACK_DOCUMENTS.length} documents: an executive summary, a build spec, a go-to-market plan, an operations plan, a financial model, a first-week checklist, marketing assets, the evidence in one place, and a QA report with a source behind every claim. They arrive as a web page you read in your browser, a typeset PDF you can print, a one-page plan for your first fortnight, a spreadsheet of every assumption, and the marketing copy as plain text to paste. One zip, one payment, instant download.`,
+      // TWO EDITS, 2026-08-16, both to sentences that read as arithmetic:
+      //   - "as N documents: a, b, c ... and i" named nine things after a count of fourteen, so the
+      //     colon promised a complete list and delivered two thirds of one. "Among them" claims
+      //     what the sentence can actually deliver.
+      //   - the format list is DELETED from this answer. It is the whole of the "What format is it
+      //     delivered in?" answer four rows below, word for word, and repeating it here put the
+      //     first-week checklist (a document) and the first-fortnight sheet (a file) in one
+      //     paragraph, where they read as the same thing described twice at two different lengths.
+      `One vetted business opportunity, written up as ${PACK_DOCUMENTS.length} documents. Among them: an executive summary, a build spec, a go-to-market plan, an operations plan, a financial model, a first-week checklist, marketing assets, the evidence in one place, and a QA report with a source behind every claim. One zip, one payment, instant download.`,
     ],
   },
   { category: 'packs',

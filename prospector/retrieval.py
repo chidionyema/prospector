@@ -13,6 +13,7 @@ never crashing the run.
 from __future__ import annotations
 
 import contextvars
+import datetime
 import hashlib
 import json
 import os
@@ -298,22 +299,6 @@ def _mean_coverage(query: str, sources: list) -> float:
             if sources else 0.0)
 
 
-def _best_coverage(query: str, sources: list) -> float:
-    """Coverage of the SINGLE best source, not the average of all of them.
-
-    A check needs one passage that answers it. Averaging punishes a result set that
-    contains a perfect source alongside two weak ones, and that is the normal shape of
-    a web search. Measured 2026-08-16 over 1500 real cached result sets: the mean
-    clears the 0.35 floor 24.3% of the time, the best source 44.1%.
-    """
-    return max((relevance_score(query, s.text) for s in sources), default=0.0)
-
-
-#: How `FallbackSearchProvider` turns a result set into one coverage number, declared by
-#: `config.yaml retrieval.coverage_metric`. "mean" is the pre-2026-08-16 behaviour.
-COVERAGE_METRICS = {"best": _best_coverage, "mean": _mean_coverage}
-
-
 #: The verdict prompt reads only the first `VERDICT_PASSAGE_TRUNCATE` chars of each passage
 #: (`verify.py`). Anchoring the stored passage on a window of exactly that size is what makes
 #: the selection pay: optimising the 1500-char window instead and slicing its head made what
@@ -511,6 +496,88 @@ class RelevanceRankedProvider(SearchProvider):
         return kept
 
 
+_ISO_DATE_RE = re.compile(r"^\s*(\d{4})-(\d{2})-(\d{2})")
+_SLASH_DATE_RE = re.compile(r"^\s*(\d{4})/(\d{2})/(\d{2})")
+
+
+def _normalise_date(raw) -> Optional[str]:
+    """'2024-03-11T09:00:00Z' -> '2024-03-11'. None when it is not a plausible date.
+
+    Deliberately anchored at the START of the string: an unanchored search would pull a
+    number out of a query string or an id and hand us a date the page never published.
+    """
+    if not isinstance(raw, str) or not raw.strip():
+        return None
+    m = _ISO_DATE_RE.match(raw) or _SLASH_DATE_RE.match(raw)
+    if not m:
+        return None
+    try:
+        y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        datetime.date(y, mo, d)
+    except ValueError:
+        return None
+    if not (1990 <= y <= datetime.date.today().year + 1):
+        return None
+    return f"{y:04d}-{mo:02d}-{d:02d}"
+
+
+def _jsonld_date(obj) -> Optional[str]:
+    """First `datePublished` anywhere in a JSON-LD blob, however nested."""
+    if isinstance(obj, dict):
+        got = _normalise_date(obj.get("datePublished"))
+        if got:
+            return got
+        for v in obj.values():
+            got = _jsonld_date(v)
+            if got:
+                return got
+    elif isinstance(obj, list):
+        for v in obj:
+            got = _jsonld_date(v)
+            if got:
+                return got
+    return None
+
+
+def _extract_published_at(doc) -> Optional[str]:
+    """Read a publication date from a parsed lxml document. NEVER raises.
+
+    MUST be called on the document BEFORE `etree.strip_elements` runs: that call deletes
+    `<script>` (where JSON-LD lives) and `<footer>`/`<header>` (where `<time>` usually
+    lives), so extracting after stripping silently finds nothing on most real pages.
+    """
+    try:
+        for xp in ('//meta[@property="article:published_time"]/@content',
+                   '//meta[@name="date"]/@content'):
+            for value in doc.xpath(xp):
+                got = _normalise_date(value)
+                if got:
+                    return got
+        for blob in doc.xpath('//script[@type="application/ld+json"]/text()'):
+            try:
+                got = _jsonld_date(json.loads(blob))
+            except (ValueError, TypeError):
+                continue
+            if got:
+                return got
+        for value in doc.xpath("//time/@datetime"):
+            got = _normalise_date(value)
+            if got:
+                return got
+    except (AttributeError, ValueError, TypeError):
+        # Narrow on purpose: these are the shapes malformed markup produces. None already
+        # means "this page declares no date", so the caller loses nothing it had, and the
+        # date must never cost us the passage we came for.
+        return None
+    return None
+
+
+# Below this, an extraction is a page title or an error page, not a passage. Set just under the
+# 222-char mean of the search snippets this function exists to REPLACE: returning less than the
+# snippet we already hold is a downgrade, and the caller reads None as "keep what you had".
+_MIN_PAGE_TEXT = 200
+
+
 #: Sentences carrying one of these read as a cookie/consent banner and never as evidence.
 #: Deliberately phrases, not the bare word "cookie": a page about cookie law, or an ICO ruling
 #: on consent, is a legitimate source and says "cookie" constantly.
@@ -618,9 +685,10 @@ def _strip_consent_elements(doc, etree) -> None:
             continue
 
 
-def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
-                    max_bytes: int = 400_000, query: Optional[str] = None,
-                    strip_consent: bool = False) -> Optional[str]:
+def fetch_page(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
+               max_bytes: int = 400_000, query: Optional[str] = None,
+               strip_consent: bool = False
+               ) -> tuple[Optional[str], Optional[str]]:
     """GET a grounding URL and return its readable text, or None.
 
     THE DEFECT THIS CLOSES. `_resolve()` above sends a HEAD: it proves the host is real and
@@ -635,27 +703,31 @@ def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
     snippet whenever this returns None. A grounding fetch failing is our convenience failing;
     it must not cost a source, and it must not turn into a false `unverifiable` (this repo has
     already paid once for an outage that presented as a reasoned kill).
+
+    It also returns the page's publication date as `(text, published_at)` whenever the page
+    declares one, and None for that second element when it does not.
     """
     try:
         import requests
         from lxml import etree
         from lxml import html as lxml_html
     except ImportError:                     # no requests/lxml installed => keep snippets
-        return None
+        return None, None
 
     resp = None
+    published: Optional[str] = None
     try:
         resp = requests.get(url, timeout=timeout_s, allow_redirects=True, stream=True,
                             headers={"User-Agent": _RESOLVE_UA})
         if resp.status_code >= 400:
-            return None
+            return None, published
         # A PDF/image/zip is not something lxml can turn into prose. An absent Content-Type
         # is treated as HTML rather than skipped: the parse below is the real gate, and
         # dropping a page for a missing header would re-introduce the false-drop that the
         # HEAD-based `_resolve` docstring above spent so long getting rid of.
         ctype = (resp.headers.get("Content-Type") or "").lower()
         if ctype and not ("html" in ctype or "xml" in ctype or "text/plain" in ctype):
-            return None
+            return None, published
         buf = bytearray()
         for chunk in resp.iter_content(8192):
             if not chunk:
@@ -664,14 +736,14 @@ def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
             if len(buf) >= max_bytes:
                 break
         if not buf:
-            return None
+            return None, published
         raw = bytes(buf).decode(resp.encoding or "utf-8", errors="replace")
     except (requests.RequestException, OSError, UnicodeDecodeError, ValueError):
         # network / decode: keep the snippet. NARROWED from `except Exception` 2026-08-15 —
         # the bare form also caught our own bugs in the streaming loop above and returned the
         # same `None` that a dead host returns, so a refactor could silently stop the engine
         # ever reading a page and the only symptom would be thin grounding.
-        return None
+        return None, published
     finally:
         if resp is not None:
             try:
@@ -681,6 +753,7 @@ def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
 
     try:
         doc = lxml_html.fromstring(raw)
+        published = _extract_published_at(doc)
         # Strip the page furniture BEFORE reading any text. Script/style bodies are not prose,
         # and neither is the nav bar. Leaving either in feeds the verdict brain boilerplate
         # that dilutes the passage AND inflates the question/passage word overlap that
@@ -692,9 +765,9 @@ def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
         etree.strip_elements(doc, "script", "style", "noscript", "nav", "header", "footer",
                              "aside", "form", "svg", "iframe", "button", "select", "template",
                              with_tail=False)
-        # The cookie banner is none of those tags. On gov.uk and ons.gov.uk it is a plain
-        # `<div>` inside the body, so it survives the strip above and lands at the top of the
-        # extracted text -- which is the window the verdict brain reads.
+        # The consent widget is furniture too, but it is named rather than tagged, so it
+        # survives the call above. Dropped here, while the DOM still says which element
+        # it is -- after `text_content()` there is nothing left to identify it by.
         if strip_consent:
             _strip_consent_elements(doc, etree)
         # Prefer the region the page itself declares as its content. Falling back to the whole
@@ -714,16 +787,72 @@ def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
     except (etree.ParserError, etree.XMLSyntaxError, ValueError, UnicodeDecodeError):
         # unparseable markup. Narrowed for the same reason as the fetch above: an
         # AttributeError from changing the xpath list read exactly like a broken page.
-        return None
-    # The text pass, after the DOM pass, for the banners that carry no identifying attribute.
-    # It runs BEFORE `select_passage` on purpose: removing the banner from the whole page is
-    # what lets the anchor below choose a window of real content instead of falling back to a
-    # head slice that is all notice.
-    if strip_consent:
-        text = strip_consent_sentences(text)
+        #
+        # MERGE 2026-08-15: origin/main narrowed this handler and this branch changed its
+        # BODY from `return None` to `text = ""`. Both, not either — the narrowing is about
+        # which exceptions may be swallowed, the body is about what happens after one is.
+        # Falling through rather than returning is what gives the fallback below its turn:
+        # trafilatura is a different parser and routinely reads a page lxml could not.
+        text = ""
+
+    # TRAFILATURA IS THE FALLBACK, NOT THE PRIMARY (2026-08-15, and the sizing is measured).
+    #
+    # The ladder above returns the page TITLE and nothing else on a page that carries its body
+    # outside every landmark it knows: measured on the 12 fetchable URLs cited by pack
+    # e698149e137fc164, it produced 15 chars for isbe.net/Pages/SOPPA-Contracts.aspx ("SOPPA
+    # Contracts"), 182 for edprivacy.com/state-guides/illinois and 96 for a geekwire article —
+    # 3 of 12 pages where the enrichment silently did nothing.
+    #
+    # It is a FALLBACK because the honest measurement of what it buys is small. `PageTextEnricher`
+    # (:630) only replaces a snippet on a gain of `min_gain_chars`, and 10 of those 12 passages
+    # were already at the 1500-char cap, so there was no headroom to win: swapping extractors
+    # upgrades ONE passage of twelve. Running it first would also cost ~0.55s/page of CPU on the
+    # 9 pages the cheap path already handles, for nothing. So it runs only where the cheap path
+    # came back with something too short to be a passage at all, which is the case it fixes.
+    #
+    # A page that yields under _MIN_PAGE_TEXT after both is NO PASSAGE, not a short one. The
+    # caller keeps the search snippet, which averages 222 chars — strictly more than a title.
+    # This is also what stops a 404 body ("Page not found – GeekWire", 25 chars) being handed
+    # to a verdict brain as the evidence for a check.
+    if len(text) < _MIN_PAGE_TEXT:
+        # Two handlers, not one, on origin/main's rule (2026-08-15): the absent optional
+        # dependency and a parser failure are different facts, and a bare `except Exception`
+        # over both would also swallow an AttributeError or NameError from a refactor of this
+        # very block — which would present as "no page on the open web has a passage", in
+        # silence, forever. That is the failure mode main's narrowing pass exists to end.
+        try:
+            import trafilatura  # declared in requirements.txt; lazy, same as requests above
+        except ImportError:     # not installed: keep whatever the ladder found
+            trafilatura = None  # type: ignore[assignment]
+        if trafilatura is not None:
+            try:
+                better = trafilatura.extract(raw, include_comments=False, include_tables=True,
+                                             favor_precision=True) or ""
+            except (etree.ParserError, etree.XMLSyntaxError, ValueError, TypeError,
+                    UnicodeDecodeError):
+                better = ""     # a third-party parser on hostile markup: keep what we have
+            better = " ".join(better.split())
+            if len(better) > len(text):
+                text = better
+    if len(text) < _MIN_PAGE_TEXT:
+        return None, published
     # Select the passage that answers the query rather than the top of the page. `query=None`
     # (any caller predating 2026-08-14) still gets the head slice, byte for byte.
-    return select_passage(text, max_chars, query=query) or None
+    if strip_consent:
+        # Second pass, on the text: a banner whose container carried no telltale id or
+        # class reaches this line intact, and it is the head of the string -- exactly
+        # where `select_passage` falls back to when the query matches nothing.
+        text = strip_consent_sentences(text)
+    return (select_passage(text, max_chars, query=query) or None), published
+
+
+def fetch_page_text(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
+                    max_bytes: int = 400_000, query: Optional[str] = None,
+                    strip_consent: bool = False) -> Optional[str]:
+    """Text-only view of `fetch_page`, kept for callers that do not want the date."""
+    return fetch_page(url, timeout_s=timeout_s, max_chars=max_chars,
+                      max_bytes=max_bytes, query=query,
+                      strip_consent=strip_consent)[0]
 
 
 class PageTextEnricher(SearchProvider):
@@ -767,9 +896,9 @@ class PageTextEnricher(SearchProvider):
         # behaviour it exists to replace, while still reporting success.
         pairs = [(contextvars.copy_context(), s) for s in sources]
 
-        def _one(pair) -> Optional[str]:
+        def _one(pair) -> tuple[Optional[str], Optional[str]]:
             ctx, s = pair
-            return ctx.run(fetch_page_text, s.url, timeout_s=self._timeout_s,
+            return ctx.run(fetch_page, s.url, timeout_s=self._timeout_s,
                            max_chars=max_chars, max_bytes=self._max_bytes, query=query,
                            strip_consent=self._strip_consent)
 
@@ -781,15 +910,20 @@ class PageTextEnricher(SearchProvider):
             return sources
 
         upgraded = 0
-        for s, page in zip(sources, pages):
+        dated = 0
+        for s, (page, published) in zip(sources, pages):
             if page and len(page) >= len(s.text or "") + self._min_gain:
                 s.text = page
                 upgraded += 1
+            if published and not s.published_at:
+                s.published_at = published
+                dated += 1
         audit("page_fetch", query=query[:200], n_sources=len(sources),
-              upgraded=upgraded, latency_ms=int((time.monotonic() - start) * 1000),
+              upgraded=upgraded, dated=dated,
+              latency_ms=int((time.monotonic() - start) * 1000),
               status="ok" if upgraded else "no_gain")
         logger.info(f"page fetch: upgraded {upgraded}/{len(sources)} passages",
-                    extra={"upgraded": upgraded, "n_sources": len(sources)})
+                    extra={"upgraded": upgraded, "n_sources": len(sources), "dated": dated})
         return sources
 
 
@@ -1996,8 +2130,7 @@ class FallbackSearchProvider(SearchProvider):
     def __init__(self, providers: list[tuple[str, SearchProvider]],
                  *, failure_threshold: int = 3, cooldown_s: float = 60.0,
                  clock=time.monotonic, health=None, min_relevance: float = 0.0,
-                 backstop_only: Optional[list[str]] = None,
-                 coverage_metric: str = "best"):
+                 backstop_only: Optional[list[str]] = None):
         if not providers:
             raise ValueError("FallbackSearchProvider needs at least one provider")
         from .health import get_health
@@ -2008,14 +2141,6 @@ class FallbackSearchProvider(SearchProvider):
         # See `config.Retrieval.min_relevance`. 0.0 keeps the pre-2026-08-14 behaviour
         # exactly: the first provider that answers wins, however off-topic its answer.
         self.min_relevance = float(min_relevance or 0.0)
-        # See `COVERAGE_METRICS`. An unknown name is a config typo, and silently falling
-        # back to a different metric would change every escalation decision invisibly.
-        if coverage_metric not in COVERAGE_METRICS:
-            raise ValueError(
-                f"retrieval.coverage_metric={coverage_metric!r} is not one of "
-                f"{sorted(COVERAGE_METRICS)}")
-        self.coverage_metric = coverage_metric
-        self._coverage = COVERAGE_METRICS[coverage_metric]
         self._breakers = {
             name: CircuitBreaker(name, failure_threshold=failure_threshold,
                                  cooldown_s=cooldown_s, clock=clock)
@@ -2088,7 +2213,7 @@ class FallbackSearchProvider(SearchProvider):
                 # failure — the provider is healthy (breaker success is already recorded
                 # above and is NOT reversed), it just answered a different question.
                 _t0 = time.monotonic()
-                cov = self._coverage(query, results)
+                cov = _mean_coverage(query, results)
                 cov_ms += int((time.monotonic() - _t0) * 1000)
                 if best is None or cov > best[0]:
                     best = (cov, name, results)
@@ -2288,9 +2413,7 @@ def make_provider(cfg, fixtures: dict | None = None) -> SearchProvider:
                                     cooldown_s=r.breaker_cooldown_s,
                                     min_relevance=float(getattr(r, "min_relevance", 0.0) or 0.0),
                                     backstop_only=list(
-                                        getattr(r, "backstop_only_providers", None) or ()),
-                                    coverage_metric=str(
-                                        getattr(r, "coverage_metric", "best") or "best")))
+                                        getattr(r, "backstop_only_providers", None) or ())))
     # Fetch the PAGE rather than ruling on the search snippet. Wrapped here, not inside
     # FallbackSearchProvider, because the line above skips that wrapper entirely on a
     # single-provider config. Never wrapped when fixtures are pinned: the golden-set harness

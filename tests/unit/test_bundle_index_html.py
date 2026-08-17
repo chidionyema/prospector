@@ -59,10 +59,85 @@ def _dossier():
                    created_at="2026-07-31T00:00:00Z")
 
 
+def _rich_dossier():
+    """A dossier thick enough that all fourteen reading-order sections actually render.
+
+    `_dossier()` is deliberately thin, and on a thin dossier three of the five narrative
+    renderers correctly return "" and are correctly SKIPPED by the reader:
+
+      * `pack_offer.py:118`     — no `hypothesis` and no `structural_form` on the candidate
+      * `pack_field.py:284`     — no `incumbency`/`price_comparables` check to read a field from
+      * `pack_bear_case.py:256` — nothing refuted, nothing unverifiable, no financial weakness
+
+    `BUNDLE_READING_ORDER` is "the superset, not a contract" (`bridge.py:344`), so an ordering
+    assertion driven by the thin dossier can only ever cover the sections that dossier happens
+    to produce — and it raises `ValueError` the moment it assumes otherwise. This fixture gives
+    each of those three guards the field it asks for, so the order test below covers the whole
+    fourteen rather than eleven of them. `test_a_thin_dossier_skips_what_it_cannot_fill` keeps
+    the other half of the behaviour pinned.
+    """
+    cand = Candidate(
+        candidate_id="d" * 16,
+        title="Shellfish Classification Aid",
+        one_liner="Scheduling aid for UK oyster farms.",
+        market="uk",
+        who_pays="owner-operated shellfish farms",
+        why_now="new sampling rules",
+        hypothesis="Growers will pay for a sampling calendar that tracks classification changes.",
+        structural_form="vertical_tool",
+    )
+
+    def _check(name, verdict, rationale, sources=()):
+        return CheckResult(check_name=name, verdict=verdict, confidence=0.8,
+                           rationale=rationale, citations=[], sources=list(sources), queries=[])
+
+    checks = [
+        _check("buyer_intent", Verdict.SUPPORTED,
+               "Growers search for closure guidance (SAGB, 2025)."),
+        _check("incumbency", Verdict.SUPPORTED,
+               "Two established consultancies already sell sampling schedules to UK growers.",
+               sources=["https://gov.uk/shellfish-classification"]),
+        _check("payer_solvency", Verdict.REFUTED,
+               "Farm margins reported at under three percent leave little budget for software."),
+        _check("distribution", Verdict.UNVERIFIABLE,
+               "We could not find a route that reaches these growers at reasonable cost."),
+    ]
+    return Dossier(candidate=cand, decision=Decision.PASS, checks=checks,
+                   created_at="2026-07-31T00:00:00Z")
+
+
 def _full_artifacts():
     body = ("## Section\n\nGrounded prose about the opportunity. " * 20)
     return {k: f"# {k}\n\n{body}" for k in
             ("build_spec", "gtm_plan", "ops_plan", "financial_model")}
+
+
+# The buyer-visible section titles, in the order a buyer meets them.
+#
+# Hardcoded rather than read out of `_SECTION_TITLES` on purpose. A test that sources its
+# expectations from the thing it is testing cannot fail on a rename, and a rename is exactly
+# what happened here: every one of these strings was replaced on 2026-08-15 because the old set
+# named the DOCUMENT ("The Financial Model", "The QA Report, with the receipts", "The Blueprint
+# (Build Spec)") and two of them printed engine vocabulary at a buyer who has no QA department
+# and did not buy a blueprint. Writing them out is what makes a silent slide back to that
+# register fail a test. `test_the_title_registry_matches_the_reading_order` pins this literal
+# against the registry, so the two cannot drift apart in silence either.
+_EXPECTED_TITLES = (
+    "Where this starts",
+    "What you would be selling",
+    "The field: who is already there",
+    "The numbers",
+    "What would sink this",
+    "What you build",
+    "How the first customers find you",
+    "How it runs once it works",
+    "Your first fortnight",
+    "The toolkit",
+    "Copy you can paste",
+    "How to know in 30 days",
+    "Everything we read, once",
+    "Every check, in full",
+)
 
 
 def _entries(zip_path):
@@ -137,20 +212,30 @@ class TestTheReaderIsThePack:
             f"markdown reached the buyer's zip: {[n for n in entries if n.endswith('.md')]}")
         assert set(entries) == set(BUNDLE_FILES) | set(BUNDLE_BONUS_FILES)
 
+    def test_the_title_registry_matches_the_reading_order(self):
+        """`_SECTION_TITLES` read in `BUNDLE_READING_ORDER` IS the buyer's table of contents.
+
+        Added 2026-08-15 with the retitle. It exists so `_EXPECTED_TITLES` can stay a literal
+        without going stale unnoticed: adding a section to the reading order, or retitling one,
+        fails HERE with a readable diff instead of failing the two bundle-rendering tests below
+        with a `ValueError` from a `str.index` that found nothing.
+        """
+        assert tuple(_SECTION_TITLES[name] for name in BUNDLE_READING_ORDER) == _EXPECTED_TITLES
+
     def test_index_html_contains_all_section_titles(self, bridge):
-        path = bridge._create_bundle(_dossier(), _full_artifacts(), [])
+        """Re-pointed 2026-08-15. The titles asserted here were the previous nine, verbatim —
+        `git show 4983ef0~1:prospector/bridge.py` still carries them — and not one of the
+        fourteen strings this branch replaced them with appears anywhere in that file, so this
+        test fails against the behaviour it replaces.
+
+        It also moved from `_dossier()` to `_rich_dossier()`. The thin dossier legitimately
+        renders eleven of the fourteen sections (see `_rich_dossier`'s docstring for the three
+        guards and why "" is right), so it could never have proven the full set present.
+        """
+        path = bridge._create_bundle(_rich_dossier(), _full_artifacts(), [])
         html = _entries(path)["index.html"].decode()
-        for title in (
-            "Executive Summary",
-            "The Blueprint (Build Spec)",
-            "The Go-To-Market Plan",
-            "The Operations Plan",
-            "The Financial Model",
-            "First-Week Checklist",
-            "Marketing Assets",
-            "The QA Report, with the receipts",
-        ):
-            assert title in html
+        missing = [t for t in _EXPECTED_TITLES if t not in html]
+        assert not missing, f"sections absent from index.html: {missing}"
 
     def test_index_html_reads_in_the_reading_order(self, bridge):
         """REGRESSION: the reading order was the WRITE order, and nobody chose it.
@@ -172,8 +257,24 @@ class TestTheReaderIsThePack:
         order a buyer reads in is the first of the two. `BUNDLE_READING_ORDER` is derived from
         `PACK_DOCUMENTS`, so the ordering assertion still tracks the single place the sequence
         is editable, which is the whole point of the fix.
+
+        Re-pointed AGAIN 2026-08-15, twice over, when the narrative restructure landed:
+
+        1. Every section title changed (see `_EXPECTED_TITLES`), so the two named assertions at
+           the bottom named strings that no longer exist anywhere.
+        2. `BUNDLE_READING_ORDER` stopped being a derivation and became an explicit fourteen-
+           entry tuple that is "the superset, not a contract" (`bridge.py:344`). Five of its
+           entries are rendered by guarded modules that return "" on a dossier that cannot fill
+           them, and the reader skips those. Indexing every entry unconditionally against the
+           thin dossier is what raised `ValueError: substring not found` here — the test was
+           asserting a contract the registry had stopped making.
+
+        The fix keeps the assertion at full strength rather than tolerating the gaps: the
+        fixture became `_rich_dossier()`, which satisfies all three guards, so the order below
+        is still checked across the complete fourteen. The superset behaviour itself is now
+        pinned separately by `test_a_thin_dossier_skips_what_it_cannot_fill`.
         """
-        path = bridge._create_bundle(_dossier(), _full_artifacts(), [])
+        path = bridge._create_bundle(_rich_dossier(), _full_artifacts(), [])
         html = _entries(path)["index.html"].decode()
 
         positions = [(html.index(_SECTION_TITLES[name]), name) for name in BUNDLE_READING_ORDER]
@@ -182,9 +283,45 @@ class TestTheReaderIsThePack:
             f"{[n for _, n in sorted(positions)]}"
         )
         # The two that motivated the fix, asserted by name so a future reorder has to be
-        # deliberate about these specifically.
-        assert html.index("Executive Summary") < html.index("The Blueprint (Build Spec)")
-        assert html.index("First-Week Checklist") < html.index("The QA Report, with the receipts")
+        # deliberate about these specifically. Same two documents as before the retitle: the
+        # executive summary ahead of the build spec, the checklist ahead of the QA report.
+        assert html.index("Where this starts") < html.index("What you build")
+        assert html.index("Your first fortnight") < html.index("Every check, in full")
+        # New with the restructure, and the reason the order was rewritten rather than merely
+        # corrected: the receipts are an appendix now. They were 52% of the words of the pack
+        # the founder read on 2026-08-15, positioned as the payload.
+        assert html.index("What you would be selling") < html.index("Everything we read, once")
+
+    def test_a_thin_dossier_skips_what_it_cannot_fill(self, bridge):
+        """A section with nothing to say is ABSENT, not an empty heading.
+
+        Added 2026-08-15 to pin the half of `BUNDLE_READING_ORDER` that the ordering test above
+        stopped covering when it moved to the rich fixture. `bridge.py:344` calls the tuple "the
+        superset, not a contract", and this is what that sentence has to mean in the archive a
+        buyer opens: the three renderers that decline on a thin dossier leave no trace in the
+        reader — no title, no empty section — and the sections that DO render still arrive in
+        the declared order rather than closing ranks in some other one.
+
+        Each of the three declines for a reason that is a claim we would otherwise be inventing:
+        `pack_offer.py:118` will not describe a product out of fields the candidate does not
+        have, `pack_field.py:284` will not tell a buyer the field is empty on the strength of an
+        empty list, and `pack_bear_case.py:256` will not open a case against with no case to
+        make.
+        """
+        path = bridge._create_bundle(_dossier(), _full_artifacts(), [])
+        html = _entries(path)["index.html"].decode()
+
+        for name in ("The_Offer.md", "The_Field.md", "What_Would_Sink_This.md"):
+            assert _SECTION_TITLES[name] not in html, (
+                f"{name} rendered a section on a dossier that cannot fill it")
+            assert name not in html, f"{name} leaked its filename into the reader"
+
+        present = [(html.index(_SECTION_TITLES[n]), n)
+                   for n in BUNDLE_READING_ORDER if _SECTION_TITLES[n] in html]
+        assert len(present) == len(BUNDLE_READING_ORDER) - 3
+        assert present == sorted(present), (
+            "a skipped section reordered the ones around it: "
+            f"{[n for _, n in sorted(present)]}")
 
     def test_index_html_carries_the_pack_title_and_id(self, bridge):
         path = bridge._create_bundle(_dossier(), _full_artifacts(), [])

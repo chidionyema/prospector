@@ -16,7 +16,7 @@ import contextvars
 import json
 import re
 import time as _time
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from .admissibility import corroboration_reason, demotion_reason, health_demotion_reason
 from .admissibility import host_of as admissibility_host_of
@@ -497,8 +497,15 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
 
     # FIX #2: truncate passages to reduce verdict input tokens by ~5-6x.
     # Format: [source_id] <truncated_text>  (url and title are in the prompt template).
+    # The publication DATE rides along (2026-08-16). The template placeholder this string
+    # replaces has always read `(url, published_at)`, but the line below rendered neither, so
+    # no check could ever say WHEN its evidence was published — and "is this live right now"
+    # was therefore judged from the model's memory of the year, not from the page. The url
+    # stays out on purpose: it is already in the prompt template, and FIX #2 above cut this
+    # string to `[id] text` to hold the verdict's input tokens down. A date costs ~4 tokens.
     passages = "\n".join(
-        f"[{s.source_id}] {s.text[:VERDICT_PASSAGE_TRUNCATE]}" for s in sources)
+        f"[{s.source_id}] ({getattr(s, 'published_at', None) or 'undated'}) "
+        f"{s.text[:VERDICT_PASSAGE_TRUNCATE]}" for s in sources)
     # for_moat=True: the verdict brain gets the jurisdiction's NAME and the relevance
     # precedents, never the market's evidence-landscape prose. Handing the moat market
     # knowledge is the prior-knowledge leak that verdict-from-retrieval-only forbids.
@@ -853,6 +860,12 @@ def run_check(op: Operator, search: SearchProvider, cfg: Config,
     return result
 
 
+# A memo is a shortlist. Past four, a reader stops reading and the strongest objection is
+# buried among the makeweights.
+MAX_OBJECTIONS = 4
+_SEVERITIES = {"high", "medium", "low"}
+
+
 @track_latency(name="adversarial")
 def adversarial(op: Operator, cfg: Config, cand: Candidate,
                 checks: list[CheckResult]) -> AdversarialResult:
@@ -899,6 +912,29 @@ def adversarial(op: Operator, cfg: Config, cand: Candidate,
                 extra={"dangling": _dangling[:10], "candidate_id": getattr(cand, "candidate_id", None)})
         citations = [c for c in citations if c in _valid_ids]
 
+        # The objection MEMO (2026-08-16). This pass used to return one `risk_summary`
+        # paragraph, so the whole case against an idea reached the reader as a blob. An
+        # investor reads objections one at a time and wants to know what would have to be
+        # true for each one not to bite. Same rail as the citations above, applied per
+        # objection: one that cites nothing resolving is an opinion, and opinions do not
+        # ship in this engine. Capped, because a list of twelve is a way of saying nothing.
+        objections: list[dict[str, Any]] = []
+        for raw_obj in (data.get("objections") or [])[:MAX_OBJECTIONS]:
+            if not isinstance(raw_obj, dict):
+                continue
+            text = str(raw_obj.get("objection") or "").strip()
+            cites = [str(c) for c in (raw_obj.get("citations") or [])
+                     if str(c) in _valid_ids]
+            if not text or not cites:
+                continue
+            severity = str(raw_obj.get("severity") or "").lower()
+            objections.append({
+                "objection": text,
+                "what_would_have_to_be_true":
+                    str(raw_obj.get("what_would_have_to_be_true") or "").strip(),
+                "severity": severity if severity in _SEVERITIES else "unknown",
+                "citations": cites,
+            })
 
         # New risk-sensor model: Python decides, LLM only classifies risk vectors.
         critical_regulatory = bool(data.get("critical_regulatory_blocker", False))
@@ -927,6 +963,7 @@ def adversarial(op: Operator, cfg: Config, cand: Candidate,
             decisive=decisive,
             confidence=conf,
             citations=citations,
+            objections=objections,
             provider=_served_provider(op),
             provisional=_served_is_provisional(op))
     except ProviderExhaustedError:

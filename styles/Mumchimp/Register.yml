@@ -1,0 +1,43 @@
+# R9 -- banned register.
+#
+# The same token list `prospector/register_lint.py` carries for the pack lane, so a
+# word banned on the storefront is banned in a pack and the spec has ONE rule number
+# for both. Measured on 2,187 dossiers 2026-08-15: compounds x354, increasingly x238,
+# wedge x218, moat x208, at scale x91, ecosystem x81, landscape x62, leverage x49.
+#
+# `leverage` and `ecosystem` ARE NOT HERE, by founder decision 2026-08-15. This
+# storefront sells businesses in every sector, and financial leverage and a supplier
+# ecosystem are real subjects a page may be ABOUT. Banning the noun stops a page
+# saying what it is for. `leveraging` stays: that one is the AI tic, and it has a
+# plain replacement ("using") in every sentence it turns up in.
+extends: existence
+message: "'%s' is banned register (R9)."
+link: docs/HOUSE_WRITING_SPEC.md
+level: error
+ignorecase: true
+tokens:
+  - wedges?
+  - compounds?
+  - compounding
+  - leveraging
+  - landscapes?
+  - robust
+  - seamless(ly)?
+  - unlocks?
+  - unlocking
+  - durable advantage
+  - moats?
+  - flywheels?
+  - at scale
+  - game.changing
+  - increasingly
+  - rapidly evolving
+  - it is worth noting
+  - delve[sd]?
+  - delving
+  - fosters?
+  - fostering
+  - underscores?
+  - pivotal
+  - crucial
+  - testament to

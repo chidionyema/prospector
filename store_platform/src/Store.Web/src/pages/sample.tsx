@@ -14,14 +14,14 @@ import report from '@/data/sample-report.json';
   WHAT THIS PAGE IS, AS OF 2026-08-15.
 
   It used to publish a WHOLE pack for nothing, under the headline "A whole report. Free, and
-  nothing held back." — three lines above a buy CTA that admitted "a pack adds the build spec,
+  nothing held back." -- three lines above a buy CTA that admitted "a pack adds the build spec,
   the go to market plan, and the operations playbook on top of the evidence record you just
   read" (the old `sample.tsx:174` against `:389`). Both sentences were on screen at once. The
   page whose entire job is to establish that we do not overclaim opened with an overclaim.
 
   The founder settled it on 2026-08-15: a true excerpt, honestly bounded. Three sections in
-  full — the situation, what you would be selling, and the field with its quoted competitor
-  passages — then a visible stop that NAMES the eleven it does not show. An excerpt that ends
+  full -- the situation, what you would be selling, and the field with its quoted competitor
+  passages -- then a visible stop that NAMES the eleven it does not show. An excerpt that ends
   in a stated place is a stronger argument than a giveaway that has to be walked back at the
   till.
 
@@ -101,7 +101,7 @@ function BlockView({ block }: { block: Block }) {
   switch (block.type) {
     case 'h2':
       // The section title on the page is the <h2>. A `##` inside the section is therefore an
-      // <h3>, and a `###` an <h4> — the pack's own hierarchy shifted down one to sit under this
+      // <h3>, and a `###` an <h4> -- the pack's own hierarchy shifted down one to sit under this
       // page's, rather than two competing h2 levels in the same column.
       return (
         <h3 className="mt-9 text-h3 font-semibold text-text">
@@ -115,8 +115,8 @@ function BlockView({ block }: { block: Block }) {
         </h4>
       );
     case 'callout':
-      // A lone bolded line in these renderers is always a load-bearing statement — the payer,
-      // the one-liner — never emphasis inside a sentence. It gets a rule and a bigger measure
+      // A lone bolded line in these renderers is always a load-bearing statement -- the payer,
+      // the one-liner -- never emphasis inside a sentence. It gets a rule and a bigger measure
       // so the eye stops on it, which is what the bold was doing in the markdown.
       return (
         <p className="mt-5 border-l-2 border-text/20 pl-4 text-body font-medium leading-relaxed text-text">
@@ -158,7 +158,7 @@ function BlockView({ block }: { block: Block }) {
  * This is the block that has to carry the page's whole argument, so it is the one that gets a
  * card. "The field" section names who is already there; the passage under each name is the
  * evidence that we read them rather than guessed at them. A source with no usable passage still
- * appears — it is still a source we read — it just does not get to say anything.
+ * appears -- it is still a source we read -- it just does not get to say anything.
  *
  * `SourceChipRow` and not a local chip. A private copy of this markup is how "the domain leads"
  * became true on /sample and false in the hero; there are five call sites and one component.
@@ -186,13 +186,19 @@ function SourcePassage({ block }: { block: SourceBlock }) {
 }
 
 export default function SamplePage() {
+  /* `6xl` to match `LegalDoc.tsx:108`, the site's other document-with-a-rail page, so the trail
+     starts on the same left edge as the prose under it rather than the 3xl default.
+     This page reached main WITHOUT a trail: the rule that every visual route offers a way back
+     landed on the branch (`backNavigation.test.ts`) at the same time as this page was rewritten
+     on main, and a textual merge keeps both without noticing that the new page breaks the new
+     rule. The test is what caught it. */
   return (
     <MarketingLayout
-      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Sample report' }]}
-      breadcrumbsWidth="7xl"
+      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Sample' }]}
+      breadcrumbsWidth="6xl"
     >
       {/* Its own description, not the site default, and no longer the word "unredacted". The
-          previous copy promised "a complete Mumchimp report free, unredacted" — a search snippet
+          previous copy promised "a complete Mumchimp report free, unredacted" -- a search snippet
           that the page below it could not honour once the boundary went in. A snippet that
           oversells is worse than a generic one: it converts a click into a disappointment. */}
       <Seo
@@ -221,7 +227,7 @@ export default function SamplePage() {
               Not a mock-up and not a summary. These are the first three sections of a pack that
               is on the shelf right now, exactly as they were published: the situation somebody is
               already dealing with, what you would actually be selling, and who is already in the
-              field — quoted from their own pages, with every link open.
+              field, quoted from their own pages, with every link open.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 text-meta font-semibold text-muted">
               <span className="inline-flex items-center gap-2">
@@ -235,9 +241,9 @@ export default function SamplePage() {
                 </span>
               )}
               {/* The one anchor on this strip, and it lands somewhere that proves the number
-                  rather than restating it: the third section quotes six of these pages at
+                  rather than restating it: the third section quotes five of these pages at
                   length. The old strip linked "objections we could not dismiss" to `#pushback`,
-                  an id on a checks list that this page no longer renders — a hero link to
+                  an id on a checks list that this page no longer renders -- a hero link to
                   nowhere is the classic casualty of a page restructure, so this one points at a
                   section the rail also lists. */}
               <a href={`#${EXCERPT[2]?.id ?? 'boundary'}`} className={textLinkClass('inline-flex items-center gap-2')}>
@@ -260,7 +266,7 @@ export default function SamplePage() {
           <div className="min-w-0">
             {/* What the reader is about to read, named before they read it. The pack itself
                 opens on the situation rather than on a title page, so this line is the only
-                framing the page adds — the sections below are the document's own words. */}
+                framing the page adds -- the sections below are the document's own words. */}
             <div className="rounded-md border border-border bg-surface p-8 md:p-9">
               <span className="text-caption font-medium text-muted">The pack</span>
               <h2 className="mt-2 text-h2 font-semibold text-text md:text-h1">{report.title}</h2>
@@ -306,7 +312,7 @@ export default function SamplePage() {
               </h2>
               <p className="mt-4 max-w-[68ch] text-body leading-relaxed text-muted">
                 Three sections of {report.sectionsTotal}. What you have just read is what we found
-                out; the {WITHHELD.length} below are what you would do about it — what it costs,
+                out; the {WITHHELD.length} below are what you would do about it: what it costs,
                 what would sink it, what to build first, and how to know inside a month whether you
                 were wrong. Every one of them is written from the same checked claims, on the same
                 sources, and they are the reason a pack costs money.
@@ -319,8 +325,8 @@ export default function SamplePage() {
                   </div>
                 ))}
               </dl>
-              {/* The excerpt above points at two sections by name — the checks record and the
-                  fortnight plan — because the document was written to be read whole. Leaving
+              {/* The excerpt above points at two sections by name -- the checks record and the
+                  fortnight plan -- because the document was written to be read whole. Leaving
                   those references intact and explaining them is more honest than editing the
                   excerpt to hide that it is one. */}
               <p className="mt-7 max-w-[68ch] border-t border-warning/30 pt-5 text-meta leading-relaxed text-muted">
