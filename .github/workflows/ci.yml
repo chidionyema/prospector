@@ -406,3 +406,38 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: https://api.example.com
           NEXT_PUBLIC_SITE_URL: https://www.example.com
+
+  # ──────────────────────────────────────────────────────────────────
+  # The single check branch protection requires.
+  #
+  # Path gating and required status checks do not mix directly. Once `python`,
+  # `engine`, `dotnet` and `nextjs` can be skipped, requiring them by name is a
+  # trap: a docs-only pull request never produces those checks, so it waits for
+  # a result that is never coming and can never merge. Requiring none of them is
+  # the other failure — nothing is enforced and every merge is a human decision,
+  # which is the state that left seven PRs open.
+  #
+  # So require THIS job and nothing else. It always runs, it depends on every
+  # other job, and it fails only when one of them actually failed or was
+  # cancelled. A skipped job is a pass here, which is exactly what "that area was
+  # not touched" means.
+  # ──────────────────────────────────────────────────────────────────
+  ci-ok:
+    needs: [changes, guard, python, engine, dotnet, nextjs]
+    if: always()
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    steps:
+      - name: Every job either passed or was not needed
+        run: |
+          set -u
+          results="${{ join(needs.*.result, ' ') }}"
+          echo "job results: $results"
+          bad=0
+          for r in $results; do
+            case "$r" in
+              success|skipped) ;;
+              *) echo "::error::a job reported '$r'"; bad=1 ;;
+            esac
+          done
+          exit "$bad"
