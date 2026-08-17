@@ -101,18 +101,21 @@ Send one real 10-token completion and read the billing response.
 
 ---
 
-## 2. Rule conflict I am surfacing, not resolving
+## 2. Rule conflict — RESOLVED 2026-08-18, the rule is dead
 
-`CLAUDE.md` carries a standing project rule:
+`CLAUDE.md` used to forbid this outright: *"the engine runs locally or within your Claude Code
+subscription. No hosted inference, no infrastructure beyond your own server."*
 
-> **No hosted service / no API-key calls beyond this repo:** the engine runs locally or within your
-> Claude Code subscription. No hosted inference, no infrastructure beyond your own server.
+Founder, 2026-08-18: **"forget about CLAUDE.md, that was in the past, this is a commercial business
+running off a laptop."** The rule was written for a side project; the laptop is now the risk, not
+the hosted infrastructure. `CLAUDE.md:43` has been rewritten on this branch to say so, with the
+date and the reason, so no future session re-raises it as a blocker.
 
-Moving the engine to Fly.io contradicts the letter of that rule. It is your rule and you can amend
-it — but it should be amended deliberately, in the file, with a date, not overridden silently by a
-migration. Option C above is the only one that keeps the rule intact.
-
----
+**All three brain options in §1 are therefore open on their merits** — cost and reliability only,
+no rule argument. What survives from the old rule, because it was the load-bearing half: the repo
+stays the complete system. No behaviour may live only in a console, a dashboard or a provider
+account, and a fresh clone plus an env file must still run the whole engine. That is exactly what
+P7's second adapter proves.
 
 ## 3. Hermes — recommend OUT OF SCOPE, explicitly
 
@@ -406,6 +409,5 @@ grep -rn 'Path(__file__)' --include='*.py' | grep store   # EDGE-4: must be empt
 
 1. **§1 — which brain option?** A (OAuth token, needs the 20-minute proof + a ToS call),
    B (metered API key, a real bill), or C (MiniMax-only, single-brain moat).
-2. **§2 — amend the `CLAUDE.md` "no hosted service" rule, or take Option C to keep it?**
 3. **EDGE-9 — private networking, or do the console auth work before P5?**
 4. **§3 — confirm Hermes is out of scope for this programme.**
