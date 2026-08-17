@@ -38,7 +38,8 @@ const controlClass = (invalid: boolean, padding = 'px-3') =>
        take. Measured at 390px on 2026-08-13: the home page's search trigger, the shelf's sort
        control and the newsletter field all came back 40px, 4px under the floor the header
        buttons and both footer columns state explicitly. Desktop is unchanged to the pixel. */
-    'h-11 w-full rounded-md border bg-surface text-meta text-text sm:h-10',
+    // 8px, MASTER-BRIEF §4 ("8px controls").
+    'h-11 w-full rounded-ctl border bg-surface text-meta text-text sm:h-10',
     padding,
     'transition-[border-color,outline-color] duration-[120ms] ease-[cubic-bezier(0.2,0,0,1)]',
     'placeholder:font-normal placeholder:text-subtle',

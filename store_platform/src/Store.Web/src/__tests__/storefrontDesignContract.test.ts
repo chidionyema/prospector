@@ -60,11 +60,18 @@ describe('Design contract — global tokens (globals.css)', () => {
     // subtle and border are steps of ONE scale rather than four separately-chosen greys.
     // 2026-08-15 (founder directive): the ground goes warm and SPLITS from the surface. Both are
     // pinned so a later edit cannot re-flatten them to one colour without failing here.
-    assertContains('page bg', css, /--bg:\s*#FAF9F7/i);
+    // 2026-08-17: re-pinned to MASTER-BRIEF §1, which declares the palette. Four literals moved
+    // and one did not. `--surface` stays #FFFFFF because the brief's `--surface` is the same
+    // white. The rest converge on the brief's names: --bg is `--paper`, --text is `--ink`,
+    // --muted is `--ink-2`, --border is `--line`. The names here are the app's API -- hundreds of
+    // files reach them through Tailwind utilities -- so the VALUES moved and the brief's names
+    // ship as aliases beside them. What this test guards is unchanged: five separately-nameable
+    // greys, declared once, in one file.
+    assertContains('page bg', css, /--bg:\s*#FAFAF7/i);
     assertContains('surface', css, /--surface:\s*#FFFFFF/i);
-    assertContains('text', css, /--text:\s*#171717/i);
-    assertContains('muted', css, /--muted:\s*#52525B/i);
-    assertContains('border', css, /--border:\s*#E4E4E7/i);
+    assertContains('text', css, /--text:\s*#17191C/i);
+    assertContains('muted', css, /--muted:\s*#565B62/i);
+    assertContains('border', css, /--border:\s*#E7E7E1/i);
   });
 
   it('defines primary as the one action colour', () => {
@@ -391,7 +398,15 @@ describe('Design contract — primary CTAs', () => {
     expect(button, 'CTA uses the on-primary token, not a hardcoded white').not.toMatch(
       /primary:\s*cx\(\s*['"][^'"]*text-white/,
     );
-    expect(button, 'one radius on every button').toMatch(/rounded-md/);
+    // RE-PINNED 2026-08-17 to MASTER-BRIEF §4, which declares 8px controls. The literal moved
+    // from `rounded-md` (2px) to `rounded-ctl` (8px); the pinned PROPERTY is unchanged and is the
+    // load-bearing half -- the button's corner is declared in ONE place, on the base class every
+    // variant inherits, so no variant and no call site can draw a different one. The chip class
+    // further down Button.tsx stays at `rounded-sm` on purpose: a chip is not a control, and 8px
+    // on a 24px chip is the lozenge `threeRadiiTwoShadows.test.ts` argues against.
+    expect(button, 'one radius on every button, and it is the control radius').toMatch(
+      /rounded-ctl/,
+    );
     // Sizes are heights, not paddings: `py-3` on a text-meta button and `py-3` on a text-body
     // button produce two different control heights, which is why the CTAs never lined up.
     // `md` became 44px on touch and 40px from `sm` up on 2026-08-13: measured at 390px, the

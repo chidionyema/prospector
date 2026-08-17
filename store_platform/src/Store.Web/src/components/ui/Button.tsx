@@ -89,7 +89,9 @@ const VARIANTS: Record<ButtonVariant, string> = {
 export type ButtonSize = 'md' | 'lg';
 
 const BASE = cx(
-  'inline-flex items-center justify-center gap-2 rounded-md font-medium',
+  // 8px, MASTER-BRIEF §4 ("8px controls"). The chip class below stays at --radius-sm: a chip
+  // is not a control, and 8px on a 24px chip is the lozenge tokens.css argues against.
+  'inline-flex items-center justify-center gap-2 rounded-ctl font-medium',
   // transition-colors, not transition-all: `all` animated the transform too, which is why the
   // press felt spongy -- the 0.98 squash was easing over 200ms instead of snapping.
   'transition-colors duration-[120ms] ease-[cubic-bezier(0.2,0,0,1)]',

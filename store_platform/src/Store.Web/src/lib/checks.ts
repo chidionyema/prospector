@@ -61,12 +61,28 @@ export interface Check {
   verdict: string;
 }
 
+/*
+ * THE CANONICAL SIX (MASTER-BRIEF §5.2). The `question` strings below are the brief's exact
+ * wording and are immutable: the site previously stated the checks three different ways -- the
+ * pack page named six, /how-it-works ran nine worded differently, and /kill-log listed twelve
+ * causes -- so a reader comparing two pages could not tell whether they were looking at the same
+ * filter. One list, one wording, every page.
+ *
+ * The count is a separate question from the wording, and it stays variable on purpose. Ideas face
+ * MORE than six; a pack page states its own number ("this idea faced 9"), which is why
+ * `src/__tests__/fixedCheckCount.test.ts` forbids copy that promises a fixed count. Six canonical
+ * NAMES, a per-pack COUNT. The brief agrees ("Ideas may face more") and nothing here weakens that
+ * guard.
+ *
+ * `verdict` is untouched: it is verbatim from the engine (`gateLabel` in `src/data/kill-log.json`)
+ * and rewriting it here would invent the fourth lexicon this file exists to prevent.
+ */
 export const COMMON_CHECKS: readonly Check[] = [
   {
     id: 'pain_reality',
     aliases: [],
     name: 'Real pain',
-    question: 'Is the pain real, or are we imagining it?',
+    question: 'Is the pain real, or imagined?',
     refutation: 'Whether the pain is imagined',
     prose: 'real pain',
     verdict: 'The pain was not real',
@@ -75,7 +91,7 @@ export const COMMON_CHECKS: readonly Check[] = [
     id: 'value_durability',
     aliases: [],
     name: 'Lasting value',
-    question: 'Does the value last, or does it decay?',
+    question: 'Will the value last, or evaporate?',
     refutation: 'Whether the value decays',
     prose: 'lasting value',
     verdict: 'The value would not last',
@@ -84,7 +100,7 @@ export const COMMON_CHECKS: readonly Check[] = [
     id: 'incumbency',
     aliases: [],
     name: 'Room past the incumbents',
-    question: 'Have the big players already won?',
+    question: 'Do incumbents already own the space?',
     refutation: 'Whether incumbents already own the space',
     prose: 'room past the incumbents',
     verdict: 'Incumbents already own the space',
@@ -93,7 +109,7 @@ export const COMMON_CHECKS: readonly Check[] = [
     id: 'payer_solvency',
     aliases: [],
     name: 'A payer who can pay',
-    question: 'Is the buyer actually solvent?',
+    question: 'Can the payer actually pay?',
     refutation: 'Whether anyone will actually pay',
     prose: 'a payer who can pay',
     verdict: 'The payer cannot actually pay',
@@ -102,7 +118,7 @@ export const COMMON_CHECKS: readonly Check[] = [
     id: 'distribution',
     aliases: ['route_to_market'],
     name: 'A route to the buyer',
-    question: 'Can this reach a market at all?',
+    question: 'Is there a route to reach the market?',
     refutation: 'Whether it can reach a market at all',
     prose: 'a route to the buyer',
     verdict: 'There is no route to reach buyers',
@@ -111,7 +127,7 @@ export const COMMON_CHECKS: readonly Check[] = [
     id: 'legality',
     aliases: [],
     name: 'No legal landmine',
-    question: 'Is there a regulatory path?',
+    question: 'Is there a legal landmine?',
     refutation: 'Whether there is a legal landmine',
     prose: 'no legal landmine',
     verdict: 'There is a legal landmine',

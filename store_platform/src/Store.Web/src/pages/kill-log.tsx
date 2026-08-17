@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { buttonClasses, chipClasses, Glyph, SearchInput, SourceChip, textLinkClass } from '@/components/ui';
+import { buttonClasses, chipClasses, Glyph, SearchInput, SourceChip, VerdictChip, textLinkClass } from '@/components/ui';
 import { Section, SectionBand } from '@/components/marketing/blocks';
 import { WaitlistCallout } from '@/components/waitlist/WaitlistCallout';
 import { tightDecimal } from '@/components/ui/Money';
@@ -247,10 +247,14 @@ export default function KillLogPage({
                 it tells the reader to be careful about something ahead. A kill is not a hazard,
                 it is a finished ruling, and the crossed square is the mark the rest of the site
                 uses for one. */}
-            <span className="inline-flex items-center gap-2 text-kill">
-              <Glyph name="killed" />
-              {rejectRateLabel} killed
-            </span>
+            {/* Composed rather than hand-drawn (MASTER-BRIEF §6). The glyph, the word and the
+                red arrive together, and this page is the one place red means exactly what it
+                says. */}
+            <VerdictChip
+              kind="killed"
+              label={`${rejectRateLabel} killed`}
+              className="gap-2 text-meta"
+            />
             {/* The green chip counts what is BUYABLE, not what cleared the gates. It has carried
                 "80 survived" and then "80 survived the checks", both against a shelf of 50; the
                 survivor figure is gone from the site (lib/stats.ts, founder directive 2026-08-13)

@@ -333,6 +333,17 @@ export default function HowItWorks() {
             Silence in the record means <em>unverifiable</em>, never <em>false</em>. The agents only
             rule on pages they actually fetched.
           </p>
+          {/* MASTER-BRIEF §5.3. "Pushed back" is on the homepage hero, on the check list under it,
+              on /sample and on every pack page, and until now no page said what it meant. A reader
+              met a third verdict word beside "survived" and "killed" and had to guess whether it
+              was a soft failure. It is not. This is the page that explains the process, and this
+              paragraph is where the same idea already lives, so the definition goes here rather
+              than in a fourth place. */}
+          <p className="text-meta leading-relaxed text-muted">
+            A check that is <em>pushed back</em> is that silence with a name. The evidence would not
+            settle the question either way, so the idea carried on and the doubt stayed on the
+            record for you to read. It is drawn in amber, never red. Red means killed.
+          </p>
         </div>
       </Section>
 

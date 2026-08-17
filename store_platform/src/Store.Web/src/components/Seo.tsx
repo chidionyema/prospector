@@ -102,12 +102,16 @@ export function Seo({
       <meta key="description" name="description" content={description} />
       {/* Favicons + home-screen icon. An SVG primary (scales crisply, theme-aware) with an
           .ico fallback for legacy chrome; apple-touch-icon is the iOS home-screen tile. The
-          theme-color tints mobile browser chrome to the ink brand token (raw hex is required
-          here: browser chrome parses it as a literal color, not CSS, so conformance allows it). */}
+          theme-color tints mobile browser chrome to the PAGE GROUND `--paper`, not to the ink
+          (raw hex is required here: browser chrome parses it as a literal color, not CSS, so
+          conformance allows it). It must stay identical to the copy in `pages/_document.tsx`:
+          that one is the one browsers actually use, because _document's <Head> renders first and
+          the first theme-color wins. Two <Head> trees means next/head's `key` cannot dedupe
+          across them, so this is a mirror that has to be edited in step. */}
       <link key="icon-svg" rel="icon" href="/icon.svg" type="image/svg+xml" />
       <link key="icon-ico" rel="icon" href="/favicon.ico" sizes="any" />
       <link key="apple-touch-icon" rel="apple-touch-icon" href="/apple-touch-icon.png" />
-      <meta key="theme-color" name="theme-color" content="#171717" />
+      <meta key="theme-color" name="theme-color" content="#FAFAF7" />
       {canonical && <link key="canonical" rel="canonical" href={canonical} />}
       <meta key="og:site_name" property="og:site_name" content={SITE} />
       <meta key="og:type" property="og:type" content={ogType} />

@@ -83,7 +83,9 @@ export function HeroEvidenceStrip({ className }: { className?: string }) {
                      `--warning-strong` on `--warning-bg` (6.84:1), so the page carried two
                      colour families for one state. `--warning-strong` also fixes the contrast
                      miss underneath: `--kill` on `--kill-bg` measures 4.41:1. */
-                  supported ? 'h-5 bg-survive' : 'h-5 border border-warning-strong bg-warning-bg',
+                  supported
+                    ? 'h-5 bg-survive'
+                    : 'h-5 border border-pushed-back-strong bg-pushed-back-bg',
                 )}
               />
             );
@@ -93,8 +95,11 @@ export function HeroEvidenceStrip({ className }: { className?: string }) {
         <p className="font-mono text-caption text-text">
           <span className="text-survive">{SURVIVED} survived</span>
           <span className="text-subtle">{' · '}</span>
-          {/* Matches the ticks above, and for the same reason. See the note on their class. */}
-          <span className="text-warning-strong">{PUSHED_BACK} pushed back</span>
+          {/* Matches the ticks above, and for the same reason. See the note on their class.
+              The token is `--pushed-back-strong` now, not `--warning-strong`: same value, but the
+              name says the verdict rather than a generic UI state, so the next person to read
+              this line cannot mistake it for a caution message. */}
+          <span className="text-pushed-back-strong">{PUSHED_BACK} pushed back</span>
           <span className="text-subtle">{` · ${report.sourceCount} sources`}</span>
         </p>
       </div>
@@ -123,10 +128,11 @@ export function HeroEvidenceStrip({ className }: { className?: string }) {
           under an identically-worded link to the same page: one number, twice, on one screen, on a
           site whose entire pitch is that it keeps track of its numbers.
 
-          The bridge itself is not lost, it MOVED ONTO THE PICTURE. `PopulationField` renders
-          immediately below this component and its caption reads "Every idea put through these same
-          checks, one mark each" over 1,444 marks -- the same sentence, doing the same work, said
-          once, beside the population it is about instead of 445px above a restatement of it. The
+          The bridge itself is not lost, it MOVED ONTO THE PICTURE. `KillGrid` renders in the
+          hero column beside this component and its caption reads "Every idea we have ever
+          researched, one square each" over 1,444 squares -- the same sentence, doing the same
+          work, said once, beside the population it is about instead of 445px above a restatement
+          of it. The
           prose statement of both totals stays in the proof strip, which is the only one of the
           three that a phone ever sees. */}
     </div>
