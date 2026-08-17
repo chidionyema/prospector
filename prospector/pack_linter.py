@@ -930,6 +930,96 @@ _SHELF_WORD_RE = re.compile(r"[a-z][a-z'’]*")
 #: because the second shape reads as a proper noun and slips past a token-equality test.
 _CAPS_RUN_RE = re.compile(r"[A-Z]{2,}")
 
+#: Words an expansion skips over, so `Driver and Vehicle Standards Agency (DVSA)` still reads
+#: as D-V-S-A. Every one is a joining word that no one puts in an initialism.
+_EXPANSION_SKIP = frozenset("""
+of and the for in on at to a an with de du la le los las
+""".split())
+
+#: A parenthetical, for the expand-on-first-use check below.
+_PAREN_RE = re.compile(r"\(([^)]{1,120})\)")
+_EXPANSION_WORD_RE = re.compile(r"[A-Za-z][A-Za-z'’./-]*")
+
+
+def _initials_spell(words: list[str], run: str, *, from_end: bool) -> bool:
+    """Do these words' initials spell `run`, reading from the end (or the start)?
+
+    Joining words are skipped, but only BETWEEN letters — the boundary word must carry a
+    letter, or `Agency (DVSA)` would match on any four words that happen to sit near an
+    `and`. Nothing else is allowed to be skipped, so a near-miss expansion fails rather
+    than passing on a coincidence.
+    """
+    letters = list(run.upper())
+    seq = list(words)
+    if from_end:
+        letters.reverse()
+        seq.reverse()
+    i = 0
+    for letter in letters:
+        matched = False
+        while i < len(seq):
+            word = seq[i]
+            i += 1
+            if word[0].upper() == letter:
+                matched = True
+                break
+            if word.lower() in _EXPANSION_SKIP:
+                continue  # a joining word between two initials
+            return False
+        if not matched:
+            return False
+    return True
+
+
+def expands_on_first_use(text: str, run: str) -> bool:
+    """Does this line spell `run` out in full, right where it uses it?
+
+    The rule below tells the writer to "spell it out in full", and until 2026-08-16 it then
+    refused the line that did: it only ever asked whether the CAPS RUN was in the known list,
+    so `Amazon Web Services (AWS)` failed exactly as `AWS` did. The instruction was
+    unsatisfiable — the only compliant copy deleted the letters. That was not a style miss:
+    a shelf-copy error fails the content gate, so the pack skips Stripe provisioning and
+    publishes UNLISTED. On 2026-08-16 it held 31 of the 33 defective live rows, on ordinary
+    terms (METRC, CMMC, DVSA, ISV, PAC) that a line can perfectly well introduce.
+
+    Both orders count, because both read fine:
+        `Amazon Web Services (AWS)`      expansion first
+        `AWS (Amazon Web Services)`      initialism first
+
+    The match is on INITIALS, not on a dictionary, so nothing here decides what a term means
+    — it only checks that the words next to it actually are that term spelled out. A garbled
+    expansion still fails.
+    """
+    for match in _PAREN_RE.finditer(text):
+        inside = match.group(1)
+
+        # `Expansion (RUN)` — the run is the whole parenthetical, or the caps run inside it.
+        if run in _CAPS_RUN_RE.findall(inside):
+            before = _EXPANSION_WORD_RE.findall(text[:match.start()])
+            if before and _initials_spell(before, run, from_end=True):
+                return True
+
+        # `RUN (Expansion)` — the run sits immediately before the bracket.
+        head = _EXPANSION_WORD_RE.findall(text[:match.start()])
+        if head and run in _CAPS_RUN_RE.findall(head[-1]):
+            inside_words = _EXPANSION_WORD_RE.findall(inside)
+            if inside_words and _initials_spell(inside_words, run, from_end=False):
+                return True
+    return False
+
+
+def unexplained_initialisms(text: str) -> list[str]:
+    """Every caps run this line uses that the reader has never met and the line never introduces.
+
+    The linter's rule 3 and the shelf-copy sweep both need exactly this list, and they must
+    agree: the sweep repairs a line, then the linter judges it. Two copies of the same
+    condition is how a sweep ships a "fix" the gate still refuses.
+    """
+    return sorted({run for run in _CAPS_RUN_RE.findall(text)
+                   if run not in KNOWN_INITIALISMS
+                   and not expands_on_first_use(text, run)})
+
+
 #: Our filing system, leaking onto the shelf. `voice.md`: "a reader who meets one of these
 #: words has been handed our filing system by mistake". `pack` and `dossier` are NOT here —
 #: the storefront sells a thing it calls a pack, so that is the reader's word too.
@@ -1159,9 +1249,8 @@ def check_shelf_copy(fields: Dict[str, str], *, block: bool = False,
                                f"uses our internal vocabulary, not the reader's: "
                                f"{', '.join(vocab_hits + taxonomy_hits)} in {text!r}"))
 
-        # 3. An initialism the reader has never met.
-        unknown = sorted({run for run in _CAPS_RUN_RE.findall(text)
-                          if run not in KNOWN_INITIALISMS})
+        # 3. An initialism the reader has never met AND the line never introduces.
+        unknown = unexplained_initialisms(text)
         if unknown:
             problems.append(mk("shelf_copy", name,
                                f"unexplained initialism(s) {', '.join(unknown)} — spell it out in full; "

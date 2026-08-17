@@ -465,7 +465,7 @@ def glance_status(
         return " · ".join(parts)
 
     if latest is None:
-        return "Engine idle · no runs yet"
+        return "No manual job yet · see Engine for the daemon"
 
     cmd = summarize_job_command(latest.get("argv"))
     status = (latest.get("status") or "?").lower()
@@ -480,7 +480,21 @@ def glance_status(
         "deferred": "deferred",
         "unknown": "unknown",
     }.get(status, status)
-    return f"Engine idle · last {cmd} {label} ({elapsed_s})"
+    # NOT "Engine idle". This sentence is built from the last MANUAL launcher job and knows
+    # nothing about the daemon: on 2026-08-16 it read "Engine idle · last generate k=5 failed"
+    # over a job dated 2026-07-31 while the consumer was live and ruling (3 PASS that run).
+    # Name the surface it actually measures, and date it so a stale job cannot read as current.
+    age = ""
+    started = latest.get("start_ts")
+    if started:
+        secs = max(0.0, now - float(started))
+        if secs < 5400:
+            age = f", {int(secs / 60)}m ago"
+        elif secs < 172800:
+            age = f", {secs / 3600:.0f}h ago"
+        else:
+            age = f", {secs / 86400:.0f}d ago"
+    return f"No manual job running · last {cmd} {label} ({elapsed_s}{age})"
 
 
 def watched_operators(cfg: dict[str, Any] | None = None) -> list[str]:
@@ -800,64 +814,6 @@ def _spend_ts(ev: dict[str, Any]) -> str:
     return str(ev.get("ts") or ev.get("timestamp") or ev.get("asctime") or "")
 
 
-def _scan_today_spend_from_tail(path: Path, today: str) -> dict[str, Any]:
-    """Sum today's spend by reverse-reading an append-only jsonl (stops at prior days)."""
-    total = 0.0
-    by_phase: dict[str, float] = {}
-    try:
-        size = path.stat().st_size
-    except OSError:
-        return {"total_usd": 0.0, "by_phase": {}}
-    if size == 0:
-        return {"total_usd": 0.0, "by_phase": {}}
-
-    # Chunked reverse read — avoid loading 70MB+ into memory.
-    chunk = 256 * 1024
-    pos = size
-    buf = b""
-    stop = False
-    with path.open("rb") as f:
-        while pos > 0 and not stop:
-            read_n = min(chunk, pos)
-            pos -= read_n
-            f.seek(pos)
-            buf = f.read(read_n) + buf
-            # Keep incomplete first line for next (earlier) chunk.
-            parts = buf.split(b"\n")
-            if pos > 0:
-                buf = parts[0]
-                lines = parts[1:]
-            else:
-                lines = parts
-                buf = b""
-            for raw in reversed(lines):
-                if not raw.strip():
-                    continue
-                try:
-                    ev = json.loads(raw.decode("utf-8", errors="replace"))
-                except (json.JSONDecodeError, ValueError, UnicodeDecodeError):
-                    continue
-                ts = _spend_ts(ev)
-                day = ts[:10] if len(ts) >= 10 else ""
-                # Append-only ledger: going backwards, a prior calendar day means
-                # we have left today's window — stop scanning older chunks.
-                if day and day < today:
-                    stop = True
-                    break
-                if ev.get("event") != "spend":
-                    continue
-                if not day or not ts.startswith(today):
-                    continue
-                try:
-                    amt = float(ev.get("amount_usd", 0) or 0)
-                except (TypeError, ValueError):
-                    continue
-                total += amt
-                phase = ev.get("phase", "main")
-                by_phase[phase] = by_phase.get(phase, 0.0) + amt
-    return {"total_usd": round(total, 4), "by_phase": by_phase}
-
-
 def _today_spend_from_events(audit: list[dict[str, Any]], today: str) -> dict[str, Any]:
     total = 0.0
     by_phase: dict[str, float] = {}
@@ -879,12 +835,39 @@ def _today_spend_from_events(audit: list[dict[str, Any]], today: str) -> dict[st
 
 @st.cache_data(ttl=30)
 def _today_spend_from_ledger(_mtime: float) -> dict[str, Any]:
-    """Cached reverse-tail spend — ``_mtime`` busts cache when the ledger grows."""
-    today = datetime.now(timezone.utc).date().isoformat()
-    path = paths.store_path("prospector.jsonl")
-    if not path.exists():
-        return {"total_usd": 0.0, "by_phase": {}}
-    return _scan_today_spend_from_tail(path, today)
+    """Today's spend THROUGH THE RAIL'S OWN READER (R23). ``_mtime`` busts the cache.
+
+    This used to be a bespoke reverse-tail parse of `store/prospector.jsonl` living right here —
+    a SECOND derivation of the one number the daemon stops itself on. Two parsers of one ledger
+    is not redundancy: it is two answers, and the console's was the one nobody could reconcile.
+    Concretely it summed `event: "spend"` + `amount_usd` and therefore reported the METERED leg
+    only, while calling it "today's spend" — on 2026-08-16 that is $0.69 against $19.53 of
+    subscription burn, so the Overview under-reported consumption by 28x with no warning
+    (memory: `never-hand-parse-the-spend-ledger`).
+
+    Now it is `SchedulerGuard.scan_today()` via `prospector.ops.spend`, the same call
+    `guard.evaluate()` gates on, and BOTH legs come back. `total_usd` keeps its meaning — the
+    billed leg the cap enforces — and `subscription_usd` is no longer silently dropped.
+    """
+    from prospector.ops import spend as _ops_spend
+    from prospector.ops.readmodel import load_cfg
+
+    try:
+        view = _ops_spend.spend_view(load_cfg())
+    except Exception as exc:  # noqa: BLE001 — a KPI must not take the Overview down
+        logger.error("control_center: spend view unavailable (%s: %s)", type(exc).__name__, exc)
+        return {"total_usd": 0.0, "subscription_usd": 0.0, "by_phase": {},
+                "source": "unavailable", "warnings": [f"spend read failed: {exc}"]}
+
+    return {
+        "total_usd": round(float(view["legs"]["metered"]["usd"]), 4),
+        "subscription_usd": round(float(view["legs"]["subscription"]["usd"]), 4),
+        # The guard's single pass accumulates per-DAY, not per-phase; the phase split belonged to
+        # the deleted parser. `pages/_spend.py` carries the per-tier and per-role split instead.
+        "by_phase": {},
+        "source": view["source"],
+        "warnings": view.get("warnings", []),
+    }
 
 
 def today_spend(audit: Optional[list[dict[str, Any]]] = None) -> dict[str, Any]:

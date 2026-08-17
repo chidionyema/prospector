@@ -106,6 +106,31 @@ class Retrieval:
     # 0.0 = OFF, a byte-for-byte no-op for fixtures, the golden set and any directly
     # constructed Retrieval().
     min_relevance: float = 0.0
+    # How a result set becomes the ONE coverage number compared against `min_relevance`:
+    # "best" scores the single best source, "mean" averages all of them.
+    #
+    # WHY "best" is the default (measured 2026-08-16). A check needs one passage that answers
+    # it, so averaging fails a result set that contains a perfect source next to two weak
+    # ones — the normal shape of a web search. Over 1500 real cached result sets the mean
+    # cleared the 0.35 floor 24.3% of the time and the best source 44.1%. On the live audit
+    # for that day NO provider cleared the floor even once: ddg averaged 0.184 coverage over
+    # 1576 resolutions and exa 0.276 over 149, so the floor was unreachable and the paid
+    # provider bought a better failure rather than a pass.
+    coverage_metric: str = "best"
+    # Providers that may only be reached because an EARLIER provider FAILED — never because
+    # an earlier provider merely answered below `min_relevance`.
+    #
+    # WHY (founder directive 2026-08-16: "unacceptable use of claude cli"). The relevance
+    # escalation above is cheap when the next rung is a web API and ruinous when it is a
+    # language model. Measured that morning: 141 of 347 searches walked the whole ladder to
+    # `claude_cli`, which is a model doing a search — queued 4 wide, retried at 1.5x timeout,
+    # ~196s per call. It took 2,744s of 3,622s (76%) of all grounding time while supplying
+    # 21% of the evidence. Naming it here keeps it as the OUTAGE backstop it was built to be:
+    # if duckduckgo and exa both raise, it still runs and the check still grounds, so this
+    # cannot cause a DEFER that did not already exist. If they both merely answer off-topic,
+    # the chain now keeps the best set it has instead of paying three minutes for a coin flip.
+    # Empty list = the pre-2026-08-16 behaviour exactly.
+    backstop_only_providers: list[str] = field(default_factory=lambda: ["claude_cli"])
     # DiskCache freshness: cached grounding passages older than this are treated as a
     # miss and re-fetched, so a verdict never rules on stale evidence. 0 disables expiry
     # (cache forever). Default 14 days — long enough to amortise repeat vets in a batch,
@@ -537,6 +562,12 @@ LISTING_DEFAULTS: dict[str, Any] = {
     # figure, so switching it on is a ~30% delisting. The honest copy shipped regardless of the
     # flag, so nothing here is load-bearing for a promise.
     "require_figure_verification": False,
+    # Initialism -> the words it stands for, for the shelf-copy sweep. An expansion is a FACT,
+    # so it is declared here by the operator and never guessed by a brain: a rewrite asked to
+    # "spell it out" invents a plausible gloss, and an invented gloss on the shelf is exactly
+    # the unsourced claim the source-or-die rule exists to stop. Empty by default — a term with
+    # no entry is reported for the operator to declare, and the row stays unlisted meanwhile.
+    "initialism_glossary": {},
 }
 
 

@@ -37,6 +37,7 @@ import ast
 import json
 import re
 import sys
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -52,6 +53,18 @@ FAILURE_FLAGS = {
     "degraded", "retrieval_failed", "failed", "error", "errors", "exhausted",
     "ok", "success", "healthy", "unverifiable", "partial", "incomplete", "stale",
 }
+
+# A qualified name built on one of those words says the same thing: `price_history_error`
+# and `bundle_failed` name a failure as plainly as `error` does. Kept to suffixes so it
+# stays a statement about failure names, not a wildcard that waves through any identifier
+# with "ok" in the middle of it.
+FAILURE_FLAG_SUFFIXES = ("_error", "_errors", "_failed", "_failure", "_exhausted")
+
+
+def _is_failure_name(name: str) -> bool:
+    """Does this identifier tell the caller, by its name, that the thing failed?"""
+    return bool(name) and (
+        name in FAILURE_FLAGS or name.endswith(FAILURE_FLAG_SUFFIXES))
 
 # Exception types narrow enough that catching them is a decision about a KNOWN condition,
 # not a blanket "whatever went wrong, carry on".
@@ -106,9 +119,40 @@ def _walk_funcs(tree: ast.AST):
                 stack.append((child, prefix))
 
 
+def _index_tree(tree: ast.AST) -> tuple[list[ast.AST], dict[int, tuple[int, int]]]:
+    """One preorder list of every node, plus each node's slice of it.
+
+    `order[lo:hi]` for `span[id(node)] == (lo, hi)` is exactly the set `ast.walk(node)`
+    yields — same nodes, different order, and nothing downstream depends on the order
+    (`_returns_in` is counted, and the site list is re-sorted by (tier, callers, file, line)).
+
+    This exists for speed, and the speed is the whole cost of the tool. `scan_file` used to
+    call `ast.walk` twice per function — once for the returns, once for the try blocks — and
+    a function nested inside another was walked again by every enclosing function.
+    Measured 2026-08-17 over `prospector/`: 567,284 `ast.walk` calls, 56.8s of the tool's
+    116s under cProfile, 55.8s of real time. One walk per FILE replaces all of it.
+    """
+    order: list[ast.AST] = []
+    span: dict[int, tuple[int, int]] = {}
+
+    def visit(node: ast.AST) -> None:
+        start = len(order)
+        order.append(node)
+        for child in ast.iter_child_nodes(node):
+            visit(child)
+        span[id(node)] = (start, len(order))
+
+    visit(tree)
+    return order, span
+
+
 def _returns_in(node: ast.AST) -> list[str]:
+    return _returns_under(ast.walk(node))
+
+
+def _returns_under(nodes: Iterable[ast.AST]) -> list[str]:
     out = []
-    for n in ast.walk(node):
+    for n in nodes:
         if isinstance(n, ast.Return):
             out.append(_seg(n.value) if n.value is not None else "None")
     return out
@@ -168,32 +212,34 @@ def _sets_failure_flag(handler: ast.ExceptHandler) -> bool:
     the log, and the whole failure mode of this bug class is downstream code proceeding
     confidently on a value it has no way to question.
 
-    `rec["error"] = ...` counts too. It did not until 2026-08-16, which was a hole rather
-    than a rule: a dict LITERAL carrying the same key already counted (the ast.Dict branch
-    below), so the tool graded two spellings of one act differently. A handler that writes
-    the failure into the response dict it is about to return has told the caller in data,
-    which is the whole question this function asks.
+    A dict ITEM assignment counts too (`rec["error"] = str(exc)`). It reaches the caller by
+    exactly the same route as `rec.error = ...`, and handlers that build a result dict are
+    the common shape in the ops and console readers. Missing it graded two console sites as
+    "no flag reaches the caller" when the flag was sitting in the returned dict — the
+    auditor calling a real fix a swallow, which is how a ratchet loses its credibility.
     """
     logged = _logger_subtree_ids(handler)
     for n in ast.walk(handler):
         if id(n) in logged:
             continue
-        if isinstance(n, ast.keyword) and n.arg in FAILURE_FLAGS:
+        if isinstance(n, ast.keyword) and _is_failure_name(n.arg or ""):
             return True
         if isinstance(n, ast.Assign):
             for t in n.targets:
-                if isinstance(t, ast.Subscript):
-                    key = t.slice
-                    if isinstance(key, ast.Constant) and key.value in FAILURE_FLAGS:
-                        return True
-                    continue
-                nm = t.id if isinstance(t, ast.Name) else (
-                    t.attr if isinstance(t, ast.Attribute) else "")
-                if nm in FAILURE_FLAGS:
+                if isinstance(t, ast.Name):
+                    nm = t.id
+                elif isinstance(t, ast.Attribute):
+                    nm = t.attr
+                elif isinstance(t, ast.Subscript) and isinstance(t.slice, ast.Constant):
+                    nm = t.slice.value if isinstance(t.slice.value, str) else ""
+                else:
+                    nm = ""
+                if _is_failure_name(nm):
                     return True
         if isinstance(n, ast.Dict):
             for k in n.keys:
-                if isinstance(k, ast.Constant) and k.value in FAILURE_FLAGS:
+                if isinstance(k, ast.Constant) and isinstance(k.value, str) \
+                        and _is_failure_name(k.value):
                     return True
     return False
 
@@ -243,9 +289,13 @@ def scan_file(path: Path) -> list[Site]:
     rel = str(path.relative_to(REPO))
     sites: list[Site] = []
 
+    order, span = _index_tree(tree)
+
     for func, qname in _walk_funcs(tree):
-        all_returns = _returns_in(func)
-        for tnode in ast.walk(func):
+        lo, hi = span[id(func)]
+        under = order[lo:hi]
+        all_returns = _returns_under(under)
+        for tnode in under:
             if not isinstance(tnode, ast.Try):
                 continue
             reraises = any(

@@ -26,8 +26,11 @@ export const VIEWS = [
   'config',
   'intents',
   'tools',
+  'job',
+  'undo',
   'catalogue',
   'pack',
+  'shelf',
 ] as const;
 
 /** Arguments each view accepts. Anything else in the query string is dropped, not forwarded. */
@@ -41,6 +44,7 @@ const ALLOWED_ARGS: Record<string, string[]> = {
   config: ['history_limit'],
   intents: ['limit'],
   pack: ['id'],
+  job: ['job'],
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

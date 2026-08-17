@@ -299,6 +299,22 @@ def _mean_coverage(query: str, sources: list) -> float:
             if sources else 0.0)
 
 
+def _best_coverage(query: str, sources: list) -> float:
+    """Coverage of the SINGLE best source, not the average of all of them.
+
+    A check needs one passage that answers it. Averaging punishes a result set that
+    contains a perfect source alongside two weak ones, and that is the normal shape of
+    a web search. Measured 2026-08-16 over 1500 real cached result sets: the mean
+    clears the 0.35 floor 24.3% of the time, the best source 44.1%.
+    """
+    return max((relevance_score(query, s.text) for s in sources), default=0.0)
+
+
+#: How `FallbackSearchProvider` turns a result set into one coverage number, declared by
+#: `config.yaml retrieval.coverage_metric`. "mean" is the pre-2026-08-16 behaviour.
+COVERAGE_METRICS = {"best": _best_coverage, "mean": _mean_coverage}
+
+
 #: The verdict prompt reads only the first `VERDICT_PASSAGE_TRUNCATE` chars of each passage
 #: (`verify.py`). Anchoring the stored passage on a window of exactly that size is what makes
 #: the selection pay: optimising the 1500-char window instead and slicing its head made what
@@ -765,9 +781,9 @@ def fetch_page(url: str, *, timeout_s: float = 8.0, max_chars: int = 1500,
         etree.strip_elements(doc, "script", "style", "noscript", "nav", "header", "footer",
                              "aside", "form", "svg", "iframe", "button", "select", "template",
                              with_tail=False)
-        # The consent widget is furniture too, but it is named rather than tagged, so it
-        # survives the call above. Dropped here, while the DOM still says which element
-        # it is -- after `text_content()` there is nothing left to identify it by.
+        # The cookie banner is none of those tags. On gov.uk and ons.gov.uk it is a plain
+        # `<div>` inside the body, so it survives the strip above and lands at the top of the
+        # extracted text -- which is the window the verdict brain reads.
         if strip_consent:
             _strip_consent_elements(doc, etree)
         # Prefer the region the page itself declares as its content. Falling back to the whole
@@ -2068,8 +2084,15 @@ class DiskCache(SearchProvider):
 
     @track_latency(name="cached_search")
     def search(self, query: str, k: int = 4, max_chars: int = 1500) -> list[Source]:
+        # STAGE TIMING (added 2026-08-16). This wrapper's own audit line reported a mean of
+        # 71.4s per search while the web calls underneath it summed to 4.1s — 94% of the
+        # grounding time was inside the chain and attributed to nothing. `start` used to sit
+        # AFTER `record_usage`, so the ledger write was outside every number we had. Time
+        # each stage from the outside: whatever is slow now names itself in the audit line.
+        t_enter = time.monotonic()
         record_usage(web=True, provider="cache")
         start = time.monotonic()
+        usage_ms = int((start - t_enter) * 1000)
         p = self._path(query, k, max_chars)
         # mtime is a cheap prefilter: because freshness takes the OLDER of mtime and
         # the stamped fetch time, an mtime-stale entry is stale whatever it contains.
@@ -2081,11 +2104,14 @@ class DiskCache(SearchProvider):
                 audit("search", provider="cache", query=query[:200], k=k,
                       max_chars=max_chars, returned_n=len(results),
                       latency_ms=int((time.monotonic() - start) * 1000),
+                      usage_ms=usage_ms,
                       status="ok" if results else "empty", cache_hit=True)
                 return results
 
         logger.info("Search cache miss", extra={"query": query})
+        t_inner = time.monotonic()
         results = self.inner.search(query, k, max_chars)
+        inner_ms = int((time.monotonic() - t_inner) * 1000)
         # Cache writes only succeed when inner returned real results; empty
         # results stay uncached so a transient outage does not poison the cache.
         if results:
@@ -2096,6 +2122,7 @@ class DiskCache(SearchProvider):
         audit("search", provider="cache", query=query[:200], k=k,
               max_chars=max_chars, returned_n=len(results),
               latency_ms=int((time.monotonic() - start) * 1000),
+              usage_ms=usage_ms, inner_ms=inner_ms,
               status="ok" if results else "empty", cache_hit=False)
         return results
 
@@ -2118,14 +2145,27 @@ class FallbackSearchProvider(SearchProvider):
     """
     def __init__(self, providers: list[tuple[str, SearchProvider]],
                  *, failure_threshold: int = 3, cooldown_s: float = 60.0,
-                 clock=time.monotonic, health=None, min_relevance: float = 0.0):
+                 clock=time.monotonic, health=None, min_relevance: float = 0.0,
+                 backstop_only: Optional[list[str]] = None,
+                 coverage_metric: str = "best"):
         if not providers:
             raise ValueError("FallbackSearchProvider needs at least one provider")
         from .health import get_health
         self.providers = providers
+        # See `config.Retrieval.backstop_only_providers`. These answer an OUTAGE, not a
+        # low-relevance result: they are skipped unless an earlier provider actually failed.
+        self.backstop_only = set(backstop_only or ())
         # See `config.Retrieval.min_relevance`. 0.0 keeps the pre-2026-08-14 behaviour
         # exactly: the first provider that answers wins, however off-topic its answer.
         self.min_relevance = float(min_relevance or 0.0)
+        # See `COVERAGE_METRICS`. An unknown name is a config typo, and silently falling
+        # back to a different metric would change every escalation decision invisibly.
+        if coverage_metric not in COVERAGE_METRICS:
+            raise ValueError(
+                f"retrieval.coverage_metric={coverage_metric!r} is not one of "
+                f"{sorted(COVERAGE_METRICS)}")
+        self.coverage_metric = coverage_metric
+        self._coverage = COVERAGE_METRICS[coverage_metric]
         self._breakers = {
             name: CircuitBreaker(name, failure_threshold=failure_threshold,
                                  cooldown_s=cooldown_s, clock=clock)
@@ -2136,9 +2176,12 @@ class FallbackSearchProvider(SearchProvider):
         """Is there a provider AFTER `idx` that could actually be asked right now?
 
         Escalating on low relevance is only worth the latency if someone is left to
-        escalate TO — a dead-marked or breaker-open tail is not a second opinion.
+        escalate TO — a dead-marked or breaker-open tail is not a second opinion. A
+        backstop-only provider is not one either: it will refuse the escalation below,
+        so counting it here would escalate off a perfectly good result set into nothing.
         """
-        return any(not self._health.is_dead(n) and self._breakers[n].allow()
+        return any(n not in self.backstop_only
+                   and not self._health.is_dead(n) and self._breakers[n].allow()
                    for n, _ in self.providers[idx + 1:])
 
     @track_latency(name="fallback_search")
@@ -2151,23 +2194,52 @@ class FallbackSearchProvider(SearchProvider):
         # Best (coverage, provider, results) seen this call. Only ever WRITTEN by a
         # provider that answered, so returning it cannot invent sources.
         best: Optional[tuple[float, str, list[Source]]] = None
+        # STAGE TIMING (added 2026-08-16). Each provider adapter already audits its own
+        # latency, but it starts its clock INSIDE itself. Timing the same call from out
+        # here catches everything the adapter's own number cannot see — import, ledger
+        # write, whatever blocks before it looks at the clock. `prov_ms` is the outside
+        # measure, so `latency_ms - prov_ms - cov_ms` is genuinely unattributed time.
+        prov_ms = 0
+        cov_ms = 0
+        per_provider_ms: dict[str, int] = {}
+        # How many providers actually ANSWERED this call (any result, on-topic or not).
+        # A backstop-only provider runs only while this is 0 — that is the exact definition
+        # of "everyone before me is down", and it is the only condition it was built for.
+        answered = 0
         for idx, (name, prov) in enumerate(self.providers):
             br = self._breakers[name]
             # Persisted quota window (cross-run) OR in-run breaker can skip it for free.
             if self._health.is_dead(name) or not br.allow():
                 tried.append(name)
                 continue
+            if name in self.backstop_only and answered:
+                # Someone upstream answered. Their set may be off-topic, and this provider
+                # might beat it — but see `config.Retrieval.backstop_only_providers` for the
+                # measurement: it wins that coin flip about half the time and costs ~196s.
+                audit("search_backstop_skipped", provider=name, query=query[:200],
+                      answered_by=tried[:], reason="upstream_answered")
+                tried.append(name)
+                continue
             try:
-                results = prov.search(query, k=k, max_chars=max_chars)
+                _t0 = time.monotonic()
+                try:
+                    results = prov.search(query, k=k, max_chars=max_chars)
+                finally:
+                    _took = int((time.monotonic() - _t0) * 1000)
+                    prov_ms += _took
+                    per_provider_ms[name] = per_provider_ms.get(name, 0) + _took
                 br.record_success()       # incl. a legitimate empty [] — provider is healthy
                 self._health.clear(name)  # proven alive — drop any stale dead mark
+                answered += 1
                 # RELEVANCE FAILOVER. A result set that shares almost no content words with
                 # the query is not evidence, and no downstream stage can repair it: ranking
                 # picks the best of what arrived, the page fetch reads the wrong page in
                 # full, and the verdict correctly rules `unverifiable`. Treat it as a SOFT
                 # failure — the provider is healthy (breaker success is already recorded
                 # above and is NOT reversed), it just answered a different question.
-                cov = _mean_coverage(query, results)
+                _t0 = time.monotonic()
+                cov = self._coverage(query, results)
+                cov_ms += int((time.monotonic() - _t0) * 1000)
                 if best is None or cov > best[0]:
                     best = (cov, name, results)
                 if (results and self.min_relevance > 0.0 and cov < self.min_relevance
@@ -2189,10 +2261,13 @@ class FallbackSearchProvider(SearchProvider):
                 chosen_name, chosen = name, results
                 if self.min_relevance > 0.0 and best is not None and best[1] != name:
                     chosen_name, chosen = best[1], best[2]
+                _total = int((time.monotonic() - start) * 1000)
                 audit("fallback_resolved", actual_provider=chosen_name,
                       tried=tried + [name], query=query[:200], k=k,
                       max_chars=max_chars, returned_n=len(chosen),
-                      latency_ms=int((time.monotonic() - start) * 1000),
+                      latency_ms=_total, prov_ms=prov_ms, cov_ms=cov_ms,
+                      unattributed_ms=_total - prov_ms - cov_ms,
+                      per_provider_ms=per_provider_ms,
                       status="ok" if chosen else "empty")
                 return chosen
             except (FixtureMiss, ProviderUnavailable) as e:
@@ -2246,16 +2321,22 @@ class FallbackSearchProvider(SearchProvider):
             logger.info("No provider cleared the %.0f%% relevance floor for %r; "
                         "keeping %r at %.0f%%",
                         100 * self.min_relevance, query[:80], name, 100 * cov)
+            _total = int((time.monotonic() - start) * 1000)
             audit("fallback_resolved", actual_provider=name,
                   tried=tried, query=query[:200], k=k, max_chars=max_chars,
                   returned_n=len(results),
-                  latency_ms=int((time.monotonic() - start) * 1000),
+                  latency_ms=_total, prov_ms=prov_ms, cov_ms=cov_ms,
+                  unattributed_ms=_total - prov_ms - cov_ms,
+                  per_provider_ms=per_provider_ms,
                   status="best_effort", coverage=round(cov, 3))
             return results
+        _total = int((time.monotonic() - start) * 1000)
         audit("fallback_resolved", actual_provider=None,
               tried=tried, query=query[:200], k=k,
               max_chars=max_chars, returned_n=0,
-              latency_ms=int((time.monotonic() - start) * 1000),
+              latency_ms=_total, prov_ms=prov_ms, cov_ms=cov_ms,
+              unattributed_ms=_total - prov_ms - cov_ms,
+              per_provider_ms=per_provider_ms,
               status=last_status, error=str(last_err)[:200] if last_err else None)
         # Every provider is down or failed — infrastructure collapse, not a content
         # verdict. GroundingInfrastructureError propagates to the daemon loop which
@@ -2355,7 +2436,11 @@ def make_provider(cfg, fixtures: dict | None = None) -> SearchProvider:
         else FallbackSearchProvider(built,
                                     failure_threshold=r.breaker_failure_threshold,
                                     cooldown_s=r.breaker_cooldown_s,
-                                    min_relevance=float(getattr(r, "min_relevance", 0.0) or 0.0)))
+                                    min_relevance=float(getattr(r, "min_relevance", 0.0) or 0.0),
+                                    backstop_only=list(
+                                        getattr(r, "backstop_only_providers", None) or ()),
+                                    coverage_metric=str(
+                                        getattr(r, "coverage_metric", "best") or "best")))
     # Fetch the PAGE rather than ruling on the search snippet. Wrapped here, not inside
     # FallbackSearchProvider, because the line above skips that wrapper entirely on a
     # single-provider config. Never wrapped when fixtures are pinned: the golden-set harness

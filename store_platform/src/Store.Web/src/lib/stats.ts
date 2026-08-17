@@ -79,6 +79,26 @@ export const RESEARCH_STATS = {
    * beside it -- never the digits, so a regeneration cannot silently break it.
    */
   rejectRateLabel: `${((totals.killed / researchedTotal) * 100).toFixed(1)}%`,
+  /**
+   * THE SAME RATE FROM THE SURVIVOR END, AS A BOUND, NEVER AS A COUNT.
+   *
+   * The pack page led with "94.5% killed on evidence" and then had to add a sentence turning it
+   * round ("This one came through the filter"). The docblock above that plate already argued that
+   * only the survivor reading is an argument for buying, and then printed the kill reading anyway.
+   * So the page now leads with the survivor reading.
+   *
+   * IT IS A BOUND, AND THAT IS WHAT KEEPS THE 2026-08-13 DIRECTIVE INTACT. `passRateLabel` was
+   * deleted with the survivor count because a pass rate to one decimal IS the survivor count in
+   * another form: 5.5% of 1,444 is the 80 we do not claim. Rounding UP to a whole percent breaks
+   * that: 6 in 100 of 1,444 is 87, which is not a count of anything and cannot be read as one.
+   * The claim stays true in the direction that matters -- the real rate is below the bound, so
+   * "fewer than 6 in 100 get through" is honest at any regeneration that does not double the
+   * pass rate.
+   *
+   * Derived from `killed / researched` like every other figure here, so it cannot drift from
+   * `rejectRateLabel` sitting two lines above it.
+   */
+  survivorBoundLabel: `${Math.ceil(100 - (totals.killed / researchedTotal) * 100)} in 100`,
 } as const;
 
 /**
