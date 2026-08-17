@@ -152,10 +152,14 @@ public sealed class StorageWiringTests
     /// second gap. A one-second tolerance therefore measures how busy the machine is.
     /// <para>
     /// A URL that expires a few seconds early is not a defect, so the tolerance is the correct
-    /// assertion. <see cref="ExpiresSlackSeconds"/> is the whole budget: it is far larger than any
-    /// scheduling delay we have measured, and far smaller than a real regression here — the TTL
-    /// argument being ignored (which gives the 3600s default) or a unit mix-up between minutes and
-    /// seconds — which is off by minutes.
+    /// assertion. One second was too tight twice. On 2026-08-16 the POPDD gate caught
+    /// <c>X-Amz-Expires=598</c> for a 600-second request and blocked a commit that had nothing
+    /// to do with storage; on the self-hosted CI Mac, running four runner instances at once, the
+    /// same test produced 596. <see cref="ExpiresSlackSeconds"/> is the whole budget, and it is
+    /// far larger than any scheduling delay we have measured and far smaller than a real
+    /// regression here. The only TTLs asserted are 300 and 600, and the failures worth catching —
+    /// the TTL argument being ignored, which gives the 3600s default, or a minutes/seconds
+    /// mix-up — are off by minutes. Thirty seconds cannot hide either.
     /// </para>
     /// </remarks>
     private const int ExpiresSlackSeconds = 30;
