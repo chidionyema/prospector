@@ -1,4 +1,0 @@
-{"ts":"2026-08-03T03:04:51.691339+00:00","event":"search","provider":"ddg","query":"startup sanity check","k":1,"max_chars":1500,"returned_n":1,"latency_ms":2932,"status":"ok"}
-{"ts":"2026-08-03T03:04:51.694941+00:00","event":"fallback_resolved","actual_provider":"ddg","tried":["ddg"],"query":"startup sanity check","k":1,"max_chars":1500,"returned_n":1,"latency_ms":2937,"status":"ok"}
-{"ts":"2026-08-03T21:50:13.810032+00:00","event":"search","provider":"ddg","query":"startup sanity check","k":1,"max_chars":1500,"returned_n":1,"latency_ms":3647,"status":"ok"}
-{"ts":"2026-08-03T21:50:13.819093+00:00","event":"fallback_resolved","actual_provider":"ddg","tried":["ddg"],"query":"startup sanity check","k":1,"max_chars":1500,"returned_n":1,"latency_ms":3657,"status":"ok"}

@@ -32,6 +32,9 @@ import prospector.run as R
 REPO = Path(__file__).resolve().parents[2]
 
 # Money-rail keys the conftest fence deletes. Re-arming ANY of these from disk is the bug.
+# The retired second provider's key was dropped from this list on 2026-08-17. The conftest fence
+# had already stopped listing it, so the name survived here alone and only the retired-terms guard
+# could still see it.
 FENCED_KEYS = ("STRIPE_API_KEY", "STRIPE_LIVE_API_KEY", "STORE_INTERNAL_API_KEY")
 
 

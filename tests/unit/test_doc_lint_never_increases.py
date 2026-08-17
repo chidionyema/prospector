@@ -79,3 +79,43 @@ def test_a_tracked_path_still_resolves():
     doc_lint._tracked.cache_clear()
     assert doc_lint._resolve("scripts/doc_lint.py") is not None
     assert doc_lint._resolve("prospector/pack_linter.py") is not None
+
+
+def test_engine_output_is_not_graded_against_the_index():
+    """`store/prospector.jsonl` is 211 MB of ledger. Git will never track it, and should not.
+
+    Grading it against the index made the linter call every mention of it a broken reference, so
+    a doc that correctly tells an operator where the ledger lives was marked wrong. 11 of the 25
+    findings that had this ratchet failing on `main` on 2026-08-17 were that one class. The guard
+    above still stands for everything else: runtime output is exempt because the code that writes
+    it is what checks the path, not a file listing.
+    """
+    doc_lint._tracked.cache_clear()
+    assert doc_lint._resolve("store/prospector.jsonl") is not None
+    assert doc_lint._resolve("store/ops/intents.jsonl") is not None
+    # And the exemption is a prefix list, not a hole. An untracked file whose name merely starts
+    # with the same letters is still missing.
+    assert doc_lint._resolve("store_is_not_a_prefix_of_this.json") is None
+
+
+def test_an_elided_path_is_a_shape_not_a_claim():
+    """`store_platform/.../lib/copyConfig.ts` points at a real file without spelling it.
+
+    Testing the literal text can only ever report missing, which is a linter that is wrong every
+    single time it fires on that line. Same class as `<candidate_id>.json` and a glob.
+    """
+    assert doc_lint._is_path_claim("store_platform/.../lib/copyConfig.ts") is False
+    assert doc_lint._is_path_claim("142717e797740247/…/QA_Report.md") is False
+    # A spelled-out path is still a claim; the rule above must not have swallowed the check.
+    assert doc_lint._is_path_claim("prospector/inflight.py") is True
+
+
+def test_a_dynamic_route_file_resolves():
+    """`pack/[id].tsx` is a real file. The pages roots were missing, so it read as broken.
+
+    Next.js names a dynamic route with brackets, so this shape is unavoidable in any doc about
+    the storefront, and it was being reported missing in three separate docs at once.
+    """
+    doc_lint._tracked.cache_clear()
+    assert doc_lint._resolve("pack/[id].tsx") is not None
+    assert doc_lint._resolve("Payments/MoneyRailConfigGate.cs") is not None

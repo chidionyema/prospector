@@ -1055,6 +1055,7 @@ def vet_candidate(
 
     from . import progress
     from .audit import audit
+    from .audit import run_id as _run_id
 
     # SUB-TICK PROGRESS (R5): the boundary rows. Per-check rows alone cannot say whether a
     # candidate is still being worked or was abandoned, so a reader would call a crashed vet
@@ -1067,6 +1068,17 @@ def vet_candidate(
     # larger diff than the case warrants. A start with no done is instead resolved by the
     # READER, which must handle it regardless — a SIGKILLed daemon can never emit its own
     # `candidate_done`, so staleness has to be the reader's rule, not the writer's promise.
+    # THE AUDIT ROW IS NOT A RECORD OF THE WORK. It names the candidate; it does not hold it.
+    # A process killed here left no dossier and no index row, so the candidate itself ceased to
+    # exist — measured 2026-08-17: 10 of 12 candidates abandoned by two daemon restarts had no
+    # record anywhere in `store/`. `inflight` keeps the candidate on disk for exactly as long as
+    # this vet owns it, so `vet --resume` can pick it up when this process dies.
+    if store is not None:
+        from . import inflight as _inflight
+
+        _inflight.open_(store.root, cand, run_id=_run_id(), label=label or "",
+                        full_vet=bool(full_vet))
+
     audit("candidate_start",
           candidate_id=cand.candidate_id,
           title=(cand.title or "")[:120],
@@ -1253,6 +1265,11 @@ def vet_candidate(
           # is the `score_failed` distinction models.py:336 exists to preserve.
           **({} if _sc is None or getattr(_sc, "score_failed", False)
              else {"composite": round(float(_sc.composite or 0.0), 3)}))
+    # The verdict is on disk, so this candidate is no longer work anyone has to recover.
+    if store is not None:
+        from . import inflight as _inflight
+
+        _inflight.close(store.root, cand.candidate_id)
     return dossier
 
 
@@ -2343,6 +2360,118 @@ def _with_exclusions(summary: dict, survey: DrainSurvey) -> dict:
     return summary
 
 
+def _recover_orphans(args: argparse.Namespace, cfg: Config, op: Operator,
+                     fast_op: Operator, search: SearchProvider, store: Store,
+                     deadline_mono: Optional[float] = None,
+                     artifact_time_budget_s: Optional[float] = None) -> dict:
+    """Re-vet candidates whose vetting process died. This is how the engine heals itself.
+
+    THE FAILURE THIS UNDOES. `vet_candidate` persists on its single return path, so a process
+    killed mid-vet wrote no dossier and no index row: the candidate stopped existing. Measured
+    2026-08-17 on the live store over four audit day-files — 12 candidates had a `candidate_start`
+    and no `candidate_done` from a dead process, and 10 of the 12 had NO index row and NO dossier.
+    `run.drainable()` works from index rows, so the ordinary drain could never see them. They were
+    not backlogged; they were gone.
+
+    THE LOOP. `inflight.open_` writes the candidate to disk before the vet begins and
+    `inflight.close` removes it once a verdict exists, so a leftover record means exactly one
+    thing: the process that owned it died. Every `vet --resume` — the CLI one and the daemon's
+    own per-tick drain (`scheduler/run_scheduled.py`) — starts here, so recovery happens on the
+    engine's normal cadence with no operator action and no new schedule.
+
+    TWO OUTCOMES, BOTH SELF-CORRECTING. A record whose candidate is already in the store means
+    the process died in the gap between `store.save` and `inflight.close`: the verdict exists, so
+    the record is dropped and nothing is paid twice. Everything else is re-vetted, which writes
+    the dossier and the index row the dead process never got to write.
+
+    Bounded by the same `--limit` as the drain, and refused entirely when the moat is blind, for
+    the same reason the drain is: a re-vet with no brain to rule only spends money to write DEFER.
+    """
+    from . import inflight, progress
+    from .health import moat_blind_reason
+
+    try:
+        pending = inflight.orphans(store.root)
+    except Exception as exc:  # noqa: BLE001 — recovery must never be what breaks a drain
+        logger.warning("could not survey in-flight work", extra={"error": f"{exc}"})
+        return {"orphans": None, "orphans_null_reason": f"in-flight survey failed: {exc}"}
+    if not pending:
+        return {}
+
+    # SETTLED FIRST, AND IT IS FREE. Membership is one index read; re-vetting a candidate that
+    # already has a verdict on disk would be the expensive way to learn nothing.
+    known = {str(r.get("candidate_id") or "") for r in store.all()}
+    settled, todo = 0, []
+    for rec in pending:
+        cid = str(rec.get("candidate_id") or "")
+        if not cid:
+            continue
+        if cid in known or store.has_dossier(cid):
+            inflight.close(store.root, cid)
+            settled += 1
+        else:
+            todo.append(rec)
+
+    out: dict = {"orphans": len(pending), "settled": settled, "recovered": 0,
+                 "unrecoverable": 0}
+    if not todo:
+        if settled:
+            print(f"Cleared {settled} in-flight record(s) whose verdict was already on disk.")
+        return out
+
+    blind = moat_blind_reason(cfg)
+    if blind:
+        print(f"{len(todo)} candidate(s) were abandoned by a dead process, but {blind}. "
+              f"Leaving them for the next pass — they are on disk and cannot be lost again.")
+        out["skipped"] = blind
+        return out
+
+    limit = getattr(args, "limit", None)
+    if limit is not None and limit <= 0:
+        out["skipped"] = f"limit={limit} disables this pass"
+        return out
+    if limit is not None:
+        todo = todo[:limit]
+
+    owner = f"{os.getpid()}:{uuid.uuid4().hex[:8]}"
+    print(f"Recovering {len(todo)} candidate(s) abandoned by a process that died mid-vet"
+          + (f" ({settled} more already had a verdict on disk)." if settled else "."))
+    for i, rec in enumerate(todo, 1):
+        cid = str(rec.get("candidate_id") or "")
+        cand = inflight.candidate_of(rec)
+        if cand is None:
+            # The record cannot rebuild its candidate, so nothing can vet it. Count it and leave
+            # the file alone: deleting it would destroy the only remaining trace of the idea.
+            out["unrecoverable"] += 1
+            continue
+        if not inflight.claim(store.root, cid, owner):
+            continue  # another drain is already recovering it
+        try:
+            progress.banner(f"[recover {i}/{len(todo)}] {cand.title!r} "
+                            f"({rec.get('why', 'its process is gone')})")
+            _for_lane = getattr(cfg, "for_lane", None)
+            vet_cfg = _for_lane(cand.ambition_tier) if callable(_for_lane) else cfg
+            vet_candidate(cand, op, search, vet_cfg, store=store, query_op=fast_op,
+                          publish=getattr(args, "publish", False), show_checks=True,
+                          board_personas=_resolve_board(args),
+                          artifact_time_budget_s=artifact_time_budget_s,
+                          vet_deadline_mono=deadline_mono)
+            out["recovered"] += 1
+        except ProviderExhaustedError:
+            # The moat went down DURING recovery. The record is still on disk, so the next pass
+            # picks this candidate up again. Stop rather than burn the rest on a dead brain —
+            # the same rule the drain follows.
+            out["skipped"] = "the moat went blind during recovery"
+            break
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("could not recover abandoned candidate",
+                           extra={"candidate_id": cid, "error": f"{exc}"})
+            out["unrecoverable"] += 1
+        finally:
+            inflight.release_claim(store.root, cid)
+    return out
+
+
 def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
                 fast_op: Operator, search: SearchProvider, store: Store,
                 log_path: Optional[Path] = None,
@@ -2374,6 +2503,14 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
               file=sys.stderr)
         sys.exit(2)
 
+    # SELF-HEAL BEFORE DRAINING. Work abandoned by a dead process is invisible to `drain_survey`
+    # — it has no index row to survey — so it can only be found through the in-flight ledger, and
+    # it has to be found FIRST: it is the population that is losing money right now, and it is
+    # bounded and small (12 in four days, measured 2026-08-17) where the ordinary backlog is not.
+    recovered = _recover_orphans(args, cfg, op, fast_op, search, store,
+                                 deadline_mono=deadline_mono,
+                                 artifact_time_budget_s=artifact_time_budget_s)
+
     max_att = drain_state.max_attempts(cfg)
     # An operator who NAMES the dead population gets it, whatever the config default says. The
     # exclusion exists to stop provisional KILLs silently eating the daemon's automatic bound;
@@ -2381,6 +2518,19 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     revet_dead = (drain_state.revet_provisional_kills(cfg)
                   or only in ("provisional", "provisional-kill"))
     survey = drain_survey(store, max_attempts=max_att, revet_provisional_kills=revet_dead)
+
+    def _done(summary: dict) -> dict:
+        """Every return from here carries the recovery result AND the exclusions.
+
+        Same rule as `_with_exclusions`, one cause over: this summary is what reaches
+        `ticks.jsonl` and the ops console, so a recovery that is not in here is a recovery no
+        operator will ever see — and the whole point of the ledger is that the loss becomes
+        visible.
+        """
+        if recovered:
+            summary["recovery"] = recovered
+        return _with_exclusions(summary, survey)
+
     pending = survey.workable
     backlog = len(pending)
     excluded = ""
@@ -2404,8 +2554,8 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
             print(f"No backlogged candidate the drain can work on.{excluded}")
         else:
             print("No deferred or provisional candidates to resume. Moat is healthy.")
-        return _with_exclusions({"backlog": 0, "attempted": 0, "resumed": 0,
-                                 "passes": 0, "kills": 0, "defers": 0}, survey)
+        return _done({"backlog": 0, "attempted": 0, "resumed": 0,
+                                 "passes": 0, "kills": 0, "defers": 0})
 
     # MOAT PREFLIGHT — never drain into a blind moat.
     #
@@ -2430,8 +2580,8 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
         print(f"Found {backlog} deferred + provisional candidate(s), but {blind}. "
               f"Re-vetting none — a drain into a blind moat only relabels rows "
               f"provisional->defer, and its own CLI load helps keep the brain benched.")
-        return _with_exclusions({"backlog": backlog, "attempted": 0, "resumed": 0,
-                                 "passes": 0, "kills": 0, "defers": 0, "skipped": blind}, survey)
+        return _done({"backlog": backlog, "attempted": 0, "resumed": 0,
+                                 "passes": 0, "kills": 0, "defers": 0, "skipped": blind})
 
     # Restrict to one population BEFORE the priority sort and the `--limit` slice, so the
     # bound is spent on the rows the operator asked for. `backlog` keeps counting the whole
@@ -2443,8 +2593,8 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
         if not pending:
             print(f"Found {backlog} deferred + provisional candidate(s), but none match "
                   f"--only {only}. Nothing to re-vet.{excluded}")
-            return _with_exclusions({"backlog": backlog, "attempted": 0, "resumed": 0,
-                                     "passes": 0, "kills": 0, "defers": 0}, survey)
+            return _done({"backlog": backlog, "attempted": 0, "resumed": 0,
+                                     "passes": 0, "kills": 0, "defers": 0})
 
     limit = getattr(args, "limit", None)
     if limit is not None and limit <= 0:
@@ -2459,8 +2609,8 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
         # unbounded, which is what `vet --resume` has always done.
         print(f"Found {backlog} deferred + provisional candidate(s); limit={limit} "
               f"disables the drain — re-vetting none.{excluded}")
-        return _with_exclusions({"backlog": backlog, "attempted": 0, "resumed": 0,
-                                 "passes": 0, "kills": 0, "defers": 0}, survey)
+        return _done({"backlog": backlog, "attempted": 0, "resumed": 0,
+                                 "passes": 0, "kills": 0, "defers": 0})
     # HIGHEST-VALUE POPULATION FIRST, then oldest first within it (`_drain_rank`).
     #
     # Age alone was the whole sort key until 2026-08-06, and on this backlog it inverted the
@@ -2848,7 +2998,31 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     # budget is visible in ticks.jsonl and the state probe instead of showing up as an
     # inexplicable `attempted: 3, resumed: 0` — or, once the brake is engaged, as a generation
     # freeze with nothing anywhere naming the rows that are holding it.
-    return _with_exclusions(summary, survey)
+    return _done(summary)
+
+
+def recover_abandoned(cfg: Config, *, limit: int | None = None,
+                      publish: bool = False) -> dict:
+    """Re-vet work abandoned by a process that died mid-vet, WITHOUT running the ordinary drain.
+
+    WHY THIS IS A SEPARATE ENTRY POINT. `_cmd_resume` already recovers first, so `vet --resume`
+    heals on its own. The daemon does not always reach it: `_drain_pass` returns early on
+    `if not n_resume` (`scheduler/run_scheduled.py:793`), so `schedule.resume_per_tick: 0` — the
+    documented way to switch the drain off — would also switch off recovery. That is the exact
+    coupling the drain was pulled out of `_default_generate` on 2026-08-06 to break: one decision
+    about the treadmill silently disabling the mechanism that pays the loss back.
+
+    Recovery is not draining. Abandoned work has no index row, so no backlog policy is about it.
+    """
+    from .operator import make_operator
+    from .telemetry import reset_usage
+
+    reset_usage()
+    args = argparse.Namespace(limit=limit, publish=publish, board=None,
+                              fixtures=None, search=None)
+    store = Store(cfg)
+    return _recover_orphans(args, cfg, make_operator(cfg), make_operator(cfg, fast=True),
+                            _make_search(cfg, args), store)
 
 
 def resume_deferred(cfg: Config, *, limit: int | None = None,

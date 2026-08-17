@@ -41,8 +41,14 @@ This is the only thing strictly between us and taking money. Follow `DEPLOYMENT.
 **Steps:**
 1. Register the **live** webhook endpoint in the Stripe dashboard; put its signing secret in `Stripe:WebhookSecret`.
 2. Re-run `store_platform/scripts/reprovision_stripe.py` with **live** keys → live `price_…` ids on all 11 packs.
-3. Confirm `MoneyRailConfigGate` boots in `Production` (it will throw if any key is missing or a dev placeholder — now including `Paddle:WebhookSecret`, per the audit fix).
-4. Set `payments:active_provider=stripe` (Paddle stays the documented rollback; if ever reactivated, see WS-note below on CSP).
+3. Confirm `MoneyRailConfigGate` boots in `Production` (it will throw if any key is missing or a dev placeholder).
+4. Set `payments:active_provider=stripe`.
+
+> **Correction, 2026-08-17.** Steps 3 and 4 named a second payment provider, and step 4 called it
+> the rollback. That provider was deleted on 2026-08-16 (PR #238). Setting the switch to it now
+> stops the API booting, so following the old step 4 during an incident would take the storefront
+> down instead of rolling it back. There is no second rail. To stop taking money, stop the deploy
+> or unset the Stripe keys — see `store_platform/GO_LIVE_RUNBOOK.md` § Rollback.
 **Acceptance:** API boots in `Production` with live keys; one real low-value live purchase (then refund) completes the full leg; `git grep` confirms no `sk_live_`/`whsec_` committed.
 
 ### 0.3 — Pre-launch secret + config audit

@@ -180,7 +180,7 @@ Verified on disk 2026-08-15. Adding per-pack imagery is **five layers**, not a g
 |---|---|---|
 | Entity | No image/thumbnail/cover/media field | `Store.Catalog/Domain/Pack.cs` |
 | API | `GET /catalog` projection omits any image field | `Store.Api/Program.cs:280-324`, `:353-386` |
-| Card component | Text-only; renders zero `<img>` | `Store.Web/src/components/discovery/DossierCard.tsx:89-106` |
+| Card component | Text-only; renders zero `<img>` | `Store.Web/src/components/discovery/PackRow.tsx` |
 | Publish pipeline | Listing schema has 6 fields, none an image | `publish/publish.py:160-167`; `prospector/bridge.py:1945-1980` |
 | Asset storage | R2 uploads `ContentType: "application/zip"` only — no media path | `prospector/bridge.py:2017-2088` |
 

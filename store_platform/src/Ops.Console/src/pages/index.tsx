@@ -42,9 +42,39 @@ type Tier = {
   last_error: string | null;
   roles: { role: string; position: number }[];
 };
+type StuckItem = {
+  candidate_id: string;
+  run_id: string;
+  title: string;
+  tier: string;
+  state: string;
+  reason: string;
+  pid: number | null;
+  age_s: number | null;
+  started_at: string | null;
+};
+type Stuck = {
+  needs_attention: number | null;
+  needs_attention_null_reason?: string;
+  in_flight?: number;
+  counts?: Record<string, number>;
+  items?: StuckItem[];
+  shown?: number;
+  window_days?: number;
+  stall_after_min?: number;
+  awaiting_recovery?: {
+    count: number | null;
+    count_null_reason?: string;
+    in_progress?: number;
+    unreadable?: number;
+    note?: string;
+  };
+  error?: string;
+};
 type Status = {
   heartbeats: { producer: Heartbeat; consumer: Heartbeat };
   alerts: { active: unknown[]; count: number; banner: string | null; note: string | null };
+  stuck: Stuck;
   pause: { scopes: PauseScope[]; any_armed: boolean };
   providers: { tiers: Tier[]; moat_blind: string; drain_blind: string; trusted_final: string[] };
   queue: {
@@ -85,6 +115,7 @@ export default function Now() {
       {error ? <Problem>{error}</Problem> : null}
       {loading && !data ? <Card>reading the engine…</Card> : null}
       {data ? <Verdict s={data} /> : null}
+      {data ? <StuckWork stuck={data.stuck} /> : null}
 
       {data ? (
         <Card
@@ -202,6 +233,91 @@ export default function Now() {
 }
 
 /**
+ * Work that started and never got a verdict, on the front page.
+ *
+ * This used to be visible only by opening a run and reading one candidate's detail, so a batch
+ * that died left no mark anywhere an operator looks. The engine cannot report its own death: a
+ * killed process never writes `candidate_done` (`run.py:1063`), so the ONLY evidence is a row
+ * that is missing, and a missing row draws nothing.
+ *
+ * Work still being vetted is not shown as a fault. It is counted separately and said plainly,
+ * because a card that cries about healthy work is a card the operator learns to skip.
+ */
+function StuckWork({ stuck }: { stuck: Stuck }) {
+  if (stuck.error) {
+    return (
+      <Card title="Work that stopped">
+        <Problem>{stuck.error}</Problem>
+        <Note>{stuck.needs_attention_null_reason}</Note>
+      </Card>
+    );
+  }
+  const bad = stuck.needs_attention ?? 0;
+  const items = stuck.items ?? [];
+  // The audit log is a HISTORY: it still names work that died four days ago after the engine has
+  // already re-vetted it. The in-flight ledger is the LIVE answer, so this is the number that
+  // actually falls to zero — and the one that says whether a human has to do anything.
+  const queued = stuck.awaiting_recovery?.count ?? null;
+  return (
+    <Card
+      title="Work that stopped"
+      right={<Link className="underline" href="/runs">runs</Link>}
+    >
+      <div className="grid grid-cols-3 gap-4">
+        <Stat
+          label="never finished"
+          value={bad}
+          tone={bad ? 'bad' : 'plain'}
+          note={`started, no verdict, in the last ${stuck.window_days ?? 3} days`}
+        />
+        <Stat
+          label="queued for repair"
+          value={queued === null ? '—' : queued}
+          tone={queued ? 'warn' : 'plain'}
+          note={
+            queued === null
+              ? stuck.awaiting_recovery?.count_null_reason ?? 'not measured'
+              : 're-vetted automatically at the start of every drain — nothing to do'
+          }
+        />
+        <Stat
+          label="being vetted now"
+          value={stuck.in_flight ?? 0}
+          note="live process, working — not a fault"
+        />
+      </div>
+      {bad === 0 ? (
+        <Note>Every candidate that started in the window has a verdict or is still running.</Note>
+      ) : (
+        <>
+          <div className="mt-3 space-y-2">
+            {items.map((it) => (
+              <div key={`${it.run_id}:${it.candidate_id}`} className="text-[13px]">
+                <Link className="underline" href={`/runs/${it.run_id}`}>
+                  {it.title || it.candidate_id}
+                </Link>{' '}
+                <Pill tone="bad">{it.state}</Pill>{' '}
+                <span className="text-muted">
+                  {it.tier ? `${it.tier} · ` : ''}started {ago(it.started_at)}
+                  {it.pid === null ? '' : ` · pid ${it.pid}`}
+                </span>
+                <div className="text-muted">{it.reason}</div>
+              </div>
+            ))}
+          </div>
+          {bad > (stuck.shown ?? 0) ? (
+            <Note>
+              Showing {stuck.shown} of {bad}. The count above is the full number, not the list
+              length.
+            </Note>
+          ) : null}
+        </>
+      )}
+    </Card>
+  );
+}
+
+/**
  * The one-sentence answer, at the top, in the largest type on the page.
  *
  * The order of the tests is the order of severity, and each is a flag the ENGINE set. A paused
@@ -212,6 +328,7 @@ function Verdict({ s }: { s: Status }) {
   const paused = s.pause.scopes.filter((p) => p.armed);
   const alerts = s.alerts.count > 0;
   const blind = Boolean(s.providers.moat_blind);
+  const stuck = s.stuck?.needs_attention ?? 0;
   const producer = s.heartbeats.producer.alive;
   const consumer = s.heartbeats.consumer.alive;
 
@@ -241,6 +358,12 @@ function Verdict({ s }: { s: Status }) {
     tone = 'warn';
     headline = `Running, with ${s.alerts.count} alert${s.alerts.count === 1 ? '' : 's'}.`;
     detail = s.alerts.banner || 'See the alert file.';
+  } else if (stuck) {
+    // Last, because everything above it stops the engine and this does not. It is still in the
+    // headline: work dying silently is exactly the failure that had to be drilled for.
+    tone = 'warn';
+    headline = `Running, but ${stuck} ${stuck === 1 ? 'candidate' : 'candidates'} never finished.`;
+    detail = 'They started and no verdict was ever written. See "Work that stopped" below.';
   }
 
   const edge = tone === 'ok' ? 'border-ok bg-ok-bg' : tone === 'warn' ? 'border-warn bg-warn-bg' : 'border-bad bg-bad-bg';
