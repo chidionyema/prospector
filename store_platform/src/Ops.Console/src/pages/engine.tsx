@@ -31,6 +31,34 @@ type Scope = {
   note: string;
 };
 type PauseView = { scopes: Scope[]; any_armed: boolean };
+type Job = {
+  label: string;
+  role: string;
+  what: string;
+  loaded: boolean | null;
+  pid: number | null;
+  reason: string;
+  plist: string;
+  plist_exists: boolean;
+  error?: string;
+};
+type Beat = {
+  role: string;
+  present: boolean;
+  pid: number | null;
+  phase: string | null;
+  code: string | null;
+  ts: string | null;
+  age_s: number | null;
+  stale: boolean;
+  alive: boolean;
+};
+/** The `status` read returns all of these in one envelope, so one call feeds three cards. */
+type StatusView = {
+  pause?: PauseView;
+  supervisor?: { jobs: Job[] };
+  heartbeats?: Record<string, Beat>;
+};
 type Tier = {
   name: string;
   state: string;
@@ -70,17 +98,43 @@ const SCOPE_TITLE: Record<string, string> = {
   consumer: 'Stop checking ideas',
 };
 
+const ROLE_TITLE: Record<string, string> = {
+  producer: 'Idea generator',
+  consumer: 'Idea checker',
+};
+
 export default function Engine() {
   const pause = useOps<PauseView>('status');
   const providers = useOps<Providers>('providers');
   const routing = useOps<Routing>('routing');
 
-  const scopes =
-    (pause.data as unknown as { pause?: PauseView })?.pause?.scopes ?? [];
+  const status = pause.data as unknown as StatusView | undefined;
+  const scopes = status?.pause?.scopes ?? [];
+  const jobs = status?.supervisor?.jobs ?? [];
+  const beats = status?.heartbeats ?? {};
 
   return (
     <Shell title="Engine" intro="Start, stop, and which brain is allowed to rule.">
       {pause.error ? <Problem>{pause.error}</Problem> : null}
+
+      <Card
+        title="Processes"
+        right={<AsOf asOf={pause.envelope?.as_of} tookMs={pause.envelope?.took_ms} />}
+      >
+        {jobs.length === 0 ? (
+          <div className="text-[13px] text-subtle">asking launchctl…</div>
+        ) : null}
+        <div className="flex flex-col gap-4">
+          {jobs.map((j) => (
+            <ProcessCard key={j.label} job={j} beat={beats[j.role]} onDone={pause.refresh} />
+          ))}
+        </div>
+        <Note>
+          Two different questions. The heartbeat says the process was alive a moment ago. launchd
+          says whether anything will start it again when it dies. A process can be beating now and
+          still be unheld, which is how the engine stayed dead for hours on 16 August.
+        </Note>
+      </Card>
 
       <Card
         title="Stops"
@@ -191,6 +245,78 @@ export default function Engine() {
         . They are config.yaml edits, not runtime switches, so they take effect on the next tick.
       </Note>
     </Shell>
+  );
+}
+
+/**
+ * One engine process: whether launchd holds it, whether it is beating, and a Restart button.
+ *
+ * The two facts are separate on purpose. `loaded` is tri-state — true, false, or null for "could
+ * not ask launchctl" — and null is rendered as unknown, not as a fault, because a box with no
+ * launchctl is not a broken daemon.
+ */
+function ProcessCard({ job, beat, onDone }: { job: Job; beat?: Beat; onDone: () => void }) {
+  const held = job.loaded === true;
+  const unheld = job.loaded === false;
+  const beating = beat?.present === true && beat.stale === false;
+
+  return (
+    <div
+      className={`rounded-sm border px-3 py-3 ${unheld ? 'border-bad/40 bg-bad-bg' : 'border-border'}`}
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="text-[15px] font-[560]">{ROLE_TITLE[job.role] ?? job.role}</div>
+        <div className="flex gap-2">
+          <Pill tone={held ? 'ok' : unheld ? 'bad' : 'warn'}>
+            {held ? 'launchd holds it' : unheld ? 'NOT HELD' : 'launchd unknown'}
+          </Pill>
+          <Pill tone={beating ? 'ok' : beat?.present ? 'warn' : 'bad'}>
+            {beating ? 'beating' : beat?.present ? 'silent' : 'no heartbeat'}
+          </Pill>
+        </div>
+      </div>
+
+      <div className="mt-1 text-[13px] text-muted">{job.what}</div>
+
+      {unheld ? (
+        <Problem>
+          launchd is not holding this job, so nothing restarts it when it dies. Restart bootstraps
+          it from {job.plist_exists ? 'its plist' : 'a plist that does not exist'}.
+        </Problem>
+      ) : null}
+      {job.error ? <Problem>{job.error}</Problem> : null}
+
+      <div className="mt-2 text-[12px] text-subtle">
+        <div>
+          pid <span className="font-mono">{job.pid ?? beat?.pid ?? ABSENT}</span> · launchctl says{' '}
+          <span className="font-mono">{job.reason}</span>
+        </div>
+        <div>
+          last beat {beat?.ts ? ago(beat.ts) : ABSENT}
+          {beat?.phase ? ` · ${beat.phase}` : ''}
+          {beat?.code ? ` · code ${beat.code}` : ''}
+        </div>
+        <div className="wrap-any font-mono">{job.label}</div>
+      </div>
+
+      <div className="mt-3">
+        <Confirm
+          action="daemon.restart"
+          kind={held ? 'danger' : 'primary'}
+          label={held ? 'Restart it' : 'Start it'}
+          payload={() => ({ label: job.label, actor: 'ops-console', nonce: nonce() })}
+          renderPreview={(p) => (
+            <div className="flex flex-col gap-1">
+              <div>{String(p.effect ?? '')}</div>
+              <div className="text-[12px] text-muted">
+                plist: <span className="font-mono">{String(p.plist ?? '')}</span>
+              </div>
+            </div>
+          )}
+          onApplied={onDone}
+        />
+      </div>
+    </div>
   );
 }
 

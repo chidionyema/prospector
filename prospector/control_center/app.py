@@ -27,6 +27,10 @@ _PAGE_MODULES = {
     "catalogue": _pages_mod._catalogue,
     "launcher": _pages_mod._launcher,
     "diagnostics": _pages_mod._diagnostics,
+    "engine": _pages_mod._engine,
+    "runs": _pages_mod._runs,
+    "metrics": _pages_mod._metrics,
+    "spend": _pages_mod._spend,
     "parameters": _pages_mod._parameters,
     "reports": _pages_mod._reports,
     "resume": _pages_mod._resume,
@@ -37,6 +41,10 @@ _PAGES_LIST = [
     ("📋 Catalogue", "catalogue"),
     ("🚀 Launch", "launcher"),
     ("🔬 Diagnostics", "diagnostics"),
+    ("🛠 Engine", "engine"),
+    ("🔎 Runs", "runs"),
+    ("📈 Outcomes", "metrics"),
+    ("💵 Spend", "spend"),
     ("⚙️ Parameters", "parameters"),
     ("📊 Reports", "reports"),
     ("⏳ Resume", "resume"),
@@ -50,20 +58,29 @@ def main():
         page_title="Prospector Control Center",
         page_icon="🛰",
         layout="wide",
-        initial_sidebar_state="expanded",
+        # Collapsed by default. The console's primary surface is a phone over the tailnet,
+        # where an expanded sidebar OCCLUDES the page instead of reflowing it: every control
+        # renders off-screen behind the nav until the operator finds the collapse chevron.
+        initial_sidebar_state="collapsed",
     )
+
+    # Theme BEFORE the gate. The gate halts the script with st.stop(), so a theme injected
+    # after it never reaches the one screen every operator is guaranteed to see.
+    inject_theme()
 
     # Fail-closed operator gate. Must run before any page (config editor, run launcher,
     # cost data) can render. Halts via st.stop() until authenticated.
     require_auth()
 
+    # Land on Engine, not Overview. Overview's headline is built from the last MANUAL
+    # launcher job, which is silent about the daemon — on 2026-08-16 it read
+    # "Engine idle · last generate k=5 failed" from a job dated 2026-07-31 while the
+    # consumer was live and ruling. The first screen must report the process that is running.
     _state.init_state(
-        active_page="overview",
+        active_page="engine",
         selected_dossier=None,
         staged_config=None,
     )
-
-    inject_theme()
 
     # ── Sidebar nav ─────────────────────────────────────────────────────────
     with st.sidebar:
