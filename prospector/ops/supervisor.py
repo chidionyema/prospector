@@ -33,15 +33,28 @@ from .pause import _now_iso, _record
 PRODUCER = "com.prospector.scheduler"
 #: The consumer. Drains the backlog (`vet --resume`); a separate process since the producer split.
 CONSUMER = "com.prospector.consumer"
+#: The offsite backup. Not part of the engine loop, but it is the only DAT-1 actuator and it was
+#: sitting in deploy/ uninstalled while its own probe reported the copies 30.6h old against a
+#: declared 24h ceiling (measured 2026-08-17). Uninstalled is exactly the state this actuator
+#: exists to repair, so it belongs in this map.
+BACKUP = "com.prospector.offsite-backup"
 
 #: The jobs this actuator will touch, by launchd label. Nothing outside this map can be started or
 #: restarted from a console — a label typed by an operator must not become an arbitrary
 #: `launchctl bootstrap` of any plist on the box.
+#:
+#: `heartbeat` says whether this job is expected to write one. The two engine daemons run
+#: continuously and a silent heartbeat means they are wedged. The backup runs once a day on a
+#: calendar interval and writes no heartbeat at all, so rendering "no heartbeat" against it would
+#: paint a healthy job red every hour of the 24 it is not running.
 JOBS: dict[str, dict] = {
-    PRODUCER: {"role": "producer",
+    PRODUCER: {"role": "producer", "heartbeat": True,
                "what": "generates candidates on the tick cadence (run_scheduled --daemon)"},
-    CONSUMER: {"role": "consumer",
+    CONSUMER: {"role": "consumer", "heartbeat": True,
                "what": "drains the backlog (prospector.run consume --publish)"},
+    BACKUP: {"role": "backup", "heartbeat": False,
+             "what": "copies the money db, the ledger and the signing keys offsite, once a day at "
+                     "03:00 (ops.automations.offsite_backup)"},
 }
 
 #: `launchctl` is not instant under load but it is never slow-and-correct: a call that has not
@@ -100,7 +113,9 @@ def job_state(label: str) -> dict:
 
     return {"label": label, "loaded": loaded, "pid": pid, "reason": reason,
             "plist": str(plist), "plist_exists": plist.exists(), "domain": domain(),
-            "role": meta.get("role", "unknown"), "what": meta.get("what", "")}
+            "role": meta.get("role", "unknown"), "what": meta.get("what", ""),
+            "heartbeat": bool(meta.get("heartbeat", True)),
+            "installable": deploy_plist_path(label).exists()}
 
 
 def _receipt(actuator: str, state: dict, actor: str, *,
@@ -112,6 +127,38 @@ def _receipt(actuator: str, state: dict, actor: str, *,
             "plist": state["plist"], "plist_exists": state["plist_exists"]}
 
 
+def deploy_plist_path(label: str) -> Path:
+    """The tracked copy of this job's plist, in the checkout.
+
+    `deploy/` is code: it is in git, it is reviewed, and it is where every one of these plists is
+    authored. `~/Library/LaunchAgents/` is the installed copy launchd actually reads. The two
+    drift, and the way they drift is that a job is authored and never installed — which is what
+    DAT-1 was: `deploy/com.prospector.offsite-backup.plist` existed, the job had never been
+    bootstrapped, and the backup probe reported the money db 30.6h old against a 24h ceiling.
+    """
+    return Path(__file__).resolve().parents[2] / "deploy" / f"{label}.plist"
+
+
+def _install(state: dict) -> tuple[bool, str]:
+    """Copy the tracked plist into ~/Library/LaunchAgents so launchd can be told to load it.
+
+    Only ever for a label already in JOBS, so this cannot install an arbitrary plist, and only
+    when nothing is installed — an existing installed plist is left exactly alone, because it may
+    carry credentials or a hand-edit that the tracked copy does not have and overwriting it would
+    be a silent config change made by a button.
+    """
+    source = deploy_plist_path(state["label"])
+    if not source.exists():
+        return False, f"no tracked plist at {source} to install"
+    target = Path(state["plist"])
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(source.read_bytes())
+    except OSError as exc:
+        return False, f"could not install {source} -> {target}: {exc}"
+    return True, f"installed {source.name} from deploy/"
+
+
 def _bootstrap(state: dict) -> tuple[bool, str]:
     """Load the job from its plist. RunAtLoad in every one of these plists then starts it."""
     rc, out = _launchctl("bootstrap", state["domain"], state["plist"], timeout=_ACT_TIMEOUT_S)
@@ -120,6 +167,24 @@ def _bootstrap(state: dict) -> tuple[bool, str]:
         return True, (f"was NOT loaded in launchd — bootstrapped {state['plist']}; "
                       f"RunAtLoad started it (pid {after['pid'] or '—'}) and KeepAlive now holds it up")
     return False, f"bootstrap failed (rc={rc}): {out[:300] or 'no output'}"
+
+
+def _install_and_bootstrap(state: dict) -> tuple[bool, str]:
+    """Get an unloaded job into launchd, installing its plist first if it has never been installed.
+
+    One function so `ensure_loaded` and `restart` cannot disagree about what "not loaded" means.
+    An authored-but-never-installed job and an installed-but-unloaded job are the same problem to
+    an operator — the process is not running and nothing will relaunch it — so they get the same
+    button.
+    """
+    prefix = ""
+    if not state["plist_exists"]:
+        installed, prefix = _install(state)
+        if not installed:
+            return False, f"not loaded, and {prefix} — nothing can relaunch this process"
+        state = dict(state, plist_exists=True)
+    ok, message = _bootstrap(state)
+    return ok, f"{prefix}; {message}" if prefix else message
 
 
 def ensure_loaded(cfg, label: str, *, actor: str = "unknown") -> dict:
@@ -139,12 +204,8 @@ def ensure_loaded(cfg, label: str, *, actor: str = "unknown") -> dict:
             f"could not ask launchctl ({state['reason']}) — leaving the job untouched")
     elif state["loaded"]:
         ok, changed, message = True, False, "already loaded"
-    elif not state["plist_exists"]:
-        ok, changed, message = False, False, (
-            f"not loaded, and there is no plist at {state['plist']} to bootstrap — "
-            f"nothing can relaunch this process")
     else:
-        ok, message = _bootstrap(state)
+        ok, message = _install_and_bootstrap(state)
         changed = ok
 
     receipt = _receipt("engine.supervisor.ensure_loaded", state, actor,
@@ -159,8 +220,8 @@ def restart(cfg, label: str, *, actor: str = "unknown") -> dict:
     Two paths, because "the daemon is down" has two causes and the operator should not have to
     know which one they have:
       * job loaded  -> `launchctl kickstart -k` kills the current process and starts a clean one.
-      * not loaded  -> bootstrap it. That IS the restart in the case that actually happened; there
-        is no process to kick.
+      * not loaded  -> install the plist from deploy/ if it was never installed, then bootstrap.
+        That IS the restart in the case that actually happened; there is no process to kick.
     """
     if label not in JOBS:
         raise ValueError(f"unknown job {label!r}; expected one of {', '.join(sorted(JOBS))}")
@@ -170,12 +231,8 @@ def restart(cfg, label: str, *, actor: str = "unknown") -> dict:
         ok, changed, message = False, False, (
             f"could not ask launchctl ({state['reason']}) — nothing was restarted")
     elif not state["loaded"]:
-        if not state["plist_exists"]:
-            ok, changed, message = False, False, (
-                f"not loaded, and there is no plist at {state['plist']} to bootstrap")
-        else:
-            ok, message = _bootstrap(state)
-            changed = ok
+        ok, message = _install_and_bootstrap(state)
+        changed = ok
     else:
         rc, out = _launchctl("kickstart", "-k", f"{state['domain']}/{label}",
                              timeout=_ACT_TIMEOUT_S)
