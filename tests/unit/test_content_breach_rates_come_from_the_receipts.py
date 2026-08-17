@@ -220,6 +220,25 @@ def test_the_console_serves_it_as_a_view():
     assert "content_rules" in console_api.READS
 
 
+def test_a_page_actually_fetches_it():
+    """Served is not shown. `content_rules` was in `READS` and in the browser allowlist and no
+    page called it — reachable by curl, invisible to the operator, which is this repo's most
+    repeated defect shape. The panel lives on the Stranded page, beside the count it explains.
+    """
+    from pathlib import Path
+
+    page = (Path(__file__).resolve().parents[2] / "store_platform" / "src" / "Ops.Console"
+            / "src" / "pages" / "shelf.tsx")
+    if not page.exists():
+        pytest.skip("the Next console is not in this checkout")
+    text = page.read_text(encoding="utf-8")
+    assert "useOps<ContentRulesView>('content_rules'" in text, (
+        "no page fetches the content_rules view — it is served and rendered by nothing"
+    )
+    for shown in ("ready_to_promote", "never_observed", "undeclared", "coverage"):
+        assert shown in text, f"the panel drops {shown}, which is the half an operator acts on"
+
+
 def test_the_console_view_returns_the_report_shape():
     from prospector.ops import console_api
 

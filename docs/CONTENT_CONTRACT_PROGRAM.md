@@ -234,8 +234,8 @@ Append here. Each entry: what shipped, the receipt, and the stranded count befor
 | P6 | Breach recording | **shipped as a READER** — nothing new is written; the counts were already in the 123 `*.lint.json` receipts | `prospector/ops/content_breaches.py`; 22 tests in `tests/unit/test_content_breach_rates_come_from_the_receipts.py` |
 | P7 | Shipping fence | not started | — |
 | C1 | Console: stranded by rule | **ALREADY EXISTS** — do not rebuild | `console_api.py:823` `_read_shelf` returns `by_reason`, `by_repair`, `stale_verdicts`; rendered on `shelf.tsx` |
-| C2 | Console: breach rate per rule | **shipped** — `views content_rules`, on both doors | `console_api._read_content_rules` in `READS`; `'content_rules'` in `VIEWS` (`pages/api/ops/read/[view].ts`) |
-| C3 | Console: rules ready to promote | **shipped** — `ready_to_promote` and `never_observed` on `views content_rules` | `content_breaches.breach_report` |
+| C2 | Console: breach rate per rule | **shipped** — served on both doors AND rendered on the Stranded page | `console_api._read_content_rules` in `READS`; `'content_rules'` in `VIEWS` (`pages/api/ops/read/[view].ts`); the panel in `shelf.tsx`, pinned by `test_a_page_actually_fetches_it` |
+| C3 | Console: rules ready to promote | **shipped** — `ready_to_promote`, `never_observed` and `undeclared` all rendered | `content_breaches.breach_report`; second card in `shelf.tsx` |
 | C4 | Console: shipping gap | partly in flight in PR #286 (console build age) | `scripts/live_checkout.py` |
 
 Two things the console already does that this programme must build on rather than beside:

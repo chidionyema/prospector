@@ -182,6 +182,33 @@ def test_a_raising_operator_is_recorded_as_an_outage_not_as_a_refusal():
     assert cand.title == "A" * 200, "a dead operator lost the candidate's own title"
 
 
+def test_a_dead_brain_on_a_one_liner_is_an_outage_not_a_refusal():
+    """Through the REAL `rewrite_one`, not a mock of it.
+
+    `rewrite_one` used to catch the operator's exception and return `None` — the same answer it
+    gives when the brain refuses the line. So a quota failure arrived at the choke point looking
+    like "no rewrite is possible", which is the verdict that parks a candidate for good. The
+    sweep still tolerates a dead call per row; it catches it at its own call site.
+    """
+    op = mock.Mock()
+    op.complete_json.side_effect = RuntimeError("all operators unavailable")
+    cand = _Cand(one_liner="You should build this yourself.")
+    out = fw.repair(cand, "one_liner", op=op)
+    assert out.failed == "all operators unavailable", out
+    assert cand.one_liner == "You should build this yourself."
+
+
+def test_the_sweep_still_survives_one_dead_call():
+    """The other half: a raise must not abort the pool, and must not be silent."""
+    import tools.sweep_shelf_copy as sweep
+
+    op = mock.Mock()
+    op.complete_json.side_effect = RuntimeError("429 overloaded")
+    with mock.patch.object(sweep.log, "error") as err:
+        assert sweep._rewrite_row(op, ("cid-1", "A title", "A line")) is None
+    err.assert_called_once()
+
+
 def test_a_proposal_that_still_breaches_is_never_written():
     op = mock.Mock()
     op.complete_json.return_value = {"title": "B" * 200}

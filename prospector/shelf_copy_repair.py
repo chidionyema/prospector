@@ -90,14 +90,18 @@ def rewrite_one(op, title: str, line: str, attempts: int = 2) -> str | None:
     the stolen-tool claim and the Cal/OSHA citation — and a refusal we could name in one
     clause was thrown away instead of being handed back. A retry that repeats the same
     prompt is a coin flip; a retry that quotes the rejection is the cheapest correction
-    available, at one extra call on failures only."""
+    available, at one extra call on failures only.
+
+    An outage RAISES out of here. It used to be caught and turned into `None`, which is the same
+    answer this function gives when the brain refuses the line — so a quota failure read as "no
+    rewrite is possible", and that is what parks a candidate for good. The engine's choke point
+    (`field_write.repair`) records a raise as an outage and an empty answer as a refusal, and it
+    can only do that if the two arrive differently. The sweep catches it per row, so one dead
+    call still does not abort the other twenty-two.
+    """
     note = ""
     for attempt in range(max(1, attempts)):
-        try:
-            got = op.complete_json(SYSTEM, USER.format(title=title, line=line) + note)
-        except Exception as exc:  # an outage is not a verdict on the copy
-            print(f"    rewrite call failed: {exc}")
-            return None
+        got = op.complete_json(SYSTEM, USER.format(title=title, line=line) + note)
         new = (got or {}).get("one_liner", "") if isinstance(got, dict) else ""
         new = re.sub(r"\s+", " ", str(new)).strip().strip('"')
         if not new:

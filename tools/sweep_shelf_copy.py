@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import re
 import sqlite3
@@ -58,6 +59,29 @@ from prospector.shelf_copy_repair import (  # noqa: E402
 )
 
 __all__ = ["SYSTEM", "USER", "_new_facts", "breaches", "rewrite_one", "voice_breaches"]
+
+log = logging.getLogger(__name__)
+
+
+def _rewrite_row(op, row) -> str | None:
+    """One row's rewrite, with the outage caught HERE rather than inside `rewrite_one`.
+
+    The sweep runs the rows in a thread pool, so a dead call on one line must not abort the
+    other twenty-two. But `rewrite_one` is also the engine's rewriter, and there the raise is
+    the only thing that tells an outage apart from "the brain refused this line" — swallowing
+    it inside the shared function made a quota failure read as an unfixable candidate. So the
+    catch lives at the caller that actually wants to continue.
+    """
+    try:
+        return rewrite_one(op, row[1], row[2])
+    except Exception as exc:  # noqa: BLE001 — one row of a best-effort sweep
+        # swallow-ok: logged at ERROR and printed, and the row is reported as kept in the
+        # summary below. The line on the shelf is left exactly as it was.
+        log.error("rewrite call failed for %s: %s", row[0], exc,
+                  extra={"candidate_id": row[0], "error": str(exc), "rewrite_failed": True})
+        print(f"    rewrite call failed for {row[0]}: {exc}")
+        return None
+
 
 def glossary() -> dict[str, str]:
     """The operator's declared expansions, `config.yaml listing.initialism_glossary`.
@@ -471,7 +495,7 @@ def main() -> int:
     todo = fixable[:args.limit] if args.limit else fixable
     print(f"\nrewriting {len(todo)} line(s), {args.jobs} in flight")
     with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
-        done = list(pool.map(lambda r: (r, rewrite_one(op, r[1], r[2])), todo))
+        done = list(pool.map(lambda r: (r, _rewrite_row(op, r)), todo))
 
     fixed = 0
     for (cid, title, one, created, why), new in done:
