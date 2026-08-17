@@ -1,15 +1,16 @@
 {
   "EnvironmentVariables": {
     "CONTROL_CENTER_PASSWORD": "<REDACTED>",
-    "PATH": "/Users/chidionyema/Documents/code/prospector/.venv/bin:/usr/local/bin:/usr/bin:/bin",
+    "PATH": "/Users/chidionyema/Documents/code/prospector-live/.venv/bin:/usr/local/bin:/usr/bin:/bin",
+    "PROSPECTOR_STORE_DIR": "/Users/chidionyema/Documents/code/prospector/store",
     "STREAMLIT_BROWSER_GATHER_USAGE_STATS": "false"
   },
   "KeepAlive": true,
   "Label": "com.prospector.control-center",
   "ProgramArguments": [
-    "/Users/chidionyema/Documents/code/prospector/.venv/bin/streamlit",
+    "/Users/chidionyema/Documents/code/prospector-live/.venv/bin/streamlit",
     "run",
-    "/Users/chidionyema/Documents/code/prospector/prospector/control_center/app.py",
+    "/Users/chidionyema/Documents/code/prospector-live/prospector/control_center/app.py",
     "--server.port",
     "8601",
     "--server.address",
@@ -20,5 +21,5 @@
   "RunAtLoad": true,
   "StandardErrorPath": "/tmp/prospector_control_center.log",
   "StandardOutPath": "/tmp/prospector_control_center.log",
-  "WorkingDirectory": "/Users/chidionyema/Documents/code/prospector"
+  "WorkingDirectory": "/Users/chidionyema/Documents/code/prospector-live"
 }
