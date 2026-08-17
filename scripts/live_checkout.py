@@ -231,7 +231,16 @@ def update(unattended: bool = False) -> int:
         print(f"fetch failed: {out}")
         return 1
     _, before = run(["git", "rev-parse", "--short", "HEAD"], cwd=LIVE)
-    rc, out = run(["git", "checkout", "--detach", "origin/main"], cwd=LIVE)
+    # --force, and the refusal check above is what makes it safe. `_code_changes` has
+    # already proved there is no modified tracked CODE here; everything left dirty is
+    # tracked runtime state under store/ and storage/, which every run rewrites. A plain
+    # checkout aborts on exactly those files -- measured 2026-08-17, the first scheduled
+    # run exited 1 with "Please commit your changes or stash them before you switch
+    # branches" over 18 store/scheduler/audit/*.jsonl files -- so without --force this job
+    # can never once succeed. Discarding them loses nothing: the daemons write the
+    # canonical store via PROSPECTOR_STORE_DIR, which points at the main checkout, so
+    # these copies are stale duplicates that were never read.
+    rc, out = run(["git", "checkout", "--detach", "--force", "origin/main"], cwd=LIVE)
     if rc != 0:
         print(f"checkout failed: {out}")
         return 1
