@@ -80,7 +80,7 @@ unattended. Kill switch (`store/scheduler/PAUSE`) plus two half-stops. Daily spe
 watchdog that SIGKILLs a wedged daemon. Escalating 5m/10m/20m retries. Alerts on four channels
 including Telegram, with a delivery test. A nightly R2 backup that **verifies its own uploads**
 (`verified=8/8`) and prunes on retention. Payments abstracted behind `IPaymentProvider` with a
-Paddle implementation already written. Email abstracted behind `IEmailSender` and **optional** —
+Stripe as its one real implementation. Email abstracted behind `IEmailSender` and **optional** —
 the buyer gets download links on the success page, not by email. Both web and API ship as plain
 Dockerfiles. Legal pages exist: terms, privacy, refund, a Consumer Contracts Regulations 2013
 waiver, an AI-generated disclosure, a licence grant, Stripe automatic tax.
@@ -160,8 +160,7 @@ Severity: **BLOCKER** (do not launch), **HIGH** (launch degraded), **MEDIUM**, *
 | PAY-1 | **NARROWED 2026-08-16. The API knows whether it is in live mode and tells nobody.** `MoneyRailConfigGate` (`MoneyRailConfigGate.cs:88-94`) computes `isLive` at startup — and uses it only to reject a malformed key. A test-mode key in production is deliberately not fatal, because staging runs `ASPNETCORE_ENVIRONMENT=Production` for parity. No endpoint, log line or probe reports the mode: `rg` over `Endpoints/` and `Program.cs` for `live_mode\|sk_live\|"mode"` returns nothing. So "is the shop taking real money?" is still unanswerable — but the value already exists at startup, so the fix is to log it and expose it, not to build a checker. | HIGH |
 | PAY-2 | Refunds, disputes and chargebacks have code (`StripeProvider` handles `Charge`, `Dispute`, `Event`) but no operational runbook and no alert. A dispute arrives in Stripe email only. | HIGH |
 | PAY-3 | A price change breaks fulfilment if the catalogue and the provider drift. `bridge.py` mints both from one `PriceDecision`, which is the right design. It stays a human action on purpose. | ACCEPTED |
-| PAY-5 | **Paddle is dead weight with a live default.** Nothing uses it: `config.yaml:1796 active_provider: stripe`, `api.fly.toml:29 payments__active_provider = "stripe"`, all 62 live packs report `paymentProvider: stripe`, and no Paddle secret exists on Fly. Yet `?? "paddle"` is the literal fallback in five places (`Program.cs:525,657,1118`, `DeliveryEndpoints.cs:57`, `MoneyRailConfigGate.cs:42`). Two of those are per-pack: a catalogue row with a NULL provider routes that buyer to an unconfigured Paddle at checkout. The config-level defaults are safe — `MoneyRailConfigGate` refuses to boot without `Paddle:WebhookSecret` — but the per-pack ones are silent. **Cheapest fix: delete `PaddleProvider` and flip the five defaults to `stripe`.** One rail, one default, less surface. | MEDIUM |
-| PAY-4 | Stripe automatic tax is enabled (`StripeProvider.cs:432-442`) and Paddle carries `tax_category: digital-goods`. Registration thresholds are a business decision, not a code one. | ACCEPTED |
+| PAY-4 | Stripe automatic tax is enabled (`StripeProvider.cs:432-442`). Registration thresholds are a business decision, not a code one. | ACCEPTED |
 
 ### ENG — engine operations
 
@@ -266,15 +265,12 @@ is still correct after any later move to Postgres.**
 
 **Move object storage.** Credentials and an endpoint. The client is plain S3. **Estimate: an hour.**
 
-**Move payments. CORRECTED 2026-08-16 — I overstated this.** The seam is real: `IPaymentProvider`,
-two keyed registrations (`Program.cs:103-104`), a fake for tests, and parity tests
-(`Store.Tests/Payments/ProviderParityTests.cs`). But the Paddle implementation is **partial** —
-`PaddleProvider.CreateProductAsync` throws `NotSupportedException("Paddle provisioning is handled
-by the Python bridge; Paddle checkout is a frontend overlay")`. So Paddle is not a working escape
-hatch you could flip to; it is a webhook verifier and a comment. A real provider move means writing
-provisioning against the new API, re-provisioning every product and price, and re-pointing every
-webhook. **Estimate: several days, not one.** The seam saves the endpoint and fulfilment code, which
-is the larger half — but do not plan around "swap the DI registration".
+**Move payments.** `IPaymentProvider` has one real implementation, Stripe, plus a fake for tests.
+A second provider has to be written first: the stub that used to sit here threw
+`NotSupportedException` and had never billed anyone, so it was not a head start. After that, swap
+the DI registration and the credentials. Re-provisioning every product and price at the new
+provider is the real work. **Estimate: a day of writing the provider, then a day of
+re-provisioning.**
 
 **Move the engine off this Mac.** The blocker is KEY-1: absolute paths in two plists, launchd, and
 `osascript`. Fix by reading the root from an env var, shipping a systemd unit next to the plists,

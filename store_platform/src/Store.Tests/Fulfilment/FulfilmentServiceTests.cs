@@ -338,7 +338,7 @@ public sealed class FulfilmentServiceTests : IDisposable
         return await svc.RevokeAsync(reversal);
     }
 
-    private async Task SeedPackAsync(string id, string productId, string? contentKey, int version = 1, string provider = "paddle", long pricePence = 0, long? priceUsdCents = null)
+    private async Task SeedPackAsync(string id, string productId, string? contentKey, int version = 1, string provider = "stripe", long pricePence = 0, long? priceUsdCents = null)
     {
         using var ctx = NewContext();
         ctx.Packs.Add(new Pack
@@ -358,10 +358,10 @@ public sealed class FulfilmentServiceTests : IDisposable
     }
 
     private static PaymentTransaction Txn(string id, params PurchasedItem[] items) =>
-        new("paddle", id, "buyer@example.com", "GBP", "GB", 3000, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), items);
+        new("stripe", id, "buyer@example.com", "GBP", "GB", 3000, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), items);
 
     private static PaymentTransaction TxnInCurrency(string id, string currency, params PurchasedItem[] items) =>
-        new("paddle", id, "buyer@example.com", currency, "GB", 3000, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), items);
+        new("stripe", id, "buyer@example.com", currency, "GB", 3000, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), items);
 
     private static PaymentTransaction StripeTxn(string id, params PurchasedItem[] items) =>
         new("stripe", id, "buyer@example.com", "GBP", "GB", 3000, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), items);

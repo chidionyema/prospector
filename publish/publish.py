@@ -73,7 +73,7 @@ def publish(dossier: Any, cfg: Any, *, dry_run: bool = False) -> Dict[str, Any]:
     # which candidate to reconcile against the catalog.
     marker = _mark_inflight(candidate_id, cfg)
 
-    # Use the new EngineBridge for Track 1 (Paddle + Catalog API)
+    # Use the new EngineBridge for Track 1 (Stripe + Catalog API)
     # The marker is cleared ONLY once the receipt exists, i.e. once local and catalog state
     # are known to agree. An exception or a reported failure leaves it in place on purpose:
     # a partial catalog update is indistinguishable from no update from here, and a stale

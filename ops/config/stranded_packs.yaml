@@ -1,0 +1,21 @@
+# Stranded packs — finished research that cannot be sold.
+#
+# Every value here is a fact about THIS business's layout. The engine
+# (ops/automations/stranded_packs.py) contains none of them, so another startup points this at its
+# own directories and gets the same check.
+
+# Where the engine writes one file per ruled candidate.
+dossier_dir: store/dossiers
+
+# Which of those files means "this pack passed every research gate". Kills are `<id>.kill.json`
+# and deferred rows are `<id>.defer.json`; neither is stranded revenue, so neither is counted.
+pass_glob: "*.pass.json"
+
+# The publication gate's own record, written next to the dossier as `<id>.lint.json`. Its `ok`
+# field is the same boolean `bridge.listing_gate` reads, so this check cannot drift from the fence
+# that actually decides sellability.
+lint_suffix: ".lint.json"
+
+# How long the console may wait for this check before it prints `unknown`. Local file reads over a
+# few thousand dossiers, so seconds, not minutes.
+console_timeout_s: 30

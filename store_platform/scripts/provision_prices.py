@@ -9,7 +9,7 @@ volume `store_data` (35 packs). Writing the local file would look like success a
 
 The republish payload is deliberately explicit. Program.cs:266-277 and :310 overwrite
 Title/OneLine/DossierRef/PaymentProvider/ProviderProductId/ProviderPriceId/IsListed
-UNCONDITIONALLY. Omitting PaymentProvider silently reverts the pack to "paddle"; omitting
+UNCONDITIONALLY. Omitting PaymentProvider silently reverts the pack to the default; omitting
 IsListed DELISTS it. So every one of those is sent with its current value.
 
 Fields NOT sent (Headline, ContentKey, financial snapshot, ...) are only applied when non-null

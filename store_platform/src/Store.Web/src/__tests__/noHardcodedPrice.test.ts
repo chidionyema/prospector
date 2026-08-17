@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { RESEARCH_RATE_ANCHOR } from '@/lib/config';
 
 /**
  * No price is written down anywhere in the storefront.
@@ -53,6 +54,23 @@ function walk(dir: string, out: string[] = []): string[] {
 const stripComments = (src: string) =>
   src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
+/**
+ * THE ONE ALLOWED LITERAL, and the reason it is not a hole in the rule above.
+ *
+ * The rule is that a price OF OURS comes from the catalogue. `RESEARCH_RATE_ANCHOR.dayRateLabel`
+ * is not a price of ours: it is what somebody else charges, cited to a named source, rendered on
+ * the pack page above our price so the reader has something to read it against. The catalogue
+ * cannot supply it, and no derivation can, because it is a fact about another company's report.
+ *
+ * The exemption is one LINE in one file, not the file, so a pack price typed into `lib/config.ts`
+ * still fails exactly as before. And it is paid for: the test below asserts the anchor carries a
+ * source, a URL and a verification date, so the only literal on the site that escapes the
+ * catalogue is the one carrying the heaviest sourcing obligation.
+ */
+const ALLOWED: { rel: string; line: RegExp }[] = [
+  { rel: 'lib/config.ts', line: /^\s*dayRateLabel: '£[\d,]+',$/ },
+];
+
 describe('no price is hardcoded', () => {
   it('has no £<amount> literal on any render path', () => {
     const offenders: string[] = [];
@@ -62,7 +80,9 @@ describe('no price is hardcoded', () => {
       stripComments(readFileSync(path, 'utf8'))
         .split('\n')
         .forEach((line, i) => {
-          if (/£\s?\d/.test(line)) offenders.push(`${rel}:${i + 1}  ${line.trim().slice(0, 100)}`);
+          if (!/£\s?\d/.test(line)) return;
+          if (ALLOWED.some((a) => a.rel === rel && a.line.test(line))) return;
+          offenders.push(`${rel}:${i + 1}  ${line.trim().slice(0, 100)}`);
         });
     }
     expect(
@@ -80,5 +100,23 @@ describe('no price is hardcoded', () => {
     for (const [name, src] of [['index', home], ['pricing', pricing], ['llms.txt', llms]] as const) {
       expect(src, `${name} must derive its price claims`).toMatch(/priceRange\(/);
     }
+  });
+
+  it('makes the one exempted literal carry a source, a link and a verification date', () => {
+    // The exemption above is granted to a CITED figure. If the citation is ever dropped, the
+    // exemption is being used to smuggle an uncited price onto the page that asks for money,
+    // which is the exact failure this whole file exists to prevent.
+    expect(RESEARCH_RATE_ANCHOR.dayRateLabel).toMatch(/^£[\d,]+$/);
+    expect(RESEARCH_RATE_ANCHOR.source.trim().length).toBeGreaterThan(0);
+    expect(RESEARCH_RATE_ANCHOR.url).toMatch(/^https:\/\//);
+    expect(RESEARCH_RATE_ANCHOR.verifiedOn).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('renders that figure beside its source, never on its own', () => {
+    // A cited number with the citation left in config is an uncited number to the reader.
+    const packPage = readFileSync(join(SRC, 'pages', 'pack', '[id].tsx'), 'utf8');
+    expect(packPage).toMatch(/RESEARCH_RATE_ANCHOR\.dayRateLabel/);
+    expect(packPage).toMatch(/RESEARCH_RATE_ANCHOR\.url/);
+    expect(packPage).toMatch(/RESEARCH_RATE_ANCHOR\.source/);
   });
 });

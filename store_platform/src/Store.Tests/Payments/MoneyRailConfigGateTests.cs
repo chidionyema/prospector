@@ -97,57 +97,22 @@ public sealed class MoneyRailConfigGateTests
     }
 
     [Fact]
-    public Task StartAsync_PaddleActiveButSecretMissing_Throws()
+    public Task StartAsync_RemovedPaddleProviderActive_Throws()
     {
+        // Paddle was deleted on 2026-08-16. A stale config or Fly secret still naming it must
+        // stop the app, not boot it onto a rail with no provider registered: the generic
+        // /webhooks/{provider} route would answer 400 for every callback and the failure would
+        // only surface as silent non-fulfilment.
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal)
             {
                 ["payments:active_provider"] = "paddle",
-                ["Paddle:WebhookSecret"] = "" // missing
             })
             .Build();
 
         var gate = NewGate(config);
 
         return Assert.ThrowsAsync<InvalidOperationException>(() => gate.StartAsync(CancellationToken.None));
-    }
-
-    [Fact]
-    public async Task StartAsync_PaddleActiveAndSecretPresent_Succeeds()
-    {
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal)
-            {
-                ["payments:active_provider"] = "paddle",
-                ["Paddle:WebhookSecret"] = "shhh"
-            })
-            .Build();
-
-        var gate = NewGate(config);
-
-        var exception = await Record.ExceptionAsync(() => gate.StartAsync(CancellationToken.None));
-        Assert.Null(exception);
-    }
-
-    [Fact]
-    public async Task StartAsync_OtherProviderActive_DoesNotCheckPaddleSecret()
-    {
-        // Stripe active + its own secret present: the gate must validate Stripe's secret,
-        // not Paddle's. Paddle's missing secret is irrelevant when paddle isn't active.
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal)
-            {
-                ["payments:active_provider"] = "stripe",
-                ["Stripe:WebhookSecret"] = "whsec_test",
-                ["Stripe:ApiKey"] = "sk_test_fake",
-                ["Paddle:WebhookSecret"] = "" // missing but doesn't matter
-            })
-            .Build();
-
-        var gate = NewGate(config);
-
-        var exception = await Record.ExceptionAsync(() => gate.StartAsync(CancellationToken.None));
-        Assert.Null(exception);
     }
 
     [Fact]
@@ -190,16 +155,17 @@ public sealed class MoneyRailConfigGateTests
     // publicly-known HMAC key, so a forged webhook would verify. Fail closed outside Dev. ---
 
     [Fact]
-    public Task StartAsync_ProductionWithPaddlePlaceholderSecret_Throws()
+    public Task StartAsync_ProductionWithDevPlaceholderSecret_Throws()
     {
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal)
             {
-                ["payments:active_provider"] = "paddle",
+                ["payments:active_provider"] = "stripe",
                 // Real publish keys so we reach the provider-secret placeholder check.
                 ["Store:InternalApiKey"] = "a-real-rotated-secret",
                 ["Store:EntitlementsApiKey"] = "a-real-rotated-entitlements-secret",
-                ["Paddle:WebhookSecret"] = "dev-paddle-webhook-secret", // committed dev placeholder
+                ["Stripe:ApiKey"] = "sk_test_fake",
+                ["Stripe:WebhookSecret"] = "dev-stripe-webhook-secret", // committed dev placeholder
             })
             .Build();
         var gate = NewGate(config, "Production");
@@ -207,14 +173,15 @@ public sealed class MoneyRailConfigGateTests
     }
 
     [Fact]
-    public async Task StartAsync_DevelopmentWithPaddlePlaceholderSecret_Succeeds()
+    public async Task StartAsync_DevelopmentWithDevPlaceholderSecret_Succeeds()
     {
-        // The committed placeholder is the intended local value; the guard is Dev-skipped.
+        // A committed placeholder is the intended local value; the guard is Dev-skipped.
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal)
             {
-                ["payments:active_provider"] = "paddle",
-                ["Paddle:WebhookSecret"] = "dev-paddle-webhook-secret",
+                ["payments:active_provider"] = "stripe",
+                ["Stripe:ApiKey"] = "sk_test_fake",
+                ["Stripe:WebhookSecret"] = "dev-stripe-webhook-secret",
             })
             .Build();
         var gate = NewGate(config, "Development");

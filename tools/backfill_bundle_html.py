@@ -81,6 +81,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib
 import io
 import json
 import os
@@ -158,10 +159,27 @@ class Report:
 PDF_FAILURES: List[str] = []
 
 
+#: The report whose markdown carried our scoresheet. Named rather than pattern-matched: the
+#: strip is scoped to this ONE document because it is the only one `render_markdown` writes,
+#: and a scrub loose enough to run over a buyer's spec sheet is a worse defect than the leak.
+QA_REPORT = "QA_Report.md"
+
+
 def patched_md(name: str, raw: bytes) -> bytes:
     """The bytes to ship for one .md entry: usually the originals, unchanged.
 
-    THE ONE DELIBERATE EXCEPTION to "every .md is copied byte-identical". A live pack's footer
+    TWO DELIBERATE EXCEPTIONS to "every .md is copied byte-identical", both of them a shared
+    renderer in `dossier.py` rather than a rule written twice.
+
+    The second is `QA_Report.md`, and it is why this tool can fix a pack already on the shelf.
+    That report printed a "How it scored" table — the composite to four decimal places and six
+    internal axis names marked out of five — plus "Survived all gates; composite 3.6500" under
+    "Why this passed". Founder, on a live pack, 2026-08-15: *"it has engine ifo like conposite
+    score etc"*. `render_markdown(include_our_grade=False)` stops it reaching a pack generated
+    from now on; `strip_our_grade_markdown` is that same removal applied to the markdown a pack
+    already shipped, and the two are pinned equal over all 75 stored dossiers.
+
+    The first is the footer. A live pack's read `Evidence goes stale after: <ISO stamp>` —
     printed `Evidence goes stale after: <ISO stamp>` — `reverify_due_at`, an internal scheduling
     field (`run.py:813`) that tells the decay sweep when to look again. To a buyer it reads as a
     warranty with a cliff: bought on day 28, the document says three days left. The rewrite is
@@ -172,8 +190,15 @@ def patched_md(name: str, raw: bytes) -> bytes:
     if not name.endswith(".md"):
         return raw
     text = raw.decode("utf-8", errors="replace")
+    original = text
+    if name == QA_REPORT:
+        stripped = dossier_render.strip_our_grade_markdown(text)
+        if stripped is not None:
+            text = stripped
     rewritten = dossier_render.rewrite_legacy_shelf_life(text)
-    return raw if rewritten is None else rewritten.encode("utf-8")
+    if rewritten is not None:
+        text = rewritten
+    return raw if text == original else text.encode("utf-8")
 
 
 def ordered_md_entries(src: zipfile.ZipFile) -> List[Tuple[str, str]]:
@@ -332,6 +357,62 @@ def rebuild_zip_with_index(
             dossier, {n: _text(b) for n, b in payload.items() if n.endswith(".md")})
         if checklist_md:
             payload[pack_checklist.FILENAME] = checklist_md.encode("utf-8")
+
+        # THE FIVE NARRATIVE SECTIONS (2026-08-15), backfilled onto packs already sold.
+        #
+        # Without this block the restructure is a fix for FUTURE buyers only: the 145 bundles
+        # under publish/ keep the old shape forever, because these sections are appended after
+        # the .md the pack was built from and nothing re-derives them. They can be backfilled
+        # at all for exactly the reason the generator's own comment gives — all five render
+        # from the dossier with NO model call, so a re-render here is not a regeneration.
+        #
+        # This mirrors bridge.py `_create_bundle` (the `for module_name, kwargs in (` loop)
+        # deliberately line for line, INCLUDING the order and the position: it runs after the
+        # checklist and BEFORE the card/table below, so `pack_card` is handed the financial
+        # model AFTER the bear case has absorbed its weaknesses, exactly as in the generator.
+        # Two implementations that drift is the defect `pack_reference` and `pack_checklist`
+        # are both written to avoid, and this loop is the third instance of the same promise.
+        #
+        # Guarded INDIVIDUALLY, like the generator: one section that raises costs that section
+        # and nothing else, never the backfill of the pack, and never an exception on the apply
+        # path. `""` is not a failure — `pack_field` and `pack_bear_case` legitimately return it
+        # on a thin dossier (no incumbency sources; nothing refuted or unproven), and "" means
+        # OMIT THE SECTION. The reader picks whatever survives up out of `payload` via
+        # `ordered_md_entries`, since all five names are in BUNDLE_READING_ORDER.
+        for module_name, kwargs in (
+            ("pack_offer", {}),
+            ("pack_field", {}),
+            ("pack_bear_case",
+             {"financial_md": _text(payload.get("04_Financial_Model.md"))}),
+            ("pack_toolkit", {}),
+            ("pack_kicker", {}),
+        ):
+            try:
+                module = importlib.import_module(f"prospector.{module_name}")
+                body = module.render(dossier, **kwargs)
+                if body:
+                    # The prose pass, for the same reason the generator applies it: it is pure
+                    # Python (`plain_text.publish_pass_document`, no model call), so it is safe
+                    # on a backfill, and SKIPPING it here is what would make a backfilled pack
+                    # differ byte-for-byte from a freshly generated one.
+                    body = plain_text.publish_pass_document(body)
+                    payload[module.FILENAME] = body.encode("utf-8")
+                    # The bear case lifted two blocks out of the financial model verbatim, so
+                    # the model now hands them over and keeps a pointer — otherwise the buyer
+                    # reads the same fifteen sentences in two sections, which is the exact
+                    # duplication this branch exists to remove. Only on success: a render that
+                    # returned "" or raised absorbed nothing, and the model keeps its own.
+                    # The title comes from `_SECTION_TITLES`, never a literal, so the pointer
+                    # names the section the reader will actually see.
+                    if module_name == "pack_bear_case" and payload.get("04_Financial_Model.md"):
+                        payload["04_Financial_Model.md"] = module.financial_md_after_absorbing(
+                            _text(payload["04_Financial_Model.md"]),
+                            _SECTION_TITLES.get(module.FILENAME, "the bear case"),
+                        ).encode("utf-8")
+            except Exception as e:  # noqa: BLE001 — one section, never the pack
+                print(f"  {pack_id}: {module_name} render failed ({e}); "
+                      "converting the pack without that section", flush=True)
+
         # P5. Both are deterministic projections of files ALREADY IN THIS ZIP plus the dossier,
         # which is the only reason a pack sold in June can be given them at all. Rendered by the
         # same two modules the generator calls, so a backfilled pack and a fresh one are
@@ -429,6 +510,9 @@ def main() -> int:
     ap.add_argument("--api-url", default=DEFAULT_API_URL)
     ap.add_argument("--apply", action="store_true",
                     help="upload new zips and repoint listings (default: dry-run report only)")
+    ap.add_argument("--from-preconversion", action="store_true",
+                    help="for a pack already converted (no .md left), render from the newest "
+                         "pre-conversion object under its prefix instead of skipping it")
     ap.add_argument("--take-newest", action="store_true",
                     help="when a pack has several stored objects, use the most recent instead of skipping")
     ap.add_argument("--only", metavar="PACK_ID", action="append",
@@ -509,6 +593,38 @@ def main() -> int:
 
             zip_bytes = s3.get_object(Bucket=bucket, Key=old_key)["Body"].read()
 
+            # THE RENDER SOURCE, which is not always the object being replaced.
+            #
+            # Conversion is one-way: a converted pack has no .md left, so `rebuild_zip_with_
+            # index` returns None on it and every already-converted listing is a no-op. That
+            # was correct while the only job was ADDING a reader. It is wrong the moment a
+            # change has to reach a pack already converted — which is what the engine-info
+            # removal is: 61 of 61 live packs carry "How it scored" inside index.html AND
+            # inside Complete_Pack.pdf, and both are RENDERED, so neither can be edited in
+            # place.
+            #
+            # The escape hatch is the one this file already documents: R2 keys are content
+            # addressed, so the pre-conversion object carrying the .md is never overwritten
+            # and stays fetchable. Measured 2026-08-16: 59 of 61 live packs have one. So the
+            # render reads from THAT object while the served object is still what gets
+            # replaced, and the two packs without one are reported rather than guessed at.
+            source_bytes, source_note = zip_bytes, ""
+            if args.from_preconversion and not any(
+                    n.endswith(".md") for n in zipfile.ZipFile(io.BytesIO(zip_bytes)).namelist()):
+                found = s3.list_objects_v2(Bucket=bucket, Prefix=f"packs/{pid}/").get("Contents", [])
+                found.sort(key=lambda o: o["LastModified"], reverse=True)
+                for obj in found:
+                    cand = s3.get_object(Bucket=bucket, Key=obj["Key"])["Body"].read()
+                    if any(n.endswith(".md") for n in zipfile.ZipFile(io.BytesIO(cand)).namelist()):
+                        source_bytes = cand
+                        source_note = f" (rendered from pre-conversion {obj['Key'].rsplit('/', 1)[-1][:12]})"
+                        break
+                else:
+                    report.add(PackResult(pid, "no-source",
+                                          "already converted and no pre-conversion object under its "
+                                          "prefix — nothing to re-render from"))
+                    continue
+
             # Details endpoint carries the metadata the reader's header shows. Fields the
             # projection lacks stay blank rather than being guessed.
             details = requests.get(f"{args.api_url}/catalog/{pid}", timeout=15)
@@ -540,9 +656,22 @@ def main() -> int:
                 pack_id=pid,
                 claim_count=claim_count,
             )
-            new_bytes = rebuild_zip_with_index(zip_bytes, meta, dossier, pid)
+            new_bytes = rebuild_zip_with_index(source_bytes, meta, dossier, pid)
             if new_bytes is None:
                 report.add(PackResult(pid, "already-correct", old_key.rsplit("/", 1)[-1]))
+                continue
+
+            # THE OUTPUT IS GRADED BEFORE IT IS UPLOADED. This backfill exists to remove a
+            # leak, so "the tool ran" is not the receipt — "the object a buyer downloads no
+            # longer carries it" is. Graded on the rendered reader, which is the surface the
+            # leak was measured on, and a pack that still fails is reported and NOT uploaded
+            # rather than swapped for another dirty zip.
+            rebuilt = zipfile.ZipFile(io.BytesIO(new_bytes))
+            reader = _text(rebuilt.read("index.html") if "index.html" in rebuilt.namelist() else b"")
+            still_leaking = [t for t in ("How it scored", "composite ") if t.lower() in reader.lower()]
+            if still_leaking:
+                report.add(PackResult(pid, "error",
+                                      f"rebuilt reader STILL carries {still_leaking}; not uploading"))
                 continue
 
             new_hash = hashlib.sha256(new_bytes).hexdigest()
@@ -551,11 +680,17 @@ def main() -> int:
             # Two different jobs under one action, worth telling apart in the log: a pack that
             # never had a reader is gaining one, a pack that had the write-order reader is
             # having it corrected. Only the second is a change to what an existing buyer sees.
+            # `had` is what the buyer has NOW, so it is read from the served object; the
+            # shelf-life probe below reads the RENDER SOURCE, because a converted served
+            # object has no .md to probe and would always report "nothing to retire".
             had = zipfile.ZipFile(io.BytesIO(zip_bytes)).namelist()
+            src_zip = zipfile.ZipFile(io.BytesIO(source_bytes))
             parts = ["reordered reader" if "index.html" in had else "new reader"]
+            if source_note:
+                parts.append("engine grade stripped")
             if any(dossier_render.rewrite_legacy_shelf_life(
-                    zipfile.ZipFile(io.BytesIO(zip_bytes)).read(n).decode("utf-8", "replace"))
-                    for n in had if n.endswith(".md")):
+                    src_zip.read(n).decode("utf-8", "replace"))
+                    for n in src_zip.namelist() if n.endswith(".md")):
                 parts.append("shelf-life line retired")
             if dossier is None:
                 parts.append("no-dossier: manifest SKIPPED")
@@ -564,7 +699,7 @@ def main() -> int:
             else:
                 parts.append("new manifest")
             kind = ", ".join(parts)
-            sized = f"{len(zip_bytes)}B -> {len(new_bytes)}B ({delta:+d}B, {kind})"
+            sized = f"{len(zip_bytes)}B -> {len(new_bytes)}B ({delta:+d}B, {kind}){source_note}"
 
             if not args.apply:
                 report.add(PackResult(pid, "would-convert", sized, old_key, new_key, delta))

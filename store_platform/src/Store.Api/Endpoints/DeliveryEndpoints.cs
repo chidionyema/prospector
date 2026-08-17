@@ -54,7 +54,7 @@ public static class DeliveryEndpoints
         ILogger<Program> logger,
         CancellationToken ct)
     {
-        var providerName = config["payments:active_provider"] ?? "paddle";
+        var providerName = config["payments:active_provider"] ?? "stripe";
         var provider = sp.GetKeyedService<IPaymentProvider>(providerName);
         if (provider is null)
         {

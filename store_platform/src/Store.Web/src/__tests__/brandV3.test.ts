@@ -44,8 +44,18 @@ describe('Brand v3 — palette, motion, surfaces', () => {
   const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
 
   describe('palette: neutral greys, ink primary, one accent', () => {
-    it('declares --bg as clean white', () => {
-      expect(stripped, '--bg must be clean white').toMatch(/--bg\s*:\s*#FFFFFF/i);
+    it('declares --bg as the warm canvas, and --surface as the paper on it', () => {
+      /* SUPERSEDED 2026-08-15 (founder directive, the palette overhaul). It required
+         `--bg: #FFFFFF`, and it is being changed rather than deleted because the property worth
+         pinning survives: the page ground is ONE declared value, not a per-page choice.
+         `--bg` and `--surface` deliberately SPLIT here -- warm ground, white paper -- so a card
+         is now visible as a card without a border doing all the work. Asserting both is what
+         stops a later edit from quietly re-flattening them back to one colour, which would
+         delete the separation without failing anything. */
+      expect(stripped, '--bg must be the warm canvas #FAF9F7').toMatch(/--bg\s*:\s*#FAF9F7/i);
+      expect(stripped, '--surface must stay white paper on it').toMatch(
+        /--surface\s*:\s*#FFFFFF/i,
+      );
     });
 
     it('declares --border as a high-contrast neutral, not a warm tan', () => {
@@ -57,11 +67,41 @@ describe('Brand v3 — palette, motion, surfaces', () => {
       );
     });
 
-    it('makes the primary action ink, not a saturated fill', () => {
-      expect(stripped, '--primary must be ink #171717').toMatch(/--primary\s*:\s*#171717/i);
+    it('makes the primary action the ONE action colour, not a second fill', () => {
+      // SUPERSEDED 2026-08-15, on the founder's directive "give blue one job", and the reason
+      // this is not simply a loosened assertion is worth stating.
+      //
+      // It required `--primary: #171717` -- ink -- and that was right against the thing it was
+      // written to stop: v2's vermillion, a saturated fill on every CTA. But ink lost its meaning
+      // the moment a SECOND fill appeared beside it. The buy button took the azure money colour
+      // while every other button stayed ink, so the page carried two primary colours, and the
+      // same blue also set the PRICE -- a reader who had learned blue means "tap this" tapped
+      // 49.99 and nothing happened.
+      //
+      // One action colour now, and `--primary` points at it rather than holding a literal. That
+      // indirection IS the guarantee being pinned: it is what makes "there is only one fill" a
+      // property of the token file rather than an agreement between twelve components.
+      expect(stripped, '--primary must point at the one action colour').toMatch(
+        /--primary\s*:\s*var\(--action\)/i,
+      );
+      /* The navy lasted one day. 2026-08-15, LATER, founder review of the live page: the teal
+         logo and a navy button "feel like they're from two different websites" -- navy appeared
+         nowhere else in the identity, so it read as an uncustomised default. Option B (teal +
+         charcoal) was chosen: charcoal fills the action, teal keeps the identity and the
+         secondary's outline. The assertion above is untouched and is the one that matters --
+         `--primary` still points at `--action`, so there is still exactly one fill. Only the
+         literal moved. */
+      expect(stripped, '--action must be charcoal #2D3436').toMatch(/--action\s*:\s*#2D3436/i);
+      expect(stripped, '--action must NOT be the superseded navy').not.toMatch(
+        /--action\s*:\s*#1B3F8B/i,
+      );
       expect(stripped, '--primary must NOT be the rejected deep teal').not.toMatch(
         /--primary\s*:\s*#(042F2E|022C22)/i,
       );
+      // The second fill must be GONE, not merely unused: in Tailwind v4 an unmapped colour
+      // utility emits no rule, so a surviving `--azure` is how a half-done repaint renders
+      // colourless instead of failing the build.
+      expect(stripped, 'the money colour --azure must be gone').not.toMatch(/--azure(-hover)?\s*:/i);
     });
 
     it('has removed vermillion from the stylesheet entirely, not merely stopped using it', () => {

@@ -112,6 +112,7 @@ SOURCE_EXTS = {".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".cs", ".csp
 WEB_EXTS = {".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".json", ".css"}
 
 WEB_REL = "store_platform/src/Store.Web/"
+OPS_REL = "store_platform/src/Ops.Console/"
 
 # The Ops Console is the admin surface. It was untracked until 2026-08-16, so no lane covered
 # it and every one of its files read as unproven. It has the same proof shape as the
@@ -334,6 +335,8 @@ def lanes_for(paths: list[str]) -> tuple[list[str], list[str]]:
             lanes.add("console")
         elif path.startswith(WEB_REL) and ext in WEB_EXTS:
             lanes.add("web")
+        elif path.startswith(OPS_REL) and ext in WEB_EXTS:
+            lanes.add("ops")
         elif ext == ".py":
             lanes.add("python")
         elif ext in (".cs", ".csproj"):

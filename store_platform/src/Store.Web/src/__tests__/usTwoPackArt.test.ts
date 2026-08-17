@@ -109,13 +109,19 @@ describe('US-2 — Pack cards with pack art', () => {
      * the treatment drifting into three treatments, which is how the shelf got flat the first
      * time: the row list and the grid stopped stating the same fact the same way.
      */
-    const cardStart = page.indexOf('function PackCard(');
-    expect(cardStart, 'function PackCard must be locatable').toBeGreaterThan(-1);
+    // TWO variants, was three (2026-08-15, the founder's mobile brief). `mid` is deleted and
+    // `row` moved to `components/discovery/PackRow.tsx`, so the two mounts are in two files. What
+    // this pins is unchanged: EVERY format the shelf can render carries the lead figure, because
+    // one format quietly dropping it is how the shelf went flat the first time.
+    const cardStart = page.indexOf('function PackSpotlight(');
+    expect(cardStart, 'function PackSpotlight must be locatable').toBeGreaterThan(-1);
     const cardEnd = page.indexOf('\nfunction ', cardStart + 1);
-    const cardBody = page.slice(cardStart, cardEnd === -1 ? undefined : cardEnd);
+    const cardBody =
+      page.slice(cardStart, cardEnd === -1 ? undefined : cardEnd)
+      + readSource('../components/discovery/PackRow.tsx');
     const figures = cardBody.match(/<PackFigure\b[^/]*\/>/g) ?? [];
-    expect(figures.length, 'every card variant must render the lead figure').toBe(3);
-    ['row', 'lead', 'mid'].forEach((weight) => {
+    expect(figures.length, 'every card variant must render the lead figure').toBe(2);
+    ['row', 'spotlight'].forEach((weight) => {
       expect(
         figures.some((f) => f.includes(`weight="${weight}"`)),
         `the ${weight} variant must carry the lead figure`,
@@ -128,14 +134,18 @@ describe('US-2 — Pack cards with pack art', () => {
      * card has two numbers of equal weight and no visual at all, which is the state this whole
      * change was made to leave.
      */
-    const figureComponent = page.slice(
-      page.indexOf('function PackFigure('),
-      page.indexOf('function PackCard('),
-    );
+    const packRow = readSource('../components/discovery/PackRow.tsx');
+    const figureComponent = packRow.slice(packRow.indexOf('export function PackFigure('));
     expect(figureComponent, 'the lead poster sets its figure at the display step').toMatch(
       /text-display/,
     );
-    expect(figureComponent, 'the shelf card sets its figure at the h1 step').toMatch(/text-h1/);
+    // The Row's figure is `text-body font-semibold`, not `text-h1` (2026-08-15). `text-h1` was
+    // the deleted `mid` card's size; a row is one line tall, so a figure two steps above the line
+    // it sits on cannot fit in it. What this pins is unchanged -- the figure outweighs the label
+    // beside it -- and on the row that is carried by weight and by the mono face.
+    expect(figureComponent, 'the row sets its figure above the label beside it').toMatch(
+      /text-body font-semibold/,
+    );
 
     /*
      * THE DETERMINISM RULE, KEPT AND STRENGTHENED. It was written for the cover -- "a cover that
@@ -153,8 +163,13 @@ describe('US-2 — Pack cards with pack art', () => {
       /charCodeAt|pack\.id/,
     );
 
-    expect(page, 'the market chip must still be stated in words').toMatch(
-      /\{marketLabel\(pack\.market\)\} rules/,
+    // The flag renders on the Row, which moved to `components/discovery/PackRow.tsx` on
+    // 2026-08-15. The rule this pins is "in WORDS, never a flag emoji or a bare country code",
+    // and that is unchanged. The noun is not the rule: the founder changed it from "rules" to
+    // "market" the same day, because the subtitle beside it already argues that the buyers and
+    // the numbers travel with the country too, not only its statute book.
+    expect(readSource('../components/discovery/PackRow.tsx'), 'the market chip must still be stated in words').toMatch(
+      /\{marketLabel\(pack\.market\)\} market/,
     );
     expect(page, 'the market chip must render only when it differs from the reader\'s').toMatch(
       /pack\.market !== viewerMarket/,

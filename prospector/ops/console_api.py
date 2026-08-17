@@ -2161,6 +2161,15 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
                                "the /engine screen is the console-native answer",
     "tools/queue_yield_batch.sh": "chains a wait, a publish and a batch launch into one script; "
                                   "split it before it becomes a single button",
+    # arrived on main while this registry lived on a branch, so nothing could have caught them
+    # at the time. Classified here now.
+    "scripts/ci_local.py": "replays a CI job's shell steps on this machine; a developer's loop",
+    "scripts/run_ops_console.sh": "launches this console itself — it cannot be one of its rows",
+    "tools/build_sample_fixture.py": "rebuilds the /sample fixture from a real pack; it is part "
+                                     "of the storefront build, run from a terminal",
+    "tools/_audit_baseline_tmp.py": "a one-off inventory of failure-to-empty-answer sites, kept "
+                                    "for its findings; the leading underscore says it is not a "
+                                    "command",
 }
 
 

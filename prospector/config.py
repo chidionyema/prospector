@@ -514,12 +514,21 @@ _BLOCK_KEYS: dict[str, frozenset[str]] = {
     "claim_lock": frozenset({"enabled", "dir", "stale_after_s"}),
     # F1-F4 — deterministic buyer-facing data artifacts (scorecard, financials,
     # comparables, radar SVG, XLSX, PDF). Zero LLM calls.
-    "pack_data": frozenset({"enabled", "formats", "chrome_path"}),
+    # `include_scorecard` added 2026-08-15: our six-axis grade of the idea, as data files in
+    # the buyer's zip. Default off — see `pack_data.DEFAULT_INCLUDE_SCORECARD`.
+    "pack_data": frozenset({"enabled", "formats", "chrome_path", "include_scorecard"}),
     # The pack's length contract, derived from the evidence it holds rather than asserted
     # as a constant. See prospector/evidence_budget.py for the measurement that set it.
     "artifacts": frozenset({
         "enforce_length_budget", "claim_check", "base_words",
         "words_per_evidence_word", "floor_words", "ceiling_words",
+        # The signposting allowance `evidence_budget.artifacts_cfg` reads (:219). It is listed
+        # here for the reason the block exists at all: this validator is strict, so a key the
+        # code reads but the schema does not know is not a soft default — `config.load_config`
+        # RAISES, and every caller that loads config.yaml dies at import-time-ish. Adding
+        # `narrative_words: 150` to config.yaml without this line took 12 unit tests down on
+        # 2026-08-15, in four files that have nothing to do with artifacts.
+        "narrative_words",
     }),
 }
 

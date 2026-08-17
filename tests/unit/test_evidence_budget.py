@@ -108,10 +108,27 @@ def test_budget_is_computed_even_when_the_actuator_is_off():
 
 def test_config_block_is_read_from_a_dict_or_an_object():
     want = {"enforce_length_budget": True, "claim_check": True, "base_words": 100,
-            "words_per_evidence_word": 2.0, "floor_words": 1, "ceiling_words": 9}
+            "words_per_evidence_word": 2.0, "floor_words": 1, "ceiling_words": 9,
+            "narrative_words": 40}
     from_obj = eb.artifacts_cfg(type("C", (), {"artifacts": dict(want)})())
     from_dict = eb.artifacts_cfg({"artifacts": dict(want)})
     assert from_obj == from_dict == want
+
+
+def test_every_key_the_budget_reads_has_a_shipped_default():
+    """The exact-equality above is only worth anything if the key set is pinned somewhere.
+
+    `narrative_words` (`evidence_budget.py:219`) was added as a config-declared knob and read
+    unconditionally by `budget_for` (`:242`), so a config that omits it must still produce it:
+    a missing default is a KeyError at pack-render time, on the paid document.
+    """
+    defaults = eb.artifacts_cfg(None)
+    assert set(defaults) == {"enforce_length_budget", "claim_check", "base_words",
+                             "words_per_evidence_word", "floor_words", "ceiling_words",
+                             "narrative_words"}
+    assert defaults["narrative_words"] == 150
+    # And the knob is a knob: a declared value overrides the default through both readers.
+    assert eb.artifacts_cfg({"artifacts": {"narrative_words": 40}})["narrative_words"] == 40
 
 
 def test_the_shipped_config_actually_reaches_the_budget():
@@ -178,12 +195,19 @@ class _Checker:
             {"text": "Most councils now require this.", "issue": "no source"}]}
 
 
-def _gen(t="build_spec", check_op=None):
+def _gen(t="build_spec", check_op=None, prose_repair=False):
+    """Generate one artifact. `prose_repair` is OFF by default, on purpose.
+
+    The human-register repair is a separate switch (`listing.human_register_repair`) and it
+    fires on every draft we write today, so leaving it on here would make every draft count
+    below a measurement of two features at once. These tests are about the claim gate, so
+    they hold the other switch off and `test_the_prose_repair_buys_its_own_draft` covers it.
+    """
     from prospector.artifacts import _gen_one_artifact
     from prospector.prompts import ALL_MARKET_KEYS
     writer = _Writer()
     out = _gen_one_artifact(writer, "{}", "[]", t, {k: "" for k in ALL_MARKET_KEYS},
-                            eb.length_rule(500, 700), check_op, [])
+                            eb.length_rule(500, 700), check_op, [], prose_repair)
     return writer, out
 
 
@@ -191,6 +215,21 @@ def test_without_a_checker_the_artifact_path_makes_no_verification_call():
     writer, (_t, content, _raw, violations) = _gen()
     assert content and violations == []
     assert len(writer.users) == 1
+
+
+def test_the_prose_repair_buys_its_own_draft_and_never_reports_a_violation():
+    """The register repair is a SECOND trigger on the same repair loop, not a second loop.
+
+    Two things are pinned here. It costs one extra writer call with no checker present, so
+    the cost is visible. And it returns no violations: that list drives the listing gate,
+    and one human document in ten falls outside the p5-p95 range, so a style finding must
+    never be able to block a sale.
+    """
+    writer, (_t, content, _raw, violations) = _gen(prose_repair=True)
+    assert len(writer.users) == 2, "a draft outside the human range buys one rewrite"
+    assert violations == [], "a register finding is never a violation"
+    assert "human range" in writer.users[1], "the repair turn must be told the target"
+    assert content
 
 
 def test_a_failed_claim_check_buys_exactly_one_repair_turn_that_sees_the_violations():
