@@ -872,6 +872,33 @@ def _repair_shelf_lines(cand, cfg, *, op) -> list[str]:
     return _repair_title(cand, cfg, op=op) + _repair_one_liner(cand, cfg, op=op)
 
 
+def _unrepaired_shelf_breaches(cand) -> list[str]:
+    """What the publish gate will STILL refuse about this candidate's shelf lines.
+
+    Run after `_repair_shelf_lines`, on the same two bars the repair used and the gate applies,
+    so this is the gate's own answer arrived at before the money is spent.
+
+    It exists because the repair is best-effort by contract and swallows its own failure. That
+    is correct — a failed repair must never lose a PASS — but it left the engine knowing a pack
+    was unsellable and building it anyway: `_repair_title` logs, in these words, "building the
+    pack on its own title, which the publish gate will refuse", and then ~7,700 words are
+    generated on the deliverable chain. The knowledge existed and nothing acted on it.
+    """
+    from .pack_linter import TITLE_MAX_CHARS, check_title
+    from .shelf_copy_repair import voice_breaches
+
+    out = [f"title: {p['detail']}"
+           for p in check_title(cand.title or "", max_chars=TITLE_MAX_CHARS)
+           if p.get("severity") == "error"]
+    line = (cand.one_liner or "").strip()
+    if line:
+        out += [f"one_liner: {w}" for w in voice_breaches(line)]
+        if len(line) > _ONE_LINER_CUT_AT:
+            out.append(f"one_liner: {len(line)} chars — over the {_ONE_LINER_CUT_AT} the "
+                       f"catalogue cuts at, and a cut line trails off on the shelf")
+    return out
+
+
 def _generate_pack_content(op, cand, checks, *, query_op, quality_op, cfg, score,
                            marketing_op=None, artifact_time_budget_s=None,
                            vet_deadline_mono=None):
@@ -948,6 +975,36 @@ def _generate_pack_content(op, cand, checks, *, query_op, quality_op, cfg, score
     # field on a candidate that already passed, not a retry of the pack. See
     # `_repair_shelf_lines`.
     _repair_shelf_lines(cand, cfg, op=(marketing_op or quality_op))
+
+    # P4 of docs/CONTENT_CONTRACT_PROGRAM.md. Repair is best-effort by contract and swallows its
+    # own failure, which is right — a failed repair must never lose a PASS. But the engine then
+    # KNEW the pack was unsellable and bought it anyway. Grade once more, on the gate's own bars,
+    # before the deliverable chain is paid for.
+    #
+    # Measure-first, per the project rule that a new rule ships read-only and takes a second,
+    # explicit switch to act: this logs on every candidate and only parks when
+    # `listing.park_unrepairable_shelf_lines` is on. Default OFF, because parking turns a PASS
+    # into a pack that does not exist, and the honest way to choose that is with a count of how
+    # often it would fire, from the log line below.
+    _shelf_breaches = _unrepaired_shelf_breaches(cand)
+    if _shelf_breaches:
+        _listing = cfg.listing if isinstance(getattr(cfg, "listing", None), dict) else {}
+        _park = bool(_listing.get("park_unrepairable_shelf_lines", False))
+        logger.error(
+            "Shelf lines of %s still breach the publish gate after repair%s: %s",
+            cand.candidate_id, " — PARKED, no pack built" if _park else
+            " — building the pack anyway (park_unrepairable_shelf_lines is off)",
+            "; ".join(_shelf_breaches),
+            extra={"candidate_id": cand.candidate_id,
+                   "shelf_breaches": _shelf_breaches,
+                   "shelf_parked": _park,
+                   "shelf_unrepaired": True})
+        if _park:
+            # Stamped, never silent. An empty artifacts dict with no reason on the candidate is
+            # the "empty artifacts" failure class this repo has already had once; the tag is what
+            # lets the stranded-pack scan and the ops console tell a park from a breakage.
+            cand.tags["shelf_parked"] = _shelf_breaches
+            return {}, []
 
     artifacts: dict = {}
     marketing: list = []

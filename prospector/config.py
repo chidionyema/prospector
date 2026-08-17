@@ -587,6 +587,14 @@ LISTING_DEFAULTS: dict[str, Any] = {
     # the unsourced claim the source-or-die rule exists to stop. Empty by default — a term with
     # no entry is reported for the operator to declare, and the row stays unlisted meanwhile.
     "initialism_glossary": {},
+    # P4 of docs/CONTENT_CONTRACT_PROGRAM.md. When true, a candidate whose title or one-liner
+    # still breaches the publish gate AFTER repair is parked: no pack is generated for it.
+    # DEFAULT FALSE, and the default is a decision. The engine already logs every such candidate
+    # (`run._unrepaired_shelf_breaches`), so the count of what parking would cost is measurable
+    # from the log before anyone pays for it. Parking turns a PASS into a pack that does not
+    # exist; buying a pack the gate will refuse wastes the whole deliverable chain. Which is
+    # cheaper is a number, not an opinion, and this switch is how the number gets acted on.
+    "park_unrepairable_shelf_lines": False,
 }
 
 

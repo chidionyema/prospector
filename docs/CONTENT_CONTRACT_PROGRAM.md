@@ -153,6 +153,29 @@ The backlog stops being finished unsellable stock and becomes cheap parked candi
 reason attached. Same information, a fraction of the cost, and re-enterable the moment the rule
 or the repair improves. §1.3's log line becomes an action.
 
+#### P4 as built, 2026-08-17
+
+**It ships measure-first, and the default is a decision.** `run._unrepaired_shelf_breaches` grades
+the title and one-liner one last time after `_repair_shelf_lines`, on the gate's own checkers, and
+logs every breach at ERROR with `shelf_unrepaired: True`. It only skips the pack when
+`listing.park_unrepairable_shelf_lines` is on, and that key defaults to **False**
+(`config.LISTING_DEFAULTS`). The reason is that parking is not free in the way it first looks:
+buying a pack the gate refuses wastes the deliverable chain, but parking turns a PASS into a pack
+that does not exist. Which is cheaper is a count, and the log is what produces the count before
+anyone pays for the answer. A test pins the log OUT of the `if _park:` branch, because a log that
+only fires once the switch is on can never justify the switch.
+
+**The grader asks the gate, it does not restate it.** The title goes through
+`pack_linter.check_title(title, max_chars=TITLE_MAX_CHARS)` filtered to `severity == "error"`; the
+one-liner through `shelf_copy_repair.voice_breaches` plus the `_ONE_LINER_CUT_AT` length.
+`test_the_grader_agrees_with_the_publish_gates_own_title_check` asserts the two produce the
+identical list for the same title, so a cap moving in the linter cannot leave the park behind.
+
+**A parked candidate is stamped, never silently empty.** `cand.tags["shelf_parked"]` carries the
+breaches. An empty artifacts dict with no reason is a failure shape this repo has already had
+(memory `learning-empty-artifacts-root-cause.md`); the tag is what lets the stranded-pack scan and
+the ops console tell a deliberate park from a breakage.
+
 ### P5 — Rules ratchet on, with the console as the actuator
 
 A new rule runs in shadow automatically. Its breach rate is recorded per batch. When the rate has
@@ -202,11 +225,11 @@ Append here. Each entry: what shipped, the receipt, and the stranded count befor
 
 | # | Part | Status | Receipt |
 |---|------|--------|---------|
-| 0 | Upstream title/one-liner repair (§1.3) | in PR #285; CI was red on three failures, two fixed by #282's merge, one real | `run.py:697,802,950` |
+| 0 | Upstream title/one-liner repair (§1.3) | **MERGED** — PR #285 is on `main` and running in production | `run.py:697,802,977` |
 | P1 | Registry of field contracts | **shipped** | `prospector/content_contract.py`; 34 tests in `tests/unit/test_the_content_contract_covers_every_gate_knob.py`; `console_api._shelf_repair_for` now reads it |
 | P2 | Enforcement at the field write | not started | — |
-| P3 | Generator reads the registry | not started | — |
-| P4 | Park instead of buy | not started | — |
+| P3 | Generator reads the registry | **shipped** | `generate._shelf_line_directive`; 5 tests in `tests/unit/test_the_generator_is_told_the_shelf_rules.py` |
+| P4 | Park instead of buy | **shipped, measure-first** — logs always, parks only when `listing.park_unrepairable_shelf_lines` is on (default off) | `run._unrepaired_shelf_breaches`; 15 tests in `tests/unit/test_the_engine_does_not_buy_a_pack_the_gate_will_refuse.py` |
 | P5 | Ratchet + console promotion | not started | — |
 | P6 | Breach recording | not started | — |
 | P7 | Shipping fence | not started | — |
