@@ -227,14 +227,14 @@ Append here. Each entry: what shipped, the receipt, and the stranded count befor
 |---|------|--------|---------|
 | 0 | Upstream title/one-liner repair (§1.3) | **MERGED** — PR #285 is on `main` and running in production | `run.py:697,802,977` |
 | P1 | Registry of field contracts | **shipped** | `prospector/content_contract.py`; 34 tests in `tests/unit/test_the_content_contract_covers_every_gate_knob.py`; `console_api._shelf_repair_for` now reads it |
-| P2 | Enforcement at the field write | not started | — |
+| P2 | Enforcement at the field write | **shipped** — one loop, one grader per field; `run.py`'s two hand-written repair loops are now three-line declarations | `prospector/field_write.py`; 19 tests in `tests/unit/test_one_choke_point_grades_every_buyer_facing_field.py`; the 34 behaviour tests in `test_a_breached_title_is_repaired_before_the_pack.py` pass unchanged |
 | P3 | Generator reads the registry | **shipped** | `generate._shelf_line_directive`; 5 tests in `tests/unit/test_the_generator_is_told_the_shelf_rules.py` |
 | P4 | Park instead of buy | **shipped, measure-first** — logs always, parks only when `listing.park_unrepairable_shelf_lines` is on (default off) | `run._unrepaired_shelf_breaches`; 15 tests in `tests/unit/test_the_engine_does_not_buy_a_pack_the_gate_will_refuse.py` |
 | P5 | Ratchet + console promotion | **promotion shipped** — 10 generated console switches; the automatic ratchet is still manual | `console_api._content_rule_knobs`, group `content` |
 | P6 | Breach recording | **shipped as a READER** — nothing new is written; the counts were already in the 123 `*.lint.json` receipts | `prospector/ops/content_breaches.py`; 22 tests in `tests/unit/test_content_breach_rates_come_from_the_receipts.py` |
 | P7 | Shipping fence | not started | — |
 | C1 | Console: stranded by rule | **ALREADY EXISTS** — do not rebuild | `console_api.py:823` `_read_shelf` returns `by_reason`, `by_repair`, `stale_verdicts`; rendered on `shelf.tsx` |
-| C2 | Console: breach rate per rule | **shipped** — `views content_rules` | `console_api._read_content_rules`, registered in `READS` |
+| C2 | Console: breach rate per rule | **shipped** — `views content_rules`, on both doors | `console_api._read_content_rules` in `READS`; `'content_rules'` in `VIEWS` (`pages/api/ops/read/[view].ts`) |
 | C3 | Console: rules ready to promote | **shipped** — `ready_to_promote` and `never_observed` on `views content_rules` | `content_breaches.breach_report` |
 | C4 | Console: shipping gap | partly in flight in PR #286 (console build age) | `scripts/live_checkout.py` |
 
@@ -367,3 +367,50 @@ with the rate in front of them.
 **`title_new_word` has no switch, and that is correct.** It carries no `config_key` because
 nothing in `lint_pack` gates it — it is enforced unconditionally. It shows as blocking at 41% in
 the table above. A knob for it would be a control that does nothing.
+
+## P2 as built, 2026-08-17 — one loop, one grader per field
+
+**The defect was a rule typed out twice, not a missing repair.** The engine already repaired its
+shelf lines. What it did not have was one place that said what clean meant. Measured before the
+change:
+
+- `run.py:827` and `run.py:882` both carried the one-liner length bar, as the same sentence
+  written twice, twelve lines apart. One copy was in the repair, the other in the park check P4
+  added.
+- `_repair_title` and `_repair_one_liner` were two hand-written copies of the same four-step
+  loop. They differed only in which checker and which rewriter they called.
+
+Two copies of a rule do not raise when they drift. They start disagreeing, and the disagreement
+shows up as a pack the engine graded clean and the publish gate refused, after the pack was paid
+for. That is the same failure P4 exists to prevent, arriving through a different door.
+
+**What shipped.** `prospector/field_write.py` holds the loop once — grade, repair, re-grade,
+record — and each field is a declaration:
+
+```python
+"one_liner": Field(name="one_liner", noun="one-liner",
+                   read=..., write=..., grade=grade_one_liner,
+                   propose=_propose_one_liner, attempts=1, skip_when_empty=True)
+```
+
+`run._repair_title` and `run._repair_one_liner` are now three lines each. They stay as named
+functions because `_generate_pack_content` and its tests reach them by module attribute.
+`run._unrepaired_shelf_breaches` is one line: `field_write.breaches(cand, "title", "one_liner")`.
+The park check and the repair now ask the *same object*, not a matching one.
+
+**One behaviour change, and it is a tightening.** A one-liner rewrite used to be re-graded on
+length only, because `rewrite_one` already re-graded voice. It is now re-graded on the full
+grader. A rewrite that fixes the voice and blows the length was previously accepted; it is now
+refused. Pinned by `test_the_rewrite_is_regraded_on_every_bar_not_just_the_one_that_failed`.
+
+**How we know nothing was lost.** The 34 behaviour tests in
+`tests/unit/test_a_breached_title_is_repaired_before_the_pack.py` were not touched and pass
+against the refactor. The new tests are about identity, not behaviour: same grader object on both
+doors, the length bar appearing exactly once in the tree, and no field repair growing its own
+attempt loop again.
+
+**What P2 does NOT do.** `tools/retitle_catalogue.py:408` still writes a live catalogue title
+through its own path. That is the live-shelf repair tool, not the engine, and moving it is a
+separate change with its own blast radius — it writes rows that are already published. The engine
+side is closed.
+
