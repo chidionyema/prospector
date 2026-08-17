@@ -44,6 +44,22 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CATALOG_URL = os.environ.get("PROSPECTOR_CATALOG_URL", "https://api.mumchimp.com/catalog")
 
 
+def _store(repo: str) -> str:
+    """The store directory for `repo` — `PROSPECTOR_STORE_DIR` first, `<repo>/store` otherwise.
+
+    A store path derived from `__file__` follows the CODE, not the state. Production moved to
+    its own checkout on 2026-08-17 with `PROSPECTOR_STORE_DIR` pinned back at the canonical
+    store, so `<code checkout>/store/prospector.db` does not exist there. This script read
+    exactly that path and the live tick's recovery step failed every cycle with
+    `sqlite3.OperationalError: unable to open database file`.
+
+    The same resolution `prospector.config.store_root` and `tools/recover_stranded_passes.py`
+    already use, spelled with `os` rather than imported, because this script is run by the
+    SessionStart probe and must not import anything that touches `store/` at import time.
+    """
+    return os.environ.get("PROSPECTOR_STORE_DIR", "").strip() or os.path.join(repo, "store")
+
+
 def _shelf_ids(timeout_s: float = 4.0) -> set[str]:
     """The ids a buyer can actually see. Raises on any failure — the caller maps that to 2.
 
@@ -68,7 +84,7 @@ def _passes(repo: str) -> list[tuple[str, str]]:
     are excluded for the same reason `_cmd_resume` excludes them — no dossier JSON stands
     behind them, so they can never be republished and would only inflate the number.
     """
-    uri = f"file:{repo}/store/prospector.db?mode=ro"
+    uri = f"file:{_store(repo)}/prospector.db?mode=ro"
     with sqlite3.connect(uri, uri=True, timeout=5.0) as conn:
         has_tomb = any(r[1] == "tombstone" for r in conn.execute("PRAGMA table_info(dossiers)"))
         live = " AND tombstone IS NULL" if has_tomb else ""
@@ -84,7 +100,7 @@ def _why(repo: str, cid: str) -> str:
     `store/dossiers/<id>.lint.json` is what the publish path itself wrote when it held the
     pack back, so this reports the engine's finding rather than a second opinion about it.
     """
-    path = f"{repo}/store/dossiers/{cid}.lint.json"
+    path = f"{_store(repo)}/dossiers/{cid}.lint.json"
     try:
         with open(path) as fh:
             d = json.load(fh)
