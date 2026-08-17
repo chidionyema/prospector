@@ -80,7 +80,7 @@ Already abstracted behind interfaces: `IEmailSender` (Postmark), `IContentStorag
 | 7 | `Store.Catalog/Domain/SalesAudit.cs:6-7` | `PaddleTransactionId`, `PaddleProductId` |
 | 8 | `Store.Api/Contracts/PublishRequest.cs:8-9` | `PaddleProductId?`, `PaddlePriceId?` over the wire |
 | 9 | `FulfilmentService.cs:50` | Pack lookup `p.PaddleProductId == item.ProductId` |
-| 10 | Store.Web's paddle.ts (deleted 2026-08-16), `pages/pack/[id].tsx` | Frontend Paddle.js checkout |
+| 10 | `Store.Web/src/lib/paddle.ts`, `pages/pack/[id].tsx` | Frontend Paddle.js checkout |
 
 **Difficulty: MEDIUM-LOW.** Items 1–3 are one provider class. Items 5–9 are a rename + one nullable
 column (`PaymentProvider`). Item 4 is a Python interface + one Stripe client. Item 10 is the only
@@ -301,7 +301,7 @@ class StripeProvisioner(ProductProvisioner):       # Stripe Product + Price API 
 
 ## 7. Frontend (`Store.Web`)
 
-- Today: Paddle.js overlay (lib/paddle.ts, deleted 2026-08-16; `pages/pack/[id].tsx`).
+- Today: Paddle.js overlay (`lib/paddle.ts`, `pages/pack/[id].tsx`).
 - Add `lib/stripe.ts` + a `redirectToCheckout(provider, packId)` that, for Stripe, calls a new
   `POST /packs/{id}/checkout` → `CreateCheckoutAsync` → 302 to the Stripe-hosted Checkout page.
 - The pack page picks the provider from the pack's `PaymentProvider` field. Keep Paddle path intact.
