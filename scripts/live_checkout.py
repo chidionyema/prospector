@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import os
 import plistlib
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -55,18 +56,32 @@ def run(cmd: list[str], cwd: Path | None = None, timeout: int = 30) -> tuple[int
     return proc.returncode, (proc.stdout + proc.stderr).strip()
 
 
+#: The two status columns of `git status --porcelain`, however many of them survived.
+_STATUS_RE = re.compile(r"^\s*[MTADRCU?!]{1,2}\s+")
+
+
 def _code_changes(porcelain: str) -> list[str]:
     """Modified TRACKED CODE, ignoring tracked runtime state.
 
     store/ and storage/ are tracked but are written by every run, so `git status` in a
     working production checkout is never empty. Counting those as local modifications
     would make the clean-mirror check fire permanently and mean nothing.
+
+    The path is matched, never sliced at a fixed offset. `run()` strips the whole command
+    output, so the FIRST porcelain line loses its leading space whenever the index column
+    is blank -- which is the normal case for an unstaged change. `line[3:]` then read
+    "ore/provider_health.json", which does not start with "store/", so the checkout was
+    reported dirty and --update refused on the exact runtime state this function exists to
+    ignore. Measured 2026-08-17: the single "local modification" blocking the live checkout
+    at 14 commits behind origin/main was ` T store/provider_health.json`.
     """
     out = []
     for line in porcelain.splitlines():
-        if line.startswith("??"):
+        if line.lstrip().startswith("??"):
             continue
-        path = line[3:].strip().strip('"')
+        path = _STATUS_RE.sub("", line, count=1).strip().strip('"')
+        if " -> " in path:                    # a rename is judged by its destination
+            path = path.split(" -> ", 1)[1].strip().strip('"')
         if path.startswith(("store/", "storage/")):
             continue
         out.append(line)
