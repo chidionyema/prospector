@@ -105,7 +105,15 @@ class TestGlanceStatus:
             "elapsed_s": 987,
             "start_ts": 1,
         }
-        assert glance_status(None, latest) == "Engine idle · last generate k=20 failed (987s)"
+        out = glance_status(None, latest)
+        # This sentence is built from the last MANUAL launcher job and knows nothing about the
+        # daemon, so "Engine idle" was the defect, not the wording: on 2026-08-16 the console
+        # printed it over a job dated 2026-07-31 while the consumer was live and ruling. The
+        # contract is now (a) it never claims the engine's state, and (b) it dates itself, so a
+        # stale job cannot read as current.
+        assert out.startswith("No manual job running · last generate k=20 failed (987s,")
+        assert "Engine idle" not in out
+        assert out.endswith("ago)")
 
     def test_running_with_progress(self, tmp_path):
         log = tmp_path / "run.log"

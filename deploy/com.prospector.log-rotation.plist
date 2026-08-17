@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.prospector.log-rotation</string>
+	<!-- Rotates whatever is over the limit declared in ops/config/log_rotation.yaml (ENG-5).
+	     Runs after the two backup jobs (03:40, 03:50) so a rotation can never race a copy of
+	     the thing being rotated.
+
+	     Install:
+	       cp deploy/com.prospector.log-rotation.plist ~/Library/LaunchAgents/
+	       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.prospector.log-rotation.plist -->
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/chidionyema</string>
+		<!-- The engine asks git for the repo root, so git must be on PATH. launchd's default
+		     PATH does not include it in every install. -->
+		<key>PATH</key>
+		<string>/Users/chidionyema/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+	</dict>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/chidionyema/Documents/code/prospector/.venv/bin/python</string>
+		<string>-m</string>
+		<string>ops.automations.log_rotation</string>
+		<string>--fix</string>
+	</array>
+	<!-- Daily at 04:00. StartCalendarInterval, not StartInterval: launchd runs a missed
+	     calendar job once after wake, so a closed laptop delays the rotation rather than
+	     skipping it and letting a log grow for a week. -->
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Hour</key>
+		<integer>4</integer>
+		<key>Minute</key>
+		<integer>0</integer>
+	</dict>
+	<key>WorkingDirectory</key>
+	<string>/Users/chidionyema/Documents/code/prospector</string>
+	<!-- Its own log is declared in ops/config/log_rotation.yaml under store/*.log, so the
+	     rotator rotates itself. -->
+	<key>StandardOutPath</key>
+	<string>/Users/chidionyema/Documents/code/prospector/store/log_rotation.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/chidionyema/Documents/code/prospector/store/log_rotation.log</string>
+</dict>
+</plist>

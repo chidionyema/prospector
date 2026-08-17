@@ -2,6 +2,7 @@ import { ImageResponse } from 'next/og';
 import type { GetServerSideProps } from 'next';
 
 import { ApiError, fetchPackDetails } from '@/lib/api/client';
+import { evidenceRun } from '@/lib/evidenceTicks';
 
 /**
  * Per-pack 1200x630 link-preview card.
@@ -44,6 +45,73 @@ const INK = '#171717';
 const CREAM = '#FAFAFA';
 const BORDER = '#E4E4E7';
 const MUTED = '#71717A';
+/** `--survive` (tokens.css:382), the one colour this site lets carry meaning. It is the same green
+ *  the shelf card's `EvidenceBar` draws its ticks in, so the two cards read as one drawing. Raw hex
+ *  because satori cannot resolve CSS custom properties. */
+const SURVIVE = '#047857';
+
+/**
+ * THE CITED-SOURCE RUN, drawn on the share card.
+ *
+ * WHY IT IS HERE. This card was all type: a headline, a title, a price pill, and one grey line
+ * reading "34 sources cited". The count -- the single fact this shop sells, and the only number on
+ * the card that differs meaningfully between two packs -- was set at 24px in the muted grey used
+ * for timestamps, below the brand name, in a card whose largest element was the title. A link
+ * preview is read at thumbnail size in a timeline; nothing at 24px survives that.
+ *
+ * WHY THIS DRAWING AND NOT AN ILLUSTRATION. `docs/SITE_SPEC_PROGRAM.md:28` permits exactly one kind
+ * of visual -- "every visual is generated from real engine data (verdicts, source counts, kill
+ * ratios)" -- and forbids the alternatives by name. A run of ticks counted off the pack's own
+ * `sourceCount` is that, with nothing to amend and no model to run. It is also the drawing already
+ * on the shelf card, which is the point: the two surfaces now show one pack one way.
+ *
+ * The digits stay in `proofLine` beneath it. A chart without its figure is decoration.
+ *
+ * SATORI. `display: flex` is set explicitly on every container: satori throws on a div with
+ * multiple children and no display, and it does not inherit the browser's default. Widths are px
+ * literals for the same reason the radius below is -- no CSS variables, no Tailwind.
+ */
+const OG_TICK_TRACK = 76;
+const OG_TICK_WIDTH = 7;
+const OG_TICK_GAP = 5;
+
+export function EvidenceRunOg({ count }: { count: number | undefined }) {
+  const { ticks, over, shown } = evidenceRun(count, { track: OG_TICK_TRACK });
+  // No count, no element -- not an empty track. Same rule as the shelf bar: an empty evidence
+  // drawing on a card selling evidence says "we checked and found none", when the truth is "this
+  // field is absent". The card then falls back to type alone, exactly as it rendered before.
+  if (shown === 0) return null;
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-end', height: OG_TICK_TRACK }}>
+      {ticks.map((t, i) => (
+        <div
+          key={i}
+          style={{
+            display: 'flex',
+            width: OG_TICK_WIDTH,
+            height: t.height,
+            marginRight: OG_TICK_GAP,
+            backgroundColor: SURVIVE,
+            opacity: t.opacity,
+          }}
+        />
+      ))}
+      {over && (
+        <div
+          style={{
+            display: 'flex',
+            width: OG_TICK_WIDTH,
+            height: OG_TICK_TRACK,
+            marginLeft: OG_TICK_GAP,
+            backgroundColor: SURVIVE,
+            opacity: 0.4,
+          }}
+        />
+      )}
+    </div>
+  );
+}
 
 /** Long titles must not overflow the card. Cut on a word boundary and ellipsize, so the card
  *  degrades to a readable truncation rather than clipped glyphs at the frame edge. */
@@ -64,6 +132,99 @@ export function proofLine(sourceCount: number | undefined, verifiedAt: string | 
   const date = verifiedAt?.slice(0, 10);
   if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) parts.push(`verified ${date}`);
   return parts.join('  ·  ');
+}
+
+/**
+ * THE CARD, as a tree, separated from the route that fetches for it.
+ *
+ * It is here rather than inline in `getServerSideProps` so the drawing can be rendered without a
+ * running Next server -- satori accepts only a subset of CSS and fails at REQUEST time on a tree
+ * that is perfectly valid React, on a route whose output social platforms then cache for days. A
+ * card that can only be rendered by starting a dev server, fetching a live pack and looking at a
+ * PNG is a card nobody checks. This split is what lets a test render the real thing.
+ */
+export function PackOgCard({
+  title,
+  proof,
+  price,
+  sourceCount,
+}: {
+  title: string;
+  proof: string;
+  price?: string;
+  sourceCount?: number;
+}) {
+  return (
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        backgroundColor: CREAM,
+        padding: '72px 80px',
+        // A hairline frame plus an ink rule down the left edge, so the card is recognisable as
+        // this site at thumbnail size before any of the text is legible.
+        border: `2px solid ${BORDER}`,
+        borderLeft: `16px solid ${INK}`,
+        fontFamily: 'sans-serif',
+      }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', fontSize: 26, color: MUTED, fontWeight: 500 }}>
+          Survived every check it faced
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            marginTop: 28,
+            fontSize: title.length > 60 ? 58 : 70,
+            lineHeight: 1.12,
+            fontWeight: 600,
+            color: INK,
+            letterSpacing: -1.5,
+          }}
+        >
+          {title}
+        </div>
+      </div>
+
+      {/* The run sits between the title and the footer rather than beside the proof line, so it
+          is a band the eye lands on at thumbnail size rather than an ornament on a caption. */}
+      <EvidenceRunOg count={sourceCount} />
+
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', fontSize: 34, fontWeight: 600, color: INK, letterSpacing: -0.7 }}>
+            Mumchimp
+          </div>
+          {proof ? (
+            <div style={{ display: 'flex', marginTop: 8, fontSize: 24, color: MUTED }}>{proof}</div>
+          ) : null}
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            backgroundColor: INK,
+            color: '#FFFFFF',
+            // The storefront's whole radius scale is 2px (`--radius-sm`/`--radius-md`,
+            // tokens.css:544-545). An 8px pill here made the social card the only surface
+            // in the system with a soft corner. Raw number because Satori cannot read CSS vars.
+            borderRadius: 2,
+            padding: '16px 36px',
+            fontSize: 32,
+            fontWeight: 600,
+          }}
+        >
+          {/* No `|| '£49'`: a pack whose price did not load renders no price. The OG card is
+               cached by every social platform that scrapes it, so a guessed number here
+               outlives any fix. */}
+          {price || ''}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ params, res }) => {
@@ -95,80 +256,7 @@ export const getServerSideProps: GetServerSideProps = async ({ params, res }) =>
   const proof = proofLine(pack.sourceCount, pack.verifiedAt);
 
   const image = new ImageResponse(
-    (
-      <div
-        style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          backgroundColor: CREAM,
-          padding: '72px 80px',
-          // A hairline frame plus an ink rule down the left edge, so the card is recognisable as
-          // this site at thumbnail size before any of the text is legible.
-          border: `2px solid ${BORDER}`,
-          borderLeft: `16px solid ${INK}`,
-          fontFamily: 'sans-serif',
-        }}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <div
-            style={{
-              display: 'flex',
-              fontSize: 26,
-              color: MUTED,
-              fontWeight: 500,
-            }}
-          >
-            Survived every check it faced
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              marginTop: 28,
-              fontSize: title.length > 60 ? 58 : 70,
-              lineHeight: 1.12,
-              fontWeight: 600,
-              color: INK,
-              letterSpacing: -1.5,
-            }}
-          >
-            {title}
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', fontSize: 34, fontWeight: 600, color: INK, letterSpacing: -0.7 }}>
-              Mumchimp
-            </div>
-            {proof ? (
-              <div style={{ display: 'flex', marginTop: 8, fontSize: 24, color: MUTED }}>{proof}</div>
-            ) : null}
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              backgroundColor: INK,
-              color: '#FFFFFF',
-              // The storefront's whole radius scale is 2px (`--radius-sm`/`--radius-md`,
-              // tokens.css:544-545). An 8px pill here made the social card the only surface
-              // in the system with a soft corner. Raw number because Satori cannot read CSS vars.
-              borderRadius: 2,
-              padding: '16px 36px',
-              fontSize: 32,
-              fontWeight: 600,
-            }}
-          >
-            {/* No `|| '£49'`: a pack whose price did not load renders no price. The OG card is
-                 cached by every social platform that scrapes it, so a guessed number here
-                 outlives any fix. */}
-            {pack.price || ''}
-          </div>
-        </div>
-      </div>
-    ),
+    <PackOgCard title={title} proof={proof} price={pack.price} sourceCount={pack.sourceCount} />,
     { width: OG_WIDTH, height: OG_HEIGHT },
   );
 
