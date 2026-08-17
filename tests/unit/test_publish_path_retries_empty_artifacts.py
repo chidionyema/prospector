@@ -24,6 +24,12 @@ _GOOD_MARKETING = [{"type": "listing_page", "copy": "Listing copy that sells the
 
 class _Cand:
     candidate_id = "c" * 16
+    # The real Candidate always carries both (`models.py:172`), and `_generate_pack_content`
+    # now repairs them before it builds anything. Clean values on purpose: a breach here
+    # would call the operator and make a budget/retry test grade the repair instead.
+    title = "Weatherproof bin store signs for a single block of flats"
+    one_liner = ("A printing business that makes weatherproof bin store signs for one "
+                 "specific block of flats.")
     tags: dict = {}
 
 

@@ -15,6 +15,7 @@ a definitive 404/410 is).
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import time
@@ -378,7 +379,8 @@ def _quoted_comparable_problems(text: str, home_haystack: str, sym: str,
     return problems
 
 
-def check_currency(fin_text: str, listing_copy: str, market: str) -> List[Problem]:
+def check_currency(fin_text: str, listing_copy: str, market: str,
+                   *, listing_home: str = "") -> List[Problem]:
     """The financial model must price in the market's currency.
 
     Its RENDERED rows are Python formatting a number, so a wrong symbol there is OUR defect,
@@ -410,8 +412,24 @@ def check_currency(fin_text: str, listing_copy: str, market: str) -> List[Proble
                 f"{n} '{w}' amount(s) in a '{market}' pack (expected '{sym}')"))
     problems += _quoted_comparable_problems(
         notes, fin_text, sym, market, "financial_model_notes")
+    # The listing page gets the same wider home haystack the notes already get, and for the
+    # same stated reason: "a £ in a rendered row above satisfies 'they can see their own
+    # currency'". It did not get one until 2026-08-17 — `home_haystack` was `listing_copy`
+    # itself — and the buyer does not read `listing_copy` alone. The price on that page is
+    # rendered from the catalogue row, not from this prose, so the one field carrying the
+    # home symbol was the one field excluded from the evidence.
+    #
+    # Measured over the stranded packs: 2 of the 3 currency blocks were this. `c8da2ba4` is
+    # a `uk` pack with 34 '£' across its artifacts, blocked because its listing page quotes
+    # Microsoft's ISV Success programme — "$50K in Azure credits", "$126,000 of first-year
+    # value" — which are denominated in USD by Microsoft. `f2ac7df9` quotes a US pricing
+    # ladder ($129/$497/$1,997). Rewriting either into £ falsifies a citation on a
+    # source-or-die storefront, which is the exact trap the notes half was fixed for on
+    # 2026-08-09. The third, `48977b86`, is a REAL defect and still errors: one stray '£' in
+    # the rendered rows of a `us` financial model, which no widening touches.
     problems += _quoted_comparable_problems(
-        listing_copy, listing_copy, sym, market, "listing_page")
+        listing_copy, f"{listing_copy or ''} {listing_home or ''}", sym, market,
+        "listing_page")
     return problems
 
 
@@ -687,6 +705,56 @@ TITLE_NAME_MAX_CHARS = 30
 #: while spending up to half the character budget. All-caps initialisms (`NHS`, `HMRC`, `FSA`)
 #: do NOT match — they are words a reader already knows, which is the whole distinction.
 _TITLE_COINAGE = re.compile(r"\b[A-Z][a-z]+[A-Z][A-Za-z]*\b")
+
+def _ruleset_version() -> str:
+    """A fingerprint of the rules themselves, so nobody has to remember to bump a number.
+
+    This is stamped into every `<id>.lint.json` receipt, and `tools/publish_passes.py::
+    _fresh_lint` refuses a receipt whose fingerprint differs — so a stored verdict can never
+    outlive the rules that produced it.
+
+    WHY IT IS DERIVED AND NOT A HAND-EDITED CONSTANT. The first cut of this was
+    `RULESET_VERSION = 2`, and a hand-bumped constant is a rule that depends on someone
+    remembering. That is the same shape as the defect it was written to fix: freshness was
+    mtime alone, which answers "has the PACK changed" and cannot answer "have the RULES
+    changed", because a linter edit touches no dossier. On 2026-08-17 five rules stopped
+    blocking, every receipt on disk stayed byte-identical and newer than its pack, and seven
+    freed packs would have gone on reading as blocked forever. A forgotten bump reproduces
+    that exactly, silently, and only shows up as packs that never come back on sale.
+
+    The fingerprint is the file's own bytes. A comment-only edit therefore invalidates every
+    receipt too, and that is the deliberate trade: a re-gate is a rehearsal — no model call, no
+    Stripe object, no listing — so the cost of an unnecessary one is a few seconds of daemon
+    time, while the cost of a missed one is a finished pack off the shelf indefinitely.
+
+    Same lesson as `_PROBE_LOGIC_VERSION` below, which exists because a cached 404 outlived
+    the probe fix that would have cleared it.
+    """
+    try:
+        return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:12]
+    except OSError:
+        # Unreadable source (a zipimport, a stripped deploy). Refusing every receipt forever
+        # would be the safe direction but turns a packaging quirk into permanent re-gating, so
+        # fall back to a fixed stamp: freshness degrades to mtime, which is where it started.
+        return "unfingerprinted"
+
+
+RULESET_VERSION = _ruleset_version()
+
+
+def receipt_is_current(receipt: Any) -> bool:
+    """Was this stored `<id>.lint.json` verdict produced by the rules running right now?
+
+    ONE definition, three callers, because three copies of this comparison is how they drift:
+    `tools/publish_passes.py::_fresh_lint` decides whether to re-gate,
+    `scheduler/run_scheduled.py::_stale_verdicts` decides what the tick re-gates, and
+    `ops/console_api.py::_read_shelf` decides whether to tell the operator "blocked by X" or
+    "nobody has asked under today's rules". A console confidently printing a retired verdict is
+    the same defect as the tool doing it, one screen further out.
+
+    A receipt with no `ruleset` key predates the stamp and is not current by definition.
+    """
+    return isinstance(receipt, dict) and receipt.get("ruleset") == RULESET_VERSION
 
 #: Intercapped words the buyer already knows. Same distinction as the all-caps exemption
 #: above, applied to the other shape a known term comes in: a coinage is cryptic because the
@@ -1881,7 +1949,11 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
     """
     fin = (artifacts or {}).get("financial_model", "") or ""
     problems: List[Problem] = []
-    problems += check_currency(fin, listing_copy, market)
+    problems += check_currency(
+        fin, listing_copy, market,
+        # The pack's own artifacts are the evidence that it prices in the home currency.
+        # See the listing_page block in `check_currency`.
+        listing_home=" ".join(v for v in (artifacts or {}).values() if isinstance(v, str)))
     problems += check_arithmetic(fin)
     problems += check_sections(fin)
     problems += check_placeholders(artifacts or {})
@@ -1920,21 +1992,56 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
     if "title" in house:
         problems += check_title(house["title"], max_chars=title_max_chars,
                                 block=title_block_on_breach)
-        # Same actuator, because "the title is bad" is one question with two halves: it can
-        # be the wrong SHAPE, or the right shape carrying a claim the pack never made. The
-        # sources are the pack's other buyer-visible lines — everything in `house` except
-        # the title itself, so the descriptor is graded against copy that has already been
-        # through the same grounding the storefront sells on.
-        problems += check_title_claims(
-            house["title"],
-            [v for k, v in house.items() if k != "title"],
-            market=market, block=title_block_on_breach)
 
     # `is_prose_artifact` is the SINGLE definition of what may be graded as writing; see
     # copy_lint.DATA_ARTIFACT_SUFFIXES for the pack this got wrong. Selecting the corpus by a
     # local `.json` test is what let .csv and .svg through to both copy checks at once.
     prose = {k: v for k, v in (artifacts or {}).items()
              if isinstance(v, str) and is_prose_artifact(k, v)}
+
+    # THE TITLE'S CLAIMS ARE GRADED AGAINST THE PACK, NOT AGAINST THE SHELF CARD. Same
+    # actuator as `check_title` above, because "the title is bad" is one question with two
+    # halves: it can be the wrong SHAPE, or the right shape carrying a claim the pack never
+    # made. It runs down here rather than beside its twin because it needs `prose`, and that
+    # is the whole fix.
+    #
+    # Until 2026-08-17 the sources were `house` minus the title — the card line and the
+    # listing texts, about 40 words. The rule's own docstring says "the pack's own
+    # description and structured fields", and the shelf card is not that. So a title naming
+    # a thing too specific to fit on a card was reported as an unsourced claim about a pack
+    # that discusses it at length. Measured over the 9 stranded packs this blocked: 14 of the
+    # 14 flagged tokens appear in the pack's own copy — House, Bill, Department, Information,
+    # Resources, ISVs, DevOps, Spine, Markets, Competition, GA, CTOs and the figure 4. Every
+    # error was false, and they could not be switched off separately because both halves
+    # share `title_block_on_breach`.
+    #
+    # EVERY artifact counts here, not just `prose`. `is_prose_artifact` exists to choose what
+    # may be graded AS WRITING — dashes, register, repetition — and that is a different
+    # question from "does this pack mention this term at all", which a scorecard row or a
+    # chart label answers perfectly well. Restricting the sources to prose left three of the
+    # nine still blocked (HB, ISVs, DevOps), and all three appear in `scorecard.json` and
+    # `scorecard_radar.svg`. Checked before trusting them: neither file contains the title
+    # verbatim on either pack, so this is the pack's own evidence and not the title
+    # supporting itself.
+    #
+    # The pack is never itself under repair, which is what makes it evidence in a way the
+    # sibling shelf lines are not: 13 live headlines are verbatim copies of their title, and
+    # a title checked against its own headline supports itself. The title is still excluded
+    # from its own sources for that reason.
+    if "title" in house:
+        _t = " ".join(str(house["title"]).split()).casefold()
+        problems += check_title_claims(
+            house["title"],
+            [v for v in (artifacts or {}).values() if isinstance(v, str)]
+            # A SHELF LINE THAT COPIES THE TITLE IS NOT EVIDENCE FOR THE TITLE. Excluding
+            # `title` by key was never enough: 13 live headlines are verbatim copies of
+            # their own title, and `cardLine` can be too, so the title arrived back in its
+            # own sources under another name and supported itself. Only exact self-copies
+            # are dropped, so a card line that genuinely restates the pack still counts.
+            + [v for k, v in house.items()
+               if k != "title" and " ".join(str(v).split()).casefold() != _t],
+            market=market, block=title_block_on_breach)
+
     problems += check_identifier_leak({**prose, **house})
 
     # --- the house writing spec -------------------------------------------------------
@@ -1994,6 +2101,7 @@ def lint_pack(*, artifacts: Dict[str, str], listing_copy: str,
     return {
         "ok": not any(p["severity"] == "error" for p in problems),
         "checked_at": datetime.now(timezone.utc).isoformat(),
+        "ruleset": RULESET_VERSION,
         "market": market,
         "urls_checked": urls_seen,
         # Recorded pass or fail so the receipt accrues a real baseline while the actuator
