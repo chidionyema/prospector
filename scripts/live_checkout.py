@@ -119,8 +119,8 @@ def report() -> int:
     if head == main:
         print("  origin/main SAME COMMIT")
     else:
-        _, behind = run(["git", "rev-list", "--count", f"HEAD..origin/main"], cwd=LIVE)
-        _, ahead = run(["git", "rev-list", "--count", f"origin/main..HEAD"], cwd=LIVE)
+        _, behind = run(["git", "rev-list", "--count", "HEAD..origin/main"], cwd=LIVE)
+        _, ahead = run(["git", "rev-list", "--count", "origin/main..HEAD"], cwd=LIVE)
         print(f"  origin/main {main[:12]}   live is {behind} behind, {ahead} ahead")
         problems.append(f"live checkout is {behind} commits behind origin/main")
 

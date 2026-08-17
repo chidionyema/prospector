@@ -28,17 +28,18 @@ import time
 from pathlib import Path
 from typing import Optional
 
+from .config import store_root
 from .telemetry import logger
 
-HEALTH_PATH = Path(__file__).resolve().parent.parent / "store" / "provider_health.json"
+# store_root(), not __file__: a dead-provider mark must land in the store the rest of the
+# run uses, even when the code is loaded from a different checkout (config.py: store_root).
+HEALTH_PATH = store_root() / "provider_health.json"
 
 # The non-critical chain (generation, prescreen, scoring on DeepSeek→MiniMax→Gemini-flash)
 # records its quota exhaustion to a SEPARATE file. This is the founder-fence invariant:
 # a non-critical provider going dead must never blind the moat (and vice versa). Same
 # class, different file — the two health states are physically independent.
-NONCRITICAL_HEALTH_PATH = (
-    Path(__file__).resolve().parent.parent / "store" / "provider_health_noncritical.json"
-)
+NONCRITICAL_HEALTH_PATH = store_root() / "provider_health_noncritical.json"
 
 # Clamp a parsed reset window to something sane: never shorter than this (a real quota
 # window is minutes+), never longer than a day (so a mis-parse can't blacklist forever).

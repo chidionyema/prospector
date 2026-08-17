@@ -63,6 +63,8 @@ from typing import Any
 
 from prospector.jsonl_atomic import append_jsonl
 
+from .config import store_root
+
 # Anchored to this file, not to the cwd. The default used to be the RELATIVE string
 # "store/scheduler/audit", so the audit trail followed whoever launched the process rather
 # than the checkout that owns the code: importing prospector from another project wrote
@@ -130,10 +132,13 @@ from prospector.jsonl_atomic import append_jsonl
 #
 # Unlike cli_governor's slot root — which is deliberately cwd- AND __file__-independent
 # because that ceiling must bind across every checkout on the machine — the audit log is
-# per-checkout data, so the checkout that owns the code is exactly the right anchor.
+# per-STORE data. It used to be anchored to __file__ on the reasoning that the checkout
+# owning the code owns the data too. That stopped being true on 2026-08-17, when
+# production moved to a dedicated checkout: the trail followed the code and the day-file
+# split in half mid-afternoon. It follows the store now (config.store_root).
 _AUDIT_DIR = Path(
     os.environ.get("PROSPECTOR_AUDIT_DIR")
-    or Path(__file__).resolve().parent.parent / "store" / "scheduler" / "audit"
+    or store_root() / "scheduler" / "audit"
 )
 _LOCK = threading.Lock()
 
