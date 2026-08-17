@@ -154,6 +154,7 @@ Ranked by what they cost if missed.
 | **EDGE-14** | **The restore has never been proven, in either direction.** `scripts/restore_drill.py` exists and prints PASS/FAIL; DAT-2 records no dated receipt of a run. | A backup nobody restored is a hypothesis | **Prove restore BOTH ways before cutover**: laptop → Fly volume, and Fly volume → laptop. This is the gate, not a nice-to-have. |
 | **EDGE-15** | **`usage_wall` marker points at `~/.hermes`.** See §3. | Engine hammers a spent subscription with no brake | Env var with a fail-safe default. |
 | **EDGE-16** | **`store/.cli_slots/` lock directory.** If `claude_cli` survives (Option A/B), its concurrency slots must live on the **volume**, not an image layer, or the governor resets every deploy. | Concurrency cap silently lifts | Confirm it resolves under `store_root()`. |
+| **EDGE-17** | **Option A puts the business on one Anthropic account, and it is the same account you would fix it from.** A `CLAUDE_CODE_OAUTH_TOKEN` on a server authenticates as the same subscription as every Claude Code session on this laptop. Rate-limit it, revoke the token, or have the account suspended for server use, and it takes the moat's fallback brain (`operator:58`, `moat_primary:81`), the pack-prose lead (`artifact_operator:145`), Hermes, **and** the sessions you would use to respond — in one event. B is a cost decision and C is a capability decision; A is a correlated failure neither of them has. | Total engine outage, with the tooling to fix it gone at the same moment | **Do not let Option A become the only brain.** If A is chosen: keep MiniMax leading `moat_primary` (it already does), prove the engine still rules verdicts with `claude_cli` fully benched *before* cutover, and fund an `ANTHROPIC_API_KEY` fallback proven with one real completion — so a suspension degrades quality instead of stopping the line. |
 
 ---
 
@@ -409,5 +410,9 @@ grep -rn 'Path(__file__)' --include='*.py' | grep store   # EDGE-4: must be empt
 
 1. **§1 — which brain option?** A (OAuth token, needs the 20-minute proof + a ToS call),
    B (metered API key, a real bill), or C (MiniMax-only, single-brain moat).
+2. **EDGE-17 — if the answer is A, fund the metered fallback anyway.** Option A's failure mode
+   is not "the brain gets worse", it is one account taking out production and the tooling to
+   repair it in the same event. A costed decision to accept that is fine; accepting it by
+   default is not.
 3. **EDGE-9 — private networking, or do the console auth work before P5?**
 4. **§3 — confirm Hermes is out of scope for this programme.**
