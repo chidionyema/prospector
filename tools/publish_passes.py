@@ -21,11 +21,18 @@ Usage:
         # for every pack, and stops before the money rail: no Stripe object, no upload, no
         # catalogue row, no listing receipt. Implies --reuse-artifacts and never generates,
         # so it costs zero model calls and needs no quota. Use this BEFORE spending anything.
+        #
+        # "FREE" means free of MODEL cost, not free of time: the gate re-checks every
+        # citation URL over the network and measured 945 SECONDS on one pack. So a pack
+        # whose stored .lint.json is newer than the pack itself is reported FROM THAT
+        # RECORD and not re-gated. Pass --force-regate to run the gate anyway.
 """
 from __future__ import annotations
 
 import glob
 import json
+import os
+import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -104,6 +111,54 @@ def reconstruct(d: dict) -> Dossier:
     )
 
 
+#: The stored verdict for a pack, but ONLY if it describes the pack as it is now.
+#:
+#: A gate run writes its full problem list to `store/dossiers/<id>.lint.json` every time
+#: (`bridge.py:1102`), pass or fail. Re-running the gate to READ that list pays twice and
+#: the second payment buys nothing. Measured 2026-08-17: 945 seconds for one pack, almost
+#: all of it live network — while the answer sat on disk next to it. Reading 40 receipts
+#: cost one command and named the whole shape of the backlog immediately.
+#:
+#: This is that lesson in code rather than in a rule. A rule gets forgotten; a default does
+#: not.
+def _fresh_lint(pass_path: str) -> dict | None:
+    """The pack's own lint record if it is NEWER than the pack, else None.
+
+    Freshness is mtime, not trust. The recovery tool rewrites the `.pass.json` and then
+    re-gates, so a repaired pack is always newer than the receipt describing it before the
+    repair — and this returns None there, which is exactly when running the gate is the only
+    honest answer. Any unreadable or malformed record also returns None: the guard may cost
+    a run it did not need to, never a wrong verdict.
+    """
+    lint_path = re.sub(r"\.pass\.json$", ".lint.json", pass_path)
+    if lint_path == pass_path:
+        return None
+    try:
+        if os.path.getmtime(lint_path) < os.path.getmtime(pass_path):
+            return None
+        with open(lint_path) as fh:
+            rec = json.load(fh)
+    except (OSError, ValueError):
+        return None
+    return rec if isinstance(rec, dict) else None
+
+
+def _report_cached(cid: str, rec: dict) -> bool:
+    """Print a stored verdict in the same shape a fresh one prints. True if it would list."""
+    listed = bool(rec.get("ok"))
+    errors = [pr for pr in (rec.get("problems") or [])
+              if isinstance(pr, dict) and str(pr.get("severity")) == "error"]
+    checks = sorted({str(pr.get("check")) for pr in errors})
+    print(f"{cid}: gate (stored {rec.get('checked_at')}) -> "
+          f"{'would list' if listed else 'blocked'}"
+          + (f" on {', '.join(checks)}" if checks else ""), flush=True)
+    for pr in errors[:6]:
+        print(f"    {pr.get('check')}/{pr.get('where')}: {str(pr.get('detail'))[:150]}")
+    if len(errors) > 6:
+        print(f"    ... {len(errors) - 6} more")
+    return listed
+
+
 def main(argv: list[str]) -> int:
     if not argv:
         print(__doc__)
@@ -156,6 +211,12 @@ def main(argv: list[str]) -> int:
     argv = [a for a in argv if a != "--dry-run"]
     if dry_run:
         reuse_artifacts = True
+
+    # Re-run the gate even where a fresh receipt already answers the question. The one
+    # reason to want this is checking the gate ITSELF — after changing a lint rule, the
+    # stored records were written by the old rule and are worth nothing.
+    force_regate = "--force-regate" in argv
+    argv = [a for a in argv if a != "--force-regate"]
 
     # How many packs to GENERATE at once (publishing stays serial — see the fan-out below).
     # Default 1 keeps every existing invocation byte-identical in behaviour.
@@ -323,11 +384,40 @@ def main(argv: list[str]) -> int:
     # rather than `as_completed`: publish() still runs one at a time on this thread, in
     # submission order. The money rail sees the identical sequence it saw before. Only the
     # barrier is gone.
-    ex = ThreadPoolExecutor(max_workers=jobs) if jobs > 1 else None
-    prepared = ex.map(_prepare, paths) if ex is not None else (_prepare(p) for p in paths)
-
     ok = 0
     held_back = 0
+
+    # THE RECEIPT COMES FIRST. Every pack whose stored lint record is newer than the pack is
+    # reported from that record and dropped from the run. This is the whole saving: the gate
+    # is a 945-second network job per pack and it writes down its own answer, so the second
+    # run of it on an unchanged pack is pure waste. A repaired pack is newer than its record
+    # and still gets a real gate run — see `_fresh_lint`.
+    total = len(paths)
+    if dry_run and not force_regate:
+        remaining = []
+        cached = 0
+        for path in paths:
+            rec = _fresh_lint(path)
+            if rec is None:
+                remaining.append(path)
+                continue
+            cached += 1
+            if _report_cached(Path(path).name.split(".")[0], rec):
+                ok += 1
+            else:
+                held_back += 1
+        if cached:
+            print(f"\n{cached} pack(s) answered from store/dossiers/<id>.lint.json — no gate "
+                  f"run, no network. --force-regate re-runs the gate.\n", flush=True)
+        paths = remaining
+    if dry_run and not paths:
+        print(f"\nDRY RUN — nothing was minted, uploaded or listed. "
+              f"{ok}/{total} would list, {held_back} would publish UNLISTED. "
+              f"Per-pack reasons: store/dossiers/<id>.lint.json")
+        return 0
+
+    ex = ThreadPoolExecutor(max_workers=jobs) if jobs > 1 else None
+    prepared = ex.map(_prepare, paths) if ex is not None else (_prepare(p) for p in paths)
     try:
         for p, dossier, complete, problems in prepared:
             if dossier is None:
@@ -360,8 +450,10 @@ def main(argv: list[str]) -> int:
             ex.shutdown(wait=False, cancel_futures=True)
 
     if dry_run:
+        # `total`, not `len(paths)`: paths has had the cached packs removed, and a summary
+        # that counted only the packs it re-gated would under-report the run it just did.
         print(f"\nDRY RUN — nothing was minted, uploaded or listed. "
-              f"{ok}/{len(paths)} would list, {held_back} would publish UNLISTED. "
+              f"{ok}/{total} would list, {held_back} would publish UNLISTED. "
               f"Per-pack reasons: store/dossiers/<id>.lint.json")
         return 0
     print(f"\nListed {ok}/{len(paths)} (held back {held_back})")
