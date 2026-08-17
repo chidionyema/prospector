@@ -124,8 +124,11 @@ export default function Now() {
         </Card>
       ) : null}
 
+      {/* "Money today" until 2026-08-17, when a Money group arrived that is about the payment
+          rail. Two things called money, one of them costs and the other takes, is how a glance at
+          a dashboard produces the wrong conclusion. This card is what the engine SPENDS. */}
       {data ? (
-        <Card title="Money today" right={<Link className="underline" href="/spend">spend</Link>}>
+        <Card title="What the engine cost today" right={<Link className="underline" href="/spend">spend</Link>}>
           <div className="grid grid-cols-2 gap-4">
             <Stat
               label="billed today"

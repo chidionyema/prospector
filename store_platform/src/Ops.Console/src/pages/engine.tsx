@@ -10,6 +10,7 @@
  * because getting them confused is the difference between stopping a spend leak and stopping the
  * queue from ever emptying.
  */
+import Link from 'next/link';
 import { useState } from 'react';
 
 import Confirm from '@/components/Confirm';
@@ -239,9 +240,9 @@ export default function Engine() {
 
       <Note>
         Wave size, spend cap, retrieval chain and the rest of the knobs live under{' '}
-        <a className="underline" href="/config">
+        <Link className="underline" href="/config">
           Settings
-        </a>
+        </Link>
         . They are config.yaml edits, not runtime switches, so they take effect on the next tick.
       </Note>
     </Shell>

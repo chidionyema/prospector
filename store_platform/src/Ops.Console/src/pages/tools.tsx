@@ -121,24 +121,30 @@ const JOB_TONE: Record<JobView['state'], 'mute' | 'ok' | 'warn' | 'bad'> = {
  * or restarting the console does not kill the run, and reopening the page picks the job back up.
  * Its own component because a hook cannot live inside the tool list's map().
  */
+/** A job in one of these states will never change again, so the poll must stop on it. */
+function hasEnded(data: JobView | null): boolean {
+  const state = data?.state ?? 'unknown';
+  return state === 'finished' || state === 'timed_out' || state === 'lost';
+}
+
 function JobWatch({ job, onFinished }: { job: string; onFinished: () => void }) {
   // THE POLL STOPS WHEN THE JOB DOES. Every read spawns a Python gateway process (measured ~850ms
   // on this box), so a page left open on a finished job would spawn 900 subprocesses an hour to
   // re-read a receipt that cannot change. `useOps` treats pollMs 0 as "do not poll".
-  const [done, setDone] = useState(false);
-  const live = useOps<JobView>('job', { job }, { pollMs: done ? 0 : 4000 });
+  const live = useOps<JobView>('job', { job }, { pollMs: 4000, stopWhen: hasEnded });
   const state = live.data?.state ?? 'unknown';
   const receipt = live.data?.receipt ?? null;
-  const ended = state === 'finished' || state === 'timed_out' || state === 'lost';
+  const ended = hasEnded(live.data ?? null);
 
   // Refresh the undo list once, when the run ends: a tool that wrote may have added a snapshot.
-  const finished = useRef(onFinished);
-  finished.current = onFinished;
+  // The ref is written inside the effect, never during render — a ref read or written while
+  // rendering can leave the component showing a value it never re-rendered for.
+  const notified = useRef(false);
   useEffect(() => {
-    if (!ended || done) return;
-    setDone(true);
-    finished.current();
-  }, [ended, done]);
+    if (!ended || notified.current) return;
+    notified.current = true;
+    onFinished();
+  }, [ended, onFinished]);
 
   return (
     <div className="mt-2 flex flex-col gap-1 rounded-sm border border-border bg-surface2 px-3 py-2">

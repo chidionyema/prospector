@@ -19,6 +19,8 @@ export const VIEWS = [
   'providers',
   'routing',
   'spend',
+  'money',
+  'data',
   'metrics',
   'runs',
   'run',

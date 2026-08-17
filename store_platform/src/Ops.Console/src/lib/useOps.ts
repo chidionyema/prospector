@@ -27,16 +27,23 @@ export type OpsState<T> = {
 export function useOps<T = unknown>(
   view: string | null,
   args: Record<string, string | number | undefined> = {},
-  opts: { pollMs?: number } = {},
+  opts: { pollMs?: number; stopWhen?: (data: T | null) => boolean } = {},
 ): OpsState<T> {
-  const [envelope, setEnvelope] = useState<Envelope<T> | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(view !== null);
+  // ONE piece of state for the result, stamped with the request it answers. `loading` used to be
+  // its own `useState` set at the top of the fetch effect, which is an extra render on every read
+  // and the thing `react-hooks/set-state-in-effect` flags. Derived from the stamp it costs nothing
+  // and cannot disagree with the data beside it.
+  const [result, setResult] = useState<{
+    key: string;
+    envelope: Envelope<T> | null;
+    error: string | null;
+  } | null>(null);
   const [tick, setTick] = useState(0);
 
   // The args object is a fresh literal on every render, so it cannot be a dependency directly —
   // that is an infinite fetch loop. Serialise it and depend on the string.
   const argKey = JSON.stringify(args);
+  const key = `${view ?? ''}|${argKey}|${tick}`;
   const alive = useRef(true);
 
   const refresh = useCallback(() => setTick((n) => n + 1), []);
@@ -51,39 +58,50 @@ export function useOps<T = unknown>(
   useEffect(() => {
     if (!view) return;
     let cancelled = false;
-    setLoading(true);
     readView<T>(view, JSON.parse(argKey) as Record<string, string>)
       .then((env) => {
         if (cancelled || !alive.current) return;
-        setEnvelope(env);
         // The engine's own failure keeps its reason. It is NOT rendered as empty data.
-        setError(env.ok ? null : (env.error ?? 'the engine returned no reason'));
+        setResult({
+          key,
+          envelope: env,
+          error: env.ok ? null : (env.error ?? 'the engine returned no reason'),
+        });
       })
       .catch((err: unknown) => {
         if (cancelled || !alive.current) return;
-        setEnvelope(null);
-        setError(err instanceof Error ? err.message : String(err));
-      })
-      .finally(() => {
-        if (!cancelled && alive.current) setLoading(false);
+        setResult({
+          key,
+          envelope: null,
+          error: err instanceof Error ? err.message : String(err),
+        });
       });
     return () => {
       cancelled = true;
     };
-  }, [view, argKey, tick]);
+  }, [view, argKey, tick, key]);
+
+  // The previous answer stays on screen while the next one is in flight. A panel that blanks on
+  // every poll is a panel nobody can read.
+  const envelope = result?.envelope ?? null;
+  const data = envelope?.ok ? ((envelope.data ?? null) as T | null) : null;
+
+  // Polling stops when the caller says the thing being watched has finished. Computed here during
+  // render, from data this hook already holds, so no effect has to write state to stop a timer.
+  const stop = opts.stopWhen ? opts.stopWhen(data) : false;
 
   useEffect(() => {
     const ms = opts.pollMs;
-    if (!ms || !view) return;
+    if (!ms || !view || stop) return;
     const id = setInterval(() => setTick((n) => n + 1), ms);
     return () => clearInterval(id);
-  }, [opts.pollMs, view]);
+  }, [opts.pollMs, view, stop]);
 
   return {
-    data: envelope?.ok ? ((envelope.data ?? null) as T | null) : null,
+    data,
     envelope,
-    error,
-    loading,
+    error: result?.error ?? null,
+    loading: view !== null && result?.key !== key,
     refresh,
   };
 }

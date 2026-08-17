@@ -9,6 +9,7 @@
  * Those warnings are rendered at full size, not as a footnote — the whole failure mode is a
  * confident zero.
  */
+import Link from 'next/link';
 import Shell from '@/components/Shell';
 import { AsOf, Card, Note, Pill, Problem, Row, Scroll, Stat } from '@/components/ui';
 import { ABSENT, duration } from '@/lib/time';
@@ -153,9 +154,9 @@ export default function Spend() {
 
           <Note>
             The cap is edited under{' '}
-            <a className="underline" href="/config">
+            <Link className="underline" href="/config">
               Settings
-            </a>{' '}
+            </Link>{' '}
             — it is <span className="font-mono">spend.daily_cap_usd</span> in config.yaml, so a
             change takes effect on the next tick.
           </Note>
