@@ -26,10 +26,16 @@ permissions:
 
 jobs:
   cancel:
-    # Hosted, deliberately. This job exists to FREE self-hosted runners; queueing it behind the
-    # very backlog it clears would defeat it. It is one API call and runs in seconds, so it
-    # costs effectively nothing even while hosted minutes are metered.
-    runs-on: ubuntu-latest
+    # Runs wherever the rest of CI runs. It was pinned to `ubuntu-latest` on the argument that a
+    # job which FREES self-hosted runners should not queue behind the backlog it clears. That
+    # argument assumed hosted runners were available. They are not — this account cannot start
+    # them, so every invocation failed instead of cancelling anything, and the red check made
+    # every pull request in the repo non-green.
+    #
+    # Delayed beats dead. This is one API call, so it clears its own backlog the moment a slot
+    # opens, and `${{ vars.CI_RUNS_ON }}` is `self-hosted` today. The fallback stays hosted so
+    # the workflow still works in a fork or once hosted minutes come back.
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     steps:
       - name: Cancel queued and in-progress runs for this PR's branch
         env:
