@@ -978,7 +978,7 @@
        route            FCP     LCP    candidates
        /               328ms  1940ms   p @328ms (9,696) then the h1 @1940ms (33,796)
        /how-it-works   164ms  1824ms   lead @164ms then the hero lead @1824ms
-       /ideas          208ms  1860ms   caption @208ms then the h1 @1860ms
+       /collections          208ms  1860ms   caption @208ms then the h1 @1860ms
        /pricing        180ms   180ms   ONE candidate -- no PageHero, no animate-rise
        /about          136ms   136ms   ONE candidate
        /kill-log       316ms   316ms   ONE candidate

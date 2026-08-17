@@ -8,6 +8,7 @@ import { Seo } from '@/components/Seo';
 import { Icon, SearchInput, buttonClasses, textLinkClass } from '@/components/ui';
 import { fetchCatalog } from '@/lib/api/client';
 import { eligibleLandings, packMatchesLanding } from '@/lib/seo/landings';
+import { CollectionMosaic } from '@/components/marketing/CollectionMosaic';
 import { priceRange, formatGbp } from '@/lib/priceRange';
 import CategoryGraph, { type CategoryNode } from '@/components/discovery/CategoryGraph';
 import { resolveVariant } from '@/lib/getCopyVariant';
@@ -33,6 +34,8 @@ import { breadcrumbNode, graph, itemListNode } from '@/lib/seo/schema';
 interface Category {
   slug: string;
   h1: string;
+  /** The tile name. See `Landing.shortName`: written, never truncated from `h1`. */
+  shortName: string;
   description: string;
   count: number;
   low: number | null;
@@ -89,6 +92,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
           return {
             slug: landing.slug,
             h1: landing.h1,
+            shortName: landing.shortName,
             description: landing.metaDescription,
             group: landing.kind,
             count,
@@ -100,7 +104,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
       },
     };
   } catch (error) {
-    console.error('/ideas: catalog fetch failed:', error);
+    console.error('/collections: catalog fetch failed:', error);
     return { props: { total: 0, categories: [], variant } };
   }
 };
@@ -128,7 +132,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
 
   return (
     <MarketingLayout
-      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Categories' }]}
+      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Collections' }]}
       breadcrumbsWidth="7xl"
     >
       <Seo
@@ -136,12 +140,12 @@ export default function IdeasHub({ categories, total, variant }: Props) {
         description="Browse researched business ideas by industry. Every pack cites a source for every claim."
         jsonLd={graph(
           itemListNode(
-            categories.map((c) => ({ name: c.h1, path: `/ideas/${c.slug}` })),
+            categories.map((c) => ({ name: c.h1, path: `/collections/${c.slug}` })),
             'Business idea categories',
           ),
           breadcrumbNode([
             { name: 'Mumchimp', path: '/' },
-            { name: 'Business ideas', path: '/ideas' },
+            { name: 'Business ideas', path: '/collections' },
           ]),
         )}
       />
@@ -155,9 +159,9 @@ export default function IdeasHub({ categories, total, variant }: Props) {
        * heading described one sixth of what was under it.
        *
        * It also left the site calling this one destination three things at once: the nav item says
-       * "Categories", the pack breadcrumb says "Browse by category", the URL says `/ideas`, and the
-       * h1 said "ideas by industry". The URL is the one that cannot move cheaply -- `/ideas` and
-       * all fourteen `/ideas/<slug>` pages are emitted into the sitemap (`sitemap.xml.tsx:26,110`)
+       * "Categories", the pack breadcrumb says "Browse by category", the URL says `/collections`, and the
+       * h1 said "ideas by industry". The URL is the one that cannot move cheaply -- `/collections` and
+       * all fourteen `/collections/<slug>` pages are emitted into the sitemap (`sitemap.xml.tsx:26,110`)
        * and are built to rank for "business ideas" -- so the fix is the words, and the h1 now
        * carries BOTH nouns: the search phrase the URL targets, and the one the chrome uses.
        *
@@ -167,7 +171,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
        */}
       <PageHero
         width="7xl"
-        eyebrow="Categories"
+        eyebrow="Collections"
         title="Business ideas, by category."
         /*
          * THE WORDS ARE THE FOUNDER'S AND THEY STAY (2026-08-15), and this is the promised fix.
@@ -241,6 +245,39 @@ export default function IdeasHub({ categories, total, variant }: Props) {
             It stays in the accessibility tree either way. The list's groups are `h3`s, so dropping
             the element outright would leave the page jumping h1 to h3, and a screen-reader user
             navigating by heading would meet "Who pays for it" with nothing saying what it groups. */}
+        {/*
+         * THE MOSAIC IS BACK, AND IT IS NOT THE ONE THAT WAS REMOVED (MASTER-BRIEF section 7).
+         *
+         * The note further down records why the old one went, and every reason was a measurement:
+         * a two-step ladder whose lead tile ran the full 1200px with its text capped at 62ch, so
+         * about 600px of nothing sat through the middle of the two most important rows, and every
+         * tile spent a 48px square on a `BespokeIcon` that draws the same generic mark for all
+         * sixteen slugs.
+         *
+         * This one fixes each of those. Tiles are cells in a six-column grid, so the largest is
+         * three columns wide instead of the page width and no tile has a hole in it. There is no
+         * icon. And it carries the SHORT name, which is why `shortName` was added to `Landing`:
+         * the old tiles truncated the h1 and rendered "Busin...".
+         *
+         * IT SITS ABOVE `CategoryGraph`, NOT INSTEAD OF IT. The mosaic shows the shape of the
+         * catalogue in one glance, which is the one thing sixteen rows cannot do. The rows still
+         * carry the count, the real price range and the facet description, so nothing is lost.
+         *
+         * Hidden under a search, for the reason the grouping collapses under one: once a query is
+         * typed, the shape of the whole catalogue is not what is being looked at.
+         */}
+        {!search && (
+          <CollectionMosaic
+            className="mb-10"
+            tiles={filtered.map((cat) => ({
+              slug: cat.slug,
+              name: cat.shortName,
+              longName: VARIANTS[variant].categoryH1[cat.slug] ?? cat.h1,
+              count: cat.count,
+            }))}
+          />
+        )}
+
         {filtered.length > 0 && (
           <h2 className={search ? 'mb-4 text-meta font-semibold text-text' : 'sr-only'}>
             {search ? `${filtered.length} matching categor${filtered.length === 1 ? 'y' : 'ies'}` : 'All categories'}
@@ -278,7 +315,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
         {filtered.length > 0 ? (
           <CategoryGraph
             grouped={!search}
-            filterPath={(slug) => `/ideas/${slug}`}
+            filterPath={(slug) => `/collections/${slug}`}
             categories={
               filtered.map((cat) => ({
                 kind: cat.slug,

@@ -25,7 +25,7 @@ export function FacetChips({
   /**
    * A facet the SURFACE already states, which must not be repeated on every card.
    *
-   * Measured on /ideas/b2c-business-ideas, 2026-08-14: the `B2C` chip rendered on all 31 cards,
+   * Measured on /collections/b2c-business-ideas, 2026-08-14: the `B2C` chip rendered on all 31 cards,
    * because the page's whole selection rule is `payer === 'b2c'`. A chip that is true of every
    * card on a shelf distinguishes none of them, and it takes the first chip slot -- so `max` then
    * cut a facet that DID vary off the end of the row. Same defect the market chip had on the home

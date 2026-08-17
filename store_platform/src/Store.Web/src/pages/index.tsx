@@ -1612,7 +1612,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
         // DISTINCT FROM THE H1 (founder review, 2026-08-16, item 4). "survived a filter built to
         // kill them" moved to the H1 below because it read stronger there; leaving the same
         // string here would make the browser tab and the page heading identical, which is also
-        // how the two Mumchimp tabs (this page, `/ideas`) looked alike next to each other. This
+        // how the two Mumchimp tabs (this page, `/collections`) looked alike next to each other. This
         // line keeps the tab identifiable by its first few words even before the H1 loads.
         title={`Sourced business ideas, priced and ready to build${
           range ? `, ${range.uniform ? range.label + ' each' : 'from ' + formatGbp(range.min)}` : ''
@@ -2174,7 +2174,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
           the deleted `CtaBand` carried -- browse the shelf -- with the method as the secondary. The
           kill figure is stated once here, by the terms column, and the standalone
           "Find your next business" band is REMOVED from this page (it survives on /how-it-works,
-          /ideas and /ideas/[slug], which is where `CtaBand` is still the right closing shape). */}
+          /collections and /collections/[slug], which is where `CtaBand` is still the right closing shape). */}
       <SectionBand bg="surface2" width="7xl" className="py-10 md:py-24">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-16">
         <div className="max-w-[46rem]">

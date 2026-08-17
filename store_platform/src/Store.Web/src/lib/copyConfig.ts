@@ -44,7 +44,7 @@ export interface CopySlots {
   /** Six-checks section description. */
   sixChecksDescription: string;
 
-  /** `/ideas/automated-business-ideas`, the landing-page intro. */
+  /** `/collections/automated-business-ideas`, the landing-page intro. */
   automatedIdeasIntro: string;
 
   /** Category landing-page `<h1>` (keyed by slug). */

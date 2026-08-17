@@ -143,7 +143,7 @@ export default function Faq() {
       />
 
       {/* `width="6xl"`, not the default 4xl. FAQ was the only content page on the site left on
-          the 896px column: how-it-works/kill-log/pack-detail run 1152px (6xl), home/sample/ideas
+          the 896px column: how-it-works/kill-log/pack-detail run 1152px (6xl), home/sample/collections
           run 1280px (7xl). At any desktop width the 896px column sits centred with a visibly
           wide empty gutter on both sides while every other page's wider column reads as starting
           near the true left edge -- that gap, not a text-align rule, is what read as "FAQ is

@@ -464,8 +464,8 @@ section {
   Measured at 1440x900 on 2026-08-14 (`fold-idx.png`, `fold-slug.png`): `PageHero` closes with
   `md:pb-16` (64px) and the `Section` under it opens with `md:py-24` (96px), so 160px of white
   plus the band's own `border-b` rule sat between a page's headline and the thing that headline
-  introduces. On /ideas the search field started at y=495 and the first category row at y=639, on
-  a 900px viewport; on /ideas/b2c-business-ideas the first card cleared the fold by 90px. Every
+  introduces. On /collections the search field started at y=495 and the first category row at y=639, on
+  a 900px viewport; on /collections/b2c-business-ideas the first card cleared the fold by 90px. Every
   route with a hero paid it, because both numbers live in `blocks.tsx`.
 
   The two paddings were never meant to add up -- each is right on its own, one closing a band and

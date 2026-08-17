@@ -801,7 +801,7 @@ export interface CardHeading {
  * The three fields a heading is decided from, and nothing else.
  *
  * Narrowed from `FacetedPack` so the plain catalogue `Pack` can use it too. It had to: the
- * homepage called `cardHeading` and `/ideas/*` called `splitTitle` directly, so the SAME pack was
+ * homepage called `cardHeading` and `/collections/*` called `splitTitle` directly, so the SAME pack was
  * headed by its short descriptive card line on one page and by its brand name on the other. A
  * visitor who followed a category landing to the catalogue could not tell they were looking at
  * the same product twice.

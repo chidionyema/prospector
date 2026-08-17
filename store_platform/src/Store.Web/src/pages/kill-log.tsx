@@ -206,7 +206,7 @@ export default function KillLogPage({
           centred 62ch paragraph over a centred stat row gives the reader three different left
           edges to find in the first screen of a page that is otherwise a table. */}
       {/* TWO COLUMNS ON DESKTOP (2026-08-16, founder: "right first row/ish empty no content, looks
-          odd on desktop"). Same diagnosis as /ideas and /how-it-works -- a 3xl measure inside a 6xl
+          odd on desktop"). Same diagnosis as /collections and /how-it-works -- a 3xl measure inside a 6xl
           band leaves about 24rem of nothing to the right of the headline, and only above `lg`,
           which is why the report was desktop-only. This page does not use `PageHero`, so it takes
           the same grid by hand rather than adopting the component: the hero here is four blocks in

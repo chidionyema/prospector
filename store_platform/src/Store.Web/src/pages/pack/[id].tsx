@@ -646,7 +646,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
           // "Mumchimp › Business ideas › <pack>" instead of a 16-hex-character id.
           breadcrumbNode([
             { name: 'Mumchimp', path: '/' },
-            { name: 'Business ideas', path: '/ideas' },
+            { name: 'Business ideas', path: '/collections' },
             { name: pack.title, path: `/pack/${pack.id}` },
           ]),
         )}
@@ -671,7 +671,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                not consciously register the spelling -- they register that the site was assembled
                by more than one hand, on the page where they are about to enter a card number. */
             { href: '/', label: 'Catalogue' },
-            { href: '/ideas', label: 'Browse by category' },
+            { href: '/collections', label: 'Browse by category' },
             // Was `{ href: '#', label: pack.title }`. The title was rendered three times inside
             // the fold (breadcrumb, cover caption, h1) on a page where titles run past 100
             // characters, so the trail was competing with the headline instead of locating it.
