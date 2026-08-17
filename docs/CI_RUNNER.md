@@ -50,8 +50,10 @@ Four workflows carry it: `ci.yml` (5 jobs), `deploy-web.yml` (2), `deploy-api.ym
 `e2e-live-smoke.yml` (1). The deploys are included on purpose. Leaving them on the metered runners
 would mean CI passes and nothing can ship, which is the same outage wearing a different hat.
 
-No job needed porting. None of them uses `apt-get`, `sudo`, `docker` or a service container, and
-`checkout`, `setup-python`, `setup-uv`, `setup-node`, `setup-dotnet` and `cache` all support macOS.
+Almost no job needed porting. None of them uses `apt-get`, `sudo`, `docker` or a service container,
+and `checkout`, `setup-uv`, `setup-node`, `setup-dotnet` and `cache` all support macOS. The one
+exception was `actions/setup-python`, which cannot install on these machines at all; the `python`
+and `engine` jobs now build their own venv instead. See the next section.
 
 ## The runners
 
@@ -76,11 +78,12 @@ tail -f ~/Library/Logs/actions.runner.chidionyema-prospector.mumchimp-mac/stdout
 job they were generated for, so a copied `svc.sh` in `~/actions-runner-2` stops and starts
 `mumchimp-mac`. `config.sh` regenerates both; copy the package without them and let it.
 
-### The tool cache must be told where to live
+### `actions/setup-python` does not work here, and the workflow no longer uses it
 
-`actions/setup-python` defaults its tool cache to `/Users/runner`, the path a GitHub-hosted macOS
-runner uses. The login user here is `chidionyema`, so that directory cannot be created and every
-`Set up Python` step dies:
+`setup-python` downloads a macOS build from `actions/python-versions`. Those builds are not
+relocatable: the installer writes to `/Users/runner`, the home directory of a GitHub-hosted runner.
+The login user here is `chidionyema`, so that path cannot be created and every `Set up Python` step
+dies:
 
 ```
 mkdir: /Users/runner: Permission denied
@@ -89,9 +92,34 @@ The process '/usr/local/bin/bash' failed with exit code 1
 
 The step fails, every step after it is skipped, and the job goes red with no test output at all. It
 hits every PR equally, including docs-only ones, which is the tell that it is the environment and
-not the code — on 2026-08-16 a PR that changed only this file failed its `python` job this way.
+not the code — on 2026-08-16 a PR that changed only this file failed its `python` job this way. It
+also cost 20 consecutive runs with zero successes before it was diagnosed.
 
-The fix is two exported variables, and **they go in `runsvc.sh`, not `.env`**:
+Pointing the tool cache elsewhere does not fix it, because the hard-coded path is inside the
+downloaded package, not in the action's cache setting. **The `python` and `engine` jobs therefore
+build their own virtualenv instead:**
+
+```yaml
+- name: Python ${{ env.PYTHON_VERSION }} in a per-job venv
+  run: |
+    uv venv --python "${PYTHON_VERSION}" .venv
+    echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+    echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
+```
+
+`uv venv --python 3.14` resolves the Homebrew 3.14.6 already on the box at
+`/usr/local/opt/python@3.14`. Note that `uv python install 3.14` does NOT work here — it reports
+`No download found for request: cpython-3.14-macos-x86_64-none` — so the step creates the venv and
+never tries to install an interpreter.
+
+Dependencies go into that venv, not `--system`. Without `setup-python`, "system" means
+`/usr/local/bin/python3`, one interpreter shared by all four runners and by the founder's own shell.
+
+### The tool cache still must be told where to live
+
+`setup-node` and `setup-dotnet` are still in the workflow, and they use the same tool cache, so the
+`/Users/runner` default is still a problem for them. The fix is two exported variables, and **they
+go in `runsvc.sh`, not `.env`**:
 
 ```bash
 # ~/actions-runner*/runsvc.sh, at the line that says

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.prospector.offsite-backup</string>
+	<!-- Takes the daily off-Fly copy of the money database and the Data Protection key
+	     ring (DAT-1). Separate from com.prospector.backup, which copies the engine store
+	     and never touches Fly: one job, one verdict (OPS_AUTOMATION_PRINCIPLES.md P9).
+
+	     Install:
+	       cp deploy/com.prospector.offsite-backup.plist ~/Library/LaunchAgents/
+	       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.prospector.offsite-backup.plist
+	     Check it ran:
+	       tail -20 store/offsite_backup.log -->
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/chidionyema</string>
+		<!-- launchd's default PATH has no /usr/local/bin or ~/.local/bin, so `fly` is not
+		     found and every fetch fails with "command not found" — a real failure that
+		     reads like a Fly outage. -->
+		<key>PATH</key>
+		<string>/Users/chidionyema/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+	</dict>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/chidionyema/Documents/code/prospector/.venv/bin/python</string>
+		<string>-m</string>
+		<string>ops.automations.offsite_backup</string>
+		<string>--fix</string>
+	</array>
+	<!-- Daily at 03:50, ten minutes after com.prospector.backup, so the two do not compete
+	     for the same R2 connection. StartCalendarInterval, not StartInterval: launchd runs a
+	     missed calendar job once after wake, so a closed laptop delays the backup instead of
+	     skipping it. The --fix run also prints the freshness check, so a green line in the
+	     log is the daily receipt that the copy exists and opened. -->
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Hour</key>
+		<integer>3</integer>
+		<key>Minute</key>
+		<integer>50</integer>
+	</dict>
+	<!-- The engine reads .env from the working directory. Without this it works by hand and
+	     fails under launchd with "missing credentials", which is the half that matters. -->
+	<key>WorkingDirectory</key>
+	<string>/Users/chidionyema/Documents/code/prospector</string>
+	<key>StandardOutPath</key>
+	<string>/Users/chidionyema/Documents/code/prospector/store/offsite_backup.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/chidionyema/Documents/code/prospector/store/offsite_backup.log</string>
+</dict>
+</plist>
