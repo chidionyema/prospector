@@ -596,7 +596,7 @@ and 11 console pages; the search looked for App Router files in a Pages Router a
 justified closing work that was fine.
 
 *Number:* false claims per session, counted from the transcript. **No probe exists yet.**
-`scripts/reflect.py` finds where the founder stopped an agent, which is a proxy, not this.
+`~/.claude/scripts/reflect.py` finds where the founder stopped an agent, a proxy, not this.
 
 *State:* OPEN.
 
@@ -634,7 +634,7 @@ rules that are READ are not.
 *Costs:* the same mistakes at the same cost, indefinitely.
 
 *Number:* **1.68 founder-stop events per 100 tool calls** across 343 transcripts and 41,319
-calls, from `scripts/reflect.py`. July 0.63, August 1.79 — the rate nearly tripled. Any
+calls, from `~/.claude/scripts/reflect.py`. July 0.63, August 1.79 — the rate nearly tripled. Any
 behaviour rule that lands must move that number or be deleted.
 
 *State:* OPEN. `~/.claude/scripts/rule-guard.py` exists, passes its own selftest, and **has
