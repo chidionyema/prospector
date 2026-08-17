@@ -1036,7 +1036,15 @@ class EngineBridge:
                 dossier.all_sources,
                 cache_path=(Path(_store_dir) / "citation_archive.json")
                 if isinstance(_store_dir, (str, Path)) else None,
-                save_new=bool(archive_cfg.get("archive_save_new", True)),
+                # A dry run sells nothing, so it has no reason to MINT a durable pointer.
+                # Minting is the slow half: each capture is a live POST to the Internet
+                # Archive with 4s/12s/30s retries behind a shared rate limit. Measured
+                # 2026-08-17, one pack gated by hand spent over 10 minutes here, which is
+                # why 19 of the first 44 rows in store/ops/pack_recovery.jsonl recorded the
+                # re-gate as timed out and graded a good repair against a stale lint record.
+                # Lookups still run, so an existing memento is still attached and the QA
+                # report a real publish renders is unchanged.
+                save_new=bool(archive_cfg.get("archive_save_new", True)) and not dry_run,
                 timeout_s=float(archive_cfg.get("archive_lookup_timeout_s", 10.0)),
                 save_timeout_s=float(archive_cfg.get("archive_save_timeout_s", 30.0)),
                 max_urls=int(archive_cfg.get("archive_max_urls", 30)),
