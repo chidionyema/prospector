@@ -1,0 +1,84 @@
+# The weekly consumer of the incident loop. docs/INCIDENT_PROCESS.md is the process.
+#
+# WHY A SCHEDULE. Founder, 2026-08-18: "not one off... weekly scheduled task? or part of self
+# improvement plan? or part of estate management?" All three, and the answer to "where" is here
+# rather than on the laptop, because the laptop is what we are migrating off, and a review that
+# only runs when somebody remembers is what produced 184 rotten doc references.
+#
+# The producer is separate and stays where the data is: ~/.claude/scripts/reflect.py runs every
+# four hours under com.chidionyema.reflect and reads the transcripts, which exist only on the
+# machine that wrote them. This job is the CONSUMER: it reads the repo, grades what the producer
+# and the humans recorded, and writes one issue.
+#
+# It never edits a doc and never closes an incident. It reports, and it fails when a record is
+# incomplete or a mechanism is overdue for its grade.
+name: weekly estate review
+
+on:
+  schedule:
+    - cron: "0 8 * * 1"      # Mondays 08:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  review:
+    runs-on: ${{ vars.CI_RUNS_ON || 'self-hosted' }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up python
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install -q pyyaml
+
+      # Every step writes its own section and none of them may stop the others. A review that
+      # dies on its first finding reports one problem and hides the rest.
+      - name: Doc rot
+        id: docs
+        run: |
+          set +e
+          .venv/bin/python scripts/doc_lint.py > /tmp/doc_lint.txt 2>&1
+          echo "exit=$?" >> "$GITHUB_OUTPUT"
+          tail -40 /tmp/doc_lint.txt
+
+      - name: Incident records
+        id: incidents
+        run: |
+          set +e
+          .venv/bin/python scripts/incident.py check > /tmp/incidents.txt 2>&1
+          echo "exit=$?" >> "$GITHUB_OUTPUT"
+          cat /tmp/incidents.txt
+
+      - name: Write the review issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const read = (p) => { try { return fs.readFileSync(p, 'utf8').slice(0, 20000); }
+                                  catch { return '(step did not run)'; } };
+            const today = new Date().toISOString().slice(0, 10);
+            const body = [
+              `Automatic weekly review, ${today}. Process: [docs/INCIDENT_PROCESS.md](../blob/main/docs/INCIDENT_PROCESS.md).`,
+              '',
+              '## Incident records',
+              '```', read('/tmp/incidents.txt'), '```',
+              '',
+              '## Doc rot',
+              '```', read('/tmp/doc_lint.txt'), '```',
+              '',
+              'Nothing here is fixed automatically. Each finding becomes an incident record with a',
+              'cause chain, a sibling sweep and a mechanism, or it is closed with a reason.',
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner, repo: context.repo.repo,
+              title: `weekly estate review — ${today}`, body, labels: ['estate-review'],
+            });
+
+      - name: Fail if anything is outstanding
+        run: |
+          [ "${{ steps.incidents.outputs.exit }}" = "0" ] || { echo "incident records incomplete"; exit 1; }
+          [ "${{ steps.docs.outputs.exit }}" = "0" ] || { echo "doc rot above the baseline"; exit 1; }
