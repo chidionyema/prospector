@@ -80,7 +80,7 @@ it kept being broken anyway.
 
 Not a request to document it. A request to justify it or kill it.
 
-Became: task #47, deliverable `docs/PROOF_SYSTEM_AUDIT.md`.
+Became: task #47, deliverable `docs/PROOF_SYSTEM_AUDIT.md` — not written yet: doc-lint-ok
 
 ## 2026-08-18 — use the pi bridge more, and find out why it stalls
 
