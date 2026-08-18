@@ -61,6 +61,10 @@ const { killed, researched, rejectRateLabel } = RESEARCH_STATS;
    of it puts all 456 KB back in the client bundle, which is the defect this split fixed. */
 
 type Sort = 'newest' | 'cause' | 'sources';
+/* Rows printed before the reader asks for more. Declared, not implied, so the number is one edit
+   and the shelf's own SHELF_PAGE has a sibling to be compared against. */
+const KILL_PAGE = 40;
+
 const SORTS: { key: Sort; label: string }[] = [
   { key: 'newest', label: 'Newest first' },
   { key: 'cause', label: 'Cause of death' },
@@ -87,6 +91,10 @@ export default function KillLogPage({
   withSource,
 }: Props) {
   const [active, setActive] = React.useState<string | null>(null);
+  /* THE PAGE IS 400 RECORDS AND IT PRINTED ALL OF THEM (2026-08-18). Measured at 40,440px against
+     the drawing's 5,203 -- eight times the page, and every row's detail markup in the HTML before
+     a reader has asked for one. `mockups/kill-log.html` shows a screen of rows and a control. */
+  const [limit, setLimit] = React.useState(KILL_PAGE);
   const [search, setSearch] = React.useState('');
   const [sort, setSort] = React.useState<Sort>('newest');
   const [open, setOpen] = React.useState<Set<string>>(() => new Set());
@@ -185,6 +193,10 @@ export default function KillLogPage({
     }
     return items;
   }, [active, search, sort, summaries, gateCounts, haystacks]);
+
+  /* Sliced AFTER the filter and the sort, so a search still reaches every record and the reader
+     sees the best matches rather than the first page's matches. */
+  const visible = React.useMemo(() => shown.slice(0, limit), [shown, limit]);
 
   // The bar is drawn against the LARGEST cause, not the total: against the total every bar but one
   // is a sliver and the chart shows nothing.
@@ -500,7 +512,7 @@ export default function KillLogPage({
                 <th scope="col" className="w-28 py-2 text-right text-caption font-medium text-subtle">Assessed</th>
               </tr>
             </thead>
-            {shown.map((entry) => {
+            {visible.map((entry) => {
               const isOpen = open.has(entry.slug);
               const detail = details?.[entry.slug];
               return (
@@ -624,6 +636,15 @@ export default function KillLogPage({
             })}
           </table>
         </div>
+
+        {visible.length < shown.length && (
+          <div className="more-row">
+            <button type="button" className="more" onClick={() => setLimit((n) => n + KILL_PAGE)}>
+              Show {Math.min(KILL_PAGE, shown.length - visible.length)} more of{' '}
+              {shown.length.toLocaleString('en-GB')}
+            </button>
+          </div>
+        )}
 
         {shown.length === 0 && (
           <p className="mt-8 lede">

@@ -128,7 +128,13 @@ const READ_OUTLINE = () => {
 
 async function read(page, url, shotPath) {
   const res = await page.goto(url, { waitUntil: 'networkidle', timeout: 45000 }).catch(() => null);
-  if (!res || res.status() >= 400) return { error: `HTTP ${res ? res.status() : 'no response'}` };
+  /* 404 IS THE CORRECT STATUS FOR ONE OF THESE PAGES. `/404` answered 404, the harness read that
+     as a failure, and the not-found page was the one page never measured against its drawing. Any
+     other route answering 404 still shows up: its outline comes back empty and the diff prints
+     every section as missing. */
+  if (!res || (res.status() >= 400 && res.status() !== 404)) {
+    return { error: `HTTP ${res ? res.status() : 'no response'}` };
+  }
   await page.waitForTimeout(700); // let fonts settle so the heading sizes are real
   await page.screenshot({ path: shotPath, fullPage: true });
   return page.evaluate(READ_OUTLINE);
