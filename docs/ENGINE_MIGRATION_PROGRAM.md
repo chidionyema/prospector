@@ -617,6 +617,7 @@ stopped, which is why every fix moves the check EARLIER.
 | 5b | 02:46 | the cause of 5 | A generation run started three minutes AFTER phase 4 reported "no writers live" and appended to `prospector.jsonl`. One stop-and-check cannot see something that comes back after the check | `t_stop` now does three rounds of bootout, `pkill`, `pkill -9`, a 10s settle, then looks again, and calls the store quiet only when a round finds nothing to do |
 | 6 | 02:55 | phase 6, verify | The same numbers as attempt 5 — `ledger_lines 906950 -> 906967` — from a pack that had just reported 907,000. `fly ssh sftp shell` printed `put ...: file exists on VM` and exited 0, so the script unpacked and verified the tarball attempt 5 had left on the volume | `t_put` clears the destination first, then reads the byte count back from inside the container and refuses if it does not match |
 | 6b | — | why it could hide | A transfer that always exits 0 is not a transfer. The stale numbers also cost diagnosis time, because they pointed at a bug that was already fixed | same fix; the success line now reads `uploaded /data/store.tar.gz (N bytes, confirmed on the VM)` |
+| **7** | 03:03:49 | **none — SUCCEEDED** | n/a | The seventh attempt carried every fix from 1-6b. Stopped and fenced the laptop, packed 3,530 files, uploaded to the volume, verified 907,032 ledger lines and 2,935 dossiers inside the container, started supervisord and confirmed six programs RUNNING. Handed over at 03:09:29. **Downtime 5m40s.** |
 
 Downtime from each failure was bounded by the rollback, which restarted all seven launchd jobs
 every time: 6s on attempt 2, 3m35s on attempt 4. No customer data was lost and no state was
@@ -626,3 +627,126 @@ deleted — the packed tarball is kept at `$TMPDIR/prospector-cutover` on every 
 `installdependencies.sh` that asks apt for `libicu72`, which does not exist on Ubuntu 24.04. The
 build died with `E: Unable to locate package libicu72`, which reads like a broken base image.
 `deploy/runner/Dockerfile` installs the 24.04 equivalents itself and does not run that script.
+
+## 12. After the cutover — what runs where, and what happens when it breaks
+
+### 12.1 Certified state, 2026-08-18 03:09 local
+
+Every line here has a command behind it. Run the command; do not trust the line.
+
+| What | Where it runs now | Proof |
+|---|---|---|
+| Scheduler, consumer, watchdog, both backup jobs, ops console | Fly app `prospector-engine`, machine `80d34da6636478`, region `lhr`, volume `vol_42kyqo6g0kdzew14` | `supervisorctl status` reports six programs RUNNING; `deploy/targets/fly.sh` `t_health` reports "started, ledger present" |
+| The engine's state | The Fly volume, mounted at `/data` | 907,032 ledger lines, 3,530 files, 2,935 dossiers, database integrity ok — all four proved inside the container by `store_migrate.py verify` |
+| The laptop | Stopped, and fenced so it cannot restart itself | `scripts/engine_failover.py status` reports `laptop DOWN fenced=True` with no scheduler process |
+| Which side is live | Recorded outside both of them, in `~/.prospector/ACTIVE` | `scripts/engine_failover.py status` prints it first |
+| The standby copy | `~/.prospector/standby`, refreshed every 15 minutes | `status` prints its age in minutes |
+
+**Downtime actually spent: 5 minutes 40 seconds**, 03:03:49 to 03:09:29. That is the seventh
+attempt. The six before it all failed with the engine already stopped, and all six rolled back
+cleanly — §11 is the list.
+
+### 12.2 The laptop had to be fenced, not just stopped
+
+Eight minutes after the cutover handed over, `com.prospector.scheduler` was running again on the
+laptop as pid 47458 and had appended 44 lines to the laptop ledger. Two engines with two spend
+ledgers can spend twice the daily cap, which is EDGE-1 in §4, live.
+
+`launchctl bootout` unloads a job. It does not stop the job being loaded again, and the plist is
+still on disk. `laptop.sh` `t_stop` now also runs `launchctl disable` on every label it finds,
+which is a persistent override that makes `bootstrap` refuse. `t_start` enables before it
+bootstraps, in that order, because `bootstrap` silently refuses a disabled job.
+
+The 44 orphan lines were checked before anything else: 40 `main` and 4 `signal_pipeline` log
+rows, 0.00 USD of spend. There was nothing to reconcile into the Fly ledger.
+
+### 12.3 Automatic failover, and why it is hard to fire
+
+`scripts/engine_failover.py` is the control plane. It is one script because the same answer has
+to be available to a launchd job at 4am, to the ops console, and to a person at a terminal.
+
+```
+engine_failover.py status      both platforms at once, and how stale the standby copy is
+engine_failover.py check       one poll; what the watchdog job runs every minute
+engine_failover.py sync        pull Fly's ledger and database down to the standby copy
+engine_failover.py arm         turn automatic failover on
+engine_failover.py switch      move the engine deliberately, either direction
+```
+
+Failing over wrongly costs more than not failing over, because the wrong failover leaves two
+engines running. So five conditions must all hold:
+
+1. **Armed.** Disarmed is the default, and a successful failover disarms itself so it cannot flap.
+2. **The marker says Fly is the active side.** It never moves the engine to the side already
+   running it.
+3. **Fly's own API answered, and said the machine is not started.** An unreachable Fly API is far
+   more likely to be this laptop's network than a Fly outage. Unreachable raises an alert and
+   does nothing.
+4. **Five consecutive polls agree**, one minute apart. One bad poll is a blip.
+5. **`fly scale count 0` succeeds first.** The old side is fenced before the new one starts. If
+   the fence fails the failover is abandoned.
+
+What it costs when it fires is whatever the Fly ledger gained since the last `sync`. That is why
+`sync` runs every fifteen minutes and why `status` prints the number in minutes: it is the
+exposure, and it is meant to be looked at.
+
+### 12.4 The ops console runs the switch
+
+The console gets one read view, `engine_location`, and three actions: `engine.switch`,
+`engine.arm`, `engine.disarm`. The Engine page shows both platforms side by side, always, so it
+can never show one and imply the other. `engine.switch` starts the real `deploy/cutover.sh` and
+returns immediately with a log path, because a console that waits six minutes for an HTTP
+response is a console that times out halfway through a migration.
+
+### 12.5 Business risk register
+
+| # | Risk | State | What closes it |
+|---|---|---|---|
+| R1 | Two engines running at once, forking the spend ledger | **CLOSED** | The laptop is disabled, not just stopped (§12.2). Fly runs one machine. The cutover stops and fences the source before it starts the target. |
+| R2 | The Fly machine dies | **MITIGATED** | Armed automatic failover moves the engine to the laptop. Exposure is the standby copy's age, currently bounded at fifteen minutes. |
+| R3 | Fly as a company, or this account, becomes unavailable | **OPEN, PLANNED** | `deploy/targets/sshdocker.sh` exists and implements the full eleven-verb contract, but it has never been run against a real host. One rehearsal cutover to a rented Linux box closes it. |
+| R4 | The money database is not backed up from Fly | **OPEN, BRIDGED** | The offsite backup fetches the money database with the `fly` CLI, which the engine container deliberately does not carry. It ran from the laptop at 02:30:57Z and exited 0, so there is a fresh copy. It closes when the fetch is a plain authenticated HTTPS call to the API app, which is portable and needs no platform CLI. |
+| R5 | The engine's own nightly backup silently failed on Fly | **CLOSED** | `backup_store.py` built its paths from `__file__`, so on Fly it looked beside the code instead of at the volume and exited 1 every night. It now uses `config.store_root()`. |
+| R6 | Monitoring grades the engine from launchd receipts that no longer exist | **OPEN** | Hermes reads `~/.hermes/state/capability_receipts.jsonl`, written by a launchd wrapper that only runs on the laptop. Three capabilities will read DARK. Closes when the watch job writes receipts from real evidence pulled off Fly. |
+| R7 | Hermes itself still runs on the laptop | **OPEN, NEXT PHASE** | §12.6. |
+| R8 | CI runs on four Mac runners in this room | **OPEN, BLOCKED** | The Fly runner image is built and the fleet script is written. It needs a fine-grained `GITHUB_RUNNER_PAT`, which only the founder can mint. |
+| R9 | Secrets exist only on this laptop | **ACCEPTED** | `.env` is deliberately the source of truth, and it is encrypted inside the offsite backup. Any platform is filled from it with one `t_secrets` call. |
+
+### 12.6 Next phase — move Hermes the same way (founder directive, 2026-08-18)
+
+The founder's instruction: *"our hermes agent also runs from laptop, we may as well migrate it
+also following the same pattern as the rest, this frees up the laptop properly, as fallback etc
+and ops enabled."*
+
+This supersedes §3, which recommended Hermes stay out of scope. That recommendation was right for
+the engine cutover, which had to be one night. It is wrong as a permanent answer, because the
+whole point of the migration is that nothing business critical runs on a laptop, and Hermes is
+the thing that watches everything else. A monitor that dies with the room is not a monitor.
+
+It follows the pattern already built, and reuses it rather than repeating it:
+
+- **One container image**, and no platform API call inside it. Same rule as the engine.
+- **A `deploy/targets/` adapter**, so the same three targets — `fly`, `laptop`, `sshdocker` —
+  work for Hermes with no new concepts.
+- **`deploy/cutover.sh` unchanged.** It already does not know what it is moving; both ends are
+  adapters.
+- **The laptop stays a proven standby**, with the same disable fence and the same
+  `engine_failover.py` treatment, so Hermes can be switched back from the ops console.
+
+What has to be worked out first, because Hermes is not shaped like the engine:
+
+1. **It is a Telegram front door.** Long polling is outbound HTTPS, which the contract already
+   provides. A webhook would need an inbound hostname, which the engine deliberately does not
+   have. Long polling is therefore the portable choice.
+2. **It shells out to Claude Code.** The engine hit this in §1 and the answer was that Claude Code
+   must be an option and never a dependency. Hermes needs the same treatment before it can run
+   anywhere but this Mac.
+3. **Its receipts are launchd receipts.** R6 above is the same problem. Solving it for Hermes
+   solves it for the engine.
+4. **It reads the laptop's own state** — process tables, launchd, disk. Some of what Hermes
+   watches genuinely lives on this laptop, and that part cannot move. The split has to be drawn
+   before the container is built: what watches the estate moves, what watches this Mac stays and
+   reports inward.
+
+Estimate, on the same basis as §5: 2 days. One day to draw the split at point 4 and remove the
+Claude Code dependency at point 2, one day for the image, the adapter and a rehearsal cutover.
