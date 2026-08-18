@@ -91,6 +91,51 @@ jobs:
           echo "checked $checked live run(s), force-cancelled $stuck"
 
       # ────────────────────────────────────────────────────────────────
+      # HELD FOR APPROVAL. A pull request can show NO checks at all, forever, and read as
+      # "nothing has run yet" when GitHub has actually refused to run anything.
+      #
+      # `pr-queue.yml` merges main into open pull requests to keep them mergeable. That push is
+      # made with GITHUB_TOKEN, so the commit is authored by github-actions[bot], and GitHub
+      # holds any workflow run whose actor is a bot at `action_required` until a human approves
+      # it. The workflow that exists to keep pull requests mergeable is therefore what stops them
+      # being verified, and nothing reports it: the pull request just has no checks.
+      #
+      # Measured on PR #317, branch land/open-prs-2026-08-18, 2026-08-18:
+      #   7b97747  actor=github-actions[bot]  action_required   never ran
+      #   e640d10  actor=github-actions[bot]  action_required   never ran
+      #   ee613cc  actor=github-actions[bot]  action_required   never ran
+      #   674fd4b  actor=chidionyema          failure           ran
+      #   216d29e  actor=github-actions[bot]  action_required   never ran
+      # Four of five runs held. The one with a human actor is the only one that executed, and
+      # #317 sat open with zero checks while three other agents wondered why it never went green.
+      #
+      # Only runs from a branch IN THIS REPOSITORY are approved. The approval gate is a real
+      # control for pull requests opened from a fork, where the diff is untrusted and can read
+      # secrets; a blanket approve would remove it. A branch in this repository was already
+      # pushed by someone with write access, so this restores the behaviour a human push gets
+      # and nothing more.
+      - name: Approve CI runs GitHub held because a bot pushed the branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          held=$(gh api "repos/$REPO/actions/runs?status=action_required&per_page=100" \
+                   --jq ".workflow_runs[] | select((.head_repository.full_name // \"\") == \"$REPO\") | .id" \
+                   2>/dev/null || true)
+          if [ -z "$held" ]; then
+            echo "no run of this repository is waiting for approval"
+            exit 0
+          fi
+          approved=0
+          for id in $held; do
+            gh api -X POST "repos/$REPO/actions/runs/$id/approve" >/dev/null 2>&1 \
+              && { echo "  approved $id"; approved=$((approved + 1)); } \
+              || echo "  could not approve $id (already running, or not permitted)"
+          done
+          echo "approved $approved held run(s)"
+
+      # ────────────────────────────────────────────────────────────────
       # STARVATION. The second failure mode, and the one that cost the most time on 2026-08-18.
       #
       # Four runner slots, four agents pushing, and a full PR run costs about 52 minutes of runner
