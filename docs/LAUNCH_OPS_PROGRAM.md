@@ -241,6 +241,16 @@ meaning unmonitored.
 
 Written now, while nothing is on fire. Each is a runbook section, not a paragraph.
 
+> **"Move the engine off this Mac" has outgrown a paragraph.** The founder asked for the full
+> migration on 2026-08-17, with the laptop kept as a cold failover and the process repeatable to a
+> third provider. That audit, its 16 edge cases, the phased plan, the user stories and the estimate
+> live in **`docs/ENGINE_MIGRATION_PROGRAM.md`** — read it before touching KEY-1. The half-day
+> estimate at the foot of this section covers only the paths-and-systemd half. The founder set the
+> deadline to one night on 2026-08-17, so the plan is 12 steps and about 6 hours with two abort
+> gates, not the 9.5-day programme the first audit priced. Its first blocker is not infrastructure:
+> it is `claude_cli`'s dependency on the Claude Code subscription
+> (`prospector/claude_cli.py:191`).
+
 **Move the host (Fly → anywhere).** Both services are plain Dockerfiles, so the images run
 anywhere. What must be rewritten: the two GitHub workflows (`superfly/flyctl-actions`),
 `deploy_web.sh`, the three `fly.toml` files, and 9 hardcoded `fly.dev` references in
