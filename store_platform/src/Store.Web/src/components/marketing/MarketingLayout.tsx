@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { Breadcrumbs } from '@/components/ui';
+import { cx } from '@/components/ui/cx';
 import { CartButton } from '@/components/cart/CartButton';
 import { LEGAL, BRAND } from '@/lib/config';
 import { SEARCH_OPEN_EVENT } from '@/lib/searchEvent';
@@ -200,12 +201,16 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
           Two things the drawing cannot show, both kept: the cart button, which renders nothing
           until there is something in it, and the hide-on-scroll transform below.  */}
       <header
-        className="hdr"
-        style={{
-          borderBottomColor: scrolled ? 'var(--line-2)' : 'var(--line)',
-          transform: headerHidden ? 'translateY(-100%)' : 'none',
-          transition: 'transform .2s ease',
-        }}
+        data-scrolled={scrolled ? 'true' : 'false'}
+        className={cx(
+          'hdr transition-transform duration-200',
+          /* PHONE ONLY. `md:!translate-y-0` is the whole point: on a desktop viewport the header
+             costs a small fraction of the screen, so moving it buys nothing and costs the reader
+             their bearings. Classes, not an inline transform -- an inline style has no
+             breakpoint, so it hid the desktop header too. */
+          headerHidden ? '-translate-y-full md:!translate-y-0' : 'translate-y-0',
+        )}
+        style={{ borderBottomColor: scrolled ? 'var(--line-2)' : 'var(--line)' }}
       >
         <div className="hdr-in">
           <Link className="logo" href="/" aria-label={`${BRAND.name} home`}>

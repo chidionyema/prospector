@@ -15,7 +15,7 @@ import { RESEARCH_STATS } from '@/lib/stats';
 
 const GATE_LABELS: Record<string, string> = {
   min_composite: 'Scored too low',
-  incumbency: 'Incumbents',
+  incumbency: 'Already owned',
   moat_ungrounded: 'Ungrounded',
   adversarial_decisive: 'Adversarial',
   value_durability: 'Durability',
@@ -46,7 +46,7 @@ export function KillGateBand() {
           <p>
             Of {RESEARCH_STATS.killed.toLocaleString('en-GB')} kills, {top[1].toLocaleString('en-GB')}{' '}
             died on the same one: the idea cleared every hard gate and still did not score high
-            enough to be worth your money. Not illegal, not already owned, not unfounded. Just not
+            enough to be worth your money. Not illegal, not already taken, not unfounded. Just not
             good enough to publish.
           </p>
           <div className="bars" aria-hidden="true">

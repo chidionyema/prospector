@@ -1554,12 +1554,25 @@ function CatalogBrowser({
                       introducing it. Rows keep every pack fully present and linkable while
                       reading as an appendix, which is what it is. Each row still prints its
                       "<market> rules" flag, since `viewerMarket` is deliberately not passed. */}
+                  {/* CAPPED, like the shelf above it (2026-08-18). Every off-market group printed
+                      in full, so the landing page ran to 14,239px against the drawing's 8,653 --
+                      five market appendices, forty rows, below a shelf that had already capped
+                      itself at nine. `mockups/index.html` section 13 shows two market groups of a
+                      few rows each. Same `showAll` toggle as the main shelf, so one press opens
+                      the whole catalogue and there is still exactly one control for it. */}
                   <PackRowList
                     className="mt-6"
-                    packs={group.packs}
+                    packs={showAll ? group.packs : group.packs.slice(0, 3)}
                     currency={currency}
                     viewedIds={viewedSet}
                   />
+                  {!showAll && group.packs.length > 3 && (
+                    <div className="more-row">
+                      <button type="button" className="more" onClick={() => setShowAll(true)}>
+                        Show the other {group.packs.length - 3} {group.label} packs
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
 

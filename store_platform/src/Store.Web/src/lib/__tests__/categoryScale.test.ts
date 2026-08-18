@@ -267,7 +267,10 @@ describe('the untagged pack renders no sector marker', () => {
     expect(
       ((cardCode + row).match(/<PackFigure\b/g) ?? []).length,
       'every card variant must carry the pack figure',
-    ).toBe(2);
+    // THREE card variants since 2026-08-18: the row, the card, and `PackTileGrid`, the drawing's
+    // three-up tile (`mockups/index.html` section 5). The rule is unchanged -- every variant
+    // carries the figure -- only the number of variants moved.
+    ).toBe(3);
   });
 
   it('an untagged pack still leads with a figure of its own', () => {
