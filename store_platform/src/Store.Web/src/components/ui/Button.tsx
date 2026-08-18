@@ -37,14 +37,13 @@ const VARIANTS: Record<ButtonVariant, string> = {
    * fill at every build. That is exactly why `PackBuyButton` now CALLS this variant instead of
    * overriding it.
    */
-  primary: cx(
-    'bg-primary text-on-primary',
-    'hover:bg-primary-hover',
-    // The press is a third shade, not an opacity: -14pp lightness reads as the control taking the
-    // press, where a fade reads as the control going away. White on it is 15.16:1.
-    'active:bg-action-active',
-    'disabled:opacity-40 disabled:cursor-not-allowed',
-  ),
+  /* THE FILL AND THE HOVER COME FROM `.btn` (mumchimp.css:20-21): `var(--ink)` on the label,
+     `#000` on hover. `bg-primary` / `hover:bg-primary-hover` / `active:bg-action-active` are
+     deleted, not kept beside them -- a utility outranks the class, so keeping one meant the
+     shipped stylesheet could never paint the site's one filled button. Only the disabled state
+     stays: the stylesheet has no `:disabled` rule, and a dead-looking control is the difference
+     between "this is thinking" and "this is broken". */
+  primary: 'disabled:opacity-40 disabled:cursor-not-allowed',
   /* The hairline button, and since 2026-08-15 it is the TEAL half of the pair.
    *
    * It was `border-border-strong` + `text-text`: a grey outline round ink, i.e. the same two
@@ -88,24 +87,39 @@ const VARIANTS: Record<ButtonVariant, string> = {
  */
 export type ButtonSize = 'md' | 'lg';
 
+/*
+ * THE SHAPE IS `.btn`, THE SHIPPED CLASS -- NOT A COPY OF IT (2026-08-18, parity step 1).
+ *
+ * Founder's spec: "Drop it in. Import it. The agent writes no CSS at all except page-level layout
+ * that doesn't exist in it." This constant used to restate `mumchimp.css:20` in Tailwind --
+ * inline-flex, gap 10px, 8px radius, weight 600, tracking -0.01em -- and the comment it carried
+ * even quoted the stylesheet rule it was reproducing. Two copies of one control, and the copy is
+ * what every button on the site was drawn from, so `.btn` was inert everywhere `Button` rendered.
+ * The utilities are DELETED rather than layered: globals.css:8 imports the stylesheet into
+ * `layer(components)`, so a utility that says the same thing wins and the class does nothing.
+ *
+ * WHAT STAYS, AND WHY EACH ONE IS NOT IN THE STYLESHEET:
+ *
+ *  - the focus outline. `mumchimp.css` declares no `:focus-visible` rule for `.btn`, and a control
+ *    with no visible focus state fails WCAG 2.4.7. An OUTLINE, not a ring: a ring is an inset
+ *    box-shadow, invisible against a filled button and clipped by any `overflow-hidden` ancestor.
+ *  - the 44px touch floor, on `md` only (see SIZES).
+ *
+ * The press and the colour transition are gone from here because the stylesheet already has them:
+ * `mumchimp.css:259` is `.btn:active{transform:scale(.985)}` and `:260` is the transition.
+ */
 const BASE = cx(
-  // 8px, MASTER-BRIEF §4 ("8px controls"). The chip class below stays at --radius-sm: a chip
-  // is not a control, and 8px on a 24px chip is the lozenge tokens.css argues against.
-  // WEIGHT 600 AND A 10px GAP, from the mockups' `.btn` (2026-08-18):
-  // `gap:10px;font-size:16px;font-weight:600;letter-spacing:-.01em;padding:13px 22px`. It was
-  // `gap-2 font-medium` -- 8px and 500 -- which reads as a lighter, tighter control than the one
-  // drawn, on every button on the site at once.
-  'inline-flex items-center justify-center gap-2.5 rounded-ctl font-semibold tracking-[-0.01em]',
-  // transition-colors, not transition-all: `all` animated the transform too, which is why the
-  // press felt spongy -- the 0.98 squash was easing over 200ms instead of snapping.
-  'transition-colors duration-[120ms] ease-[cubic-bezier(0.2,0,0,1)]',
-  'active:scale-[0.98]',
-  // OUTLINE, not ring. A ring is an inset box-shadow, so it is invisible against a filled button
-  // of a similar colour and it is clipped by any `overflow-hidden` ancestor -- both of which apply
-  // here. An outline is drawn outside the border box and always shows.
+  'btn',
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
 );
 
+/* `md` IS THE STYLESHEET'S `.btn.sm` (mumchimp.css:24: 14.5px text, 10px/16px padding), and `lg`
+   is plain `.btn` (16px, 13px/22px). The px values that used to be written here are gone with the
+   rest of the copy. `min-h-11` survives on `md` alone and is the one number in this file that is
+   ours: `.btn.sm` computes to ~40px, and 40px is 4px under the 44x44 touch minimum this codebase
+   enforces on the header's Search and Menu buttons, on `chipClasses`, and on both footer link
+   columns. Measured by DOM probe at 390px on 2026-08-13. `sm:min-h-0` hands the desktop rendering
+   back to the stylesheet unchanged, because the floor is about the touch viewport only. */
 const SIZES: Record<ButtonSize, string> = {
   /*
    * 44px on touch, 40px from `sm` up. `h-10` everywhere put the site's PRIMARY actions -- "Browse
@@ -120,8 +134,8 @@ const SIZES: Record<ButtonSize, string> = {
   // `lg` is the mockups' `.btn` exactly: 16px text in 13px of vertical padding on a 1.5 line box
   // is 50px tall, with 22px of horizontal padding. `md` is their `.btn.sm` (14.5px / 10px 16px),
   // kept at 44px on touch for the floor above and dropping to the drawn 40px from `sm`.
-  md: 'h-11 px-4 text-meta sm:h-10',
-  lg: 'h-[50px] px-[22px] text-body',
+  md: 'sm min-h-11 sm:min-h-0',
+  lg: '',
 };
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {

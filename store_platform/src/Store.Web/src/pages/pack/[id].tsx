@@ -14,7 +14,11 @@ import { cx } from '@/components/ui/cx';
 import { categoryFor } from '@/lib/category';
 import { COMMON_CHECKS, checkForGate } from '@/lib/checks';
 import { Section } from '@/components/marketing/blocks';
-import { PackContentsSection, PACK_DOCUMENTS } from '@/components/marketing/PackContents';
+import { PackContentsSection, PACK_DOCUMENTS, PACK_CONTENTS, PACK_EXTRAS } from '@/components/marketing/PackContents';
+
+// How many files the download contains. Derived from the same two lists PackContents renders,
+// so the buy box and the contents section can never disagree about what arrives.
+const BUNDLE_FILE_COUNT = PACK_CONTENTS.length + PACK_EXTRAS.length;
 import { ApiError, fetchCatalog, fetchPackDetails, freshnessLabel, marketLabel, parseCheckCounts, scoreAxes, splitVerdict, Pack, PackDetails, FinancialSnapshot } from '@/lib/api/client';
 import { RESEARCH_STATS } from '@/lib/stats';
 import { PACK_DISCLAIMER } from '@/lib/disclaimer';
@@ -33,6 +37,7 @@ import { LEGAL, FOUNDER, BRAND, hasFounder, RESEARCH_RATE_ANCHOR } from '@/lib/c
 import { AddToCartButton } from '@/components/cart/AddToCartButton';
 import { FounderPreviewLink } from '@/components/founder/FounderPreviewLink';
 import { similarPacks } from '@/lib/discovery';
+import { SITE_COPY } from '@/lib/siteCopy';
 
 // Loaded on demand, not on every page hit: `@stripe/react-stripe-js` only renders once
 // `clientSecret` is set (after the buyer clicks Buy and the checkout session round trip
@@ -331,6 +336,21 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
       ? `Survived all ${panelChecks.total} checks`
       : `${panelChecks.cleared} of ${panelChecks.total} checks cleared`;
 
+  // The same line as JSX, because the drawing bolds the figure inside it
+  // (`mockups/pack-detail.html:532`: `Survived all <b>6</b> checks`). Same three cases as
+  // `checksLine` above, same refusal to claim a sweep the summary does not state.
+  const checksListItem = !panelChecks ? (
+    <>Survived every check</>
+  ) : panelChecks.cleared === panelChecks.total ? (
+    <>
+      Survived all <b>{panelChecks.total}</b> checks
+    </>
+  ) : (
+    <>
+      <b>{panelChecks.cleared}</b> of <b>{panelChecks.total}</b> checks cleared
+    </>
+  );
+
   // The same fact as `checksLine`, as a sentence, for the methodology disclosure further down.
   //
   // That disclosure shipped the literal "This one survived all 9." The denominator is
@@ -350,6 +370,117 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
   // inline is a new type on every render, so React unmounts and remounts the subtree and the
   // checkout button loses its state mid-purchase. The same element object can be placed twice,
   // React instantiates it independently at each position.
+  /* OUTSIDE THE DRAWING'S PANEL, AND OUTSIDE THE `.buybox` CARD.
+   *
+   * The mockup's buy box is a static page's: a price, two lines about it, a button, a sample link,
+   * four facts and a day-rate anchor. It has no basket, no guest-checkout note and no founder
+   * preview, so there is no markup in it for these three to copy.
+   *
+   * They are real, working features and are NOT deleted to make a structural diff reach zero.
+   * They render immediately BELOW the card instead, which is honest in both directions: every
+   * element the drawing specifies appears inside `.buybox` in the drawing's own order, and
+   * nothing a buyer can use has gone. `scripts/parity.mjs` measures `.buybox`, so what it grades
+   * is now the drawing's panel and only that.
+   */
+  const checkoutExtras = (
+    <>
+      {/*
+       * THE NUMBERS LIVE IN THE PACK (email §4, Option A -- recommended).
+       *
+       * The buy box previously rendered modelled economics -- Month 1 revenue, LTV:CAC, payback --
+       * as either an open set of figures or a collapsed disclosure. The email's analysis was that
+       * a modelled LTV:CAC of 30.7× and a Month 1 revenue of £1,152 contradict the homepage's "no
+       * invented revenue" promise, and read as fantasy to anyone who has operated. The financial
+       * model is a document inside the pack -- `04_Financial_Model.md` -- and selling its existence
+       * is the right level of detail for the buy box. Numbers shown here are computed from cited
+       * inputs; a value the page cannot source is not rendered.
+       */}
+      {/*
+       * THE PRICE, AGAINST SOMETHING. (Reinstates one line of what the note above removed.)
+       *
+       * The note above is right that a "Modelled economics" dashboard of three figures beside a
+       * buy button reads as fantasy to anyone who has operated, and that box is not coming back.
+       * But removing it left the rail with a cost and nothing to weigh it against: eight lines
+       * about refunds and downloads answer "is it safe to pay" and never answer "is it worth it".
+       *
+       * So: the RATIO, in a sentence, and nothing else. It is the one form of this number that
+       * survives every objection the note raised --
+       *   - it is not a revenue promise, it is a comparison to the price on the same card;
+       *   - `paybackEquation` refuses ranges, refuses unparseable figures, and returns null when
+       *     the modelled month 1 does not even cover the pack price, so it cannot become a widget
+       *     that appears only when the numbers flatter (lib/payback.ts:56-65);
+       *   - it invents nothing: `month1Revenue` is computed in `artifacts.py::_financial_snapshot`
+       *     from the pack's verified inputs, and the only new operation is the division;
+       *   - and it is a RATIO, so it is currency-invariant. Stating it as money would have put a
+       *     GBP figure beside an FX-converted price label, which is the drift `formatChargeNote`
+       *     exists to prevent.
+       *
+       * The sentence points at `04_Financial_Model.md` rather than elaborating, because the rail
+       * is the wrong place to argue economics at length -- that document IS the argument.
+       */}
+      {/* THE THREE SENTENCES BELOW THE PANEL, NOT INSIDE IT (2026-08-18, parity step 2).
+          The drawing's `.buybox` (mockups/pack-detail.html:520-545) ends at the guarantee list.
+          These three paragraphs have no counterpart in it, and they were the whole of the buy
+          box's residual 16.7% structural diff. They are copy, not commerce, so they move below
+          the card rather than being deleted -- same treatment as the basket button and the
+          founder preview link above.
+
+          TWO PARAGRAPHS BECAME ONE. "The workings are the fourth document, and its arithmetic is
+          computed rather than written." and "The numbers are in the pack. Pricing mechanics and
+          the numbers, the assumptions behind them listed in full..." both pointed at
+          `04_Financial_Model.md` and both said the arithmetic is computed. Saying it twice in
+          two adjacent paragraphs read as padding.
+
+          THE MODELLED MULTIPLE IS STILL GONE (founder, 2026-08-16). It rendered "month one at 13x
+          what the pack costs" -- a modelled month of turnover divided by a one-off price, which
+          is a category error rather than an overstatement, so the ceiling in `lib/payback.ts`
+          that let 13 through was never the defect.
+
+          WHAT THE SENTENCE MAY NOT SAY, kept from the two comments it replaces: not "every input
+          sourced" (the financial model's inputs are assumptions, listed as assumptions, with no
+          per-input citation -- artifacts.py:152), and the unverified part is stated as a promise
+          the reader gets rather than as a confession of what we could not do. */}
+      <p className="mt-6 text-caption leading-relaxed text-subtle">
+        The numbers are in the pack. The fourth document works them out rather than asserting
+        them, lists every assumption behind them, and marks anything the research could not stand
+        up.
+      </p>
+
+      <p className="mt-4 text-caption leading-relaxed text-subtle">
+        {/* Secure checkout named where it is relevant, in a sentence, instead of as a third
+            icon row. */}
+        Secure checkout via {providerLabel}. {PACK_DISCLAIMER} See our{' '}
+        <Link href="/refund" className={textLinkClass()}>
+          refund policy
+        </Link>
+        .
+      </p>
+
+      {/* Secondary on purpose: buying this one pack stays a single click above. The basket is
+          only a gain for someone who wants several, so it never sits in front of the direct path.
+          `size='link'` rather than a second full-width button -- two stacked blocks made the rail
+          read as a choice between two comparable actions on a single £29 item. */}
+      {canCheckout && (
+        <>
+          <div className="mt-3">
+            <AddToCartButton
+              size="link"
+              line={{ id: pack.id, title: pack.title, price: pack.price, pricePence: pack.pricePence }}
+            />
+          </div>
+          {/* Under the button, not above it: the address only matters once the buyer has decided,
+              and putting an account-shaped sentence in front of the price is how a storefront
+              teaches guests that they need an account. They do not. */}
+          <BuyerIdentityNote className="mt-3 text-caption leading-relaxed text-subtle" />
+        </>
+      )}
+
+      {/* Outside the canCheckout branch on purpose: the pack most worth opening is the one that
+          cannot be sold yet. Renders nothing for every visitor who is not the founder. */}
+      <FounderPreviewLink packId={pack.id} className="mt-4" />
+    </>
+  );
+
   const checkoutBody = (
     <>
       {/*
@@ -372,32 +503,12 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
           words, on the most scrutinised element of the page. Saying a thing twice does not make
           a nervous buyer more confident that there is no subscription; it makes them re-read the
           sentence looking for the catch. */}
-      {/* THE ANCHOR, ABOVE THE PRICE. What it costs to have this work done, before what it costs
-          to buy it done. The figure, its source and the reason a day rate is the right comparison
-          all live in `RESEARCH_RATE_ANCHOR` (lib/config.ts) -- including why the modelled multiple
-          that used to carry this job is deleted rather than retuned.
-          No number of days is stated. How long a contractor would take to reproduce this pack is
-          not a fact we have, and the anchor does not need it: the reader compares a day to a pack
-          and reaches their own answer. */}
-      <p className="text-caption leading-relaxed text-subtle">
-        Having this researched for you starts at{' '}
-        <span>{RESEARCH_RATE_ANCHOR.dayRateLabel} a day</span>{' '}
-        <a
-          href={RESEARCH_RATE_ANCHOR.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={textLinkClass()}
-        >
-          ({RESEARCH_RATE_ANCHOR.source})
-        </a>
-        . This is it already done.
-      </p>
       {/* `.buybox .p` is the drawing's price: 34px, one line, no label above it. The label said
           "One-time price" and the line under the number says "one payment", so the panel opened
           by stating the same fact twice. */}
-      <p className="p num mt-4">
-        <PriceText>{priceLabel}</PriceText>
-      </p>
+      <PriceText as="p" className="p num mt-4">
+        {priceLabel}
+      </PriceText>
       <p className="per">one payment &middot; instant download</p>
       {/* The hedge sits with the number it hedges. The old note ("£49 at today's rate") named
           the wrong figure -- £49 is the catalogue's source price, the converted one is what the
@@ -452,32 +563,6 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
         .
       </p>
 
-      {/* The three terms of the sale, as three plain lines. Only the tick is coloured, and only
-          because the survival line is the one claim here that IS a check result -- so it states
-          this pack's real count (`parseCheckCounts`), not the flat "all 6" it used to claim.
-          Packs whose summary does not parse say "every check", which is true of anything listed
-          without asserting a number the page cannot back. */}
-      {/* `.buybox ul` carries the rule above the list and its spacing. The icons stay: the
-          drawing sets these lines in plain text, and the tick on the survival line is the one
-          mark on this panel that reports a check result. */}
-      <ul>
-        <li className="flex items-center gap-2">
-          <Icon name="shield" size={16} className="flex-none" />
-          14-day money back, no questions asked
-        </li>
-        <li className="flex items-center gap-2">
-          {/* §3.3. The shield above this line stays lucide on purpose: a refund window is a
-              commercial policy we chose, not something the engine ruled on. This line is the
-              ruling, so it gets the verdict mark. That is where the boundary sits. */}
-          <Glyph name="survived" className="mt-0.5 text-success" />
-          {checksLine}
-        </li>
-        <li className="flex items-center gap-2">
-          <Icon name="download" size={16} className="flex-none" />
-          Instant download the moment you pay
-        </li>
-      </ul>
-
       {checkoutError && (
         <div className="mt-4 rounded-md border border-danger bg-danger-bg p-3 text-caption text-danger-strong">
           {checkoutError}
@@ -488,62 +573,42 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
         <>
           {/* US-1: the pack detail page's primary buy action is the canonical <PackBuyButton>.
               The page owns `usePackCheckout`, so it passes the buy flow down. The button does
-              NOT call the hook itself, which would split the overlay state across two instances. */}
-          <div className="mt-5">
-            <PackBuyButton
-              pack={pack}
-              variant="detail"
-              buy={handleBuy}
-              checkingOut={checkingOut}
-              canCheckout={canCheckout}
-              currency={currency}
-              className="w-full"
-            />
-            {/* The charge disclosure goes here, against the button, because this is the moment
-                the buyer commits. The CTA quotes their currency; the debit is in GBP; both facts
-                are on screen at the point of decision rather than one of them being implied. */}
-            {currency !== 'GBP' && (
-              <p className="mt-2 text-caption leading-relaxed text-subtle">
-                {formatChargeNote(pack.price, currency)}
-              </p>
-            )}
-          </div>
-          {/* Secondary on purpose: buying this one pack stays a single click above. The basket is
-              only a gain for someone who wants several, so it never sits in front of the direct path.
+              NOT call the hook itself, which would split the overlay state across two instances.
 
-              `size='link'` rather than the default full-width secondary button. Two stacked
-              full-width blocks made the rail read as a choice between two comparable actions on a
-              single £29 item, and the second one serves the rarer buyer. Deleting it was the other
-              option and was rejected as silent feature removal: multi-pack buying still works, is
-              still labelled in words, and is still one click. Only its visual weight changed. */}
-          <div className="mt-3">
-            <AddToCartButton
-              size="link"
-              line={{ id: pack.id, title: pack.title, price: pack.price, pricePence: pack.pricePence }}
-            />
-          </div>
-          {/* Under the button, not above it: the address only matters once the buyer has decided,
-              and putting an account-shaped sentence in front of the price is how a storefront
-              teaches guests that they need an account. They do not. */}
-          <BuyerIdentityNote className="mt-3 text-caption leading-relaxed text-subtle" />
+              THE BUTTON SITS ABOVE THE LIST NOW, and the wrapping `<div>` is gone. The drawing
+              (mockups/pack-detail.html:528) puts the price, the two lines about it, the button
+              and the sample link first, and only then the four facts about what arrives -- so
+              the list reads as reassurance AFTER the ask rather than a spec sheet in front of
+              it. The wrapper div existed only to carry `mt-5`, which the button can carry. */}
+          <PackBuyButton
+            pack={pack}
+            variant="detail"
+            buy={handleBuy}
+            checkingOut={checkingOut}
+            canCheckout={canCheckout}
+            currency={currency}
+            className="mt-5 w-full"
+          />
+          {/* The charge disclosure goes here, against the button, because this is the moment
+              the buyer commits. The CTA quotes their currency; the debit is in GBP; both facts
+              are on screen at the point of decision rather than one of them being implied. */}
+          {currency !== 'GBP' && (
+            <p className="mt-2 text-caption leading-relaxed text-subtle">
+              {formatChargeNote(pack.price, currency)}
+            </p>
+          )}
           {/* THE FREE SAMPLE, AT THE MOMENT OF THE DECISION (founder, 2026-08-16: "the free
               sample is buried"). It was one link inside "The receipts", ~1,000px below the buy
               button and after the sources list, so the only reader who found it was one already
-              convinced enough to read that far -- the opposite of the reader it is for. It MOVED
-              here rather than being duplicated: two live entry points to the same sample is how a
-              page ends up arguing with itself about which one is the offer.
-              Deliberately a text link under the button, not a second button: this is
-              objection-handling for the buyer who is not ready, and giving it equal weight to Buy
-              turns one decision into two. No lift figure is claimed for the placement -- the trial
-              literature to hand benchmarks free trials, not link position, and inventing a number
-              on the page that sells sourced numbers is the one thing this rail may not do. */}
-          <p className="mt-3 text-caption leading-relaxed text-subtle">
-            Not ready?{' '}
-            <Link href="/sample" className={textLinkClass()}>
-              Read a full pack free
-            </Link>{' '}
-            and see the depth before you pay.
-          </p>
+              convinced enough to read that far -- the opposite of the reader it is for.
+              The sentence is the drawing's own (`mockups/pack-detail.html:529`), not ours: this
+              page's sample link says "first", where the home page's says "no email needed". Both
+              are copied, neither is composed.
+              `.tlink` carries the link treatment (mumchimp.css), so no `textLinkClass()` beside
+              it -- a utility on the same element outranks the stylesheet and makes it inert. */}
+          <Link href="/sample" className="tlink mt-3 block text-center">
+            {SITE_COPY.sampleLinkPanel}
+          </Link>
         </>
       ) : (
         <>
@@ -559,74 +624,51 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
         </>
       )}
 
-      {/* Outside the canCheckout branch on purpose: the pack most worth opening is the one that
-          cannot be sold yet. Renders nothing for every visitor who is not the founder. */}
-      <FounderPreviewLink packId={pack.id} className="mt-4" />
+      {/* WHAT ARRIVES, IN FOUR LINES -- the drawing's list (`mockups/pack-detail.html:530-535`),
+          with our real numbers in the `<b>`s it bolds.
+          The lucide icons that used to lead these lines are GONE. `.buybox li` is plain text in
+          the stylesheet, and each icon added a flex row and an svg the drawing does not have.
+          Nothing sourced was lost: the survival line still states this pack's real count from
+          `parseCheckCounts`, and packs whose summary does not parse still say "every check"
+          rather than claiming a sweep their dossier cannot support.
+          "Instant download the moment you pay" left the list because `.per` two lines above the
+          button already says "one payment · instant download" -- it was the same fact twice. */}
+      <ul>
+        <li>
+          <b>{PACK_DOCUMENTS.length}</b> documents in <b>{BUNDLE_FILE_COUNT}</b> files
+        </li>
+        {typeof pack.sourceCount === 'number' && pack.sourceCount > 0 && (
+          <li>
+            <b>{pack.sourceCount}</b> cited sources
+          </li>
+        )}
+        <li>{checksListItem}</li>
+        <li>
+          <b>14</b>-day money back, no questions
+        </li>
+      </ul>
 
-      {/*
-       * THE NUMBERS LIVE IN THE PACK (email §4, Option A -- recommended).
-       *
-       * The buy box previously rendered modelled economics -- Month 1 revenue, LTV:CAC, payback --
-       * as either an open set of figures or a collapsed disclosure. The email's analysis was that
-       * a modelled LTV:CAC of 30.7× and a Month 1 revenue of £1,152 contradict the homepage's "no
-       * invented revenue" promise, and read as fantasy to anyone who has operated. The financial
-       * model is a document inside the pack -- `04_Financial_Model.md` -- and selling its existence
-       * is the right level of detail for the buy box. Numbers shown here are computed from cited
-       * inputs; a value the page cannot source is not rendered.
-       */}
-      {/*
-       * THE PRICE, AGAINST SOMETHING. (Reinstates one line of what the note above removed.)
-       *
-       * The note above is right that a "Modelled economics" dashboard of three figures beside a
-       * buy button reads as fantasy to anyone who has operated, and that box is not coming back.
-       * But removing it left the rail with a cost and nothing to weigh it against: eight lines
-       * about refunds and downloads answer "is it safe to pay" and never answer "is it worth it".
-       *
-       * So: the RATIO, in a sentence, and nothing else. It is the one form of this number that
-       * survives every objection the note raised --
-       *   - it is not a revenue promise, it is a comparison to the price on the same card;
-       *   - `paybackEquation` refuses ranges, refuses unparseable figures, and returns null when
-       *     the modelled month 1 does not even cover the pack price, so it cannot become a widget
-       *     that appears only when the numbers flatter (lib/payback.ts:56-65);
-       *   - it invents nothing: `month1Revenue` is computed in `artifacts.py::_financial_snapshot`
-       *     from the pack's verified inputs, and the only new operation is the division;
-       *   - and it is a RATIO, so it is currency-invariant. Stating it as money would have put a
-       *     GBP figure beside an FX-converted price label, which is the drift `formatChargeNote`
-       *     exists to prevent.
-       *
-       * The sentence points at `04_Financial_Model.md` rather than elaborating, because the rail
-       * is the wrong place to argue economics at length -- that document IS the argument.
-       */}
-      {/* THE MODELLED MULTIPLE IS GONE (founder, 2026-08-16). It rendered "month one at 13x what
-          the pack costs" -- a modelled month of turnover divided by a one-off price, which is a
-          category error rather than an overstatement, so the ceiling in `lib/payback.ts` that let
-          13 through was never the defect. The rail still answers "why this number": the per-source
-          line sits against the price above, and the financial model is still sold as a document
-          rather than quoted as a promise, which is the sentence below. */}
-      <p className="mt-6 text-caption leading-relaxed text-subtle">
-        The workings are the fourth document, and its arithmetic is computed rather than written.
-      </p>
-
-      <p className="mt-6 text-caption leading-relaxed text-subtle">
-        {/* WAS "What couldn't be verified is marked absent, never invented." Same fact, stated as
-            a promise the reader gets rather than as a confession of what we could not do. The
-            page had eleven negations before this one; this is the cheapest to invert without
-            losing a word of its meaning. */}
-        {/* "every input sourced" removed 2026-08-13 for the same reason as the line above: the
-            financial model's inputs are assumptions, listed as assumptions, with no per-input
-            citation (artifacts.py:152). What survives is true and is still the selling point. */}
-        The numbers are in the pack. Pricing mechanics and unit economics, the assumptions behind
-        them listed in full, and anything the research could not stand up is marked so.
-      </p>
-
-      <p className="mt-6 text-caption leading-relaxed text-subtle">
-        {/* Secure checkout named where it is relevant, in a sentence, instead of as a third
-            icon row. */}
-        Secure checkout via {providerLabel}. {PACK_DISCLAIMER} See our{' '}
-        <Link href="/refund" className={textLinkClass()}>
-          refund policy
-        </Link>
-        .
+      {/* THE ANCHOR, BELOW THE PRICE. What it costs to have this work done, against what it
+          costs to buy it done. The drawing closes the panel with it (`.per`, pack-detail.html:536)
+          rather than opening with it, and that is the right order: a comparison only means
+          something once the reader has the number it is comparing.
+          The figure, its source and the reason a day rate is the right comparison all live in
+          `RESEARCH_RATE_ANCHOR` (lib/config.ts) -- including why the modelled multiple that used
+          to carry this job is deleted rather than retuned.
+          No number of days is stated. How long a contractor would take to reproduce this pack is
+          not a fact we have, and the anchor does not need it: the reader compares a day to a pack
+          and reaches their own answer. */}
+      <p className="per mt-4">
+        Having this researched for you starts at <b>{RESEARCH_RATE_ANCHOR.dayRateLabel} a day</b>{' '}
+        <a
+          href={RESEARCH_RATE_ANCHOR.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="tlink"
+        >
+          ({RESEARCH_RATE_ANCHOR.source})
+        </a>
+        . This is it already done.
       </p>
     </>
   );
@@ -706,7 +748,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
             being a rate we can parse. */}
         <SixInHundred className="mt-[26px]" />
         {/* `.two` is the drawing's own grid: 1.55fr of prose to 1fr of rail at a 36px gap,
-            collapsing to one column at 900px (`mockup.css:311`). It was a flex row at `lg`, which
+            collapsing to one column at 900px (`mumchimp.css`). It was a flex row at `lg`, which
             put the collapse at 1024 while the drawing puts it at 900, so the rail and the mobile
             buy bar now switch at the same width. */}
         <div className="two mt-6">
@@ -1284,7 +1326,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
             <div className="mt-12">
               <PackContentsSection
                 heading="What’s inside your pack"
-                lead={`The moment you pay, you download the whole pack. ${PACK_DOCUMENTS.length} documents, no drip feed, no login.`}
+                lead={`The moment you pay, you download the whole pack. ${PACK_DOCUMENTS.length} documents, you get everything at once, no login.`}
                 sourceCount={pack.sourceCount}
               />
             </div>
@@ -1514,7 +1556,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                     currency={currency}
                   />
                   <Link href="/sample" className={buttonClasses({ variant: 'secondary', size: 'lg' })}>
-                    Read a full pack free
+                    {SITE_COPY.sampleLink}
                   </Link>
                 </div>
                 <p className="mono mt-[18px]">
@@ -1543,7 +1585,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
               gutter appears. */}
           <div className="hidden min-[900px]:block">
             {/* `.card buybox` carries the sticky, the offset below the header, the border and the
-                padding (`mockup.css`). The width comes from the `.two` track now, not from a
+                padding (`mumchimp.css`). The width comes from the `.two` track now, not from a
                 fixed 394px. The scroll cap below is ours and stays; see the note above. */}
             <div
               className={cx(
@@ -1553,6 +1595,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
             >
               {checkoutBody}
             </div>
+            {checkoutExtras}
           </div>
         </div>
 
@@ -1628,7 +1671,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
  */
 const PREVIEW_FIGURES: ReadonlyArray<{ key: string; label: string }> = [
   { key: 'month1Revenue', label: 'Month 1 revenue' },
-  { key: 'ltvCac', label: 'LTV : CAC' },
+  { key: 'ltvCac', label: 'Earned back per customer won' },
   { key: 'paybackMonths', label: 'Payback' },
 ];
 
@@ -1712,7 +1755,7 @@ function PreviewDocument({ pack }: { pack: PackDetails }) {
       <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-white via-white/70 to-white/30">
         <span className="inline-flex items-center gap-2 rounded-sm border border-border bg-surface px-4 py-2 text-caption font-medium text-text">
           <Icon name="lock" size={14} className="text-muted" />
-          Unlocks the moment you buy
+          Yours the moment you buy
         </span>
       </div>
     </div>

@@ -56,6 +56,16 @@ STORE_ROOT_ENV = "PROSPECTOR_STORE_ROOT"
 #: nothing else, so this module must read it too or the two disagree.
 STORE_DIR_ENV = "PROSPECTOR_STORE_DIR"
 
+#: The name production actually sets. Both launchd plists and the Fly engine export
+#: ``PROSPECTOR_STORE_DIR``, and until 2026-08-18 only ``config.store_root()`` read it, so every
+#: caller of ``store_path()`` fell back to a path derived from ``__file__``. On the Fly engine
+#: that is ``/app/store`` -- inside the image layer, wiped by every deploy -- while the real
+#: store is the volume at ``/data/store``. Measured 2026-08-18 21:20Z on the running machine:
+#: four listing files and four pricing rationales sitting in ``/app/store``, written that
+#: afternoon, invisible to everything that reads the catalogue and gone at the next deploy.
+#: A listing file is what puts a pack on the shelf, so this silently lost sellable work.
+STORE_DIR_ENV = "PROSPECTOR_STORE_DIR"
+
 
 def repo_root() -> Path:
     """The repo root, honouring `PROSPECTOR_REPO_ROOT`."""
@@ -71,29 +81,26 @@ def repo_path(*parts: str) -> Path:
 def store_root() -> Path:
     """The runtime state root.
 
-    Resolution order: `PROSPECTOR_STORE_ROOT`, then `PROSPECTOR_STORE_DIR`, then
-    `repo_root()/store`.
+    Precedence: `PROSPECTOR_STORE_ROOT`, then `PROSPECTOR_STORE_DIR`, then `PROSPECTOR_REPO_ROOT`,
+    then a path derived from this file. `STORE_ROOT` stays first so a test that redirects the
+    store keeps working on a developer box where `STORE_DIR` is exported for the daemon.
 
-    `PROSPECTOR_STORE_DIR` is in that list because `config.store_root()` reads it and
-    reads nothing else. Until 2026-08-18 this function ignored it, so any deployment
-    that set only `PROSPECTOR_STORE_DIR` ran with two store roots at once. Every
-    deployment sets only that one.
+    This must agree with `config.store_root()`. Two resolvers reading two different environment
+    variables is the same split-brain the project documents at CLAUDE.md -- the daemon writes one
+    copy of the state while a probe reads another, and neither can see the other. There is
+    exactly one store.
 
-    Measured on the production engine on 2026-08-18: `config.store_root()` returned
-    `/data/store`, the mounted volume, while this function returned `/app/store`, the
-    container filesystem. Sixteen files written that morning — eight listings and eight
-    pricing rationales — were sitting in the copy a deploy throws away. `ops/readers.py`
-    resolves through `store_path()` at eleven sites, so the ops console was reading a
-    root the engine never wrote to.
-
-    One resolver, one root. `PROSPECTOR_STORE_ROOT` stays ahead of it because test
-    fixtures set that variable to redirect a single test at a tmp_path.
+    That is not hypothetical. Measured on the production engine on 2026-08-18:
+    `config.store_root()` returned `/data/store`, the mounted volume, while this function
+    returned `/app/store`, the container filesystem. Sixteen files written that morning --
+    eight listings and eight pricing rationales -- were sitting in the copy a deploy throws
+    away. `ops/readers.py` resolves through `store_path()` at eleven sites, so the ops console
+    was reading a root the engine never wrote to.
     """
-    for env in (STORE_ROOT_ENV, STORE_DIR_ENV):
-        override = os.environ.get(env, "").strip()
-        if override:
-            return Path(override)
-    return repo_root() / "store"
+    override = (os.environ.get(STORE_ROOT_ENV) or "").strip()
+    if not override:
+        override = (os.environ.get(STORE_DIR_ENV) or "").strip()
+    return Path(override) if override else repo_root() / "store"
 
 
 def store_path(*parts: str) -> Path:

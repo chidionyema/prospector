@@ -82,10 +82,18 @@ describe('the collections rename', () => {
     expect(NEXT_CONFIG.slice(index, index + 120)).toContain('permanent: true');
   });
 
-  it('calls the destination Collections everywhere in the chrome', () => {
+  it('calls the destination "Good for" in the chrome', () => {
+    // THE LABEL MOVED AGAIN, AND THE WORD IS THE FOUNDER'S (2026-08-18, Plain English sweep).
+    // "Collections" was on the founder's own ban list -- a word introduced by us that no reader
+    // would say to a friend. The nav now reads "Good for" and the page heading reads
+    // "Find one that suits how you work." The ROUTE is unchanged: renaming a path costs
+    // redirects and a sitemap entry, and the label is what a reader sees.
+    // The subject taxonomy keeps "Categories" on the individual landing pages, also the
+    // founder's call, so this only fences the top-level chrome.
     const layout = readFileSync(join(SRC, 'components/marketing/MarketingLayout.tsx'), 'utf8');
     expect(codeOnly(layout)).not.toContain("label: 'Categories'");
-    expect(layout).toContain("{ href: '/collections', label: 'Collections' }");
+    expect(codeOnly(layout)).not.toContain("label: 'Collections'");
+    expect(layout).toContain("{ href: '/collections', label: 'Good for' }");
   });
 });
 

@@ -35,19 +35,31 @@ import type { GateBar } from '@/lib/killLog.server';
 
 /** Full strength first: the commonest cause is the strongest red.
  *
- *  WRITTEN OUT, NEVER BUILT WITH A TEMPLATE. Tailwind v4 scans source text for class names, so
- *  `fill-kill/${n}` produces no rule at all and the cells render invisible -- the same silent
- *  failure mode as an unmapped colour utility. These are literals so the scanner can see them. */
+ *  THESE ARE THE CLASSES THAT SHIP, AND THAT IS THE WHOLE POINT. Tailwind v4 scans source TEXT for
+ *  class names, so a name assembled at runtime has no rule generated for it and the element renders
+ *  with no fill at all. This list used to hold the `fill-` forms, and both call sites below turned
+ *  them into `bg-` forms by string replacement. The text `bg-kill/85` therefore appeared nowhere in
+ *  the source, Tailwind emitted no rule for it, and eight of the nine ramp steps painted nothing.
+ *  Measured on the built page 2026-08-18: of 1,444 cells, 624 were `bg-kill` and drew red, 80 were
+ *  `bg-survive` and drew teal, and the other 740 computed to `rgba(0, 0, 0, 0)`. The chart showed
+ *  the largest cause of death and a blank space where the other eight causes should have been.
+ *
+ *  So the ramp is written in the form it is used in, and nothing rewrites it on the way to the DOM.
+ *  `causeGridRamp.test.ts` fails if a `fill-`/`bg-` swap ever comes back.
+ *
+ *  THE FLOOR IS 30%, NOT 20%. At 20% of #B4342B over the surface a mark is about #F0D6D4, which is
+ *  a shade of the page rather than a mark on it, and the smallest causes are exactly the ones a
+ *  reader has to hunt for. 30% is the palest step that still reads as a square. */
 const RAMP = [
-  'fill-kill',
-  'fill-kill/85',
-  'fill-kill/70',
-  'fill-kill/60',
-  'fill-kill/50',
-  'fill-kill/40',
-  'fill-kill/30',
-  'fill-kill/25',
-  'fill-kill/20',
+  'bg-kill',
+  'bg-kill/85',
+  'bg-kill/70',
+  'bg-kill/60',
+  'bg-kill/50',
+  'bg-kill/45',
+  'bg-kill/40',
+  'bg-kill/35',
+  'bg-kill/30',
 ] as const;
 
 /** Anything past the ramp shares its last step rather than fading to nothing. A cause drawn at 0%
@@ -112,7 +124,7 @@ export function CauseGrid({ distribution, className }: CauseGridProps) {
      and no amount of CSS on the SVG would have made it the drawn one. */
   const marks: string[] = [];
   causes.forEach((bar, i) => {
-    const paint = (RAMP[i] ?? TAIL).replace('fill-', 'bg-');
+    const paint = RAMP[i] ?? TAIL;
     for (let k = 0; k < bar.count; k += 1) marks.push(paint);
   });
   for (let k = 0; k < unattributed; k += 1) marks.push('bg-faint');
@@ -136,11 +148,11 @@ export function CauseGrid({ distribution, className }: CauseGridProps) {
           publishes; the teal block carries no number, per the 2026-08-13 directive.
           `.legend` and `.swb` (`mockups/kill-log.html:252-253`) own the layout, the mono face and
           the rule above; the utilities that used to set those here are removed rather than
-          layered, since mockup.css sits under the utility layer (globals.css:8). */}
+          layered, since mumchimp.css sits under the utility layer (globals.css:8). */}
       <div className="legend">
         {causes.map((bar, i) => (
           <span key={bar.gate}>
-            <i aria-hidden className={cx('swb', (RAMP[i] ?? TAIL).replace('fill-', 'bg-'))} />
+            <i aria-hidden className={cx('swb', RAMP[i] ?? TAIL)} />
             <b className="tabular-nums">{bar.count.toLocaleString('en-GB')}</b> {bar.label}
           </span>
         ))}

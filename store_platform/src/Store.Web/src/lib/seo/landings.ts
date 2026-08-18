@@ -172,11 +172,11 @@ export const LANDINGS: Landing[] = [
     value: 'ops',
     h1: 'Business ideas for people who are good at operations',
     shortName: 'If you run things well',
-    metaTitle: 'Business ideas for operators and organisers',
+    metaTitle: 'Business ideas for people who run things well',
     metaDescription:
       'Researched business ideas where running a tight process is the advantage. Every claim sourced, one payment per pack.',
     intro:
-      'The advantage here is process: turning something chaotic into something that reliably happens on time, at a predictable cost. These ideas usually sit in markets where the work is not technically hard but is done badly and inconsistently by everyone currently doing it, which is exactly the gap an operator can walk into.',
+      'The advantage here is process: turning something chaotic into something that reliably happens on time, at a predictable cost. These ideas usually sit in markets where the work is not technically hard but is done badly and inconsistently by everyone currently doing it, which is exactly the gap someone who runs things well can walk into.',
   },
   {
     slug: 'business-ideas-for-salespeople',
@@ -196,21 +196,21 @@ export const LANDINGS: Landing[] = [
     slug: 'productised-service-ideas',
     kind: 'mechanism',
     value: 'productized_service',
-    h1: 'Productised service ideas',
-    shortName: 'Productised services',
-    metaTitle: 'Productised service business ideas, researched and sourced',
+    h1: 'Fixed-price service ideas',
+    shortName: 'Fixed-price work',
+    metaTitle: 'Fixed-price service business ideas, researched and sourced',
     metaDescription:
-      'Fixed scope, fixed price, repeatable delivery. Researched productised service ideas at one payment per pack.',
+      'Fixed scope, fixed price, repeatable delivery. Researched fixed-price service ideas at one payment per pack.',
     intro:
-      'A productised service sells a defined outcome at a fixed price instead of billing for hours, the same job, done the same way, over and over. It is the mechanism with the shortest path to a first paying customer, because you can sell it before you have built any of the machinery that later makes it efficient.',
+      'A fixed-price service sells a defined outcome at a fixed price instead of billing for hours, the same job, done the same way, over and over. It is the mechanism with the shortest path to a first paying customer, because you can sell it before you have built any of the machinery that later makes it efficient.',
   },
   {
     slug: 'vertical-software-ideas',
     kind: 'mechanism',
     value: 'vertical_tool',
-    h1: 'Vertical software ideas',
-    shortName: 'Software for one sector',
-    metaTitle: 'Vertical SaaS and niche software business ideas',
+    h1: 'Software for one trade',
+    shortName: 'Software for one job',
+    metaTitle: 'Software business ideas aimed at one trade',
     metaDescription:
       'Software ideas aimed at one trade or profession rather than everyone. Every claim cited, one payment per researched pack.',
     intro:
@@ -220,13 +220,13 @@ export const LANDINGS: Landing[] = [
     slug: 'marketplace-and-broker-ideas',
     kind: 'mechanism',
     value: 'transaction_broker',
-    h1: 'Marketplace and broker ideas',
-    shortName: 'Marketplaces and brokers',
-    metaTitle: 'Marketplace and transaction broker business ideas',
+    h1: 'Ideas that connect two sides of a deal',
+    shortName: 'Connecting two sides',
+    metaTitle: 'Business ideas that connect two sides of a deal',
     metaDescription:
-      'Ideas that earn by connecting two sides of a transaction. One payment per researched pack, with the cold-start problem addressed.',
+      'Ideas that earn by connecting two sides of a deal. One payment per researched pack, and each one says how you get the first people on both sides.',
     intro:
-      'These earn a cut for standing between two parties who struggle to find each other. The upside is that you carry no inventory and little delivery cost; the difficulty is the cold start, since neither side turns up for an empty market, so each pack has to say which side it gets first and how.',
+      'These earn a cut for standing between two parties who struggle to find each other. The upside is that you carry no inventory and little delivery cost; the difficulty is getting the first people on both sides, since neither side turns up for an empty market, so each pack has to say which side it gets first and how.',
   },
 
   // ── Sector ───────────────────────────────────────────────────────────────────

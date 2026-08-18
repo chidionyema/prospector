@@ -54,10 +54,17 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
 
       {/* The drawing's frame, not a 768px column at a 24px gutter: `mockups/pricing.html`
           `.wrap{max-width:1080px;padding:0 20px}` with `.pagetop{padding:14px 0 8px}`. */}
-      <section className="mx-auto max-w-[1080px] px-5 pt-3.5 pb-16">
+        {/* THE DRAWING'S `.wrap` HAS NO TOP PADDING, AND `.pagetop` ALREADY CARRIES 14px.
+            `pt-3.5` here sat on top of `.pagetop{padding:14px 0 8px}` (`mumchimp.css:49`), so the
+            page head started 14px lower than the drawing's. Measured on /about at 1280: the
+            eyebrow sat 38px below the drawing's, 24px of it the breadcrumb tap target and 14px
+            this. The `<h1>` gets the drawing's own `margin-top:12px`
+            (`docs/design/mumchimp-build-bundle/mockups/about.html:458`), which the hand-rolled
+            page tops dropped; `PageHero` (`blocks.tsx:263`) already sets it. */}
+      <section className="mx-auto max-w-[1080px] px-5 pb-16">
         <div className="pagetop">
         <p className="eyebrow">Pricing</p>
-        <h1>
+        <h1 style={{ marginTop: 12 }}>
           {range ? range.headline : 'One payment per pack.'}
         </h1>
         <p className="lede big mt-4">
@@ -122,7 +129,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
                 canvas, it sits in a bordered surface panel under one mono eyebrow, and the matrix
                 inside drops its own frame so the page draws one border and not two. `!border-0`
                 and `!m-0` remove the `.matrix` rule rather than layering over it, because
-                mockup.css is imported into the components layer (globals.css:8) and a utility
+                mumchimp.css is imported into the components layer (globals.css:8) and a utility
                 would otherwise be the only thing painting the edge. */}
             <div className="sigcard mt-10">
               <p className="eyebrow">
@@ -153,7 +160,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
           <p className="mt-3 max-w-[60ch] lede">
             Every pack is the same shape: {PACK_DOCUMENTS.length} documents, sourced
             and cited. No tier, no add-on. The list below is
-            identical for every pack on the shelf
+            identical for every pack in the catalogue
             {range && !range.uniform ? `, whether it is ${formatGbp(range.min)} or ${formatGbp(range.max)}` : ''}
             .
           </p>
@@ -210,11 +217,11 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
               { title: 'A guarantee that the business will succeed', body: PACK_DISCLAIMER },
               {
                 title: 'Live updates',
-                body: 'Packs are a one-time artefact, dated at publish. The kill log is the live surface.',
+                body: 'Packs are a one-time file, dated at publish. The kill log is the live page.',
               },
               {
                 title: 'Personal coaching',
-                body: 'The pack is the deliverable. If you want a person, that is a different product, sold elsewhere.',
+                body: 'The pack is what you get. If you want a person, that is a different product, sold elsewhere.',
               },
               {
                 title: 'A subscription, dashboard, or seat',
@@ -237,7 +244,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
             bordered cards each headed by an icon and a small title, which drew the promises at the
             size of a footnote. `.facts span` and `.facts b` are what the stylesheet selects, so
             the label is a span and the figure is a b: classes on the dt and dd draw nothing
-            (`mockup.css:296-297`). The two paragraphs below keep every word that was in the two
+            (`mumchimp.css`). The two paragraphs below keep every word that was in the two
             cards, so nothing is traded for the panel. */}
         <dl className="facts mt-12">
           <div>

@@ -40,6 +40,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.11",
     "jsdom": "^29.1.1",
+    "pixelmatch": "^6.0.0",
+    "pngjs": "^7.0.0",
     "tailwindcss": "^4",
     "typescript": "^6",
     "vitest": "^4.1.8"

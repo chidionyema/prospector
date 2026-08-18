@@ -13,21 +13,16 @@ import { RESEARCH_STATS } from '@/lib/stats';
  * names and its point, and states the gate that actually kills most ideas here.
  */
 
-const GATE_LABELS: Record<string, string> = {
-  min_composite: 'Scored too low',
-  incumbency: 'Already owned',
-  moat_ungrounded: 'Ungrounded',
-  adversarial_decisive: 'Adversarial',
-  value_durability: 'Durability',
-  payer_solvency: 'Affordability',
-  source_or_die: 'No sources',
-  legality: 'Legality',
-  route_to_market: 'Route to market',
-  pain_reality: 'Pain reality',
-  currency: 'Out of date',
-  distribution: 'Distribution',
-  buyer_intent: 'Buyer intent',
-};
+/*
+ * THE CANONICAL NAMES, NOT THIS FILE'S OWN SHORTHAND (fix prompt D7, 2026-08-18).
+ *
+ * These read "Ungrounded", "Durability", "Affordability" -- one-word engine-adjacent labels
+ * written here so six of them would fit on one `.barkey` line. The kill log names the same six
+ * causes in full ("The defensibility claim was not evidence-backed"), so the two pages disagreed
+ * about what killed an idea, on the band whose whole point is that the reason is published. The
+ * shared map is `lib/gateLabels.ts`; this file no longer keeps a second copy to drift from.
+ */
+import { GATE_LABELS } from '@/lib/gateLabels';
 
 const byGate = (killTotals as { byGate: Record<string, number> }).byGate;
 const gates = Object.entries(byGate)

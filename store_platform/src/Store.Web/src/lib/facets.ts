@@ -124,9 +124,9 @@ const LABELS: Record<FacetKind, Record<string, string>> = {
     full_time: 'Full-time',
   },
   mechanism: {
-    productized_service: 'Productised service',
+    productized_service: 'Fixed-price service',
     vertical_tool: 'Vertical tool',
-    transaction_broker: 'Transaction broker',
+    transaction_broker: 'Connecting two sides of a deal',
     risk_financing: 'Risk and financing',
     physical_ops: 'Physical operations',
     audience_media: 'Audience and media',
@@ -178,7 +178,7 @@ const SHORT_LABELS: Partial<Record<FacetKind, Record<string, string>>> = {
     code: 'Builders',
     nocode: 'No code',
     sales: 'Sellers',
-    ops: 'Operators',
+    ops: 'People who run things well',
     audience: 'Audience',
   },
 };
@@ -218,7 +218,7 @@ const CLAUSE_LABELS: Partial<Record<FacetKind, Record<string, string>>> = {
     code: 'Suits builders',
     nocode: 'No code needed',
     sales: 'Suits sellers',
-    ops: 'Suits operators',
+    ops: 'Suits people who run things',
     audience: 'Suits an audience',
   },
 };

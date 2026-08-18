@@ -28,10 +28,27 @@ drain summary, so it reaches `ticks.jsonl` and the state probe) and names this l
 `rm` the file to give every row its full budget back. A cap the operator can neither see nor undo
 would be exactly the silent truncation CLAUDE.md forbids.
 
-WHAT DOES NOT COUNT. Only a completed re-vet with a verdict increments. A blind moat skips the
-pass entirely (`run._cmd_resume`'s preflight) and a `ProviderExhaustedError` breaks the loop
-before any attempt is recorded, so an outage cannot burn a row's budget — which matters, because
-the whole backlog exists BECAUSE of outages.
+WHAT DOES NOT COUNT. Only a completed re-vet with a verdict increments, and only when the verdict
+was ruled on evidence. Three outage paths are excluded:
+
+  * a blind moat, which returns before the pool is even built (`run._cmd_resume`'s preflight);
+  * a `ProviderExhaustedError`, which breaks the loop before any attempt is recorded;
+  * a COMPLETED re-vet whose DEFER was caused by infrastructure — `infrastructure_defer` below.
+
+The third was missing until 2026-08-18, and it was not an edge case: it was every DEFER this
+pipeline can produce. `verify._run_checks` sets `DEFER_GATE` in exactly two places, `verify.py`
+1105 (the vet time budget ran out before the check ran) and 1151 (`retrieval_failed`), and both
+mark the affected checks `retrieval_failed=True`. There is no such thing here as a DEFER on the
+merits. So the branch that was supposed to retire "rows this pipeline cannot rule on" was in fact
+retiring rows our own outages had touched five times.
+
+Measured on the Fly engine 2026-08-18: `251 stalled (>= 5 unresolved re-vets)`, logged once a
+minute beside `No backlogged candidate the drain can work on`. The drain had nothing left to do
+while the catalogue still held 251 rows waiting on a verdict.
+
+The vet-budget path makes the point sharpest. That clock is a property of the TICK, not of the
+candidate. A row picked up late in five drain passes was retired without one real ruling against
+it, on the strength of five stopwatches.
 """
 from __future__ import annotations
 
@@ -118,6 +135,26 @@ def revet_provisional_kills(cfg) -> bool:
     if raw is None:
         return True
     return bool(raw)
+
+
+def infrastructure_defer(dossier) -> bool:
+    """Did OUR outage produce this DEFER, rather than the candidate's own weakness?
+
+    A DEFER whose checks carry `retrieval_failed` was not ruled on evidence. `verify.py` raises
+    that flag for a failed verdict call, for searches that all errored, and for the vet time
+    budget running out before a check ran — none of which is a fact about the idea. Counting one
+    of those against a row's re-vet budget spends the budget on our own downtime and then retires
+    the row for it.
+
+    Deliberately reads `checks` defensively. This is bookkeeping, and bookkeeping must never be
+    able to stop a drain: an unexpected dossier shape answers False (count it, keep the old
+    behaviour) rather than raising.
+    """
+    checks = getattr(dossier, "checks", None) or []
+    try:
+        return any(bool(getattr(c, "retrieval_failed", False)) for c in checks)
+    except TypeError:
+        return False
 
 
 def load(store_dir) -> dict[str, int]:

@@ -690,6 +690,29 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # THE THIRD TIME THIS JOB HAS BEEN MISSING AN ENFORCEMENT POINT, and the two notes above
+      # are the first two. `eslint.config.mjs` says at the top that its rules "make the war-room
+      # rails fail the build, not just a reviewer's eye" -- no `any`, no `dangerouslySetInnerHTML`,
+      # no token in localStorage, no raw `fetch` outside src/lib/api, jsx-a11y/recommended. None of
+      # them failed anything: the only `npm run lint` in this file belongs to the Ops.Console job,
+      # so Store.Web has never been linted in CI. Measured 2026-08-18 on the branch for #349:
+      # 2 errors and 26 warnings sitting in the tree with every check green.
+      #
+      # `--cache` because a cold run measured 207.64s here against ruff's 0.81s repo-wide. The
+      # cache keys on file content plus config, so a hit is only ever a file eslint has already
+      # judged in this exact configuration.
+      - name: Cache ESLint results
+        uses: actions/cache@v4
+        with:
+          path: store_platform/src/Store.Web/.eslintcache
+          key: eslint-${{ runner.os }}-${{ hashFiles('store_platform/src/Store.Web/package-lock.json', 'store_platform/src/Store.Web/eslint.config.mjs') }}-${{ github.sha }}
+          restore-keys: |
+            eslint-${{ runner.os }}-${{ hashFiles('store_platform/src/Store.Web/package-lock.json', 'store_platform/src/Store.Web/eslint.config.mjs') }}-
+            eslint-${{ runner.os }}-
+
+      - name: Lint
+        run: npm run lint -- --cache
+
       # The 523 vitest tests had NO enforcement point anywhere: this job ran typecheck +
       # build only, and the pre-commit gate ran pytest, which cannot see a .tsx. A storefront
       # unit test could go red and reach main with every check green.

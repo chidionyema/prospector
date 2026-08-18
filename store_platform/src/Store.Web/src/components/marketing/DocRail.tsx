@@ -85,7 +85,7 @@ export function DocRail({
        and a <li> between the card and the anchor makes every anchor its own parent's last child,
        which deletes every divider in the list. */
     /* 861px, not `lg`. `.reader` and `.legal` both collapse to one column at 860px
-       (`mockup.css`), so a rail that appears at 1024 leaves a 230px empty column between the two
+       (`mumchimp.css`), so a rail that appears at 1024 leaves a 230px empty column between the two
        breakpoints, and one that appears earlier stacks under a body it is meant to sit beside. */
     <div className={cx('hidden min-[861px]:block', className)}>
       <p className="mono mb-3">{eyebrow}</p>

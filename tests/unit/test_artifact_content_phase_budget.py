@@ -72,7 +72,24 @@ class TestGenerateArtifactsBudget:
             return t, f"content-{t}", None, []
 
         monkeypatch.setattr(art_mod, "_gen_one_artifact", _fake)
-        deadline = time.monotonic() + 0.15
+        # THE BUDGET IS 3s, NOT 0.15s, AND THE LENGTH IS NOT THE POINT OF THIS TEST.
+        # `as_completed(futures, timeout=...)` measures from the moment the batch is
+        # submitted, so a 0.15s budget was a race between the deadline and four worker
+        # threads reaching the scheduler. Under load they lose it. Measured on main,
+        # run 32192279248 (2026-08-18), four CI jobs and a Fly deploy sharing the box:
+        #
+        #   Artifact batch hit its phase time budget with 2/4 piece(s) returned before
+        #   the deadline; missing: ['gtm_plan', 'financial_model']
+        #
+        # `financial_model` returns a tuple and nothing else. It missed because its
+        # thread had not been scheduled yet, which is a fact about the runner, not about
+        # the rail. That turned main red with no defect behind it.
+        #
+        # The property under test is unchanged by the number: the slow piece blocks for
+        # 60s, and `elapsed < 10.0` below still separates "abandoned the future" from
+        # "awaited it" at any budget under ten seconds. 3s buys 20x headroom on thread
+        # startup and cannot be confused with awaiting a 60s block.
+        deadline = time.monotonic() + 3.0
 
         try:
             t0 = time.monotonic()

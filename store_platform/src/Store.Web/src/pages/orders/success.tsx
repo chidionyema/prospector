@@ -350,8 +350,8 @@ export default function OrderSuccess() {
             {[
               'Read the executive summary, the 4-page read that frames the build',
               'Skim the QA report, the one section that lists every sourcing caveat',
-              'Run the build spec for day one, the first deliverable in your first week',
-              'Pick your first customer, the persona dossier inside the pack',
+              'Run the build spec for day one, the first thing you ship in your first week',
+              'Pick your first customer, the customer profile inside the pack',
             ].map((step, i) => (
               <li key={i} className="flex items-start gap-3 rounded-card border border-border bg-surface p-4">
                 <span className="flex h-6 w-6 flex-none items-center justify-center rounded-sm bg-text text-caption font-medium text-bg">

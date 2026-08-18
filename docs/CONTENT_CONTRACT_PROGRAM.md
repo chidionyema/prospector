@@ -414,3 +414,84 @@ through its own path. That is the live-shelf repair tool, not the engine, and mo
 separate change with its own blast radius — it writes rows that are already published. The engine
 side is closed.
 
+## P3, 2026-08-18 — the title and one-liner journeys, traced end to end
+
+Written after a repair spent 23 minutes and $0.059 and produced nothing. The two fields turned
+out to be on the same rails with different wiring, and only one of them worked.
+
+### The two journeys, in order
+
+| | **title** | **one-liner** |
+|---|---|---|
+| born | generation, then `run._generate_pack_content` | same |
+| graded by | `field_write.grade_title` → `pack_linter.check_title` | `field_write.grade_one_liner` → `shelf_copy_repair.voice_breaches` + the length bar |
+| the bar | `TITLE_MAX_CHARS = 60` (`pack_linter.py:689`) | `ONE_LINER_CUT_AT = 280` (`field_write.py:47`) |
+| rewritten by | `_propose_title` → `prompts/retitle.md` | `_propose_one_liner` → `shelf_copy_repair.rewrite_one` |
+| the bar in the prompt | renders `{max_chars}` (`retitle.md:85`) | **carried its own number: 200** |
+| rejection reaches the model | yes, `feedback=feedback` | **no, the argument was dropped** |
+| attempts | 2 | **1** |
+| written to the shelf | `bridge.py` catalogue row | `bridge.py:843`, then cut at 280 by `bridge.py:878` |
+| live-shelf repair | `tools/retitle_catalogue.py` | `tools/sweep_shelf_copy.py`, `tools/repair_stranded_shelf_lines.py` |
+
+Every cell in bold is a defect, and all three are in the same column. The title path already had
+the design; the one-liner path had a copy of the number, a retry that could not fire, and a
+feedback string that was assembled and thrown away.
+
+### What the machine knew and never said
+
+`field_write._reject_feedback` exists to quote a refusal verbatim, counts included — its own
+comment says "a vague 'too long' gets a draft one character shorter". For the one-liner it was
+never sent. `_propose_one_liner` took a `feedback` argument and did not pass it on, and the field
+was declared `attempts=1`, so the loop computed the rejection on its way out and discarded it.
+Three attempts at that pack therefore sent three identical prompts.
+
+### The obvious fix was measured, and it does not work
+
+The first fix written for this was to render `ONE_LINER_CUT_AT` in the prompt, so 280 replaced
+200 and the two numbers could not drift. Run live against the same model and the same line, only
+the number changing:
+
+```
+limit=200   601s   no answer at all — the streamed response hit the 600s deadline
+limit=280   254s   a 320-character line — over the gate anyway
+```
+
+A number in the prompt does not control the length of the reply, because the model cannot count
+its own characters. Raising it turns a stall into a wrong answer. That branch was dropped.
+
+### The 280 itself is right, and that was checked too
+
+Across the 2,805 dossiers in `store/dossiers/` that carry a one-liner, 217 are over 280. Replaying
+`bridge.py:878` over them: **215 are a single runaway sentence** that the bridge would cut with an
+ellipsis, which `check_shelf_copy` then refuses as "trails off on the shelf". Only 2 would be cut
+cleanly on a sentence boundary. So the gate is not stricter than the defect it mirrors — 0.9% of
+the population is gated for nothing, and loosening it would trade that for silently dropping a
+whole sentence of sourced facts.
+
+### What shipped
+
+The character count came out of the ask and went into the loop:
+
+- `shelf_copy_repair.USER` states no length. It says "keep it as short as the facts allow" and
+  "do not count characters; if it comes back too long you will be told by how much".
+- `rewrite_one` measures the answer it got and, when it is over `ONE_LINER_CUT_AT`, re-asks with
+  the exact overage — "it is 320 characters and the shelf cuts at 280, so it needs to lose 40
+  characters without losing a fact". That figure is arithmetic on the reply, which is the one
+  thing only the machine can supply.
+- `rewrite_one` takes a `feedback` argument and puts it in the prompt.
+- `_propose_one_liner` passes `_reject_feedback` through to it.
+- `MAX_ONE_LINER_REPAIR_ATTEMPTS = 2`, so the informed retry can fire at all.
+
+Pinned by `tests/unit/test_the_machine_counts_the_characters_not_the_model.py`: no character
+count in the template, the overage arithmetic in the second prompt, the feedback reaching the
+prompt, a clean answer never re-asked, and the attempt count above one.
+
+### The next link, and it is not in this file
+
+An unsatisfiable ask still costs 600 seconds. `operator.py:757` sets `max_tokens` to 65536 for
+every MiniMax call, from a process-wide environment variable, so a one-sentence rewrite is given
+the same ceiling as a full dossier and bills its whole budget when it runs away. `complete_json`
+has no per-call ceiling to pass one down. Adding it touches every operator's `_raw`, so it is its
+own change rather than a line in this one — but it is the reason a bad ask cost $0.059 instead of
+a tenth of a cent.
+
