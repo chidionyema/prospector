@@ -211,7 +211,7 @@ with the daemons still running untouched.
 
 > **As the founder**, I want to watch the Fly engine do a full tick before it owns anything.
 
-1. `deploy/fly/engine.fly.toml` — 1 machine, `min_machines_running = 1`, `auto_stop_machines = false`,
+1. `deploy/engine/fly.toml` — 1 machine, `min_machines_running = 1`, `auto_stop_machines = false`,
    volume `engine_data` → `/data`, `PROSPECTOR_STORE_DIR=/data/store`. **HYPOTHESIS on size:**
    measured RSS today is scheduler 19 MB + consumer 32 MB + console 31 MB + control-center 10 MB
    ≈ 92 MB at rest, so `shared-cpu-4x` (4 cores / 1 GB) should fit and `performance-1x` (1 core /
@@ -452,10 +452,12 @@ not move the store, and moving the store does not move the code.
 ### 10.2 What else is on this box
 
 - **Four GitHub Actions runners** (`mumchimp-mac`, `-2`, `-3`, `-4`), all online and busy.
-  Covered by EDGE-12, and **already solved**: every workflow reads
-  `${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}`, and the repo variable `CI_RUNS_ON` is set to
-  `self-hosted`. `gh variable delete CI_RUNS_ON` moves all CI to GitHub's machines in one
-  command. No code change needed, tonight or ever.
+  This bullet used to say the problem was "already solved", because `gh variable delete
+  CI_RUNS_ON` sends every job to GitHub's hosted machines in one command. **That was wrong, and
+  the founder said so:** *"either to flip CI no why would you do this? we have hosted runner and
+  github is billing us"*. Hosted minutes are metered, and on 2026-08-16 they stopped entirely
+  when a payment failed — five jobs, zero steps, no logs. Deleting the variable is an emergency
+  lever, not the migration. The runners move for real: **§10.6**.
 - **Eight Hermes jobs** (`ai.hermes.*`: coordinator, gateway, otto-server, rsi, watchdog,
   keepawake, idle-engine, runaway-reaper). §3 recommends these stay put. They do not read the
   prospector store.
@@ -534,3 +536,67 @@ names them). Carrying a dead key to a new host is how a dead tier gets quietly r
 `api.mumchimp.com` (publishing), Stripe, and the R2 endpoint
 (`<account>.r2.cloudflarestorage.com`). All public HTTPS, no allowlisting, nothing that depends
 on being on this network. **This is the part of the migration with no hidden dependency.**
+
+### 10.6 The CI runners — BUILT 2026-08-18
+
+**Founder, 2026-08-18:** *"as part of our migration don't forget our github hosted runners
+also"*, and earlier, *"even our runners could move to fly also"*.
+
+**Measured before building anything:**
+
+```
+$ gh api repos/chidionyema/prospector/actions/runners --jq '.runners[] | "\(.name)\t\(.status)\t\(.os)\t\(.busy)"'
+mumchimp-mac    online  macOS   true
+mumchimp-mac-2  online  macOS   true
+mumchimp-mac-3  online  macOS   true
+mumchimp-mac-4  online  macOS   true
+
+$ gh variable list | grep CI_RUNS_ON
+CI_RUNS_ON      self-hosted     2026-08-17T23:37:53Z
+```
+
+All four are launchd jobs under `~/actions-runner*` on this laptop. Closing the lid stops CI
+for the whole repository. Same problem as the engine, same answer.
+
+**Why a Linux container and not a macOS one.** `.github/workflows/ci.yml:16-18` records that the
+jobs are OS-portable — no `apt-get`, no `sudo`, no docker, no service containers. Every
+toolchain arrives through an action that fetches its own copy, and the python job deliberately
+uses `uv venv` rather than the system interpreter (`ci.yml:190-208`) after `setup-python` failed
+on the Macs with `mkdir: /Users/runner: Permission denied`. So the image installs **no language
+runtimes at all**: it installs what those actions need in order to unpack and run what they
+download.
+
+**Built:**
+
+| File | What it is |
+|---|---|
+| `deploy/runner/Dockerfile` | Ubuntu 24.04 + the pinned `actions/runner` tarball. The one non-obvious dependency is `libicu74`: the runner agent is itself a .NET program and refuses to start without ICU, failing as "Couldn't find a valid ICU package" rather than as a missing command. |
+| `deploy/runner/entrypoint.sh` | Asks GitHub for a registration token at every start, registers `--ephemeral`, runs one job, exits. Deregisters on the way out through a trap. |
+| `deploy/runner/fly.toml` | `prospector-ci`, no public IP, `restart policy = always`, `shared-cpu-4x` / 8 GB. |
+| `deploy/runners.sh` | `up N` / `down` / `status` / `laptop-off` / `laptop-on`. |
+
+**Why ephemeral.** A long-lived runner carries the last job's `node_modules`, `.venv`, `obj/`
+and half-written `store/` into the next one. On the Macs `_work/prospector/prospector` is a
+permanent directory, and "green on runner 2, red on runner 4" was a real symptom. A container
+that exits after one job cannot carry state forward. The cost is a fresh checkout per job, and
+`actions/cache` absorbs most of it because the caches live in GitHub's cache service.
+
+**The integration is one label.** The runners come up carrying `self-hosted`, which is exactly
+what `vars.CI_RUNS_ON` asks for. Nothing in `.github/` changes. Jobs go to whichever runner is
+free, Fly or Mac, so the two fleets coexist — and that coexistence *is* the migration: bring the
+Fly runners up, watch `runners.sh status` show them taking jobs, then `runners.sh laptop-off`.
+
+`laptop-off` refuses to run while no non-macOS runner is online. `runs-on: self-hosted` does not
+fall back to GitHub-hosted; with no runners the jobs queue forever and report nothing, which is
+the same silent failure mode as a stale dashboard.
+
+**Credential.** The container needs a fine-grained PAT with `Administration: read and write` on
+this one repository, and nothing else. That single permission can add and remove runners; it
+cannot read code, push, or reach another repo. It is deliberately **not** the money keys: a
+runner executes code from every pull request, including one an outsider opened.
+`deploy/runners.sh up` refuses to start without `GITHUB_RUNNER_PAT` and prints the exact
+settings page and permission to use.
+
+**Portability, same contract as the engine.** `PROSPECTOR_RUNNER_TARGET` names an adapter in
+`deploy/targets/`. The image calls no platform API — a runner makes only outbound calls, so
+moving it is `fly deploy` becoming `docker run` and nothing else.

@@ -61,7 +61,7 @@ R1 is the finding of the night. It is a bigger exposure than the migration we se
 | `mumchimp.com` | Fly `prospector-store-web`, 1 machine, `lhr` | **none — one machine** | no (stateless) |
 | `api.mumchimp.com` | Fly `prospector-store-api`, 1 machine, `lhr` | **none — one machine** | **yes — `vol_4ql6dzwjylqeygnr`, 1GB, zone 8169, SQLite** |
 | the engine | this laptop → Fly `prospector-engine` tonight | one by design (§5.1) | yes — 0.49 GiB, SQLite + JSONL |
-| both dashboards | this laptop, Tailscale `100.93.240.113:8601/:8611` | none | no (they read the store) |
+| both dashboards | this laptop, Tailscale `100.93.240.113:8611` | none | no (they read the store) | <!-- doc-lint-ok: a Tailscale address, not a repo path -->
 | CI runners | 4 self-hosted, this laptop | none | no |
 | Hermes | this laptop, 8 launchd jobs | none | yes, small |
 | DNS | GoDaddy nameservers, A → Fly anycast `66.241.124.37` | registrar-level | — |

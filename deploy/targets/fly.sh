@@ -11,6 +11,13 @@ REGION="${PROSPECTOR_FLY_REGION:-lhr}"
 VOLUME="${PROSPECTOR_FLY_VOLUME:-prospector_store}"
 VOLUME_GB="${PROSPECTOR_FLY_VOLUME_GB:-20}"
 ENGINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../engine" && pwd)"
+# The build CONTEXT is the repository root, not the directory the Dockerfile sits in. Every
+# COPY in deploy/engine/Dockerfile is written repo-root-relative - `COPY requirements.txt`,
+# `COPY store_platform/src/Ops.Console` - because that is the only way one Dockerfile can pull
+# in both the engine and the Next.js console. Anything narrower fails at build time with
+# `failed to calculate checksum ... "/requirements.txt": not found`, which reads like a missing
+# file rather than a wrong context. It cost one cutover attempt at 02:27 on 2026-08-18.
+REPO_ROOT="$(cd "$ENGINE_DIR/../.." && pwd)"
 
 t_name() { echo "fly:${APP}"; }
 
@@ -37,7 +44,7 @@ t_secrets() {
 }
 
 t_release() {
-  fly deploy "$ENGINE_DIR/.." --config "$ENGINE_DIR/fly.toml" -a "$APP" \
+  fly deploy "$REPO_ROOT" --config "$ENGINE_DIR/fly.toml" -a "$APP" \
     --dockerfile "$ENGINE_DIR/Dockerfile" --strategy immediate --yes
 }
 

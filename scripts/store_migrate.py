@@ -244,7 +244,7 @@ def cmd_pack(root: Path, out: Path, force: bool) -> int:
           f"files={c['files']:,} dossiers={c['dossiers']:,} "
           f"ledger_lines={c['ledger_lines']:,} db_integrity={c['db_integrity']}")
     print(f"  unpack with: mkdir -p DEST && tar -xzf {out.name} -C DEST")
-    print(f"  then prove it with: store_migrate.py verify DEST")
+    print("  then prove it with: store_migrate.py verify DEST")
     return 0
 
 
@@ -315,14 +315,27 @@ def cmd_verify(dest: Path, sample: int) -> int:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
+    # --store is accepted on BOTH sides of the subcommand. As a global option only, `pack OUT
+    # --store DIR` failed with "unrecognized arguments: --store", which is a true message and a
+    # useless one: the option exists, it is simply in the wrong position. That killed the 02:33
+    # cutover in phase 5, after the engine had already been stopped. Declaring it in a parent
+    # parser makes both orders work, so no caller can get the position wrong again.
+    # SUPPRESS, not None. A subparser writes its own defaults into the SAME namespace, so a
+    # plain `default=None` here would silently overwrite a --store given before the subcommand
+    # with None. SUPPRESS means "if it was not typed, do not touch the attribute at all".
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument("--store", default=argparse.SUPPRESS,
+                        help="store root (default: PROSPECTOR_STORE_DIR)")
     ap.add_argument("--store", default=None, help="store root (default: PROSPECTOR_STORE_DIR)")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("plan", help="what would move, and whether it is safe to move it now")
-    p = sub.add_parser("pack", help="build the payload and its manifest")
+    sub.add_parser("plan", parents=[common],
+                   help="what would move, and whether it is safe to move it now")
+    p = sub.add_parser("pack", parents=[common], help="build the payload and its manifest")
     p.add_argument("out", help="output .tar.gz")
     p.add_argument("--force", action="store_true",
                    help="pack even though something is writing the store (drills only)")
-    v = sub.add_parser("verify", help="check an unpacked tree against its manifest")
+    v = sub.add_parser("verify", parents=[common],
+                       help="check an unpacked tree against its manifest")
     v.add_argument("dest", help="directory the payload was unpacked into")
     v.add_argument("--sample", type=int, default=200,
                    help="files to re-hash; 0 hashes every file (default 200)")
