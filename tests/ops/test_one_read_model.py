@@ -26,29 +26,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-import pytest
-
-PAGES = Path("prospector/control_center/pages")
 OPS = Path("prospector/ops")
-
-
-# --------------------------------------------------------------------------- #
-# Behavioural: the renderer and the CLI hold the SAME function object
-# --------------------------------------------------------------------------- #
-def test_the_streamlit_page_and_the_cli_call_the_same_functions():
-    """Not "equivalent" — identical. Both surfaces are thin over `prospector.ops`."""
-    from prospector.control_center.pages import _engine, _metrics, _runs, _spend
-    from prospector.ops import metrics as ops_metrics
-    from prospector.ops import pause as ops_pause
-    from prospector.ops import readmodel as ops_readmodel
-    from prospector.ops import runs as ops_runs
-    from prospector.ops import spend as ops_spend
-
-    assert _engine._rm is ops_readmodel
-    assert _engine._pause is ops_pause
-    assert _spend._spend is ops_spend
-    assert _runs._runs is ops_runs
-    assert _metrics._mx is ops_metrics
 
 
 def test_every_ops_module_has_the_cli_entry_point_the_telegram_surface_calls():
@@ -65,7 +43,7 @@ def test_the_overview_kpi_and_the_spend_page_report_the_same_metered_figure(monk
     """The regression that motivated R23, as an equality. `readers._today_spend_from_ledger`
     used to hand-parse the ledger; now it is the guard's own scan, so the Overview KPI and the
     Spend page cannot print different money."""
-    from prospector.control_center import readers
+    from prospector.ops import readers
     from prospector.ops import spend as ops_spend
     from prospector.ops.readmodel import load_cfg
 
@@ -100,7 +78,7 @@ def test_the_overview_kpi_and_the_spend_page_report_the_same_metered_figure(monk
 def test_the_metered_figure_is_the_guards_own_call_not_a_reconciliation(monkeypatch):
     """`scan_today` is patched to a sentinel; the KPI must change with it. A reader that parsed
     the ledger itself would ignore the patch and keep answering the real number."""
-    from prospector.control_center import readers
+    from prospector.ops import readers
     from prospector.scheduler import guard as _guard
 
     monkeypatch.setattr(_guard.SchedulerGuard, "scan_today", lambda self: (4.25, 8.5))
@@ -127,34 +105,11 @@ def _calls(path: Path) -> set[str]:
     return out
 
 
-@pytest.mark.parametrize("page", sorted(PAGES.glob("_*.py")))
-def test_no_page_derives_backlog_spend_or_the_roster_itself(page):
-    """A renderer may call an ops view. It may not call the underlying source.
-
-    `moat_primary` is the exception that proves it: reading it is not the sin, reading it from a
-    process that never called `load_config` is (§14.5.1) — so pages must reach it through the ops
-    views, which load config first.
-    """
-    forbidden = {"drain_survey", "drainable", "scan_today", "spend_by_day", "moat_primary",
-                 "connect"}
-    # ONE recorded exception, named rather than hidden. `_resume.py:225` opens the catalogue DB
-    # itself (`sqlite3.connect`); it predates the ops spine and is the page R16's queue view
-    # replaces. It is listed so the fence still fires on a SECOND offence in that file and on any
-    # other page — an allowlist that says which line and why is a debt; a silently relaxed rule
-    # is a lie.
-    known_debt = {"_resume.py": {"connect"}}
-    found = (_calls(page) & forbidden) - known_debt.get(page.name, set())
-    assert not found, (
-        f"{page} derives {sorted(found)} itself. Every operator READ goes through "
-        "prospector/ops (§4) — two derivations of one number is how a panel and a rail come to "
-        "disagree in front of an operator.")
-
-
 def test_readers_no_longer_parses_the_spend_ledger():
     """The deleted parser, pinned by name so it cannot come back quietly."""
-    src = Path("prospector/control_center/readers.py").read_text(encoding="utf-8")
+    src = Path("prospector/ops/readers.py").read_text(encoding="utf-8")
     assert "_scan_today_spend_from_tail" not in src
-    from prospector.control_center import readers
+    from prospector.ops import readers
 
     assert not hasattr(readers, "_scan_today_spend_from_tail")
 

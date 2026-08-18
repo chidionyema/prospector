@@ -8,7 +8,7 @@ _ROOT = Path(__file__).resolve().parent.parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from prospector.control_center.readers import (
+from prospector.ops.readers import (
     glance_status,
     job_outcome_summary,
     launch_archetype_choices,

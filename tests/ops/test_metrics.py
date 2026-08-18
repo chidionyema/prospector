@@ -79,7 +79,7 @@ def test_the_totals_reconcile_to_catalogue_stats_exactly(tmp_path, monkeypatch):
     through `PROSPECTOR_STORE_ROOT` (read per call — `paths.py:69`), with its `st.cache_data`
     cleared so a previous test's store cannot answer for this one.
     """
-    from prospector.control_center import readers
+    from prospector.ops import readers
 
     store = _rows(tmp_path, [
         {"candidate_id": "p1", "decision": "pass", "composite": 3.4},

@@ -5,9 +5,8 @@ import json
 import sys
 from pathlib import Path
 
-import prospector.control_center.runner as runner
-from prospector.control_center.pages import _overview
-from prospector.control_center.readers import summarize_job_command, watched_operators
+import prospector.ops.runner as runner
+from prospector.ops.readers import watched_operators
 
 
 class TestEphemeralJobFilter:
@@ -65,34 +64,6 @@ class TestEphemeralJobFilter:
         kept = runner.filter_production_jobs(jobs)
         assert len(kept) == 1
         assert kept[0]["job_id"] == "real"
-
-    def test_overview_latest_ignores_newer_pytest_junk(self):
-        jobs = [
-            {
-                "job_id": "real_k20",
-                "argv": [sys.executable, "-m", "prospector.run", "generate", "--candidates", "20"],
-                "log_file": "store/control_center/runs/real.log",
-                "start_ts": 100,
-                "status": "failed",
-            },
-            {
-                "job_id": "pytest_junk",
-                "argv": [sys.executable, "-c", "import time; time.sleep(60)"],
-                "log_file": (
-                    "/private/var/folders/gq/x/T/pytest-of-chidionyema/"
-                    "pytest-37/test_second_launch_raises_runt0/cc/runs/j.log"
-                ),
-                "start_ts": 999,
-                "status": "failed",
-            },
-        ]
-        visible = runner.filter_production_jobs(jobs)
-        active, latest = _overview._active_and_latest(visible)
-        assert active is None
-        assert latest is not None
-        assert latest["job_id"] == "real_k20"
-        assert summarize_job_command(latest["argv"]) == "generate k=20"
-
 
 class TestDaemonCannotClobberProduction:
     def test_upsert_uses_captured_jobs_file(self, tmp_path, monkeypatch):

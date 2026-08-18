@@ -12,7 +12,7 @@ import time
 
 import pytest
 
-import prospector.control_center.runner as runner
+import prospector.ops.runner as runner
 
 
 class TestLaunchPersist:

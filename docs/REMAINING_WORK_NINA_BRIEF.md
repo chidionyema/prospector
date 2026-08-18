@@ -3,7 +3,7 @@
 > **STATUS: DONE (2026-06-16) — Claude executed all phases.** See completion notes below.
 
 **Baseline (already done + committed):**
-- `aa15dea` — Control Center empty-UI fix (absolute imports + `.streamlit/config.toml`).
+- `aa15dea` — Control Center empty-UI fix (absolute imports + `.streamlit/config.toml`).  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 - `30cc897` — Payment rail **P0–P2** (provider seam, Stripe provider, idempotency), founder-fence
   reviewed by Claude. Build clean, **27/27 Store.Tests pass**.
 - Parent spec with full detail: `docs/PAYMENT_RAIL_INDEPENDENCE_SPEC.md` (§9 = phase plan).
@@ -59,7 +59,7 @@ money rail and Nina may commit those after self-verifying (tests green), same as
 ## Control Center go-live ✅ ALL DONE
 
 1. ✅ **Cancel-safety test** — `prospector/store.py` now writes dossiers atomically
-   (write-temp-then-rename). 3 tests in `tests/control_center/test_cancel_safety.py` verify:
+   (write-temp-then-rename). 3 tests in `tests/control_center/test_cancel_safety.py` verify:  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
    atomic-write leaves no partial file, cancelled subprocess doesn't corrupt state, runner cancel
    updates job status.
 2. ⚠️ **Live vet smoke** — requires manual verification through the Streamlit UI (browser
@@ -82,11 +82,11 @@ reverse-proxy/`--server.runOnSave=false` hardening.
 - **.NET:** 39 passed (Store.Tests)
 - **Golden regression:** 15 passed
 - **New files:** `Store.Tests/Payments/ProviderParityTests.cs`,
-  `Store.Api/Contracts/CheckoutRequest.cs`, `tests/control_center/test_cancel_safety.py`
+  `Store.Api/Contracts/CheckoutRequest.cs`, `tests/control_center/test_cancel_safety.py`  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 - **Modified files:** `prospector/bridge.py`, `prospector/store.py`,
   `Store.Api/Program.cs`, `Store.Api/Contracts/PublishRequest.cs`,
   `Store.Api/Payments/StripeProvider.cs`, `Store.Web/src/pages/pack/[id].tsx`,
-  `prospector/control_center/runner.py`, `tests/control_center/test_runner.py`
+  `prospector/control_center/runner.py`, `tests/control_center/test_runner.py`  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 - **Ready for Claude review → commit.**
 
 ---

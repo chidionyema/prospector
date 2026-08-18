@@ -5,7 +5,7 @@ import sys
 import time
 from pathlib import Path
 
-import prospector.control_center.runner as runner
+import prospector.ops.runner as runner
 
 _CHILD_TICKER = r"""
 import sys, time

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import time
 
-import prospector.control_center.config_editor as ce
+import prospector.ops.config_editor as ce
 
 
 class TestValidateConfig:
@@ -164,8 +164,8 @@ class TestMtimeConflict:
         new_mtime = fake.stat().st_mtime
         assert new_mtime > old_mtime
         # Monkeypatch get_config_mtime for this test
-        import prospector.control_center.config_editor as _ce
-        import prospector.control_center.config_editor as _ce_module
+        import prospector.ops.config_editor as _ce
+        import prospector.ops.config_editor as _ce_module
         orig_path = _ce_module.CONFIG_PATH
         try:
             _ce_module.CONFIG_PATH = fake
@@ -180,7 +180,7 @@ class TestWriteConfig:
     def test_write_config_refuses_on_mtime_conflict(self, tmp_path):
         fake = tmp_path / "config.yaml"
         fake.write_text("key: value\n")
-        import prospector.control_center.config_editor as _ce_module
+        import prospector.ops.config_editor as _ce_module
         orig_path = _ce_module.CONFIG_PATH
         try:
             _ce_module.CONFIG_PATH = fake
@@ -205,7 +205,7 @@ class TestWriteConfig:
         fake_cc.mkdir()
         fake_backup = tmp_path / "backups"
         fake_backup.mkdir()
-        import prospector.control_center.config_editor as _ce_module
+        import prospector.ops.config_editor as _ce_module
         orig_path = _ce_module.CONFIG_PATH
         orig_cc = _ce_module._CC_DIR
         orig_backup = _ce_module._BACKUP_DIR
@@ -233,7 +233,7 @@ class TestWriteConfig:
         fake_cc.mkdir()
         fake_backup = tmp_path / "backups"
         fake_backup.mkdir()
-        import prospector.control_center.config_editor as _ce_module
+        import prospector.ops.config_editor as _ce_module
         orig_path = _ce_module.CONFIG_PATH
         orig_cc = _ce_module._CC_DIR
         orig_backup = _ce_module._BACKUP_DIR
@@ -259,7 +259,7 @@ class TestCertification:
 
     def test_load_certification_returns_certified_false_when_no_file(self, tmp_path):
         fake_cert = tmp_path / "nonexistent.json"
-        import prospector.control_center.config_editor as _ce_module
+        import prospector.ops.config_editor as _ce_module
         orig = _ce_module._CERT_PATH
         try:
             _ce_module._CERT_PATH = fake_cert
@@ -270,7 +270,7 @@ class TestCertification:
 
     def test_certify_from_golden_marks_certified(self, tmp_path):
         cert_file = tmp_path / "cert.json"
-        import prospector.control_center.config_editor as _ce_module
+        import prospector.ops.config_editor as _ce_module
         orig_cert = _ce_module._CERT_PATH
         orig_cc = _ce_module._CC_DIR
         try:
@@ -292,7 +292,7 @@ class TestCertification:
 
     def test_certify_from_golden_does_not_certify_on_failure(self, tmp_path):
         cert_file = tmp_path / "cert2.json"
-        import prospector.control_center.config_editor as _ce_module
+        import prospector.ops.config_editor as _ce_module
         orig_cert = _ce_module._CERT_PATH
         orig_cc = _ce_module._CC_DIR
         try:
@@ -319,7 +319,7 @@ class TestBackups:
     def test_list_backups_empty_when_no_backups(self, tmp_path):
         backup_dir = tmp_path / "backups"
         backup_dir.mkdir()
-        import prospector.control_center.config_editor as _ce_module
+        import prospector.ops.config_editor as _ce_module
         orig = _ce_module._BACKUP_DIR
         try:
             _ce_module._BACKUP_DIR = backup_dir
@@ -333,7 +333,7 @@ class TestBackups:
         backup_dir.mkdir()
         fake_cfg = tmp_path / "config.yaml"
         fake_cfg.write_text("key: original\n")
-        import prospector.control_center.config_editor as _ce_module
+        import prospector.ops.config_editor as _ce_module
         orig_cfg = _ce_module.CONFIG_PATH
         orig_backup = _ce_module._BACKUP_DIR
         try:

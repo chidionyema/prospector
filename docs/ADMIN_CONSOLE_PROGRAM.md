@@ -1,8 +1,19 @@
 # Admin Console Programme — the Next.js console that replaces Streamlit
 
-**Owner:** founder · **Opened:** 2026-08-16 · **Status:** spec + first build
+**Owner:** founder · **Opened:** 2026-08-16 · **Status:** spec + first build ·
+**Streamlit deleted 2026-08-18**
 **Supersedes:** the Streamlit surface described in `docs/OPS_CONSOLE_PROGRAM.md` §14. It does not
 supersede that document's *requirements* (R15–R25) or its findings; it re-renders them.
+
+**2026-08-18 — this is now the only console.** The founder said the Streamlit control centre
+"needs to be deleted permanently, both code and everything". It is. `prospector/control_center/`,
+`.streamlit/`, `tests/control_center/`, the two launcher scripts and the
+`com.prospector.control-center` launchd job were removed, and `streamlit` came out of
+`requirements.txt`. Four modules the Next.js backend imports moved to `prospector/ops/`
+(`readers.py`, `config_editor.py`, `yaml_surgery.py`, `runner.py`); their tests are at
+`tests/ops/cc/`. The Streamlit caching those readers relied on is replaced by
+`prospector/ops/_cache.py`, a plain TTL memo with the same `.clear()` interface. `numpy` is now
+declared directly in `requirements.txt` — it used to arrive transitively through Streamlit.
 
 The founder's ask, 2026-08-16: move the console to Next.js, add full store admin and full engine
 admin. Store admin must write — change prices, unlist, republish — and expose every republish tool
@@ -324,7 +335,7 @@ commands. Prices are refused by design (§7).
 ## 5. Auth
 
 Single operator, one shared password, exactly as Streamlit does today
-(`control_center/auth.py`, env `CONTROL_CENTER_PASSWORD`, timing-safe compare, fail closed).
+(`control_center/auth.py`, env `CONTROL_CENTER_PASSWORD`, timing-safe compare, fail closed).  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 This console reuses the same environment variable so there is one password to remember.
 
 - The password is checked in a Next.js API route, never in client JavaScript.
@@ -332,7 +343,7 @@ This console reuses the same environment variable so there is one password to re
   signed with `CONTROL_CENTER_PASSWORD` as the key. Expiry 12 hours.
 - **Fail closed.** If `CONTROL_CENTER_PASSWORD` is unset the app refuses every route including the
   login page, and says why. An unconfigured portal is locked, not open. This is why
-  `scripts/install_control_center_agent.sh` refuses to install a plist without the variable —
+  `scripts/install_control_center_agent.sh` refuses to install a plist without the variable —  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
   `KeepAlive` would otherwise restart a fail-closed portal forever.
 - **The network is the real fence.** The app binds one tailnet address, never `0.0.0.0`. A
   password-only portal on whatever cafe wifi the laptop joins is not acceptable, and a single
@@ -710,7 +721,7 @@ Three things the plist must not lose:
 1. **It execs `/usr/local/bin/node` directly, not `scripts/run_ops_console.sh`.** launchd runs a
    shell script through `/bin/bash`, and bash has no TCC grant for `~/Documents` on this Mac, so
    the agent dies with `Operation not permitted` before the first line runs. The same trap is
-   documented for the Streamlit agent in `scripts/install_control_center_agent.sh`.
+   documented for the Streamlit agent in `scripts/install_control_center_agent.sh`.  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 2. **The tailnet address is pinned in the plist**, because the app is started by launchd and there
    is no shell to resolve it. Re-run the install when the tailnet address changes.
 3. **`PROSPECTOR_ROOT` and `PROSPECTOR_PYTHON` are set in the plist**, since the launcher script

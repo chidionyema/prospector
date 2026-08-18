@@ -1,7 +1,7 @@
 """Subprocess job manager for run.py invocations.
 
 One active heavy run at a time (single-actuator lock). Job metadata is persisted
-to store/control_center/jobs.json so history survives a Streamlit restart.
+to store/control_center/jobs.json so history survives a console restart.
 
 Durability contract (do not break — operator #1 trust issue):
   - Child is spawned in a new session (setsid / start_new_session=True).
@@ -43,7 +43,7 @@ _RING_BUFFERS: dict[str, list[str]] = {}
 _JOB_STATUS: dict[str, str] = {}  # job_id → canonical in-memory status
 _RING_MAX = 2000
 # Resolved per call, not bound at import (prospector/paths.py). The module-level names remain
-# as overrides — `None` means "resolve now" — because tests/control_center/conftest.py pins all
+# as overrides — `None` means "resolve now" — because tests/ops/cc/conftest.py pins all
 # three with monkeypatch.setattr, and _runs_dir now DERIVES from _cc_dir so redirecting the
 # directory cannot leave one of its children pointing at production.
 _JOBS_FILE: Path | None = None
@@ -574,7 +574,7 @@ from pathlib import Path
 
 # Durable finalize loop — no PIPE, no Streamlit dependency.
 sys.path.insert(0, sys.argv[1])
-from prospector.control_center.runner import (  # noqa: E402
+from prospector.ops.runner import (  # noqa: E402
     _finalize_job, _job_complete,
 )
 
@@ -608,7 +608,7 @@ def _spawn_status_supervisor(
     start_ts: float,
 ) -> None:
     """Spawn a setsid supervisor that only polls PID / ``.exit`` and finalizes."""
-    # runner.py → control_center → prospector → repo root
+    # runner.py → ops → prospector → repo root
     root = str(Path(__file__).resolve().parent.parent.parent)
     try:
         jobs_s = str(Path(jobs_file).resolve())
