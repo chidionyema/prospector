@@ -12,7 +12,7 @@ import { packOgImagePath } from '@/lib/seo/ogImage';
  */
 
 // Public, indexable routes. Kept as an explicit allow-list, not a directory scan, so a new authed
-// page never leaks into the sitemap by accident. `/pack/*` and `/ideas/*` are NOT here, both are
+// page never leaks into the sitemap by accident. `/pack/*` and `/collections/*` are NOT here, both are
 // generated from the live catalogue below, because the set changes on every publish.
 //
 // `/llms.txt` is deliberately absent: it is a machine-readable index found by convention at a fixed
@@ -23,7 +23,7 @@ const PUBLIC_PATHS = [
   '/sample',
   '/kill-log',
   '/faq',
-  '/ideas',
+  '/collections',
   '/terms',
   '/privacy',
   '/refund',
@@ -107,7 +107,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
         .filter((pack) => packMatchesLanding(pack, landing))
         .map((pack) => packLastmod(pack.verifiedAt, lastmod));
       const newest = dates.length > 0 ? dates.reduce((a, b) => (a > b ? a : b)) : lastmod;
-      return urlEntry(`${origin}/ideas/${landing.slug}`, newest, 'weekly');
+      return urlEntry(`${origin}/collections/${landing.slug}`, newest, 'weekly');
     });
   } catch (error) {
     console.error('Sitemap: catalog fetch failed, emitting marketing pages only:', error);

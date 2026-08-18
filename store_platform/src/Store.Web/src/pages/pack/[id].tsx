@@ -23,6 +23,7 @@ import { isTruncated, repairTruncation } from '@/lib/copy';
 import { track, trackPriceEvent } from '@/lib/analytics';
 import { BuyerIdentityNote } from '@/components/checkout/BuyerIdentityNote';
 import EvidenceExcerptPlate, { firstCitedIndex } from '@/components/marketing/EvidenceExcerptPlate';
+import { SixInHundred } from '@/components/marketing/SixInHundred';
 import PackBuyButton from '@/components/checkout/PackBuyButton';
 import { usePackCheckout } from '@/lib/checkout/usePackCheckout';
 import { PREOPENED_CHECKOUT_PARAM, preopenedClientSecret } from '@/lib/preopenedCheckout';
@@ -297,16 +298,17 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
   const providerLabel = 'Stripe';
   const priceLabel = formatPriceForMarket(pack.price, currency);
 
-  // WHAT THE PRICE BUYS, PER UNIT. See the note at its render site for why this replaced the
-  // modelled multiple. Stated in GBP for every buyer because GBP is what is actually debited
-  // (`formatChargeNote` tells a non-GBP buyer the same thing against the button), so this is one
-  // figure that does not move with the display currency and cannot drift from the charge.
-  const perSource =
-    typeof pack.pricePence === 'number' &&
-    typeof pack.sourceCount === 'number' &&
-    pack.sourceCount > 0
-      ? `£${(pack.pricePence / pack.sourceCount / 100).toFixed(2)}`
-      : null;
+  /* THE PER-SOURCE PRICE IS GONE (MASTER-BRIEF §7). The rail printed "34 cited sources behind it,
+     £1.47 each", which was arithmetically honest and commercially backwards on two counts. It
+     invites the buyer to price-shop the sources, which is the one comparison we lose: anyone can
+     cite more pages more cheaply, and the whole argument of this site is that the sources were
+     WEIGHED, not counted. And it penalises exactly the packs it should not -- a narrow topic with
+     eleven decisive sources reads as worse value than a broad one with sixty, when the narrow one
+     is the better piece of research.
+
+     What survives is the source COUNT (in the evidence row under the title) and the £372/day
+     commissioned-research comparison a few lines below. Both are comparisons against the
+     alternative the buyer actually has, rather than against ourselves. */
 
   const notifyHref =
     `mailto:${LEGAL.supportEmail}` +
@@ -403,32 +405,22 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
       )}
 
       {/*
-       * THE PRICE, DIVIDED BY THE WORK. (Founder, 2026-08-16: the price sits there naked.)
+       * THE PRICE IS READ AGAINST THE ALTERNATIVE, NOT AGAINST ITSELF. (Founder, 2026-08-16: the
+       * price sits there naked. §7: drop "£1.47 each".)
        *
-       * A figure alone is not expensive or cheap, it is unreadable, and this rail gave the reader
-       * nothing to read it against. What was there instead is the reason this is careful: the rail
-       * printed "the pack's own model puts month one at 13x what the pack costs". That number is
-       * not too big, it is the wrong KIND of number -- a modelled month of TURNOVER set against a
-       * one-off PRICE, two things that are not comparable, so retuning the bound that let it
-       * through (`CREDIBLE_MULTIPLE_CEILING`) would not have fixed it. It is gone.
+       * A figure alone is not expensive or cheap, it is unreadable. Two attempts to fix that are
+       * gone, and the history matters because a third would fail the same way. First the rail
+       * printed "the pack's own model puts month one at 13x what the pack costs" -- a modelled
+       * month of TURNOVER set against a one-off PRICE, two things that are not comparable, so
+       * retuning the bound that let it through would not have fixed it. Then it printed the price
+       * divided by the source count, which invited price-shopping the sources and penalised the
+       * packs whose topic needs fewer of them.
        *
-       * What replaces it is arithmetic on two numbers already printed on this page: the price, and
-       * the source count in the evidence row under the title. The reader can multiply it back and
-       * get the price, which is the only test a sceptic actually runs, and it is a claim about what
-       * they are buying rather than a forecast of what they might earn. It invents nothing, it
-       * cannot flatter (there is no branch where it appears only when the figure is pretty), and it
-       * renders nothing at all when either input is missing.
-       *
-       * GBP for every buyer, on purpose: GBP is the currency debited, `formatChargeNote` says so
-       * against the button, and a per-unit figure derived from a converted display price would move
-       * with the FX table while the charge did not.
+       * Both compared the price to something we produced. What is left is the line a few above
+       * this one, which compares it to what the buyer would otherwise pay a person to do
+       * (`RESEARCH_RATE_ANCHOR.dayRateLabel`, a cited market rate). That is the comparison they
+       * are actually making, and it is the only one on the rail now.
        */}
-      {perSource && (
-        <p className="mt-2 text-caption leading-relaxed text-subtle">
-          {pack.sourceCount} cited sources behind it, <span className="font-medium text-text">{perSource} each</span>.
-        </p>
-      )}
-
       {/*
        * WHY THIS NUMBER, against the number.
        *
@@ -654,7 +646,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
           // "Mumchimp › Business ideas › <pack>" instead of a 16-hex-character id.
           breadcrumbNode([
             { name: 'Mumchimp', path: '/' },
-            { name: 'Business ideas', path: '/ideas' },
+            { name: 'Business ideas', path: '/collections' },
             { name: pack.title, path: `/pack/${pack.id}` },
           ]),
         )}
@@ -679,7 +671,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                not consciously register the spelling -- they register that the site was assembled
                by more than one hand, on the page where they are about to enter a card number. */
             { href: '/', label: 'Catalogue' },
-            { href: '/ideas', label: 'Browse by category' },
+            { href: '/collections', label: 'Browse by category' },
             // Was `{ href: '#', label: pack.title }`. The title was rendered three times inside
             // the fold (breadcrumb, cover caption, h1) on a page where titles run past 100
             // characters, so the trail was competing with the headline instead of locating it.
@@ -995,10 +987,19 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
               </div>
             )}
 
-            {/* Mobile purchase bar, keeps price + CTA above the fold on small screens */}
-            <div className="mt-8 rounded-md border border-border bg-surface p-6 lg:hidden">
-              {checkoutBody}
-            </div>
+            {/* THE SECOND FULL PRICE BOX IS GONE (MASTER-BRIEF §7: "one sticky buy box, one
+                closing bar").
+
+                A phone got the whole purchase panel three times on one page: this block inline,
+                the fixed bar pinned to the bottom of the viewport, and the closing bar at the end
+                of the article. The fixed bar already keeps the price and the button reachable from
+                every scroll position, which is the entire job this block was doing, and it does it
+                without pushing the deliverables another 300px down -- on the surface where the
+                deliverables are what stall the purchase.
+
+                What replaces it here is nothing. The reader who has decided taps the bar that is
+                already on screen; the reader who has not keeps reading and meets the closing bar
+                when the argument is finished. */}
 
             {/* Deliverables first: "what do I actually receive for £49" is the question that stalls a
                 digital purchase, and it has to be answered before the trust argument. */}
@@ -1088,6 +1089,14 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 </dl>
               </div>
             )}
+
+            {/* THE SIGNATURE (MASTER-BRIEF §7): a hundred dots, six of them teal, immediately above
+                the six gates. The page already states the rate in words further up; this is the
+                same fact in the form a reader takes in without doing arithmetic, sitting where it
+                answers the question the gates raise -- "how hard is this actually?" -- before the
+                gates are read rather than after. It renders nothing if the derived label ever stops
+                being a rate we can parse. */}
+            <SixInHundred className="mt-12" />
 
             {/* US-4: the six-check methodology collapses behind a details disclosure.
                 On mobile (the primary surface), the buyer is not forced to read 200px
@@ -1415,6 +1424,33 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 Nobody shares a thing they have not read, so it moves to the foot of the article,
                 where someone who has just read it might. */}
             <ShareRow title={pack.title} path={`/pack/${pack.id}`} />
+
+            {/* THE CLOSING BAR (MASTER-BRIEF §7), and it is the last thing on the page.
+                A reader who has got this far has read the checks, the documents and the sources,
+                and the page then ended on a share row. The ask belongs where the argument finishes.
+
+                It is a BAR, not the third copy of the purchase panel: price, button, and the two
+                facts the button cannot say. Everything else the panel carries -- what is inside,
+                who wrote it, how the refund works -- has already been said at length above, and
+                repeating it here would be the duplication §7 is removing, moved down the page. */}
+            {canCheckout && (
+              <div className="mt-16 flex flex-col gap-4 rounded-card border border-line bg-surface p-6 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-h3 font-semibold text-text">{priceLabel}</p>
+                  <p className="mt-1 text-caption leading-snug text-muted">
+                    One payment. Download straight away. 14 day refund.
+                  </p>
+                </div>
+                <PackBuyButton
+                  pack={pack}
+                  variant="detail"
+                  buy={handleBuy}
+                  checkingOut={checkingOut}
+                  canCheckout={canCheckout}
+                  currency={currency}
+                />
+              </div>
+            )}
           </div>
 
           {/* Right: Checkout (desktop sticky).

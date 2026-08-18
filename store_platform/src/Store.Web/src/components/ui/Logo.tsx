@@ -167,15 +167,30 @@ export function Logo({ className, monogramOnly = false }: LogoProps) {
   }
 
   return (
-    // aria-hidden on the visible text + an sr-only full name: the rendered string is assembled
-    // from two config fields, and a screen reader should hear the brand once, not the halves.
+    // THE ACCESSIBLE NAME IS AN ATTRIBUTE, NOT A SECOND COPY OF THE TEXT (fixed 2026-08-17,
+    // MASTER-BRIEF §6/§10: "Mumchimp appears exactly once in the header DOM").
+    //
+    // This was `<span className="sr-only">{BRAND.name}</span>` beside the visible, aria-hidden
+    // wordmark. `sr-only` clips an element to a 1px box; it does NOT remove the text node. So the
+    // DOM carried the brand name twice, and everything that reads text rather than pixels read it
+    // twice: copy-paste, "select all", reader modes, scrapers, and search-engine text extraction
+    // all rendered the header as "MumchimpMumchimp". Screen readers were the only consumer the
+    // duplicate was for, and in the header they never even reached it -- `MarketingLayout.tsx`
+    // wraps this in a `<Link aria-label="Mumchimp home">`, and an aria-label on the link replaces
+    // its entire subtree for AT.
+    //
+    // `role="img"` + `aria-label` gives AT the same single name with no text node at all, which is
+    // exactly what the `monogramOnly` branch above already does. Two branches of one component now
+    // name the brand the same way. The visible halves keep `aria-hidden` so the assembled
+    // `${first}${second}` is never announced as two words.
     <span
+      role="img"
+      aria-label={BRAND.name}
       className={cx(
         'inline-flex items-center gap-[0.34em] whitespace-nowrap font-sans leading-none tracking-[-0.02em] text-text',
         className,
       )}
     >
-      <span className="sr-only">{BRAND.name}</span>
       <BrandMark />
       {/* One wrapper span, not two loose ones: the outer element is a flex container with
           `gap-[0.34em]` so the icon sits clear of the wordmark, but flex `gap` lands between

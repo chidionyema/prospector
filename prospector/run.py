@@ -491,7 +491,7 @@ def _load_pending_signals() -> list[tuple[Path, str]]:
     return results
 
 # Base imports for the deferred import block below; see _INFRA_GATES comment for the rationale.
-from . import drain_state  # noqa: E402 - deferred import after the helper block
+from . import drain_state, field_write  # noqa: E402 - deferred import after the helper block
 from .config import Config, load_config  # noqa: E402 - deferred import after the helper block
 from .dedup import dedup, drops_by_market  # noqa: E402 - deferred import after the helper block
 from .diversity import write_receipt  # noqa: E402 - deferred import after the helper block
@@ -680,18 +680,12 @@ def _shelf_copy_breaches(cand, marketing, cfg) -> list[str]:
             and pb.get("where") in _MARKETING_SHELF_FIELDS]
 
 
-#: How many times the title repair asks for a clean title before leaving the one the
-#: candidate came with. Two, not three: this is one field on a candidate that has already
-#: passed, and a chain that cannot write 60 clean characters twice will not write them on a
-#: third go either.
-_MAX_TITLE_REPAIR_ATTEMPTS = 2
-
-
-#: A one-liner longer than this is CUT by `bridge.py:878` when the catalogue row is written,
-#: and a cut line ends in `…`, which `check_shelf_copy` then refuses as "trails off on the
-#: shelf". The engine was manufacturing the defect it goes on to reject: 9 of the 21 stranded
-#: `oneLine` packs fail on exactly that. Repairing the line before the cut is what stops it.
-_ONE_LINER_CUT_AT = 280
+#: Both re-exported from `field_write`, which is where they are declared. They stay named here
+#: because they are part of this module's tested surface: `_MAX_TITLE_REPAIR_ATTEMPTS` is how
+#: many times the title repair asks before leaving the title the candidate came with, and
+#: `_ONE_LINER_CUT_AT` mirrors the length at which `bridge.py` cuts a catalogue one-liner.
+_MAX_TITLE_REPAIR_ATTEMPTS = field_write.MAX_TITLE_REPAIR_ATTEMPTS
+_ONE_LINER_CUT_AT = field_write.ONE_LINER_CUT_AT
 
 
 def _repair_title(cand, cfg, *, op) -> list[str]:
@@ -714,89 +708,16 @@ def _repair_title(cand, cfg, *, op) -> list[str]:
     one-liner (as `tools/sweep_shelf_copy.py` does). Same prompts, same bars, moved upstream of
     the spend they were previously discovered downstream of.
 
-    Three properties, in the order they matter:
-
-    - **It costs nothing when the lines are clean.** No breach, no call. Once generation obeys
-      its own contract (`prompts/generate_system.md:130`) this function is free.
-    - **It can only improve.** A proposal is accepted only when the gate's own checker passes
-      it, so a bad rewrite leaves the candidate the line it had. A dead operator does the same.
-    - **`candidate_id` is deliberately not recomputed.** It is already the catalogue row's
-      identity and the dossier filename; rehashing it here would fork the pack.
+    The grade-repair-re-grade-record loop is `field_write.repair`, shared with every other
+    buyer-facing field (P2). This function is the WIRING, not a second copy of the loop. It
+    stays a named function for two reasons: `_generate_pack_content` and its tests reach it by
+    module attribute, and `candidate_id` is deliberately not recomputed on a retitle — it is
+    already the catalogue row's identity and the dossier filename, so rehashing it would fork
+    the pack.
 
     Returns the audit trail (empty when nothing needed repairing).
     """
-    from .pack_linter import TITLE_MAX_CHARS, check_title
-    from .prompts import render
-
-    def _breaches(title: str) -> list[str]:
-        return [p["detail"] for p in check_title(title, max_chars=TITLE_MAX_CHARS)
-                if p.get("severity") == "error"]
-
-    problems = _breaches(cand.title or "")
-    if not problems:
-        return []
-
-    trail = [f"title breaches: {'; '.join(problems)}"]
-    feedback = ""
-    for attempt in range(1, _MAX_TITLE_REPAIR_ATTEMPTS + 1):
-        try:
-            system, user = render(
-                "retitle",
-                current_title=cand.title or "",
-                one_line=cand.one_liner or "",
-                # Neither line exists yet — that is the whole point of running here. The
-                # prompt reads them as context for the trade, so "(none)" is honest input
-                # rather than a placeholder it might echo.
-                headline="(none)",
-                card_line="(none)",
-                who_pays=cand.who_pays or "",
-                sector=str((cand.tags or {}).get("sector") or ""),
-                market=cand.market or "",
-                max_chars=TITLE_MAX_CHARS,
-                feedback=feedback,
-            )
-            data = op.complete_json(system, user, temperature=0.6 if attempt == 1 else 0.2)
-        except Exception as e:  # noqa: BLE001 — a title repair must never lose a PASS
-            # swallow-ok: best effort by contract. The candidate keeps its own title and the
-            # pack is still built; the publish gate remains the backstop it has always been.
-            logger.error("Title repair for %s failed on attempt %d: %s",
-                         cand.candidate_id, attempt, e,
-                         extra={"candidate_id": cand.candidate_id, "attempt": attempt,
-                                "error": str(e), "title_repair_failed": True})
-            trail.append(f"attempt {attempt}: call failed — {e}")
-            return trail
-
-        proposed = " ".join(str((data or {}).get("title") or "").split()).rstrip(".").strip()
-        if not proposed:
-            trail.append(f"attempt {attempt}: no title returned")
-            feedback = "Your output was not a JSON object with a 'title'. Output only that."
-            continue
-
-        still = _breaches(proposed)
-        if not still:
-            trail.append(f"attempt {attempt}: accepted ({len(proposed)} chars)")
-            logger.warning(
-                "Repaired the title of %s before building its pack: %r -> %r (%s)",
-                cand.candidate_id, cand.title, proposed, "; ".join(problems),
-                extra={"candidate_id": cand.candidate_id, "old_title": cand.title,
-                       "new_title": proposed, "title_breaches": problems,
-                       "title_repaired": True})
-            cand.title = proposed
-            return trail
-
-        trail.append(f"attempt {attempt}: rejected — {'; '.join(still)}")
-        # Verbatim, counts included: a vague "too long" gets a draft one character shorter.
-        feedback = ("Your previous answer was REJECTED for these reasons:\n"
-                    + "\n".join(f"  - {b}" for b in still)
-                    + "\nRewrite it. Do not truncate; say a shorter true thing.")
-
-    logger.warning(
-        "Could not repair the title of %s in %d attempt(s) — building the pack on its own "
-        "title, which the publish gate will refuse: %s",
-        cand.candidate_id, _MAX_TITLE_REPAIR_ATTEMPTS, "; ".join(problems),
-        extra={"candidate_id": cand.candidate_id, "title_breaches": problems,
-               "title_repair_exhausted": True})
-    return trail
+    return field_write.repair(cand, "title", op=op, log=logger).trail
 
 
 def _repair_one_liner(cand, cfg, *, op) -> list[str]:
@@ -804,63 +725,21 @@ def _repair_one_liner(cand, cfg, *, op) -> list[str]:
 
     Two triggers, and the second is the engine refusing its own handiwork:
 
-    - **Voice.** `shelf_copy_repair.voice_breaches` — second person, or an opener on a bare
-      pronoun. Deliberately the founder's two only: an unexplained initialism is reported and
-      left, because asking a cheap brain to expand `BS 4142` while it rewords is how a rewrite
-      invents a fact on a source-or-die storefront.
+    - **Voice.** Second person, or an opener on a bare pronoun.
     - **Length.** A line over `_ONE_LINER_CUT_AT` is cut by `bridge.py:878` and the cut ends in
       `…`, which `check_shelf_copy` then refuses as "trails off on the shelf". Nine of the 21
       stranded `oneLine` packs fail on exactly that, so the engine was manufacturing the defect
       it goes on to reject. Repaired here the line is short enough that no cut happens.
 
-    `rewrite_one` is the sweep's own function, so a rewrite is re-graded before it is accepted
-    AND refused if it introduces a proper noun or figure the original did not have. A refusal
-    leaves the candidate the line it had, which is why this is safe to run unattended.
+    Both bars are `field_write.grade_one_liner`, which is also what re-grades the rewrite and
+    what the park check asks. Before P2 the length bar was typed out twice in this file, twelve
+    lines apart — the drift `field_write` exists to make impossible.
+
+    `rewrite_one` is the sweep's own function, so it also refuses a rewrite that introduces a
+    proper noun or figure the original did not have. A refusal leaves the candidate the line it
+    had, which is why this is safe to run unattended.
     """
-    from .shelf_copy_repair import voice_breaches
-
-    line = (cand.one_liner or "").strip()
-    if not line:
-        return []
-    why = voice_breaches(line)
-    if len(line) > _ONE_LINER_CUT_AT:
-        why = why + [f"{len(line)} chars — over the {_ONE_LINER_CUT_AT} the catalogue cuts at, "
-                     f"and a cut line trails off on the shelf"]
-    if not why:
-        return []
-
-    try:
-        from .shelf_copy_repair import rewrite_one
-        new = rewrite_one(op, cand.title or "", line)
-    except Exception as e:  # noqa: BLE001 — a copy repair must never lose a PASS
-        # swallow-ok: best effort by contract. The candidate keeps its own line and the pack
-        # is still built; the publish gate remains the backstop it has always been.
-        logger.error("One-liner repair for %s failed: %s", cand.candidate_id, e,
-                     extra={"candidate_id": cand.candidate_id, "error": str(e),
-                            "one_liner_repair_failed": True})
-        return [f"one-liner breaches: {'; '.join(why)}", f"call failed — {e}"]
-
-    trail = [f"one-liner breaches: {'; '.join(why)}"]
-    # Length is checked again on the REWRITE. `rewrite_one` re-grades voice and guards facts;
-    # it does not know about the catalogue's cut, so a faithful but still-long rewrite would
-    # trade one defect for the other.
-    if not new or len(new) > _ONE_LINER_CUT_AT:
-        trail.append("rejected — kept the candidate's own line")
-        logger.warning(
-            "Could not repair the one-liner of %s — building the pack on its own line, which "
-            "the publish gate will refuse: %s", cand.candidate_id, "; ".join(why),
-            extra={"candidate_id": cand.candidate_id, "one_liner_breaches": why,
-                   "one_liner_repair_exhausted": True})
-        return trail
-
-    logger.warning(
-        "Repaired the one-liner of %s before building its pack: %r -> %r (%s)",
-        cand.candidate_id, line, new, "; ".join(why),
-        extra={"candidate_id": cand.candidate_id, "old_one_liner": line, "new_one_liner": new,
-               "one_liner_breaches": why, "one_liner_repaired": True})
-    cand.one_liner = new
-    trail.append(f"accepted ({len(new)} chars)")
-    return trail
+    return field_write.repair(cand, "one_liner", op=op, log=logger).trail
 
 
 def _repair_shelf_lines(cand, cfg, *, op) -> list[str]:
@@ -870,6 +749,23 @@ def _repair_shelf_lines(cand, cfg, *, op) -> list[str]:
     breached title is poor context. Neither half can raise and neither can make a line worse.
     """
     return _repair_title(cand, cfg, op=op) + _repair_one_liner(cand, cfg, op=op)
+
+
+def _unrepaired_shelf_breaches(cand) -> list[str]:
+    """What the publish gate will STILL refuse about this candidate's shelf lines.
+
+    Run after `_repair_shelf_lines`, on the same two bars the repair used and the gate applies,
+    so this is the gate's own answer arrived at before the money is spent. It is the SAME
+    grader object, not a matching one — `field_write.breaches` and `field_write.repair` share
+    `FIELDS`, so the two cannot drift.
+
+    It exists because the repair is best-effort by contract and swallows its own failure. That
+    is correct — a failed repair must never lose a PASS — but it left the engine knowing a pack
+    was unsellable and building it anyway: `_repair_title` logs, in these words, "building the
+    pack on its own title, which the publish gate will refuse", and then ~7,700 words are
+    generated on the deliverable chain. The knowledge existed and nothing acted on it.
+    """
+    return field_write.breaches(cand, "title", "one_liner")
 
 
 def _generate_pack_content(op, cand, checks, *, query_op, quality_op, cfg, score,
@@ -965,6 +861,36 @@ def _generate_pack_content(op, cand, checks, *, query_op, quality_op, cfg, score
     # field on a candidate that already passed, not a retry of the pack. See
     # `_repair_shelf_lines`.
     _repair_shelf_lines(cand, cfg, op=(marketing_op or quality_op))
+
+    # P4 of docs/CONTENT_CONTRACT_PROGRAM.md. Repair is best-effort by contract and swallows its
+    # own failure, which is right — a failed repair must never lose a PASS. But the engine then
+    # KNEW the pack was unsellable and bought it anyway. Grade once more, on the gate's own bars,
+    # before the deliverable chain is paid for.
+    #
+    # Measure-first, per the project rule that a new rule ships read-only and takes a second,
+    # explicit switch to act: this logs on every candidate and only parks when
+    # `listing.park_unrepairable_shelf_lines` is on. Default OFF, because parking turns a PASS
+    # into a pack that does not exist, and the honest way to choose that is with a count of how
+    # often it would fire, from the log line below.
+    _shelf_breaches = _unrepaired_shelf_breaches(cand)
+    if _shelf_breaches:
+        _listing = cfg.listing if isinstance(getattr(cfg, "listing", None), dict) else {}
+        _park = bool(_listing.get("park_unrepairable_shelf_lines", False))
+        logger.error(
+            "Shelf lines of %s still breach the publish gate after repair%s: %s",
+            cand.candidate_id, " — PARKED, no pack built" if _park else
+            " — building the pack anyway (park_unrepairable_shelf_lines is off)",
+            "; ".join(_shelf_breaches),
+            extra={"candidate_id": cand.candidate_id,
+                   "shelf_breaches": _shelf_breaches,
+                   "shelf_parked": _park,
+                   "shelf_unrepaired": True})
+        if _park:
+            # Stamped, never silent. An empty artifacts dict with no reason on the candidate is
+            # the "empty artifacts" failure class this repo has already had once; the tag is what
+            # lets the stranded-pack scan and the ops console tell a park from a breakage.
+            cand.tags["shelf_parked"] = _shelf_breaches
+            return {}, []
 
     artifacts: dict = {}
     marketing: list = []

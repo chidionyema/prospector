@@ -10,8 +10,8 @@ import { textLinkClass } from '@/components/ui';
  * WHY IT EXISTS. The brief of 2026-08-15, Part Four: "There is a funnel in the logo mark and a
  * funnel in the proposition, and it currently appears as neither." Both halves are true. The mark
  * is three tapering slabs (`Logo.tsx::BrandMark`), the proposition is "1,444 in, 1,364 killed",
- * and between them the site had one picture of the population -- `PopulationField`, a flat field
- * of 1,444 marks on the home page -- which shows the SIZE of the intake and nothing about the
+ * and between them the site had one picture of the population -- `KillGrid`, a flat field of
+ * 1,444 squares in the home page hero -- which shows the SIZE of the intake and nothing about the
  * narrowing. This is the narrowing.
  *
  * WHAT IT MAY AND MAY NOT SAY, which is the whole design constraint here.
@@ -201,7 +201,7 @@ export function FunnelDiagram({ className }: { className?: string }) {
           open -- without putting a number on the diagram. */}
       <figcaption className="mt-3 max-w-[46ch] text-meta leading-relaxed text-muted">
         The stub at the bottom is the shelf.{' '}
-        <Link href="/ideas" className={textLinkClass()}>
+        <Link href="/collections" className={textLinkClass()}>
           Count it yourself
         </Link>
         .

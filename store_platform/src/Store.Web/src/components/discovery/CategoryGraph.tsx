@@ -45,7 +45,7 @@ export interface CategoryGraphProps {
  * This component was a 4x4 grid of grey circles in an SVG, sized by pack count, with the label
  * wrapped underneath. Two things were wrong with it, and only one of them was fixable by tuning.
  *
- *  1. IT WAS THE SECOND OF TWO OBJECTS LISTING THE SAME 14 CATEGORIES. `/ideas` rendered this
+ *  1. IT WAS THE SECOND OF TWO OBJECTS LISTING THE SAME 14 CATEGORIES. `/collections` rendered this
  *     graph under "Browse the shape of the catalogue" and then rendered every one of the same
  *     categories again under "All categories", with a description and a price range the graph
  *     did not have. Measured at 1440x900 on 2026-08-13 the two objects together ran from y=576
@@ -65,7 +65,7 @@ export interface CategoryGraphProps {
  * what lets the description and the price range live in the same object instead of a second one.
  *
  * WHY MARKS AND NOT A BAR. One mark per pack is the same figure the home page draws for the whole
- * population (`PopulationField`, "one mark each") and the same one a pack's sources are drawn with
+ * population (`KillGrid`, "one square each") and the same one a pack's sources are drawn with
  * (`EvidenceBar`), in the same green that means "on the shelf" there. A category with 28 packs is
  * 28 marks: countable, not a length the eye has to trust. A bar of arbitrary scale would have been
  * a fifth way of drawing a quantity on a site that already has one.
@@ -129,7 +129,7 @@ function CategoryRow({ node, href }: { node: CategoryNode; href: string }) {
               the day is that both nouns are the SAME claim -- a source that was checked and a pack
               that survived the checks -- and a page of grey pickets spends the site's one meaningful
               hue on nothing while the shelf's whole proposition is "these survived". The literal
-              collision it worried about needs a reader to compare a mark count on /ideas with a mark
+              collision it worried about needs a reader to compare a mark count on /collections with a mark
               count on a pack card and infer that the units match; the cost it accepted was a first
               page with no colour on it at all.
 

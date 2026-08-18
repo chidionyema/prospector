@@ -34,6 +34,7 @@ export const VIEWS = [
   'pack',
   'shelf',
   'method',
+  'content_rules',
 ] as const;
 
 /** Arguments each view accepts. Anything else in the query string is dropped, not forwarded. */

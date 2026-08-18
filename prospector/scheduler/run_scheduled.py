@@ -46,6 +46,10 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_INTERVAL_SECONDS = 2 * 60 * 60  # 2h cadence — continuous but not a tight spin
 
+#: Floor for `schedule.interval_s`. The daemon takes no cross-cycle lock, so a cadence shorter
+#: than one generation batch starts a second batch beside the first and pays for both.
+_MIN_INTERVAL_SECONDS = 60
+
 
 def _load_env_file(repo_root: Path | None = None) -> int:
     """Populate os.environ from the repo `.env` BEFORE config/operators read keys.
@@ -103,6 +107,57 @@ def _batch_size(cfg, override: int | None) -> int:
     return int(getattr(schedule, "batch_size", 5) or 5)
 
 
+def _interval_s(cfg, fallback: int) -> int:
+    """Seconds between daemon cycles. `schedule.interval_s` wins over the `--interval` argv.
+
+    The cadence used to live ONLY in the launchd plist (`--interval 7200`), which put the
+    single number controlling how often the system produces anything outside config, outside
+    the console, and reachable only by editing a plist and reloading the job by hand. Config
+    is now the control point and argv is the fallback, so the operator sets it where every
+    other scheduler number already lives.
+
+    It takes effect without a manual restart: `code_fingerprint` covers config.yaml, so a
+    saved change re-execs the daemon at the next cycle boundary (see `run_daemon`).
+
+    Floored at `_MIN_INTERVAL_SECONDS`, not at 1. A cadence below that is not "continuous", it
+    is a spin that starts a new generation batch while the previous one is still running — the
+    daemon holds no cross-cycle lock, so overlap is real work paid twice.
+    """
+    raw = _sched(cfg, "interval_s", None)
+    if raw in (None, "", 0):
+        return int(fallback)
+    try:
+        val = int(raw)
+    except (TypeError, ValueError):
+        logger.warning("schedule.interval_s=%r is not an integer; using %ds", raw, fallback)
+        return int(fallback)
+    if val < _MIN_INTERVAL_SECONDS:
+        logger.warning("schedule.interval_s=%ds is below the %ds floor; using the floor",
+                       val, _MIN_INTERVAL_SECONDS)
+        return _MIN_INTERVAL_SECONDS
+    return val
+
+
+def _queue_target_depth(cfg) -> int:
+    """Optional: hold the queue at this many workable rows. 0 (the default) means OFF.
+
+    OFF is the default on purpose. Following the queue makes the production RATE an emergent
+    property of how fast the consumer happens to be draining, which is the opposite of being
+    able to set it — the operator would no longer have a number to turn. `batch_size` on
+    `interval_s` stays the plain answer to "how much, how often".
+
+    Turn it on for the case it is actually good at: a consumer that has stalled or slowed, where
+    minting a full batch every cycle only deepens a queue nobody is working. Above the target the
+    tick skips generation; below it, the tick mints the shortfall, capped at `batch_size`.
+    """
+    try:
+        return max(0, int(_sched(cfg, "queue_target_depth", 0) or 0))
+    except (TypeError, ValueError):
+        logger.warning("schedule.queue_target_depth=%r is not an integer; treating as off",
+                       _sched(cfg, "queue_target_depth", 0))
+        return 0
+
+
 def _ticks_path(cfg) -> Path:
     d = _store_dir(cfg) / "scheduler"
     d.mkdir(parents=True, exist_ok=True)
@@ -131,6 +186,19 @@ def _append_tick(cfg, tick: dict) -> None:
     path = _ticks_path(cfg)
     # Identity last: a tick dict assembled upstream must not be able to misattribute itself.
     row = {**tick, "pid": os.getpid(), "run_id": audit_run_id()}
+    # DURATION, added 2026-08-17. 4559 rows and not one of them said how long a tick took, so
+    # every question about the cadence and the deadline — is 2h too long, is 3h too short, does
+    # a full batch fit — had to be answered from assumption. `ts` is stamped when the tick
+    # starts and this runs when it ends, so the number is free; derived here rather than at each
+    # `return` because `run_tick` has eight of them and a duration missing from three would be
+    # worse than none at all.
+    if "duration_s" not in row:
+        try:
+            started = datetime.fromisoformat(str(row.get("ts")))
+            row["duration_s"] = round(
+                (datetime.now(timezone.utc) - started).total_seconds(), 1)
+        except (TypeError, ValueError):
+            pass
     try:
         # R3: one O_APPEND write + fsync. NOT tmp+rename — this file has concurrent appenders
         # (the daemon and an out-of-repo driver, see above), and a read-modify-rename would
@@ -1368,7 +1436,54 @@ def _default_generate(cfg, batch_size: int) -> dict:
 # via PROSPECTOR_TICK_DEADLINE_S for tuning without code changes.
 # The watchdog's 'generating' stall threshold is derived from this constant (see _liveness) so
 # the in-process deadline always fires first and the process self-heals before the watchdog acts.
-_TICK_HARD_DEADLINE_S = int(os.environ.get("PROSPECTOR_TICK_DEADLINE_S", "10800"))  # 3h
+_TICK_DEADLINE_DEFAULT_S = 10800  # 3h
+_TICK_HARD_DEADLINE_S = int(os.environ.get("PROSPECTOR_TICK_DEADLINE_S",
+                                           str(_TICK_DEADLINE_DEFAULT_S)))
+
+
+def _refresh_tick_deadline(cfg) -> int:
+    """Re-read the tick deadline from config, and return it.
+
+    Seventeen places read `_TICK_HARD_DEADLINE_S` — budget fractions, the watchdog's stall
+    threshold, the force-exit timer, three log lines. Threading a cfg argument through all of
+    them to move one number would be a large diff for no extra correctness, so the module
+    constant stays the single name every reader uses and this refreshes it from config once at
+    the top of each tick. It was already process-global mutable state seeded from the
+    environment; this only gives config a say in what it is seeded with.
+
+    Precedence: `PROSPECTOR_TICK_DEADLINE_S` (one process, for a manual run) beats
+    `schedule.tick_deadline_s` beats 10800s. The env keeps the top slot so an operator
+    debugging a single tick by hand is not overridden by the file.
+    """
+    global _TICK_HARD_DEADLINE_S
+    env = os.environ.get("PROSPECTOR_TICK_DEADLINE_S")
+    if env:
+        try:
+            _TICK_HARD_DEADLINE_S = int(env)
+            return _TICK_HARD_DEADLINE_S
+        except ValueError:
+            logger.warning("PROSPECTOR_TICK_DEADLINE_S=%r is not an integer; ignoring", env)
+    raw = _sched(cfg, "tick_deadline_s", None)
+    if raw in (None, "", 0):
+        # Nothing specifies a deadline, so LEAVE the current value alone rather than stamping the
+        # default over it. Two reasons, and the second is the load-bearing one:
+        #   * the constant was already initialised from env-or-default at import, so "leave it"
+        #     and "reset to default" are the same value on a real daemon;
+        #   * 26 references across 8 test files set this constant directly to drive a sub-second
+        #     deadline. Resetting it here would silently undo every one of them, and a deadline
+        #     test that no longer tests a deadline still passes.
+        return _TICK_HARD_DEADLINE_S
+    try:
+        val = int(raw)
+    except (TypeError, ValueError):
+        logger.warning("schedule.tick_deadline_s=%r is not an integer; using %ds",
+                       raw, _TICK_DEADLINE_DEFAULT_S)
+        _TICK_HARD_DEADLINE_S = _TICK_DEADLINE_DEFAULT_S
+        return _TICK_HARD_DEADLINE_S
+    # Floored at 60s. A deadline shorter than a single vet force-exits the daemon mid-work every
+    # cycle, and launchd's KeepAlive turns that into a crash loop that looks like an outage.
+    _TICK_HARD_DEADLINE_S = max(60, val)
+    return _TICK_HARD_DEADLINE_S
 
 # How often the daemon re-stamps its heartbeat while asleep (see the refresh loop in
 # `run_daemon`). 60s against a 5s sleep slice, so it costs one small file write per twelve slices
@@ -1528,6 +1643,11 @@ def _tick_unproductive(tick: dict) -> bool:
     # few minutes picks capacity up the moment it returns instead of up to 2h later.
     if tick.get("usage_wall"):
         return True
+    # A queue-full skip is the OPPOSITE: the operator asked for a queue of N and the queue holds
+    # N. Nothing is wrong, so this must not inherit the outage backoff — which would also read
+    # backwards, since a full queue is the moment to wait longer, not to retry in five minutes.
+    if tick.get("queue_full"):
+        return False
     if tick.get("allowed") and not tick.get("dry_run"):
         res = tick.get("result") or {}
         if res.get("dossiers", 0) == 0:
@@ -1546,9 +1666,26 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
     # fine. Only real ticks (the daemon loop) own the liveness heartbeat.
     if not dry_run:
         _write_heartbeat(cfg, phase="evaluating", dry_run=dry_run)
+    # Before anything reads it: every budget below is a fraction of this number.
+    _refresh_tick_deadline(cfg)
     guard = guard_from_config(cfg)
     decision = guard.evaluate()
     batch_size = _batch_size(cfg, candidates)
+
+    # OPTIONAL queue-following, off unless `schedule.queue_target_depth` is set. An explicit
+    # `--candidates` is an operator saying how many they want, so it is never second-guessed.
+    queue_target = _queue_target_depth(cfg) if candidates is None else 0
+    queue_depth = None
+    if queue_target:
+        queue_depth = _backlog_size(cfg)
+        if queue_depth is None:
+            # Uncountable queue. Generate the plain batch rather than guessing — the same
+            # direction `_backlog_size` fails in for the backlog brake, for the same reason: a
+            # counting failure must never read as "the queue is empty, mint everything".
+            logger.warning("queue_target_depth is set but the queue could not be counted; "
+                           "generating the full batch of %d", batch_size)
+        else:
+            batch_size = max(0, min(batch_size, queue_target - queue_depth))
 
     tick = {
         "ts": datetime.now(timezone.utc).isoformat(),
@@ -1564,12 +1701,26 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
         "daily_subscription_cap_usd": decision.daily_subscription_cap_usd,
         "spend_day": decision.day,  # LOCAL calendar day, not UTC — the rollover misled once
         "batch_size": batch_size if decision.can_run else None,
+        "tick_deadline_s": _TICK_HARD_DEADLINE_S,
         "result": None,
         "error": None,
     }
+    if queue_target:
+        tick["queue_target_depth"] = queue_target
+        tick["queue_depth"] = queue_depth
 
     if not decision.can_run:
         logger.info("Tick skipped: %s", decision.reason)
+        _append_tick(cfg, tick)
+        return tick
+
+    if queue_target and batch_size == 0:
+        # The queue already holds what the operator asked it to hold. Not an outage and not a
+        # failure, so `_tick_unproductive` must not see it as one and escalate the retry
+        # backoff — `queue_full` is its own reason, checked there.
+        tick["reason"] = (f"queue_full: {queue_depth} row(s) waiting, target {queue_target}")
+        tick["queue_full"] = True
+        logger.info("Tick generated nothing: %s", tick["reason"])
         _append_tick(cfg, tick)
         return tick
 
@@ -2170,7 +2321,13 @@ def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn
     signal.signal(signal.SIGTERM, flag.request)
     signal.signal(signal.SIGINT, flag.request)
 
-    logger.info("Daemon starting: interval=%ds, store=%s", interval, _store_dir(cfg))
+    # `interval` as passed is the FALLBACK — argv, i.e. the plist. `schedule.interval_s` wins,
+    # and is re-read at the bottom of every cycle so the operator can change the cadence from
+    # the console without touching a plist or restarting the job.
+    argv_interval = interval
+    interval = _interval_s(cfg, argv_interval)
+    logger.info("Daemon starting: interval=%ds (argv %ds), store=%s",
+                interval, argv_interval, _store_dir(cfg))
     global _RUNNING_CODE_FP
     startup_fp = code_fingerprint(config_path)
     _RUNNING_CODE_FP = startup_fp
@@ -2202,6 +2359,9 @@ def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn
         # A healthy tick sleeps the full cadence; a failed/barren one retries in minutes so a
         # single provider blip can't waste a whole 2h window (root cause of days of $0 ticks).
         # A guard-blocked tick (spend cap) is intentional, not a failure — full cadence.
+        # Re-read every cycle, so `schedule.interval_s` is the live control point rather than
+        # the `--interval` argv frozen into a launchd plist at install time.
+        interval = _interval_s(cfg, argv_interval)
         sleep_target = interval
         if tick is not None and tick.get("generation_suppressed"):
             # A drain-only tick gets its OWN cadence, not the 2h generation interval and not the

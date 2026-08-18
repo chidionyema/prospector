@@ -108,13 +108,13 @@ describe('breadcrumbNode', () => {
     const { breadcrumbNode } = await loadSchema(SITE);
     const node = breadcrumbNode([
       { name: 'Mumchimp', path: '/' },
-      { name: 'Business ideas', path: '/ideas' },
+      { name: 'Business ideas', path: '/collections' },
       { name: 'DashFlow', path: '/pack/abc' },
     ])!;
     expect(node['@type']).toBe('BreadcrumbList');
     expect(node.itemListElement).toEqual([
       { '@type': 'ListItem', position: 1, name: 'Mumchimp', item: SITE },
-      { '@type': 'ListItem', position: 2, name: 'Business ideas', item: `${SITE}/ideas` },
+      { '@type': 'ListItem', position: 2, name: 'Business ideas', item: `${SITE}/collections` },
       { '@type': 'ListItem', position: 3, name: 'DashFlow', item: `${SITE}/pack/abc` },
     ]);
   });
