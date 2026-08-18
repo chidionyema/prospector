@@ -1757,7 +1757,18 @@ export default function Home({ packs, stats, flags, initialState, market, curren
         // `animate-settle`, not `animate-rise`: this band holds the h1, which is the page's
         // LCP element, and `rise` fades from opacity 0 -- which made LCP 1940ms against a
         // 328ms first paint (F-005). See the keyframes note in `tokens.css`.
-        className="animate-settle pt-8 pb-8 md:pt-14 md:pb-16 [@media(max-height:820px)]:md:pt-8 [@media(max-height:820px)]:md:pb-8"
+        // NO BAND PADDING ON DESKTOP, because `.hero` already carries its own. The shipped
+        // stylesheet sets `.hero{padding:52px 0 44px}` (`mumchimp.css:274`), and `md:pt-14`
+        // added another 56px on top of it. Measured at 1280, drawing against built page:
+        // the hero grid started at y=103 in `mockups/index.html` and y=159 here, the right-hand
+        // panel at y=155 against y=211, the h1 at y=297 against y=353. Every row exactly 56px
+        // low, which is `pt-14`. `md:pb-16` was the same mistake at the other end. The two
+        // `[@media(max-height:820px)]:md:*` overrides went with them: they existed to claw back
+        // padding on a short laptop screen, and there is none left to claw back.
+        // The PHONE padding is untouched on purpose. `pt-8 pb-8` there was set by measuring
+        // where the first shelf card landed at 360x780, 390x844 and 430x932, and the drawing's
+        // own media query drops `.hero` to `padding:36px 0 32px` below 900px anyway.
+        className="animate-settle pt-8 pb-8 md:pt-0 md:pb-0"
       >
         {/* Two columns on lg+: the claim on the left, the evidence for it on the right. The
             filter-log card is the argument -- it is the only thing above the fold that a
