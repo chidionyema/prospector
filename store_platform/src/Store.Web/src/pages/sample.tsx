@@ -67,7 +67,29 @@ const EXCERPT = report.excerpt as ExcerptSection[];
 const WITHHELD = report.withheld as Withheld[];
 const PUSHED_BACK = report.total - report.supported;
 
+/*
+  THE CHECKS THE EVIDENCE WOULD NOT SETTLE (MASTER-BRIEF section 7: "lead with the check that
+  failed").
+
+  This is the most persuasive thing on the site and it is the part a shop would normally bury. A
+  research filter that reports six wins is a sales page. One that names, at the top, the two
+  questions it could not answer and shows its reasoning for giving up on them is making a claim a
+  reader can test. If we were willing to overclaim, this block is the first thing we would delete.
+
+  Derived, never typed: `checks` is the same array the pack ships, so a re-run that settles one of
+  these removes it from here with no edit. If a re-run settles both, the block renders nothing.
+*/
+type SampleCheck = { name: string; key: string; verdict: string; rationale: string };
+const UNSETTLED: SampleCheck[] = (report.checks as SampleCheck[]).filter(
+  (c) => c.verdict !== 'supported',
+);
+
 const SECTIONS: DocSectionRef[] = [
+  // First in the rail as well as first on the page. A contents list that starts with the excerpt
+  // would put the one honest thing on the page below the fold of its own navigation.
+  ...(UNSETTLED.length > 0
+    ? [{ id: 'unsettled', label: 'What we could not settle', tone: 'warn' } as DocSectionRef]
+    : []),
   ...EXCERPT.map((s): DocSectionRef => ({ id: s.id, label: s.title })),
   { id: 'boundary', label: 'Where the sample stops', note: `${WITHHELD.length} more`, tone: 'kill' },
   { id: 'buy', label: 'Browse the packs' },
@@ -230,16 +252,21 @@ export default function SamplePage() {
               field, quoted from their own pages, with every link open.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 text-meta font-semibold text-muted">
+              {/* THE UNSETTLED COUNT COMES FIRST. It used to sit second, behind "N checks
+                  cleared", which is the ordering a shop reaches for and the wrong one here. The
+                  cleared count is what every seller claims; the count we could not settle is the
+                  one that can be checked against the reasoning below, and it is the reason to
+                  believe the other number. Section 7 asks the page to lead with it. */}
+              {PUSHED_BACK > 0 && (
+                <span className="inline-flex items-center gap-2 text-warning-strong">
+                  <Glyph name="pushed-back" className="text-warning" />
+                  {PUSHED_BACK === 1 ? '1 check the evidence would not settle' : `${PUSHED_BACK} checks the evidence would not settle`}
+                </span>
+              )}
               <span className="inline-flex items-center gap-2">
                 <Glyph name="survived" className="text-success" />
                 {report.supported} checks cleared
               </span>
-              {PUSHED_BACK > 0 && (
-                <span className="inline-flex items-center gap-2">
-                  <Glyph name="pushed-back" className="text-warning" />
-                  {PUSHED_BACK === 1 ? '1 the evidence would not settle' : `${PUSHED_BACK} the evidence would not settle`}
-                </span>
-              )}
               {/* The one anchor on this strip, and it lands somewhere that proves the number
                   rather than restating it: the third section quotes five of these pages at
                   length. The old strip linked "objections we could not dismiss" to `#pushback`,
@@ -267,6 +294,34 @@ export default function SamplePage() {
             {/* What the reader is about to read, named before they read it. The pack itself
                 opens on the situation rather than on a title page, so this line is the only
                 framing the page adds -- the sections below are the document's own words. */}
+            {UNSETTLED.length > 0 && (
+              <section id="unsettled" className="mb-10 scroll-mt-24 rounded-md border border-warning bg-warning-bg p-8 md:p-9">
+                <h2 className="text-h3 font-semibold text-warning-strong">
+                  {UNSETTLED.length === 1
+                    ? 'One question the evidence would not settle'
+                    : `${UNSETTLED.length} questions the evidence would not settle`}
+                </h2>
+                {/* AMBER, NOT RED. Section 2 gives red one meaning on this site: the idea died.
+                    Nothing died here. These are checks the retrieval could not decide either way,
+                    which is a different state and gets a different colour. */}
+                <p className="mt-3 max-w-[68ch] text-meta leading-relaxed text-warning-strong">
+                  This pack is on the shelf, so it cleared every check that can kill an idea. These
+                  are the ones the sources would not answer. They are in the pack you would buy,
+                  worded exactly like this.
+                </p>
+                <dl className="mt-6 space-y-5">
+                  {UNSETTLED.map((check) => (
+                    <div key={check.key}>
+                      <dt className="text-body font-semibold text-text">{check.name}</dt>
+                      <dd className="mt-1 ml-0 max-w-[68ch] text-meta leading-relaxed text-muted">
+                        {check.rationale}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+            )}
+
             <div className="rounded-md border border-border bg-surface p-8 md:p-9">
               <span className="text-caption font-medium text-muted">The pack</span>
               <h2 className="mt-2 text-h2 font-semibold text-text md:text-h1">{report.title}</h2>

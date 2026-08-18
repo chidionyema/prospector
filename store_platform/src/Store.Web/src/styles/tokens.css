@@ -93,12 +93,41 @@
      every other ratio annotated against --bg in this file moves by less than 1 point in the same
      direction -- none crosses a threshold. Ratios quoted "on white" for tokens printed on a CARD
      are unchanged, because --surface is still #FFFFFF. */
-  --bg: #FAF9F7;            /* Page canvas. Warm white. 17.04:1 under --text. */
+  /* ── PALETTE CONVERGED ON MASTER-BRIEF §1, 2026-08-17 ─────────────────────────────────────────
+     The token NAMES below are unchanged and stay the app's API: every page reaches these through
+     Tailwind utilities (`bg-bg`, `text-muted`, `border-border`), so renaming them to the brief's
+     `--paper` / `--ink` / `--line` would have been a several-hundred-file diff for zero visual
+     effect. What changed is the VALUES. The brief's own names are published as aliases at the
+     bottom of this file so new work can be written in the brief's vocabulary.
+
+     Every ratio quoted here was computed, not estimated (sRGB relative luminance, WCAG 2.x
+     formula). Three findings worth keeping, because they are where the brief and its own
+     accessibility bar (§10: "Lighthouse a11y >= 95") disagree:
+
+       1. --warn-b #C9A227 measures 2.42:1 on white and 2.27:1 on --warn-f. It CANNOT carry text.
+          The brief says "form validation uses --warn-b", and that has to mean the border and the
+          mark, never the message: the message uses --warn-t #8A6D0B (4.91:1 on white, 4.62:1 on
+          --warn-f, AA). The token suffixes say so too -- b border, t text, f fill.
+       2. --brand on --brand-soft is 4.42:1, just under AA. --brand-soft is a border and a fill,
+          not a ground for brand-coloured text. On --brand-tint the same ink is 5.50:1 and legal.
+       3. --ink-3 #8B9096 is 3.08:1 on paper. The brief assigns it to captions, eyebrows and mono
+          meta -- all SMALL text -- where AA needs 4.5:1, so shipping it literally would have been
+          an accessibility regression against the outgoing --subtle (#71717A, 4.62:1). --subtle
+          below is therefore the brief's ink-3 with its hue (213) and saturation (0.073) held
+          exactly and only its lightness lowered to the first step that reaches AA: #707478,
+          4.50:1 on paper, 4.71:1 on white. It is the brief's colour, at a legal weight. */
+  --bg: #FAFAF7;            /* --paper. The page ground everywhere, header included. 16.84:1 under
+                                --text. Was #FAF9F7; it is now byte-identical to the `theme-color`
+                                in `pages/_document.tsx`, which is the point -- a browser bar that
+                                differs from the page ground by even one step reads as a seam. */
   --surface: #FFFFFF;       /* Cards and raised surfaces. The EDGE is drawn by a border, never by
                                 a tint -- that is what makes the shelf read as a document. */
   --surface2: #FAFAFA;      /* Sunken/tinted panels: plate headers, table heads, footer, code. */
-  --border: #E4E4E7;        /* Hairline. The default border everywhere. */
-  --border-strong: #D4D4D8; /* Hover borders and dividers that must actually read. 1.48:1 on
+  --border: #E7E7E1;        /* --line. Hairline: inside cards, between rows. The default border
+                                everywhere. Warm, to sit on warm paper -- the outgoing #E4E4E7 was
+                                a cool grey drawn across a warm ground, which is the difference
+                                between a rule that belongs to the page and one laid over it. */
+  --border-strong: #D8D8D1; /* --line-2. Hover borders and dividers that must actually read. 1.37:1 on
                                --bg: DECORATION ONLY. It is not legal on a control -- see
                                --border-control, which exists because this one was being used
                                for both and only one of the two jobs has a contrast floor. */
@@ -113,9 +142,17 @@
                                 --border-strong: the same value on a divider would put a 3.25:1
                                 rule through pages designed around hairlines, which is a
                                 different decision and not one this fix is entitled to make. */
-  --text: #171717;          /* Primary text. 17.93:1 on --bg, 17.18:1 on --surface2. */
-  --muted: #52525B;         /* Secondary text: descriptions, nav. 7.73:1 on --bg. AA. */
-  --subtle: #71717A;        /* Tertiary text: meta rows, counts, timestamps. 4.83:1 on --bg. AA.
+  --text: #17191C;          /* --ink. Headings, the one button, prices. 16.84:1 on --bg, 17.61:1
+                                on --surface. AAA either way. Was #171717 -- the brief's value
+                                carries a trace of blue, which is what keeps it from going brown
+                                against the warm paper. */
+  --muted: #565B62;         /* --ink-2. Body copy, descriptions, nav. 6.54:1 on --bg. AA. */
+  --subtle: #707478;        /* --ink-3, at a legal weight. Tertiary text: meta rows, counts,
+                                timestamps, eyebrows, mono meta. 4.50:1 on --bg, 4.71:1 on
+                                --surface. AA -- and only just, deliberately: see finding 3 in the
+                                convergence note above. The brief's literal #8B9096 is 3.08:1 and
+                                fails AA at the 12px sizes it is specified for. This is that exact
+                                hue and saturation with lightness taken down to the first AA step.
                                 This is the smallest text that is allowed to carry information. */
   /* Placeholders, disabled labels, purely decorative rules. 2.56:1 -- it FAILS AA, and that is
      why its role is written down here: --faint may never carry information. Anything a buyer
@@ -282,17 +319,38 @@
      Each pair ships a `-bg` tint and a `-strong` text colour, because the base hue does not
      survive being put on its own tint: --danger #DC2626 on --danger-bg #FEF2F2 measures 4.41:1
      and FAILS AA. That single measurement is why the -strong variants exist at all. */
-  --success: #047857;         /* Verified/survived on white. 5.48:1. AA. */
-  --success-bg: #ECFDF5;
-  --success-strong: #065F46;  /* On --success-bg. 7.29:1. AA. */
-  --danger: #DC2626;          /* Killed/destructive on white. 4.83:1. AA. */
-  --danger-bg: #FEF2F2;
-  --danger-strong: #B91C1C;   /* On --danger-bg. 5.91:1. AA. */
-  /* v2 set --warning to #DC2626, i.e. identical to --danger, so "caution" and "destructive" were
+  /* THREE COLOURS ARE THE VERDICT SYSTEM (MASTER-BRIEF §2, converged 2026-08-17). Teal survived,
+     amber pushed back, red killed. A reader learns them once and they hold on every page. The
+     amber is the new member: before this, "pushed back" had no colour of its own and borrowed the
+     caution orange, so the site had two verdicts rendered and three verdicts written. */
+  --success: #14706A;         /* --brand. Verified/survived. 5.91:1 on white, 5.65:1 on --bg. AA.
+                                 Was #047857, a green. Teal is the brand's own hue, and the brief
+                                 spends it on the one meaning the business is built on. */
+  --success-bg: #F2F8F7;      /* --brand-tint. --success on it measures 5.50:1. AA. */
+  --success-strong: #0B564F;  /* On --success-bg. 7.95:1. AA. */
+  --danger: #B4342B;          /* --kill. Killed/destructive. 6.06:1 on white, 5.79:1 on --bg. AA.
+                                 Was #DC2626, a signal red that had to be darkened to
+                                 --danger-strong the moment it touched its own tint. This one does
+                                 not: it is legal on white, on paper AND on the tint below. */
+  --danger-bg: #FDF3F2;       /* --danger on it measures 5.56:1. AA on the base hue, which is new. */
+  --danger-strong: #8F2822;   /* On --danger-bg. 7.73:1. AA. */
+  /* AMBER = PUSHED BACK, and its three parts are not interchangeable. The suffixes are the rule:
+     -b border/mark, -t text, -f fill.
+       --warning     = --warn-t #8A6D0B   4.91:1 white, 4.62:1 on the fill. The only one that may
+                       carry TEXT.
+       --warning-bg  = --warn-f #FCF8E8   the fill.
+       --warn-b      = #C9A227            MEASURED 2.31:1 on --bg. It fails AA (4.5:1) for text AND
+                       fails WCAG 1.4.11 (3:1) for a non-text UI edge. So it is legal ONLY as a
+                       decorative mark or a fill inside a chip that carries its own --warning text.
+                       It is NOT a form-error border, despite §2's "form validation uses --warn-b"
+                       -- an error border that a reader cannot see is not validation. Form errors
+                       draw their edge in --warning and their message in --warning.
+     v2 set --warning to #DC2626, i.e. identical to --danger, so "caution" and "destructive" were
      the same colour and the distinction was unrenderable. */
-  --warning: #B45309;         /* 5.02:1 on white. AA. */
-  --warning-bg: #FFFBEB;
-  --warning-strong: #92400E;  /* On --warning-bg. 6.84:1. AA. */
+  --warning: #8A6D0B;         /* --warn-t. 4.91:1 on white, 4.70:1 on --bg. AA. */
+  --warning-bg: #FCF8E8;      /* --warn-f. --warning on it measures 4.62:1. AA. */
+  --warning-strong: #6E5608;  /* On --warning-bg. 6.58:1. AA. */
+  --warn-mark: #C9A227;       /* --warn-b. DECORATION ONLY -- see the measurement above. */
   /* --info was #0369A1 / #F0F9FF, a second blue family. An informational note is not a verdict,
      so under §3.1 it may not carry a hue. It becomes ink-on-neutral: the note still reads as a
      distinct block because it sits on a surface step with a hairline, which is exactly the
@@ -493,10 +551,13 @@
 
      These deliberately ALIAS the v3 values rather than introduce new hex, so every WCAG ratio
      measured above carries over unchanged and this is a renaming, not a re-palette:
-       --kill    = --danger  #DC2626  4.83:1 on white. AA.
-       --kill-strong = --danger-strong #B91C1C  5.91:1 on --kill-bg. AA.
-       --survive = --success #047857  5.48:1 on white. AA.
-       --survive-strong = --success-strong #065F46  7.29:1 on --survive-bg. AA.
+       --kill    = --danger  #B4342B  6.06:1 on white. AA.
+       --kill-strong = --danger-strong #8F2822  7.73:1 on --kill-bg. AA.
+       --survive = --success #14706A  5.91:1 on white. AA.
+       --survive-strong = --success-strong #0B564F  7.95:1 on --survive-bg. AA.
+     Re-measured 2026-08-17 against the MASTER-BRIEF §1 palette. The four hexes moved with it
+     (they were #DC2626 / #B91C1C / #047857 / #065F46) and every ratio went UP, so the aliasing
+     argument holds and the pair is still AA in both directions.
      The rule that comes with them: --kill and --survive are the ONLY colours allowed to carry a
      verdict, and they carry it everywhere a verdict appears -- filter chips, dossier rows, the
      kill log, pack borders, the gauntlet. --success/--danger stay for genuine UI state (a form
@@ -528,6 +589,33 @@
   --kill: var(--danger);
   --kill-bg: var(--danger-bg);
   --kill-strong: var(--danger-strong);
+
+  /* ── THE BRIEF'S OWN NAMES (MASTER-BRIEF §1), added 2026-08-17 ───────────────────────────────
+     Aliases, not a second palette: every one of these resolves to a token defined above, so there
+     is exactly one place a colour is chosen and no way for the two vocabularies to drift apart.
+
+     They exist so work written against the brief can be typed in the brief's words. The older
+     names stay the app's API because several hundred files already call them through Tailwind
+     utilities, and a rename sweep would be a very large diff that changes not one pixel.
+
+     `--pushed-back*` is the pair the verdict system was missing. Survived and killed each had a
+     token; the third verdict had none, so "pushed back" was being drawn in the caution orange
+     that also meant "careful, this is a warning" -- one colour, two meanings. */
+  --paper: var(--bg);
+  --ink: var(--text);
+  --ink-2: var(--muted);
+  --ink-3: var(--subtle);
+  --line: var(--border);
+  --line-2: var(--border-strong);
+  --brand: var(--success);          /* teal = survived; §2 spends the brand hue on the verdict */
+  --brand-tint: var(--success-bg);
+  --brand-soft: #CFE3E0;            /* Border and fill only. --brand on it is 4.42:1, under AA. */
+  --pushed-back: var(--warning);
+  --pushed-back-bg: var(--warning-bg);
+  --pushed-back-strong: var(--warning-strong);
+  --pushed-back-mark: var(--warn-mark);
+  --dead: #DEDED7;                  /* An unresearched/dead cell in a population grid. Decoration:
+                                       it never carries text, so it has no contrast floor. */
 
   /* GRAIN. v3 removed the body::before grain outright and left an explicit escape hatch in the
      comment further down this file: "a future rebrand can re-add a much subtler texture (sub-1%
@@ -598,6 +686,24 @@
   --color-kill: var(--kill);
   --color-kill-bg: var(--kill-bg);
   --color-kill-strong: var(--kill-strong);
+
+  /* MASTER-BRIEF §1 names, exposed to Tailwind so a component can be written as
+     `bg-paper text-ink border-line` exactly as the brief specifies it. Same values as the
+     utilities above -- these are a second spelling, never a second palette. */
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-brand: var(--brand);
+  --color-brand-tint: var(--brand-tint);
+  --color-brand-soft: var(--brand-soft);
+  --color-pushed-back: var(--pushed-back);
+  --color-pushed-back-bg: var(--pushed-back-bg);
+  --color-pushed-back-strong: var(--pushed-back-strong);
+  --color-warn-mark: var(--warn-mark);
+  --color-dead: var(--dead);
 
   /* The instrument surface. Mapped in the SAME commit that declares them, per the rule three
      blocks up: in Tailwind v4 an unmapped colour utility emits no rule at all, so `bg-ins-bg`
@@ -810,6 +916,23 @@
   --radius-sm: 2px;
   --radius-md: 2px;
 
+  /* ── §3.4 IS SUPERSEDED FOR CARDS AND CONTROLS (MASTER-BRIEF §4, 2026-08-17) ────────────────
+     The brief declares "Radius 12px cards, 8px controls", which contradicts the one-radius rule
+     written directly above. The brief is the founder's current instruction and it wins, but it
+     wins in a bounded way: TWO NEW TOKENS, adopted at the components that draw a card or a
+     control, rather than a retune of `--radius-md`.
+
+     Retuning `--radius-md` was the smaller edit and it is the wrong one. That token is on 139
+     call sites of every size, so moving it to 12px would put a card's corner on a 20px checkbox
+     and a 26px segmented control -- the exact lozenge the note above exists to prevent, arrived
+     at from the other direction. A card radius has to be applied where something is card-sized,
+     and that is a decision per component, not per token.
+
+     `--radius-sm` and `--radius-md` stay at 2px and keep every call site they have. Nothing is
+     squared off by accident. */
+  --radius-card: 12px;
+  --radius-ctl: 8px;
+
   /* TWO shadows, and NEITHER is decoration.
      `--shadow-hard` (a 3px ink offset block, no blur) is DELETED. v2 called it "the brand device"
      and canonised it as one of only two legal shadows; on screen it is a sticker drop-shadow, and
@@ -855,7 +978,7 @@
        route            FCP     LCP    candidates
        /               328ms  1940ms   p @328ms (9,696) then the h1 @1940ms (33,796)
        /how-it-works   164ms  1824ms   lead @164ms then the hero lead @1824ms
-       /ideas          208ms  1860ms   caption @208ms then the h1 @1860ms
+       /collections          208ms  1860ms   caption @208ms then the h1 @1860ms
        /pricing        180ms   180ms   ONE candidate -- no PageHero, no animate-rise
        /about          136ms   136ms   ONE candidate
        /kill-log       316ms   316ms   ONE candidate

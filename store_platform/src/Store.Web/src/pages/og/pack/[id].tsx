@@ -243,7 +243,7 @@ export const getServerSideProps: GetServerSideProps = async ({ params, res }) =>
     // but an unreachable API is temporary and must not be recorded as gone, hence the status on
     // ApiError. `notFound` cannot express the second case at all: Next overrides `res.statusCode`
     // when `notFound` is returned, so a 503 set alongside it is served as 404 (measured on
-    // /ideas/[slug], 2026-08-01).
+    // /collections/[slug], 2026-08-01).
     const status = error instanceof ApiError ? error.status : 503;
     if (status === 404 || status === 410) return { notFound: true };
     res.statusCode = 503;

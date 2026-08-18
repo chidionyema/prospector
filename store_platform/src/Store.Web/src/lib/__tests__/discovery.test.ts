@@ -112,6 +112,7 @@ describe('URL codec (AC-7)', () => {
     effort: 'automatable',
     commitment: 'evenings',
     mechanism: 'vertical_tool',
+    maxPence: null,
   };
 
   it('round-trips a full state', () => {

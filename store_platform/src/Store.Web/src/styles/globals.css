@@ -2,7 +2,12 @@
 @import "./tokens.css";
 
 html {
-  color-scheme: light;
+  /* `light only`, not `light` (MASTER-BRIEF §9, 2026-08-17). Plain `light` states a preference
+     and still lets an engine's forced-dark pass repaint the page: Android Chrome auto-dark and
+     several in-app browsers (Instagram, Facebook, LinkedIn) invert a `light` page and render the
+     teal muddy. `only` withdraws consent to that transform. Paired with theme-color `#FAFAF7`
+     in `pages/_document.tsx` -- a browser bar that matches the page ground. */
+  color-scheme: light only;
   scroll-behavior: smooth;
   overflow-y: scroll;
   scrollbar-gutter: stable;
@@ -82,6 +87,42 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale; /* Crucial for macOS/iOS crispness */
   text-rendering: optimizeLegibility; /* Enables kerning & ligatures */
+}
+
+/*
+  PAINT THE GROUND ONTO THE LAYOUT ELEMENTS, NOT `body` ALONE (MASTER-BRIEF §9, 2026-08-17).
+
+  `color-scheme: light only` is the correct instruction and most engines honour it. The ones that
+  do not are the ones that matter commercially: Android Chrome's forced-dark and the in-app
+  browsers inside Instagram, Facebook and LinkedIn -- which is how a large share of buyers arrive
+  from a link. Those engines walk the tree and repaint elements whose background they judge to be
+  "default". An element that never declares a background is exactly that, so `header`, `main`,
+  `footer` and `section` get inverted individually while `body` keeps the light one it declared.
+  The result is not a dark site; it is a light page with dark bands through it and teal that has
+  gone muddy, which reads as broken rather than as a theme.
+
+  Declaring the ground on each of them removes the ambiguity: there is no element left for the
+  heuristic to consider unstyled. `background-color` rather than the `background` shorthand, so a
+  section that sets its own gradient or image keeps it and only picks up the ground beneath.
+
+  Scoped to the four structural tags the brief names. It is deliberately NOT `*`, which would
+  paint over every card, chip and tint token in the system.
+
+  IT MUST LIVE IN `@layer base`, and that is not tidiness. Unlayered CSS beats EVERY cascade layer
+  regardless of specificity, and `@import "tailwindcss"` puts all utilities in `@layer utilities`.
+  Written bare, this four-tag selector would therefore have outranked every `bg-*` utility in the
+  app: the dark inspection band (`--ins-bg`, a `<section>` carrying a `bg-ins-bg` class) would have
+  been repainted paper, which is the one surface on the site whose whole job is to be dark. In
+  `@layer base` the order inverts and any utility class wins, so this only ever reaches elements
+  that state no background of their own -- exactly the ones forced-dark was going to claim.
+*/
+@layer base {
+  header,
+  main,
+  footer,
+  section {
+    background-color: var(--bg);
+  }
 }
 
 /*
@@ -191,70 +232,21 @@ body::before {
 
 
 /*
-  The hero's population field (`components/marketing/PopulationField.tsx`): one mark per idea the
-  engine has researched, with the packs on the shelf standing out of the stubble.
+  THE POPULATION FIELD'S CSS IS DELETED, WITH THE COMPONENT IT DRESSED (2026-08-17).
 
-  IT LIVES IN CSS, NOT IN TAILWIND CLASSES, FOR A MEASURABLE REASON. The field is ~1,400 elements,
-  and every class byte is paid 1,400 times in the SSR payload of the site's most important screen.
-  Two rules here cost 4 bytes an element (`<i></i>`) instead of ~40; the whole field serialises to
-  roughly 6 KB of HTML rather than 60 KB. This is the same trade the `.kill-drift` rule it replaces
-  made, for the same reason.
+  `.pop-field` and `@keyframes popRise` styled `PopulationField`, which the MASTER-BRIEF §7 kill
+  grid replaces. The grid is inline SVG with its geometry in the component, so there is nothing
+  left here to style. Left declared, these rules would be a standing invitation: the next
+  component reaches for `.pop-field`, it resolves, and a second population picture ships beside
+  the signature device.
 
-  `align-items: end` is the design. Every mark sits on one floor, so a survivor reads as the stalk
-  left standing rather than as a mark that happens to be drawn taller. `auto-fill` at a 3px pitch
-  means the row length is a function of the viewport and never of a number we hardcoded, so the
-  field reflows without any of the marks changing meaning.
+  What went with them, so the argument is not lost: the field was ~1,400 `<i>` elements at a
+  1.5px mark on a 2.5px gutter, and the gutter had to be WIDER THAN THE MARK -- at 1.5 on 1.5 the
+  field is a 50% duty cycle and resolves on a 2x display to four solid grey rules with green ticks
+  on them, a divider rather than a population (measured at 1440x900, 2026-08-13). `KillGrid` keeps
+  that lesson as geometry: a 0.66-unit dead square in a 1-unit cell is the same 2:1 ratio of mark
+  to pitch.
 */
-.pop-field {
-  display: grid;
-  /* THE GUTTER IS WIDER THAN THE MARK, AND THAT IS THE WHOLE LEGIBILITY OF THE THING. At a 1.5px
-     mark on a 1.5px gutter the field is a 50% duty cycle, which on a 2x display resolves to four
-     solid grey rules with green ticks on them -- a divider, not a population (measured at
-     1440x900, screenshot 2026-08-13). 1.5 on 2.5 separates the marks; the row gap is 8px for the
-     same reason, because at 4px a 14px survivor visually joined the row above it. */
-  grid-template-columns: repeat(auto-fill, 1.5px);
-  gap: 8px 2.5px;
-  align-items: end;
-  align-content: start;
-  justify-content: start;
-  /* The last row is partial by definition (1,444 does not divide by the column count). Without
-     this, a mark clipped by the container edge would still claim a whole column of layout. */
-  overflow: hidden;
-}
-
-.pop-field > i {
-  width: 1.5px;
-  height: 3px;
-  background: var(--faint);
-}
-
-.pop-field > i.on {
-  height: 14px;
-  background: var(--survive);
-}
-
-/*
-  The resolve. The survivors rise out of the stubble left to right, once, over ~1s -- the engine's
-  verdict replayed at a glance, which is the one gesture SITE_SPEC §3.5 asks this site for.
-
-  It animates `height` on 50 elements and nothing else. `transform: scaleY` would be the cheaper
-  property in general, but each mark is 1.5px wide with no transform-box of its own, so scaling
-  from the baseline needs a `transform-origin` on a 4px box and lands sub-pixel; the elements are
-  tiny and there are 50 of them, so the layout cost is real but bounded, and the result is exact.
-
-  The per-element delay is an inline `--d` set only on the 50 lit marks. The other ~1,394 carry no
-  style attribute at all, which is what keeps the payload argument above true.
-*/
-@keyframes popRise {
-  from { height: 3px; background: var(--faint); }
-  to   { height: 14px; background: var(--survive); }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .pop-field > i.on {
-    animation: popRise 0.5s cubic-bezier(0.2, 0, 0, 1) var(--d, 0s) backwards;
-  }
-}
 
 
 /* Custom Selection — high-contrast ink on white. */
@@ -472,8 +464,8 @@ section {
   Measured at 1440x900 on 2026-08-14 (`fold-idx.png`, `fold-slug.png`): `PageHero` closes with
   `md:pb-16` (64px) and the `Section` under it opens with `md:py-24` (96px), so 160px of white
   plus the band's own `border-b` rule sat between a page's headline and the thing that headline
-  introduces. On /ideas the search field started at y=495 and the first category row at y=639, on
-  a 900px viewport; on /ideas/b2c-business-ideas the first card cleared the fold by 90px. Every
+  introduces. On /collections the search field started at y=495 and the first category row at y=639, on
+  a 900px viewport; on /collections/b2c-business-ideas the first card cleared the fold by 90px. Every
   route with a hero paid it, because both numbers live in `blocks.tsx`.
 
   The two paddings were never meant to add up -- each is right on its own, one closing a band and

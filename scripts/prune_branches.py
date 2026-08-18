@@ -113,6 +113,51 @@ def merged_tree_equals_upstream(branch: str, upstream_tree: str) -> bool:
     return bool(first) and first == upstream_tree
 
 
+def absorbed(branch: str) -> tuple[int, int]:
+    """(lines of this branch already on main, lines it added) — the conflict-proof read.
+
+    `merged_tree_equals_upstream` is exact but it answers only for a branch that merges cleanly.
+    A branch that CONFLICTS reads as unmerged forever, and on 2026-08-17 that was wrong for
+    twelve of thirteen branches at once: each had been landed by a squash, main had since edited
+    the same lines, and the conflict was main's NEWER version of the branch's own change. Merging
+    any of them would have reverted main.
+
+    So ask the cheaper question instead: of the lines this branch adds, how many appear verbatim
+    in main's copy of the same file? 100% means the work is in, whatever the merge says. A low
+    number is the only case worth a human reading the diff.
+
+    Short lines are dropped -- a bare `)` or `import os` matches everywhere and would score any
+    branch as absorbed. Runtime state is dropped for the same reason it is everywhere else here:
+    `store/` and `signals/` are written by every run and say nothing about the code.
+    """
+    base = git("merge-base", UPSTREAM, branch).strip()
+    if not base:
+        return (0, 0)
+    present = total = 0
+    for path in git("diff", "--name-only", base, branch).split():
+        if path.startswith(("store/", "storage/", "signals/")):
+            continue
+        diff = git("diff", "-U0", base, branch, "--", path).splitlines()
+        added = [ln[1:].strip() for ln in diff
+                 if ln.startswith("+") and not ln.startswith("+++")]
+        added = [ln for ln in added if len(ln) > 12]
+        if not added:
+            continue
+        on_main = git("show", f"{UPSTREAM}:{path}")
+        total += len(added)
+        present += sum(1 for ln in added if ln in on_main)
+    return (present, total)
+
+
+def _kept_reason(branch: str) -> str:
+    files = git("diff", "--name-only", f"{UPSTREAM}...{branch}").count("\n")
+    hit, tot = absorbed(branch)
+    if not tot:
+        return f"{files} file(s) not in main"
+    return (f"{files} file(s) not in main; {100 * hit // tot}% of its {tot} added lines are "
+            f"already on main")
+
+
 def worktree_is_idle(path: str) -> bool:
     """True when a worktree holds nothing that would be lost by removing it.
 
@@ -265,8 +310,7 @@ def main() -> int:
             else:
                 kept.append((name, sha, when, f"merged, but {path} has uncommitted work"))
         else:
-            files = git("diff", "--name-only", f"{UPSTREAM}...{name}").count("\n")
-            kept.append((name, sha, when, f"{files} file(s) not in main"))
+            kept.append((name, sha, when, _kept_reason(name)))
 
     gone = stale_worktrees()
 
@@ -289,9 +333,7 @@ def main() -> int:
             elif merged_tree_equals_upstream(f"origin/{name}", upstream_tree):
                 remote_retired.append((name, sha, when))
             else:
-                files = git("diff", "--name-only",
-                            f"{UPSTREAM}...origin/{name}").count("\n")
-                remote_kept.append((name, sha, when, f"{files} file(s) not in main"))
+                remote_kept.append((name, sha, when, _kept_reason(f"origin/{name}")))
 
     print(f"{UPSTREAM} at {upstream_sha[:12]}")
     print(f"\nRETIRED — merged tree identical to main ({len(retired)}):")

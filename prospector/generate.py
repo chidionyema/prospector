@@ -15,6 +15,7 @@ from concurrent.futures import TimeoutError as FuturesTimeoutError
 from datetime import datetime
 from typing import Any, Optional
 
+from . import content_contract
 from .config import Config
 from .coverage import plan_cells
 from .critique import _axes_brief, critique_revise
@@ -178,6 +179,44 @@ _AUDIENCE_DESCRIPTIONS: dict[str, str] = {
     "ecommerce_seller":
         "an online-store operator (Shopify, Amazon, eBay) who pays for anything that raises conversion, cuts fulfilment or returns cost, or defends against platform policy shifts",
 }
+
+
+def _shelf_line_directive(cfg: Any) -> str:
+    """The bar the title and one-liner will be GRADED against, taken from the grader itself.
+
+    Same defect as `_scoring_directive` below, one level worse. That one found generation being
+    scored on a rubric it had never been shown. This one is generation being *refused* on a rule
+    it has never been shown: `prompts/generate.md` names no title rule and no shelf-copy rule at
+    all, so a title is written free-form, carried untouched through prescreen, verify, kill filter
+    and score — every one of which judges the IDEA — and first read as words a buyer will see at
+    the publish gate, after a ~7,700-word pack has been paid for.
+
+    On 2026-08-17 that was 34 PASS packs no one could buy, 35 of the blocks being title (20) and
+    shelf_copy (15). All made within three days, every one made after the rule that blocked it.
+
+    The text comes from `content_contract.prompt_rules_for`, which is the same declaration the
+    publish gate reads. A prose paraphrase here would drift from the checker the first time a bar
+    moved, and the drift would only ever be visible as stranded packs. That is P3 of
+    `docs/CONTENT_CONTRACT_PROGRAM.md`.
+
+    Golden-safe by construction, like the two directives beside it: it returns "" when the
+    registry declares no prompt text, and an empty suffix leaves the prompt byte-identical.
+    """
+    rules = content_contract.prompt_rules_for(
+        content_contract.TITLE, content_contract.ONE_LINER
+    )
+    if not rules:
+        return ""
+    body = "\n".join(f"- {r}" for r in rules)
+    return (
+        "HOW THE TITLE AND ONE-LINER WILL BE GRADED. These are the only words most buyers ever "
+        "read, and they are checked by code before the pack can be sold. An idea that breaks one "
+        "of these is refused after the whole pack has been written, so it is cheaper to get right "
+        "here than anywhere else.\n"
+        f"{body}\n\n"
+        "Write them as the finished shelf lines, not as working notes. If a rule and a good "
+        "phrase conflict, keep the rule and find another phrase."
+    )
 
 
 def _scoring_directive(cfg: Any) -> str:
@@ -561,7 +600,10 @@ def generate(
         # "generate" without passing it (run.py:2039, tests/unit/test_moat_discipline.py:44).
         # Appending in Python is golden-safe by construction — the helper returns "" when
         # `cfg.weights` is empty, and an empty suffix leaves the prompt byte-identical.
-        for _extra in (landscape_directive, sampling_directive, _scoring_directive(cfg)):
+        # The shelf-line rules land after the scoring rubric, last of all: they are the bar the
+        # words themselves must clear, and they are the cheapest thing in the prompt to obey.
+        for _extra in (landscape_directive, sampling_directive, _scoring_directive(cfg),
+                       _shelf_line_directive(cfg)):
             if _extra:
                 user = f"{user}\n\n{_extra}"
         # gen_op is the non-critical generation chain (claude_cli primary → minimax tail); falls
