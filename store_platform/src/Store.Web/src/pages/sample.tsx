@@ -428,7 +428,7 @@ export default function SamplePage() {
               className="mt-12 scroll-mt-24 rounded-card border border-border bg-surface p-8 text-center md:p-10"
             >
               <h2 className="sec" style={{ maxWidth: '26ch' }}>
-                Every pack on the shelf opens like this.
+                Now read one that survived all of it.
               </h2>
               <p className="mx-auto mt-3 max-w-[56ch] lede">
                 You can now go and read the shelf with these answers in mind. One payment, yours to
