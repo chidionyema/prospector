@@ -68,8 +68,19 @@ t_secrets() {
 }
 
 t_release() {
+  # Stamp the commit into the image. Without it `fly releases` gives a version number that maps
+  # to nothing, so "which commit is production running?" has no answer on this platform.
+  local sha dirty
+  sha="$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
+  # Tracked runtime state under store/ and storage/ is rewritten by every run, so a working
+  # checkout is never clean. Only modified CODE means the image is not the commit it names.
+  dirty="$(git -C "$REPO_ROOT" status --porcelain 2>/dev/null | grep -v '^??' \
+           | awk '{print $NF}' | grep -vE '^(store|storage)/' | head -1 || true)"
+  if [ -n "$dirty" ]; then sha="$sha-dirty"; fi
+  echo "fly: building from $sha"
   fly deploy "$REPO_ROOT" --config "$ENGINE_DIR/fly.toml" -a "$APP" \
-    --dockerfile "$ENGINE_DIR/Dockerfile" --strategy immediate --yes
+    --dockerfile "$ENGINE_DIR/Dockerfile" --build-arg "GIT_SHA=$sha" \
+    --strategy immediate --yes
 }
 
 # `fly scale count 1` returns as soon as the machine is CREATED, not when it is running. The very

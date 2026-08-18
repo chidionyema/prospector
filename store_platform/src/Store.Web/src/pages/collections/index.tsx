@@ -266,16 +266,33 @@ export default function IdeasHub({ categories, total, variant }: Props) {
          * Hidden under a search, for the reason the grouping collapses under one: once a query is
          * typed, the shape of the whole catalogue is not what is being looked at.
          */}
+        {/* THE DRAWING NAMES THE MOSAIC (`mockups/collections.html`, `.sigcard` eyebrow "The
+            shape of the shelf" and its key line). It was drawn here as a field of tiles with
+            nothing saying what the sizes mean, so a reader could take the biggest tile for the
+            most important collection rather than the largest one. The drawing's own count is
+            dropped: the survivor total is never printed (2026-08-13). */}
+        {/* THE DRAWING PUTS ALL THREE IN ONE `.sigcard` (`mockups/collections.html`): the eyebrow,
+            the mosaic and the key line sit on a single bordered surface panel, and the key is a
+            `.key` line divided from the tiles by its own hairline. They were three loose siblings
+            on the page canvas, so the caption read as a stray note under a field of tiles rather
+            than as the legend of the drawing directly above it. `.sigcard .key` is what the
+            stylesheet selects, and `.sigcard .key span` sets the row, so the sentence is a span
+            inside the p exactly as the drawing has it. */}
         {!search && (
-          <CollectionMosaic
-            className="mb-10"
-            tiles={filtered.map((cat) => ({
-              slug: cat.slug,
-              name: cat.shortName,
-              longName: VARIANTS[variant].categoryH1[cat.slug] ?? cat.h1,
-              count: cat.count,
-            }))}
-          />
+          <div className="sigcard mb-10">
+            <p className="eyebrow">The shape of the shelf</p>
+            <CollectionMosaic
+              tiles={filtered.map((cat) => ({
+                slug: cat.slug,
+                name: cat.shortName,
+                longName: VARIANTS[variant].categoryH1[cat.slug] ?? cat.h1,
+                count: cat.count,
+              }))}
+            />
+            <p className="key">
+              <span>Tile size reflects pack count. Every tile filters the same shelf.</span>
+            </p>
+          </div>
         )}
 
         {filtered.length > 0 && (
@@ -371,18 +388,33 @@ export default function IdeasHub({ categories, total, variant }: Props) {
          * sentence about what the catalogue does and does not contain; the way out of a category
          * list is a control on that sentence, not a second screen restating it.
          */}
-        <div className="mt-12 flex flex-wrap items-center justify-between gap-x-10 gap-y-5 border-t-2 border-text pt-9">
-          <p className="max-w-[62ch] lede">
+        {/* The drawing's `.closing` owns the 2px rule, the 46px above it and the 34px below
+            (`mockups/collections.html`), and `.closing p` owns the size, colour and measure. The
+            utilities that used to hold those same numbers are removed rather than layered, since
+            mockup.css sits under the utility layer (globals.css:8). */}
+        {/* THE DRAWING STACKS THIS BLOCK (`mockups/collections.html`, `.closing`): the sentence,
+            then a `.ctarow` of two buttons. It was one flex row with the paragraph on the left and
+            a single button on the right, so the ghost button the drawing puts beside it had
+            nowhere to go and the row was the only closing on the site with one way out.
+            The drawing's heading here is "Or see everything at once", which the founder deleted on
+            2026-08-13; the paragraph carries the block instead. */}
+        <div className="closing">
+          <p>
             Categories appear once enough packs have cleared the checks to fill them. Ideas that failed are in the{' '}
             <Link href="/kill-log" className={textLinkClass('font-medium')}>
               kill log
             </Link>{' '}
             with the sourced reason why.
           </p>
-          <Link href="/" className={buttonClasses({})}>
-            Browse every pack
-            <Icon name="arrowRight" size={14} />
-          </Link>
+          <div className="ctarow">
+            <Link href="/" className="btn">
+              Browse every pack
+              <Icon name="arrowRight" size={14} />
+            </Link>
+            <Link href="/sample" className="btn ghost">
+              Read a full pack free
+            </Link>
+          </div>
         </div>
       </Section>
     </MarketingLayout>

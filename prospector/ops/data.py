@@ -27,8 +27,14 @@ import json
 from pathlib import Path
 from typing import Any, Optional
 
-#: Where `restore_drill.py` leaves its receipt. Untracked runtime state, like the rest of store/.
-DRILL_RECEIPT = Path("store") / "ops" / "restore_drill.json"
+from prospector.config import store_root
+
+#: Where `restore_drill.py` leaves its receipt, RELATIVE TO THE STORE. It used to be relative to
+#: the repo (`store/ops/restore_drill.json`) and was read from `_repo_root()`, which is a store
+#: path derived from `__file__` — it follows the CODE, not the store. On Fly the code is /app and
+#: the store is /data/store, so this screen read a path nothing writes and reported "the restore
+#: has never been proven" no matter how many drills passed.
+DRILL_RECEIPT = Path("ops") / "restore_drill.json"
 
 #: A drill older than this is not evidence any more. Quarterly is the weakest defensible cadence
 #: for a restore nobody has automated; it is here as a number so the screen can go amber rather
@@ -36,12 +42,16 @@ DRILL_RECEIPT = Path("store") / "ops" / "restore_drill.json"
 DRILL_STALE_DAYS = 90
 
 
-def data_view(cfg: Any, *, root: Optional[Path] = None) -> dict:
+def data_view(cfg: Any, *, root: Optional[Path] = None,
+              store: Optional[Path] = None) -> dict:
+    """`root` locates the REPO (declarations, .env); `store` locates the STATE. Two arguments
+    because they are two different directories in production and were conflated here."""
     root = Path(root) if root else _repo_root()
+    store = Path(store) if store else store_root()
     copy = _offsite(root)
     return {
         "copy": copy,
-        "drill": _drill(root),
+        "drill": _drill(store),
         "versioning": _versioning(root),
         "rpo": _rpo(copy),
         "warnings": _warnings(copy),
@@ -68,9 +78,9 @@ def _offsite(root: Path) -> dict:
         return {"status": "unknown", "reason": f"{type(exc).__name__}: {exc}", "sources": []}
 
 
-def _drill(root: Path) -> dict:
+def _drill(store: Path) -> dict:
     """DAT-2. Absent receipt means never proven, and that is what the screen says."""
-    path = root / DRILL_RECEIPT
+    path = store / DRILL_RECEIPT
     if not path.exists():
         return {"state": "never", "path": str(DRILL_RECEIPT), "ran_at": None, "ok": None,
                 "what": "the restore has never been proven end to end"}

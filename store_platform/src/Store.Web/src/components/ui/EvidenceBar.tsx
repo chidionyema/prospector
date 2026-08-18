@@ -87,7 +87,8 @@ export function EvidenceBar({
       role="img"
       aria-label={evidenceLabel(count)}
     >
-      <span aria-hidden className={cx('flex items-end', gap)} style={{ height: track }}>
+      {/* The drawing's `.spark` (`mockups/index.html:390`): the run of bars, bottom-aligned. */}
+      <span aria-hidden className={cx('spark flex items-end', gap)} style={{ height: track }}>
         {ticks.map((t, i) => (
           <span key={i} className={cx(tick, ink)} style={{ height: t.height, opacity: t.opacity }} />
         ))}

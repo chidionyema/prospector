@@ -210,11 +210,13 @@ function OrdersTab() {
             page read as one undifferentiated column of grey. The count keeps the mono, because a
             count IS a checkable quantity (tokens.css: "monospace means you can verify this"). */}
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h2 className="sub">Your library</h2>
+          {/* "Packs you own" (`mockups/account.html`): plain words for the thing itself. */}
+          <h2 className="sec">Packs you own</h2>
           <p className="mono">
             {purchases.length} pack{purchases.length === 1 ? '' : 's'}
           </p>
         </div>
+        <p className="lede mt-2">Yours to keep. Download as many times as you like, no expiry.</p>
         <ul className="mt-4 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2">
           {purchases.map(({ order, item }) => {
             const href = downloadHref(item.download_path);

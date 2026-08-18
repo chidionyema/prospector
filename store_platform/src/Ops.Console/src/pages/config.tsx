@@ -29,7 +29,7 @@ type Knob = {
   path: string[];
   group: string;
   label: string;
-  kind: 'int' | 'float' | 'bool' | 'list';
+  kind: 'int' | 'float' | 'bool' | 'list' | 'str';
   min?: number;
   max?: number;
   choices?: string[];
@@ -478,6 +478,9 @@ function fromInput(k: Knob, v: string): unknown {
       .map((s) => s.trim())
       .filter(Boolean);
   }
+  // Before the `str` branch existed this fell through to parseFloat, so a model pin named "3"
+  // was sent as the number 3 and written to config.yaml as an unquoted scalar.
+  if (k.kind === 'str') return v.trim();
   if (k.kind === 'int') {
     const n = Number.parseInt(v, 10);
     return Number.isFinite(n) ? n : v;

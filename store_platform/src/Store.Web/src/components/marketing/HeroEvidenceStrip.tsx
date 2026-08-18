@@ -72,7 +72,7 @@ export function HeroEvidenceStrip({ className }: { className?: string }) {
        inside the hero's left column. It is now the drawing's own `.srcstrip` section
        (`mockups/index.html:304`), a full-width row under the hero, and the caller sets the
        measure. */
-    <div className={cx(className)}>
+    <div className={cx('srcstrip', className)}>
       <p className="mono">
         Every pack carries this. Here is the one in the free sample.
       </p>
@@ -127,14 +127,17 @@ export function HeroEvidenceStrip({ className }: { className?: string }) {
           so four domains read as the whole evidence base rather than as four of twenty-nine. The
           mockup's em dash is a comma-and-full-stop here, per the founder's standing note on
           dashes in copy. */}
-      <p className="mt-4 text-caption text-subtle">
+      {/* THE DRAWING'S OWN CLASSES (`mockups/index.html` section 3: `section.srcstrip > p.lbl`
+          then `.srcchips`). They were Tailwind utilities carrying the same intent, which is how
+          this strip could drift from the drawing without any check noticing. */}
+      <p className="lbl mt-4">
         {`${SHOWN_WORD} of the ${report.sourceCount} sources behind the free sample pack. Every claim in every pack links back to one.`}
       </p>
 
       {/* The domains are the part that cannot be faked, so they are the part that is clickable.
           `noopener` and the -45deg arrow copy `SourceChips` on `/sample` deliberately: this site
           has one way of drawing "a source you can open". */}
-      <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+      <div className="srcchips mt-2.5">
         {SHOWN_DOMAINS.map((domain) => (
           <SourceChip key={domain} url={HREF_FOR.get(domain) ?? ''} host={domain} variant="pill" />
         ))}

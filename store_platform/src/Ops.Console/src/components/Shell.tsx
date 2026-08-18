@@ -17,6 +17,7 @@
  */
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { GROUPS, activeScreen } from '@/lib/nav';
@@ -52,6 +53,7 @@ export default function Shell({
       <header className="sticky top-0 z-10 border-b border-border bg-bg/95 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-baseline justify-between gap-3 px-4 pb-2 pt-3">
           <span className="font-mono text-[13px] font-[520] tracking-tight">prospector ops</span>
+          <Where />
           <SignOut />
         </div>
 
@@ -122,5 +124,47 @@ function SignOut() {
     >
       sign out
     </button>
+  );
+}
+
+/**
+ * Which estate is on screen. Asked once per page load, never polled.
+ *
+ * The founder asked for this after the Fly cutover: a production console and one served by a
+ * laptop dev server look identical, and they are one bookmark apart. Arming a pause on the wrong
+ * machine because the screens match is the failure this badge exists to make impossible.
+ *
+ * It renders NOTHING until the answer arrives. A badge that guesses "production" while it waits is
+ * worse than no badge, because it is only ever read at a glance.
+ */
+function Where() {
+  const [w, setW] = useState<{ place: string; label: string } | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    fetch('/api/ops/where', { credentials: 'same-origin' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (live && j?.label) setW({ place: j.place, label: j.label });
+      })
+      .catch(() => {
+        // A badge is not worth an error state. Silence reads as "not answered", which is honest.
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  if (!w) return null;
+  const local = w.place !== 'production';
+  return (
+    <span
+      title={local ? 'This console is not production.' : 'This console is served by production.'}
+      className={`truncate rounded-sm border px-1.5 font-mono text-[11px] ${
+        local ? 'border-bad/40 bg-bad-bg text-bad-strong' : 'border-border bg-surface2 text-subtle'
+      }`}
+    >
+      {w.label}
+    </span>
   );
 }

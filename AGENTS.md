@@ -8,6 +8,12 @@
 >
 > If anything here conflicts with `CLAUDE.md`, `CLAUDE.md` wins (it is the canonical
 > constraint file). This file makes that knowledge operational.
+>
+> **Two maps sit beside this contract.** [`docs/ESTATE_MAP.md`](docs/ESTATE_MAP.md) is the
+> shared factual spine — every component, where it runs, where its state lives.
+> [`docs/personas/`](docs/personas/README.md) is that same estate written twenty times, once
+> per seat, each a total system audit from that angle. If you are picking up unfamiliar work,
+> read the persona closest to it before you read the code.
 
 ---
 

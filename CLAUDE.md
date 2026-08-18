@@ -77,26 +77,35 @@ Pluggable modules:
 - **The DRAIN stays trusted-only, and that asymmetry is deliberate.** `run.py::_cmd_resume` runs the same classifier at the default `trusted_only=True`, because re-vetting a `provisional` row on a provisional brain re-stamps it `provisional`: the row does not move, the money is spent, and the drain's CLI load helps keep the trusted brain benched (measured 2026-08-06: provisional −14 / defer +13 over 30 minutes, net −1). Generation may run into a provisional tail; the drain may not. One shared function, one parameter — so the two can never disagree by accident.
 - **Price is a rung, and evidence and action are separate decisions.** `price_comparables` retrieves cited willingness-to-pay anchors by default; letting them MOVE a price is a second, explicitly-enabled switch. Same flag for both is how a catalogue re-prices itself the day a feature merges.
 
-## Where production runs (changed 2026-08-17 — read this before editing a branch)
+## Where production runs (changed again 2026-08-18 — read this before editing a branch)
 
-**Production does NOT run from this checkout any more.** The scheduler and consumer run from
-`/Users/chidionyema/Documents/code/prospector-live`, a checkout kept detached at `origin/main`.
-Editing a branch here can no longer change what production executes.
+**Production runs on Fly, in the `prospector-engine` app.** Not this checkout, and no longer the
+laptop checkout either. `~/.prospector/ACTIVE` names the side that is serving; `engine_failover.py`
+is its writer. Editing a branch here cannot change what production executes.
 
 The live answer is a command, never this paragraph:
 
 ```bash
-.venv/bin/python scripts/live_checkout.py            # daemon cwd, live HEAD vs origin/main, secrets
-.venv/bin/python scripts/live_checkout.py --update   # roll production forward and restart
+.venv/bin/python scripts/live_checkout.py            # machine state, deployed commit, CI on it
+.venv/bin/python scripts/live_checkout.py --update   # build origin/main and release it to Fly
 ```
 
-Both are console buttons. `--update` refuses a live checkout with local code changes: it must stay
-a clean mirror of `main`, so a fix reaches production through a PR, not through an edit on the box.
+Both are console buttons. The probe reads the commit out of the image itself
+(`/app/GIT_SHA`, written by `deploy/engine/Dockerfile` from the build argument
+`deploy/targets/fly.sh` passes). An image built without it reports "cannot tell which commit
+production runs", which is a problem rather than a silence — measured 2026-08-18, every release
+up to v15 was in exactly that state, so `fly releases` gave a version number that mapped to no
+commit at all.
 
-Why it changed: production ran from this shared developer checkout, on whatever branch a session
-had left it on. On 2026-08-17 that was `integrate/minimax-into-main`, 75 commits behind
-`origin/main`, so the daemon executed 17-hour-old code — and the only way to see that was to run
-`lsof` on the pid by hand.
+`--update` builds from `/Users/chidionyema/Documents/code/prospector-live`, a clean checkout
+detached at `origin/main`, and refuses if it has local code changes. `fly deploy` uploads a
+working tree, so building from this shared developer checkout would ship whatever branch a
+session left checked out. A fix reaches production through a PR, not through an edit on the box.
+
+Why it changed twice: production first ran from this shared developer checkout, on whatever branch
+a session had left it on. On 2026-08-17 that was `integrate/minimax-into-main`, 75 commits behind
+`origin/main`, so the daemon executed 17-hour-old code — visible only by running `lsof` on the pid.
+The 2026-08-18 cutover moved the engine to Fly and took the same question with it.
 
 **State did NOT move, and two traps guard that.**
 

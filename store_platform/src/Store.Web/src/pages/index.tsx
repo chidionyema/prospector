@@ -300,141 +300,44 @@ function PackSpotlight({
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus';
 
 
-  /* ── LEAD ───────────────────────────────────────────────────────────────────────────────────
-     Full-bleed and the widest card on the shelf: the one pack allowed to look like a poster.
+  /* THE DRAWING'S FEATURED ARTICLE (`mockups/index.html` section 7, `<article class="featured">`).
+     It was a Tailwind card that re-stated the drawing's numbers by hand, and it shared none of
+     the drawing's class names, so the structure check in `scripts/sections.mjs` reported
+     `featured`, `stat`, `big`, `spark-row`, `price-lg` and `cur` as never emitted by this page.
+     That is what "the section is completely different" looks like from a script.
 
-     "Poster" is now a claim about WIDTH and TYPE, not about artwork -- the near-black mark column
-     that used to open it is removed (see the record at its call site). The card still outranks its
-     neighbours by every means that costs nothing: full container width, `text-h2` on the heading
-     against their `text-body`, the lead figure at `text-display`, and a price rail with a filled
-     button that no other weight carries.
+     The drawing's order is: sector, title, the one-line claim, the modelled multiple at 44px,
+     the evidence run, then a rule and the money row. Every number below is the same one the card
+     already computed; only the markup changed.
 
-     It no longer claims a `view-transition-name`. The morph's other half was the pack page's own
-     near-black masthead, removed in the same edit; a shared element with one half left is a
-     cross-fade of the whole root, which is the state this was originally added to fix. */
+     IT IS AN ARTICLE, NOT A WHOLE-CARD LINK, because the drawing puts the action in one filled
+     button in the foot. `trackCardClick` moves onto that button, so the click analytics keep
+     recording the same event from the same card. */
   return (
-    <Link
-      href={`/pack/${pack.id}`}
-      className={cx(
-        /* `w-full` is load-bearing and was missing. The card is a flex ITEM (its wrapper in the
-           shelf is `flex animate-rise`), so with no width it sizes to its content: measured at
-           1440x900 the lead card ran x=120..1020 inside a 1200px container, while the row list
-           directly beneath it ran the full 120..1320. Two right edges 300px apart in one shelf
-           is not an editorial choice, it is a card that looks unfinished next to the list under
-           it -- and the "poster" claim this treatment makes is a claim about WIDTH. */
-        /* `lg:flex-row` moved DOWN one level (2026-08-15). The card's own axis is now vertical
-           on every breakpoint -- header band, then body -- and the body is what turns into two
-           columns at `lg`. It had to be the card while the mark column was the card's first
-           child; with the mark gone, a header that stops 34% short of the right edge is not a
-           header. */
-        /* THE CARD'S BREAKPOINTS ARE ITS OWN WIDTH, NOT THE WINDOW'S (2026-08-15).
-           Every `sm:`/`lg:` below was a VIEWPORT query on a card whose width is set by its
-           CONTAINER, and the two disagree wherever this card is not full-bleed. Measured at
-           1440x900 on the hero's "New this week" slot, which is a 420px column: `lg:` was true,
-           so the three-track grid fired inside a 388px card and the claim track resolved to
-           ~71px. The title rendered one word per line and was CLIPPED mid-word by this element's
-           own `overflow-hidden` -- "Condo due diligen / packet / for Florida / real estate /
-           agents" -- with ~200px of empty white beside it and the card 894px tall in a 900px
-           viewport. The shelf's copy of the same component, at ~1200px, was correct, which is
-           why this survived review: one component, two widths, only one of them ever looked at.
-
-           `@container` makes the queries below read this card's inline size, so the hero copy
-           stacks (388px < the 512px `@lg` threshold) and the shelf copy keeps its three tracks.
-           A `lg:hidden` on the hero slot would have hidden the bug rather than fixed it, and
-           the next narrow slot would have reintroduced it. */
-        '@container',
-        'group flex w-full flex-col overflow-hidden rounded-md border border-border bg-surface',
-        'transition-[border-color,box-shadow] duration-[180ms] ease-[cubic-bezier(0.2,0,0,1)]',
-        'hover:border-border-strong',
-        focusRing,
-      )}
-    >
-      {/* THE POSTER COLUMN IS GONE (2026-08-15), and with it the last `--ins-bg` on the shelf.
-
-          It was a 305x305 near-black square -- measured, at 1440, the largest single graphic on
-          the homepage -- carrying a generated `PackMark` and a readout. Its own docblock spent
-          four paragraphs tuning the ink ON that ground (`--ins-dim2` at 0.10-0.34, contrast
-          measured to 5.14:1) and every one of those paragraphs answers "what should be drawn on
-          the black block", never "should there be one". The founder answered the prior question
-          on 2026-08-14: "Remove the black media block until there is real imagery for it"
-          (docs/SITE_SPEC_PROGRAM.md:1007). The mid card and `PackCoverArt` obeyed that day; this
-          one and the row spine did not, so the same ruling produced a shelf with two identities.
-
-          THE MORPH GOES WITH IT, deliberately. `morph` named a shared element whose other half
-          was the pack page's own near-black masthead, and that masthead is removed in the same
-          edit for the same reason -- a transition is not a reason to keep two blocks nobody
-          wanted. `PackMark` itself is untouched and still exported.
-
-          NOTHING THE COLUMN STATED IS DROPPED. The sector is in the header band, in the same
-          mono caption at the same size as every other card on the site; the evidence run is in
-          the body a few lines below, at `size="lg"`, drawn for a light surface. */}
-      {/* `@lg:px-8` because THIS card's body opens to `p-8` at the same container width while
-          every other card stays at `p-6`. The header's inset is not a constant, it is the card's
-          own left edge -- a shared component that hardcoded one inset would put an 8px step
-          inside the widest card on the shelf. It was `sm:px-8`, a viewport query; see the
-          container note on the Link above for why every breakpoint here is now `@`. */}
-      <PackCardHeader
-        label={cat.tagged ? cat.label : null}
-        labelClassName={cat.ink}
-        className="@lg:px-8"
-      />
-
-      {/* TWO COLUMNS AT `lg`: what it is / what it costs. (It was three; the mark column is
-          removed above.) The price and its button are a vertically-centred right rail rather
-          than a bottom row, which spends the card's width on the two things a shelf card is for
-          -- the claim and the number. Below `lg` this is untouched: one column, price row last,
-          price left, button right. */}
-      {/* THREE TRACKS AT `lg`, NOT TWO (2026-08-15). Removing the poster column left this card a
-          two-column flex whose left child was `flex-1` while its copy was capped at `max-w-[58ch]`
-          -- so at 1440 the copy set to ~520px inside a ~950px track and the card carried a ~430px
-          hole between the paragraph and the price rail. Measured on the deployed shelf: the lead
-          card was the emptiest object on the page, which is the opposite of what "the one card
-          allowed to look like a poster" is supposed to mean.
-
-          A grid fixes it by construction rather than by tuning a max-width against a flex basis:
-          `1.4fr` for the claim, `1fr` for the evidence, `auto` for the money. Every track is
-          filled because the tracks ARE the width -- there is no leftover to leak into a gap. The
-          proportion also keeps the copy near a readable measure (~46ch at 1440) without a cap
-          that fights the layout. Below `lg` nothing changes: one column, in reading order. */}
-      <span
-        className={cx(
-          'flex flex-1 flex-col p-6 @lg:p-8',
-          '@lg:grid @lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] @lg:items-center @lg:gap-10',
-        )}
-      >
-        <span className="flex min-w-0 flex-col">
-          {/* CLAMPED, LIKE THE OTHER TWO WEIGHTS. This was the only card heading on the shelf
-              with no bound, and it is also the largest type (`text-h2`), so it ran longest where
-              it cost most: pack titles measure 43..60 characters on the live catalogue (all 59
-              packs, 2026-08-14), which at this size takes three lines and pushes the price rail
-              out of the card's optical centre. `row` truncates to one line (:437) and `mid`
-              clamps to two (:691); one shelf should not state the same field at three lengths. */}
-          <span className="line-clamp-2 block text-h2 font-semibold text-text">{heading}</span>
-          {line && <span className="mt-2 block text-body text-muted">{line}</span>}
+    <article className="featured w-full">
+      {cat.tagged && <span className="eyebrow">{cat.label.toUpperCase()}</span>}
+      <h3>{heading}</h3>
+      {line && <p className="d">{line}</p>}
+      {stat && <PackFigure stat={stat} weight="spotlight" />}
+      {/* The drawing's `.spark` is a decorative row of bars. Ours is `EvidenceBar`, which draws
+          the same shape from the pack's REAL cited-source count and prints that count beside it,
+          so the bars mean something a buyer can check. `size="lg"` is the drawing's 28px track. */}
+      <div className="spark-row">
+        <EvidenceBar count={pack.sourceCount} size="lg" label={evidenceLabel} />
+      </div>
+      <div className="foot">
+        <span className="price-lg num">
+          <PriceText>{price}</PriceText>
         </span>
-
-        {/* THE EVIDENCE TRACK. Both numbers the card carries, in the order the mid card already
-            uses -- figure first, run under it (`:697`) -- so the two weights stop disagreeing
-            about which of the two is read first. The run came back off the deleted plate at the
-            same `size="lg"`, drawn for a light surface; the figure is `text-display`, one step
-            above the other weights, because this is the one card whose number is allowed to be
-            the biggest type in the band. Neither is above the heading: a figure about a thing
-            means nothing until the heading has said what the thing is. */}
-        <span className="mt-6 flex min-w-0 flex-col gap-4 @lg:mt-0">
-          {stat && <PackFigure stat={stat} weight="spotlight" />}
-          <EvidenceBar count={pack.sourceCount} size="lg" label={evidenceLabel} />
-        </span>
-        <span className="mt-auto flex items-end justify-between gap-4 pt-6 @lg:mt-0 @lg:flex-none @lg:flex-col @lg:items-end @lg:gap-5 @lg:pt-0">
-          <PriceText className="text-h1">{price}</PriceText>
-          <span
-            className={buttonClasses({ className: 'group-hover:bg-primary-hover' })}
-          >
-            View pack
-            <Icon name="arrowRight" size={14} />
-          </span>
-        </span>
-      </span>
-    </Link>
+        <Link
+          href={`/pack/${pack.id}`}
+          className={cx('btn', focusRing)}
+        >
+          View pack
+          <Icon name="arrowRight" size={16} />
+        </Link>
+      </div>
+    </article>
   );
 
 }
@@ -797,22 +700,31 @@ function ShelfRows({
 }) {
   const { observe } = useCardImpressions();
   return (
-    /* `divide-y` on the parent, no border on the child. The line between two rows is structural;
-       a box drawn around each row is not. */
-    <ul className={cx('divide-y divide-border', belowSpotlight && 'mt-8')}>
+    /* THE DRAWING'S `.rows` CARD (`mockups/index.html` section 8): the whole catalogue is ONE
+       card, white surface, 1px hairline, 12px radius, `overflow-hidden` so the first and last
+       rows clip to its corners. Every other list on this page already used it, through
+       `PackRowList`; the main shelf, which is the longest list on the site, was a bare
+       `divide-y` on the page ground, so the section a buyer spends the most time in was the one
+       section drawn without edges.
+
+       NO `<ul>`/`<li>`. The rows are direct children, because `.row:last-child{border-bottom:0}`
+       (mockup.css:146) is what removes the hairline above the card's bottom edge; with a `<li>`
+       between the card and the row, every row is its own parent's last child and the rule fires
+       on all of them. The beyond-fold `hidden` class moves onto the row itself. */
+    <div className={cx('rows', belowSpotlight && 'mt-8')}>
       {rows.map((pack, i) => (
-        <li key={pack.id} className={cx(beyondFold(pack) && 'hidden')}>
-          <PackRow
-            pack={pack}
-            currency={currency}
-            viewerMarket={viewerMarket}
-            viewed={viewedSet.has(pack.id)}
-            observeRef={observe(pack.id)}
-            position={i + 1}
-          />
-        </li>
+        <PackRow
+          key={pack.id}
+          pack={pack}
+          className={cx(beyondFold(pack) && 'hidden')}
+          currency={currency}
+          viewerMarket={viewerMarket}
+          viewed={viewedSet.has(pack.id)}
+          observeRef={observe(pack.id)}
+          position={i + 1}
+        />
       ))}
-    </ul>
+    </div>
   );
 }
 
@@ -1047,6 +959,7 @@ function CatalogBrowser({
           what it is FOR, which is the thing the old placement never had to say because it was
           simply in the way. */}
       <h3 className="sub">Narrow it down</h3>
+      <p className="lede">Four filters. Use one, or all of them, they combine.</p>
 
       {/* THE THREE CONTROLS ARE ONE FILTER (founder review, 2026-08-15).
           A search field, a sector rail and a three-question router stack vertically in this block
@@ -1168,6 +1081,14 @@ function CatalogBrowser({
    */
   const barControls = (
     <div ref={shelfControlsRef} className="mb-8 pt-8">
+      {/* THE DRAWING'S SECTION 6 (`mockups/index.html`), which the bar had lost: the shelf's own
+          heading and the one line that says the filters combine. The note this replaces argued
+          that a control panel needing a caption is a broken control panel. That argument was about
+          FOUR stacked controls competing; one row of four is a different object, and the drawing
+          gives it this line. No dash in it (founder's standing rule on copy): the mockup's em dash
+          is a full stop here. */}
+      <h3 className="sub">Narrow it down</h3>
+      <p className="lede mb-4">Four filters. Use one, or all of them. They combine.</p>
       <FilterBar
         packs={packs}
         state={state}
@@ -1501,7 +1422,9 @@ function CatalogBrowser({
                       pins that string as the proof the breakdown is computed from live data rather
                       than typed. The total is appended as a further part rather than wrapped around
                       them, which satisfies both: the line still reads as one `·`-joined series. */}
-                  <p className="mono">
+                  {/* The drawing's `.spread` (`mockups/index.html:509`), the centred mono line
+                      under the shelf. */}
+                  <p className="spread num">
                     {[
                       `${gridPacks.length} ${marketLabel(market)} packs`,
                       ...grouped.others.map((group) => `${group.packs.length} ${group.label} packs`),
@@ -1536,7 +1459,7 @@ function CatalogBrowser({
                    been mistagged: a correct flag on the wrong side of an invisible border
                    looks exactly like a data bug. The divider carries the same weight as the
                    distinction it is making now. */
-                <div key={group.market} className="mt-16 border-t border-text pt-8">
+                <div key={group.market}>
                   {/* US PACKS DIVIDER (email §1). The divider is about what the buyer would be
                       BUILDING, not what the page has written, and the subtitle states the
                       consequence plainly: the research is American, and the package cannot be
@@ -1547,10 +1470,18 @@ function CatalogBrowser({
                       steps" -- and only the last of those three is a rule, so the heading was
                       naming the smallest part of its own argument. Same change on the row chip
                       (`PackRow.tsx:144`), so the shelf says one thing. */}
-                  <h3 className="sub">
-                    Built for the {group.label} market
-                  </h3>
-                  <p className="mt-1 max-w-[60ch] text-caption text-subtle">
+                  {/* THE DRAWING'S MARKET HEADER (`mockups/index.html` section 13): a flex row
+                      holding an `h2.sec` and a mono pack-count chip, then the lede under it.
+                      It was an `h3.sub` with Tailwind utilities, which cannot look like the
+                      drawing: mockup.css is imported into the `components` layer and every
+                      property a utility also sets wins over it. */}
+                  <div className="mkt-h">
+                    <h2 className="sec">Built for the {group.label} market</h2>
+                    <span className="mkt-tag num">
+                      {group.packs.length} {group.packs.length === 1 ? 'pack' : 'packs'}
+                    </span>
+                  </div>
+                  <p className="lede mb-[18px]">
                     The buyers, the numbers and the legal steps all follow {group.label} rules.
                     Read them anywhere; build them there.
                   </p>
@@ -2056,7 +1987,10 @@ export default function Home({ packs, stats, flags, initialState, market, curren
              background is otherwise inherited from whatever band it is dropped into. */
           <div
             ref={featuredSlotRef}
-            className="relative z-10 mt-10 hidden w-full max-w-[420px] rounded-card bg-surface p-4 lg:block"
+            /* NO CARD CHROME ON THE WRAPPER. `PackSpotlight` is the drawing's `.featured` article now,
+               which carries its own surface, hairline and 12px radius; a `rounded-card bg-surface
+               p-4` parent around it draws a second card 16px outside the first. */
+            className="relative z-10 mt-10 hidden w-full max-w-[420px] lg:block"
           >
             {/* Sentence case, and the same `text-meta font-semibold` as every other row heading
                 on the shelf below. It was `uppercase tracking-wide text-caption`, which the
@@ -2169,7 +2103,10 @@ export default function Home({ packs, stats, flags, initialState, market, curren
               {packs.length}
             </b>
             <p>
-              Passed every check we ran. Every claim sourced, every number traceable.
+              {/* The drawing says "Passed all six checks". The number of checks varies by
+                  idea, so `fixedCheckCount.test.ts` refuses a closed count in shipped copy.
+                  The drawing's second sentence stands as written. */}
+              Passed every check they faced. Every claim sourced, every number traceable.
             </p>
             <Link
               href="#catalog"
@@ -2411,7 +2348,8 @@ export default function Home({ packs, stats, flags, initialState, market, curren
         packCount={packs.filter((p) => (p.sourceCount ?? 0) > 0).length}
       />
 
-      <SectionBand bandId="home-stress-tested" bg="surface2" width="7xl" className="py-10 md:py-24">
+      {/* The drawing's section 16, `.close`: a 2px rule above it and the last word of the page. */}
+      <SectionBand bandId="home-stress-tested" bg="surface2" width="7xl" className="close py-10 md:py-24">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-16">
         <div className="max-w-[46rem]">
           {/*

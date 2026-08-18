@@ -13,8 +13,48 @@ output**: the receipt that the filter is real and grounded.
 
 ---
 
+## Start here
+
+This README documents the **engine**. The estate is bigger than the engine, and the two doors into
+the rest of it are:
+
+- **[docs/ESTATE_MAP.md](docs/ESTATE_MAP.md)** — every component, where it runs, where its state
+  lives, and how the parts connect. Live status is a command: `python3 scripts/estate_map.py`.
+- **[docs/personas/](docs/personas/README.md)** — the same estate written twenty times, once per
+  seat. Each one is a total system audit from that seat, not a job description. Pick yours:
+
+| You are | Read |
+|---|---|
+| new here, day one | [new-joiner.md](docs/personas/new-joiner.md) |
+| the founder | [founder.md](docs/personas/founder.md) |
+| on call, something is down | [sre-on-call.md](docs/personas/sre-on-call.md) |
+| running it day to day | [ops.md](docs/personas/ops.md) |
+| writing code | [developer.md](docs/personas/developer.md) · [senior-developer.md](docs/personas/senior-developer.md) · [principal-developer.md](docs/personas/principal-developer.md) · [architect.md](docs/personas/architect.md) |
+| testing it | [qa-test-engineer.md](docs/personas/qa-test-engineer.md) |
+| paying for it | [finance.md](docs/personas/finance.md) |
+| reading the numbers | [analyst.md](docs/personas/analyst.md) |
+| deciding what is next | [product-manager.md](docs/personas/product-manager.md) |
+| working on the models | [machine-learning-engineer.md](docs/personas/machine-learning-engineer.md) |
+| working on the data | [data-engineer.md](docs/personas/data-engineer.md) |
+| securing it | [security.md](docs/personas/security.md) |
+| answering to a regulator | [legal-privacy.md](docs/personas/legal-privacy.md) |
+| writing what buyers read | [content-management.md](docs/personas/content-management.md) |
+| selling it | [growth-marketing.md](docs/personas/growth-marketing.md) |
+| answering a buyer | [support.md](docs/personas/support.md) |
+| the buyer | [buyer.md](docs/personas/buyer.md) |
+
+Two more, both estate-wide rather than engine-only:
+
+- **[deploy/PORTABILITY.md](deploy/PORTABILITY.md)** — the contract that lets the stack move
+  between the laptop, Fly, and any Docker host, with one adapter per target.
+- **[docs/LOGGING_AND_RETENTION.md](docs/LOGGING_AND_RETENTION.md)** — where every log line goes,
+  how long it is kept, and what is alerted on.
+
+---
+
 ## Table of contents
 
+- [Start here](#start-here)
 - [The core idea](#the-core-idea)
 - [How it runs (no hosted API, no keys)](#how-it-runs-no-hosted-api-no-keys)
 - [Quickstart](#quickstart)
@@ -531,6 +571,12 @@ See **[store_platform/README.md](store_platform/README.md)** for the full launch
 
 ## Key docs
 
+**The estate, not just the engine.** Start at
+[docs/ESTATE_MAP.md](docs/ESTATE_MAP.md) and [docs/personas/](docs/personas/README.md) — see
+[Start here](#start-here) for which seat to read.
+
+Engine-level contracts:
+
 - **[AGENTS.md](AGENTS.md)** — the onboarding contract for any agent working on this
   repo: orientation order, the truth invariants, the reasoning DNA, and how to pick up
   the handover. Read it first.
@@ -538,6 +584,17 @@ See **[store_platform/README.md](store_platform/README.md)** for the full launch
 - **[RUN.md](RUN.md)** — the eight-step per-run procedure with concrete commands.
 - **[prospector-master-spec.md](prospector-master-spec.md)** — full spec: prompts,
   golden-set acceptance tests, roadmap.
+
+Tracked programmes — read and append there, never in CLAUDE.md:
+
+- **[docs/COST_PROGRAM.md](docs/COST_PROGRAM.md)** — every cost lever, measurement and retired number.
+- **[docs/LAUNCH_OPS_PROGRAM.md](docs/LAUNCH_OPS_PROGRAM.md)** — the production automation programme.
+- **[docs/SITE_SPEC_PROGRAM.md](docs/SITE_SPEC_PROGRAM.md)** — the storefront design, UX and copy spec.
+- **[docs/PACK_NARRATIVE_PROGRAM.md](docs/PACK_NARRATIVE_PROGRAM.md)** — what the buyer actually reads.
+- **[docs/GRAPHIFY_ENFORCEMENT_SPEC.md](docs/GRAPHIFY_ENFORCEMENT_SPEC.md)** — estate-wide graph freshness.
+- **[docs/LOGGING_AND_RETENTION.md](docs/LOGGING_AND_RETENTION.md)** — logging, retention and alerting.
+- **[deploy/PORTABILITY.md](deploy/PORTABILITY.md)** — moving the stack off any one provider.
+- **[docs/RUNBOOKS.md](docs/RUNBOOKS.md)** — what to do when a specific thing is broken.
 
 The engine is deterministic on config; the golden-set regression suite gates every
 change.

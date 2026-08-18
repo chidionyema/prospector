@@ -83,72 +83,23 @@ export function CheckSequence({ className }: { className?: string }) {
       <ol className="mt-6 list-none p-0">
         {CHECKS.map((check, i) => {
           const supported = check.verdict === 'supported';
-          const last = i === CHECKS.length - 1;
           const domains = Array.from(new Set(check.sources.map(domainOf))).filter(Boolean);
           return (
-            <li key={check.key} className={cx('relative flex gap-4', !last && 'pb-5')}>
-              {/* The rail. `-mb-5` cancels the row's `pb-5` so the line runs through the padding
-                  and meets the next node, rather than stopping at the content box and rendering
-                  the run as eight detached segments. Same fix, same reason, as the timeline
-                  below it. */}
-              <div className="flex flex-none flex-col items-center">
-                <span
-                  className={cx(
-                    'flex h-7 w-7 items-center justify-center rounded-sm font-mono text-caption',
-                    // AMBER, NOT RED (2026-08-17, MASTER-BRIEF §2). This numeral is drawn for a
-                    // check that was PUSHED BACK, not killed, and red is reserved for a kill.
-                    // Measured on the §1 palette: --pushed-back-strong #6E5608 on
-                    // --pushed-back-bg #FCF8E8 is 6.58:1, and the --pushed-back #8A6D0B edge is
-                    // 4.62:1 on the same tint -- both clear, the edge well past the 3:1 a UI
-                    // boundary needs. The -strong variant is used for the same reason it always
-                    // was: the base ink on its own tint sits near the AA floor.
-                    supported
-                      ? 'bg-survive text-bg'
-                      : 'border border-pushed-back bg-pushed-back-bg text-pushed-back-strong',
-                  )}
-                >
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                {!last && <div className="mt-1.5 -mb-5 w-px flex-1 bg-border" />}
-              </div>
+            /* THE DRAWING'S `.checkrow` (`mockups/how-it-works.html:89-95`): a three-column grid,
+               32px for the numeral, the reading in the middle, the verdict tag hard right, one
+               hairline under each row. This was a vertical rail with a 28px node per check and a
+               1px line threading them. The rail is not in any mockup, and it was the reason the
+               numeral, the heading, the rationale and the source line were all set by hand here
+               instead of by the class the drawing styles. */
+            <li key={check.key} className="checkrow">
+              <span className="i">{String(i + 1).padStart(2, '0')}</span>
 
-              <div className="min-w-0 flex-1 pb-1">
-                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <span className="text-body font-semibold leading-snug text-text">
-                    {check.name}
-                  </span>
-                  {/* Never colour alone: the WORD states the verdict, in mono because it is a
-                      reading rather than prose. A ruling printed as a bare green tick is the
-                      overstatement this whole storefront exists against, and the word is what
-                      prevents it.
-
-                      `· conf 0.87` USED TO FOLLOW, and SITE_SPEC 2 P0 rule 4 forbids it outright:
-                      "never render raw floats (`conf 0.41` reads as 41% confident and undermines
-                      the verdict). Default = omit on marketing pages, show with explanation
-                      inside the QA report." /how-it-works is a marketing page, so this is the
-                      omit case.
-
-                      A word-band ("high", "tentative") was the obvious alternative and is worse
-                      here: no such helper exists anywhere in the storefront (this was the only
-                      confidence render site on the site), so shipping one would mean inventing
-                      cut-points that no source sets, and an unsourced number is the one thing
-                      this shop cannot print.
-
-                      NOT A SILENT REMOVAL, and the signal has nowhere else to go yet: with this
-                      line gone, the engine's confidence appears on NO storefront surface. The
-                      spec's own answer is the QA report, with the explanation next to it. That
-                      surface is a separate build and is called out in the commit, not quietly
-                      dropped here. */}
-                  {/* One component decides what a verdict looks like (MASTER-BRIEF §6). This span
-                      used to pick its own colour and picked the kill red for a check that was
-                      merely pushed back, which is the defect VerdictChip exists to end. */}
-                  <VerdictChip kind={supported ? 'survived' : 'pushed-back'} />
-                </div>
-                <p className="mt-1.5 max-w-[62ch] lede">
-                  {plainEnglish(check.rationale)}
-                </p>
+              <div className="min-w-0">
+                <h5>{check.name}</h5>
+                <p>{plainEnglish(check.rationale)}</p>
                 {domains.length > 0 && (
-                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  /* `.checkrow .srcs` is the mono source line under the reading. */
+                  <div className="srcs flex flex-wrap items-center gap-x-3 gap-y-1">
                     {domains.map((domain) => {
                       const source = check.sources.find((s) => domainOf(s) === domain);
                       return (
@@ -163,6 +114,11 @@ export function CheckSequence({ className }: { className?: string }) {
                   </div>
                 )}
               </div>
+
+              {/* NEVER COLOUR ALONE: the tag carries the verdict WORD and a glyph, not a tick.
+                  `· conf 0.87` used to follow the name here, and SITE_SPEC 2 P0 rule 4 forbids a
+                  raw float on a marketing page. It stays omitted. */}
+              <VerdictChip kind={supported ? 'survived' : 'pushed-back'} />
             </li>
           );
         })}

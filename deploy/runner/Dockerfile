@@ -36,11 +36,18 @@ FROM ubuntu:24.04
 #                            fails as "Couldn't find a valid ICU package" rather than as a
 #                            missing command.
 #   liblttng-ust1, libssl3 - the rest of the runner agent's .NET dependencies
+#   python3                - NOT a language toolchain for the build. It is the interpreter the
+#                            repo's own shell scripts shell out to. store_platform/scripts/
+#                            deploy_web.sh:175 runs `python3 prove_live.py` after every web
+#                            deploy, and about twenty other scripts do the same. The Macs ship
+#                            one, so the Linux runners differing here fails as
+#                            "python3: command not found", exit 127, AFTER a successful deploy.
+#                            Stdlib only -- no pip, no venv; anything needing packages uses uv.
 #   sudo                   - some third-party actions call it; without it they fail late
 #   locales, tzdata        - test output that compares formatted dates otherwise differs
 #                            between this runner and the Macs
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates curl git jq tar unzip zstd sudo locales tzdata \
+      ca-certificates curl git jq tar unzip zstd sudo locales tzdata python3 \
       libicu74 liblttng-ust1 libssl3 gnupg xz-utils \
     && locale-gen en_GB.UTF-8 \
     && rm -rf /var/lib/apt/lists/*
@@ -53,7 +60,9 @@ RUN useradd -m -s /bin/bash runner && echo 'runner ALL=(ALL) NOPASSWD:ALL' > /et
 # Pinned. An unpinned runner tarball means a CI fleet that silently changes version between
 # two machines started an hour apart, and the resulting "works on runner 3, fails on runner 1"
 # is the most expensive kind of flake to chase.
-ARG RUNNER_VERSION=2.328.0
+# 2.336.0 because that is what GitHub hands this repository. 2.328.0 registered fine and was
+# then force-updated in place on first contact, which is the failure below.
+ARG RUNNER_VERSION=2.336.0
 ARG RUNNER_ARCH=x64
 
 WORKDIR /home/runner/actions-runner
@@ -72,7 +81,15 @@ RUN curl -fsSL -o runner.tar.gz \
 # right here with "Couldn't find a valid ICU package" instead of at registration time on Fly.
 # It is Runner.Listener and not `config.sh --version`, because the wrapper scripts refuse to run
 # as root and exit 1 before reaching any .NET code - a check that proves nothing about ICU.
-RUN ./bin/Runner.Listener --version
+# The version probe above runs as root, and the only thing it creates is _diag/, owned by root.
+# The chown two RUNs up has already happened by then, so `USER runner` gets a runner directory it
+# cannot write its own log into. The container then crash-loops with
+# "Access to the path '/home/runner/actions-runner/_diag/Runner_*.log' is denied" at config time,
+# which reads like a bad PAT and is not. _diag is build junk here, so delete it and re-assert
+# ownership rather than leaving a root-owned directory in the image.
+RUN ./bin/Runner.Listener --version \
+    && rm -rf /home/runner/actions-runner/_diag \
+    && chown -R runner:runner /home/runner
 
 COPY deploy/runner/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh

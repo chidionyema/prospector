@@ -170,7 +170,12 @@ export function KillGrid({ packs, className }: KillGridProps) {
   // and Tailwind's scale has no 18px step, so the arbitrary value is the only way to draw the box
   // that was drawn. A JSX comment cannot sit here: it would be a second root child of the return.
   return (
-    <figure className={cx('rounded-card border border-line bg-surface p-[18px]', className)}>
+    /* THE DRAWING'S OWN CLASSES (`mockups/index.html` section 2: `figure.gridwrap`, `.gridkey`
+       with `i.sw.dead` / `i.sw.alive` swatches, `figcaption.gridcap`). They were Tailwind
+       utilities holding the same numbers by hand. The FIELD stays an `<svg>` rather than the
+       drawing's 1,444 `<i>` elements: 1,444 DOM nodes in the hero is the cost this component was
+       written to avoid, and the squares are the same size, colour and gap either way. */
+    <figure className={cx('gridwrap', className)}>
       <svg
         viewBox={`0 0 ${side} ${side}`}
         className="block w-full"
@@ -260,13 +265,13 @@ export function KillGrid({ packs, className }: KillGridProps) {
           marks themselves are: 9px against 7px is the legend telling the truth about a field whose
           live marks are larger. A uniform legend over a non-uniform field would describe a picture
           we do not draw. */}
-      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1 font-mono text-caption text-subtle">
-        <span className="flex items-center gap-2">
-          <span aria-hidden className="inline-block size-[7px] rounded-sm bg-dead" />
-          <b className="font-medium tabular-nums text-muted">{killedLabel}</b> killed
+      <div className="gridkey mt-4">
+        <span>
+          <i aria-hidden className="sw dead size-[7px]" />
+          <b>{killedLabel}</b> killed
         </span>
-        <span className="flex items-center gap-2">
-          <span aria-hidden className="inline-block size-[9px] rounded-sm bg-survive" />
+        <span>
+          <i aria-hidden className="sw alive" />
           On the shelf now
         </span>
         {/* THE TOTAL IS NOT IN THIS ROW ANY MORE. It sat here hard right as `1,444 researched`,
@@ -281,9 +286,9 @@ export function KillGrid({ packs, className }: KillGridProps) {
             `killGrid.test.tsx` pins that the total stays visible somewhere a reader sees. */}
       </div>
 
-      <figcaption className="mt-3 border-t border-line pt-3 text-meta leading-relaxed text-muted">
-        Every idea we have ever researched, {totalLabel} of them, one square each, oldest first.
-        The teal ones are what you can buy.
+      <figcaption className="gridcap">
+        Every idea we have ever researched, one square each. The teal ones are what you can buy.
+        All {totalLabel}, oldest first.
       </figcaption>
     </figure>
   );

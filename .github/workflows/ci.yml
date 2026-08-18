@@ -346,16 +346,24 @@ jobs:
     # on a merged tree while four CI jobs shared the machine (both in CLAUDE.md).
     timeout-minutes: 40
 
-    # One shared uv cache on a path that survives between jobs, set by the repo variable
-    # CI_UV_CACHE_DIR. See the `Install uv` step for why this replaced actions/cache.
-    env:
-      UV_CACHE_DIR: ${{ vars.CI_UV_CACHE_DIR || format('{0}/.uv-cache', github.workspace) }}
-      # Where the shared venv lives. Empty on a hosted runner, which falls back to the
-      # workspace and behaves like the old per-job venv.
-      VENV_ROOT: ${{ vars.CI_VENV_ROOT }}
-
     steps:
       - uses: actions/checkout@v4
+
+      # One shared uv cache and one shared venv root, both on paths that survive between jobs.
+      #
+      # These used to be the repo variables CI_UV_CACHE_DIR and CI_VENV_ROOT, and both held
+      # absolute macOS paths under /Users/chidionyema. That works on exactly one machine. On a
+      # Linux runner the first step is `mkdir -p /Users/chidionyema/.cache/ci-venvs`, which
+      # fails: / is not writable. $HOME resolves to the same two directories on the Macs, so
+      # nothing changes there, and to the container's home on Linux.
+      #
+      # On a GitHub-hosted runner $HOME is per-job and cold. That is what the old empty
+      # VENV_ROOT gave too, so the fallback behaviour is unchanged.
+      - name: Shared uv cache and venv root
+        run: |
+          set -eu
+          echo "UV_CACHE_DIR=$HOME/.cache/uv" >> "$GITHUB_ENV"
+          echo "VENV_ROOT=$HOME/.cache/ci-venvs" >> "$GITHUB_ENV"
 
       # enable-cache: false stops setup-uv pointing UV_CACHE_DIR at $RUNNER_TEMP. The job env
       # above owns that path instead.
@@ -491,16 +499,24 @@ jobs:
     runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 30
 
-    # Same shared cache directory as the python job. Both install the same requirements.txt, so
-    # a wheel built by either one is already there for the other.
-    env:
-      UV_CACHE_DIR: ${{ vars.CI_UV_CACHE_DIR || format('{0}/.uv-cache', github.workspace) }}
-      # Where the shared venv lives. Empty on a hosted runner, which falls back to the
-      # workspace and behaves like the old per-job venv.
-      VENV_ROOT: ${{ vars.CI_VENV_ROOT }}
-
     steps:
       - uses: actions/checkout@v4
+
+      # One shared uv cache and one shared venv root, both on paths that survive between jobs.
+      #
+      # These used to be the repo variables CI_UV_CACHE_DIR and CI_VENV_ROOT, and both held
+      # absolute macOS paths under /Users/chidionyema. That works on exactly one machine. On a
+      # Linux runner the first step is `mkdir -p /Users/chidionyema/.cache/ci-venvs`, which
+      # fails: / is not writable. $HOME resolves to the same two directories on the Macs, so
+      # nothing changes there, and to the container's home on Linux.
+      #
+      # On a GitHub-hosted runner $HOME is per-job and cold. That is what the old empty
+      # VENV_ROOT gave too, so the fallback behaviour is unchanged.
+      - name: Shared uv cache and venv root
+        run: |
+          set -eu
+          echo "UV_CACHE_DIR=$HOME/.cache/uv" >> "$GITHUB_ENV"
+          echo "VENV_ROOT=$HOME/.cache/ci-venvs" >> "$GITHUB_ENV"
 
       # The actions/cache step that was here had the same defect as the python job's: it tarred
       # ~/.cache/uv, which uv was not configured to read. See the long note there.
@@ -574,6 +590,20 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      # WHERE .NET INSTALLS, and why it is not the default.
+      #
+      # actions/setup-dotnet installs to /usr/share/dotnet on Linux, which needs root. Our own
+      # runners do not have it, so on 2026-08-18 every dotnet job on main and on every open PR
+      # died in "Set up .NET 9.0" with `mkdir: cannot create directory '/usr/share/dotnet':
+      # Permission denied` (run 32149741450). That is not a test failure and it says nothing
+      # about the code, but it is a red X on the pull request all the same.
+      #
+      # $HOME is writable on every runner we use, hosted or not, and it PERSISTS on the
+      # self-hosted ones, so the SDK is downloaded once rather than per job. setup-dotnet puts
+      # DOTNET_INSTALL_DIR on PATH and sets DOTNET_ROOT itself, so nothing downstream changes.
+      - name: Install .NET under the runner's own HOME
+        run: echo "DOTNET_INSTALL_DIR=$HOME/.dotnet" >> "$GITHUB_ENV"
 
       - name: Set up .NET ${{ env.DOTNET_VERSION }}
         uses: actions/setup-dotnet@v4

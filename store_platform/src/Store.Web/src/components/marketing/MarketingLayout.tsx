@@ -167,7 +167,10 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
     <div className="min-h-dvh bg-bg font-sans text-text antialiased">
       <a
         href="#main"
-        className="sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:left-4 focus-visible:top-4 focus-visible:z-50 focus-visible:rounded-md focus-visible:bg-primary focus-visible:px-4 focus-visible:py-2 focus-visible:text-on-primary"
+        /* The drawing's `.skip` (`mockups/index.html:264`): parked off-screen, and drawn as a
+           dark chip at the top left the moment it takes focus. Ten focus-visible utilities said
+           the same thing by hand. */
+        className="skip"
       >
         Skip to content
       </a>
@@ -283,9 +286,11 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
             offset (`mockups/sample.html:64`, `.crumb{padding:22px 0 0}`). The three-step gutter it
             replaces put the trail 40px from the page edge on a laptop, under a header sitting at
             20px. The note is here rather than inside the conditional because a JSX comment there
-            would be a second child of the `&&` expression. */}
+            would be a second child of the `&&` expression. The `pt-[22px]` that used to sit on
+            this wrapper is gone: `.crumb` on the trail itself carries `padding:22px 0 0`, and
+            keeping both paid it twice. */}
         {breadcrumbs && breadcrumbs.length > 0 && (
-          <div className={`mx-auto ${CRUMB_WIDTH[breadcrumbsWidth]} px-5 pt-[22px]`}>
+          <div className={`mx-auto ${CRUMB_WIDTH[breadcrumbsWidth]} px-5`}>
             <Breadcrumbs items={breadcrumbs} />
           </div>
         )}

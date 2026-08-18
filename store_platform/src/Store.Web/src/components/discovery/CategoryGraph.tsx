@@ -98,30 +98,30 @@ function CategoryRow({ node, href }: { node: CategoryNode; href: string }) {
        padding, separated by a hairline that the LAST row does not draw. The separator lives on
        the `<li>` rather than on the `<a>` because the anchor is always the only child of its
        item, so `last:` on the anchor would match every row and no row would ever have a rule. */
-    <li className="border-b border-border last:border-b-0">
+    /* The row is now the drawing's own `.catrow` (`mockups/collections.html:177-182`): a
+       `1fr auto` grid, 16px/20px padding, a hairline under every row but the last, and a real
+       `h4` + `p` in column one because that is what the drawing's selectors style. The grid,
+       gap, padding and hover utilities that used to say the same thing here are REMOVED, not
+       layered: mockup.css is imported into `layer(components)` (globals.css:8) and Tailwind
+       utilities outrank it, so leaving one in place makes the class inert.
+       The last row's rule is dropped from the `li`, since `.catrow:last-child` cannot match an
+       anchor that is the only child of its item. */
+    <li className="last:[&>a]:border-b-0">
       <Link
         href={href}
         aria-label={`${node.label}, ${node.count} pack${node.count === 1 ? '' : 's'}${node.price ? `, ${node.price}` : ''}`}
         className={cx(
-          'group grid gap-x-5 gap-y-1 px-5 py-4',
-          'transition-colors duration-[140ms] ease-[cubic-bezier(0.2,0,0,1)] hover:bg-surface2',
+          'catrow group',
+          'transition-colors duration-[140ms] ease-[cubic-bezier(0.2,0,0,1)]',
           'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
-          'md:grid-cols-[minmax(0,1fr)_auto] md:items-baseline',
         )}
       >
-        <span className="min-w-0">
-          <span className="block text-body font-semibold leading-snug text-text transition-colors group-hover:text-accent">
-            {node.label}
-          </span>
-          {/* 66ch, from `mockups/collections.html:181`. */}
-          {node.description && (
-            <span className="mt-1 block max-w-[66ch] text-meta leading-relaxed text-muted">
-              {node.description}
-            </span>
-          )}
-        </span>
+        <h4 className="transition-colors group-hover:text-accent">{node.label}</h4>
+        {node.description && <p>{node.description}</p>}
 
-        <span className="flex items-center gap-4 md:justify-end">
+        {/* `.catrow .n` is column two spanning both rows. The class goes on the wrapper rather
+            than on the count alone, because the wrapper is what has to be placed in the grid. */}
+        <span className="n num flex items-center justify-end gap-4">
           {/* Presentational: the count is spelled out immediately to the right of it, and the
               link's own aria-label carries both. A screen reader must not walk 28 pickets.
 
@@ -148,9 +148,7 @@ function CategoryRow({ node, href }: { node: CategoryNode; href: string }) {
           </span>
           {/* Mono, quiet, right-aligned: `mockups/collections.html:182` sets `.catrow .n` to
               ink-3, not ink. The count is a label on the row, not the row's headline. */}
-          <span className="w-[3ch] text-right font-mono text-caption tabular-nums text-subtle">
-            {node.count}
-          </span>
+          <span className="w-[3ch] text-right tabular-nums">{node.count}</span>
           {/* The price shows at every width. It was `hidden sm:block` and that dropped the one
               fact a buyer is scanning for on the narrowest screen, where the choice is hardest --
               measured at 390px on 2026-08-13, the row used ~110px of 326 and had the room. Only
@@ -216,12 +214,7 @@ export default function CategoryGraph({ categories, filterPath, grouped = true, 
           )}
           {/* The `.rows` card: surface, one hairline border, 12px radius, clipped so the first
               and last rows sit inside the corners (`mockups/collections.html:125`). */}
-          <ul
-            className={cx(
-              'list-none overflow-hidden rounded-card border border-border bg-surface p-0',
-              section.label && 'mt-2',
-            )}
-          >
+          <ul className={cx('rows list-none p-0', section.label && 'mt-2')}>
             {section.rows.map((node) => (
               <CategoryRow key={node.kind} node={node} href={pathFor(node.kind)} />
             ))}

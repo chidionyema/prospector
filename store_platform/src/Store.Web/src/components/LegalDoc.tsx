@@ -126,11 +126,15 @@ export default function LegalDoc({ title, lede, version = TOS_VERSION, interim =
           as every other page's content. The article now comes first in the DOM too, so a screen
           reader and a keyboard both reach the contract before the index of it.
 
-          Below `lg` the rail does not render and this collapses to the single column it was. */}
+          The grid is the drawing's `.legal` class now, not utilities holding the same two columns
+          at different numbers. It had to be: `mockup.css` sits in `layer(components)` and Tailwind
+          utilities sit above it, so any utility that also sets `grid-template-columns` wins and the
+          class is inert. Both collapse to one column at 860px, and `DocRail` now appears at 861px
+          to match, so there is no width where the rail is hidden but its column is still reserved. */}
       <div className="mx-auto max-w-[1080px] px-5">
-        <div className="pt-3.5 pb-16 lg:grid lg:grid-cols-[minmax(0,1fr)_230px] lg:items-start lg:gap-[34px]">
+        <div className="legal pt-3.5 pb-16">
           <article className="space-y-10">
-            <header className="space-y-6">
+            <header className="pagetop space-y-6">
               <div className="space-y-2">
                 <h1>{title}</h1>
                 {/* Was "Version 2026-06-15", which is a build artefact as far as a buyer is
@@ -150,7 +154,7 @@ export default function LegalDoc({ title, lede, version = TOS_VERSION, interim =
                 </p>
               </div>
               {/* `.lede.big` (17.5px, 62ch): the plain-language answer above the contract. */}
-              {lede && <p className="max-w-[62ch] lede">{lede}</p>}
+              {lede && <p className="lede big">{lede}</p>}
               {interim && (
                 <div className="rounded-md border border-border bg-bg/50 px-6 py-5 text-meta leading-relaxed text-muted">
                   <strong className="text-text font-semibold">Interim beta terms.</strong> This document reflects how the
@@ -165,24 +169,25 @@ export default function LegalDoc({ title, lede, version = TOS_VERSION, interim =
                 a hairline. The catalogue is already one click away in the crumb above and in the
                 header, so the end of a legal document is worth spending on the two things a reader
                 who got this far actually wants: the free report and the FAQ. */}
-            <div className="mt-12 border-t-2 border-text pt-9">
+            <div className="closing">
               <h2 className="sec">
                 Read one free before you buy anything.
               </h2>
-              <p className="mt-3.5 max-w-[56ch] lede">
-                A complete report, unredacted. No payment, no email, no account.
+              <p>
+                {/* "pack", the drawing's word and the site's (`mockups/refund.html`). */}
+                A complete pack, unredacted. No payment, no email, no account.
               </p>
-              <div className="mt-5 flex flex-wrap gap-3">
-                <Link href="/sample" className={buttonClasses({ size: 'lg' })}>
+              <div className="ctarow">
+                <Link href="/sample" className="btn">
                   Read the free report
                 </Link>
-                <Link href="/faq" className={buttonClasses({ size: 'lg', variant: 'ghost' })}>
+                <Link href="/faq" className="btn ghost">
                   Read the FAQ
                 </Link>
               </div>
             </div>
           </article>
-          <DocRail sections={sections} eyebrow="clauses" className="lg:pt-1" />
+          <DocRail sections={sections} eyebrow="clauses" className="min-[861px]:pt-1" />
         </div>
       </div>
     </MarketingLayout>

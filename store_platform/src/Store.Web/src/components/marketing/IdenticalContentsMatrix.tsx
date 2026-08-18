@@ -60,7 +60,12 @@ export function IdenticalContentsMatrix({
   const hasDescriptions = rungs.some((r) => Boolean(r.description));
 
   return (
-    <figure className={cx('overflow-x-auto', className)}>
+    /* THE DRAWING'S `.matrix` (`mockups/pricing.html:258-264`): one bordered card, a 96px
+       price column against a hairline, the documents drawn as cells beside it. The frame and
+       every rule were Tailwind utilities, so the page emitted none of the classes the mockup
+       styles. It stays a real table: the caption and the column headers are what make a grid of
+       marks readable to a screen reader, and the drawing has neither. */
+    <figure className={cx('matrix overflow-x-auto', className)}>
       <table className="w-full min-w-[38rem] border-collapse text-left">
         <caption className="sr-only">
           {`Every pack contains the same ${documents} documents, at every price. The price reflects the
@@ -81,8 +86,8 @@ export function IdenticalContentsMatrix({
         </thead>
         <tbody>
           {rungs.map((rung) => (
-            <tr key={rung.price} className="border-b border-border align-baseline">
-              <td className="py-3 pr-4 font-mono text-body tabular-nums text-text">{rung.price}</td>
+            <tr key={rung.price} className="mrow align-baseline">
+              <td className="p num">{rung.price}</td>
               {hasDescriptions && (
                 <td className="py-3 pr-4 max-w-[28ch] text-meta leading-snug text-muted">
                   {rung.description}
@@ -92,9 +97,12 @@ export function IdenticalContentsMatrix({
                 {/* NEUTRAL INK, NOT TEAL. §2 gives teal one meaning -- an idea survived the filter
                     -- and a document is not an idea. A tick here in the survivor colour would put
                     a verdict on a contents list. */}
-                <span className="flex flex-wrap gap-1" aria-hidden>
+                {/* NEUTRAL INK, NOT TEAL: `.mrow .cells i` is painted `--brand` in the drawing,
+                    and section 2 gives teal exactly one meaning, an idea that survived the filter.
+                    A document is not an idea, so the cells keep the ink. */}
+                <span className="cells" aria-hidden>
                   {marks.map((_, i) => (
-                    <span key={i} className="block size-[7px] rounded-sm bg-text" />
+                    <i key={i} className="bg-text" />
                   ))}
                 </span>
                 <span className="sr-only">{`All ${documents} documents included`}</span>

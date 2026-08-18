@@ -29,19 +29,23 @@ import { Icon, textLinkClass } from '@/components/ui';
  * return hook could not load.
  */
 
+/**
+ * THE DRAWING'S `.owned` ROW (`mockups/account.html`): the title as an `h4`, its facts on one mono
+ * line beneath, and the action held at the right edge. It was a single flex link with the title and
+ * the price on one baseline, so a shortlist read as a price list and the row carried no action at
+ * all. The class sits on the `li`, not on the link inside it: `.owned:last-child` divides the rows,
+ * and on a link that is always the only child of its `li` the rule would match every row and remove
+ * every hairline.
+ */
 function PackLine({ id, title, price }: { id: string; title: string; price?: string }) {
   return (
-    <li>
-      <Link
-        href={`/pack/${id}`}
-        className="flex items-baseline justify-between gap-4 border-b border-border py-4 last:border-b-0"
-      >
-        <span className="text-meta font-medium text-text">{title}</span>
-        {price && (
-          <span className="shrink-0 font-mono text-meta tabular-nums text-muted">
-            {formatPrice(price)}
-          </span>
-        )}
+    <li className="owned">
+      <Link href={`/pack/${id}`} className="min-w-0">
+        <h4>{title}</h4>
+        {price && <p className="m num">{formatPrice(price)}</p>}
+      </Link>
+      <Link href={`/pack/${id}`} aria-label={`Open ${title}`} className="btn sm ghost shrink-0">
+        Open
       </Link>
     </li>
   );
@@ -68,7 +72,12 @@ function Block({
           and 12px is what every other card on the site draws. The account area was the one place
           that gave its cards the 8px CONTROL corner, which is the sort of difference nobody names
           but everybody sees: the same shelf rows look softer on the catalogue than they do here. */}
-      <ul className="mt-4 rounded-card border border-border bg-surface px-6">{children}</ul>
+      {/* `.rows` is the drawing's own surface, border and 12px corner for a list of rows
+          (`mockup.css:333`), so the utilities holding the same three properties are removed rather
+          than layered: mockup.css is imported into the components layer (globals.css:8) and a
+          utility on the same element wins whatever the specificity. The horizontal padding goes
+          too, because `.owned` pads each row itself. */}
+      <ul className="rows mt-4">{children}</ul>
       <Link href={moreHref} className={textLinkClass('mt-4 inline-flex items-center gap-1 text-meta font-medium')}>
         {moreLabel} <Icon name="arrowRight" size={12} />
       </Link>
@@ -104,7 +113,7 @@ export function ReturnBlocks() {
     <>
       {cart.ready && cart.lines.length > 0 && (
         <Block
-          title="Your shortlist"
+          title="Saved for later"
           lead={
             cart.lines.length === 1
               ? 'One pack you picked out and have not bought yet.'

@@ -56,11 +56,11 @@ export function FacetChips({
 
   return (
     <ul className={cx('flex flex-wrap items-center gap-1.5', className)}>
+      {/* `.pillx` is the drawing's pill: mono, 12px, fully rounded, on the surface. The
+          utilities it replaces set the same four properties one step off, and utilities beat the
+          drawing's layer, so they had to go rather than be joined. */}
       {chips.slice(0, max).map((chip) => (
-        <li
-          key={chip}
-          className="inline-flex items-center rounded-sm border border-border bg-surface2 px-2.5 py-0.5 text-caption font-medium text-muted"
-        >
+        <li key={chip} className="pillx">
           {chip}
         </li>
       ))}

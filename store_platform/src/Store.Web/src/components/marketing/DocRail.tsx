@@ -76,49 +76,46 @@ export function DocRail({
     // dropdown is a control the reader must open to learn anything from, which is strictly worse
     // than the linear scroll they already have; and the mobile fix that would actually help (a
     // progress bar) is a different component. Below `lg` the document simply reads top to bottom.
-    <nav
-      aria-label="Contents of this report"
-      className={cx('hidden lg:block', className)}
-    >
-      <div className="sticky top-24">
-        <p className="mono">{eyebrow}</p>
-        <ul className="mt-4 list-none border-l border-border p-0">
-          {sections.map((section) => {
-            const current = active === section.id;
-            return (
-              <li key={section.id}>
-                <a
-                  href={`#${section.id}`}
-                  aria-current={current ? 'true' : undefined}
+    /* THE DRAWING'S CONTENTS CARD (`mockups/sample.html`, `.toc`): a bordered, sticky card whose
+       rows are the anchors themselves. It was a hairline-and-marker list, which is a different
+       object: the drawing draws the contents as one card beside the sheet, numbered, with the
+       current row filled in brand tint. `.toc` carries its own `position:sticky`, so the wrapping
+       sticky div is gone rather than nested inside it -- two sticky boxes cannot both work.
+       No <ul>/<li>: `.toc a:last-child{border-bottom:0}` is what closes the card's bottom edge,
+       and a <li> between the card and the anchor makes every anchor its own parent's last child,
+       which deletes every divider in the list. */
+    /* 861px, not `lg`. `.reader` and `.legal` both collapse to one column at 860px
+       (`mockup.css`), so a rail that appears at 1024 leaves a 230px empty column between the two
+       breakpoints, and one that appears earlier stacks under a body it is meant to sit beside. */
+    <div className={cx('hidden min-[861px]:block', className)}>
+      <p className="mono mb-3">{eyebrow}</p>
+      <nav aria-label="Contents of this report" className="toc">
+        {sections.map((section, i) => {
+          const current = active === section.id;
+          return (
+            <a
+              key={section.id}
+              href={`#${section.id}`}
+              aria-current={current ? 'true' : undefined}
+              className={cx('transition-colors', section.nested && 'pl-7')}
+            >
+              <span className="i num">{String(i + 1).padStart(2, '0')}</span>
+              <span className="min-w-0 flex-1">{section.label}</span>
+              {section.note && (
+                <span
                   className={cx(
-                    'flex items-baseline justify-between gap-2 border-l-2 py-1.5 pr-2 text-caption leading-snug transition-colors',
-                    // `-ml-px` sits the item's own border exactly on top of the list's hairline,
-                    // so the active marker replaces the rule rather than doubling it.
-                    '-ml-px',
-                    section.nested ? 'pl-5' : 'pl-3 font-medium',
-                    current
-                      ? 'border-l-text text-text'
-                      : 'border-l-transparent text-muted hover:text-text',
+                    'flex-none font-mono text-caption',
+                    section.tone === 'kill' ? 'text-kill' : section.tone === 'warn' ? 'text-warning-strong' : 'text-subtle',
                   )}
                 >
-                  <span className="min-w-0">{section.label}</span>
-                  {section.note && (
-                    <span
-                      className={cx(
-                        'flex-none font-mono text-caption',
-                        section.tone === 'kill' ? 'text-kill' : section.tone === 'warn' ? 'text-warning-strong' : 'text-subtle',
-                      )}
-                    >
-                      {section.note}
-                    </span>
-                  )}
-                </a>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-    </nav>
+                  {section.note}
+                </span>
+              )}
+            </a>
+          );
+        })}
+      </nav>
+    </div>
   );
 }
 
