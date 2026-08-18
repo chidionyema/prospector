@@ -281,36 +281,48 @@ export default function KillLogPage({
             Most ideas do not survive. Here is what we rejected, the reason each one failed, and
             the sources, so you can check the reasoning yourself.
           </p>
-          {/* Mono: both are counts, and the pair is the one place on the site where the rejection
-              rate is stated as a measured quantity rather than a boast. */}
-          {/* The drawing's `.metastrip` (`mockups/kill-log.html:67`): a mono, 12.5px, wrapping
-              strip at 10px gaps. The flex/gap/font utilities said the same thing one layer above
-              the class, which made the class inert (globals.css:8 puts mockup.css under them). */}
-          <div className="metastrip mt-6">
-            {/* §3.3: the killed square, not a warning triangle. A triangle is a caution sign --
-                it tells the reader to be careful about something ahead. A kill is not a hazard,
-                it is a finished ruling, and the crossed square is the mark the rest of the site
-                uses for one. */}
-            {/* Composed rather than hand-drawn (MASTER-BRIEF §6). The glyph, the word and the
-                red arrive together, and this page is the one place red means exactly what it
-                says. */}
-            <VerdictChip
-              kind="killed"
-              label={`${rejectRateLabel} killed`}
-              className="gap-2"
-            />
-            {/* The green chip counts what is BUYABLE, not what cleared the gates. It has carried
-                "80 survived" and then "80 survived the checks", both against a shelf of 50; the
-                survivor figure is gone from the site (lib/stats.ts, founder directive 2026-08-13)
-                and this is the number the reader can act on anyway. Omitted entirely when the
-                catalogue call failed, because a chip with no number is not a stat. */}
+          {/* THE DRAWING'S `.facts` PANEL (`mockups/kill-log.html`): three bordered cells across
+              the measure, each a mono uppercase label over a 24px figure. It was a `.metastrip` of
+              verdict chips, which is the drawing's device for the SAMPLE page's offer terms, not
+              for this page's counts, and it printed only two of the three numbers.
+
+              THE GLYPHS STAY. `.facts span` is a label, not a chip, so the VerdictChip form does
+              not fit here -- but MASTER-BRIEF §6 says colour is never the sole carrier, so the
+              killed and survived glyphs sit inline in the label beside the word. The shapes differ
+              (crossed, filled), so the panel still reads printed in one ink.
+
+              "Published here" is new, and it is the number this hero was missing: the caveat
+              beside it explains that this page holds a subset, and the panel now states the
+              subset as a figure rather than leaving it to the prose. */}
+          {/* `.facts span` and `.facts b` are what the drawing's stylesheet actually selects, so
+              the label and the figure are a span and a b inside the dt/dd, exactly as
+              how-it-works.tsx:212 already does it. A dt with the classes on itself draws nothing. */}
+          <dl className="facts">
+            <div>
+              <dt>
+                <span className="inline-flex items-center gap-1.5">
+                  <Glyph name="killed" className="text-kill" />
+                  Killed
+                </span>
+              </dt>
+              <dd><b className="num">{rejectRateLabel}</b></dd>
+            </div>
+            <div>
+              <dt><span>Published here</span></dt>
+              <dd><b className="num">{publishedKills}</b></dd>
+            </div>
             {listed ? (
-              <span className="inline-flex items-center gap-2 text-survive">
-                <Glyph name="survived" />
-                {listed.toLocaleString('en-GB')} on the shelf
-              </span>
+              <div>
+                <dt>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Glyph name="survived" className="text-survive" />
+                    On the shelf
+                  </span>
+                </dt>
+                <dd><b className="num">{listed.toLocaleString('en-GB')}</b></dd>
+              </div>
             ) : null}
-          </div>
+          </dl>
         </div>
 
         {/* THE CAVEAT. It used to sit below all the entries, under a homepage line promising the log
@@ -334,12 +346,16 @@ export default function KillLogPage({
       </SectionBand>
 
       <Section bg="bg" width="6xl" className="!pt-6 !pb-24">
+        {/* THE DRAWING'S SECTION SEPARATORS (`mockups/kill-log.html`, two `hr.rule2`): a 2px ink
+            rule above "How ideas die" and above the table. `!mt-0` because `.rule2` carries a 44px
+            top margin for the drawing's flat page, and here the band's own padding is that gap. */}
+        <hr className="rule2 !mt-0 mb-7" />
         {/* ── HOW IDEAS DIE ─────────────────────────────────────────────────────────────────────
             The chart is the page's thesis in one object, and it is placed above the table because
             it is what makes the table legible: a reader who knows incumbency is the largest
             publishable cause reads 188 incumbency rows as a pattern rather than as repetition. */}
         <section aria-labelledby="distribution-heading" className="rounded-card border border-border bg-surface p-6 md:p-7">
-          <h2 id="distribution-heading" className="text-h2 font-semibold text-text">
+          <h2 id="distribution-heading" className="sec">
             How ideas die
           </h2>
           <p className="mt-2 max-w-[68ch] lede">
@@ -442,7 +458,8 @@ export default function KillLogPage({
         </section>
 
         {/* ── CONTROLS ──────────────────────────────────────────────────────────────────────── */}
-        <div className="mt-10">
+        <hr className="rule2 mb-7" />
+        <div>
           <SearchInput
             label="Search kills by title, description, or reason"
             value={search}
