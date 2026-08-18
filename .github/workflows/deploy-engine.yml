@@ -95,10 +95,17 @@ jobs:
           #
           # --config and --dockerfile are both explicit so a stale REMOTE config cannot decide
           # what gets built. --remote-only because the runner does not need a Docker daemon.
+          # --build-arg GIT_SHA is what lets the running engine name its own commit.
+          # `COPY . /app` does not carry `.git`, so nothing inside the image knows what it
+          # was built from unless the build is told. The Dockerfile writes it to
+          # /app/GIT_SHA, and `scripts/live_checkout.py` reads that file back out of the
+          # machine. Drop this flag and the probe answers "deployed commit (unknown)"
+          # forever, which is the exact blindness it was written to end.
           flyctl deploy . \
             --config deploy/engine/fly.toml \
             --dockerfile deploy/engine/Dockerfile \
             --app "$FLY_APP" \
+            --build-arg "GIT_SHA=${{ github.sha }}" \
             --strategy immediate \
             --remote-only \
             --yes

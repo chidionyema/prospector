@@ -114,5 +114,15 @@ COPY deploy/engine/periodic.sh /usr/local/bin/periodic.sh
 COPY deploy/engine/receipt.sh /usr/local/bin/receipt.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/periodic.sh /usr/local/bin/receipt.sh
 
+# The commit this image was built from. `COPY . /app` does not bring .git across, so without
+# this the running engine cannot say what code it is and neither can anyone else: measured
+# 2026-08-18, `fly releases` showed v15 and nothing on this estate could map v15 to a commit.
+# That is the failure scripts/live_checkout.py exists to prevent on the laptop, happening again
+# on Fly. deploy/targets/fly.sh passes it; a build that does not gets "unknown", which the probe
+# reports as a problem rather than hiding.
+ARG GIT_SHA=unknown
+RUN printf '%s\n' "$GIT_SHA" > /app/GIT_SHA
+ENV PROSPECTOR_GIT_SHA=$GIT_SHA
+
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/entrypoint.sh"]
 CMD ["supervisor"]
