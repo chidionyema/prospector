@@ -142,7 +142,7 @@ export function CartButton() {
                 >
                   {line.title}
                 </Link>
-                <p className="mt-1 text-meta font-semibold text-muted">{formatPrice(line.price)}</p>
+                <p className="mt-1 lede">{formatPrice(line.price)}</p>
               </div>
               <button
                 type="button"

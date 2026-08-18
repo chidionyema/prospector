@@ -133,8 +133,17 @@ describe('Brand v3 — palette, motion, surfaces', () => {
       // The assertion is INVERTED rather than dropped, because "no chromatic accent" is the rule
       // that is easy to undo one component at a time. Asserting the blue is absent is what stops
       // the next `text-accent` from quietly reintroducing a hue.
-      expect(stripped, '--accent must resolve to ink, via the text token').toMatch(
-        /--accent\s*:\s*var\(\s*--text\s*\)/i,
+      // SUPERSEDED A SECOND TIME, 2026-08-18, founder: "needs to be pixel perfect from logo to
+      // colours to everything else". Spec §3 pointed `--accent` at ink; every one of the twelve
+      // mockups disagrees, setting `--link:#2447C9` and using it for `.tlink`, so ink links were
+      // the single largest colour difference between the drawing and the built page. The token is
+      // pointed at `--link` now, which is the indirection the note below was shaped for.
+      //
+      // The half of this test that still bites is the second assertion. It is the one that stops a
+      // hue creeping back one component at a time, and it is unchanged: the v2 blue #2563EB stays
+      // banned, so a repaint has to go through `--link` and be seen, rather than through a literal.
+      expect(stripped, '--accent must resolve to the mockups\' link blue, via the link token').toMatch(
+        /--accent\s*:\s*var\(\s*--link\s*\)/i,
       );
       expect(stripped, 'the v2 link blue must not be declared anywhere').not.toMatch(/#2563EB/i);
     });

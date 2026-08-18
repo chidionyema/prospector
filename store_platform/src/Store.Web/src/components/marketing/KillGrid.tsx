@@ -199,7 +199,11 @@ export function KillGrid({ packs, className }: KillGridProps) {
 
         {/* Presentational. A screen reader must get the FACT the picture states, from the
             description above, rather than walk a picket fence of 1,394 announced cells. */}
-        <path d={d} className="fill-faint" aria-hidden="true" />
+        {/* THE DRAWING'S DEAD MARK is `--dead` (#DEDED7), not `--faint` (#A1A1AA). Measured
+            2026-08-18: the drawing paints 1,382 dead cells in #DEDED7 and the built page had that
+            colour nowhere on it, so the grid read as a field of mid-grey rather than as the pale
+            ground the survivors stand out against. */}
+        <path d={d} className="fill-dead" aria-hidden="true" />
 
         {/* Each survivor is its own element with its own name and its own destination. This is the
             half `PopulationField` could not do, and it is what makes the picture worth its pixels:
@@ -258,7 +262,7 @@ export function KillGrid({ packs, className }: KillGridProps) {
           we do not draw. */}
       <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1 font-mono text-caption text-subtle">
         <span className="flex items-center gap-2">
-          <span aria-hidden className="inline-block size-[7px] rounded-sm bg-faint" />
+          <span aria-hidden className="inline-block size-[7px] rounded-sm bg-dead" />
           <b className="font-medium tabular-nums text-muted">{killedLabel}</b> killed
         </span>
         <span className="flex items-center gap-2">

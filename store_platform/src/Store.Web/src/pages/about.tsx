@@ -56,11 +56,11 @@ export default function AboutPage() {
             It runs at `display`, the top of the six-step scale, which now carries its own mobile
             size. (The 96px `text-mega` this note used to contrast against was deleted from
             tokens.css on 2026-08-08 -- §3.2 has six sizes and that was a seventh.) */}
-        <h1 className="text-h1 font-semibold text-text">
+        <h1>
           So I built the part I kept losing to doubt.
         </h1>
 
-        <p className="mt-6 max-w-[60ch] text-body leading-relaxed text-muted md:text-h2">
+        <p className="mt-6 max-w-[60ch] md:text-h2 lede">
           I always wanted to run my own business, and the ideas were never the hard part.
         </p>
 
@@ -117,7 +117,7 @@ export default function AboutPage() {
             captions everywhere else on the site, so the one page written by a person did not read
             as signed by one. */}
         {hasFounder() && (
-          <p className="mt-7 max-w-[56ch] border-t border-border-strong pt-5 text-body text-muted">
+          <p className="mt-7 max-w-[56ch] border-t border-border-strong pt-5 lede">
             <strong className="font-semibold text-text">{FOUNDER.name}</strong>, who built{' '}
             {BRAND.name}
           </p>
@@ -142,26 +142,26 @@ export default function AboutPage() {
             loses this one. */}
         <dl className="mt-6 grid grid-cols-1 overflow-hidden rounded-card border border-line bg-surface sm:grid-cols-3">
           <div className="p-[17px] sm:border-r sm:border-line">
-            <dt className="mb-1.5 text-caption font-medium text-subtle">
+            <dt className="mb-1.5 eyebrow">
               Researched
             </dt>
-            <dd className="text-h3 font-semibold tabular-nums text-text">
+            <dd className="price-lg num">
               {totals.researched.toLocaleString('en-GB')}
             </dd>
           </div>
           <div className="border-t border-line p-[17px] sm:border-l-0 sm:border-r sm:border-t-0">
-            <dt className="mb-1.5 text-caption font-medium text-subtle">
+            <dt className="mb-1.5 eyebrow">
               Killed, published
             </dt>
-            <dd className="text-h3 font-semibold tabular-nums text-text">
+            <dd className="price-lg num">
               {totals.killed.toLocaleString('en-GB')}
             </dd>
           </div>
           <div className="border-t border-line p-[17px] sm:border-t-0">
-            <dt className="mb-1.5 text-caption font-medium text-subtle">
+            <dt className="mb-1.5 eyebrow">
               Kill rate
             </dt>
-            <dd className="text-h3 font-semibold tabular-nums text-text">
+            <dd className="price-lg num">
               {totals.rejectRateLabel}
             </dd>
           </div>
@@ -169,13 +169,13 @@ export default function AboutPage() {
 
         {/* `.rule2{border-top:2px solid var(--ink);margin:44px 0 0}`. A 2px ink rule, not a
             hairline: it separates the personal half of the page from the mechanical half. */}
-        <hr className="mt-11 border-0 border-t-2 border-text" />
+        <hr className="mt-11 break-major" />
 
         <div className="mt-8">
-          <h2 className="text-h2 font-semibold text-text md:text-h1">
+          <h2 className="sec">
             Where the engine came from
           </h2>
-          <p className="mt-3 max-w-[60ch] text-body leading-relaxed text-muted">
+          <p className="mt-3 max-w-[60ch] lede">
             It started as the questions I made myself answer before starting anything: is the pain
             real, would anyone pay, is there any way to reach them. Those questions are the checks
             now, asked by software that has to fetch a source before it may answer. Every claim is
@@ -191,7 +191,7 @@ export default function AboutPage() {
             className="rounded-card border border-line bg-surface p-5 transition-colors hover:border-border-strong"
           >
             <p className="text-meta font-semibold text-text">How it works</p>
-            <p className="mt-1 text-meta leading-relaxed text-muted">
+            <p className="mt-1 lede">
               One idea taken through the checks end to end, with every source it was judged on.
             </p>
             <span className={textLinkClass('mt-3 inline-flex items-center gap-1 text-meta font-medium')}>
@@ -210,7 +210,7 @@ export default function AboutPage() {
             className="rounded-card border border-line bg-surface p-5 transition-colors hover:border-border-strong"
           >
             <p className="text-meta font-semibold text-text">The kill log</p>
-            <p className="mt-1 text-meta leading-relaxed text-muted">
+            <p className="mt-1 lede">
               Most ideas die. Every kill is public, with the argument that made it. The log is
               the evidence behind the catalogue; the catalogue is what’s left.
             </p>
@@ -228,10 +228,10 @@ export default function AboutPage() {
           <p className="text-caption font-medium text-muted">
             Read before you buy
           </p>
-          <h2 className="mt-2 text-h2 font-semibold text-text md:text-h1">
+          <h2 className="sec">
             See the work first.
           </h2>
-          <p className="mt-2 max-w-[60ch] text-meta text-muted">
+          <p className="mt-2 max-w-[60ch] lede">
             Read a full report, unredacted. Every check, every verdict, every source link. Judge
             the pack by it.
           </p>

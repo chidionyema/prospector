@@ -28,7 +28,7 @@ export function EvidenceRecordPanel() {
     <div className="mt-10 overflow-hidden rounded-md border border-border bg-surface">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface2 px-5 py-4 md:px-7">
         <div>
-          <p className="text-caption font-medium text-subtle">A real page from a real pack</p>
+          <p className="eyebrow">A real page from a real pack</p>
           <p className="mt-1 text-meta font-semibold text-text">
             {report.title}, the evidence record
           </p>
@@ -37,7 +37,7 @@ export function EvidenceRecordPanel() {
             that promises "listed only once it clears every check" reads as a failed exam, and this
             one sat inside a panel captioned "a real page from a real pack". Two facts, no
             denominator. */}
-        <span className="font-mono text-caption text-subtle">
+        <span className="mono">
           {report.supported} cleared · {report.sourceCount} sources
         </span>
       </div>
@@ -106,7 +106,7 @@ export function EvidenceRecordPanel() {
         {/* Was "Every source is a live link in the pack" -- a promise about a file the reader has
             not bought, printed under eight sources they could not click. The domains above open
             now, so the sentence can describe what the reader is looking at. */}
-        <p className="text-caption text-subtle">
+        <p className="mono">
           Those domains open. Every claim in every pack carries one.
         </p>
         <Link

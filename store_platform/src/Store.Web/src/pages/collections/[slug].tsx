@@ -111,7 +111,7 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
           lead="The catalogue is briefly unreachable, so this page cannot list its packs right now. Try again in a minute."
         />
         <Section bg="white" width="7xl">
-          <p className="text-body text-muted">
+          <p className="lede">
             <Link href="/" className={textLinkClass('font-medium')}>
               Browse every pack
             </Link>{' '}
@@ -166,7 +166,7 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
             on, so the chip that disappears is exactly the chip the page guarantees. */}
         <PackGrid packs={packs} />
 
-        <p className="mt-10 text-meta leading-relaxed text-muted">
+        <p className="mt-10 lede">
           Every pack on this page faced the same checks: {checksSentence()}. Each then survived an
           adversarial review.{' '}
           <Link href="/how-it-works" className={textLinkClass('font-medium')}>

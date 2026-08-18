@@ -58,7 +58,7 @@ export function FounderNote({
       )}
       <div className="min-w-0">
         <p className="text-body font-semibold text-text">{FOUNDER.name}</p>
-        {FOUNDER.role && <p className="mt-0.5 text-meta text-muted">{FOUNDER.role}</p>}
+        {FOUNDER.role && <p className="mt-0.5 lede">{FOUNDER.role}</p>}
         <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
           {FOUNDER.profileUrl && (
             <a

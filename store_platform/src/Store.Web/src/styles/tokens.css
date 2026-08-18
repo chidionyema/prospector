@@ -307,14 +307,22 @@
      new system in one line and keeps the build honest.
 
      Links now read as links by UNDERLINE, not by hue -- see the `a` rule in globals.css. */
-  --accent: var(--text);         /* Ink. 17.93:1 on --bg. AAA. */
+  /* BLUE AGAIN, 2026-08-18, on the founder's "pixel perfect ... to clours" instruction. §3.1
+     below argued the site's only colour should be the verdict system, so this token was pointed
+     at ink and links were told apart by underline alone. Every mockup disagrees: `.tlink` is
+     the link token set to #2447C9 on all twelve pages, and it is the single largest colour
+     difference between
+     the drawing and the built page. Repointing the token is the whole change, which is exactly
+     what the note below says the token was shaped for. 7.31:1 on --bg, legal at body size. */
+  --accent: var(--link);         /* #2447C9. 7.31:1 on --bg. AA at body size. */
   --accent-hover: #000000;       /* Links darken on hover; 21:1. AAA. */
   /* The focus ring is the ONE place spec §3.1 itself puts a verdict colour on chrome: its table
      sets `--focus` to `--verdict-survived`. Kept as a sanctioned exception because the
      alternative is worse in a measurable way -- ink is also the button fill, and an ink ring on
      an ink button is invisible (the note above ::selection in globals.css records this). Green
      at 5.48:1 on white clears the 3:1 that UI components require. */
-  /* THE LINK BLUE. Every mockup sets `--link:#2447C9` and reaches for it in five places: `.tlink`,
+  /* THE LINK BLUE. Every mockup sets this token to #2447C9 and reaches for it in five places:
+     the text link,
      the `View ->` on a catalogue row, `Clear all` on the filter bar, a citation's domain, and the
      focus ring. This file had no link colour at all -- text links were drawn in ink and told apart
      by weight alone, which is the one distinction a reader with low vision cannot make. 7.31:1 on

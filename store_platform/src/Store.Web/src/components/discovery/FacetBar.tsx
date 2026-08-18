@@ -298,10 +298,10 @@ export function StepFlow({
           </div>
 
           {/* Question */}
-          <h3 className="text-body font-semibold text-text">
+          <h3 className="sub">
             {QUESTION_COPY[currentGroup.kind].question}
           </h3>
-          <p className="mt-1 text-meta text-muted">
+          <p className="mt-1 lede">
             {QUESTION_COPY[currentGroup.kind].subtitle}
           </p>
 
@@ -501,7 +501,7 @@ export function StepFlow({
                     const isAdvantage = kind === 'advantage';
                     return (
                       <div key={kind}>
-                        <span className="text-caption font-medium text-subtle">
+                        <span className="eyebrow">
                           {KIND_LABEL[kind]}
                         </span>
                         <div className="mt-2 flex flex-wrap gap-1.5">

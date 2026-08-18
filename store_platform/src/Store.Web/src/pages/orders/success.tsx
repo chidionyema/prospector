@@ -191,12 +191,12 @@ export default function OrderSuccess() {
         </div>
 
         {/* 2. Pack title */}
-        <h1 className="text-h1 font-semibold text-text">
+        <h1>
           {pack?.title ?? firstItem?.packTitle ?? 'Your pack is ready'}
         </h1>
 
         {/* 3. Pack one-liner */}
-        <p className="mt-3 max-w-[60ch] text-body leading-relaxed text-muted">
+        <p className="mt-3 max-w-[60ch] lede">
           {pack?.oneLine ?? 'Your payment was received. The download is ready below.'}
         </p>
 
@@ -252,10 +252,10 @@ export default function OrderSuccess() {
             shop normally surfaces" framing makes the cross-sell credible, not cringe. */}
         {crossSell.length > 0 && (
           <section className="mt-12 border-t border-border pt-10">
-            <h2 className="text-h2 font-semibold text-text">
+            <h2 className="sec">
               Other packs in this category
             </h2>
-            <p className="mt-2 max-w-[60ch] text-meta text-muted">
+            <p className="mt-2 max-w-[60ch] lede">
               Same vetted filter, same evidence standard. Three more from the same market.
             </p>
             <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -281,10 +281,10 @@ export default function OrderSuccess() {
             to share the pack with a friend needs one tap. The link is the pack page URL. */}
         {shareUrl && (
           <section className="mt-10 border-t border-border pt-10">
-            <h2 className="text-body font-semibold text-text">
+            <h2 className="sub">
               Share with a friend
             </h2>
-            <p className="mt-2 max-w-[60ch] text-meta text-muted">
+            <p className="mt-2 max-w-[60ch] lede">
               If this helped, send it to the one person who would actually build it.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -315,10 +315,10 @@ export default function OrderSuccess() {
             The receipt is the order's orderPath opened with a print stylesheet hint. */}
         {firstItem && (
           <section className="mt-10 border-t border-border pt-10">
-            <h2 className="text-body font-semibold text-text">
+            <h2 className="sub">
               Save your receipt
             </h2>
-            <p className="mt-2 max-w-[60ch] text-meta text-muted">
+            <p className="mt-2 max-w-[60ch] lede">
               Keep a copy for your records. The receipt is your orderPath; the bookmark
               above is the same URL.
             </p>
@@ -340,10 +340,10 @@ export default function OrderSuccess() {
             checklist is the buyer's reason to come back. Each step is a tap away from
             the relevant section of the pack. */}
         <section className="mt-10 border-t border-border pt-10">
-          <h2 className="text-body font-semibold text-text">
+          <h2 className="sub">
             {`What's next`}
           </h2>
-          <p className="mt-2 max-w-[60ch] text-meta text-muted">
+          <p className="mt-2 max-w-[60ch] lede">
             The pack is a built project, not a report. Four steps to a first customer.
           </p>
           <ol className="mt-6 space-y-3">
@@ -418,10 +418,10 @@ function ResolutionFallback({
           </div>
 
           <div className="space-y-3">
-            <h1 className="text-h1 font-semibold text-text">
+            <h1>
               Order confirmed
             </h1>
-            <p className="text-body text-muted max-w-md">
+            <p className="max-w-md lede">
               {phase === 'ready'
                 ? 'Your payment was received. Your download is ready below.'
                 : phase === 'resolving'

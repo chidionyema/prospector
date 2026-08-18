@@ -119,16 +119,23 @@ describe('US-4 — Mobile-first pack detail', () => {
      * the buy drawer). "First <details> in source order" is therefore not the same question as
      * "first disclosure the buyer scrolls past", and only the second one is the audit's claim.
      */
+    /*
+     * "How we tried to kill it" LEFT THIS LIST ON 2026-08-18.
+     *
+     * `mockups/pack-detail.html:364` draws it as the page's FIRST section, open, ahead of the
+     * deliverables. The drawing is the specification, so the page now follows it: the kill
+     * attempt, then who could run it, then a look inside, then what you get. US-4's claim is
+     * unchanged for the section it was actually about -- the scored axes stay behind the
+     * deliverables, because a buyer meets the goods before the scoring method.
+     */
     const methodologyIdx = Math.min(
-      ...['How we tried to kill it', 'How it scores']
-        .map((s) => page.indexOf(s))
-        .filter((i) => i > 0),
+      ...['How it scores'].map((s) => page.indexOf(s)).filter((i) => i > 0),
     );
     expect(deliverablesIdx, 'the deliverables heading must exist').toBeGreaterThan(0);
     expect(Number.isFinite(methodologyIdx), 'the methodology disclosures must exist').toBe(true);
     expect(
       deliverablesIdx < methodologyIdx,
-      'pack/[id].tsx must render "What\u2019s inside your pack" before the methodology disclosures',
+      'pack/[id].tsx must render "What\u2019s inside your pack" before "How it scores"',
     ).toBe(true);
   });
 

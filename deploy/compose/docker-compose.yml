@@ -1,22 +1,41 @@
-# The engine on any box with Docker. This file is the proof that the Fly move is not a
-# lock-in: it runs the SAME image, from the same Dockerfile, with the same supervisor
-# process table. Fly contributes a volume, a set of secrets and a private network. Nothing
-# else about the engine is Fly's.
+# The WHOLE stack on any box with Docker: the engine, the store API, the storefront and the
+# CI runners. This file is the proof that the Fly move is not a lock-in - it runs the SAME
+# images, from the same Dockerfiles, that Fly runs. Fly contributes volumes, secrets and a
+# private network. Nothing else about this stack is Fly's.
 #
-# It has three jobs and all three are real:
+# Founder, 2026-08-18: "as business risk mitigation we need to move our stack between local,
+# fly and any other provider, even aws, gcp, azure". A Linux VM with Docker is the one thing
+# every provider rents, so this file is what "move the stack" means in practice. There is no
+# per-cloud adapter to write.
 #
-#   1. The abort gate. Before a Fly volume exists, `docker compose up` on the laptop runs
-#      a tick against a COPY of the store. If the image is broken, it is broken here, for
-#      free, instead of after the cutover.
-#   2. The escape hatch. If Fly is down or becomes expensive, this is what runs the engine
-#      on a rented Linux box the same evening — one `git clone`, one `.env`, one restore
-#      of the store, `docker compose up -d`.
+# It has four jobs and all four are real:
+#
+#   1. The abort gate. `docker compose up` on the laptop runs a tick against a COPY of the
+#      store. If an image is broken, it is broken here, for free, instead of after a cutover.
+#   2. The escape hatch. If Fly is down or becomes expensive, this runs the stack on a rented
+#      Linux box the same evening - one `git clone`, one `.env`, one restore, `up -d`.
 #   3. The failback drill. Step 12 restores the offsite backup into ./data and starts the
 #      engine here, which is the reverse restore drill run for real rather than asserted.
+#   4. The rename drill. Every hostname is one value in stack.env. Changing the domain is
+#      editing that file and rebuilding, not a search across five fly.tomls.
 #
-# It does NOT run production. `ENGINE_BACKUPS_ENABLED` is deliberately absent so a
-# developer's `docker compose up` cannot write over production's offsite backup, and the
-# store lives in a local ./data directory that is nobody else's.
+# WHAT IT DOES NOT DO. It does not run production, and two guards keep it that way:
+# `ENGINE_BACKUPS_ENABLED` is off unless asked, so a developer's `up` cannot write over
+# production's offsite backup; and the store lives in a local ./data directory that is
+# nobody else's.
+#
+# PROFILES. `docker compose up` starts the ENGINE, which is the cheap common case. The
+# engine deliberately carries no `profiles:` key, because a service that has one is skipped
+# by a plain `up` - and a file whose headline command starts nothing is worse than no file.
+#   docker compose up -d                     engine
+#   docker compose --profile store up -d     engine + API + storefront
+#   docker compose --profile all up -d       everything
+#   docker compose --profile ci up -d runner runners ONLY - name the service, because the
+#                                            engine is unprofiled and would come up too.
+#                                            Scale with `--scale runner=4`.
+#
+# Addresses come from stack.env - copy stack.env.example. Secrets come from ../../.env and
+# are never written here.
 
 services:
   engine:
@@ -33,7 +52,17 @@ services:
     # carries no key. On Fly the same variables arrive via `fly secrets set`; the
     # container cannot tell the difference, which is the point.
     env_file:
-      - ../../.env
+      # Optional on purpose. A fresh `git clone` on a rented box has no .env yet, and a
+      # stack that cannot even be PARSED before its secrets arrive is not an escape hatch.
+      # Measured 2026-08-18 with the plain string form and no .env present: exit 14,
+      # "Failed to load .env: no such file or directory" - the file failed in precisely the
+      # situation it exists for.
+      #
+      # NEEDS COMPOSE >= 2.24. The laptop was on 2.19.1 and was upgraded for this
+      # (`brew install docker-compose`, now 5.5.0). A box older than 2.24 rejects the
+      # mapping form with "env_file.0 must be a string".
+      - path: ../../.env
+        required: false
 
     environment:
       PROSPECTOR_STORE_DIR: /data/store
@@ -42,6 +71,12 @@ services:
       STORE_API_URL: ${STORE_API_URL:-https://api.mumchimp.com}
       # Off unless the operator says otherwise, for the reason in the header.
       ENGINE_BACKUPS_ENABLED: ${ENGINE_BACKUPS_ENABLED:-false}
+
+    # The ops console, and nothing else in this image, listens. Bound to localhost by
+    # default: on a laptop nobody else should reach it, and on a rented box a reverse proxy
+    # terminates TLS in front of it. On Fly this same port is published by [http_service].
+    ports:
+      - "127.0.0.1:${CONSOLE_PORT:-8611}:8611"
 
     volumes:
       # A bind mount, not a named volume: the whole reason to run here is to inspect the
@@ -56,3 +91,129 @@ services:
 
     # The store is one SQLite database and one append-only ledger. Never `scale: 2`.
     stop_grace_period: 60s
+
+  # ---------------------------------------------------------------------------------------
+  # The store API. Owns the catalogue, orders, entitlements and the money rail.
+  # ---------------------------------------------------------------------------------------
+  api:
+    profiles: ['store', 'all']
+    build:
+      # Context is store_platform/, not the repo root: the Dockerfile copies nuget.config and
+      # src/Store.Api/ from there. A narrower context fails with "failed to calculate
+      # checksum ... /nuget.config: not found", which reads like a missing file.
+      context: ../../store_platform
+      dockerfile: src/Store.Api/Dockerfile
+    image: prospector-store-api:local
+    container_name: prospector-store-api
+
+    env_file:
+      # Optional on purpose. A fresh `git clone` on a rented box has no .env yet, and a
+      # stack that cannot even be PARSED before its secrets arrive is not an escape hatch.
+      # Measured 2026-08-18 with the plain string form and no .env present: exit 14,
+      # "Failed to load .env: no such file or directory" - the file failed in precisely the
+      # situation it exists for.
+      #
+      # NEEDS COMPOSE >= 2.24. The laptop was on 2.19.1 and was upgraded for this
+      # (`brew install docker-compose`, now 5.5.0). A box older than 2.24 rejects the
+      # mapping form with "env_file.0 must be a string".
+      - path: ../../.env
+        required: false
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: Data Source=/data/store.db
+      payments__active_provider: stripe
+      # One value drives every link the API puts in an email.
+      Email__WebBaseUrl: ${SITE_SCHEME:-https}://${SITE_DOMAIN:-mumchimp.com}
+
+    ports:
+      - "127.0.0.1:${API_PORT:-5291}:8080"
+
+    volumes:
+      # Its own directory. The API's SQLite database is not the engine's store and the two
+      # must never share a path.
+      - ./data-api:/data
+
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+    healthcheck:
+      # The same path Fly checks, so a green container here means the same thing it means
+      # there. `wget -q -O-` because the aspnet runtime image carries no curl.
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8080/catalog >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # ---------------------------------------------------------------------------------------
+  # The storefront the buyer sees.
+  # ---------------------------------------------------------------------------------------
+  web:
+    profiles: ['store', 'all']
+    build:
+      context: ../../store_platform/src/Store.Web
+      dockerfile: Dockerfile
+      # NEXT_PUBLIC_* is baked into the JavaScript bundle at BUILD time, not read at start.
+      # That is why these are build args and not `environment:`. It also means changing the
+      # domain requires a REBUILD, not a restart - which is the honest cost of a rename and
+      # is worth knowing before the day you do it.
+      args:
+        NEXT_PUBLIC_SITE_URL: ${SITE_SCHEME:-https}://${SITE_DOMAIN:-mumchimp.com}
+        NEXT_PUBLIC_API_URL: ${SITE_SCHEME:-https}://${API_DOMAIN:-api.mumchimp.com}
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
+        NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION:-}
+        NEXT_PUBLIC_BING_SITE_VERIFICATION: ${NEXT_PUBLIC_BING_SITE_VERIFICATION:-}
+    image: prospector-store-web:local
+    container_name: prospector-store-web
+
+    environment:
+      NODE_ENV: production
+
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+
+    # Only ordering, not readiness - compose will not wait for the API to be healthy unless
+    # asked, and the storefront renders a degraded page rather than crashing without it.
+    depends_on:
+      api:
+        condition: service_started
+
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:3000/api/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------------------
+  # A GitHub Actions runner. Off unless asked for, because it executes code from every pull
+  # request - including one a stranger opened.
+  # ---------------------------------------------------------------------------------------
+  runner:
+    profiles: ['ci', 'all']
+    build:
+      context: ../..
+      dockerfile: deploy/runner/Dockerfile
+    image: prospector-runner:local
+
+    # NOT container_name, and NOT env_file. Two deliberate omissions.
+    #
+    # No container_name, because runners scale: `docker compose --profile ci up -d --scale
+    # runner=4` needs compose to name them, and a fixed name caps the fleet at one.
+    #
+    # No env_file, because ../../.env holds the Stripe keys, the MiniMax key and the store
+    # credentials. A runner must never hold the money keys. It gets exactly two variables:
+    # the registration token and its labels.
+    environment:
+      # Empty, not `${VAR:?...}`: that form is evaluated when the FILE is parsed, so it
+      # walls off the engine too. deploy/runner/entrypoint.sh refuses an empty token,
+      # which is the same fence one layer later and only for the service that needs it.
+      GITHUB_RUNNER_PAT: ${GITHUB_RUNNER_PAT:-}
+      RUNNER_LABELS: ${RUNNER_LABELS:-self-hosted,linux,x64}
+
+    restart: unless-stopped
+    stop_grace_period: 90s

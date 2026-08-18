@@ -63,9 +63,9 @@ export function CheckSequence({ className }: { className?: string }) {
       {/* THE IDEA ENTERING. Named, in its own words, before anything is done to it -- a run
           with an anonymous subject is a diagram, not a demonstration. */}
       <div className="rounded-md bg-surface2 p-5 sm:p-6">
-        <p className="text-caption text-subtle">The idea that went in</p>
-        <h3 className="mt-2 text-h2 font-semibold leading-tight text-text">{report.title}</h3>
-        <p className="mt-2 max-w-[62ch] text-meta leading-relaxed text-muted">{report.oneLiner}</p>
+        <p className="mono">The idea that went in</p>
+        <h3 className="mt-2 leading-tight sub">{report.title}</h3>
+        <p className="mt-2 max-w-[62ch] lede">{report.oneLiner}</p>
         {/* ONE PROOF-LINE FORMAT SITEWIDE (MASTER-BRIEF section 10). This line, the catalogue
             row, the summary strip below and the /sample hero all said the same thing in four
             different wordings, because each was written where it stood. The wording is now one
@@ -144,7 +144,7 @@ export function CheckSequence({ className }: { className?: string }) {
                       merely pushed back, which is the defect VerdictChip exists to end. */}
                   <VerdictChip kind={supported ? 'survived' : 'pushed-back'} />
                 </div>
-                <p className="mt-1.5 max-w-[62ch] text-meta leading-relaxed text-muted">
+                <p className="mt-1.5 max-w-[62ch] lede">
                   {plainEnglish(check.rationale)}
                 </p>
                 {domains.length > 0 && (

@@ -105,6 +105,7 @@ describe('mono is the data voice', () => {
      * nine the total would read 99.
      *
      *   91  after the mockup walk (2026-08-18)
+ *   92  after the hero kicker went mono (2026-08-18)
      *
      * WHY IT GREW BY ONE. `SourceChip` gained a third variant, `pill`, which is the drawing's
      * `.srcchip` (`mockups/index.html:89`): a bordered full-round chip carrying a source
@@ -113,11 +114,18 @@ describe('mono is the data voice', () => {
      * it in `HeroEvidenceStrip`, which is the defect `sourceChipIsTheOnlyOne.test.ts` exists to
      * stop. The same walk added the home page's `.split` card, whose two LABELS are NOT counted
      * here: they are words under a tally, so they are not mono, per the audit above.
+ *
+ * WHY IT GREW BY ONE AGAIN. The home page's hero kicker is mono now. It reads
+ * "From PRICE, N packs in the catalogue" -- a price and a count, both quantities, which is the
+ * declared scope of this file. It was sans from 2026-08-14, when a founder review said mono on
+ * the most commercial line of the page read as terminal output. The founder's instruction of
+ * 2026-08-18 is that the built page match the drawing, and `mockups/index.html` sets `.kicker`
+ * in IBM Plex Mono at 13px. The comment at the call site records both decisions.
      *
      * Raising this number still means claiming a new kind of DATA exists. Say which kind.
      */
     const total = TSX.reduce((n, f) => n + (f.src.match(/\bfont-mono\b/g)?.length ?? 0), 0);
-    expect(total, `font-mono usages: ${total}`).toBeLessThanOrEqual(91);
+    expect(total, `font-mono usages: ${total}`).toBeLessThanOrEqual(92);
   });
 
   it('the caption size utility is not secretly a typeface', () => {
