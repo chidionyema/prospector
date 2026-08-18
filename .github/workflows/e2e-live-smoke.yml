@@ -40,7 +40,7 @@ jobs:
     # A deploy that failed did not change the site, so there is nothing new to smoke; running
     # anyway would attribute a pre-existing failure to a deploy that never landed.
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
-    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
 
     defaults:
       run:
