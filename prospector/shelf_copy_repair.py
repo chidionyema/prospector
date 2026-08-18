@@ -14,11 +14,20 @@ repair moved upstream of the spend.
 
 One definition, two callers, so the sweep and the engine can never disagree about what a clean
 line is or what a rewrite is allowed to say.
+
+THE LENGTH IS THE GATE'S, NOT THE PROMPT'S. This used to ask for "under 200 characters" while
+`field_write.ONE_LINER_CUT_AT` — the only length the catalogue enforces — is 280. Together with
+"keep every fact", that made some lines unsatisfiable. On 2026-08-18 pack 83f2e75faa80bb60 sent
+a 318-character, fact-dense line into that ask: MiniMax M3 reasoned to its 65536-token ceiling
+and returned no answer, three times, for 23 minutes and $0.059. A 262-character rewrite passed
+the gate immediately. The prompt renders the constant now, so the ask and the grade cannot drift
+apart again.
 """
 from __future__ import annotations
 
 import re
 
+from .field_write import ONE_LINER_CUT_AT
 from .pack_linter import check_shelf_copy
 
 SYSTEM = (
@@ -42,7 +51,7 @@ RULES
 - Do NOT name a customer group the line does not already name. If the line does not say who
   the customers are, describe what the business does and stop; inventing an audience is
   inventing a fact.
-- One sentence, under 200 characters, plain words a stranger to the trade reads once.
+- One sentence, under {limit} characters, plain words a stranger to the trade reads once.
 
 Return JSON: {{"one_liner": "<the rewritten line>"}}"""
 
@@ -119,7 +128,8 @@ def rewrite_one(op, title: str, line: str, attempts: int = 2) -> str | None:
     note = ""
     for attempt in range(max(1, attempts)):
         try:
-            got = op.complete_json(SYSTEM, USER.format(title=title, line=line) + note)
+            prompt = USER.format(title=title, line=line, limit=ONE_LINER_CUT_AT)
+            got = op.complete_json(SYSTEM, prompt + note)
         except Exception as exc:  # an outage is not a verdict on the copy
             raise RewriteUnavailable(f"rewrite call failed: {exc}") from exc
         new = (got or {}).get("one_liner", "") if isinstance(got, dict) else ""
