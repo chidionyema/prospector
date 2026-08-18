@@ -440,7 +440,11 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      # Skipped on our own runners. Their disk persists between jobs, so ~/.nuget/packages is
+      # already there and actions/cache spends 454s (measured, run 32091486436) restoring a
+      # directory nothing deleted. Kept for hosted runners, whose disk really is destroyed.
       - name: Cache NuGet packages
+        if: runner.environment != 'self-hosted'
         uses: actions/cache@v4
         with:
           path: ~/.nuget/packages
@@ -490,7 +494,10 @@ jobs:
           node-version: "22"
           # npm ci re-downloaded every package on every run. setup-node's own cache keys off
           # the lockfile, so a PR that does not change dependencies skips the download.
-          cache: npm
+          # Empty on our own runners: setup-node's cache uploads and downloads node_modules
+          # through GitHub's cache service, and the box already has it. 239s measured on
+          # run 32091486436. Hosted runners still get the cache.
+          cache: ${{ runner.environment == 'self-hosted' && '' || 'npm' }}
           cache-dependency-path: store_platform/src/Store.Web/package-lock.json
 
       - name: Cache Next.js build
@@ -553,7 +560,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
+          cache: ${{ runner.environment == 'self-hosted' && '' || 'npm' }}
           cache-dependency-path: store_platform/src/Ops.Console/package-lock.json
 
       - name: Cache Next.js build
