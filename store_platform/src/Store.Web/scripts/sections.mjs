@@ -30,7 +30,19 @@ const PAGES = [
   ['sample.html', '/sample'],
 ];
 
-const norm = (s) => s.replace(/\s+/g, ' ').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[—–]/g, '-').trim();
+const norm = (s) => s.replace(/\s+/g, ' ').trim();
+
+/**
+ * The comparison key. Lowercased and stripped of everything that is not a letter or a digit.
+ *
+ * Two reasons, both of which produced a false miss on the first run. `innerText` returns text as
+ * RENDERED, so a class carrying `text-transform:uppercase` (`.eyebrow`, every label on the site)
+ * comes back in caps and never matches the drawing's sentence case. And punctuation legitimately
+ * differs: the drawing writes an em-dash, our source is barred from carrying one, so the same
+ * sentence reads `A - B` in the drawing and `A, B` on the page. Neither is a missing section, and
+ * a check that cries wolf about them gets ignored, which is how the real misses survive.
+ */
+const key = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
 
 /** Split a drawing into its author-declared sections. */
 function sections(html) {
@@ -44,7 +56,26 @@ function sections(html) {
     last = { n: m[1], name: m[2].trim(), at: m.index };
   }
   if (last) parts.push({ n: last.n, name: last.name, html: body.slice(last.at) });
-  return parts;
+  if (parts.length) return parts;
+
+  /*
+   * ONLY `index.html` NUMBERS ITS SECTIONS. The first run of this script reported twelve findings
+   * on the home page and NOTHING on the other nine, and printed a page header for each of them,
+   * so it read as nine clean pages. That is the same failure it was written to catch, committed
+   * by the check itself: silence presented as a pass.
+   *
+   * Every drawing does use `<section>`, so that is the fallback boundary, named by its first
+   * heading. Anything before the first `<section>` is a section too, or the page's opening would
+   * go unchecked.
+   */
+  const chunks = body.split(/(?=<section\b)/i);
+  return chunks
+    .map((html, i) => {
+      const h = /<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/i.exec(html);
+      const name = h ? norm(h[1].replace(/<[^>]*>/g, '')).slice(0, 48) : 'opening';
+      return { n: String(i + 1), name, html };
+    })
+    .filter((s) => s.html.trim());
 }
 
 /** The prose a drawing prints: text nodes only, no markup, no data. */
@@ -69,12 +100,12 @@ for (const [file, route] of PAGES) {
   if (only.length && !only.includes(file.replace('.html', ''))) continue;
   const html = await readFile(path.join(ROOT, 'docs/design/mumchimp-build-bundle/mockups', file), 'utf8');
   await page.goto('http://localhost:3000' + route, { waitUntil: 'networkidle', timeout: 60000 });
-  const built = norm(await page.evaluate(() => document.body.innerText));
+  const built = key(norm(await page.evaluate(() => document.body.innerText)));
   console.log(`\n═══ ${route} ═══`);
   for (const sec of sections(html)) {
     const lines = prose(sec.html);
     if (!lines.length) continue;
-    const absent = lines.filter((l) => !built.includes(l));
+    const absent = lines.filter((l) => !built.includes(key(l)));
     const pct = Math.round(((lines.length - absent.length) / lines.length) * 100);
     const mark = pct === 100 ? 'OK  ' : pct >= 60 ? 'PART' : 'GONE';
     console.log(`${mark} ${pct.toString().padStart(3)}%  ${sec.n} · ${sec.name}  (${lines.length - absent.length}/${lines.length})`);
