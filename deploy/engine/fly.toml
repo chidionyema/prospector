@@ -1,0 +1,47 @@
+# The engine on Fly. Addresses and sizes only — every behaviour is in the image, which is
+# the property that makes this repeatable to a third provider. Moving hosts means writing
+# the equivalent 40 lines for the new provider, not porting the engine.
+#
+# Deliberately absent: `[http_service]`. Omitting it means Fly allocates NO public IP, so
+# this app has no internet-facing surface at all. The engine needs none — it makes
+# outbound calls and writes a volume. The ops console, which CAN restart the daemon,
+# change config and publish to the shelf behind one shared password, is reached over
+# `fly proxy` (a WireGuard tunnel to the private 6PN address), never over the internet.
+
+app = "prospector-engine"
+primary_region = "lhr"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PROSPECTOR_STORE_DIR = "/data/store"
+  PROSPECTOR_USAGE_WALL_MARKER = "/data/state/claude_usage_limit.json"
+  CLAUDE_CONFIG_DIR = "/data/state/claude"
+  # Production is the one side that writes the R2 bucket. The laptop failback leaves this
+  # unset, so a machine brought back up for a drill cannot overwrite the offsite copy of
+  # the store it is being restored FROM.
+  ENGINE_BACKUPS_ENABLED = "true"
+  # The storefront API. On the laptop this defaulted to http://localhost:5291
+  # (prospector/bridge.py:610), which in a container resolves to the container itself and
+  # would fail every publish with a connection refused that reads like an API outage.
+  STORE_API_URL = "https://api.mumchimp.com"
+
+[mounts]
+  source = "prospector_store"
+  destination = "/data"
+
+# ONE machine. Not a preference — the store is single-writer SQLite plus append-only
+# JSONL, and the daily spend cap is computed by reading that ledger. Two machines would
+# each have their own volume, each count their own share of the spend against the same
+# $100 cap, and each publish to the same live Stripe account. `bridge.py` mints a Price
+# and writes the catalogue row in one decision; two engines means two Prices for one
+# product.
+[[vm]]
+  size = "shared-cpu-2x"
+  memory = "4gb"
+
+# auto_stop would suspend the machine between requests. There are no requests: the
+# scheduler is a cadence, not a service. A stopped machine simply does not generate.
+[deploy]
+  strategy = "immediate"

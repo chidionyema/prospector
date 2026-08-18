@@ -97,6 +97,11 @@ MIN_SUPPORTED_CLAIMS = 3
 # floor-copy defect, so it is omitted — and omitted means left alone.
 COPY_FIELDS = (
     "cardLine", "headline", "subhead", "whatYouGet",
+    # `theProblem` and `marketSize` are the opportunity fields added on 2026-08-16. They are
+    # empty on every pack generated before that date, so this backfill is how a live pack gets
+    # them without being re-vetted: it re-runs content_gen against the stored dossier and
+    # patches the catalogue row. An empty `marketSize` is a correct result and stays empty.
+    "theProblem", "marketSize",
     "proofPoint", "whoPays", "effortTag", "timeToFirstRevenue",
 )
 
@@ -152,6 +157,8 @@ def catalog_payload(listing: Dict[str, Any]) -> Dict[str, Any]:
         "headline": to_plain_text(listing.get("headline"), collapse=True)[:140],
         "subhead": to_plain_text(listing.get("subhead"), collapse=True)[:280],
         "whatYouGet": plain_lines(listing.get("what_you_get"))[:5],
+        "theProblem": to_plain_text(listing.get("the_problem"), collapse=True),
+        "marketSize": to_plain_text(listing.get("market_size"), collapse=True),
         "proofPoint": to_plain_text(listing.get("proof_point"), collapse=True),
         "whoPays": to_plain_text(listing.get("who_pays"), collapse=True),
         "effortTag": (listing.get("effort_tag") or "").strip(),
@@ -254,7 +261,14 @@ def generate_listing(quality, checker, dossier: Dict[str, Any]) -> Optional[Dict
     candidate = dossier.get("candidate") or {}
     supported = supported_claims(dossier)
     return artifacts._gen_one_content(
-        quality, checker, json.dumps(candidate), json.dumps(supported), supported, "listing_page")
+        quality, checker, json.dumps(candidate), json.dumps(supported), supported, "listing_page",
+        # The raw candidate dict as well as its JSON projection, because `_normalize_listing`
+        # derives `facets.mechanism` from `candidate.structural_form` and that projection is
+        # written for a model to read, not for the deriver. Without it a backfilled listing
+        # would take its mechanism from the model while a freshly generated one takes it from
+        # the declared form, and the same field would mean two different things depending on
+        # which producer happened to write the pack.
+        candidate=candidate)
 
 
 def patch_copy(api_url: str, key: str, pack_id: str,

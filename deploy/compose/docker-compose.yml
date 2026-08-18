@@ -1,0 +1,58 @@
+# The engine on any box with Docker. This file is the proof that the Fly move is not a
+# lock-in: it runs the SAME image, from the same Dockerfile, with the same supervisor
+# process table. Fly contributes a volume, a set of secrets and a private network. Nothing
+# else about the engine is Fly's.
+#
+# It has three jobs and all three are real:
+#
+#   1. The abort gate. Before a Fly volume exists, `docker compose up` on the laptop runs
+#      a tick against a COPY of the store. If the image is broken, it is broken here, for
+#      free, instead of after the cutover.
+#   2. The escape hatch. If Fly is down or becomes expensive, this is what runs the engine
+#      on a rented Linux box the same evening — one `git clone`, one `.env`, one restore
+#      of the store, `docker compose up -d`.
+#   3. The failback drill. Step 12 restores the offsite backup into ./data and starts the
+#      engine here, which is the reverse restore drill run for real rather than asserted.
+#
+# It does NOT run production. `ENGINE_BACKUPS_ENABLED` is deliberately absent so a
+# developer's `docker compose up` cannot write over production's offsite backup, and the
+# store lives in a local ./data directory that is nobody else's.
+
+services:
+  engine:
+    build:
+      # The build context is the repo root, two levels up. The Dockerfile expects it:
+      # `COPY . /app` copies the repo, and .dockerignore at the root keeps the 691 MB
+      # store out of it.
+      context: ../..
+      dockerfile: deploy/engine/Dockerfile
+    image: prospector-engine:local
+    container_name: prospector-engine
+
+    # Secrets come from a file, never from this YAML, so the file that is committed
+    # carries no key. On Fly the same variables arrive via `fly secrets set`; the
+    # container cannot tell the difference, which is the point.
+    env_file:
+      - ../../.env
+
+    environment:
+      PROSPECTOR_STORE_DIR: /data/store
+      PROSPECTOR_USAGE_WALL_MARKER: /data/state/claude_usage_limit.json
+      CLAUDE_CONFIG_DIR: /data/state/claude
+      STORE_API_URL: ${STORE_API_URL:-https://api.mumchimp.com}
+      # Off unless the operator says otherwise, for the reason in the header.
+      ENGINE_BACKUPS_ENABLED: ${ENGINE_BACKUPS_ENABLED:-false}
+
+    volumes:
+      # A bind mount, not a named volume: the whole reason to run here is to inspect the
+      # store with ordinary tools while the engine writes it, and to drop a restored
+      # backup into place without going through `docker cp`.
+      - ./data:/data
+
+    # `unless-stopped` rather than `always`: an operator who stops the engine to take a
+    # backup has stopped it, and a reboot must not quietly undo that. Two engines writing
+    # one store is the failure this whole migration is arranged to prevent.
+    restart: unless-stopped
+
+    # The store is one SQLite database and one append-only ledger. Never `scale: 2`.
+    stop_grace_period: 60s

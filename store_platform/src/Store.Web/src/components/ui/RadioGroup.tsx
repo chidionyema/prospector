@@ -44,7 +44,7 @@ export function RadioGroup<T extends string>({
     >
       <legend className="text-body font-semibold text-text">
         {label}
-        {required && <span className="text-danger"> *</span>}
+        {required && <span className="text-error"> *</span>}
       </legend>
       {hint && !error && (
         <p id={`${groupId}-hint`} className="text-caption text-muted">
@@ -64,7 +64,7 @@ export function RadioGroup<T extends string>({
               // indistinguishable from it, so "selected" was unrenderable.
               'has-[:checked]:border-text has-[:checked]:bg-surface2',
               'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus',
-              error ? 'border-danger' : 'border-border',
+              error ? 'border-error' : 'border-border',
             )}
           >
             <input
@@ -93,7 +93,7 @@ export function RadioGroup<T extends string>({
         ))}
       </div>
       {error && (
-        <p id={`${groupId}-error`} role="alert" className="text-caption text-danger">
+        <p id={`${groupId}-error`} role="alert" className="text-caption text-error">
           {error}
         </p>
       )}

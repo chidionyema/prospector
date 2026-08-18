@@ -5,6 +5,7 @@ import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { PageHeader, Skeleton } from '@/components/ui';
 import { AuthPanel } from '@/components/account/AuthPanel';
 import { AccountPanel } from '@/components/account/AccountPanel';
+import { ReturnBlocks } from '@/components/account/ReturnBlocks';
 import { useAuth } from '@/lib/auth/AuthContext';
 
 /**
@@ -59,12 +60,24 @@ export default function AccountPage() {
   return (
     <MarketingLayout
       breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Your account' }]}
-      breadcrumbsWidth="3xl"
+      breadcrumbsWidth="6xl"
     >
       <Head>
         <meta name="robots" content="noindex, nofollow" />
       </Head>
-      <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+      {/* THE SHELL, NOT A THIRD ONE OF ITS OWN (2026-08-18, founder: "ensure the members
+          account page has the same polish as the rest of the site").
+
+          This was `max-w-3xl px-4 py-12 sm:px-6 lg:px-8`: a 768px column at three different
+          gutters, none of them the 20px the header and footer use, on the one page a paying
+          customer sees most. Against a 1080px header it read as a different site. It is now the
+          same measure and the same gutter as every band on every other page.
+
+          THE SIGNED-OUT FORM DOES NOT GET WIDER: `AuthPanel` is capped at `max-w-md` below, which
+          is why that cap was put on the panel rather than on this wrapper in the first place. What
+          the extra 312px is for is the SIGNED-IN branch -- owned packs, receipts and the shortlist
+          are wide rows, and `mockups/account.html` draws them across the full wrap. */}
+      <div className="mx-auto max-w-[1080px] px-5 pt-6 pb-16">
         <PageHeader
           title={status === 'authenticated' ? 'Your account' : 'Sign in'}
           description={
@@ -113,6 +126,12 @@ export default function AccountPage() {
           )}
           {status === 'authenticated' && <AccountPanel />}
         </div>
+
+        {/* MASTER-BRIEF section 7 `/account`: owned packs with download links first (AccountPanel
+            above, whose Orders tab opens on the library), shortlist second, new since your last
+            visit third. Both of the last two are per-browser and render nothing when empty, so a
+            new customer sees exactly the page they see today. */}
+        {status === 'authenticated' && <ReturnBlocks />}
       </div>
     </MarketingLayout>
   );

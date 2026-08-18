@@ -57,8 +57,6 @@ httpx>=0.27
 # Cloudflare R2 (S3-compatible) deliverable upload — bridge.py R2Uploader. Without it the R2 path
 # silently disables and packs publish unlisted (list-only-after-upload).
 boto3>=1.34
-# Operator control center (supervised dashboard) + its tests
-streamlit>=1.40
 # Three dependencies the engine imports LAZILY, inside the function that needs them:
 #   stripe   -> bridge.py:911         (money rail: product/price provisioning)
 #   ddgs     -> retrieval.py:656      (DuckDuckGo search provider)
@@ -77,12 +75,11 @@ exa_py>=2.14
 # that constraint is why F2's radar chart is hand-written SVG instead of matplotlib.
 openpyxl>=3.1
 # tools/meta_shape_monitor.py imports numpy at module top level, and
-# tests/unit/test_meta_shape_monitor.py is in the CI suite. It resolves today only because
-# streamlit happens to pull numpy in transitively, which is precisely the accident this file
-# exists to stop: the machine-independence gate
+# tests/unit/test_meta_shape_monitor.py is in the CI suite. It used to resolve only because
+# streamlit pulled numpy in transitively. Streamlit was deleted on 2026-08-18, so this line is
+# now the only thing installing numpy. The machine-independence gate
 # (tests/test_suite_is_machine_independent.py:179) parametrizes over prospector/**/*.py ONLY,
-# so a direct import under tools/ is invisible to it and would break the day streamlit drops
-# the transitive edge.
+# so a direct import under tools/ is invisible to it and would not have caught the break.
 numpy>=1.26
 # Added 2026-08-15 for the pack's own quality floor, after the founder read a rebuilt pack and
 # asked why nothing had caught its repetition. All three are imported INSIDE the function that

@@ -1484,7 +1484,7 @@ plus subprocess inheritance, because most of this code (daemon, backfill driver,
 runs as its own process.
 
 Converted: **19 call-time cwd-relative literals**, all in `prospector/control_center/` —
-`readers.py` (13), `pages/_resume.py` (3), `runner.py` (2) — plus `decay.py` and `unlist_killed.py`
+`readers.py` (13), `pages/_resume.py` (3), `runner.py` (2) — plus `decay.py` and `unlist_killed.py`  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 from the §23.6 list. Grep for the literal in that package now returns nothing.
 
 **Left alone, deliberately:** 9 module-level constants that are already `__file__`-anchored
@@ -2611,7 +2611,7 @@ $ grep -rn "PAUSE" prospector/ tools/ scripts/ --include='*.py' | grep -i "unlin
 ```
 
 — and the control centre only prints `"PAUSE kill switch ON … Delete it to resume."`
-(`control_center/pages/_overview.py:112`). The deleter is outside the process, so it cannot be
+(`control_center/pages/_overview.py:112`). The deleter is outside the process, so it cannot be  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 prevented from here. It can be **recorded**: every cell now stamps `quiet`, and the headline carries
 `quiet_fence: {held, cells_observed, cells_unfenced, lost_at_cell, note}`.
 

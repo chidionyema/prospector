@@ -35,15 +35,21 @@ export default function AboutPage() {
   return (
     <MarketingLayout
       breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'About' }]}
-      breadcrumbsWidth="3xl"
+      breadcrumbsWidth="6xl"
     >
       <Seo
         title={`About ${BRAND.name} - who is behind this`}
         description={`Why ${BRAND.name} exists, in the words of the person who built it, and where the engine that kills most of the ideas came from.`}
       />
 
-      <section className="mx-auto max-w-3xl px-6 py-10 md:py-24">
-        <p className="mb-3 text-caption font-medium text-muted">
+      {/* THE SHELL, NOT A COLUMN OF ITS OWN. This was `max-w-3xl px-6 py-10 md:py-24`: a 768px
+          measure at a 24px gutter, so the About page's left edge missed the logo above it by 180px.
+          The drawing puts every page in one frame, `.wrap{max-width:1080px;padding:0 20px}`
+          (`mockups/about.html`), and gives the page head `.pagetop{padding:14px 0 8px}` under the
+          crumb. The ESSAY keeps its own 56ch measure inside this frame; that is a reading measure
+          and it is set on the prose itself, below. */}
+      <section className="mx-auto max-w-[1080px] px-5 pt-3.5 pb-16">
+        <p className="mb-2 text-caption font-medium text-muted">
           About
         </p>
         {/* The headline IS the thesis, quoted from the story below it rather than summarising it.
@@ -61,9 +67,23 @@ export default function AboutPage() {
         {/* `id` is the ownership anchor, not a styling hook: §5.3 gives the founder story exactly
             one page, and `factOwnership.test.ts` matches on this id. It was previously told twice,
             here and from `FOUNDER.bio`. */}
+        {/* THE ESSAY SETTING (MASTER-BRIEF section 3 type table, "About essay body", and section 7
+            `/about`): 18px, line-height 1.68, `--ink`, 56ch measure.
+
+            IT IS A READING SETTING, NOT A SEVENTH SCALE STEP. tokens.css carries six sizes and a
+            note recording that a seventh was deleted for being a seventh. This is not one: the UI
+            scale sizes labels, headings and controls, and this sizes one page of continuous prose,
+            which is the one thing on the site a reader reads rather than scans. It is written here,
+            on the only page that has an essay, rather than promoted to a token nothing else uses.
+
+            56ch, not 60ch, and `text-text`, not `text-muted`. The old setting was the site's
+            standard body paragraph: 16px of grey at the width of a marketing column. That is the
+            right treatment for a paragraph under a heading and the wrong one for eight hundred
+            words of first-person writing, which is why the one human page on the site read like a
+            product description. */}
         <div
           id="founder-story"
-          className="mt-8 max-w-[60ch] space-y-5 text-body leading-relaxed text-muted"
+          className="mt-8 max-w-[56ch] space-y-5 text-[1.125rem] leading-[1.68] text-text"
         >
           <p>
             Launching them was. After a few attempts that never quite got off the ground, a habit
@@ -83,19 +103,75 @@ export default function AboutPage() {
             So I built the part I kept losing to doubt, and made it check every idea harder than I
             ever did.
           </p>
-          <p>
+          {/* `.quiet` in the mockup: this paragraph steps out of the story and back to the
+              product, so it drops to the muted ink the rest of the site uses. */}
+          <p className="text-muted">
             That is the seed {BRAND.name} grew from. It runs on ideas that are not mine now, and it
             publishes its workings either way: the few it clears, and the many more it kills.
           </p>
         </div>
 
+        {/* THE SIGNATURE RULE. A hairline above the name, at the essay's own measure, which is what
+            closes a signed piece of writing and says the first person stops here. It was a 12px
+            caption sitting directly under the last paragraph, indistinguishable from the metadata
+            captions everywhere else on the site, so the one page written by a person did not read
+            as signed by one. */}
         {hasFounder() && (
-          <p className="mt-6 text-caption font-medium text-muted">
-            {FOUNDER.name}, who built {BRAND.name}
+          <p className="mt-7 max-w-[56ch] border-t border-border-strong pt-5 text-body text-muted">
+            <strong className="font-semibold text-text">{FOUNDER.name}</strong>, who built{' '}
+            {BRAND.name}
           </p>
         )}
 
-        <div className="mt-14">
+        {/* THE FACTS ROW (`mockups/about.html`, `.facts{grid-template-columns:repeat(3,1fr);
+            border:1px solid var(--line);border-radius:var(--r-card)}`, cells at 17px of padding,
+            figures at 24px/680). It stacks to one column on small screens, which is the drawing's
+            own media rule.
+
+            THE THIRD CELL IS NOT THE DRAWING'S. The drawing's third cell reads "On the shelf 74".
+            That is the survivor count, and the founder barred it on 2026-08-13: `lib/stats.ts`
+            exports no such field, so no page can print it and tsc refuses any attempt. The kill
+            rate is the same fact from the side that is allowed, it comes from the same file, and a
+            reader can check it against the other two cells.
+
+            THE LABELS ARE NOT THE DRAWING'S EITHER. `.facts span` is mono, uppercase and letter
+            spaced. Two guard tests refuse all three: `monoIsTheDataVoice` ("an eyebrow is
+            language, not data") and `weightAndCasePolicy` ("sets nothing in all-caps via CSS",
+            "letterspaces nothing out into small caps"). Those rules are older founder decisions
+            with tests behind them, so the labels keep the site's caption setting and the drawing
+            loses this one. */}
+        <dl className="mt-6 grid grid-cols-1 overflow-hidden rounded-card border border-line bg-surface sm:grid-cols-3">
+          <div className="p-[17px] sm:border-r sm:border-line">
+            <dt className="mb-1.5 text-caption font-medium text-subtle">
+              Researched
+            </dt>
+            <dd className="text-h3 font-semibold tabular-nums text-text">
+              {totals.researched.toLocaleString('en-GB')}
+            </dd>
+          </div>
+          <div className="border-t border-line p-[17px] sm:border-l-0 sm:border-r sm:border-t-0">
+            <dt className="mb-1.5 text-caption font-medium text-subtle">
+              Killed, published
+            </dt>
+            <dd className="text-h3 font-semibold tabular-nums text-text">
+              {totals.killed.toLocaleString('en-GB')}
+            </dd>
+          </div>
+          <div className="border-t border-line p-[17px] sm:border-t-0">
+            <dt className="mb-1.5 text-caption font-medium text-subtle">
+              Kill rate
+            </dt>
+            <dd className="text-h3 font-semibold tabular-nums text-text">
+              {totals.rejectRateLabel}
+            </dd>
+          </div>
+        </dl>
+
+        {/* `.rule2{border-top:2px solid var(--ink);margin:44px 0 0}`. A 2px ink rule, not a
+            hairline: it separates the personal half of the page from the mechanical half. */}
+        <hr className="mt-11 border-0 border-t-2 border-text" />
+
+        <div className="mt-8">
           <h2 className="text-h2 font-semibold text-text md:text-h1">
             Where the engine came from
           </h2>
@@ -112,7 +188,7 @@ export default function AboutPage() {
         <div className="mt-10 grid gap-3 sm:grid-cols-2">
           <Link
             href="/how-it-works"
-            className="rounded-md border border-border bg-surface p-6 transition-colors hover:border-border-strong"
+            className="rounded-card border border-line bg-surface p-5 transition-colors hover:border-border-strong"
           >
             <p className="text-meta font-semibold text-text">How it works</p>
             <p className="mt-1 text-meta leading-relaxed text-muted">
@@ -131,12 +207,12 @@ export default function AboutPage() {
           */}
           <Link
             href="/kill-log"
-            className="rounded-md border border-border bg-surface p-6 transition-colors hover:border-border-strong"
+            className="rounded-card border border-line bg-surface p-5 transition-colors hover:border-border-strong"
           >
             <p className="text-meta font-semibold text-text">The kill log</p>
             <p className="mt-1 text-meta leading-relaxed text-muted">
               Most ideas die. Every kill is public, with the argument that made it. The log is
-              the receipt behind the catalogue; the catalogue is what’s left.
+              the evidence behind the catalogue; the catalogue is what’s left.
             </p>
             <span className={textLinkClass('mt-3 inline-flex items-center gap-1 text-meta font-medium')}>
               Read it <Icon name="arrowRight" size={12} />
@@ -144,7 +220,11 @@ export default function AboutPage() {
           </Link>
         </div>
 
-        <div className="mt-14 rounded-md border border-text bg-surface p-8">
+        {/* THE CLOSING BLOCK (`mockups/about.html`, `.closing{border-top:2px solid var(--ink);
+            margin-top:46px;padding:34px 0 0}`). It was a bordered card on a surface fill, which
+            made the last thing on the page look like one more component. The drawing ends the page
+            on a rule and lets the two actions sit on the canvas. */}
+        <div className="mt-12 border-t-2 border-text pt-9">
           <p className="text-caption font-medium text-muted">
             Read before you buy
           </p>
@@ -155,13 +235,14 @@ export default function AboutPage() {
             Read a full report, unredacted. Every check, every verdict, every source link. Judge
             the pack by it.
           </p>
-          <div className="mt-6">
-            <Link
-              href="/sample"
-              className={buttonClasses({ size: 'lg' })}
-            >
+          {/* `.ctarow`: the free report, then the shelf. Two actions, gap 12px. */}
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link href="/sample" className={buttonClasses({ size: 'lg' })}>
               Read the free report
               <Icon name="arrowRight" size={14} />
+            </Link>
+            <Link href="/" className={buttonClasses({ size: 'lg', variant: 'ghost' })}>
+              Browse the packs
             </Link>
           </div>
         </div>

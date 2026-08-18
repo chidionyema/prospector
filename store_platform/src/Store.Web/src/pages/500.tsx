@@ -7,26 +7,41 @@ import { buttonClasses } from '@/components/ui';
 /**
  * 500. Shown when the server itself errors. Wrapped in the marketing chrome (nav + footer) for
  * consistency with the rest of the store; MarketingLayout fetches nothing and carries no providers,
- * so it stays safe on a failed render. The reassurance about funds matters most here: a server error
- * on a money surface must never read as "my hold is gone".
+ * so it stays safe on a failed render.
+ *
+ * MASTER-BRIEF section 7 `Errors`: name what happened, offer the one action that fixes it, do not
+ * apologise, do not be vague.
+ *
+ * "Your account and any funded request are unaffected" is copy from a different product. This store
+ * has no funded requests -- that is the-introduction-exchange's escrow language, carried over with
+ * the layout -- so the one sentence written to reassure a buyer about their money named a thing
+ * that does not exist here and left the thing that does, a payment, unmentioned.
+ *
+ * What a reader actually needs to know at a 500 is whether they have been charged. Stripe takes the
+ * payment and issues the download, and neither is this server, so a failure here cannot take money.
+ * That is a fact about the architecture, not a soothing noise, and it is the one worth printing.
  */
 export default function ServerError() {
   return (
     <MarketingLayout>
       <Seo title="Something went wrong" noindex />
-      <div className="flex min-h-[calc(100dvh-4rem)] items-center justify-center px-6 py-16">
-        <div className="max-w-md text-center">
-          <p className="text-body font-semibold text-muted">500</p>
-          <h1 className="mt-2 text-h1 font-semibold text-text">Something went wrong on our side</h1>
-          <p className="mt-3 text-body text-muted">
-            This is on us, not you. Your account and any funded request are unaffected. Please try
-            again in a moment.
-          </p>
-          <Link
-            href="/"
-            className={buttonClasses({ size: 'lg', className: 'mt-6' })}
-          >
-            Back to home
+      {/* Same frame as `404.tsx`, taken from `mockups/404.html` `.err`. The two error pages are one
+          treatment: mono code, 20ch headline, lede, then a row of actions. */}
+      <div className="mx-auto max-w-[1080px] px-5 pt-16 pb-10 text-center">
+        {/* Set as a caption, not in mono: see the note on the same line in `404.tsx`. */}
+        <p className="mb-[18px] text-caption font-medium text-subtle">500</p>
+        <h1 className="mx-auto mb-3.5 max-w-[20ch] text-h1 font-semibold text-text">
+          This page failed to load.
+        </h1>
+        <p className="mx-auto mb-[26px] max-w-[62ch] text-body leading-relaxed text-muted">
+          The fault is on our server, so nothing you did caused it. Payments and downloads are
+          handled by Stripe and are not affected: if you were buying a pack, you have not been
+          charged twice.
+        </p>
+        {/* ONE action: see the note in `404.tsx`. */}
+        <div className="flex justify-center">
+          <Link href="/" className={buttonClasses({ size: 'lg' })}>
+            Reload the catalogue
           </Link>
         </div>
       </div>

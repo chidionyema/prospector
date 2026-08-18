@@ -63,7 +63,7 @@ export default function PrivacyPage() {
             Lawful basis: performance of our contract with you.
           </>,
           <>
-            <strong>Transactional email metadata</strong>, delivery receipts and open/click
+            <strong>Transactional email metadata</strong>, delivery confirmations and open/click
             events recorded by our email provider to confirm that order-confirmation and
             download emails were delivered successfully. Lawful basis: legitimate interests in
             ensuring delivery of purchased goods.

@@ -20,7 +20,7 @@ import pytest
 import yaml
 
 from prospector import operator as _op
-from prospector.control_center import config_editor as _ce
+from prospector.ops import config_editor as _ce
 from prospector.ops import routing as R
 
 _CONFIG = """\

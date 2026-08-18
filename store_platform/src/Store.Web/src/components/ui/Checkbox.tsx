@@ -47,7 +47,7 @@ export function Checkbox({ label, hint, error, id, className, disabled, ...rest 
               'group-hover:border-text',
               'peer-checked:border-primary peer-checked:bg-primary',
               'peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus',
-              error ? 'border-danger' : 'border-border-control',
+              error ? 'border-error' : 'border-border-control',
             )}
           >
             {/* The check inherits the box's on-primary (white): invisible on the white unchecked box,
@@ -65,7 +65,7 @@ export function Checkbox({ label, hint, error, id, className, disabled, ...rest 
         </span>
       </label>
       {error && (
-        <p id={`${inputId}-error`} role="alert" className="text-caption text-danger">
+        <p id={`${inputId}-error`} role="alert" className="text-caption text-error">
           {error}
         </p>
       )}

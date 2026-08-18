@@ -123,7 +123,7 @@ echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] launching focused yield batch with --publ
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(".").resolve()))
-from prospector.control_center.runner import launch
+from prospector.ops.runner import launch
 
 argv = [
     str(Path(".venv/bin/python").resolve()),

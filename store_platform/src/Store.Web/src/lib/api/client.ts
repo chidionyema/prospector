@@ -111,6 +111,15 @@ export interface Pack {
    *  fall back to the title. Length is enforced engine-side by dropping, never truncating
    *  (`prospector/artifacts.py::_card_line`). */
   cardLine?: string;
+  /** THE OPPORTUNITY, not the mechanism. `cardLine`, `headline` and `oneLine` all answer "what
+   *  is it and what does it do"; these two answer "what is broken and how big is it", which is
+   *  what a buyer weighing a year of their life needs first (founder, 2026-08-16).
+   *
+   *  `marketSize` is absent far more often than it is present, by design. The engine may only
+   *  state a size a verified claim states, so "no figure" is the honest and common answer and
+   *  the page prints nothing rather than a hedge (`prompts/content_gen.md`, OPPORTUNITY RULES). */
+  theProblem?: string;
+  marketSize?: string;
   whoPays?: string;
   /** The legacy `low | medium | high` string. Superseded by `effort`, and deliberately NOT
    *  mapped into it: those three values were never defined to mean "how much of delivery is
@@ -228,6 +237,8 @@ const PROSE_FIELDS = [
   'oneLine',
   'headline',
   'cardLine',
+  'theProblem',
+  'marketSize',
   'whoPays',
   'proofPoint',
   'subhead',

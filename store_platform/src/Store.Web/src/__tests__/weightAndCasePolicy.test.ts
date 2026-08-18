@@ -109,24 +109,37 @@ describe('weight and case policy', () => {
       'no --text-*--font-weight tokens found; the pattern stopped matching, so the assertion '
         + 'below would pass on an empty list. Fix the pattern, do not delete the test.',
     ).toBeGreaterThan(0);
-    // DISPLAY IS EXEMPT, ONE STEP, NAMED (2026-08-14). `--text-display--font-weight` is 660,
+    // 2026-08-18: the exemption now covers the three DISPLAY STEPS, because the mockups cut all
+    // three heavy (display 690, h1 665, h2 655) and the site was running them at 560/560/520. The
+    // ban this test enforces is on SYNTHESISED bolds -- a browser faux-bolding a face that has no
+    // heavy cut -- and Inter Variable declares `font-weight: 100 900`, asserted at the bottom of
+    // this test, so every one of those numbers is a real position on the axis. Body and meta are
+    // still capped at 600: nothing in the mockups sets running text above 550.
+    //
+    // ORIGINAL NOTE (2026-08-14). `--text-display--font-weight` is 660,
     // transcribed from the specimen the founder approved. The ban exists to stop SYNTHESISED
     // bolds -- a browser faux-bolding a 400-only face -- and Switzer is variable across 100-900,
     // asserted below, so 660 is a real cut on the axis. The exemption is written as a filter on
     // the token NAME rather than as a raised threshold on purpose: raising it to 700 would let
     // any future step drift up silently, which is the thing this test is for.
+    const DISPLAY_STEPS = new Set(['display', 'h1', 'h2']);
     const capped = [...CSS.matchAll(/--text-([a-z0-9-]+)--font-weight:\s*(\d{3})/g)]
-      .filter((m) => m[1] !== 'display')
+      .filter((m) => !DISPLAY_STEPS.has(m[1]))
       .map((m) => Number(m[2]));
     expect(
       capped.filter((w) => w > 600),
       `no weight above 600 may be declared outside display, found: ${weights.join(', ')}`,
     ).toEqual([]);
-    // ...and the exemption is a CEILING too, not an open door.
-    const display = Number(
-      CSS.match(/--text-display--font-weight:\s*(\d{3})/)?.[1] ?? '0',
-    );
-    expect(display, 'display may reach 660 and no further').toBeLessThanOrEqual(660);
+    // ...and the exemption is a CEILING too, not an open door. 690 is the mockups' heaviest cut
+    // and the scale may not pass it; a step wanting 700 needs a drawing that uses 700.
+    const displaySteps = [...CSS.matchAll(/--text-([a-z0-9-]+)--font-weight:\s*(\d{3})/g)]
+      .filter((m) => DISPLAY_STEPS.has(m[1]))
+      .map((m) => Number(m[2]));
+    expect(displaySteps.length, 'the display steps must still declare a weight').toBe(3);
+    expect(
+      displaySteps.filter((w) => w > 690),
+      'the display steps may reach 690 and no further',
+    ).toEqual([]);
     // And the face that renders them must still be the variable one; a static 400-only face
     // would make every 520/560 in the scale a synthesised weight again.
     expect(CSS, 'the sans face must declare a variable weight axis').toMatch(

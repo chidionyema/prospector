@@ -136,7 +136,10 @@ describe('US-4 — Mobile-first pack detail', () => {
     // The mobile-first restructure must not regress the desktop layout. The
     // right-rail purchase card stays, with the same classes, on lg+.
     const keepsDesktopRail =
-      /hidden w-full shrink-0 lg:block lg:w-80/.test(page);
+      // Width-agnostic on purpose: the claim is that the rail is hidden below `lg` and a
+      // fixed-width block at `lg`, not that it is 20rem. The measure moved to the
+      // drawing's 394px on 2026-08-18.
+      /hidden w-full shrink-0 lg:block lg:w-/.test(page);
     expect(
       keepsDesktopRail,
       'pack/[id].tsx must keep the desktop right-rail purchase card (hidden below lg, shown on lg+)',

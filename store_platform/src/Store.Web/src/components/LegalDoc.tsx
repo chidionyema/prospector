@@ -4,9 +4,16 @@ import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
 import { TOS_VERSION } from '@/lib/config';
 import DocRail, { type DocSectionRef } from '@/components/marketing/DocRail';
+import { buttonClasses } from '@/components/ui';
 
 interface LegalDocProps {
   title: string;
+  /**
+   * One sentence under the title, at `.lede.big` (`mockups/refund.html`). The drawing gives every
+   * legal page a plain-language summary above the clauses, so a reader gets the answer before the
+   * contract. Optional: a page with no honest one-line summary should not invent one.
+   */
+  lede?: string;
   /** Doc version string, defaults to the registration-recorded TOS_VERSION (L-04/L-05). */
   version?: string;
   /** Show the "interim, pending counsel" banner. Off by default; see note below. */
@@ -68,7 +75,7 @@ function formatVersionDate(version: string): string | null {
  * for review before it is finalised, but nothing sets it now. Semantic tokens only
  * (UI-STANDARDS); no raw palette, no dangerouslySetInnerHTML.
  */
-export default function LegalDoc({ title, version = TOS_VERSION, interim = false, children }: LegalDocProps) {
+export default function LegalDoc({ title, lede, version = TOS_VERSION, interim = false, children }: LegalDocProps) {
   /*
     THE CLAUSE RAIL.
 
@@ -108,13 +115,21 @@ export default function LegalDoc({ title, version = TOS_VERSION, interim = false
       breadcrumbsWidth="6xl"
     >
       <Seo title={title} />
-      {/* `6xl` and a grid: the rail is new width beside the document, not taken out of it, so the
-          copy keeps the `max-w-2xl` measure it has always had. Below `lg` the rail does not render
-          and this collapses to exactly the single column it was. */}
-      <div className="mx-auto max-w-6xl px-6 md:px-8">
-        <div className="py-12 md:py-16 lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-12">
-          <DocRail sections={sections} eyebrow="clauses" className="lg:pt-1" />
-          <article className="max-w-2xl space-y-10">
+      {/* THE DRAWING'S LEGAL GRID (`mockups/refund.html`, `.legal{grid-template-columns:1fr 230px;
+          gap:34px;align-items:start}`) inside the site's one frame, `.wrap{max-width:1080px;
+          padding:0 20px}`.
+
+          TWO CHANGES OF SUBSTANCE. The band was `max-w-6xl px-6 md:px-8`, a 1152px measure at a
+          24/32px gutter, so the legal pages were 72px wider than the header above them and their
+          left edge missed the logo. And the clause rail sat on the LEFT at 16rem: the drawing puts
+          it on the RIGHT at 230px, which is what keeps the document itself starting at the same x
+          as every other page's content. The article now comes first in the DOM too, so a screen
+          reader and a keyboard both reach the contract before the index of it.
+
+          Below `lg` the rail does not render and this collapses to the single column it was. */}
+      <div className="mx-auto max-w-[1080px] px-5">
+        <div className="pt-3.5 pb-16 lg:grid lg:grid-cols-[minmax(0,1fr)_230px] lg:items-start lg:gap-[34px]">
+          <article className="space-y-10">
             <header className="space-y-6">
               <div className="space-y-2">
                 <h1 className="text-h1 font-semibold text-text">{title}</h1>
@@ -134,6 +149,8 @@ export default function LegalDoc({ title, version = TOS_VERSION, interim = false
                   <span className="whitespace-nowrap">version {version}</span>
                 </p>
               </div>
+              {/* `.lede.big` (17.5px, 62ch): the plain-language answer above the contract. */}
+              {lede && <p className="max-w-[62ch] text-body leading-relaxed text-muted">{lede}</p>}
               {interim && (
                 <div className="rounded-md border border-border bg-bg/50 px-6 py-5 text-meta leading-relaxed text-muted">
                   <strong className="text-text font-semibold">Interim beta terms.</strong> This document reflects how the
@@ -143,12 +160,29 @@ export default function LegalDoc({ title, version = TOS_VERSION, interim = false
               )}
             </header>
             <div className="space-y-8">{withAnchors}</div>
-            <div className="border-t border-border pt-8 mt-12">
-              <Link href="/" className="flex items-center gap-2 py-3 text-meta font-semibold text-accent transition-colors hover:text-accent-hover">
-                &larr; Back to home
-              </Link>
+            {/* THE CLOSING BLOCK (`mockups/refund.html`, `.closing{border-top:2px solid var(--ink);
+                margin-top:46px;padding:34px 0 0}`). It was a single "Back to home" text link under
+                a hairline. The catalogue is already one click away in the crumb above and in the
+                header, so the end of a legal document is worth spending on the two things a reader
+                who got this far actually wants: the free report and the FAQ. */}
+            <div className="mt-12 border-t-2 border-text pt-9">
+              <h2 className="text-h2 font-semibold text-text">
+                Read one free before you buy anything.
+              </h2>
+              <p className="mt-3.5 max-w-[56ch] text-body leading-relaxed text-muted">
+                A complete report, unredacted. No payment, no email, no account.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link href="/sample" className={buttonClasses({ size: 'lg' })}>
+                  Read the free report
+                </Link>
+                <Link href="/faq" className={buttonClasses({ size: 'lg', variant: 'ghost' })}>
+                  Read the FAQ
+                </Link>
+              </div>
             </div>
           </article>
+          <DocRail sections={sections} eyebrow="clauses" className="lg:pt-1" />
         </div>
       </div>
     </MarketingLayout>
@@ -164,7 +198,7 @@ interface LegalHeadingProps {
 /** Section heading inside a legal doc. `scroll-mt-24` clears the sticky header on a jump. */
 export function LegalHeading({ children, id }: LegalHeadingProps) {
   return (
-    <h2 id={id} className="scroll-mt-24 text-h2 font-semibold text-text pt-4">
+    <h2 id={id} className="scroll-mt-24 pt-4 text-h3 font-semibold text-text">
       {children}
     </h2>
   );
@@ -172,13 +206,16 @@ export function LegalHeading({ children, id }: LegalHeadingProps) {
 
 /** Body paragraph inside a legal doc. */
 export function LegalText({ children }: { children: React.ReactNode }) {
-  return <p className="text-body leading-relaxed text-muted">{children}</p>;
+  // `max-w-[68ch]` and `leading-[1.68]`: the drawing's `.legal p` (`mockups/refund.html`). The
+  // measure lives on the paragraph now rather than on a `max-w-2xl` wrapper, so the clause rail
+  // sits beside a document whose own text sets its width.
+  return <p className="max-w-[68ch] text-body leading-[1.68] text-muted">{children}</p>;
 }
 
 /** Bulleted list inside a legal doc. */
 export function LegalList({ items }: { items: React.ReactNode[] }) {
   return (
-    <ul className="list-disc space-y-3 pl-5 text-body leading-relaxed text-muted">
+    <ul className="max-w-[68ch] list-disc space-y-3 pl-5 text-body leading-[1.68] text-muted">
       {items.map((item, i) => (
         <li key={i}>{item}</li>
       ))}

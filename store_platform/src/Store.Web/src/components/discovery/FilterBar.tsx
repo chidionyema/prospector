@@ -149,6 +149,12 @@ export function FilterBar({
     <div
       data-filter-bar="1"
       className={cx(
+        // Sticky under the header (MASTER-BRIEF section 9). The offset is the --h-header token,
+        // not a number, so it follows the header when it contracts on scroll. z-20 sits below the
+        // header's z-30 and above the grid.
+        // If this ever stops sticking, look for an `overflow-hidden` on an ancestor before looking
+        // at anything here: it disables sticky on every descendant and reports no error.
+        'sticky top-[var(--h-header)] z-20',
         'flex flex-wrap items-center gap-x-3 gap-y-2 rounded-card border border-line bg-surface p-3',
         className,
       )}

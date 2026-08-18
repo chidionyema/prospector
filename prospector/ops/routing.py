@@ -184,7 +184,7 @@ def set_moat_primary(cfg, tiers: Iterable[str], *, actor: str = "unknown",
     if prior is not None:
         return {**prior, "replayed": True}
 
-    from prospector.control_center import config_editor as _ce
+    from prospector.ops import config_editor as _ce
 
     requested = _chain(list(tiers))
     raw, readable = _ce._read_config_raw()

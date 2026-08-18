@@ -11,7 +11,13 @@ import { RESEARCH_STATS } from '@/lib/stats';
 // Types only in the client bundle; `buildKillIndex` is referenced solely inside `getStaticProps`,
 // which Next removes from the page's client JS along with everything only it imports. That is what
 // keeps `data/kill-log.json` (456 KB) out of the browser -- see `lib/killLog.server.ts`.
-import { buildKillIndex, type KillDetail, type KillIndex, type KillSummary } from '@/lib/killLog.server';
+import {
+  buildKillIndex,
+  isStageLabel,
+  type KillDetail,
+  type KillIndex,
+  type KillSummary,
+} from '@/lib/killLog.server';
 import { fetchCatalogStats, fetchKillLogDetail } from '@/lib/api/client';
 import { track } from '@/lib/analytics';
 import type { GetStaticProps } from 'next';
@@ -184,13 +190,29 @@ export default function KillLogPage({
   // is a sliver and the chart shows nothing.
   const distributionMax = Math.max(...distribution.map((d) => d.count), 1);
 
-  const toggle = (slug: string) =>
+  /**
+   * Open or close one record, and count the opens (MASTER-BRIEF section 9, `kill_row_click`).
+   *
+   * The beacon fires on open only. A close is the same click on the same row, so counting both
+   * would double every reader who finished reading and tidied up after themselves.
+   *
+   * The cause travels with the slug because the whole question this event answers is which
+   * causes readers choose to open. Joining a slug back to its cause afterwards would need the
+   * kill log at the time of the click, which we do not keep.
+   *
+   * The beacon is sent here rather than inside the `setOpen` updater. React calls an updater
+   * twice in development StrictMode, so a side effect in there is a double count that only
+   * shows up in the data, never on screen.
+   */
+  const toggle = (slug: string, cause: string) => {
+    if (!open.has(slug)) track('kill_row_click', `${slug}:${cause}`);
     setOpen((prev) => {
       const next = new Set(prev);
       if (next.has(slug)) next.delete(slug);
       else next.add(slug);
       return next;
     });
+  };
 
   return (
     <MarketingLayout
@@ -223,7 +245,13 @@ export default function KillLogPage({
           the CLAIM IT CORRECTS -- the implied 1,364-row page -- and it still does, by a whole
           screen, since the table is far below. */}
       <SectionBand bg="white" width="6xl" className="pt-14 pb-8 md:pt-20 md:pb-10">
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,46rem)_minmax(0,1fr)] lg:items-start lg:gap-16">
+        {/* THE RIGHT COLUMN WAS TOO NARROW TO READ. At `max-w-6xl` with `lg:px-10` the content box
+            is 1072px; a 46rem left column and a 4rem gap left the caveat 272px, so a 40-word
+            paragraph became a tall strip jammed against the container's right edge (founder,
+            2026-08-16: "content is squashed against container esp on the right"). Narrowing the
+            left column to 40rem and closing the gap to 3rem gives the caveat 384px, which is about
+            38 characters a line instead of 27. */}
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,40rem)_minmax(0,1fr)] lg:items-start lg:gap-12">
         <div className="max-w-3xl">
           <p className="text-caption font-medium text-subtle">The kill log</p>
           {/* THE HERO: ONE COUNT. It read "1,364 killed. 80 survived.", and the second half was
@@ -295,7 +323,7 @@ export default function KillLogPage({
             The chart is the page's thesis in one object, and it is placed above the table because
             it is what makes the table legible: a reader who knows incumbency is the largest
             publishable cause reads 188 incumbency rows as a pattern rather than as repetition. */}
-        <section aria-labelledby="distribution-heading" className="rounded-md border border-border bg-surface p-6 md:p-7">
+        <section aria-labelledby="distribution-heading" className="rounded-card border border-border bg-surface p-6 md:p-7">
           <h2 id="distribution-heading" className="text-h2 font-semibold text-text">
             How ideas die
           </h2>
@@ -303,6 +331,18 @@ export default function KillLogPage({
             Every rejection across all {killed.toLocaleString('en-GB')} kills, by the check that
             fired first. The checks stop at the first hard failure, so each idea is counted once,
             against the cheapest gate that killed it.
+          </p>
+          {/* A STAGE IS NOT A CHECK, and until now the page drew them identically. Three of these
+              causes are stages of the run rather than findings about the idea: the idea scored too
+              low across all six checks, the evidence never grounded, or adversarial review was not
+              decisive. A reader comparing "no durable advantage" with "scored too low" was
+              comparing a finding with a tally, and nothing on the page marked the difference.
+              `isStageLabel` keys on the LABEL for the reason given where it is defined: every
+              surface on this page is keyed on label, and two engine keys can share one. */}
+          <p className="mt-2 max-w-[68ch] text-meta text-muted">
+            Causes marked <span className="font-mono text-caption text-subtle">stage</span> are
+            points in the run rather than findings about the idea: it scored too low overall, or
+            the evidence never grounded well enough to rule on.
           </p>
           {/* ── THE SIGNATURE (MASTER-BRIEF §7) ────────────────────────────────────────────────
               The grid FIRST, the bars second, and they are the same numbers twice on purpose.
@@ -337,6 +377,7 @@ export default function KillLogPage({
                   title={d.label}
                 >
                   {d.label}
+                  {d.isStage && <span className="ml-1.5 text-subtle"> stage</span>}
                 </span>
                 {/* The bar is drawn against the LARGEST cause, not against the total. Against the
                     total every bar but one is a sliver and the chart shows nothing; against the
@@ -468,7 +509,7 @@ export default function KillLogPage({
                 <tbody key={entry.slug} id={entry.slug} className="scroll-mt-24 border-b border-border align-baseline">
                   <tr
                     className="cursor-pointer transition-colors hover:bg-surface3"
-                    onClick={() => toggle(entry.slug)}
+                    onClick={() => toggle(entry.slug, entry.gateLabel)}
                   >
                     <td className="py-2.5 pr-4">
                       <button
@@ -479,7 +520,7 @@ export default function KillLogPage({
                         // propagation keeps a click on the button from toggling twice.
                         onClick={(e) => {
                           e.stopPropagation();
-                          toggle(entry.slug);
+                          toggle(entry.slug, entry.gateLabel);
                         }}
                         className="text-left font-mono text-caption leading-snug text-muted line-through decoration-kill/60 hover:text-text"
                       >
@@ -505,6 +546,9 @@ export default function KillLogPage({
                     </td>
                     <td className="py-2.5 pr-4 font-mono text-caption text-kill-strong">
                       {entry.gateLabel}
+                      {isStageLabel(entry.gateLabel) && (
+                        <span className="ml-1.5 text-subtle"> stage</span>
+                      )}
                     </td>
                     <td className="py-2.5 pr-4 text-right font-mono text-caption tabular-nums text-subtle">
                       {/* A literal 0, not a blank or a placeholder glyph. This column is
@@ -600,7 +644,11 @@ export default function KillLogPage({
           nothing here for you to read. Every kill above names the check it failed and why.
         </p>
 
-        <div className="mt-10 rounded-md border border-border bg-surface2 p-8 md:p-10">
+        {/* THE CLOSING BLOCK (`mockups/kill-log.html`, `.closing`): a 2px rule in ink across the
+            full measure, then the offer. It was a filled card with a border. The drawing uses the
+            rule everywhere a page ends, and a filled panel here reads as one more module rather
+            than the end of the page. */}
+        <div className="mt-12 border-t-2 border-text pt-9">
           <h2 className="max-w-[26ch] text-h2 font-semibold text-text">
             Now read one that survived all of it.
           </h2>

@@ -1,0 +1,41 @@
+# The build context is the repo root, and the repo root contains 691 MB of live runtime
+# state. Without this file every `docker build` uploads the catalogue, the 255 MB spend
+# ledger and every dossier to the daemon before the first instruction runs — and worse,
+# `COPY . /app` would bake a point-in-time copy of the store INTO the image, where it
+# would shadow the volume mount for anything that resolved a path before the mount.
+#
+# The store is state. It arrives on the volume, never in the image.
+store/
+storage/
+signals/pending/
+graphify-out/
+
+# Build outputs and dependency trees. The image installs its own.
+.venv/
+venv/
+node_modules/
+**/node_modules/
+**/.next/
+**/bin/
+**/obj/
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# Local-only. `.env` in particular must never be baked in: secrets reach the container
+# through `fly secrets` or compose's env_file, both of which keep them out of the image
+# layers and out of anything that can be pulled.
+.env
+.env.*
+.git/
+.github/
+.claude/
+.lux/keys/
+*.log
+
+# Documentation and tests are not needed at runtime and are the bulk of the remaining
+# context. The tests still run in CI against the repo, not against the image.
+docs/
+specs/
+.pytest_cache/
+htmlcov/

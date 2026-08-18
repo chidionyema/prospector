@@ -241,6 +241,16 @@ meaning unmonitored.
 
 Written now, while nothing is on fire. Each is a runbook section, not a paragraph.
 
+> **"Move the engine off this Mac" has outgrown a paragraph.** The founder asked for the full
+> migration on 2026-08-17, with the laptop kept as a cold failover and the process repeatable to a
+> third provider. That audit, its 16 edge cases, the phased plan, the user stories and the estimate
+> live in **`docs/ENGINE_MIGRATION_PROGRAM.md`** — read it before touching KEY-1. The half-day
+> estimate at the foot of this section covers only the paths-and-systemd half. The founder set the
+> deadline to one night on 2026-08-17, so the plan is 12 steps and about 6 hours with two abort
+> gates, not the 9.5-day programme the first audit priced. Its first blocker is not infrastructure:
+> it is `claude_cli`'s dependency on the Claude Code subscription
+> (`prospector/claude_cli.py:191`).
+
 **Move the host (Fly → anywhere).** Both services are plain Dockerfiles, so the images run
 anywhere. What must be rewritten: the two GitHub workflows (`superfly/flyctl-actions`),
 `deploy_web.sh`, the three `fly.toml` files, and 9 hardcoded `fly.dev` references in
@@ -393,11 +403,20 @@ and the founder can read all six on the console without a terminal.
    and API · restore the store DB · restore the engine · rotate a key · move host, domain, DB,
    storage, payments · what each alert means and the first three checks · handle a dispute or
    refund · who to fund when a provider 402s.
-2. **`scripts/doc_lint.py` in CI**: fail on any doc naming a provider absent from `config.yaml`, any
-   referenced script path that does not exist, any 0-byte target. This is what stops ENG-6 recurring.
+2. ~~**`scripts/doc_lint.py` in CI**~~ **DONE 2026-08-18.** It runs two ways, and it needed both.
+   `tests/unit/test_doc_lint_never_increases.py` holds a per-file ratchet in the python lane, but
+   that lane is path-filtered on `.py`, `tests/`, `scripts/` and a few config files, so a pull
+   request changing ONLY documentation skipped it — the one change that can break a doc. The
+   `guard` job now runs `python3 scripts/doc_lint.py --check` on every pull request with no path
+   filter, no virtualenv and no extra runner slot.
 3. Move superseded docs to `docs/attic/` with a one-line reason. Never delete — the incidents are
    the reasoning behind current rules.
-4. Fix `RUN.md:95` (Gemini) and `RUN.md:60` (`prospector/publish.py` is a 0-byte stub).
+4. ~~Fix `RUN.md:95` (Gemini) and `RUN.md:60`~~ **DONE 2026-08-18.** Step 7 already pointed at
+   `publish/publish.py`, the real 10,627-byte module; the 0-byte `prospector/publish.py` stub it
+   used to name has no importer anywhere in the repo and is deleted. Three Gemini references
+   survived the earlier pass — the retrieval line in step 4, the `generate --resume` comment and a
+   heading claiming the batch command reads `GEMINI_API_KEY`. All three now name the config key
+   that decides, not a brand, which is what made them go stale in the first place.
 5. **Console:** the **Compliance** screen — every item in BIZ-1..4 with a date and an owner — and a
    deep link from every alert to the runbook section that answers it.
 **Done when:** `doc_lint.py` exits 0 in CI, the runbook covers every task above, and every red line

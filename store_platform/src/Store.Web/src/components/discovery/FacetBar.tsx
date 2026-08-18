@@ -85,10 +85,20 @@ function ValueButton({
   onClick: () => void;
   children: React.ReactNode;
 }) {
-  // A zero-count option stays clickable (the near-miss state rescues it honestly) but must not
-  // LOOK like a live door: fifteen identical pills where four lead nowhere makes the buyer test
-  // options instead of reading them. The count already says "0"; the dimming lets the eye skip
-  // it without reading every number.
+  // A zero-count option is DISABLED, not hidden and not merely dimmed (MASTER-BRIEF section 9,
+  // checklist box 15). Hidden is worse than either: an option that disappears takes with it the
+  // information that the category exists at all, so the buyer cannot tell a filter they have
+  // already narrowed past from one this shelf has never carried.
+  //
+  // WHAT THIS CHANGED, SAID OUT LOUD. Until now the chip stayed clickable and the near-miss view
+  // rescued the empty result. That rescue no longer runs for a zero-count facet, because the
+  // control that led to it is now inert. The trade the brief is making is that fifteen identical
+  // pills where four lead nowhere makes a buyer test options instead of reading them, and reading
+  // them is the whole job of a facet bar.
+  //
+  // `disabled` rather than `aria-disabled`: the count is already rendered beside the label, so a
+  // screen reader still hears that the option exists and holds nothing. Keeping it focusable would
+  // put a control in the tab order that does nothing when activated.
   const dead = count === 0 && !active;
   return (
     <button
@@ -101,9 +111,10 @@ function ValueButton({
       // filled-vs-outlined is a difference in kind. That reasoning now lives in `chipClasses`,
       // which the kill log and the FAQ render too -- it was stated here and nowhere else, which is
       // how the FAQ ended up shipping the square tinted version this comment argues against.
+      disabled={dead}
       className={chipClasses({
         selected: active,
-        className: cx('gap-1.5 whitespace-nowrap', dead && 'opacity-45'),
+        className: cx('gap-1.5 whitespace-nowrap', dead && 'cursor-not-allowed opacity-45'),
       })}
     >
       {children}

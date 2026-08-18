@@ -2,8 +2,9 @@ import React from 'react';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { buttonClasses, Glyph, Icon, SourceChipRow, textLinkClass } from '@/components/ui';
+import { Badge, buttonClasses, Glyph, Icon, SourceChipRow, textLinkClass } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
+import { sourcesLabel } from '@/components/ui/ProofLine';
 import { Section, SectionBand } from '@/components/marketing/blocks';
 import { WaitlistCallout } from '@/components/waitlist/WaitlistCallout';
 import DocRail, { type DocSectionRef } from '@/components/marketing/DocRail';
@@ -125,8 +126,12 @@ function BlockView({ block }: { block: Block }) {
       // The section title on the page is the <h2>. A `##` inside the section is therefore an
       // <h3>, and a `###` an <h4> -- the pack's own hierarchy shifted down one to sit under this
       // page's, rather than two competing h2 levels in the same column.
+      // `text-h3` WAS A DEAD CLASS. `--text-h3` is deleted from the theme (tokens.css:1002), and an
+      // unmapped utility in Tailwind v4 emits NOTHING -- so this heading rendered at body size. The
+      // mockup's sub-heading step is `h3.sub{clamp(18px,3.2vw,22px);-.02em;655}`
+      // (mockups/sample.html:31), which is what `text-h2` carries here: clamp(19px,3.4vw,23px).
       return (
-        <h3 className="mt-9 text-h3 font-semibold text-text">
+        <h3 className="mt-9 text-h2 font-semibold text-text">
           <Rich nodes={block.nodes} />
         </h3>
       );
@@ -151,7 +156,9 @@ function BlockView({ block }: { block: Block }) {
       return (
         <ul className="mt-4 list-none space-y-2.5 p-0">
           {block.items.map((item, i) => (
-            <li key={i} className="flex max-w-[68ch] gap-3 text-meta leading-relaxed text-muted">
+            // 66ch, the drawing's reading measure for pack prose
+            // (`.sheet-body p{max-width:66ch}`, mockups/sample.html:284).
+            <li key={i} className="flex max-w-[66ch] gap-3 text-meta leading-relaxed text-muted">
               <span className="mt-2 h-1 w-1 flex-none rounded-full bg-text/40" aria-hidden />
               <span><Rich nodes={item} /></span>
             </li>
@@ -164,7 +171,9 @@ function BlockView({ block }: { block: Block }) {
       return (
         <p
           className={cx(
-            'mt-4 max-w-[68ch] leading-relaxed',
+            // `.sheet-body p{font-size:15.5px;line-height:1.65;max-width:66ch;margin-bottom:15px}`
+            // (mockups/sample.html:284). 66ch and a 16px step is the nearest the type scale carries.
+            'mt-4 max-w-[66ch] leading-relaxed',
             block.quote ? 'border-l-2 border-border pl-4 text-meta italic text-muted' : 'text-body text-muted',
           )}
         >
@@ -186,21 +195,29 @@ function BlockView({ block }: { block: Block }) {
  * became true on /sample and false in the hero; there are five call sites and one component.
  */
 function SourcePassage({ block }: { block: SourceBlock }) {
+  /* THE EVIDENCE DEVICE, taken from the drawing (`.evidence`, mockups/sample.html:84-87):
+     `border-left:2px solid var(--brand);background:var(--brand-tint);padding:15px 17px;
+     border-radius:0 12px 12px 0`, the quote at 15.5px/1.55 with a 64ch measure, and the
+     attribution under it in mono at 12px. It was a plain bordered white card, which is the same
+     object as every other card on the page -- the whole point of this block is that a quoted
+     passage is a different KIND of thing from our own prose, and the teal edge is what says so.
+     `rounded-r-md` is the bounded vocabulary's right-corner radius; the mockup's 0/12/12/0 has no
+     utility here and 8px is the nearest legal corner. */
   return (
-    <figure className="mt-5 rounded-md border border-border bg-surface p-5 md:p-6">
+    <figure className="mt-5 rounded-r-md border-l-2 border-brand bg-brand-tint px-4 py-4">
       {block.quote ? (
-        <blockquote className="max-w-[64ch] text-meta leading-relaxed text-text">
+        <blockquote className="max-w-[64ch] text-body leading-relaxed text-text">
           &ldquo;{block.quote}&rdquo;
         </blockquote>
       ) : (
-        <p className="text-meta leading-relaxed text-muted">
+        <p className="max-w-[64ch] text-body leading-relaxed text-muted">
           Read, but nothing in it was quotable as a clean passage.
         </p>
       )}
-      <figcaption className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border pt-4">
+      <figcaption className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
         <SourceChipRow sources={[{ url: block.url, host: block.host, label: block.label }]} />
         {block.year && (
-          <span className="font-mono text-caption text-muted">{block.year}</span>
+          <span className="font-mono text-caption text-subtle">{block.year}</span>
         )}
       </figcaption>
     </figure>
@@ -232,12 +249,27 @@ export default function SamplePage() {
           the page has one left edge. It was `6xl` with no grid once: the headline started at the
           6xl margin while every line of the report started at 7xl plus the 14rem rail, which is
           the two-left-margins defect `storefrontDesignContract` exists to catch. */}
-      <SectionBand bg="white" width="7xl" className="pt-14 pb-8 md:pt-20 md:pb-10">
-        <div className="lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-14">
+      {/* `.pagetop{padding:14px 0 8px}` (mockups/sample.html:66). The page top sits directly under
+          the breadcrumb in the drawing, not a band's worth of air below it: it was
+          `pt-14 pb-8 md:pt-20 md:pb-10`, so the h1 started 56-80px down where the drawing starts it
+          14px down. The grid is the reader's, so the headline shares a left edge with the prose. */}
+      <SectionBand bg="white" width="7xl" className="pt-3.5 pb-2">
+        <div className="lg:grid lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-[30px]">
           <div aria-hidden />
           <div className="min-w-0">
-            <p className="mb-4 text-caption font-medium text-muted">
-              The free sample · {report.sectionsShown} of {report.sectionsTotal} sections
+            {/* The drawing's top strip: a verdict pill, then the terms of the offer in mono, on one
+                line above the headline (`.metastrip` with `<span class="v s">Free to read</span>`,
+                mockups/sample.html:330). The section count stays because it is a fact off
+                sample-report.json and the drawing's page is a different sample from ours. */}
+            {/* NOT MONO, though `.metastrip` is (`mockups/sample.html`). The line is mostly words,
+                and `monoIsTheDataVoice.test.ts` caps the site's mono budget and holds the face for
+                figures. The drawing's position, size and colour survive; the face does not. */}
+            <p className="mb-3.5 flex flex-wrap items-center gap-2.5 text-caption text-subtle">
+              <Badge tone="success">Free to read</Badge>
+              <span>
+                no payment · no email · no account · {report.sectionsShown} of{' '}
+                {report.sectionsTotal} sections
+              </span>
             </p>
             {/* States what the thing IS and where it ends, in one line. The reader decides what
                 it proves; the headline does not tell them to be suspicious of us first, and it
@@ -275,7 +307,7 @@ export default function SamplePage() {
                   section the rail also lists. */}
               <a href={`#${EXCERPT[2]?.id ?? 'boundary'}`} className={textLinkClass('inline-flex items-center gap-2')}>
                 <Glyph name="source" className="text-success" />
-                {report.sourceCount} cited sources, six of them quoted below
+                {`${sourcesLabel(report.sourceCount)} cited, six of them quoted below`}
               </a>
               {freshnessLabel(report.verifiedAt) && (
                 <span className="inline-flex items-center gap-2">
@@ -322,7 +354,7 @@ export default function SamplePage() {
               </section>
             )}
 
-            <div className="rounded-md border border-border bg-surface p-8 md:p-9">
+            <div className="rounded-card border border-border bg-surface p-8 md:p-9">
               <span className="text-caption font-medium text-muted">The pack</span>
               <h2 className="mt-2 text-h2 font-semibold text-text md:text-h1">{report.title}</h2>
               <p className="mt-4 max-w-[68ch] text-body leading-relaxed text-muted">
@@ -393,7 +425,7 @@ export default function SamplePage() {
 
             <div
               id="buy"
-              className="mt-12 scroll-mt-24 rounded-md border border-border bg-surface p-8 text-center md:p-10"
+              className="mt-12 scroll-mt-24 rounded-card border border-border bg-surface p-8 text-center md:p-10"
             >
               <h2 className="mx-auto max-w-[26ch] text-balance text-h2 font-semibold text-text md:text-h1">
                 Every pack on the shelf opens like this.

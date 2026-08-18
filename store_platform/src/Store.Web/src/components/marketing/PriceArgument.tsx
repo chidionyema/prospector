@@ -38,7 +38,7 @@ import { formatGbp, type PriceRange } from '@/lib/priceRange';
 export function MethodCostAnchor({ range }: { range: PriceRange | null }) {
   const documentary = citedFigure('documentary-research');
   return (
-    <div className="rounded-md border border-border bg-surface p-6 md:p-8">
+    <div className="rounded-card border border-border bg-surface p-6 md:p-8">
       {/* h2, not h3. This is a top-level section of the page and is styled `text-h2` to say so;
           the tag disagreed with the type scale, and on /pricing that disagreement skipped a level
           and tripped axe's `heading-order`. The rule: the tag follows the ROLE, and the type scale
@@ -53,7 +53,7 @@ export function MethodCostAnchor({ range }: { range: PriceRange | null }) {
           cell to signal "this is the good one", which is the shape of a pricing table trying to
           steer rather than a comparison trying to inform. The numbers make the point unaided. */}
       <dl className="mt-6 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-md border border-border bg-surface2 p-6">
+        <div className="rounded-card border border-border bg-surface2 p-6">
           <dt className="text-caption font-medium text-subtle">
             {documentary.publisher},{' '}
             {new Date(documentary.publishedOn ?? documentary.checkedOn).getFullYear()} price list
@@ -63,7 +63,7 @@ export function MethodCostAnchor({ range }: { range: PriceRange | null }) {
             <span className="mt-1 block text-caption text-subtle">for {documentary.of}</span>
           </dd>
         </div>
-        <div className="rounded-md border border-border bg-surface2 p-6">
+        <div className="rounded-card border border-border bg-surface2 p-6">
           <dt className="text-caption font-medium text-subtle">A pack, already run</dt>
           <dd className="mt-2 text-meta text-text">
             <span className="font-mono font-semibold text-text">{range ? range.label : 'One payment'}</span>
@@ -109,7 +109,7 @@ export function ComparisonBlock({ range }: { range: PriceRange | null }) {
 
       <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Left: the category being compared against */}
-        <div className="flex flex-col rounded-md border border-border bg-surface2 p-6">
+        <div className="flex flex-col rounded-card border border-border bg-surface2 p-6">
           <div className="flex items-center gap-2">
             <Icon name="close" size={16} className="text-subtle" />
             <span className="text-body font-semibold text-text">Subscription idea feeds</span>
@@ -131,7 +131,7 @@ export function ComparisonBlock({ range }: { range: PriceRange | null }) {
         </div>
 
         {/* Right: the offer */}
-        <div className="flex flex-col rounded-md border border-border-strong bg-surface p-6">
+        <div className="flex flex-col rounded-card border border-border-strong bg-surface p-6">
           <div className="flex items-center gap-2">
             <Icon name="check" size={16} className="text-success" />
             <span className="text-body font-semibold text-text">A Mumchimp pack</span>
