@@ -26,25 +26,43 @@ from typing import Any, Callable, Optional
 
 #: What has to be built before this screen can answer the other half of PAY-1..PAY-3. Each entry
 #: names the route, so the gap is a ticket rather than an observation.
+#:
+#: Two of the original three are now built and are no longer listed here. `revenue-today` is
+#: `GET /internal/ops/sales`, rendered on the console's `/revenue`. `disputes-refunds` is
+#: `GET /internal/ops/disputes`, which reads our own reversed orders rather than calling Stripe,
+#: because `FulfilmentService.RevokeAsync` has already recorded every inbound reversal. Both are
+#: in `store_platform/src/Store.Api/Endpoints/OpsEndpoints.cs`.
 MISSING_READS: list[dict[str, str]] = [
     {
-        "id": "revenue-today",
-        "what": "money taken today, and the orders behind it",
-        "needs": "GET /internal/ops/sales-audit on Store.Api",
-        "why": "no route serves orders; the console will not compute revenue from local files, "
-               "which is how a dashboard invents a number the database disagrees with",
-    },
-    {
-        "id": "disputes-refunds",
-        "what": "open disputes and refunds (PAY-2)",
-        "needs": "GET /internal/ops/disputes on Store.Api, backed by the Stripe dispute list",
-        "why": "a dispute answered late is money lost by default, and nothing here can see one",
+        "id": "dispute-clock",
+        "what": "when a dispute actually arrived, not when the sale happened",
+        "needs": "a persisted reversal row (provider, kind, event id, received at) and the "
+                 "migration for it; RevokeAsync currently changes two status fields and drops "
+                 "the PaymentReversal record",
+        "why": "the evidence window on a chargeback is days. /internal/ops/disputes can only "
+               "show the ORIGINAL SALE date, so an operator sorting by it is sorting by the "
+               "wrong clock and will answer the oldest dispute last",
     },
     {
         "id": "canary-checkout",
         "what": "a real checkout, taken and refunded on a schedule",
         "needs": "an automation under ops/automations/ writing store/ops/canary_checkout.json",
         "why": "the rail reporting `live` proves the keys are live, not that a card clears",
+    },
+]
+
+# Writes the console cannot do, declared for the same reason as MISSING_READS: a money screen that
+# simply has no refund button reads as "refunds are handled elsewhere", and nobody can tell whether
+# that is true. Named here, it is a gap with an owner.
+MISSING_ACTIONS: list[dict[str, str]] = [
+    {
+        "id": "issue-refund",
+        "what": "refund a buyer from the console",
+        "needs": "a refund method on IPaymentProvider (IPaymentProvider.cs:5-35 has none) and the "
+                 "Stripe implementation behind it; the console can only SEE reversals Stripe has "
+                 "already told us about, via the webhook that calls FulfilmentService.RevokeAsync",
+        "why": "an operator who agrees to refund a buyer today has to do it in the Stripe "
+               "dashboard, and the revocation only reaches our database when the webhook lands",
     },
 ]
 
@@ -73,6 +91,7 @@ def money_view(cfg: Any, call: Callable[..., dict]) -> dict:
         "rail": rail,
         "shelf": shelf,
         "missing": MISSING_READS,
+        "missing_actions": MISSING_ACTIONS,
         "warnings": warnings,
     }
 
@@ -96,10 +115,9 @@ def _rail(call: Callable[..., dict]) -> dict:
         state = "never-ran"
     elif mode == "live":
         state = "live"
+    elif mode == "not-applicable":
+        state = "not-applicable"
     else:
-        # Anything else is treated as test, which the console shows as a fault. There used to be
-        # a "not-applicable" branch for a non-Stripe provider; the API can never send that mode,
-        # because the startup gate refuses to boot on a provider it does not recognise.
         state = "test"
 
     return {

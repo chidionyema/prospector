@@ -1470,6 +1470,11 @@ app.MapDeliveryEndpoints();
 // First-party storefront analytics (ingest + key-gated summary) — see Endpoints/AnalyticsEndpoints.cs.
 app.MapAnalyticsEndpoints();
 
+// The shop's operator surface: orders, revenue, delivery outbox. Key-gated reads, no writes —
+// see Endpoints/OpsEndpoints.cs. Every row it serves was already in the database with no route
+// to reach it, which is why the ops console could not see a single sale.
+app.MapOpsEndpoints();
+
 // Accounts: /v1/auth/* (register, login, refresh, logout, password reset, verify-email) and
 // /v1/auth/external/* (social sign-in, link/unlink) — see Auth/.
 app.MapAuthEndpoints();
