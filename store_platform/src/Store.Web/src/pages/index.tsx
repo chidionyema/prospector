@@ -39,6 +39,7 @@ import { PackCardHeader } from '@/components/ui/PackCardHeader';
    SAME row instead of four near-copies. `PackSpotlight` below is the other and only other format.
    `PackFigure` moved with the row because both formats draw it. */
 import { PackRow, PackRowList, PackFigure } from '@/components/discovery/PackRow';
+import { KillGateBand, SourcesBand } from '@/components/marketing/EvidenceBands';
 import { EvidenceBar } from '@/components/ui/EvidenceBar';
 
 
@@ -1348,6 +1349,8 @@ function CatalogBrowser({
                 </div>
               )}
 
+              <KillGateBand />
+
               {/* PRODUCT FIRST, THEN THE MEANS TO NARROW IT. See the note on `shelfControls`.
                   When the visitor has already filtered, `editorial` is false, so `newestRow` is
                   empty and this lands directly above the results -- which is correct: at that
@@ -2381,6 +2384,13 @@ export default function Home({ packs, stats, flags, initialState, market, curren
           /collections and /collections/[slug], which is where `CtaBand` is still the right closing shape). */}
       {/* `band_view` (MASTER-BRIEF section 9). This is the closing band, below the whole shelf,
           so its count against the hero's says how many readers got to the end of the page. */}
+      {/* THE SOURCES BAND (mockups/index.html section 12), after the shelf as drawn. The figure is
+          summed from the packs on this page, not typed in. */}
+      <SourcesBand
+        sourcesTotal={packs.reduce((n, p) => n + (p.sourceCount ?? 0), 0)}
+        packCount={packs.filter((p) => (p.sourceCount ?? 0) > 0).length}
+      />
+
       <SectionBand bandId="home-stress-tested" bg="surface2" width="7xl" className="py-10 md:py-24">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-16">
         <div className="max-w-[46rem]">

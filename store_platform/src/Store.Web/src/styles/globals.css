@@ -11,6 +11,29 @@
    footer follows every page's <h1> and an <h6> there skips four levels (axe `heading-order`).
    Same declarations as `.f-col h6` in the copied stylesheet, so the look is identical. */
 @layer components {
+  /* THE ONE REAL COLLISION IN THE COPIED STYLESHEET. Both drawings declare `.bars`: index.html
+     draws a row of kill-gate columns, pack-detail.html draws a stack of score bars, and
+     pack-detail is concatenated second so it wins. Scoping index's version to the band it lives
+     in restores it without touching either drawing's rules. */
+  .band .bars {
+    display: flex;
+    flex-direction: row;
+    gap: 3px;
+    align-items: flex-end;
+    height: 44px;
+    margin-top: 16px;
+  }
+  .band .bars i {
+    flex: 1;
+    max-width: 26px;
+    background: var(--dead);
+    border-radius: 1px;
+  }
+  .band .bars i.hot {
+    background: var(--kill);
+    opacity: 0.85;
+  }
+
   /* THE DRAWING WRITES SUB-HEADS AS <h3>. Pages that already spent their <h3> on a level below
      need the same look one level up, and heading order is not negotiable, so the drawing's
      `h3.sub` declarations are repeated for the other two levels. Same numbers, no new design. */
