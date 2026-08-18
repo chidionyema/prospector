@@ -105,84 +105,56 @@ export function CauseGrid({ distribution, className }: CauseGridProps) {
   const side = sideFor(total);
   const survivors = Math.max(0, total - counted - unattributed);
 
-  let cursor = 0;
-  const paths: React.ReactElement[] = [];
-
+  /* THE FIELD IS THE DRAWING'S `.causegrid` (`mockups/kill-log.html:250-251`): a 44-column grid
+     of square marks, one per idea, gap 1.5px, each mark `aspect-ratio:1` so the block sizes itself
+     from the column width. It was an SVG of packed run paths in a 38x38 square, which is a
+     different object on the page -- a square wash rather than a wide band of countable marks --
+     and no amount of CSS on the SVG would have made it the drawn one. */
+  const marks: string[] = [];
   causes.forEach((bar, i) => {
-    paths.push(
-      <path
-        key={bar.gate}
-        d={runPath(cursor, bar.count, side, MARK)}
-        className={RAMP[i] ?? TAIL}
-        aria-hidden="true"
-      />,
-    );
-    cursor += bar.count;
+    const paint = (RAMP[i] ?? TAIL).replace('fill-', 'bg-');
+    for (let k = 0; k < bar.count; k += 1) marks.push(paint);
   });
-
-  if (unattributed > 0) {
-    paths.push(
-      <path
-        key="__unattributed"
-        d={runPath(cursor, unattributed, side, MARK)}
-        className="fill-faint"
-        aria-hidden="true"
-      />,
-    );
-    cursor += unattributed;
-  }
-
-  if (survivors > 0) {
-    paths.push(
-      <path
-        key="__survived"
-        d={runPath(cursor, survivors, side, MARK)}
-        className="fill-survive"
-        aria-hidden="true"
-      />,
-    );
-  }
+  for (let k = 0; k < unattributed; k += 1) marks.push('bg-faint');
+  for (let k = 0; k < survivors; k += 1) marks.push('bg-survive');
 
   if (causes.length === 0) return null;
 
   return (
-    <figure className={cx('rounded-card border border-line bg-surface p-4', className)}>
-      <svg
-        viewBox={`0 0 ${side} ${side}`}
-        className="block w-full"
-        shapeRendering="crispEdges"
+    <figure className={cx('sigcard', className)}>
+      <div
+        className="causegrid"
         role="img"
-        aria-label={`Every idea we researched, one cell each, shaded by the check that killed it.`}
+        aria-label={`Every idea we researched, one mark each, shaded by the check that killed it. Each of the ${researched.toLocaleString('en-GB')} marks is one idea; the strongest red is the commonest cause of death, and the teal block is what got through.`}
       >
-        <desc>
-          {`Each of the ${researched.toLocaleString('en-GB')} cells is one idea. Red cells were killed on cited evidence, `}
-          {`the strongest red being the commonest cause of death. The teal block is what got through.`}
-        </desc>
-        {paths}
-      </svg>
+        {marks.map((paint, i) => (
+          <i key={i} className={paint} />
+        ))}
+      </div>
 
       {/* The legend is the key AND the ranking. Counts are the kill counts this page already
-          publishes; the teal block carries no number, per the 2026-08-13 directive. */}
-      <ul className="mt-4 grid grid-cols-1 gap-x-6 gap-y-1 font-mono text-caption text-subtle sm:grid-cols-2">
+          publishes; the teal block carries no number, per the 2026-08-13 directive.
+          `.legend` and `.swb` (`mockups/kill-log.html:252-253`) own the layout, the mono face and
+          the rule above; the utilities that used to set those here are removed rather than
+          layered, since mockup.css sits under the utility layer (globals.css:8). */}
+      <div className="legend">
         {causes.map((bar, i) => (
-          <li key={bar.gate} className="flex items-center gap-2">
-            <span aria-hidden className={cx('inline-block size-[9px] rounded-sm', (RAMP[i] ?? TAIL).replace('fill-', 'bg-'))} />
-            <span className="truncate">{bar.label}</span>
-            <span className="ml-auto tabular-nums text-muted">{bar.count.toLocaleString('en-GB')}</span>
-          </li>
+          <span key={bar.gate}>
+            <i aria-hidden className={cx('swb', (RAMP[i] ?? TAIL).replace('fill-', 'bg-'))} />
+            <b className="tabular-nums">{bar.count.toLocaleString('en-GB')}</b> {bar.label}
+          </span>
         ))}
         {unattributed > 0 && (
-          <li className="flex items-center gap-2">
-            <span aria-hidden className="inline-block size-[9px] rounded-sm bg-faint" />
-            <span className="truncate">Killed on score alone</span>
-            <span className="ml-auto tabular-nums text-muted">{unattributed.toLocaleString('en-GB')}</span>
-          </li>
+          <span>
+            <i aria-hidden className="swb bg-faint" />
+            <b className="tabular-nums">{unattributed.toLocaleString('en-GB')}</b> Killed on score alone
+          </span>
         )}
-        <li className="flex items-center gap-2">
-          <span aria-hidden className="inline-block size-[9px] rounded-sm bg-survive" />
-          <span className="truncate">Came through the filter</span>
-        </li>
-      </ul>
+        <span>
+          <i aria-hidden className="swb bg-survive" />
+          Came through the filter
+        </span>
+      </div>
     </figure>
   );
 }

@@ -2,8 +2,14 @@ import Link from 'next/link';
 
 export function Breadcrumbs({ items }: { items: { href: string; label: string }[] }) {
   return (
-    <nav aria-label="Breadcrumb">
-      <ol className="flex flex-wrap items-center gap-x-1.5 text-meta">
+    /* THE DRAWING'S `.crumb` (`mockups/about.html:281`: mono, 12.5px, --ink-3, 22px of padding
+       above it, links in --link). It was `text-meta` on the list and `text-muted` on each link,
+       which is the same line said in utilities, so no page on the site emitted the class the
+       mockups style. The utilities that set colour and size are REMOVED rather than layered:
+       mockup.css is imported into `layer(components)` (globals.css:8) and Tailwind utilities sit
+       above it, so a utility left in place beats the class and the change would be a no-op. */
+    <nav aria-label="Breadcrumb" className="crumb">
+      <ol className="flex flex-wrap items-center gap-x-1.5">
         {items.map((item, i) => {
           const isLast = i === items.length - 1;
           return (
@@ -22,7 +28,7 @@ export function Breadcrumbs({ items }: { items: { href: string; label: string }[
                   {item.label}
                 </span>
               ) : (
-                <Link href={item.href} className="inline-block py-3 text-muted hover:text-text transition-colors">
+                <Link href={item.href} className="inline-block py-3">
                   {item.label}
                 </Link>
               )}

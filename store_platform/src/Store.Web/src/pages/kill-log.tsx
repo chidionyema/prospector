@@ -283,7 +283,10 @@ export default function KillLogPage({
           </p>
           {/* Mono: both are counts, and the pair is the one place on the site where the rejection
               rate is stated as a measured quantity rather than a boast. */}
-          <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-meta">
+          {/* The drawing's `.metastrip` (`mockups/kill-log.html:67`): a mono, 12.5px, wrapping
+              strip at 10px gaps. The flex/gap/font utilities said the same thing one layer above
+              the class, which made the class inert (globals.css:8 puts mockup.css under them). */}
+          <div className="metastrip mt-6">
             {/* §3.3: the killed square, not a warning triangle. A triangle is a caution sign --
                 it tells the reader to be careful about something ahead. A kill is not a hazard,
                 it is a finished ruling, and the crossed square is the mark the rest of the site
@@ -294,7 +297,7 @@ export default function KillLogPage({
             <VerdictChip
               kind="killed"
               label={`${rejectRateLabel} killed`}
-              className="gap-2 text-meta"
+              className="gap-2"
             />
             {/* The green chip counts what is BUYABLE, not what cleared the gates. It has carried
                 "80 survived" and then "80 survived the checks", both against a shelf of 50; the
@@ -378,36 +381,47 @@ export default function KillLogPage({
               21px from its own bar and 25px from the next label, so the pairing was ambiguous at
               exactly the width where the pairing is the only thing holding the chart together. On
               `sm` and up each row is one line again and 8px is the right rhythm. */}
-          <ul className="mt-6 list-none space-y-4 p-0 sm:space-y-2">
+          {/* THE DRAWING'S `.bars` AND `.barline` (`mockups/kill-log.html:137-143`): a two-column
+              grid, the label and its 9px track on the left, the count in mono at 48px on the
+              right. Every one of those numbers was a Tailwind utility here, so the page emitted
+              none of the classes the mockup styles.
+
+              THE LABEL STILL WRAPS ON A PHONE, and that is not the drawing. `.barline .lab` sets
+              `white-space:nowrap` with an ellipsis at 52%, and measured at 390px on 2026-08-13
+              that rendered "The defensibility claim was not evidence-b...". Truncating the CAUSE
+              of a rejection is the one thing this chart cannot do: the label IS the finding. The
+              utilities below `sm` turn the wrap back on, and they win over the class because
+              mockup.css is imported into `layer(components)` and utilities sit above it. */}
+          <ul className="bars">
             {distribution.map((d) => (
-              <li
-                key={d.gate}
-                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 sm:grid-cols-[15rem_minmax(0,1fr)_auto]"
-              >
-                <span
-                  className="col-span-2 text-caption leading-snug text-muted sm:col-span-1 sm:truncate"
-                  title={d.label}
-                >
-                  {d.label}
-                  {d.isStage && <span className="ml-1.5 text-subtle"> stage</span>}
-                </span>
-                {/* The bar is drawn against the LARGEST cause, not against the total. Against the
-                    total every bar but one is a sliver and the chart shows nothing; against the
-                    max, the comparison the reader came for is the one the picture makes. */}
-                <span className="block h-3 min-w-0 bg-surface3">
+              <li key={d.gate} className="barline">
+                <span className="t max-sm:flex-col max-sm:items-start max-sm:gap-2">
                   <span
-                    /* NEUTRAL BOTH WAYS (2026-08-14 colour audit, finding 2). These bars were
-                       `bg-kill` when published and grey when not, on the one page that defines
-                       red as "killed" -- so red here encoded PUBLICATION STATUS, and the
-                       largest cause of death on the chart (624) was drawn in decoration grey
-                       because nothing was published under it. A reader taking the page at its
-                       word read the ranking backwards. Ink weight now carries "listed below"
-                       and red goes back to meaning exactly one thing. */
-                    className={d.published ? 'block h-3 bg-text' : 'block h-3 bg-subtle/35'}
-                    style={{ width: `${Math.max((d.count / distributionMax) * 100, 0.6)}%` }}
-                  />
+                    className="lab max-sm:max-w-none max-sm:whitespace-normal"
+                    title={d.label}
+                  >
+                    {d.label}
+                    {d.isStage && <span className="ml-1.5 text-subtle"> stage</span>}
+                  </span>
+                  {/* The bar is drawn against the LARGEST cause, not against the total. Against the
+                      total every bar but one is a sliver and the chart shows nothing; against the
+                      max, the comparison the reader came for is the one the picture makes. */}
+                  <span className="bar max-sm:w-full">
+                    <i
+                      /* NEUTRAL BOTH WAYS (2026-08-14 colour audit, finding 2). These bars were
+                         `bg-kill` when published and grey when not, on the one page that defines
+                         red as "killed" -- so red here encoded PUBLICATION STATUS, and the
+                         largest cause of death on the chart (624) was drawn in decoration grey
+                         because nothing was published under it. A reader taking the page at its
+                         word read the ranking backwards. Ink weight now carries "listed below"
+                         and red goes back to meaning exactly one thing. The drawing paints
+                         `.barline .bar i` in `--kill`; this overrides it for that reason. */
+                      className={d.published ? 'bg-text' : 'bg-subtle/35'}
+                      style={{ width: `${Math.max((d.count / distributionMax) * 100, 0.6)}%` }}
+                    />
+                  </span>
                 </span>
-                <span className="w-14 text-right font-mono text-caption tabular-nums text-text">
+                <span className="n num">
                   {tightDecimal(d.count.toLocaleString('en-GB'))}
                 </span>
               </li>
@@ -502,31 +516,31 @@ export default function KillLogPage({
             more this way" without needing scroll-position JS. Both the standard and `-webkit-`
             property are set because this is exactly the iOS Safari path the bug was found on. */}
         <div className="mt-6 overflow-x-auto border-y border-border max-md:[-webkit-mask-image:linear-gradient(to_right,black_calc(100%-2rem),transparent)] max-md:[mask-image:linear-gradient(to_right,black_calc(100%-2rem),transparent)]">
-          <table className="w-full min-w-[44rem] border-collapse text-left">
-            <caption className="sr-only">
-              Killed ideas, with the check that killed each one, its published sources and the
-              date it was assessed. Select a row to read the argument.
-            </caption>
-            <thead>
-              <tr className="border-b border-border">
-                <th scope="col" className="py-2 pr-4 text-caption font-medium text-subtle">Idea</th>
-                <th scope="col" className="py-2 pr-4 text-caption font-medium text-subtle">Killed by</th>
-                <th scope="col" className="w-20 py-2 pr-4 text-right text-caption font-medium text-subtle">Sources</th>
-                <th scope="col" className="w-28 py-2 text-right text-caption font-medium text-subtle">Assessed</th>
-              </tr>
-            </thead>
+          {/* THE DRAWING'S `.rows` CARD OF `.klrow` RECORDS (`mockups/kill-log.html:150-158`).
+              This was a real `<table>` with four column headers. The drawing has no headers and no
+              columns: each record is a card of title, the argument, a mono meta line, and a `.side`
+              column carrying the verdict and the gate. Nothing sortable was lost with the `<thead>`
+              -- the sort is its own control above -- and the per-record `id`, the expand button and
+              the argument panel all survive.
+              At 700px the drawing collapses `.klrow` to one column and moves `.side` to the top,
+              which is why no responsive utilities are written here: the class already does it. */}
+          <ul
+            className="rows list-none p-0"
+            aria-label="Killed ideas, with the check that killed each one, its published sources and the date it was assessed. Select a row to read the argument."
+          >
             {visible.map((entry) => {
               const isOpen = open.has(entry.slug);
               const detail = details?.[entry.slug];
               return (
-                /* One <tbody> per record, so the summary row and its detail row are one group to
+                /* One `<li>` per record, so the summary and its argument panel are one group to
                    assistive tech rather than two unrelated rows that happen to be adjacent. */
-                <tbody key={entry.slug} id={entry.slug} className="scroll-mt-24 border-b border-border align-baseline">
-                  <tr
-                    className="cursor-pointer transition-colors hover:bg-surface3"
-                    onClick={() => toggle(entry.slug, entry.gateLabel)}
-                  >
-                    <td className="py-2.5 pr-4">
+                <li
+                  key={entry.slug}
+                  id={entry.slug}
+                  className="klrow scroll-mt-24 cursor-pointer"
+                  onClick={() => toggle(entry.slug, entry.gateLabel)}
+                >
+                    <h4>
                       <button
                         type="button"
                         aria-expanded={isOpen}
@@ -537,10 +551,16 @@ export default function KillLogPage({
                           e.stopPropagation();
                           toggle(entry.slug, entry.gateLabel);
                         }}
-                        className="text-left font-mono text-caption leading-snug text-muted line-through decoration-kill/60 hover:text-text"
+                        /* `.klrow h4` owns the size, weight and leading. The mono/caption/muted
+                           utilities that used to set them here are removed rather than layered:
+                           mockup.css sits in `layer(components)` (globals.css:8), under the
+                           utilities, so leaving one in place makes the class inert. The
+                           strike-through stays -- it is what says "this one is dead". */
+                        className="text-left line-through decoration-kill/60"
                       >
                         {entry.title}
                       </button>
+                    </h4>
                       {/* THE ARGUMENT IS THE ROW (MASTER-BRIEF §7). Before this, a row carried a
                           title and a cause label, and the reasoning was behind a click. That makes
                           400 rows of assertion: the reader is told an idea failed on incumbency and
@@ -553,33 +573,23 @@ export default function KillLogPage({
                           IT DISAPPEARS WHEN THE ROW OPENS, because the panel below starts with the
                           same sentence. Two copies of one sentence three lines apart reads as a
                           rendering fault on the page whose subject is our own carefulness. */}
-                      {!isOpen && entry.excerpt && (
-                        <p className="mt-1 max-w-[60ch] text-caption leading-relaxed text-subtle">
-                          {entry.excerpt}
-                        </p>
-                      )}
-                    </td>
-                    <td className="py-2.5 pr-4 font-mono text-caption text-kill-strong">
-                      {entry.gateLabel}
-                      {isStageLabel(entry.gateLabel) && (
-                        <span className="ml-1.5 text-subtle"> stage</span>
-                      )}
-                    </td>
-                    <td className="py-2.5 pr-4 text-right font-mono text-caption tabular-nums text-subtle">
-                      {/* A literal 0, not a blank or a placeholder glyph. This column is
-                          sortable, so an empty cell would read as missing data in a table that is
-                          about evidence; 0 is the actual, stated fact. The COUNT is in the page's
-                          own HTML even though the source list is not: it is a column of the table
-                          and a sort key, so it cannot wait on a fetch. */}
-                      {entry.sources}
-                    </td>
-                    <td className="py-2.5 text-right font-mono text-caption tabular-nums text-subtle">
-                      {formatDate(entry.date)}
-                    </td>
-                  </tr>
+                      {!isOpen && entry.excerpt && <p>{entry.excerpt}</p>}
+                      {/* The mono meta line. A literal 0 for the sources, never a blank or a
+                          placeholder glyph: this page is about evidence, and 0 is the actual
+                          stated fact. */}
+                      <p className="m">
+                        {formatDate(entry.date)} &middot; {entry.sources}{' '}
+                        {entry.sources === 1 ? 'source' : 'sources'}
+                      </p>
+                      <span className="side">
+                        <VerdictChip kind="killed" />
+                        <span className="mono num">
+                          {entry.gateLabel}
+                          {isStageLabel(entry.gateLabel) && <span className="text-subtle"> stage</span>}
+                        </span>
+                      </span>
                   {isOpen && (
-                    <tr>
-                      <td colSpan={4} className="bg-surface3 px-3 py-4">
+                    <div className="mt-3 rounded-ctl bg-surface3 px-3 py-4 [grid-column:1/-1]">
                         {/* The argument arrives from /api/kill-log-detail, once per session. Until
                             it does the row says what it is waiting for: an empty panel under a
                             row a reader just opened reads as a broken page, and this is the page
@@ -631,13 +641,12 @@ export default function KillLogPage({
                         </div>
                         </>
                         )}
-                      </td>
-                    </tr>
+                    </div>
                   )}
-                </tbody>
+                </li>
               );
             })}
-          </table>
+          </ul>
         </div>
 
         {visible.length < shown.length && (

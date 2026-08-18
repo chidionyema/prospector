@@ -52,27 +52,31 @@ export function MethodCostAnchor({ range }: { range: PriceRange | null }) {
       {/* Two plates, one border weight. The old pair leaned on a green ring around the right-hand
           cell to signal "this is the good one", which is the shape of a pricing table trying to
           steer rather than a comparison trying to inform. The numbers make the point unaided. */}
-      <dl className="mt-6 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-card border border-border bg-surface2 p-6">
-          <dt className="eyebrow">
+      {/* The drawing's `.compare` pair (`mockups/pricing.html:167-175`): two `.card .comp` cells
+          in a `1fr 1fr` grid, each a `.h` label, a `.big` figure and a `.sub` line. It was a `<dl>`
+          of `dt`/`dd`, and it cannot stay one: `.comp dt` is the drawing's rule for the small mono
+          labels of the inner list, so a `dt` used as the cell's heading would take that rule and
+          lose `.h`. The grid, border and padding utilities are removed rather than layered, since
+          mockup.css sits under the utility layer (globals.css:8). */}
+      <div className="compare">
+        <div className="card comp">
+          <p className="h">
             {documentary.publisher},{' '}
             {new Date(documentary.publishedOn ?? documentary.checkedOn).getFullYear()} price list
-          </dt>
-          <dd className="mt-2 text-meta text-text">
+          </p>
+          <p className="big">
             <SourcedFigure id="documentary-research" />
-            <span className="mt-1 block text-caption text-subtle">for {documentary.of}</span>
-          </dd>
+          </p>
+          <p className="sub">for {documentary.of}</p>
         </div>
-        <div className="rounded-card border border-border bg-surface2 p-6">
-          <dt className="eyebrow">A pack, already run</dt>
-          <dd className="mt-2 text-meta text-text">
-            <span className="font-mono font-semibold text-text">{range ? range.label : 'One payment'}</span>
-            <span className="mt-1 block text-caption text-subtle">
-              one payment, {PACK_DOCUMENTS.length} documents, every claim sourced
-            </span>
-          </dd>
+        <div className="card comp">
+          <p className="h">A pack, already run</p>
+          <p className="big num">{range ? range.label : 'One payment'}</p>
+          <p className="sub">
+            one payment, {PACK_DOCUMENTS.length} documents, every claim sourced
+          </p>
         </div>
-      </dl>
+      </div>
 
       <p className="mt-5 max-w-[80ch] text-caption leading-relaxed text-subtle">
         <SourcedCaveat id="documentary-research" />

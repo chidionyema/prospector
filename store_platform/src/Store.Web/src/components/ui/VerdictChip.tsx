@@ -47,23 +47,29 @@ const WORD_FOR: Record<VerdictKind, string> = {
 };
 
 /**
- * Ink only, for a chip sitting on the page ground.
+ * THE DRAWING'S OWN VERDICT TAG (`mockups/how-it-works.html:71-74`):
  *
- * `--kill` appears HERE and, per the brief, nowhere else. `--pushed-back-strong` rather than
- * `--pushed-back`: the base amber is 4.70:1 on `--bg` and the strong is 6.70:1, and this text is
- * caption-sized, which is exactly where the extra headroom is worth having.
+ *   .v{display:inline-flex;gap:6px;font-family:var(--font-mono);font-size:11px;
+ *      letter-spacing:.08em;text-transform:uppercase;border:1px solid;border-radius:4px;padding:3px 8px}
+ *   .v.s{border-color:var(--brand);color:var(--brand);background:var(--brand-tint)}
+ *   .v.p{border-color:var(--warn-b);color:var(--warn-t);background:var(--warn-f)}
+ *   .v.k{border-color:var(--kill);color:var(--kill)}
+ *
+ * Every mockup that shows a verdict draws this tag: eleven of them on `/how-it-works`, eight on
+ * `/kill-log`. We drew the same three states in Tailwind utilities instead, so none of those pages
+ * emitted the class the drawings style, and the two could drift with nothing to catch it.
+ *
+ * The utilities are REMOVED rather than layered. `mockup.css` is imported into
+ * `layer(components)` (globals.css:8) and Tailwind utilities sit above it, so any utility left in
+ * place would beat the class and this change would draw nothing.
+ *
+ * COLOUR IS STILL NEVER THE SOLE CARRIER: each chip keeps its `Glyph`, and the glyphs differ by
+ * shape, plus the verdict word in text.
  */
-const INK_FOR: Record<VerdictKind, string> = {
-  survived: 'text-survive',
-  'pushed-back': 'text-pushed-back-strong',
-  killed: 'text-kill',
-};
-
-/** Tint ground plus an edge, for a chip that has to hold its own against a busy row. */
-const SOLID_FOR: Record<VerdictKind, string> = {
-  survived: 'border border-survive bg-survive-bg text-survive-strong',
-  'pushed-back': 'border border-pushed-back bg-pushed-back-bg text-pushed-back-strong',
-  killed: 'border border-kill bg-kill-bg text-kill-strong',
+const KIND_CLASS: Record<VerdictKind, string> = {
+  survived: 's',
+  'pushed-back': 'p',
+  killed: 'k',
 };
 
 export interface VerdictChipProps {
@@ -73,21 +79,12 @@ export interface VerdictChipProps {
    * still draws the glyph, so the meaning does not rest on the caller's wording.
    */
   label?: React.ReactNode;
-  /** `tint` draws a ground and an edge; `ink` is the word alone. Default `ink`. */
-  variant?: 'ink' | 'tint';
   className?: string;
 }
 
-export function VerdictChip({ kind, label, variant = 'ink', className }: VerdictChipProps) {
+export function VerdictChip({ kind, label, className }: VerdictChipProps) {
   return (
-    <span
-      data-verdict={kind}
-      className={cx(
-        'inline-flex items-center gap-1.5 font-mono text-caption leading-none',
-        variant === 'tint' ? cx('rounded-ctl px-2 py-1', SOLID_FOR[kind]) : INK_FOR[kind],
-        className,
-      )}
-    >
+    <span data-verdict={kind} className={cx('v', KIND_CLASS[kind], className)}>
       <Glyph name={GLYPH_FOR[kind]} />
       {label ?? WORD_FOR[kind]}
     </span>

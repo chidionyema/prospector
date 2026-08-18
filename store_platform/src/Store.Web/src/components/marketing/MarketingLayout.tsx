@@ -286,9 +286,11 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
             offset (`mockups/sample.html:64`, `.crumb{padding:22px 0 0}`). The three-step gutter it
             replaces put the trail 40px from the page edge on a laptop, under a header sitting at
             20px. The note is here rather than inside the conditional because a JSX comment there
-            would be a second child of the `&&` expression. */}
+            would be a second child of the `&&` expression. The `pt-[22px]` that used to sit on
+            this wrapper is gone: `.crumb` on the trail itself carries `padding:22px 0 0`, and
+            keeping both paid it twice. */}
         {breadcrumbs && breadcrumbs.length > 0 && (
-          <div className={`mx-auto ${CRUMB_WIDTH[breadcrumbsWidth]} px-5 pt-[22px]`}>
+          <div className={`mx-auto ${CRUMB_WIDTH[breadcrumbsWidth]} px-5`}>
             <Breadcrumbs items={breadcrumbs} />
           </div>
         )}

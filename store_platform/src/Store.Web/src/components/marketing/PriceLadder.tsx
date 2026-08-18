@@ -54,7 +54,7 @@ export function PriceLadder({ rungs, className }: { rungs: LadderRung[]; classNa
         </span>
       </div>
 
-      <ul className="list-none p-0">
+      <ul className="ladder">
         {descending.map((rung, i) => {
           // `rank` counts up from the cheapest rung, so the bar grows down the page in the same
           // direction the price does. `+ 1` keeps the cheapest rung from rendering a zero-width
@@ -65,32 +65,25 @@ export function PriceLadder({ rungs, className }: { rungs: LadderRung[]; classNa
           return (
             <li
               key={rung.amount}
-              className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-border/60 py-4 last:border-b-0"
+              /* THE DRAWING'S `.lrow` (`mockups/pricing.html:161-165`): 86px for the price,
+                 the bar in the middle, 78px of mono count on the right, each rung its own
+                 bordered card. It was a flex row of hand-written Tailwind widths. */
+              className="lrow"
             >
               {/* The price. The dearest rung takes the display cut, not because it is the one we
                   want bought, but because a ladder whose every rung is set at the same size is not
                   drawn as a ladder at all. */}
-              <span
-                className={cx(
-                  'w-[5.5rem] flex-none font-mono font-semibold leading-none tracking-tight text-text',
-                  top ? 'text-h1' : 'text-h2',
-                )}
-              >
-                {formatGbp(rung.amount)}
-              </span>
+              <b className={cx(top && 'text-h2')}>{formatGbp(rung.amount)}</b>
 
               {/* The varying axis. `aria-hidden` because it carries no information the row does not
                   already state in text: a screen reader gets the price, the count and the constant
                   document line, which is the whole argument. A bar announced as "70 percent" would
                   invite the reader to believe something was measured at 70 percent. */}
-              <span aria-hidden className="flex min-w-[6rem] flex-1 items-center">
-                <span
-                  className="h-1.5 rounded-sm bg-text/80"
-                  style={{ width: `${width}%` }}
-                />
+              <span aria-hidden className="bar">
+                <i style={{ width: `${width}%` }} />
               </span>
 
-              <span className="w-24 flex-none font-mono text-caption text-subtle">
+              <span className="n">
                 {rung.count} pack{rung.count === 1 ? '' : 's'}
               </span>
 

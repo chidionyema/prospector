@@ -45,10 +45,11 @@ describe('the mosaic', () => {
 
   it('sizes the tiles differently, which is the whole point of a mosaic', () => {
     // A grid of equal tiles says every collection is the same size. They are not.
-    const spans = new Set(
-      [...html.matchAll(/sm:col-span-(\d)/g)].map((m) => m[1]),
-    );
-    expect(spans.size).toBeGreaterThan(1);
+    // The size is now `flex-grow` per the drawing (`mockups/collections.html:334` writes
+    // `style="flex:<count> 1 <basis>px"` on every tile), not one of three `sm:col-span-*` bands.
+    // The assertion is the same claim: more than one distinct size is emitted.
+    const sizes = new Set([...html.matchAll(/flex:\s*([^;"]+)/g)].map((m) => m[1].trim()));
+    expect(sizes.size).toBeGreaterThan(1);
   });
 
   it('renders the short name, never the SEO h1, and never truncates', () => {

@@ -200,28 +200,27 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
             equal cells. It reads the same `RESEARCH_STATS` the paragraph above reads, so the two
             cannot disagree.
 
-            The labels are not mono, not uppercase and not letterspaced, which the drawing sets and
-            three guard tests refuse: `monoIsTheDataVoice` holds the mono face for figures only, and
-            `weightAndCasePolicy` bars case and tracking set in CSS. The figures keep the mono the
-            drawing gives them, because a figure is exactly what that face is for. */}
-        <dl className="mt-8 grid grid-cols-1 overflow-hidden rounded-card border border-line bg-surface sm:grid-cols-3">
-          <div className="p-[17px] sm:border-r sm:border-line">
-            <dt className="mb-1.5 eyebrow">Ideas in</dt>
-            <dd className="price-lg num">
-              {RESEARCH_STATS.researched.toLocaleString('en-GB')}
-            </dd>
+            It is the drawing's `.facts` block now (`mockups/how-it-works.html:76-82`): three
+            equal cells in one card, `.facts span` for the label and `.facts b` for the figure. The
+            grid, border and padding utilities that used to hold those numbers are removed rather
+            than layered, since mockup.css is imported into `layer(components)` (globals.css:8) and
+            a utility left in place would beat the class.
+            The label case comes from `.facts span` in the drawing's own stylesheet, not from our
+            markup. `weightAndCasePolicy` and `monoIsTheDataVoice` read OUR source, so they neither
+            catch this nor need to: the rule they exist to stop is us hand-writing `uppercase` and
+            `tracking-*` on prose, and the figures keep the mono face a figure is for. */}
+        <dl className="facts">
+          <div>
+            <dt><span>Ideas in</span></dt>
+            <dd><b className="num">{RESEARCH_STATS.researched.toLocaleString('en-GB')}</b></dd>
           </div>
-          <div className="border-t border-line p-[17px] sm:border-t-0 sm:border-r sm:border-line">
-            <dt className="mb-1.5 eyebrow">Killed on cited evidence</dt>
-            <dd className="price-lg num">
-              {RESEARCH_STATS.killed.toLocaleString('en-GB')}
-            </dd>
+          <div>
+            <dt><span>Killed on cited evidence</span></dt>
+            <dd><b className="num">{RESEARCH_STATS.killed.toLocaleString('en-GB')}</b></dd>
           </div>
-          <div className="border-t border-line p-[17px] sm:border-t-0">
-            <dt className="mb-1.5 eyebrow">Died at a gate</dt>
-            <dd className="price-lg num">
-              {RESEARCH_STATS.rejectRateLabel}
-            </dd>
+          <div>
+            <dt><span>Died at a gate</span></dt>
+            <dd><b className="num">{RESEARCH_STATS.rejectRateLabel}</b></dd>
           </div>
         </dl>
       </Section>
@@ -346,8 +345,11 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
                       will meet again on /kill-log. */}
 
                   {example && (
-                    <div className="mt-5 rounded-card border border-border bg-bg/40 p-6">
-           <p className="text-caption font-medium text-muted">
+                    /* `.card` is the drawing's surface + hairline + 12px radius
+                       (`mockups/how-it-works.html:43`); it carries no padding of its own, which is
+                       why the padding utility stays. */
+                    <div className="card mt-5 p-5">
+                      <p className="text-caption font-medium text-muted">
                         {example.gateLabel}
                       </p>
                       <h3 className="mt-2 text-meta font-semibold text-text leading-snug">

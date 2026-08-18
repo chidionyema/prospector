@@ -384,15 +384,19 @@ export default function IdeasHub({ categories, total, variant }: Props) {
          * sentence about what the catalogue does and does not contain; the way out of a category
          * list is a control on that sentence, not a second screen restating it.
          */}
-        <div className="mt-12 flex flex-wrap items-center justify-between gap-x-10 gap-y-5 border-t-2 border-text pt-9">
-          <p className="max-w-[62ch] lede">
+        {/* The drawing's `.closing` owns the 2px rule, the 46px above it and the 34px below
+            (`mockups/collections.html`), and `.closing p` owns the size, colour and measure. The
+            utilities that used to hold those same numbers are removed rather than layered, since
+            mockup.css sits under the utility layer (globals.css:8). */}
+        <div className="closing flex flex-wrap items-center justify-between gap-x-10 gap-y-5">
+          <p>
             Categories appear once enough packs have cleared the checks to fill them. Ideas that failed are in the{' '}
             <Link href="/kill-log" className={textLinkClass('font-medium')}>
               kill log
             </Link>{' '}
             with the sourced reason why.
           </p>
-          <Link href="/" className={buttonClasses({})}>
+          <Link href="/" className="btn">
             Browse every pack
             <Icon name="arrowRight" size={14} />
           </Link>

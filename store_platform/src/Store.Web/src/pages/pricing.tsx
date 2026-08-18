@@ -88,7 +88,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
             The drawing separates the page's arguments with a 2px ink rule, not with whitespace.
             Without it every block reads as one more card in a stack of cards, which is what made
             this page scroll as an undifferentiated column. */}
-        <hr className="mt-11 break-major" />
+        <hr className="rule2" />
         <div className="mt-8">
           <MethodCostAnchor range={range} />
         </div>
@@ -96,7 +96,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
         {/* WHY ONE PACK COSTS MORE THAN ANOTHER, stated as its own block. The rule above it is
             the drawing's `.rule2`; it cannot be a JSX comment inside the conditional below, which
             would make it a second child of the `&&` expression. */}
-        <hr className="mt-11 break-major" />
+        <hr className="rule2" />
         {range && !range.uniform && (
           <div className="mt-8">
             <h2 className="sec">
@@ -134,7 +134,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
         )}
 
         {/* What's included */}
-        <hr className="mt-11 break-major" />
+        <hr className="rule2" />
         <div className="mt-8">
           <h2 className="sec">What you get, at every price</h2>
           <p className="mt-3 max-w-[60ch] lede">
@@ -157,22 +157,23 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
               A filename that does not appear in the zip is worse than no filename: this page's
               argument is "every pack is the same shape whatever it costs", and the shape is the
               documents. */}
-          <ul className="mt-6 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2">
-            {PACK_DOCUMENTS.map((item) => (
-              <li
-                key={item.section}
-                className="flex items-start gap-3 rounded-card border border-border bg-surface p-4"
-              >
-                {/* The emoji is not rendered (brand v3): nine emoji stacked down a list is the
-                    single loudest thing on a page about a professional research product, and each
-                    one renders as a different vendor's artwork per OS. */}
-                <Icon name="check" size={16} className="mt-0.5 flex-none text-success" />
+          {/* THE DRAWING'S `.docs` AND `.docitem` (`mockups/pricing.html:111-116`): two columns
+              under one hairline, each item a 26px mono numeral, the document's name, and ONE LINE
+              SAYING WHAT IS IN IT. The list rendered nine bordered cards carrying a tick and a
+              title, so a reader learned the count and nothing else. `desc` is already written for
+              every document in `PackContents`; this page was the only surface that had it and did
+              not print it. */}
+          <ol className="docs">
+            {PACK_DOCUMENTS.map((item, i) => (
+              <li key={item.section} className="docitem">
+                <span className="i">{String(i + 1).padStart(2, '0')}</span>
                 <div className="min-w-0">
-                  <p className="text-meta font-medium text-text">{item.title}</p>
+                  <h5>{item.title}</h5>
+                  <p>{item.desc}</p>
                 </div>
               </li>
             ))}
-          </ul>
+          </ol>
         </div>
 
         {/* What's not included. THIS is the sitewide owner of the honest limits: /how-it-works
