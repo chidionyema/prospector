@@ -67,9 +67,17 @@ def test_there_is_one_list_of_buildable_tiers_and_the_moat_reads_it():
         assert _coerce_moat_primary([tier], source="test") == {tier}
 
 
-def test_every_buildable_tier_can_actually_be_built():
-    """The other half: a name on the allow-list that no adapter serves is a worse lie."""
+def test_every_buildable_tier_can_actually_be_built(monkeypatch):
+    """The other half: a name on the allow-list that no adapter serves is a worse lie.
+
+    Credentials are stubbed. What is being proven is that an ADAPTER exists for every name the
+    console offers, not that this machine holds a key for it — CI holds none, and a test that
+    demanded them would pass on a laptop and fail in CI for a reason unrelated to the claim.
+    """
     from prospector.config import load_config
+
+    for var in ("MINIMAX_API_KEY", "DEEPSEEK_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY"):
+        monkeypatch.setenv(var, "test-key-not-a-credential")
 
     cfg = load_config(str(CONFIG))
     for tier in BUILDABLE_TIERS:
