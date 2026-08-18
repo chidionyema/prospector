@@ -138,9 +138,27 @@ export function AttritionCascade({ distribution, className }: AttritionCascadePr
         </div>
       </dl>
 
-      <figcaption className="mt-4 max-w-[68ch] text-meta leading-relaxed text-muted">
+      {/* THE DRAWING'S KEY (`mockups/how-it-works.html`, `p.key`). The chart had colour doing
+          the talking and nothing saying what the colours mean, so a reader had to infer it.
+          The swatches state what THIS chart actually draws: the dark bar is what is still alive
+          at a gate, the empty track beside it is what the gate killed, and the teal bar at the
+          bottom is the shelf. */}
+      <p className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-meta text-muted">
+        <span className="flex items-center gap-2">
+          <i className="block h-[9px] w-[9px] rounded-full bg-text" aria-hidden /> still alive at
+          this gate
+        </span>
+        <span className="flex items-center gap-2">
+          <i className="block h-[9px] w-[9px] rounded-full border border-line bg-bg" aria-hidden />{' '}
+          gone
+        </span>
+        <span className="flex items-center gap-2">
+          <i className="block h-[9px] w-[9px] rounded-full bg-survive" aria-hidden /> on the shelf
+        </span>
+      </p>
+      <figcaption className="mt-3 max-w-[68ch] text-meta leading-relaxed text-muted">
         Every idea we researched, and the check that was first to kill it. The checks stop at the
-        first hard failure, so each idea is counted once, against the cheapest gate that killed it.
+        first hard failure. Each idea is counted once, against the first gate that killed it.
       </figcaption>
     </figure>
   );

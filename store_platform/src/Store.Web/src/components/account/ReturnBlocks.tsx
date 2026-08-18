@@ -104,7 +104,7 @@ export function ReturnBlocks() {
     <>
       {cart.ready && cart.lines.length > 0 && (
         <Block
-          title="Your shortlist"
+          title="Saved for later"
           lead={
             cart.lines.length === 1
               ? 'One pack you picked out and have not bought yet.'

@@ -282,8 +282,8 @@ export function KillGrid({ packs, className }: KillGridProps) {
       </div>
 
       <figcaption className="mt-3 border-t border-line pt-3 text-meta leading-relaxed text-muted">
-        Every idea we have ever researched, {totalLabel} of them, one square each, oldest first.
-        The teal ones are what you can buy.
+        Every idea we have ever researched, one square each. The teal ones are what you can buy.
+        All {totalLabel}, oldest first.
       </figcaption>
     </figure>
   );

@@ -83,7 +83,7 @@ function withSmallSymbol(formatted: string): React.ReactNode {
   return (
     <>
       {/* Not aria-hidden: the symbol is the only thing saying which currency this is. */}
-      <span className="text-[0.8em]">{symbol}</span>
+      <span className="cur text-[0.8em]">{symbol}</span>
       {tightDecimal(rest)}
     </>
   );

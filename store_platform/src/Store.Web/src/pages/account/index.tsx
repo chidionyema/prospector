@@ -79,7 +79,9 @@ export default function AccountPage() {
           are wide rows, and `mockups/account.html` draws them across the full wrap. */}
       <div className="mx-auto max-w-[1080px] px-5 pt-6 pb-16">
         <PageHeader
-          title={status === 'authenticated' ? 'Your account' : 'Sign in'}
+          /* "Your shelf" signed in (`mockups/account.html` h1). The page is the customer's
+             packs, not a settings screen, and the drawing names it after what is on it. */
+          title={status === 'authenticated' ? 'Your shelf' : 'Sign in'}
           description={
             status === 'authenticated'
               ? undefined

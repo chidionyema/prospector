@@ -263,7 +263,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
         bg="white"
         width="6xl"
         title="One idea, all the way through"
-        intro="Every pack carries an evidence record like this one. It is the free sample, and every source in it opens."
+        intro="Every pack on the shelf carries an evidence record like this. The one below is real, it is the free sample, and every source in it opens."
       >
         <CheckSequence />
       </Section>
@@ -404,9 +404,9 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
               paragraph is where the same idea already lives, so the definition goes here rather
               than in a fourth place. */}
           <p className="lede">
-            A check that is <em>pushed back</em> is that silence with a name. The evidence would not
-            settle the question either way, so the idea carried on and the doubt stayed on the
-            record for you to read. It is drawn in amber, never red. Red means killed.
+            A check that is <em>pushed back</em> means the check found nothing decisive either
+            way. The idea continued, and the doubt stays on the record where you can read it. It is
+            drawn in amber, never red. Red means killed.
           </p>
         </div>
       </Section>

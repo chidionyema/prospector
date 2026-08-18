@@ -42,7 +42,16 @@ const norm = (s) => s.replace(/\s+/g, ' ').trim();
  * sentence reads `A - B` in the drawing and `A, B` on the page. Neither is a missing section, and
  * a check that cries wolf about them gets ignored, which is how the real misses survive.
  */
-const key = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
+const CONTRACTIONS = [
+  [/can't/g, 'cannot'], [/won't/g, 'will not'], [/n't/g, ' not'],
+  [/'re/g, ' are'], [/'ll/g, ' will'], [/'ve/g, ' have'], [/it's/g, 'it is'],
+  [/that's/g, 'that is'], [/here's/g, 'here is'], [/what's/g, 'what is'],
+];
+const key = (s) => {
+  let t = s.toLowerCase().replace(/[’‘]/g, "'").replace(/&amp;/g, '&');
+  for (const [re, to] of CONTRACTIONS) t = t.replace(re, to);
+  return t.replace(/[^a-z0-9]+/g, '');
+};
 
 /** Split a drawing into its author-declared sections. */
 function sections(html) {
@@ -92,7 +101,78 @@ function prose(html) {
   return [...new Set(runs)];
 }
 
-const only = process.argv.slice(2);
+/*
+ * SENTENCES THE SITE MAY NOT SHIP, whatever the drawing says.
+ *
+ * Two founder rules outrank the drawing, and without this list the ledger reports them as gaps
+ * forever, which invites the next session to "fix" them by shipping the banned copy.
+ *   - The survivor count is never printed (2026-08-13, encoded in `src/lib/stats.ts`). The
+ *     drawings write it out in words, "Seventy-four packs are on the shelf".
+ *   - No copy promises a closed number of checks: the count varies per idea, and
+ *     `fixedCheckCount.test.ts` fails the build on "all six checks".
+ */
+const EXCEPT = [
+  [/seventy-four|seventy four/i, 'survivor count, never printed (stats.ts)'],
+  [/\b(six|6) checks\b/i, 'closed check count, banned by fixedCheckCount.test.ts'],
+  /* Founder decisions that outrank the drawing. Each one was made on the built page, with the
+     reason recorded at the render site, so the drawing's sentence is not a gap. */
+  [/^Sixteen ways into the same shelf/i, 'founder kept the built title (2026-08-15)'],
+  [/^Business ideas with the research already done/i, "founder's own h1 supersedes the drawing"],
+  [/^Or see everything at once/i, 'band deleted 2026-08-13, 350px for a heading and a button'],
+];
+
+
+/*
+ * THE STRUCTURE CHECK, and it is the half the text ledger cannot do.
+ *
+ * The text ledger asks "are the drawing's words on the page". It passed a section that carried
+ * every word and was drawn as a different thing: the home shelf, the longest list on the site,
+ * was a bare `divide-y` list on the page ground where the drawing draws ONE card
+ * (`.rows{background;border;radius;overflow:hidden}`) with hairline-separated rows inside it. The
+ * words were all there, so the ledger said 100%, and the founder saw a section that looked
+ * nothing like the drawing.
+ *
+ * So this counts the drawing's own class names -- only the ones `mockup.css` actually styles,
+ * which is the drawing's visual vocabulary -- and asks whether the built page uses them at all.
+ * A class the drawing uses and the build never emits is a section built in different markup.
+ * MISSING is that. THIN is the same defect at partial strength: the build emits it, but for a
+ * fraction of the elements the drawing does, which is what a list rendered as cards looks like.
+ */
+async function styleParity(page, html, cssClasses) {
+  const drawn = new Map();
+  for (const m of html.matchAll(/class="([^"]+)"/g)) {
+    for (const c of m[1].split(/\s+/)) {
+      if (cssClasses.has(c)) drawn.set(c, (drawn.get(c) ?? 0) + 1);
+    }
+  }
+  const built = new Map(
+    await page.evaluate(() => {
+      const out = {};
+      for (const el of document.querySelectorAll('[class]')) {
+        for (const c of String(el.className.baseVal ?? el.className).split(/\s+/)) {
+          if (c) out[c] = (out[c] ?? 0) + 1;
+        }
+      }
+      return Object.entries(out);
+    }),
+  );
+  const missing = [];
+  const thin = [];
+  for (const [c, n] of [...drawn].sort((a, b) => b[1] - a[1])) {
+    const got = built.get(c) ?? 0;
+    if (got === 0) missing.push(`${c} (drawing uses ${n})`);
+    else if (n >= 3 && got * 2 < n) thin.push(`${c} ${got}/${n}`);
+  }
+  return { missing, thin };
+}
+
+const ALL = process.argv.includes('--all');
+const only = process.argv.slice(2).filter((a) => a !== '--all');
+/* The drawing's visual vocabulary is exactly the classes `mockup.css` styles. Tailwind utilities
+   and one-off ids are not part of it, so they are never reported. */
+const MOCKUP_CSS = await readFile(path.join(process.cwd(), 'src/styles/mockup.css'), 'utf8');
+const CSS_CLASSES = new Set([...MOCKUP_CSS.matchAll(/\.([a-zA-Z][\w-]*)/g)].map((m) => m[1]));
+
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 let worst = [];
@@ -105,13 +185,30 @@ for (const [file, route] of PAGES) {
   for (const sec of sections(html)) {
     const lines = prose(sec.html);
     if (!lines.length) continue;
-    const absent = lines.filter((l) => !built.includes(key(l)));
-    const pct = Math.round(((lines.length - absent.length) / lines.length) * 100);
+    const banned = [];
+    const absent = lines.filter((l) => {
+      if (built.includes(key(l))) return false;
+      const hit = EXCEPT.find(([re]) => re.test(l));
+      if (hit) { banned.push([l, hit[1]]); return false; }
+      return true;
+    });
+    const counted = lines.length - banned.length;
+    const pct = counted === 0 ? 100 : Math.round(((counted - absent.length) / counted) * 100);
     const mark = pct === 100 ? 'OK  ' : pct >= 60 ? 'PART' : 'GONE';
-    console.log(`${mark} ${pct.toString().padStart(3)}%  ${sec.n} · ${sec.name}  (${lines.length - absent.length}/${lines.length})`);
-    if (pct < 100) for (const a of absent.slice(0, 4)) console.log(`         - ${a.slice(0, 110)}`);
+    console.log(`${mark} ${pct.toString().padStart(3)}%  ${sec.n} · ${sec.name}  (${counted - absent.length}/${counted})`);
+    /* Four lines per section is enough when a page splits into a dozen sections. On the nine
+       drawings that carry no `<!-- N -->` comments the whole page collapses into ONE section, and
+       four lines hid the rest of the worklist. `--all` prints every absent sentence, whole. */
+    for (const [l, why] of banned) console.log(`    SKIP    ${l.slice(0, 70)}  [${why}]`);
+    const cap = ALL ? absent.length : 4;
+    if (pct < 100) for (const a of absent.slice(0, cap)) {
+      console.log(`         - ${ALL ? a : a.slice(0, 110)}`);
+    }
     if (pct < 100) worst.push({ route, sec: `${sec.n} · ${sec.name}`, pct });
   }
+  const { missing, thin } = await styleParity(page, html, CSS_CLASSES);
+  if (missing.length) console.log(`STRUCT  never emitted: ${missing.join(', ')}`);
+  if (thin.length) console.log(`STRUCT  thin (built/drawn): ${thin.join(', ')}`);
 }
 await browser.close();
 worst.sort((a, b) => a.pct - b.pct);

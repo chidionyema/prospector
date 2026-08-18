@@ -266,9 +266,17 @@ export default function IdeasHub({ categories, total, variant }: Props) {
          * Hidden under a search, for the reason the grouping collapses under one: once a query is
          * typed, the shape of the whole catalogue is not what is being looked at.
          */}
+        {/* THE DRAWING NAMES THE MOSAIC (`mockups/collections.html`, `.sigcard` eyebrow "The
+            shape of the shelf" and its key line). It was drawn here as a field of tiles with
+            nothing saying what the sizes mean, so a reader could take the biggest tile for the
+            most important collection rather than the largest one. The drawing's own count is
+            dropped: the survivor total is never printed (2026-08-13). */}
+        {!search && (
+          <p className="eyebrow mb-2">The shape of the shelf</p>
+        )}
         {!search && (
           <CollectionMosaic
-            className="mb-10"
+            className="mb-3"
             tiles={filtered.map((cat) => ({
               slug: cat.slug,
               name: cat.shortName,
@@ -276,6 +284,11 @@ export default function IdeasHub({ categories, total, variant }: Props) {
               count: cat.count,
             }))}
           />
+        )}
+        {!search && (
+          <p className="mb-10 text-meta text-muted">
+            Tile size reflects pack count. Every tile filters the same shelf.
+          </p>
         )}
 
         {filtered.length > 0 && (

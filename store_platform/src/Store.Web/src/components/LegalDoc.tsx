@@ -170,7 +170,8 @@ export default function LegalDoc({ title, lede, version = TOS_VERSION, interim =
                 Read one free before you buy anything.
               </h2>
               <p className="mt-3.5 max-w-[56ch] lede">
-                A complete report, unredacted. No payment, no email, no account.
+                {/* "pack", the drawing's word and the site's (`mockups/refund.html`). */}
+                A complete pack, unredacted. No payment, no email, no account.
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <Link href="/sample" className={buttonClasses({ size: 'lg' })}>

@@ -137,8 +137,13 @@ describe('US-2 — Pack cards with pack art', () => {
      */
     const packRow = readSource('../components/discovery/PackRow.tsx');
     const figureComponent = packRow.slice(packRow.indexOf('export function PackFigure('));
-    expect(figureComponent, 'the lead poster sets its figure at the display step').toMatch(
-      /text-display/,
+    /* THE SIZE IS THE DRAWING'S NOW, NOT A TAILWIND STEP. The spotlight figure renders as the
+       drawing's `.stat > .big` (mockup.css: 44px, weight 685) against `.price-lg` at 26px, so the
+       rule this pins -- the figure outweighs the price it shares a card with -- is carried by the
+       copied stylesheet instead of by a utility class. Matching `text-display` here would fail on
+       a card that is drawn exactly like the drawing, which is what it did on 2026-08-18. */
+    expect(figureComponent, 'the lead poster sets its figure at the drawing\'s stat size').toMatch(
+      /className="big num"/,
     );
     // The Row's figure is `text-body font-semibold`, not `text-h1` (2026-08-15). `text-h1` was
     // the deleted `mid` card's size; a row is one line tall, so a figure two steps above the line
