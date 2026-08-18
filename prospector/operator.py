@@ -808,7 +808,17 @@ class MiniMaxOperator(Operator):
             # raises the cost of a RUNAWAY call, not of a normal one — max_tokens bills what is
             # emitted, and a truncated call today bills its full budget for an unusable body.
             # Env-overridable so it can be walked back without a deploy.
-            "max_tokens": int(os.environ.get("PROSPECTOR_MINIMAX_MAX_TOKENS", "65536")),
+            #
+            # PER STAGE since 2026-08-19. One number for every call meant a one-sentence shelf-copy
+            # rewrite carried the same 65536 ceiling as a full dossier, and a runaway on that ask
+            # bills the whole budget: `docs/CONTENT_CONTRACT_PROGRAM.md:489` records one that spent
+            # 23 minutes and $0.059 and returned nothing. The ceiling could not simply be lowered,
+            # because generation genuinely uses it (measured over 33,553 spend events in
+            # `store/prospector.jsonl`: `generate` p50 32,094 / p95 65,536, against `verdict`
+            # p50 390 / max 6,591). `minimax_max_tokens_for_stage` resolves it from the stage the
+            # caller declared; an undeclared stage keeps the old ceiling, so this cannot narrow a
+            # call by accident.
+            "max_tokens": minimax_max_tokens_for_stage(),
             # STREAMED so the socket timeout measures silence rather than total generation time
             # (`_read_sse_bounded` carries the measurement). `include_usage` is not optional: an
             # OpenAI-compatible stream omits the usage block entirely without it, and every
@@ -1547,6 +1557,77 @@ def set_minimax_concurrency(width) -> int:
         resolved = MINIMAX_CONCURRENCY_DEFAULT
     MiniMaxOperator._throttle = threading.Semaphore(resolved)
     return resolved
+
+
+MINIMAX_MAX_TOKENS_ENV = "PROSPECTOR_MINIMAX_MAX_TOKENS"
+MINIMAX_MAX_TOKENS_DEFAULT = 65536
+_MINIMAX_MAX_TOKENS_BY_STAGE: dict[str, int] = {}
+_MINIMAX_MAX_TOKENS_LOCK = threading.Lock()
+
+
+def set_minimax_max_tokens(table) -> dict[str, int]:
+    """Install the process-wide per-stage MiniMax output ceiling (called by `config.load_config`).
+
+    Same shape and same reason as `set_minimax_concurrency` above: the value is read inside
+    `_raw_once`, which holds no Config, so this is the only place config CAN reach it. Written on
+    every load, including when the key is absent (=> reset to empty), so a fixture config cannot
+    poison the next load.
+
+    A bad entry RAISES, unlike the concurrency knob, and the asymmetry is deliberate. A bad width
+    falls back to a working default and the engine still runs. A misspelt stage name here would
+    read as a configured ceiling while silently leaving that stage at 65536 — the config-that-
+    cannot-mean-what-it-says failure `_validate_retrieval` and `_validate_admissibility` already
+    stop at startup. Stage names are NOT validated against a list, because `telemetry.stage()`
+    takes a free string and a new stage must not need an edit here to be declarable.
+    """
+    resolved: dict[str, int] = {}
+    if table:
+        if not isinstance(table, dict):
+            raise ValueError(
+                "config `retrieval.minimax_max_tokens` must be a mapping of stage name to a "
+                f"positive integer, got {type(table).__name__}")
+        for name, value in table.items():
+            try:
+                n = int(value)
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"config `retrieval.minimax_max_tokens.{name}` must be a positive integer, "
+                    f"got {value!r}") from None
+            if n < 1:
+                raise ValueError(
+                    f"config `retrieval.minimax_max_tokens.{name}` must be >= 1, got {n}")
+            resolved[str(name)] = n
+    with _MINIMAX_MAX_TOKENS_LOCK:
+        global _MINIMAX_MAX_TOKENS_BY_STAGE
+        _MINIMAX_MAX_TOKENS_BY_STAGE = resolved
+    return dict(resolved)
+
+
+def minimax_max_tokens_for_stage(stage: str | None = None) -> int:
+    """The output ceiling for one MiniMax call.
+
+    Precedence: `$PROSPECTOR_MINIMAX_MAX_TOKENS` (ops override, no deploy) > the per-stage table
+    from `config.yaml retrieval.minimax_max_tokens` > `MINIMAX_MAX_TOKENS_DEFAULT`. Env first
+    matches `set_minimax_concurrency` and `moat_primary()`: an incident is capped from the plist.
+
+    `stage` defaults to whatever `telemetry.stage()` context the caller is inside. A call made
+    outside any stage — or inside a stage with no entry — gets the default. That is the safe
+    direction: a stage nobody has measured keeps today's ceiling instead of being narrowed blind.
+    """
+    env = os.environ.get(MINIMAX_MAX_TOKENS_ENV)
+    if env:
+        try:
+            n = int(env)
+            if n >= 1:
+                return n
+        except (TypeError, ValueError):
+            pass
+    if stage is None:
+        from .telemetry import STAGE
+        stage = STAGE.get("") or ""
+    with _MINIMAX_MAX_TOKENS_LOCK:
+        table = _MINIMAX_MAX_TOKENS_BY_STAGE
+    return table.get(stage, MINIMAX_MAX_TOKENS_DEFAULT)
 
 
 def set_moat_primary(names) -> frozenset[str]:

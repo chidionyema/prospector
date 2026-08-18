@@ -37,6 +37,8 @@ from dataclasses import dataclass
 from dataclasses import field as _dc_field
 from typing import Any, Callable, Optional
 
+from .telemetry import stage as telemetry_stage
+
 logger = logging.getLogger(__name__)
 
 #: A one-liner longer than this is CUT by `bridge.py:878` when the catalogue row is written, and
@@ -156,7 +158,11 @@ def _propose_title(cand: Any, current: str, feedback: str, attempt: int, op: Any
         max_chars=TITLE_MAX_CHARS,
         feedback=feedback,
     )
-    data = op.complete_json(system, user, temperature=0.6 if attempt == 1 else 0.2)
+    # Declared for the same reason as `shelf_copy_repair`: an undeclared call is a call the
+    # spend ledger cannot attribute and the token ceiling cannot bound. See operator.py's
+    # `minimax_max_tokens_for_stage`.
+    with telemetry_stage("title_repair"):
+        data = op.complete_json(system, user, temperature=0.6 if attempt == 1 else 0.2)
     return " ".join(str((data or {}).get("title") or "").split()).rstrip(".").strip() or None
 
 

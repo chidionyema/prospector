@@ -486,12 +486,54 @@ Pinned by `tests/unit/test_the_machine_counts_the_characters_not_the_model.py`: 
 count in the template, the overage arithmetic in the second prompt, the feedback reaching the
 prompt, a clean answer never re-asked, and the attempt count above one.
 
-### The next link, and it is not in this file
+### The next link: the runaway call was the only call with no label
 
-An unsatisfiable ask still costs 600 seconds. `operator.py:757` sets `max_tokens` to 65536 for
-every MiniMax call, from a process-wide environment variable, so a one-sentence rewrite is given
-the same ceiling as a full dossier and bills its whole budget when it runs away. `complete_json`
-has no per-call ceiling to pass one down. Adding it touches every operator's `_raw`, so it is its
-own change rather than a line in this one — but it is the reason a bad ask cost $0.059 instead of
-a tenth of a cent.
+CLOSED 2026-08-19, issue #360. The paragraph that used to sit here said the fix was a per-call
+`max_tokens` parameter threaded through every operator's `_raw`. That was the wrong answer, and
+the reason is worth keeping.
+
+An unsatisfiable ask still costs 600 seconds. `operator.py` gave every MiniMax call
+`max_tokens: 65536` from one process-wide environment variable, so a one-sentence rewrite got the
+same budget as a full dossier and billed all of it when it ran away.
+
+That ceiling could not simply be lowered. Measured over the 33,553 `event: "spend"` records in
+`store/prospector.jsonl`, MiniMax output tokens per call:
+
+| stage | n | p50 | p95 | max |
+|---|---:|---:|---:|---:|
+| generate | 480 | 32,094 | 65,536 | 70,017 |
+| **(no stage)** | **5,015** | **1,601** | **15,652** | **55,522** |
+| content_gen | 1,217 | 5,626 | 24,615 | 47,934 |
+| claim_check | 2,147 | 1,755 | 7,282 | 47,146 |
+| query_gen | 1,494 | 1,262 | 4,800 | 38,673 |
+| score | 164 | 2,016 | 3,012 | 15,911 |
+| artifacts | 212 | 3,706 | 9,451 | 15,583 |
+| price_comparables | 140 | 1,111 | 3,183 | 8,210 |
+| verdict | 5,252 | 390 | 1,160 | 6,591 |
+| adversarial | 140 | 711 | 2,217 | 5,794 |
+| prescreen | 935 | 646 | 972 | 1,611 |
+
+`generate` uses the whole ceiling. `verdict` never needs a tenth of it.
+
+The mechanism to tell them apart already existed: `telemetry.stage()`, a contextvar recorded on
+every spend row by 14 call sites. **The two calls outside one were `shelf_copy_repair.py`'s
+rewrite and `field_write.py`'s title repair.** The call that spent 23 minutes and $0.059 is
+therefore inside that 5,015-row `(no stage)` bucket, indistinguishable from a full generation.
+The same missing label made it invisible to the ledger and impossible to bound.
+
+So the fix is one change, not two. Both sites declare a stage, and
+`operator.minimax_max_tokens_for_stage` resolves the ceiling from the stage in force —
+config-declared at `config.yaml retrieval.minimax_max_tokens`, installed process-wide from
+`config.load_config`, with `PROSPECTOR_MINIMAX_MAX_TOKENS` still overriding everything so an
+incident is capped from the plist without a deploy. Each ceiling is the next power of two at or
+above twice the observed maximum.
+
+An undeclared stage keeps 65536. Narrowing blind is the expensive direction: a clipped answer
+raises `_MiniMaxTruncated` and buys two more full-budget retries. The two newly-labelled repair
+stages get no ceiling yet, deliberately — they have never been measured, because they were never
+labelled, and the number follows the data.
+
+Pinned by `tests/unit/test_minimax_max_tokens_is_per_stage.py`, which also fails if any
+`complete_json` on the publish path is outside a stage, with a non-vacuity floor so a rename
+cannot make it green by scanning nothing.
 
