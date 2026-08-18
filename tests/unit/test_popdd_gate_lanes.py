@@ -103,7 +103,7 @@ class TestTheLaneMapCoversEachSourceKind:
         assert unclassified == []
 
     def test_the_python_lane_lints_before_it_tests(self, runner):
-        """W2.3: ruff is part of the python proof, and runs repo-wide.
+        """W2.3: ruff is part of the python proof, and DECLARES itself repo-wide.
 
         Two things are asserted, both of which were the defect. (1) The step exists at all
         — a lint baseline of 0 decays back to 395 the moment nothing enforces it. (2) It
@@ -122,6 +122,33 @@ class TestTheLaneMapCoversEachSourceKind:
         # "concise" is --output-format's value, not a path.
         paths = [p for p in paths if p != "concise"]
         assert paths == [], f"ruff must lint the whole repo, not a subset: {paths}"
+
+    def test_ruff_grades_the_files_in_the_commit_not_the_whole_repo(self, runner):
+        """The declared lane fails safe; `scope_ruff` narrows it when the caller knows the paths.
+
+        A gate that grades the whole repository fails a commit for work someone else did in
+        files it never touched. `main` itself carried 12 ruff errors until 2b38ca3, and while
+        it did, every commit in every worktree was walled by them. The narrowing is by STAGED
+        PATH rather than by directory, which keeps the guarantee the test above protects:
+        `lanes_for` routes any `.py` to this lane, including `run_v2.py` and
+        `publish/publish.py` at the repo root, so a directory list would report green over
+        files it never opened.
+        """
+        py = runner.LANES["python"]
+
+        scoped = runner.scope_ruff(py, ["run_v2.py", "scripts/doc_lint.py", "docs/x.md"])
+        ruff_argv = dict(scoped.steps)["ruff"]
+        assert ruff_argv[-2:] == ["run_v2.py", "scripts/doc_lint.py"], ruff_argv
+        # Without --force-exclude ruff lints an explicitly named path even when the config
+        # excludes it, so the scoped run would grade MORE than the repo-wide one it replaces.
+        assert "--force-exclude" in ruff_argv, ruff_argv
+        assert dict(scoped.steps)["pytest"] == dict(py.steps)["pytest"], "only ruff is scoped"
+
+        # Three ways of not knowing, all of which must grade MORE, never less.
+        for label, paths in [("caller knows nothing", []), ("no .py in the commit", ["a.md"])]:
+            fallback = dict(runner.scope_ruff(py, paths).steps)["ruff"]
+            assert fallback == dict(py.steps)["ruff"], f"{label}: {fallback}"
+        assert runner.scope_ruff(runner.LANES["web"], ["a.py"]) is runner.LANES["web"]
 
     def test_the_web_lane_proof_is_not_pytest(self, runner):
         """A green pytest is not evidence about a .tsx diff, so the web lane must not use it."""
