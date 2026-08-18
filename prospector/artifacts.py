@@ -21,7 +21,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from concurrent.futures import TimeoutError as FuturesTimeoutError
 from typing import Any, Dict, List, Optional
 
-from . import evidence_budget, facets, prose_target
+from . import evidence_budget, facet_derive, facets, prose_target
 from .copy_lint import buyer_readable
 from .marketing_assets import ASSET_TYPES
 from .models import Candidate, CheckResult, Decision, Dossier, Verdict
@@ -1060,7 +1060,45 @@ def _derive_copy(headline: str, subhead: str, what: List[str], proof_point: str)
     return "\n\n".join(parts)
 
 
-def _normalize_listing(data: Dict[str, Any]) -> Dict[str, Any]:
+def _derive_mechanism(candidate: Optional[Any]) -> str:
+    """The ``mechanism`` facet from the candidate's OWN declared structural form, or "".
+
+    Sits beside ``_derive_copy`` and follows the same rule: build it from a field the engine
+    already holds, and let the model's answer stand only where the deterministic builder has
+    nothing to say. It is the one facet with a dossier field that means the same thing —
+    ``facets.MECHANISM`` mirrors ``config.yaml generation.structural_forms``
+    (``facet_derive.py:13-15``), so this is a vocabulary check, not an inference.
+
+    MEASURED over the 89 pass dossiers on disk that carry a listing_page
+    (``docs/TEMPLATE_FIRST_COPY.md``): ``structural_form`` is non-empty on 89/89, the deriver
+    and the model both answer on 65 packs and AGREE on 62 of them (95%), and the deriver
+    fills 2 the model left blank. On the other 20 the candidate's form is outside the facet
+    vocabulary (``micro_ecommerce``, ``vertical_saas``, ``api_product`` …) and
+    ``facets.clean_one`` REFUSES to coerce it, so this returns "" and the model's answer is
+    kept. Coercing there is the exact failure that published a metal-fabrication quoting
+    engine as a gardening business (``facet_derive.py:19-26``).
+
+    Why ``effort`` is NOT done here, though ``facet_derive`` can derive it too: measured on
+    the same corpus it agrees with the model on 26 of 84 packs (31%), because
+    ``candidate.automatability`` is written at GENERATION time, when nothing is judged, and
+    the model is answering after verification. ``effort`` routes buyers, and a filter that
+    lies costs more than a filter that is thin.
+
+    Accepts a ``Candidate`` or a plain dict, because the salvage/backfill paths carry the
+    dossier as raw JSON.
+    """
+    if candidate is None:
+        return ""
+    if isinstance(candidate, dict):
+        form = candidate.get("structural_form")
+    else:
+        form = getattr(candidate, "structural_form", None)
+    derived = facet_derive.derive_mechanism({"structural_form": form})
+    return derived.value if derived else ""
+
+
+def _normalize_listing(data: Dict[str, Any],
+                       candidate: Optional[Any] = None) -> Dict[str, Any]:
     """Coerce a (possibly partial) listing_page response into the structured contract.
 
     The storefront renders per-pack specifics (headline, what-you-get bullets, the single
@@ -1075,6 +1113,11 @@ def _normalize_listing(data: Dict[str, Any]) -> Dict[str, Any]:
     re-opened the hole ``_derive_copy`` was written to close: a claim dropped from
     ``proof_point`` by the salvage path stayed in the model's prose, and the storefront
     renders the prose. A concatenation of the parts cannot disagree with the parts.
+
+    ``candidate`` is optional and only ``facets.mechanism`` reads it, on the same
+    derive-first ordering as ``copy`` above (see ``_derive_mechanism``). Absent it, every
+    field is exactly what it was: this is additive, never a behaviour change for a caller
+    that does not pass one.
     """
     # Operators occasionally return a JSON array (e.g. [{...}]) instead of the object, or a
     # bare string. Coerce to the dict the contract expects rather than crashing on .get().
@@ -1091,6 +1134,15 @@ def _normalize_listing(data: Dict[str, Any]) -> Dict[str, Any]:
     what = [str(x).strip() for x in (data.get("what_you_get") or []) if str(x).strip()][:5]
     effort = _s("effort_tag").lower()
     copy = _derive_copy(_s("headline"), _s("subhead"), what, _s("proof_point")) or _s("copy")
+
+    # Derive-first, model-as-fallback — the same ordering `copy` takes one line above, and
+    # for the same reason: where the engine already holds the answer, a second model answer
+    # is a chance to disagree with it, not a source of truth. "" from the builder means the
+    # candidate's form is off-vocabulary, and then the model's tag stands.
+    facet_values = facets.normalize(data.get("facets"))
+    mechanism = _derive_mechanism(candidate)
+    if mechanism:
+        facet_values["mechanism"] = mechanism
     return {
         "type": "listing_page",
         "copy": copy,
@@ -1112,7 +1164,7 @@ def _normalize_listing(data: Dict[str, Any]) -> Dict[str, Any]:
         # Discovery facets, validated against the closed vocabulary. Anything the operator
         # invented is dropped to None here rather than coerced to the nearest member: the
         # storefront routes buyers on these, and a coerced value is a claim nobody made.
-        "facets": facets.normalize(data.get("facets")),
+        "facets": facet_values,
         "time_to_first_revenue": _s("time_to_first_revenue"),
         "cta_text": _s("cta_text"),
     }
@@ -1252,13 +1304,19 @@ def _currency_rule(cfg: Optional[Any], cand: Candidate) -> str:
 
 def _gen_one_content(gen_op: Operator, check_op: Operator, cand_json: str, claims_json: str,
                      claims: List[Dict[str, Any]], t: str,
-                     currency_rule: str = "") -> Optional[Dict[str, Any]]:
+                     currency_rule: str = "",
+                     candidate: Optional[Any] = None) -> Optional[Dict[str, Any]]:
     """Generate one marketing piece with regeneration that feeds claim-check violations.
 
     ``gen_op`` drafts the copy (cheap for ancillary pieces, the quality chain for the
     listing_page); ``check_op`` runs the claim-check — always the moat, because a verification
     gate must never be judged by the same cheap model that produced the copy. Returns None if
     the piece fails claim-check after the regeneration loop. Runs in a thread.
+
+    ``candidate`` is the Candidate OBJECT, not ``cand_json``, and the two are not
+    interchangeable: ``cand_json`` is ``_candidate_prompt_view``'s projection, written for a
+    model to read, and the fields ``_normalize_listing`` derives from are engine fields that
+    a buyer-facing projection has no reason to carry. Only listing_page reads it.
     """
     feedback = ""
     # listing_page is required for publish; give it one extra repair turn with violations.
@@ -1300,7 +1358,7 @@ def _gen_one_content(gen_op: Operator, check_op: Operator, cand_json: str, claim
         with telemetry_stage("content_gen"):
             data = gen_op.complete_json(system, user, temperature=0.7 if attempt == 0 else 0.3)
         if t == "listing_page":
-            piece = _normalize_listing(data)
+            piece = _normalize_listing(data, candidate)
             last_listing = piece
             # Operators sometimes return a list or a bare string; _normalize_listing coerces
             # those, but only a dict can have carried an authored `copy`.
@@ -1405,7 +1463,7 @@ def generate_marketing_content(
         futures = {
             ex.submit(_gen_one_content,
                       quality if t == "listing_page" else cheap_op,
-                      checker, cand_json, claims_json, claims, t, currency_rule): t
+                      checker, cand_json, claims_json, claims, t, currency_rule, cand): t
             for t in types
         }
         listing_future = next((f for f, t in futures.items() if t == "listing_page"), None)

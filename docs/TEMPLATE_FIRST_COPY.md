@@ -264,5 +264,168 @@ the bulk of what is sold, is already 100% model-free.
 
 ### 2026-08-18 — `facets.mechanism` derived from `candidate.structural_form`
 
-Deferred to the second half of this document, appended after the change lands with its
-before/after linter receipts and side-by-side copy samples.
+**Shipped.** One field. Everything else in bucket (b) was rejected on the measurements above.
+
+What changed:
+
+* `artifacts._derive_mechanism` (new, beside `_derive_copy`) reads
+  `candidate.structural_form` through `facet_derive.derive_mechanism`.
+* `_normalize_listing` takes an optional `candidate` and, when the builder returns a value,
+  that value wins over the model's tag. Derive first, model as fallback, exactly the ordering
+  `copy` already uses. Absent a candidate the function is byte-for-byte what it was.
+* `_gen_one_content` takes the Candidate OBJECT alongside `cand_json`, because `cand_json` is
+  `_candidate_prompt_view`'s projection for a model to read and does not carry engine fields.
+* `tools/backfill_listing_copy.generate_listing` passes its candidate too. Without that, a
+  backfilled listing would take its mechanism from the model while a freshly generated one
+  took it from the declared form, and one field would mean two things depending on which
+  producer wrote the pack.
+
+Pinned by `tests/unit/test_listing_mechanism_is_derived_not_classified.py` (8 tests),
+including a test that `effort` is still NOT derived, so a later "while we are in here" change
+has to argue with the 31% number instead of a hunch.
+
+#### The quality gate
+
+`pack_linter.lint_pack` run over the 84 real packs on disk that carry both a listing_page and
+the artifact set, through the same inputs `bridge.py` builds, URL checking off. Graded by pack
+id, before and after:
+
+```
+  BEFORE  ok 39/84   blocked 45
+  AFTER   ok 39/84   blocked 45
+  packs that passed BEFORE and fail AFTER : 0
+  packs that failed BEFORE and pass AFTER : 0
+  packs whose ERROR set changed           : 0
+  packs whose WARNING count changed       : 0
+```
+
+The 45 blocked packs are blocked before and after, on `placeholders:financial_model` and
+`identifier_leak:build_spec` — pack-body defects that predate this work and are untouched by
+it.
+
+Every buyer-facing string, across all 84 packs:
+
+```
+  card_line             changed on 0 pack(s)
+  headline              changed on 0 pack(s)
+  subhead               changed on 0 pack(s)
+  what_you_get          changed on 0 pack(s)
+  proof_point           changed on 0 pack(s)
+  who_pays              changed on 0 pack(s)
+  copy                  changed on 0 pack(s)
+  effort_tag            changed on 0 pack(s)
+  cta_text              changed on 0 pack(s)
+  time_to_first_revenue changed on 0 pack(s)
+```
+
+**No copy changed.** That is the whole quality argument, and it is a count, not a claim: this
+change moves one browse facet and touches no sentence a buyer reads. The five other facets
+also moved on 0 packs.
+
+#### What actually moved: 5 packs of 84
+
+Two facets FILLED that were blank. An untagged pack is reachable only under "All", so these
+two were invisible to every filter and to the Matchmaker:
+
+```
+  50075fc6e149d809   None -> productized_service
+  f2ac7df9995c334e   None -> productized_service
+```
+
+Three changed value, each to the form the candidate itself declares:
+
+```
+  38029727242c23c9   productized_service -> vertical_tool
+     title: CMMC Level 2 evidence packs for GA defense software vendors
+     candidate.structural_form = "vertical_tool"
+
+  e55d5ee49e76e0a9   productized_service -> vertical_tool
+     title: NHS Spine conformance for UK digital health vendors
+     candidate.structural_form = "vertical_tool"
+
+  8d5a441749448b69   productized_service -> picks_and_shovels
+     title: Asset cross-check service for divorcing spouses
+     candidate.structural_form = "picks_and_shovels"
+```
+
+**Honest cost, stated plainly: the third one reads worse.** "Asset cross-check service for
+divorcing spouses" is a productized service by any ordinary reading, and generation's
+`picks_and_shovels` looks like the weaker tag. That is 1 pack in 84. It is disclosed rather
+than argued away, and it is the price of the trade: the derived value is traceable to a field
+on the dossier, the model's is not, and two fields that mean the same thing must not disagree.
+
+#### Side by side, 5 real packs
+
+The five that moved. Every buyer-facing field, old and new:
+
+```
+--- 50075fc6e149d809 ---
+  headline  [SAME] "Stripe chargeback defence packs for UK Shopify agencies"
+  subhead   [SAME] "Pulls order, IP, fulfilment and signature evidence from Shopify and the
+                    courier and packages it into Stripe's exact dispute-evidence format ..."
+  who_pays  [SAME] "Owner of a UK Shopify Plus or ecommerce agency running DTC brand clients
+                    (£500k-£20m GMV per client) who currently lose 30-50% of chargebacks ..."
+  copy      [SAME] 619 chars
+  facets.mechanism   None -> productized_service
+
+--- f2ac7df9995c334e ---
+  headline  [SAME] "Gig Deactivation Reversal Dossier"
+  subhead   [SAME] "A productized service that builds a proven appeal pack for gig workers
+                    unjustly deactivated by platforms like Uber, DoorDash, or Instacart ..."
+  copy      [SAME] 599 chars
+  facets.mechanism   None -> productized_service
+
+--- 38029727242c23c9 ---
+  card_line [SAME] "CMMC Level 2 evidence binders for defense software firms"
+  who_pays  [SAME] "The person responsible for security or compliance at a small defense
+                    contractor handling Controlled Unclassified Information, reached
+                    through the Cyber AB Marketplace ..."
+  cta_text  [SAME] "Get the CMMC evidence pack plan"
+  copy      [SAME] 1243 chars
+  facets.mechanism   productized_service -> vertical_tool
+
+--- 8d5a441749448b69 ---
+  card_line   [SAME] "Check a spouse's declared assets against public records"
+  proof_point [SAME] "Forensic accountants typically charge £3,000 to £5,000 for a business
+                      valuation in a divorce case (forensic.legal)."
+  who_pays    [SAME] "A self representing divorcing spouse, a group that has grown since 2012
+                      legal aid cuts pushed more family court litigants into representing
+                      themselves (Parliament research briefing)."
+  copy        [SAME] 490 chars
+  facets.mechanism   productized_service -> picks_and_shovels
+
+--- e55d5ee49e76e0a9 ---
+  card_line [SAME] "NHS clinical safety paperwork for health software firms"
+  headline  [SAME] "Turn a health software firm's existing documents into the NHS safety
+                    evidence assessors ask for"
+  who_pays  [SAME] "The chief technology officer or head of regulatory at a UK digital health
+                    company that needs to connect to NHS systems, reached through NHS
+                    Digital's supplier webinars ..."
+  cta_text  [SAME] "Get the NHS conformance pack plan"
+  copy      [SAME] 1576 chars
+  facets.mechanism   productized_service -> vertical_tool
+```
+
+#### Tests
+
+`pytest tests/ -q -k "listing or artifact or copy or publish or shelf or bundle or content"`
+— 651 passed, 1 skipped. `ruff check .` repo-wide clean.
+
+One existing test needed a signature fix, not a behaviour change:
+`tests/unit/test_artifact_content_phase_budget.py` monkeypatches `_gen_one_content` with a
+fake whose parameter list must match what `generate_marketing_content` submits.
+
+## What was NOT done, and why
+
+Each of these is a deliberate refusal with the number behind it, not an omission.
+
+| not done | why |
+|---|---|
+| template `facets.effort` | 31% agreement with the model over 84 packs. `candidate.automatability` is written before anything is verified. |
+| template `proof_point` | only 29 of 76 are traceable to a rationale; the rationales are verdict voice with passage ids in them. |
+| template `what_you_get` | 171 of 302 bullets carry a figure or run past 120 characters. The generic four already exist as a floor and must not become the default. |
+| template `card_line`, `headline`, `subhead`, `who_pays` | compression and phrasing judgement. Bucket (c). No dossier field holds the answer. |
+| template `cta_text` | no consumer anywhere. Delete it, do not template it. |
+| template `time_to_first_revenue` | filled 0 of 89 times. Delete it. |
+| move the four remaining facets to a local classifier | out of scope here, but they are classification and do not need a frontier model. `sector`, `payer`, `commitment` and `advantages` are refused by `facet_derive` on a documented incident and are resolved by hand in `store_platform/data/facets-backfill.json`. |
+| delete the two dead fields from `content_gen.md` | a prompt edit changes model behaviour on every OTHER field in the same response. It needs its own diff and its own golden run. |

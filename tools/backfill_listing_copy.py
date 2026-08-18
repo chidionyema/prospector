@@ -254,7 +254,14 @@ def generate_listing(quality, checker, dossier: Dict[str, Any]) -> Optional[Dict
     candidate = dossier.get("candidate") or {}
     supported = supported_claims(dossier)
     return artifacts._gen_one_content(
-        quality, checker, json.dumps(candidate), json.dumps(supported), supported, "listing_page")
+        quality, checker, json.dumps(candidate), json.dumps(supported), supported, "listing_page",
+        # The raw candidate dict as well as its JSON projection, because `_normalize_listing`
+        # derives `facets.mechanism` from `candidate.structural_form` and that projection is
+        # written for a model to read, not for the deriver. Without it a backfilled listing
+        # would take its mechanism from the model while a freshly generated one takes it from
+        # the declared form, and the same field would mean two different things depending on
+        # which producer happened to write the pack.
+        candidate=candidate)
 
 
 def patch_copy(api_url: str, key: str, pack_id: str,
