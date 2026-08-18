@@ -20,7 +20,12 @@ primary_region = "lhr"
   # label is the entire integration: no workflow file changes, and jobs go to whichever
   # runner is free, Fly or Mac. That is also the migration path - bring these up, watch them
   # take jobs, then remove the Mac runners.
-  RUNNER_LABELS = "self-hosted,Linux,X64,container"
+  #
+  # `fly` is here so one lane can be pointed at these machines on purpose. `self-hosted` alone
+  # cannot do that: GitHub applies it to every self-hosted runner and it cannot be removed, so
+  # a `runs-on: self-hosted` job goes to whichever of Fly and the Macs is free. That is right
+  # for the steady state and wrong for a cutover, where you want to move ONE lane and watch it.
+  RUNNER_LABELS = "self-hosted,Linux,X64,container,fly"
 
 [[restart]]
   # An ephemeral runner EXITS after every job, cleanly, with status 0. Without `always` the
