@@ -2529,6 +2529,9 @@ TOOLS: list[dict] = [
        run=True, cmd=".venv/bin/python scripts/ops_state.py"),
     _t("scripts/launchd_plists.py", "Launchd job definitions, and drift against them", False,
        "/engine", run=True, cmd=".venv/bin/python scripts/launchd_plists.py --check"),
+    _t("scripts/estate_map.py", "The whole estate, probed live: Fly apps, customer URLs, laptop "
+       "jobs, volumes, secret names", False, "/engine", run=True,
+       cmd=".venv/bin/python scripts/estate_map.py"),
     _t("tools/spend_today.py", "Today's spend against the cap", False, "/spend"),
     # --- publish / republish ---
     _t("publish/publish.py", "The single publish entry point", True, "/catalogue",
