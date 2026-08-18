@@ -1715,11 +1715,13 @@ the whole page, then the first 2400px (`FOLD_PX`). Threshold is 2%. No page is u
 
 **`kill-log` got WORSE and that is the correct direction.** Its 1280 fold went 25.06% to 33.09%
 because the ranked chart was fixed on our side and the drawing still renders the bug. Screenshots
-taken 2026-08-18 at 1280: on `mockups/kill-log.html` the twelve rows are right-ragged with truncated
+taken 2026-08-18 at 1280: on `docs/design/mumchimp-build-bundle/mockups/kill-log.html` the twelve
+rows are right-ragged with truncated
 labels, and the chip rail and the search box paint ON TOP of them; on the built page the thirteen
 rows sit on one left baseline with proportional bars and nothing overlaps. Falling further from a
 broken reference is the harness working. Two ways out, and it is the founder's call which:
-either fix `mockups/kill-log.html` so the drawing shows the chart it was designed to show, or accept
+either fix `docs/design/mumchimp-build-bundle/mockups/kill-log.html` so the drawing shows the chart
+it was designed to show, or accept
 that this page's number is measured against a defect and exclude it from the 2% bar. Nothing in the
 code should change to close this gap.
 
@@ -1756,12 +1758,14 @@ markup passed structural parity, the types checked, the build was clean, and the
 
 4. **The ranked bar chart on `/kill-log` rendered thirteen rows inside a 44px box.**
    `mumchimp.css:103` is `.bars{display:flex;flex-direction:column;align-items:flex-end;height:44px}`.
-   That rule is written for the home page's sparkline (`mockups/index.html:629`), and
-   `mockups/kill-log.html:475` reuses the same class name for the ranked chart. The fixed height and
+   That rule is written for the home page's sparkline
+   (`docs/design/mumchimp-build-bundle/mockups/index.html:629`), and
+   `docs/design/mumchimp-build-bundle/mockups/kill-log.html:475` reuses the same class name for the
+   ranked chart. The fixed height and
    the right alignment therefore land on a list of thirteen rows: the rows spilled over the search
    box and the chip rail below, and every row shrink-wrapped and pushed right, so no two labels or
    counts shared a baseline. **The drawing breaks on itself here** -- measured at 1280,
-   `kill-log.html`'s twelve rows run y=1638..1932, 294px of content in a 44px box, all right-ragged.
+   the drawing's twelve rows run y=1638..1932, 294px of content in a 44px box, all right-ragged.
    Copying the bundle faithfully reproduced the bug. Fixed with `h-auto items-stretch` on the one
    `<ul>`; after it the list measures 294px tall with every row on one left baseline and every row
    inside its section. Whether to fix the bundle itself is the founder's call; step 1 says the
