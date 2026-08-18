@@ -99,6 +99,28 @@ jobs:
                 ;;
               *) : ;;
             esac
+            # NEVER TOUCH A PULL REQUEST THAT IS CURRENTLY BUILDING. `ci.yml:113` sets
+            # `cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}`, so on a pull request
+            # branch a new run KILLS the run already in flight. The close/reopen below exists to
+            # start a new run. Put those two together and this workflow destroys the very builds
+            # it is waiting for: it fires on every push to main and hourly on cron, a build takes
+            # four to seventeen minutes, so any pull request unlucky enough to be mid-build when
+            # the queue reaches it loses that build and starts from zero.
+            #
+            # Nothing records this. The jobs read `cancelled` with an empty `runner_name`, which
+            # is indistinguishable from starvation, and the pull request simply never finishes.
+            # Measured 2026-08-18: builds of four to seventeen minutes, and six pull requests
+            # open for hours with no failure anywhere in them.
+            #
+            # A pull request that is building is already being graded. It does not need bringing
+            # forward this cycle; the next cycle will take it.
+            inflight=$(gh api "repos/$REPO/commits/$(gh api "repos/$REPO/pulls/$n" --jq '.head.sha')/check-runs?per_page=100" \
+                         --jq '[.check_runs[] | select(.status != "completed")] | length' 2>/dev/null || echo 0)
+            if [ "${inflight:-0}" -gt 0 ]; then
+              echo "#$n is building right now ($inflight check(s) in flight) -- leaving it alone"
+              continue
+            fi
+
             # Ask git, not the label: is this branch's tip an ancestor of main's tip?
             base=$(gh api "repos/$REPO/pulls/$n" --jq '.base.sha')
             head_main=$(gh api "repos/$REPO/commits/main" --jq '.sha')
