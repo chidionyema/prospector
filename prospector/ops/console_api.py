@@ -55,8 +55,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-from prospector import content_contract
-from prospector import pack_linter
+from prospector import content_contract, pack_linter
 
 #: Bumped when the JSON contract changes shape. The web app asserts on it at boot, so a console
 #: talking to an older engine says so instead of rendering blanks.
