@@ -83,8 +83,8 @@ def test_the_repair_pass_reuses_the_running_interpreter():
 
     assert R.PY == sys.executable, (
         "the repair pass would exec a different interpreter than the one running it; on "
-        "2026-08-18 that was /app/.venv/bin/python inside a container with no venv, and every "
-        "repair route raised FileNotFoundError before doing any work"
+        "2026-08-18 that was a hardcoded virtualenv path under /app, in a container that has "
+        "no virtualenv, and every repair route raised FileNotFoundError before doing any work"
     )
 
 
