@@ -7,6 +7,12 @@ component, whether it answered, and where its state lives. This document explain
 Written 2026-08-18, the day the engine moved to Fly and the day the working trees vanished off the
 laptop. Both events are in here, because both taught the estate something.
 
+**Looking for your half of it?** [docs/personas/](personas/) is the same estate written twenty times,
+once per seat: founder, analyst, finance, ops, SRE, security, legal, developer, senior, principal,
+architect, QA, ML engineer, data engineer, product, content, growth, support, the buyer, and someone
+on day one. This file is the shared factual spine those documents point back at, so a fact lives here
+once instead of drifting in twenty places.
+
 ---
 
 ## 1. The one-page picture
