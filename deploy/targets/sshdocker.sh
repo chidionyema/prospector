@@ -2,7 +2,8 @@
 # Any Linux box with Docker and an SSH login. Hetzner, EC2, a Mac mini, a Pi in a cupboard.
 #
 # This is the escape hatch from Fly, and it is written NOW so that leaving Fly is a command we
-# have already run rather than a project we have to start. Same eight verbs as deploy/targets/fly.sh.
+# have already run rather than a project we have to start. Same eleven verbs as deploy/targets/fly.sh;
+# the contract is written out in deploy/PORTABILITY.md.
 #
 #   PROSPECTOR_SSH_HOST=engine@1.2.3.4 deploy/cutover.sh --from fly --to sshdocker
 
@@ -59,3 +60,15 @@ t_pack() {
 }
 
 t_logs() { _ssh "docker logs -f $NAME"; }
+
+# Is this box actually carrying the load right now? deploy/decommission.sh asks before it turns
+# the other platform off for good. A running container is not enough on its own: a container that
+# came up against an empty volume is running and serving nothing, so the ledger is checked too.
+t_health() {
+  local state
+  state="$(_ssh "docker inspect -f '{{.State.Running}}' $NAME 2>/dev/null" || echo false)"
+  [ "$state" = "true" ] || { echo "sshdocker:$HOST container $NAME is not running" >&2; return 1; }
+  _ssh "test -f $DATA/store/prospector.jsonl" \
+    || { echo "sshdocker:$HOST is up but has no ledger at $DATA/store/prospector.jsonl" >&2; return 1; }
+  echo "sshdocker:$HOST running, ledger present"
+}
