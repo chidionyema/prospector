@@ -485,3 +485,109 @@ footer{border-top:1px solid var(--line);margin-top:46px}
 .err .code{font-family:var(--font-mono);font-size:13px;color:var(--ink-3);letter-spacing:.12em;margin-bottom:18px}
 .err h1{margin:0 auto 14px;max-width:20ch}
 .err p{margin:0 auto 26px}
+
+/* ═══ LATE RESPONSIVE OVERRIDES ═══
+   This file is the twelve drawings' stylesheets concatenated, page after page, and each page
+   restates the classes it shares with the others. A later restatement wins on cascade order, so
+   a media query written on page one is silently switched back on by an identical selector on
+   page four. Two rules were being killed that way, and both showed on a phone:
+
+   `.nav-d` — `@media(max-width:920px){.nav-d{display:none}}` at line 63 was overridden by
+   `.nav-d{display:flex}` at line 278. The desktop nav therefore stayed in the header at 390px,
+   pushing the two icon buttons past the right edge. Measured before this fix: scrollWidth 472
+   against a 390px viewport, on EVERY page of the site, so every page scrolled sideways.
+
+   `.docs` — `@media(max-width:760px){.docs{grid-template-columns:1fr}}` at line 210 was
+   overridden by `.docs{grid-template-columns:repeat(2,1fr)}` at line 322, so the fourteen
+   documents stayed in two columns on a phone.
+
+   They live at the end because that is the only place the cascade cannot undo them. Anything
+   else that needs a mobile rule to actually apply belongs here too, not next to the class. */
+@media (max-width: 920px) {
+  .nav-d,
+  .acct {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .docs {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The shelf row and the three-up tiles never collapsed on a phone.
+   `.row` is `grid-template-columns:1fr auto` (line 145) with no mobile rule, so the price column
+   kept its width and the row measured 392px of content inside a 350px column. The drawing does
+   have this rule, but only for the kill-log's `.klrow` (line 358); the shelf row was written on a
+   page that was drawn wide. Same shape, so same collapse.
+   `.three` used `1fr`, whose min-content floor is the widest unbreakable child. `.htile .foot`
+   is a nowrap flex row, so a long "cited sources behind it" label forced a 413px column inside a
+   350px grid and the card was clipped. `minmax(0,1fr)` caps the track at the container, and
+   letting the foot wrap gives it a small min-content instead of a clipped one.
+   `.row .proof` was declared flex-wrap at line 152 and re-declared without it at line 337, so the
+   proof chips could not wrap either. Restated here for the same cascade reason as above. */
+@media (max-width: 700px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+  .row .side {
+    grid-column: 1;
+    grid-row: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+  }
+}
+@media (max-width: 860px) {
+  .three {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .htile .foot {
+    flex-wrap: wrap;
+  }
+}
+.row .proof {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Two things the drawing did not have to draw, because a drawing has no state and no law to obey.
+   `.consent` is the consent tick. The drawing shows a bare fine-print line; we must show a box,
+   unticked, because the server hashes what was agreed to and refuses a signup without it. It is
+   given `flex-basis:100%` so it drops to its own row under the field and the button, which is
+   where the drawing puts that line. The size and padding reset are needed because `.emailbox
+   input` sets a 46px control height and would apply to a checkbox too.
+   `.err` is the failed-submit message, in the same fine-print slot. */
+.emailbox .consent {
+  flex: 0 0 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.emailbox .consent input {
+  flex: 0 0 auto;
+  width: 15px;
+  min-width: 0;
+  height: 15px;
+  margin-top: 2px;
+  padding: 0;
+  accent-color: var(--ink);
+}
+.emailbox .err {
+  flex: 0 0 100%;
+  color: #b4231f;
+}
+
+/* The drawing sets this heading with an inline style (`mockups/index.html:459`) because it is the
+   one place a `.doc-body` carries a second heading. Same numbers, as a rule. */
+.doc-body h4 {
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: -0.018em;
+  margin-bottom: 12px;
+}

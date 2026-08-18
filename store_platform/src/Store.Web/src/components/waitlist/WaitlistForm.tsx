@@ -105,7 +105,6 @@ export function WaitlistForm({ source, query, submitLabel = 'Put it in the queue
   const field = (
     <Input
       label="Email"
-      hideLabel={inline}
       type="email"
       required
       value={email}
@@ -128,15 +127,49 @@ export function WaitlistForm({ source, query, submitLabel = 'Put it in the queue
   );
 
   if (inline) {
+    /*
+     * THE DRAWING'S FORM (`mockups/index.html:556`): one row holding a bare input and a `.btn`,
+     * then the promise as fine print under it.
+     *
+     * It renders plain elements rather than `Input` and `Button` because the styled components
+     * could not be made to look like the drawing. Their utility classes sit in Tailwind's
+     * `utilities` layer; mockup.css is imported into `components`, which loses to it. So
+     * `.emailbox input` (height 46, paper ground, 15px type) was overruled on every declaration
+     * it made, and the box rendered as a Tailwind control inside a hand-drawn card. Plain
+     * elements hand the drawing's stylesheet back the control it is supposed to have.
+     *
+     * The consent box stays and it IS the fine line now, rather than a second control stacked
+     * above it. Its label is `WAITLIST_CONSENT_TEXT` itself, so what the reader ticks and what
+     * `WaitlistService` hashes are the same sentence, and the row still reads as one line of
+     * fine print the way the drawing does.
+     */
     return (
-      <>
-        <form onSubmit={submit} className="flex max-w-[470px] flex-wrap items-start gap-[10px]">
-          <div className="min-w-[210px] flex-1">{field}</div>
-          {send}
-        </form>
-        <div className="mt-3">{box}</div>
-        <p className="fine">{WAITLIST_CONSENT_TEXT}</p>
-      </>
+      <form onSubmit={submit}>
+        <input
+          type="email"
+          aria-label="Email address"
+          placeholder="you@example.com"
+          required
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+        />
+        <button className="btn" type="submit" disabled={state === 'sending'}>
+          {state === 'sending' ? 'Adding you\u2026' : submitLabel}
+        </button>
+        <label className="fine consent">
+          <input
+            type="checkbox"
+            checked={consent}
+            onChange={(event) => setConsent(event.target.checked)}
+          />
+          <span>{WAITLIST_CONSENT_TEXT}</span>
+        </label>
+        {error && (
+          <p className="fine err" role="alert">
+            {error}
+          </p>
+        )}
+      </form>
     );
   }
 
