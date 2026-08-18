@@ -51,9 +51,23 @@ import time
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DOSSIER_DIR = REPO_ROOT / "store" / "dossiers"
-LEDGER = REPO_ROOT / "store" / "prospector.jsonl"
-DB = REPO_ROOT / "store" / "prospector.db"
+
+# The store comes from `config.store_root()`, never from `__file__`. These three lines used to
+# read `REPO_ROOT / "store"`, which is the store inside whichever checkout the code was loaded
+# FROM. On the engine's Fly container the code is at /app and the volume is at /data/store, so
+# the nightly backup looked in /app/store, found nothing, and exited 1 with
+# `STORE_BACKUP FAIL no /app/store/dossiers — nothing to back up`. It would have done that every
+# night, and a backup that fails is only visible if someone reads its log.
+#
+# REPO_ROOT is still right for the two things that really are about the CODE: reading .env and
+# bundling the git repository.
+sys.path.insert(0, str(REPO_ROOT))
+from prospector.config import store_root  # noqa: E402
+
+STORE = store_root()
+DOSSIER_DIR = STORE / "dossiers"
+LEDGER = STORE / "prospector.jsonl"
+DB = STORE / "prospector.db"
 
 DOSSIER_PREFIX = "dossiers/"
 LEDGER_PREFIX = "ledger/"

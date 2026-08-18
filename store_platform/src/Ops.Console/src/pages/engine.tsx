@@ -15,7 +15,7 @@ import { useState } from 'react';
 
 import Confirm from '@/components/Confirm';
 import Shell from '@/components/Shell';
-import { AsOf, Card, Note, Pill, Problem, Row, Scroll } from '@/components/ui';
+import { AsOf, Button, Card, Note, Pill, Problem, Row, Scroll } from '@/components/ui';
 import { ABSENT, ago, duration } from '@/lib/time';
 import { useOps } from '@/lib/useOps';
 
@@ -97,6 +97,50 @@ type Routing = {
   advisories: string[];
 };
 
+/**
+ * One side of the engine. Some fields only exist on one platform.
+ *
+ * `state` and `machine_id` are Fly's. `scheduler_pids` and `fenced` are the laptop's.
+ * `ledger_age_min` and `ledger_lines` are only read when the view is asked for `deep=1`, because
+ * reading the Fly ledger costs an SSH round trip.
+ */
+type Side = {
+  side: string;
+  reachable: boolean;
+  healthy: boolean;
+  error?: string;
+  ledger_age_min?: number;
+  ledger_lines?: number;
+  /** fly only */
+  app?: string;
+  machines?: number;
+  state?: string;
+  machine_id?: string;
+  /** laptop only */
+  scheduler_pids?: number[];
+  fenced?: boolean;
+};
+type EngineLocation = {
+  at: string;
+  active: string;
+  autofailover: string;
+  consecutive_failed_polls: number;
+  sides: Record<string, Side | undefined>;
+  standby: {
+    files?: Record<string, { bytes: number; age_min: number }>;
+    staleness_min: number | null;
+    usable: boolean;
+  };
+};
+
+/** Both sides, always, in this order. A missing side renders as "could not read", never as absent. */
+const SIDES = ['fly', 'laptop'] as const;
+
+const SIDE_TITLE: Record<string, string> = {
+  fly: 'Fly.io',
+  laptop: 'The laptop',
+};
+
 const SCOPE_TITLE: Record<string, string> = {
   all: 'Stop everything',
   generation: 'Stop inventing new ideas',
@@ -122,6 +166,8 @@ export default function Engine() {
   return (
     <Shell title="Engine" intro="Start, stop, and which brain is allowed to rule.">
       {pause.error ? <Problem>{pause.error}</Problem> : null}
+
+      <EngineLocationCard />
 
       <Card
         title="Processes"
@@ -251,6 +297,336 @@ export default function Engine() {
         . They are config.yaml edits, not runtime switches, so they take effect on the next tick.
       </Note>
     </Shell>
+  );
+}
+
+/**
+ * Where the engine is running, and how to move it.
+ *
+ * Both sides are always on screen. Showing only the live one and letting the operator assume the
+ * other is fine is how a failover gets armed onto a standby nobody had looked at.
+ *
+ * Two reads, on purpose. The plain one polls. The `deep=1` one also reads each side's ledger,
+ * which costs an SSH round trip to Fly, so it only runs when the operator asks for it. The ledger
+ * numbers carry their own read time, because they are older than the rest of the panel.
+ */
+function EngineLocationCard() {
+  const live = useOps<EngineLocation>('engine_location', {}, { pollMs: 30_000 });
+  const [deepOn, setDeepOn] = useState(false);
+  const deep = useOps<EngineLocation>(deepOn ? 'engine_location' : null, { deep: 1 });
+
+  const loc = live.data;
+  const ledgers = deep.data?.sides ?? {};
+  const armed = loc?.autofailover === 'armed';
+  const active = loc?.active ?? '';
+  const other = active === 'fly' ? 'laptop' : 'fly';
+  const stale = loc?.standby?.staleness_min;
+
+  return (
+    <Card
+      title="Engine location"
+      right={<AsOf asOf={live.envelope?.as_of} tookMs={live.envelope?.took_ms} />}
+    >
+      {live.error ? <Problem>{live.error}</Problem> : null}
+      {!loc && !live.error ? (
+        <div className="text-[13px] text-subtle">asking both sides…</div>
+      ) : null}
+
+      {loc ? (
+        <>
+          <div className="flex flex-wrap items-baseline gap-2">
+            <div className="text-[13px] text-muted">
+              The engine is running on{' '}
+              <span className="text-text">{SIDE_TITLE[active] ?? active}</span>.
+            </div>
+            <Pill tone={armed ? 'warn' : 'mute'}>
+              {armed ? 'automatic failover ARMED' : 'automatic failover off'}
+            </Pill>
+          </div>
+
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {SIDES.map((name) => (
+              <SideCard
+                key={name}
+                name={name}
+                side={loc.sides?.[name]}
+                active={active === name}
+                ledger={ledgers[name]}
+                ledgerAsOf={deep.envelope?.as_of}
+              />
+            ))}
+          </div>
+
+          <div className="mt-3">
+            <Button
+              onClick={() => {
+                if (deepOn) deep.refresh();
+                else setDeepOn(true);
+              }}
+              disabled={deep.loading}
+            >
+              {deep.loading ? 'reading the ledgers…' : 'Read the ledgers'}
+            </Button>
+            <div className="mt-1 text-[12px] text-subtle">
+              This counts the lines in each side&apos;s spend ledger and says how old it is. It is
+              not polled. Reading the Fly one opens an SSH connection and takes a few seconds.
+            </div>
+            {deep.error ? <Problem>{deep.error}</Problem> : null}
+          </div>
+
+          <div className="mt-4 rounded-sm border border-border bg-surface2 px-3 py-3">
+            <div className="text-[14px] font-[560]">The standby copy</div>
+            {loc.standby?.usable === false ? (
+              <Problem>
+                There is no usable standby copy. If automatic failover fired now, the laptop would
+                have nothing to start from.
+              </Problem>
+            ) : (
+              <div className="mt-1 text-[13px] text-text">
+                The copy on the laptop is {duration((stale ?? 0) * 60)} behind. That is how much
+                work would be lost if automatic failover fired right now.
+              </div>
+            )}
+            {loc.standby?.files ? (
+              <div className="mt-2 font-mono text-[11px] text-subtle">
+                {Object.entries(loc.standby.files).map(([f, m]) => (
+                  <div key={f}>
+                    {f} · {m.bytes} bytes · {duration(m.age_min * 60)} old
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          {loc.consecutive_failed_polls > 0 ? (
+            <Note>
+              Fly has failed {loc.consecutive_failed_polls} health poll(s) in a row. Five in a row
+              is what fires automatic failover, when it is armed.
+            </Note>
+          ) : null}
+
+          <div className="mt-4 flex flex-col gap-4">
+            <FailoverSwitch armed={armed} onDone={live.refresh} />
+            <MoveEngine from={active} to={other} onDone={live.refresh} />
+          </div>
+        </>
+      ) : null}
+    </Card>
+  );
+}
+
+/** One platform. UP, DOWN or UNREACHABLE, plus the detail only that platform has. */
+function SideCard({
+  name,
+  side,
+  active,
+  ledger,
+  ledgerAsOf,
+}: {
+  name: string;
+  side?: Side;
+  active: boolean;
+  ledger?: Side;
+  ledgerAsOf?: number | null;
+}) {
+  // Three states, not two. "Cannot reach it" is not the same claim as "it is down", and treating
+  // them as one is how a network blip reads as a dead engine.
+  const state = !side ? 'UNREACHABLE' : !side.reachable ? 'UNREACHABLE' : side.healthy ? 'UP' : 'DOWN';
+  const tone = state === 'UP' ? 'ok' : state === 'DOWN' ? 'bad' : 'warn';
+
+  return (
+    <div
+      className={`rounded-sm border px-3 py-3 ${active ? 'border-ok/40 bg-ok-bg' : 'border-border'}`}
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <div className="text-[15px] font-[560]">{SIDE_TITLE[name] ?? name}</div>
+          <div className="font-mono text-[11px] text-subtle">{name}</div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Pill tone={tone}>{state}</Pill>
+          <Pill tone={active ? 'ok' : 'mute'}>{active ? 'RUNNING HERE' : 'standby'}</Pill>
+        </div>
+      </div>
+
+      {side?.error ? <Problem>{side.error}</Problem> : null}
+      {!side ? (
+        <div className="mt-2 text-[13px] text-muted">The engine did not report on this side.</div>
+      ) : null}
+
+      <div className="mt-2 text-[12px] text-subtle">
+        {name === 'fly' ? (
+          <>
+            <div>
+              machine state <span className="font-mono">{side?.state ?? ABSENT}</span>
+            </div>
+            <div className="wrap-any">
+              machine id <span className="font-mono">{side?.machine_id ?? ABSENT}</span>
+            </div>
+            <div>
+              app <span className="font-mono">{side?.app ?? ABSENT}</span> ·{' '}
+              {side?.machines ?? 0} machine(s)
+            </div>
+          </>
+        ) : (
+          <>
+            <div>
+              scheduler pids{' '}
+              <span className="font-mono">
+                {side?.scheduler_pids?.length ? side.scheduler_pids.join(', ') : 'none running'}
+              </span>
+            </div>
+            <div>
+              fenced{' '}
+              <span className="font-mono">
+                {side?.fenced === undefined ? ABSENT : side.fenced ? 'yes' : 'no'}
+              </span>
+              {side?.fenced ? ' · it is blocked from starting on its own' : ''}
+            </div>
+          </>
+        )}
+      </div>
+
+      {ledger && (ledger.ledger_lines !== undefined || ledger.ledger_age_min !== undefined) ? (
+        <div className="mt-2 border-t border-border pt-2 text-[12px] text-subtle">
+          <div>
+            ledger <span className="font-mono">{ledger.ledger_lines ?? ABSENT}</span> lines · last
+            write {duration((ledger.ledger_age_min ?? 0) * 60)} ago
+          </div>
+          <div className="text-[11px]">
+            ledger <AsOf asOf={ledgerAsOf} />
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Arm or disarm the unattended move. One button, whichever one applies.
+ *
+ * Both actions take no payload. The preview is where the operator finds out what arming costs,
+ * so it is rendered in full rather than summarised.
+ */
+function FailoverSwitch({ armed, onDone }: { armed: boolean; onDone: () => void }) {
+  return (
+    <div className="rounded-sm border border-border px-3 py-3">
+      <div className="text-[14px] font-[560]">Automatic failover</div>
+      <p className="mt-1 text-[13px] text-muted">
+        {armed
+          ? 'The engine will move itself to the laptop if Fly stops answering. Disarming leaves every move to you.'
+          : 'Nothing moves the engine on its own right now. Arming lets it move itself to the laptop if Fly stops answering.'}
+      </p>
+      <div className="mt-3">
+        {armed ? (
+          <Confirm
+            action="engine.disarm"
+            kind="primary"
+            label="Disarm automatic failover"
+            payload={() => ({})}
+            renderPreview={(p) => (
+              <div className="flex flex-col gap-1">
+                <div>{String(p.effect ?? '')}</div>
+                {p.already_disarmed ? <div>It is already disarmed. Nothing will change.</div> : null}
+              </div>
+            )}
+            onApplied={onDone}
+          />
+        ) : (
+          <Confirm
+            action="engine.arm"
+            kind="danger"
+            label="Arm automatic failover"
+            applyLabel="Yes, arm it"
+            payload={() => ({})}
+            renderPreview={(p) => (
+              <div className="flex flex-col gap-1">
+                <div className="font-[560]">{String(p.effect ?? '')}</div>
+                <div>Fires when: {String(p.fires_when ?? '')}</div>
+                <div>
+                  The standby copy is{' '}
+                  <span className="font-mono">
+                    {duration(Number(p.standby_staleness_min ?? 0) * 60)}
+                  </span>{' '}
+                  behind. That is what a move would lose.
+                </div>
+                {p.already_armed ? <div>It is already armed. Nothing will change.</div> : null}
+              </div>
+            )}
+            onApplied={onDone}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Move the engine by hand.
+ *
+ * The reason is required and the engine refuses an empty one (`console_api.py:1048`), so the
+ * button stays disabled until one is typed. The three facts the operator must read before
+ * confirming — the downtime, the single-writer rule, and what actually runs — are rendered first
+ * and large, not buried under the machine state.
+ */
+function MoveEngine({ from, to, onDone }: { from: string; to: string; onDone: () => void }) {
+  const [reason, setReason] = useState('');
+
+  return (
+    <div className="rounded-sm border border-bad/40 bg-bad-bg px-3 py-3">
+      <div className="text-[14px] font-[560] text-bad-strong">Move the engine</div>
+      <p className="mt-1 text-[13px] text-text">
+        This stops the engine on {SIDE_TITLE[from] ?? from}, copies its state, then starts it on{' '}
+        {SIDE_TITLE[to] ?? to}. The engine is down while that happens. It takes minutes, so the
+        page will keep showing the old side until the move finishes.
+      </p>
+
+      <label className="mt-3 block text-[12px] text-muted" htmlFor="move-why">
+        Why (required — an unexplained engine move reads as an outage)
+      </label>
+      <input
+        id="move-why"
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        className="tap w-full rounded-sm border border-border-control bg-surface px-2 text-[16px]"
+        placeholder="e.g. Fly is throttling us and I want to run locally tonight"
+      />
+
+      <div className="mt-3">
+        <Confirm
+          action="engine.switch"
+          kind="danger"
+          label={`Switch the engine to ${SIDE_TITLE[to] ?? to}`}
+          applyLabel="Yes, move the engine"
+          disabled={!reason.trim() || !from || !to}
+          payload={() => ({ to, reason: reason.trim() })}
+          renderPreview={(p) => (
+            <div className="flex flex-col gap-2">
+              <div className="text-[14px] font-[560]">
+                {String(p.from ?? '')} → {String(p.to ?? '')}
+              </div>
+              <div>
+                <div className="text-[12px] uppercase tracking-[0.06em] text-subtle">Downtime</div>
+                <div>{String(p.downtime ?? '')}</div>
+              </div>
+              <div>
+                <div className="text-[12px] uppercase tracking-[0.06em] text-subtle">
+                  Only one engine runs at a time
+                </div>
+                <div>{String(p.single_writer ?? '')}</div>
+              </div>
+              <div>
+                <div className="text-[12px] uppercase tracking-[0.06em] text-subtle">
+                  What this runs
+                </div>
+                <div className="wrap-any font-mono text-[12px]">{String(p.effect ?? '')}</div>
+              </div>
+            </div>
+          )}
+          onApplied={onDone}
+        />
+      </div>
+    </div>
   );
 }
 
