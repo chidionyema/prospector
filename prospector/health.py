@@ -86,6 +86,22 @@ _MAX_STRIKES = 6  # 120s -> 2h of probe spacing; the dead_until window still cap
 # seconds and is not billed, so the trade is 5 cheap calls against 24 minutes of a dead engine.
 _MAX_PROBE_GAP_S = 600.0
 
+# THE OUTAGE HAS TO OUTLIVE THE LOG. `mark_exhausted` and `clear` both log, and until
+# 2026-08-18 that log was the only record of either one. `clear()` DELETES the entry, so a brain
+# that broke and then recovered leaves NO state behind at all. Measured that day: `fly logs -a
+# prospector-engine --no-tail` returns ~100 lines, which on a generating daemon is about four
+# minutes of history, so when the founder asked "when MiniMax comes back up, does it self
+# repair?" the only available answer was inferred from a key that was missing from a JSON file.
+#
+# One line per transition, appended here, is what makes that question answerable from the ops
+# console instead of from a shell. It is an audit trail, not state: nothing reads it to make a
+# decision, so a lost or trimmed line can never change what the engine does.
+EVENTS_PATH = store_root() / "provider_events.jsonl"
+
+# Keep the last N events. Trimmed at 2N so the rewrite happens once every N appends rather than
+# on every one. At ~1 event per bench, probe or recovery this is days of history in ~80KB.
+_EVENTS_KEEP = 400
+
 
 class ProviderHealth:
     """Reads/writes per-provider 'dead until <epoch>' marks to a JSON file.
@@ -94,10 +110,49 @@ class ProviderHealth:
     mutation rewrites the small file atomically (tmp + replace). `now` is injectable
     for tests."""
 
-    def __init__(self, path: Path = HEALTH_PATH, *, clock=time.time):
+    def __init__(self, path: Path = HEALTH_PATH, *, clock=time.time, events_path: Optional[Path] = None):
         self._path = Path(path)
         self._clock = clock
         self._lock = threading.Lock()
+        # Derived from the health file, not from store_root(), so a test pointing this class at
+        # a tmp_path gets its own event log and never appends to the real one.
+        self._events_path = Path(events_path) if events_path else self._path.parent / EVENTS_PATH.name
+
+    @property
+    def chain(self) -> str:
+        """Which chain this file guards. The console shows it: a non-critical bench and a moat
+        bench have very different consequences and used to read identically in the log."""
+        return "noncritical" if "noncritical" in self._path.name else "moat"
+
+    def _record_event(self, kind: str, name: str, **fields) -> None:
+        """Append one line to the event log.
+
+        Runs on the failure path, so it must not be able to turn a benched provider into a
+        crashed run. It catches exactly what appending JSON to a file can raise, and it LOGS —
+        a silent audit trail that stopped writing looks exactly like a quiet week."""
+        row = {"ts": round(self._clock(), 3), "kind": kind, "provider": name,
+               "chain": self.chain, **fields}
+        try:
+            self._events_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self._events_path, "a", encoding="utf-8") as fh:
+                fh.write(json.dumps(row, ensure_ascii=False, default=str) + "\n")
+            self._trim_events()
+        except (OSError, TypeError, ValueError) as err:
+            logger.warning(
+                f"Could not record provider event {kind!r} for {name!r}: {err}",
+                extra={"provider": name, "kind": kind, "error": str(err)})
+
+    def _trim_events(self) -> None:
+        """Keep the file bounded. Rewrites only when it has grown to twice the keep size."""
+        try:
+            lines = self._events_path.read_text(encoding="utf-8").splitlines()
+        except (OSError, ValueError):
+            return
+        if len(lines) <= _EVENTS_KEEP * 2:
+            return
+        tmp = self._events_path.with_suffix(".jsonl.tmp")
+        tmp.write_text("\n".join(lines[-_EVENTS_KEEP:]) + "\n", encoding="utf-8")
+        tmp.replace(self._events_path)
 
     def _load(self) -> dict:
         try:
@@ -208,6 +263,7 @@ class ProviderHealth:
         logger.info(
             f"Provider {name!r} half-open: letting one call through to re-probe",
             extra={"provider": name})
+        self._record_event("probe", name, strikes=int((entry or {}).get("strikes", 1) or 1))
         return True
 
     def mark_exhausted(self, name: str, dead_for_s: float, *, error: str = "") -> None:
@@ -244,6 +300,9 @@ class ProviderHealth:
             f"(strike {strikes}, re-probe in ~{int(probe_in)}s): {(error or 'no error text')[:160]}",
             extra={"provider": name, "dead_for_s": round(dead_for_s, 1),
                    "strikes": strikes, "error": (error or "")[:200]})
+        self._record_event("benched", name, dead_for_s=round(dead_for_s, 1), strikes=strikes,
+                           probe_in_s=round(probe_in, 1), repeat=repeat,
+                           error=(error or "")[:200])
 
     def clear(self, name: str) -> None:
         """A successful call proves `name` is alive — drop any stale dead mark.
@@ -257,11 +316,16 @@ class ProviderHealth:
             if entry is None:
                 return
             self._save(data)
-        if float(entry.get("dead_until", 0) or 0) > self._clock():
+        now = self._clock()
+        if float(entry.get("dead_until", 0) or 0) > now:
+            strikes = int(entry.get("strikes", 1) or 1)
+            down_for_s = round(now - float(entry.get("marked_at", now) or now), 1)
             logger.warning(
                 f"Provider {name!r} RECOVERED on a live call after "
-                f"{int(entry.get('strikes', 1) or 1)} strike(s); dead mark cleared",
-                extra={"provider": name, "strikes": entry.get("strikes")})
+                f"{strikes} strike(s); dead mark cleared",
+                extra={"provider": name, "strikes": strikes})
+            self._record_event("recovered", name, strikes=strikes, down_for_s=down_for_s,
+                               probes=int(entry.get("probes", 0) or 0))
 
 
 _DEFAULT: Optional[ProviderHealth] = None
@@ -291,6 +355,45 @@ def get_noncritical_health() -> ProviderHealth:
             if _NONCRITICAL is None:
                 _NONCRITICAL = ProviderHealth(path=NONCRITICAL_HEALTH_PATH)
     return _NONCRITICAL
+
+
+def recent_events(limit: int = 60, *, path: Optional[Path] = None) -> list[dict]:
+    """The last provider transitions, newest first. Pure read; it never mutates the log.
+
+    Both health files write to ONE log in the store directory, and each row carries the `chain`
+    it came from, because "MiniMax is benched" means something different for the drain than it
+    does for generation and a single merged feed is the only way that comparison is visible.
+
+    A missing or half-written line is skipped rather than raised on: this is what the console
+    renders when something has gone wrong, so it has to survive a torn append.
+    """
+    target = Path(path) if path else EVENTS_PATH
+    try:
+        lines = target.read_text(encoding="utf-8").splitlines()
+    except (FileNotFoundError, ValueError):
+        return []
+    except OSError as err:
+        logger.warning(f"provider events unreadable: {err}", extra={"path": str(target)})
+        return []
+    out: list[dict] = []
+    for line in reversed(lines):
+        if len(out) >= max(0, int(limit)):
+            break
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(row, dict):
+            continue
+        ts = float(row.get("ts", 0) or 0)
+        row["ts_iso"] = (
+            time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(ts)) if ts else None
+        )
+        out.append(row)
+    return out
 
 
 def moat_brains(cfg) -> list[str]:

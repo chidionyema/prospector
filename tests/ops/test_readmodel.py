@@ -326,3 +326,24 @@ def test_the_noncritical_chain_is_asked_of_the_builder_not_the_config_line(tmp_p
     assert "claude_cli" not in noncritical, (
         "the panel reported a tier the engine would refuse to put on this chain")
     assert noncritical == ["minimax"]
+
+
+def test_the_provider_view_carries_the_history_not_just_the_snapshot(tmp_path, monkeypatch):
+    """The tier table cannot answer "did it repair itself?" — recovery DELETES the mark, so a
+    healed outage and one that never happened render identically. The events carry it."""
+    _health_files(tmp_path, monkeypatch, {})
+    events = tmp_path / "provider_events.jsonl"
+    monkeypatch.setattr(_health, "EVENTS_PATH", events)
+    h = _health.ProviderHealth(path=tmp_path / "provider_health.json")
+    h.mark_exhausted("minimax", 3600, error="Token Plan usage limit reached (2056)")
+    h.clear("minimax")
+
+    cfg = _cfg(tmp_path, operator=["minimax", "claude_cli"],
+               noncritical_operator=["minimax"], artifact_operator=["claude_cli"],
+               marketing_operator=[], retrieval=types.SimpleNamespace(provider=["ddg"]))
+    view = R.provider_view(cfg)
+
+    assert [e["kind"] for e in view["events"]] == ["recovered", "benched"]
+    assert all(t["state"] == "live" for t in view["tiers"]), (
+        "the snapshot is right and says nothing: this is the case the events exist for"
+    )

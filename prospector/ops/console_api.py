@@ -159,7 +159,9 @@ def _read_status(cfg, args: dict) -> dict:
     out: dict[str, Any] = {"heartbeats": _heartbeats(cfg), "alerts": _alerts(cfg)}
     out["supervisor"] = _supervisor_view()
     out["pause"] = pause_view(cfg)
-    out["providers"] = provider_view(cfg)
+    # A SHORT tail here on purpose. This view is polled every 30s by the Now page; the
+    # Engine page asks `providers` directly and gets the full history.
+    out["providers"] = provider_view(cfg, events_limit=8)
     out["queue"] = queue_view(cfg, lookback_h=float(args.get("lookback_h") or 24.0))
     try:
         out["routing"] = routing_view(cfg)

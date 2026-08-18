@@ -367,7 +367,7 @@ def _configured_chains(cfg) -> list[tuple[str, list[str], str]]:
     ]
 
 
-def provider_view(cfg, *, now: Optional[float] = None) -> dict:
+def provider_view(cfg, *, now: Optional[float] = None, events_limit: int = 60) -> dict:
     """Every configured tier, its role(s), whether it may rule FINALLY, and its RAW dead mark.
 
     WHAT THIS FIXES (R22). `store/provider_health.json` on the live store holds marks for
@@ -426,6 +426,11 @@ def provider_view(cfg, *, now: Optional[float] = None) -> dict:
         "orphan_marks": sorted(orphans, key=lambda o: o["name"]),
         "moat_blind": _health.moat_blind_reason(cfg, trusted_only=False),
         "drain_blind": _health.moat_blind_reason(cfg, trusted_only=True),
+        # WHAT HAPPENED, not just what is true now. The tiers above are a snapshot, and a
+        # snapshot cannot answer "did it repair itself?" — the mark is deleted on recovery, so
+        # a healed outage and an outage that never happened render identically. These rows are
+        # the transitions themselves: benched, half-open probe, recovered.
+        "events": _health.recent_events(events_limit),
     }
 
 

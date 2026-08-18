@@ -81,6 +81,30 @@ type Providers = {
   moat_blind: string;
   drain_blind: string;
   trusted_final: string[];
+  events: ProviderEvent[];
+};
+
+/**
+ * One transition of one brain. `benched` and `recovered` are the two that matter; `probe` is the
+ * half-open call the engine lets through to find out whether the outage is over.
+ *
+ * This exists because the tier table above cannot answer "did it repair itself?". Recovery
+ * DELETES the health mark, so a healed outage and an outage that never happened look the same in
+ * a snapshot. `prospector/health.py` appends these rows so the answer outlives the mark.
+ */
+type ProviderEvent = {
+  ts: number;
+  ts_iso: string | null;
+  kind: 'benched' | 'probe' | 'recovered' | string;
+  provider: string;
+  chain: 'moat' | 'noncritical' | string;
+  strikes?: number;
+  dead_for_s?: number;
+  probe_in_s?: number;
+  down_for_s?: number;
+  probes?: number;
+  repeat?: boolean;
+  error?: string;
 };
 type Routing = {
   operator: string[];
@@ -166,7 +190,11 @@ const ROLE_TITLE: Record<string, string> = {
 
 export default function Engine() {
   const pause = useOps<PauseView>('status');
-  const providers = useOps<Providers>('providers');
+  // POLLED, unlike every other panel on this page. Founder, 2026-08-18: "i need to see real
+  // time what happens in all cases". A brain benches and recovers on its own between page
+  // loads, so a panel that only reads once is a panel that shows the outage you already
+  // missed. 15s is one Python spawn per 15s against a view that measured 0.74s.
+  const providers = useOps<Providers>('providers', {}, { pollMs: 15_000 });
   const routing = useOps<Routing>('routing');
 
   const status = pause.data as unknown as StatusView | undefined;
@@ -259,6 +287,7 @@ export default function Engine() {
             </tbody>
           </table>
         </Scroll>
+        <ProviderEvents rows={providers.data?.events ?? []} />
         {providers.data?.orphan_marks?.length ? (
           <Note>
             {providers.data.orphan_marks.length} health mark(s) name a tier no chain uses any more.
@@ -923,4 +952,77 @@ function RosterEditor({ routing, onDone }: { routing: Routing; onDone: () => voi
  */
 function nonce(): string {
   return `ui-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+
+/**
+ * What has actually happened to the brains, newest first.
+ *
+ * Reads `providers.events`, which comes from `store/provider_events.jsonl`. Three kinds:
+ *
+ *   benched     a call failed and the brain was taken out of the rotation for a window
+ *   probe       the window is half-open and one call is being let through to measure it
+ *   recovered   that call worked, the mark was deleted, the outage is over
+ *
+ * A `recovered` row is the engine repairing itself with nobody watching. It is the row the
+ * founder asked for by name, and until 2026-08-18 it existed only as a log line in a buffer
+ * that holds about four minutes.
+ */
+function ProviderEvents({ rows }: { rows: ProviderEvent[] }) {
+  if (!rows.length) {
+    return (
+      <Note>
+        No brain has been benched or recovered since the event log started. This is the empty
+        state, not a failed read: the panel above is the current truth, and this is its history.
+      </Note>
+    );
+  }
+  const tone = (kind: string) => (kind === 'recovered' ? 'ok' : kind === 'benched' ? 'bad' : 'warn');
+  const said = (e: ProviderEvent) => {
+    if (e.kind === 'benched') {
+      return `out for ${duration(e.dead_for_s ?? 0)}, strike ${e.strikes ?? 1}, re-probe in ${duration(e.probe_in_s ?? 0)}`;
+    }
+    if (e.kind === 'recovered') {
+      return `answered again after ${duration(e.down_for_s ?? 0)} down and ${e.probes ?? 0} probe(s)`;
+    }
+    if (e.kind === 'probe') return `one call let through to test it (strike ${e.strikes ?? 1})`;
+    return '';
+  };
+  return (
+    <>
+      <div className="mt-5 text-[12px] uppercase tracking-[0.06em] text-subtle">
+        What has happened to them
+      </div>
+      <Scroll>
+        <table className="w-full min-w-[560px] border-collapse text-[13px]">
+          <thead>
+            <tr className="border-b border-border text-left text-[12px] uppercase tracking-[0.06em] text-subtle">
+              <th className="py-2 pr-3 font-[520]">when</th>
+              <th className="py-2 pr-3 font-[520]">what</th>
+              <th className="py-2 pr-3 font-[520]">brain</th>
+              <th className="py-2 font-[520]">detail</th>
+            </tr>
+          </thead>
+          <tbody className="font-mono">
+            {rows.map((e, i) => (
+              <tr key={`${e.ts}:${e.provider}:${e.kind}:${i}`} className="border-b border-border align-top">
+                <td className="py-2 pr-3 text-[12px] whitespace-nowrap">{ago(e.ts_iso ?? undefined)}</td>
+                <td className="py-2 pr-3">
+                  <Pill tone={tone(e.kind)}>{e.kind}</Pill>
+                </td>
+                <td className="py-2 pr-3">
+                  {e.provider}
+                  <div className="mt-1 text-[11px] text-subtle">{e.chain}</div>
+                </td>
+                <td className="wrap-any py-2 text-[12px] text-muted">
+                  {said(e)}
+                  {e.error ? <div className="mt-1 text-[11px]">{e.error}</div> : null}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Scroll>
+    </>
+  );
 }
