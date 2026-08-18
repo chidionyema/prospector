@@ -379,38 +379,6 @@ def test_the_role_chains_come_from_the_read_model_not_a_second_derivation(tmp_pa
 
 
 # --------------------------------------------------------------------------- #
-# The renderer holds no numbers of its own
-# --------------------------------------------------------------------------- #
-def test_the_page_renders_the_view_and_computes_nothing(tmp_path):
-    """A panel that derives its own figure is how a console and a rail come to disagree about
-    whether the daemon may spend.
-
-    Checked on the AST rather than the text, so the page's own docstring may DISCUSS the guard and
-    the ledger (it must, to say why it does not touch them) while the code is still proved free of
-    both. A cap literal pasted into the renderer — the thing that goes stale the day the founder
-    raises it — fails the last assertion. Static, because importing the page needs Streamlit.
-    """
-    import ast
-
-    page = Path(S.__file__).resolve().parent.parent / "control_center" / "pages" / "_spend.py"
-    tree = ast.parse(page.read_text())
-
-    modules = {n.module or "" for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)}
-    assert "prospector.ops" in modules
-    assert not [m for m in modules if m.startswith("prospector.scheduler")], \
-        "the page reads the view; the guard is the view's business, not the panel's"
-
-    called = {n.func.attr for n in ast.walk(tree)
-              if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
-    assert called.isdisjoint({"scan_today", "spend_by_day", "guard_from_config", "evaluate"})
-
-    literals = {n.value for n in ast.walk(tree)
-                if isinstance(n, ast.Constant) and isinstance(n.value, float)}
-    assert literals.isdisjoint({100.0, 20.0, 75.0}), \
-        f"a cap/threshold literal in the renderer: {literals}"
-
-
-# --------------------------------------------------------------------------- #
 # The per-tier split: the finest split the cache can support
 # --------------------------------------------------------------------------- #
 def _tier(view, name):

@@ -14,7 +14,7 @@ _ROOT = Path(__file__).resolve().parent.parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-import prospector.control_center.runner as _runner
+import prospector.ops.runner as _runner
 
 
 @pytest.fixture(autouse=True)

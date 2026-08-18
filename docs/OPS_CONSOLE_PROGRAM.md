@@ -266,7 +266,7 @@ tells you *what*, and tells you where to go for *why*.
 
 **The spine is the whole point.** Today Telegram reads engine state through
 `prospector/scheduler/status.py` while Streamlit reads it through
-`control_center/readers.py` — two readers, one truth, and memory `one-reader-two-caller-shapes` is
+`control_center/readers.py` — two readers, one truth, and memory `one-reader-two-caller-shapes` is  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 what that costs. `prospector/ops/readmodel.py` becomes the single reader; both surfaces import it.
 
 Nothing is rewritten: `readers.py` (33 public functions), `runner.py` (881 lines, jobs survive an
@@ -498,7 +498,7 @@ points at, so the two are the same design arriving from opposite ends.
 |---|---|---|
 | **O1** | `prospector/ops/registry.py` — every tool declared once with class, blast, dry-run. | `pytest tests/ops/test_registry.py` (the six rules, §5.3) |
 | **O2** | Coverage gate: a new script in `scripts/`/`tools/` reddens the suite until registered or waived. | add a dummy script → red → register → green |
-| **O3** | `prospector/ops/readmodel.py` wraps `control_center/readers.py`; no new derivations. | test asserts no direct `sqlite3`/`json.load` of `store/` inside `ops/` |
+| **O3** | `prospector/ops/readmodel.py` wraps `control_center/readers.py`; no new derivations. | test asserts no direct `sqlite3`/`json.load` of `store/` inside `ops/` |  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 | **O4** | The Telegram gateway renders its tool keyboard **generated from the registry**, not hand-written. | `test_every_button_dispatches` green with `_UNBUILT == {}` |
 | **O5** | Streamlit renders its tool cards from the same registry. | one registry entry → appears on both surfaces; test asserts parity |
 | **O6** | Telegram's engine-state reads move onto `ops/readmodel.py`; `scheduler/status.py` becomes a thin caller or is retired. | one reader; test asserts no second derivation of spend/backlog/moat |
@@ -600,7 +600,7 @@ points at, so the two are the same design arriving from opposite ends.
   their line counts, `mini_app_server.py`'s `:8801` binding, the absence of any `web_app` reference
   in the gateway, and the absence of a running mini-app process or launchd job.
 - The claim that Telegram and Streamlit currently derive engine state through **different** readers
-  (`scheduler/status.py` vs `control_center/readers.py`) is read off the two ledgers' own "where the
+  (`scheduler/status.py` vs `control_center/readers.py`) is read off the two ledgers' own "where the  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
   code lives" tables, not off a diff of the two implementations. **O6 must confirm the overlap
   before deleting anything.**
 - **"Covers all business operations" is false today by design** — money reporting is deferred (§10)
@@ -634,7 +634,7 @@ Both write paths are, in production terms, unexercised.
 
 ### T0-1 — Saving Parameters destroys the kill filter (CRITICAL)
 
-`prospector/control_center/pages/_parameters.py:348`:
+`prospector/control_center/pages/_parameters.py:348`:  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 
 ```python
 gates = [{"k": True} for k, v in value.items() if v]
@@ -1062,9 +1062,9 @@ start the Tailscale daemon and re-authenticate the phone (last seen 39 days ago,
 
 | # | Defect | Fix | Proof |
 |---|---|---|---|
-| T0-1 | Saving Parameters replaced every hard gate with `{"k": True}` — a string literal where the loop variable belonged — and `validate_config` waved it through because "a list of dicts" was true of the wreckage | `_parameters._stage_hard_gates`; `validate_config` now requires each key to be a real check name with a non-empty verdict list | `tests/control_center/test_t0_config_save.py` (4 tests) |
+| T0-1 | Saving Parameters replaced every hard gate with `{"k": True}` — a string literal where the loop variable belonged — and `validate_config` waved it through because "a list of dicts" was true of the wreckage | `_parameters._stage_hard_gates`; `validate_config` now requires each key to be a real check name with a non-empty verdict list | `tests/control_center/test_t0_config_save.py` (4 tests) |  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 | T0-2 | The operator selector offered `["", "mock", "claude"]`: the live value is a LIST, so `index` fell to 0 and staged `""` **on every render, with no interaction**; `claude` has not been buildable since 2026-08-15 | multiselect over `operator.BUILDABLE_TIERS` (read from the builder, never a second list) + chain validation in the writer | 3 tests |
-| T0-3 | A Save re-serialised config.yaml: **2034 lines in, 981 out, 1173 comment lines destroyed** | `prospector/control_center/yaml_surgery.py` — line surgery, refuses anything it cannot locate as a single scalar, re-parses and compares before writing | 6 tests; smoke on the real file: 2234 lines in/out, 1362 comments in/out, diff exactly 2 lines |
+| T0-3 | A Save re-serialised config.yaml: **2034 lines in, 981 out, 1173 comment lines destroyed** | `prospector/control_center/yaml_surgery.py` — line surgery, refuses anything it cannot locate as a single scalar, re-parses and compares before writing | 6 tests; smoke on the real file: 2234 lines in/out, 1362 comments in/out, diff exactly 2 lines |  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 | T0-4 | config.yaml is inside `code_fingerprint`, so all of the above shipped to the daemon at its next tick with no human step | refusals now happen before the write; fingerprint unchanged across three refused saves | 1 test |
 | T0-5 | `config_history.jsonl` was 233 four-line YAML blocks in a file named `.jsonl` — every reader fails on line 1 | writes JSON lines; `read_history()` tolerates both | 2 tests (100 legacy records parsed) |
 | T0-6 | `MOAT_AFFECTING_KEYS` named three paths that **do not exist** in config.yaml, so the certification fence fired 0 times in 233 saves | 11 paths verified present on disk; `weights` added — it is the composite `min_composite_to_pass` is compared against | 3 tests + `test_config_editor.py::test_changing_weights_IS_moat_affecting` |
@@ -1073,9 +1073,9 @@ start the Tailscale daemon and re-authenticate the phone (last seen 39 days ago,
 
 | # | Files | Probe met |
 |---|---|---|
-| R18 | `prospector/ops/runs.py`, `pages/_runs.py`, `tests/ops/test_runs.py` (26) | PASS `08b22037fc2afc07` renders 8 evidence rows / 0 outages; KILL `2102bacc6dd75cf9` renders 1 evidence row and **7 outage blocks** with the integrity warning; `32086d481c69567e` (`retrieval_failed`) renders 8 outages, 0 readings. Outage rows carry `verdict=None, confidence=None` by construction — no table can print a fail-safe as a datum. |
-| R19 | `prospector/ops/metrics.py`, `pages/_metrics.py`, `tests/ops/test_metrics.py` (22) | `reconciled: true` against `catalogue_stats()` (pass 82 / kill 2143 / defer 151 / total 2376) and against `run.py report --metrics` (3.7% / 96.3%). Rates divide by `ruled = 2225`, never by 2376 — a DEFER is an outage, not an outcome. |
-| R21 | `prospector/ops/spend.py`, `pages/_spend.py`, `tests/ops/test_spend.py` (28) | metered `$0.68845` **is** `guard.scan_today()[0]`; subscription `$19.530663` is `[1]`. Whole view 0.15 s, resuming at byte 202,620,400 of a 202,646,800-byte ledger — 26 KB read, not 193 MB. |
+| R18 | `prospector/ops/runs.py`, `pages/_runs.py`, `tests/ops/test_runs.py` (26) | PASS `08b22037fc2afc07` renders 8 evidence rows / 0 outages; KILL `2102bacc6dd75cf9` renders 1 evidence row and **7 outage blocks** with the integrity warning; `32086d481c69567e` (`retrieval_failed`) renders 8 outages, 0 readings. Outage rows carry `verdict=None, confidence=None` by construction — no table can print a fail-safe as a datum. |  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
+| R19 | `prospector/ops/metrics.py`, `pages/_metrics.py`, `tests/ops/test_metrics.py` (22) | `reconciled: true` against `catalogue_stats()` (pass 82 / kill 2143 / defer 151 / total 2376) and against `run.py report --metrics` (3.7% / 96.3%). Rates divide by `ruled = 2225`, never by 2376 — a DEFER is an outage, not an outcome. |  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
+| R21 | `prospector/ops/spend.py`, `pages/_spend.py`, `tests/ops/test_spend.py` (28) | metered `$0.68845` **is** `guard.scan_today()[0]`; subscription `$19.530663` is `[1]`. Whole view 0.15 s, resuming at byte 202,620,400 of a 202,646,800-byte ledger — 26 KB read, not 193 MB. |  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 
 Two findings from R19 worth acting on separately: `run.py report`'s `min_composite` count is **776
 vs a true 767** — it silently absorbs 9 kills whose gate was never recorded (`report.py:117` does
@@ -1115,7 +1115,7 @@ module exposes the `main()` the Telegram surface calls; the Overview KPI equals 
 figure; patching `scan_today` to a sentinel moves the KPI (a hand-parser would ignore the patch);
 and an AST scan forbids any page from calling `drain_survey` / `drainable` / `scan_today` /
 `spend_by_day` / `moat_primary` / `sqlite3.connect` itself. **One recorded exception, not hidden:**
-`pages/_resume.py:225` still opens the catalogue DB directly — it predates the spine and is the
+`pages/_resume.py:225` still opens the catalogue DB directly — it predates the spine and is the  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 page R16's queue view replaces. It is allowlisted by name so the fence still fires on a second
 offence there or a first anywhere else.
 
@@ -1123,7 +1123,7 @@ offence there or a first anywhere else.
 
 `.venv/bin/python -m pytest tests/ops tests/control_center -q` → **297 passed, 1 skipped** (2026-08-16).
 Nav now carries 🛠 Engine · 🔎 Runs · 📈 Outcomes · 💵 Spend, each wired in `app.py`
-`_PAGE_MODULES`/`_PAGES_LIST` and pinned by `tests/control_center/test_page_routing.py`.
+`_PAGE_MODULES`/`_PAGES_LIST` and pinned by `tests/control_center/test_page_routing.py`.  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 
 **Status: superseded by §14.12 below.**
 
@@ -1147,7 +1147,7 @@ Nav now carries 🛠 Engine · 🔎 Runs · 📈 Outcomes · 💵 Spend, each wi
 
 ### The bind, and why it is an install script rather than a smarter launcher
 
-The obvious design — point the plist at `scripts/run_control_center.sh` and resolve the address
+The obvious design — point the plist at `scripts/run_control_center.sh` and resolve the address  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 at launch — **was implemented, tried, and failed**, in a way that reads as a broken script:
 
 ```
@@ -1158,7 +1158,7 @@ macOS TCC grants access to `~/Documents` per EXECUTABLE. The venv's Python holds
 agent has been exec'ing `.venv/bin/streamlit` for months); `/bin/bash` does not, so the agent died
 before the first line of the script ran. The plist must keep exec'ing `streamlit` directly.
 
-So the address is resolved at INSTALL time by `scripts/install_control_center_agent.sh`
+So the address is resolved at INSTALL time by `scripts/install_control_center_agent.sh`  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 (read-only by default; `--apply` writes and reloads). It refuses to install a plist with no
 `CONTROL_CENTER_PASSWORD` — `KeepAlive` would otherwise restart a portal that fails closed, every
 few seconds, forever — and it verifies by REACHING the socket (`lsof` + `curl` for HTTP 200),
@@ -1167,7 +1167,7 @@ because `launchctl list` reports a healthy PID for a process that is failing to 
 address changes. The IP is never hand-typed; only `BackendState == Running` is trusted, because
 `tailscale ip -4` keeps serving the last-known address while the backend is Stopped.
 
-`scripts/run_control_center.sh` carries the same resolution for the manual/foreground path.
+`scripts/run_control_center.sh` carries the same resolution for the manual/foreground path.  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 
 ### What changed for the operator
 
@@ -1275,7 +1275,7 @@ the proof and the live run is only evidence that the door still opens.
 Three comments named `scripts/run_ops_console.sh`, which is not on disk (doc-lint-ok: that is the
 point of the sentence) — including the error text
 an operator sees when `PROSPECTOR_PYTHON` is unset, which told them to run a missing file. They now
-name `npm run dev` / `npm start` and the launchd plist. (`scripts/install_control_center_agent.sh`,
+name `npm run dev` / `npm start` and the launchd plist. (`scripts/install_control_center_agent.sh`,  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 also referenced, does exist and installs the SEPARATE Streamlit `com.prospector.control-center`
 job — it never writes the ops-console plist, so it cannot put `OPS_TIMEOUT_MS` back.)
 

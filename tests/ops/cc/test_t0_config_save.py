@@ -15,9 +15,8 @@ import json
 import pytest
 import yaml
 
-from prospector.control_center import config_editor as ce
-from prospector.control_center import yaml_surgery as surgery
-from prospector.control_center.pages import _parameters as P
+from prospector.ops import config_editor as ce
+from prospector.ops import yaml_surgery as surgery
 
 # A config with the file's real shapes, and comments that must survive a Save.
 _CONFIG = """\
@@ -58,41 +57,6 @@ def cfg_file(tmp_path, monkeypatch):
 
 def _loaded(path):
     return yaml.safe_load(path.read_text(encoding="utf-8"))
-
-
-# --------------------------------------------------------------------------- #
-# T0-1 — Saving Parameters destroyed the kill filter
-# --------------------------------------------------------------------------- #
-def test_t0_1_toggling_gates_preserves_every_gate_name_and_verdict_list():
-    """The defect staged `[{"k": True}] * 6` — `k` was a string literal, not the loop variable.
-    Every gate name and every failing-verdict list was replaced by one meaningless key."""
-    cfg = yaml.safe_load(_CONFIG)
-    staged = P._stage_hard_gates(cfg, {"value_durability": True, "incumbency": True,
-                                       "legality": True})
-
-    assert staged == cfg["hard_gates"], "an all-ticked toggle must be a no-op"
-    assert {list(g)[0] for g in staged} == {"value_durability", "incumbency", "legality",
-                                            "adversarial_decisive"}
-    assert all(list(g.values())[0] == ["refuted"]
-               for g in staged if list(g)[0] != "adversarial_decisive")
-
-
-def test_t0_1_unticking_drops_only_that_gate():
-    cfg = yaml.safe_load(_CONFIG)
-    staged = P._stage_hard_gates(cfg, {"value_durability": True, "incumbency": False,
-                                       "legality": True})
-    names = [list(g)[0] for g in staged]
-
-    assert "incumbency" not in names
-    assert names == ["value_durability", "legality", "adversarial_decisive"]
-
-
-def test_t0_1_an_entry_the_checkboxes_do_not_describe_is_never_dropped():
-    """`adversarial_decisive` is not a check and has no checkbox. The old code deleted it simply
-    by not knowing about it."""
-    cfg = yaml.safe_load(_CONFIG)
-    staged = P._stage_hard_gates(cfg, {"value_durability": True})
-    assert {"adversarial_decisive": False} in staged
 
 
 def test_t0_1_validation_rejects_gates_whose_names_are_not_checks(cfg_file):

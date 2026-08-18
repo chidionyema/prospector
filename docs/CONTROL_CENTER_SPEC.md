@@ -1,6 +1,21 @@
 # Prospector Control Center — Design & Specification
 
-**Status:** Draft v1 (design/spec only — no implementation)
+> **DEAD, 2026-08-18. The Streamlit control centre was deleted, code and everything, on founder
+> instruction.** `prospector/control_center/`, `.streamlit/`, `tests/control_center/`,
+> `scripts/run_control_center.sh`, `scripts/install_control_center_agent.sh` and the  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
+> `com.prospector.control-center` launchd job are all gone. The `streamlit` dependency is out of
+> `requirements.txt`.
+>
+> Four modules survived because the Next.js console's Python backend imports them. They moved to
+> `prospector/ops/`: `readers.py`, `config_editor.py`, `yaml_surgery.py`, `runner.py`. Their
+> tests are at `tests/ops/cc/`. `readers.py` no longer imports Streamlit; its ten
+> `@st.cache_data(ttl=N)` decorators now come from `prospector/ops/_cache.py`.
+>
+> The live admin surface is the Next.js ops console — see `docs/ADMIN_CONSOLE_PROGRAM.md`.
+> Everything below is kept as the record of what was built and why, not as a description of
+> anything that runs.
+
+**Status:** Deleted 2026-08-18. Was: Draft v1 (design/spec only — no implementation)
 **Author:** Claude (Opus 4.8), 2026-06-16
 **Reference model:** `~/Documents/code/signalengine/dashboard/app.py` (Streamlit, read-only telemetry)
 **Targets:** the Prospector engine (`prospector/`, `run.py`, `config.yaml`, `store/`, `signals/`)
@@ -154,7 +169,7 @@ operator pills (absence from `provider_health.json` = healthy; no "no health row
 **Writes:** none.
 
 **Shared chrome:** `components/chrome.py` (`page_hero`, `log_panel`) used across all pages.
-Theme: slate + amber (`theme.py` / `.streamlit/config.toml`) — not purple AI defaults.
+Theme: slate + amber (`theme.py` / `.streamlit/config.toml`) — not purple AI defaults.  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 
 ### 3.2 Catalogue (Dossier browser)
 
@@ -387,7 +402,7 @@ credentials.
   re-run). Dossier writes appear atomic-ish; verify SalesAudit/listing writes (and bridge.py
   publish) have no half-committed state on SIGKILL.
 - **G4 — Config schema.** There is no formal schema for `config.yaml` today; the Parameters page
-  needs one (types, ranges, lane shape, weights-sum). Author it as `control_center/config_schema.py`
+  needs one (types, ranges, lane shape, weights-sum). Author it as `control_center/config_schema.py`  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
   (also usable as a standalone `run.py validate-config` CLI check).
 - **G5 — Multi-operator / single-user.** Spec assumes single local operator (consistent with the
   repo's "supervised batches" model). If ever multi-user, the single-actuator lock and audit

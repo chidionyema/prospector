@@ -39,7 +39,7 @@ LEDGER = REPO_ROOT / "store" / "prospector.jsonl"
 BACKFILL = REPO_ROOT / "store_platform" / "data" / "facets-backfill.json"
 LISTINGS_DIR = REPO_ROOT / "store" / "listings"
 
-# Was `assert len(idx) >= 300` in tests/control_center/test_readers.py. The number is a floor
+# Was `assert len(idx) >= 300` in tests/ops/cc/test_readers.py. The number is a floor
 # on a catalogue that only grows, not a measurement — it catches a reader silently returning
 # a truncated view, which is the failure that would otherwise look like a quiet afternoon.
 MIN_CATALOGUE = 300
@@ -63,7 +63,7 @@ def main() -> int:
     import logging
     logging.getLogger("streamlit").setLevel(logging.ERROR)
 
-    from prospector.control_center import readers
+    from prospector.ops import readers
     from prospector.report import costs_data
 
     # ── catalogue ────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 """Read-only data loaders for the Control Center.
 
-All functions are cached (st.cache_data) and gracefully degrade on missing/corrupt
+All functions are cached (prospector.ops._cache) and gracefully degrade on missing/corrupt
 artifacts. No model calls, no side effects.
 
 Sources of truth (never recomputed):
@@ -23,10 +23,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-import streamlit as st
-
 from prospector import paths
 from prospector.config import load_config
+from prospector.ops._cache import cache_data as _cache_data
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +67,7 @@ def _control_center_dir() -> Path:
 # Config
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=10)
+@_cache_data(ttl=10)
 def load_config_typed():
     """Load the engine Config object. ``None`` means it could not be loaded.
 
@@ -83,7 +82,7 @@ def load_config_typed():
         return None
 
 
-@st.cache_data(ttl=10)
+@_cache_data(ttl=10)
 def config_load_error() -> str:
     """Why the config readers came back empty — "" when config.yaml loaded both ways.
 
@@ -104,7 +103,7 @@ def config_load_error() -> str:
         return f"{type(exc).__name__}: {exc}"
 
 
-@st.cache_data(ttl=10)
+@_cache_data(ttl=10)
 def load_config_dict() -> dict[str, Any]:
     """Load config.yaml as a raw dict (for the editor).
 
@@ -126,7 +125,7 @@ def load_config_dict() -> dict[str, Any]:
 # Catalogue (SQLite index)
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=10)
+@_cache_data(ttl=10)
 def catalogue_index(decision: Optional[str] = None) -> list[dict[str, Any]]:
     """All dossier rows from the SQLite index.
 
@@ -158,7 +157,7 @@ def catalogue_index(decision: Optional[str] = None) -> list[dict[str, Any]]:
     return rows
 
 
-@st.cache_data(ttl=15)
+@_cache_data(ttl=15)
 def catalogue_stats() -> dict[str, Any]:
     """Aggregate counts via SQL — do not load every dossier row into Python."""
     empty = {
@@ -220,7 +219,7 @@ def _count_listings() -> int:
         return 0
 
 
-@st.cache_data(ttl=15)
+@_cache_data(ttl=15)
 def catalogue_has_rows() -> bool:
     """Cheap emptiness check — avoids loading the full index on Overview boot."""
     db_path = paths.store_path("prospector.db")
@@ -240,7 +239,7 @@ def catalogue_has_rows() -> bool:
 # Dossier JSON
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=10)
+@_cache_data(ttl=10)
 def load_dossier(candidate_id: str, decision: str) -> Optional[dict[str, Any]]:
     """Load a full dossier JSON from store/dossiers/<id>.<decision>.json."""
     path = Path(f"store/dossiers/{candidate_id}.{decision.lower()}.json")
@@ -255,7 +254,7 @@ def load_dossier(candidate_id: str, decision: str) -> Optional[dict[str, Any]]:
         return None
 
 
-@st.cache_data(ttl=10)
+@_cache_data(ttl=10)
 def load_listing(candidate_id: str) -> Optional[dict[str, Any]]:
     """Load a listing JSON if one exists for this candidate."""
     path = Path(f"store/listings/{candidate_id}.json")
@@ -273,7 +272,7 @@ def load_listing(candidate_id: str) -> Optional[dict[str, Any]]:
 # Pending signals
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=5)
+@_cache_data(ttl=5)
 def load_pending_signals() -> list[dict[str, Any]]:
     """Load all pending signals from signals/pending/*.json."""
     pending_dir = paths.repo_path("signals", "pending")
@@ -293,7 +292,7 @@ def load_pending_signals() -> list[dict[str, Any]]:
 # Jobs
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=5)
+@_cache_data(ttl=5)
 def load_jobs() -> list[dict[str, Any]]:
     """Load job history from store/control_center/jobs.json.
 
@@ -311,7 +310,7 @@ def load_jobs() -> list[dict[str, Any]]:
         logger.exception("control_center: %s unreadable — reporting no jobs", path)
         return []
     try:
-        from prospector.control_center.runner import filter_production_jobs
+        from prospector.ops.runner import filter_production_jobs
     except ImportError:
         # Returning the UNFILTERED list is how a pytest job gets rendered as a live run.
         # Only an import failure may take that path, and it must not be silent.
@@ -699,7 +698,7 @@ def launch_profile_choices() -> list[str]:
     return names + [""]
 
 
-@st.cache_data(ttl=15)
+@_cache_data(ttl=15)
 def recent_dossier_rows(limit: int = 8) -> list[dict[str, Any]]:
     """Newest catalogue rows for the Overview inventory strip (SQL LIMIT)."""
     limit = max(0, int(limit))
@@ -751,7 +750,7 @@ def _read_provider_health() -> tuple[dict[str, Any], str]:
         return {}, f"{type(exc).__name__}: {exc}"
 
 
-@st.cache_data(ttl=5)
+@_cache_data(ttl=5)
 def load_provider_health() -> dict[str, Any]:
     """Load circuit-breaker state from store/provider_health.json.
 
@@ -763,7 +762,7 @@ def load_provider_health() -> dict[str, Any]:
     return _read_provider_health()[0]
 
 
-@st.cache_data(ttl=5)
+@_cache_data(ttl=5)
 def provider_health_error() -> str:
     """Why `load_provider_health()` is empty — "" when the file is absent or fine."""
     return _read_provider_health()[1]
@@ -801,7 +800,7 @@ def moat_down(health: dict[str, Any]) -> bool:
 # Audit log
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=60)
+@_cache_data(ttl=60)
 def load_audit_log() -> list[dict[str, Any]]:
     """Load ALL audit entries — expensive (~15s / 70MB+). Prefer today_spend().
 
@@ -833,7 +832,7 @@ def _today_spend_from_events(audit: list[dict[str, Any]], today: str) -> dict[st
     return {"total_usd": round(total, 4), "by_phase": by_phase}
 
 
-@st.cache_data(ttl=30)
+@_cache_data(ttl=30)
 def _today_spend_from_ledger(_mtime: float) -> dict[str, Any]:
     """Today's spend THROUGH THE RAIL'S OWN READER (R23). ``_mtime`` busts the cache.
 
@@ -896,7 +895,7 @@ def today_spend_cached() -> dict[str, Any]:
 # Golden runs
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=30)
+@_cache_data(ttl=30)
 def load_golden_runs() -> list[dict[str, Any]]:
     """Load all golden run files from store/golden_runs/, newest first.
 
@@ -925,7 +924,7 @@ def load_golden_runs() -> list[dict[str, Any]]:
     return results
 
 
-@st.cache_data(ttl=30)
+@_cache_data(ttl=30)
 def latest_golden() -> Optional[dict[str, Any]]:
     """The most recent REAL golden run — a mock run is never the estate's score.
 
@@ -987,7 +986,7 @@ def _compute_overview_kpis() -> tuple[dict[str, Any], str]:
         return {}, f"{type(exc).__name__}: {exc}"
 
 
-@st.cache_data(ttl=15)
+@_cache_data(ttl=15)
 def load_overview_kpis() -> dict[str, Any]:
     """Lightweight Overview KPIs — never loads the full audit jsonl.
 
@@ -1000,7 +999,7 @@ def load_overview_kpis() -> dict[str, Any]:
     return _compute_overview_kpis()[0]
 
 
-@st.cache_data(ttl=15)
+@_cache_data(ttl=15)
 def overview_kpis_error() -> str:
     """Why `load_overview_kpis()` is empty — "" when the numbers are real."""
     return _compute_overview_kpis()[1]
@@ -1010,7 +1009,7 @@ def overview_kpis_error() -> str:
 # Certification
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=30)
+@_cache_data(ttl=30)
 def load_certification() -> dict[str, Any]:
     """Load the config certification state."""
     path = _control_center_dir() / "certification.json"

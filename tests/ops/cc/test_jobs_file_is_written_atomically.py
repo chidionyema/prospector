@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import threading
 
-from prospector.control_center import runner
+from prospector.ops import runner
 
 # Big enough that the write cannot plausibly complete between two reads.
 _JOBS = [{"job_id": f"j{i}", "argv": ["echo", "x"], "status": "running"} for i in range(200)]

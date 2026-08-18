@@ -17,7 +17,7 @@ _ROOT = Path(__file__).resolve().parent.parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from prospector.control_center import readers
+from prospector.ops import readers
 
 # NOTHING here asserts on the operator's own store/. store/dossiers/ and
 # store/prospector.jsonl are gitignored (.gitignore:43), so a fresh checkout — CI's, or a new
@@ -160,7 +160,7 @@ class TestLoadDossier:
         (fake_dir / f"{cid}.kill.json").write_text("{ not valid json")
 
         # Save real path and override
-        import prospector.control_center.readers as r_module
+        import prospector.ops.readers as r_module
         orig_func = r_module.load_dossier
         # Patch at the module level via monkeypatch in conftest-style
         r_module.load_dossier.clear()

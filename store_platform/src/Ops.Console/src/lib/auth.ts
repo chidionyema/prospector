@@ -1,13 +1,12 @@
 /**
  * One operator, one shared password, checked server-side.
  *
- * The same environment variable the Streamlit console uses (`CONTROL_CENTER_PASSWORD`), so there
- * is one password to remember rather than two to get out of step.
+ * The variable is `CONTROL_CENTER_PASSWORD`. It kept that name when the older Streamlit console
+ * it was shared with was deleted (2026-08-18), because renaming it would have meant re-issuing
+ * the secret on every machine and in Fly for no gain.
  *
  * FAIL CLOSED. With no password configured the console refuses everything and says why. An
- * unconfigured portal is locked, not open — `scripts/install_control_center_agent.sh` refuses to
- * install without the variable for the same reason, because launchd's KeepAlive would otherwise
- * restart a broken portal forever.
+ * unconfigured portal is locked, not open.
  *
  * THE NETWORK IS THE REAL FENCE. Bind one tailnet address, never 0.0.0.0. A password-only portal
  * on whatever wifi the laptop joins is not acceptable, and the single-address bind is what stops

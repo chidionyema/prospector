@@ -386,7 +386,7 @@ def _audit_path(operator_name: str, timestamp: str,
     the repo's own `store/`.  Measured consequence 2026-08-15:
     `tests/integration/test_golden_promotion_cli.py` (which cannot redirect what it
     is not offered) wrote eight `mock_*.json` audit records into the PRODUCTION
-    `store/golden_runs/`, where `control_center.readers.latest_golden()` reads the
+    `store/golden_runs/`, where `prospector.ops.readers.latest_golden()` reads the
     estate's headline gate score — so a CI test's mock `discrimination=1.0` was
     sitting in front of the real `minimax` 0.667.  A flag that silently does
     nothing is worse than no flag: it reads, in a test, as isolation that was

@@ -23,7 +23,7 @@ import yaml
 
 from prospector import models as _models
 from prospector import paths
-from prospector.control_center import yaml_surgery as _surgery
+from prospector.ops import yaml_surgery as _surgery
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 # follow the thing it was derived from. Deriving inside the accessor is what makes it follow.
 #
 # The module-level names survive as OVERRIDES. `None` means "resolve now"; assigning a Path
-# pins it, which is the contract tests/control_center/test_config_editor.py already uses
+# pins it, which is the contract tests/ops/cc/test_config_editor.py already uses
 # (`orig = _ce_module._CC_DIR` … restore in `finally`).
 CONFIG_PATH: Path | None = None
 _BACKUP_DIR: Path | None = None
@@ -335,7 +335,7 @@ def validate_config(cfg: dict[str, Any]) -> tuple[bool, list[str]]:
 
     # ── The verdict roster (R20) ───────────────────────────────────────────
     # ONE fence, called from here and from `prospector.ops.routing.set_moat_primary`, so the
-    # Streamlit save, the CLI and the Telegram tap refuse the same rosters. Imported inside the
+    # console save, the CLI and the Telegram tap refuse the same rosters. Imported inside the
     # function because `ops.routing` imports this module for the writer.
     if "moat_primary" in cfg or "operator" in cfg:
         from prospector.ops.routing import routing_problems
@@ -414,7 +414,7 @@ def write_config(new_cfg: dict[str, Any], moat_affecting: bool,
                        "Reload and re-apply your changes.")
 
     # ── Never write a config that came from a failed read ───────────────────
-    # `load_config_raw` degrades to `{}` (it must — a Streamlit page that raises is a dead
+    # `load_config_raw` degrades to `{}` (it must — a console page that raises is a dead
     # page), and the editor stages that `{}` as if the operator had emptied the file. Two
     # fences, because either one alone leaves the wipe reachable: nothing empty is writable,
     # and nothing is written on top of a config we could not read in the first place.
@@ -462,18 +462,17 @@ def write_config(new_cfg: dict[str, Any], moat_affecting: bool,
 
     # ── Log history ─────────────────────────────────────────────────────────
     _cc_dir().mkdir(parents=True, exist_ok=True)
-    # CACHE INVALIDATION MUST NOT DECIDE WHETHER THE WRITE SUCCEEDED. `readers` imports
-    # streamlit; this writer is now also reached headlessly (`python -m prospector.ops.routing`,
-    # and through it the Telegram surface). A hard import here would raise AFTER config.yaml had
-    # already been rewritten, reporting failure for a write that happened — the worst possible
-    # answer for an actuator. There is no Streamlit cache to clear in that process anyway.
+    # CACHE INVALIDATION MUST NOT DECIDE WHETHER THE WRITE SUCCEEDED. This writer is reached
+    # headlessly too (`python -m prospector.ops.routing`, and through it the Telegram surface).
+    # A hard import here would raise AFTER config.yaml had already been rewritten, reporting
+    # failure for a write that happened — the worst possible answer for an actuator.
     try:
-        from prospector.control_center import readers as _r
+        from prospector.ops import readers as _r
         _r.load_config_dict.clear()
         _r.load_config_typed.clear()
         _r.config_load_error.clear()
     except (ImportError, AttributeError):
-        # Exactly the two conditions the comment above describes: no streamlit in this
+        # Exactly the two conditions the comment above describes: readers unimportable in this
         # process, or a reader without a cache to clear. Neither is a failed write.
         _r = None
 
@@ -556,7 +555,7 @@ def certify_from_golden(golden_run_id: str, operator: str,
                         discrimination: float, floor: float,
                         passed: bool) -> None:
     """Called after a golden promotion run to update certification state."""
-    from prospector.control_center import readers as _r
+    from prospector.ops import readers as _r
     if passed:
         cfg = load_config_raw()
         _write_certification(
@@ -596,7 +595,7 @@ def restore_backup(filename: str) -> tuple[bool, str]:
     safety_bak = _config_path().with_suffix(".yaml.bak.restore." + ts)
     shutil.copy2(_config_path(), safety_bak)
     shutil.copy2(bak, _config_path())
-    from prospector.control_center import readers as _r
+    from prospector.ops import readers as _r
     _r.load_config_dict.clear()
     _r.load_config_typed.clear()
     _r.config_load_error.clear()

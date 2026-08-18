@@ -490,7 +490,7 @@ def _read_config(cfg, args: dict) -> dict:
     a save that the writer then refuses, which reads to the operator as a broken button rather
     than as an unreachable key.
     """
-    from prospector.control_center import config_editor as ce
+    from prospector.ops import config_editor as ce
 
     raw, readable = ce._read_config_raw()
     path = ce._config_path()
@@ -540,7 +540,7 @@ def _read_config(cfg, args: dict) -> dict:
         "history": ce.read_history(limit=int(args.get("history_limit") or 50)),
         "backups": ce.list_backups(),
         "moat_affecting_keys": sorted([list(k) for k in ce.MOAT_AFFECTING_KEYS]),
-        "writer": "prospector/control_center/yaml_surgery.py via config_editor.write_config",
+        "writer": "prospector/ops/yaml_surgery.py via config_editor.write_config",
         "writer_note": "Any path that writes this file without going through yaml_surgery is a "
                        "defect. yaml.safe_dump on this file measured 2034 lines in, 981 out — "
                        "1173 comment lines destroyed, including founder directives and "
@@ -574,7 +574,7 @@ def _probe_all(text: str, raw: dict) -> dict[tuple, Optional[str]]:
     a 2,316-line config — a four-second page load on a phone, to answer a question one pass
     answers. `apply_edits` returns the paths it could not resolve, which is exactly the answer.
     """
-    from prospector.control_center import yaml_surgery as ys
+    from prospector.ops import yaml_surgery as ys
 
     edits: dict[tuple, Any] = {}
     for spec in KNOBS:
@@ -1493,8 +1493,8 @@ def _act_config_set(cfg, payload: dict, preview: bool) -> dict:
     so and the apply refuses. Falling back to a serialiser is the destruction the module exists
     to prevent.
     """
-    from prospector.control_center import config_editor as ce
-    from prospector.control_center import yaml_surgery as ys
+    from prospector.ops import config_editor as ce
+    from prospector.ops import yaml_surgery as ys
 
     key = _normalise_key(payload.get("key"))
     label = ".".join(key)
@@ -1632,7 +1632,7 @@ def _act_config_restore(cfg, payload: dict, preview: bool) -> dict:
     rather than a second mechanism. A restore is moat-affecting by construction — the file it
     replaces may differ on any key — so certification drops.
     """
-    from prospector.control_center import config_editor as ce
+    from prospector.ops import config_editor as ce
 
     filename = str(payload.get("filename") or "").strip()
     if not filename:
@@ -2420,9 +2420,6 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     # the console itself, and its predecessor
     "scripts/run_ops_console.sh": "launches this console; a button that starts the page you are already on",
     "tools/build_sample_fixture.py": "builds an offline retrieval fixture for the test suite, not a live action",
-    # the legacy Streamlit console — superseded by this Next.js one
-    "scripts/run_control_center.sh": "launches the older Streamlit console that this one replaces",
-    "scripts/install_control_center_agent.sh": "installs that older console's launchd agent",
     # libraries and experiments, not commands
     "tools/_backfill_driver.py": "a library for backfill_missing_listings.sh, not a CLI",
     "tools/l8_ab.sh": "the COST_PROGRAM §L8 A/B experiment harness",

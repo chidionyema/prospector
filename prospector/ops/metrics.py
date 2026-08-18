@@ -182,7 +182,7 @@ def reconciliation(cfg, *, store=None, stats: Optional[dict] = None) -> dict:
 
     if stats is None:
         try:
-            from prospector.control_center import readers as _readers
+            from prospector.ops import readers as _readers
 
             stats = _readers.catalogue_stats()
         except Exception as exc:   # noqa: BLE001 — an unreadable comparator is not a bad figure

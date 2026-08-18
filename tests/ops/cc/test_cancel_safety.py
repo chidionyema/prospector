@@ -150,8 +150,8 @@ time.sleep(300)
     def test_runner_cancel_updates_job_status(self, tmp_path: Path):
         """The runner's cancel_job sets status to 'cancelled'."""
         # Patch the file paths to isolate from real state
-        import prospector.control_center.runner as runner
-        from prospector.control_center.runner import (
+        import prospector.ops.runner as runner
+        from prospector.ops.runner import (
             cancel_job,
             launch,
             load_jobs,
