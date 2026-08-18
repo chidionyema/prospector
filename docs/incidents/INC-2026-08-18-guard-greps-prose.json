@@ -1,0 +1,39 @@
+{
+  "id": "INC-2026-08-18-guard-greps-prose",
+  "opened": "2026-08-18",
+  "title": "rule-guard refused three correct commands because their TEXT contained path-shaped and flag-shaped strings",
+  "severity": "medium",
+  "detected_by": "transcript",
+  "first_order": {
+    "what_broke": "rule-guard.py blocked the change that introduces this very process, three times running. First it reported that the change staged runtime state; nothing runtime was staged, and the phrase it matched was English prose in the commit message. Then it reported a hook bypass on a command whose pathspec was four source files. Then it blocked a command containing no version-control invocation at all, because the file being written was prose describing those commands.",
+    "receipt": "Three PreToolUse refusals on 2026-08-18 against commands whose actual arguments were docs/INCIDENT_PROCESS.md, docs/incidents, scripts/incident.py and .github/workflows/weekly-estate-review.yml. Two file writes were lost with the refused calls, because a rejected call executes nothing, including the parts the guard had no objection to.",
+    "fixed_by": null
+  },
+  "cause_chain": [
+    "The guard scans the raw command string for patterns instead of parsing the invocation and testing only its arguments.",
+    "A command string mixes several languages at once: the arguments, the flags, and any free text carried in a message or a heredoc. A substring scan cannot tell them apart, so text ABOUT a forbidden thing reads identically to the forbidden thing.",
+    "The failure is silent in a second way: a refusal aborts the whole call, so unrelated file writes batched into it are lost. Batching is the estate's own cost rule, which means the two rules fight each other.",
+    "CLASS: a guard that pattern-matches an unparsed command string produces confident false refusals, and the cost lands on correct work. Same class as INC-2026-08-18-stale-remote-ref, where a guard asked the local cache a question about the remote."
+  ],
+  "second_order": {
+    "sweep_command": "rg -n 'in cmd|in command|re.search|findall' ~/.claude/scripts/rule-guard.py ~/.claude/scripts/hang-guard.py ~/.claude/scripts/push-pr-fence.py ~/.claude/scripts/branch-pr-guard.py ~/.claude/scripts/idle-guard.py",
+    "siblings_found": null,
+    "siblings_fixed": 0,
+    "note": "NOT YET RUN. Every PreToolUse guard in ~/.claude/scripts receives the same raw command string, so the sibling count is likely to be most of them."
+  },
+  "third_order": {
+    "tier": "refuse",
+    "mechanism": null,
+    "landed_on": null,
+    "note": "The fix is to parse the argv and test only the positional arguments, ignoring anything after a message flag or inside a heredoc. Not written yet. Note also that ~/.claude is not a version-controlled tree, so none of these guards are reviewed or tested, and a change to one cannot be graded. That is a separate incident waiting to be recorded."
+  },
+  "grade": {
+    "signature": "a PreToolUse guard matching a pattern in an unparsed command string",
+    "before": 3,
+    "after": null,
+    "window_days": 14,
+    "verdict": "unproven"
+  },
+  "issue": null,
+  "state": "open"
+}
