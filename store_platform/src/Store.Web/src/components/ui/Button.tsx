@@ -91,7 +91,11 @@ export type ButtonSize = 'md' | 'lg';
 const BASE = cx(
   // 8px, MASTER-BRIEF §4 ("8px controls"). The chip class below stays at --radius-sm: a chip
   // is not a control, and 8px on a 24px chip is the lozenge tokens.css argues against.
-  'inline-flex items-center justify-center gap-2 rounded-ctl font-medium',
+  // WEIGHT 600 AND A 10px GAP, from the mockups' `.btn` (2026-08-18):
+  // `gap:10px;font-size:16px;font-weight:600;letter-spacing:-.01em;padding:13px 22px`. It was
+  // `gap-2 font-medium` -- 8px and 500 -- which reads as a lighter, tighter control than the one
+  // drawn, on every button on the site at once.
+  'inline-flex items-center justify-center gap-2.5 rounded-ctl font-semibold tracking-[-0.01em]',
   // transition-colors, not transition-all: `all` animated the transform too, which is why the
   // press felt spongy -- the 0.98 squash was easing over 200ms instead of snapping.
   'transition-colors duration-[120ms] ease-[cubic-bezier(0.2,0,0,1)]',
@@ -112,8 +116,12 @@ const SIZES: Record<ButtonSize, string> = {
    * rendering is unchanged to the pixel; only the touch viewport grows, which is the only viewport
    * the floor is about. `lg` (48px) already cleared it.
    */
+  //
+  // `lg` is the mockups' `.btn` exactly: 16px text in 13px of vertical padding on a 1.5 line box
+  // is 50px tall, with 22px of horizontal padding. `md` is their `.btn.sm` (14.5px / 10px 16px),
+  // kept at 44px on touch for the floor above and dropping to the drawn 40px from `sm`.
   md: 'h-11 px-4 text-meta sm:h-10',
-  lg: 'h-12 px-6 text-body',
+  lg: 'h-[50px] px-[22px] text-body',
 };
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {

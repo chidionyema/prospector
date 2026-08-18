@@ -66,12 +66,17 @@ describe('brand assets', () => {
     const svg = readPublic('icon.svg').toString('utf8');
     const body = svg.replace(/<!--[\s\S]*?-->/g, '');
 
-    // Three solid slabs, no container (founder decision 2026-08-14, option D of six): the funnel
-    // running from (3,6)-(97,6) to (37,94)-(63,94), cut by gaps at y=38..46 and y=70..78. The top
-    // and bottom slabs are asserted literally because they carry the full taper between them.
+    // Three solid slabs, no container (founder decision 2026-08-14, option D of six).
+    //
+    // REDRAWN 2026-08-18 to the shape in the build bundle. The slabs used to be a 100x100 funnel
+    // running from (3,6)-(97,6) to (37,94)-(63,94), which finished on a flat bar. All twelve
+    // mockups (docs/design/mumchimp-build-bundle/mockups/*.html, header and footer of each) draw a
+    // 26-wide funnel that tapers to a POINT. Same idea, different drawing, and the drawing is the
+    // only thing a logo has to get right. The top and bottom slabs are asserted literally because
+    // they carry the full taper between them.
     expect(body.match(/<path\b/g) ?? [], 'the mark is three slab paths').toHaveLength(3);
-    expect(body).toContain('M 3 6 L 97 6 L 84.64 38 L 15.36 38 Z');
-    expect(body).toContain('M 30.82 78 L 69.18 78 L 63 94 L 37 94 Z');
+    expect(body).toContain('M1 2h24l-4.1 5H5.1L1 2Z');
+    expect(body).toContain('M10.7 17h4.6L13 22.5 10.7 17Z');
 
     // The tile must not come back, in either of its two parts. `<rect>` was the band primitive,
     // and a white fill was how the bands were knocked out of the solid ground -- which is also

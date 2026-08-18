@@ -102,11 +102,21 @@ describe('engine vocabulary does not reach a buyer', () => {
     // `incumbency` is the counter-example, and the reason the rule is per-word and measured
     // rather than a blanket "leave English-looking words alone": read in context, 22 of its 24
     // occurrences are the gate standing in for itself, so it goes.
+    // The replacement itself changed on 2026-08-16: it used to be "incumbent competition", which
+    // still printed the word the founder banned. It is now "existing competition".
     expect(plainEnglish('Incumbency checks failed to find existing competitors')).toBe(
-      'Incumbent competition checks failed to find existing competitors',
+      'Existing competition checks failed to find existing competitors',
     );
     expect(plainEnglish('incumbency + payer_solvency: the single passage')).toBe(
-      'incumbent competition + payer solvency: the single passage',
+      'existing competition + payer solvency: the single passage',
+    );
+    // The noun forms the engine writes in prose go too, so the ban holds on text no source scan
+    // can see -- these arrive in `reason` and `oneLiner` from the model, not from our files.
+    expect(plainEnglish('The incumbents own distribution')).toBe(
+      'The established competitors own distribution',
+    );
+    expect(plainEnglish('an incumbent with a locked channel')).toBe(
+      'an established competitor with a locked channel',
     );
 
     // And the snake_case form still goes, in the corpus's own phrasing rather than a coined one.

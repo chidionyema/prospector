@@ -104,10 +104,20 @@ describe('mono is the data voice', () => {
      * `about.tsx` -- the figures above them stay mono, the words below them do not. Without those
      * nine the total would read 99.
      *
+     *   91  after the mockup walk (2026-08-18)
+     *
+     * WHY IT GREW BY ONE. `SourceChip` gained a third variant, `pill`, which is the drawing's
+     * `.srcchip` (`mockups/index.html:89`): a bordered full-round chip carrying a source
+     * hostname. A hostname is the declared scope of this file, and the chip is the site's one
+     * implementation of "a source you can open" -- the alternative was a fourth private copy of
+     * it in `HeroEvidenceStrip`, which is the defect `sourceChipIsTheOnlyOne.test.ts` exists to
+     * stop. The same walk added the home page's `.split` card, whose two LABELS are NOT counted
+     * here: they are words under a tally, so they are not mono, per the audit above.
+     *
      * Raising this number still means claiming a new kind of DATA exists. Say which kind.
      */
     const total = TSX.reduce((n, f) => n + (f.src.match(/\bfont-mono\b/g)?.length ?? 0), 0);
-    expect(total, `font-mono usages: ${total}`).toBeLessThanOrEqual(90);
+    expect(total, `font-mono usages: ${total}`).toBeLessThanOrEqual(91);
   });
 
   it('the caption size utility is not secretly a typeface', () => {

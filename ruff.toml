@@ -29,7 +29,7 @@
 # commit gate. The number is the ratchet: it must go down, never up.
 #
 # It has already moved twice, in both directions, which is the point of writing it down:
-#   397 -> 387  the control_center E402 ignore below (23 E402 -> 13), a rule that was firing
+#               a rule that was firing
 #               on a structural pattern rather than on a defect
 #   387 -> 393  +12 from prospector/admissibility.py, prospector/cli_auth.py and
 #               tools/experiments/q4_*.py, landed by a concurrent session, -1 from the
@@ -67,7 +67,3 @@ select = ["E4", "E7", "E9", "F", "I"]
 "tools/*.py" = ["E402"]
 "scripts/*.py" = ["E402"]
 "tests/**/*.py" = ["E402"]
-# Same reason, one step further: streamlit executes a page module as a script, so the Control
-# Center's modules carry the same `if <root> not in sys.path: insert` preamble ahead of their
-# imports. Without this, adding an import to a cockpit page is a lint regression by construction.
-"prospector/control_center/**/*.py" = ["E402"]

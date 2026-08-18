@@ -1,3 +1,4 @@
+import { OG } from '@/lib/design/ogPalette';
 import { ImageResponse } from 'next/og';
 import type { GetServerSideProps } from 'next';
 
@@ -33,7 +34,9 @@ export const OG_HEIGHT = 630;
 
 /*
  * Brand v3 (2026-08-06). The card is ink on near-white with one hairline rule, matching the
- * storefront: `--primary #171717`, `--surface2 #FAFAFA`, `--border #E4E4E7`, `--subtle #71717A`.
+ * storefront. The colours come from `lib/design/ogPalette.ts`, which is checked against
+ * `tokens.css` by a test -- Satori resolves no CSS custom properties, so the card must carry
+ * literal hexes, and every one of the four this comment used to list had drifted from its token.
  *
  * The vermillion is gone with the rest of brand v2. The card keeps a near-white rather than pure
  * white ground for a reason that is specific to this surface: a social card renders against an
@@ -41,14 +44,8 @@ export const OG_HEIGHT = 630;
  * `BORDER` is drawn as a full 2px frame for the same reason -- the storefront can rely on the
  * viewport edge, a 1200x630 image cannot.
  */
-const INK = '#171717';
-const CREAM = '#FAFAFA';
-const BORDER = '#E4E4E7';
-const MUTED = '#71717A';
-/** `--survive` (tokens.css:382), the one colour this site lets carry meaning. It is the same green
- *  the shelf card's `EvidenceBar` draws its ticks in, so the two cards read as one drawing. Raw hex
- *  because satori cannot resolve CSS custom properties. */
-const SURVIVE = '#047857';
+const { ink: INK, cream: CREAM, border: BORDER, subtle: MUTED, survive: SURVIVE, onInk: ON_INK } = OG;
+
 
 /**
  * THE CITED-SOURCE RUN, drawn on the share card.
@@ -207,7 +204,7 @@ export function PackOgCard({
           style={{
             display: 'flex',
             backgroundColor: INK,
-            color: '#FFFFFF',
+            color: ON_INK,
             // The storefront's whole radius scale is 2px (`--radius-sm`/`--radius-md`,
             // tokens.css:544-545). An 8px pill here made the social card the only surface
             // in the system with a soft corner. Raw number because Satori cannot read CSS vars.

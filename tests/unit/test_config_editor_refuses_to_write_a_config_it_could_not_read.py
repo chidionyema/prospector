@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pytest
 
-from prospector.control_center import config_editor as ce
+from prospector.ops import config_editor as ce
 
 
 @pytest.fixture()

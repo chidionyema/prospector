@@ -129,7 +129,12 @@ class TestGenerateArtifactsBudget:
 
 class TestGenerateMarketingContentBudget:
     def _fake_content(self, listing_delay: float, ancillary_delay: float):
-        def _fake(gen_op, check_op, cand_json, claims_json, claims, t, currency_rule=""):
+        # `candidate` is the Candidate OBJECT, submitted alongside `cand_json` since
+        # `_normalize_listing` began deriving `facets.mechanism` from
+        # `candidate.structural_form`. This fake ignores it; the parameter is here so the
+        # signature matches what `generate_marketing_content` actually submits.
+        def _fake(gen_op, check_op, cand_json, claims_json, claims, t, currency_rule="",
+                  candidate=None):
             time.sleep(listing_delay if t == "listing_page" else ancillary_delay)
             if t == "listing_page":
                 return {"type": t, "headline": "h", "card_line": "c", "copy": "x" * 40}

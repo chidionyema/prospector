@@ -93,7 +93,11 @@ describe('Design contract — global tokens (globals.css)', () => {
     // founder read it as a placeholder -- so the fill is charcoal and the teal moved onto the
     // secondary's outline. The contract above is unchanged and is the load-bearing half: one
     // action colour, reached through an alias. Only the literal moved.
-    assertContains('action', css, /--action:\s*#2D3436/i);
+    //
+    // 2026-08-18: the literal moved again, to the mockups' `--ink`. `.btn{background:var(--ink)}`
+    // in all twelve mockup files, and #2D3436 was a slightly warmer, lighter charcoal that read as
+    // a near-miss beside the drawing. Same contract, same alias, one hex.
+    assertContains('action', css, /--action:\s*#17191C/i);
     assertContains('action-hover', css, /--action-hover:\s*#1F2426/i);
 
     // The money colour is GONE, not merely unused. In Tailwind v4 an unmapped colour utility
@@ -138,9 +142,13 @@ describe('Design contract — global tokens (globals.css)', () => {
     // clamp is a better answer to the same problem, because it drops to 1.75rem on a phone
     // instead of holding one size everywhere. The clamp reaches its maximum at 1000px, so every
     // desktop measurement taken at 1280 is unchanged.
-    expect(css).toMatch(/--text-h1:\s*clamp\([^)]*1\.75rem[^)]*2\.25rem\s*\)/);
-    expect(css).toMatch(/--text-h1--line-height:\s*1\.1/);
-    expect(css).toMatch(/--text-h1--letter-spacing:\s*-0\.02em/);
+    // SUPERSEDED AGAIN (2026-08-18): the mockups' `h2.sec` is the section heading this token
+    // draws, and it is clamp(24px,4.6vw,32px) at 1.12 / -.022em / 665. The site was running it
+    // 4px larger at the top and two cuts lighter, which is a different heading, not a variant.
+    expect(css).toMatch(/--text-h1:\s*clamp\([^)]*1\.5rem[^)]*2rem\s*\)/);
+    expect(css).toMatch(/--text-h1--line-height:\s*1\.12/);
+    expect(css).toMatch(/--text-h1--letter-spacing:\s*-0\.022em/);
+    expect(css).toMatch(/--text-h1--font-weight:\s*665;/);
   });
 
   it('sets display at 48px desktop, the largest step there is', () => {
@@ -165,10 +173,13 @@ describe('Design contract — global tokens (globals.css)', () => {
     // page titles. Those seven moved to `text-h1` and display now has exactly one consumer
     // (`pages/index.tsx`'s hero). That is why this token can be retuned at all. The step COUNT
     // is unchanged either way, which is what the deletions below actually guard.
-    expect(css).toMatch(/--text-display:\s*clamp\([^)]*3rem\s*\)/); // 48px at the top of the clamp
-    // The 660 weight exemption went with the size: at 48px the face does not need it, and a
-    // seventh weight on one token is how a scale acquires an eighth.
-    expect(css).toMatch(/--text-display--font-weight:\s*560;/);
+    //   2026-08-18 closes the round trip on evidence rather than on taste. The mockups draw the
+    //   hero at clamp(33px,6vw,54px)/690, and they draw it carrying their own hero sentence, so
+    //   unlike the 4.5rem specimen this size has been seen with real copy in it. 54px is 6px above
+    //   the 3rem the spec declares and 18px below the 4.5rem that was rejected.
+    expect(css).toMatch(/--text-display:\s*clamp\([^)]*3\.375rem\s*\)/); // 54px at the top
+    expect(css).toMatch(/--text-display--font-weight:\s*690;/);
+    expect(css).toMatch(/--text-display--letter-spacing:\s*-0\.03em/);
     expect(css).not.toMatch(/--text-mega:/);
     // A seventh step cannot be reached for: --text-hero/-h3/-small are deleted, not unused.
     expect(css).not.toMatch(/--text-hero:/);
@@ -181,10 +192,12 @@ describe('Design contract — global tokens (globals.css)', () => {
   // pre-§3 1.3/600 and 1.6 and was suspended before §3 landed, so it never saw the new scale; it
   // then failed on un-suspension reading as a redesign regression. The trailing `;` in each
   // pattern is load-bearing: without it `1\.2` also matches a future `1.25`.
-  it('sets H2 at 24px / weight 520 / line-height 1.2', () => {
-    expect(css).toMatch(/--text-h2:\s*1\.5rem/); // 24px
+  it('sets H2 to the mockups\' subhead: 19-23px / weight 655 / line-height 1.2', () => {
+    // 2026-08-18: `h3.sub` in the mockups, clamp(19px,3.4vw,23px) at 655. The flat 1.5rem/520 it
+    // replaces was a static size that could not step down on a phone and was five cuts lighter.
+    expect(css).toMatch(/--text-h2:\s*clamp\([^)]*1\.4375rem\s*\)/); // 23px at the top
     expect(css).toMatch(/--text-h2--line-height:\s*1\.2;/);
-    expect(css).toMatch(/--text-h2--font-weight:\s*520;/);
+    expect(css).toMatch(/--text-h2--font-weight:\s*655;/);
   });
 
   it('sets body at 16px / line-height 1.55', () => {
@@ -417,7 +430,10 @@ describe('Design contract — primary CTAs', () => {
     expect(button, 'md is an explicit height: 44px on touch, 40px from sm up').toMatch(
       /md:\s*['"]h-11[^'"]*sm:h-10/,
     );
-    expect(button, 'lg is a 48px control').toMatch(/lg:\s*['"]h-12/);
+    // 50px since 2026-08-18, not 48: the mockups' `.btn` is 16px text with 13px of vertical
+    // padding on a 1.5 line box. The property this line is for is unchanged -- `lg` is the tall
+    // control and it clears the 44px touch floor with room to spare.
+    expect(button, 'lg is the tall control, at the mockups\' 50px').toMatch(/lg:\s*['"]h-\[50px\]/);
   });
 
   it('the deleted v2 variants cannot be reached', () => {
@@ -884,8 +900,14 @@ describe('Design contract — favicon (public/icon.svg)', () => {
 
     const logoBox = logo.match(/viewBox="0 0 (\d+) (\d+)"/);
     expect(logoBox, 'BrandMark must declare a viewBox').toBeTruthy();
-    expect(svg, 'same coordinate space, or the coordinates below are not comparable').toMatch(
-      new RegExp(`viewBox="0 0 ${logoBox![1]} ${logoBox![2]}"`),
+    // WIDTH ONLY, since 2026-08-18. The mark's own box is 26x24 -- the proportions the mockups
+    // draw it in -- and the lockup uses it as authored. A favicon is rendered into a square slot,
+    // so `icon.svg` pads the SAME drawing to 26x26 and translates it 0.75 down to centre it. The
+    // horizontal coordinate space is therefore identical, which is what makes the `d` strings
+    // below comparable; requiring the heights to match too would have forced one of the two files
+    // to carry a drawing it should not.
+    expect(svg, 'same horizontal coordinate space, or the paths below are not comparable').toMatch(
+      new RegExp(`viewBox="0 0 ${logoBox![1]} \\d+"`),
     );
 
     // The whole path data is compared, not a parsed summary of it. Until 2026-08-14 this pulled
@@ -925,7 +947,11 @@ describe('Design contract — layout', () => {
   const layout = readSource('../components/marketing/MarketingLayout.tsx');
 
   it('principal content wrapper is bounded, and bounded in one place', () => {
-    // §3.4 sets the shell at 1200px with 24px gutters, and MarketingLayout.tsx ships
+    // 2026-08-18: the shell is 1080px with 20px gutters, `.wrap` in all twelve mockups. §3.4's
+    // 1200/24 is kept as an accepted alternative below only so this test keeps testing the ONE
+    // thing it is for -- a single shell constant -- rather than becoming a width assertion.
+    //
+    // §3.4 set the shell at 1200px with 24px gutters, and MarketingLayout.tsx shipped
     // `max-w-[1200px] px-6`. The contract that matters is not the exact number, it is that ONE
     // constant sets it: an unbounded or per-page wrapper is how the header, the shelf and the
     // footer end up on three different left edges.
@@ -937,7 +963,7 @@ describe('Design contract — layout', () => {
     // the correct anchor here because it asserts on the ABSENCE of a continuation rather than on
     // a character class.
     expect(layout, 'the shell width is a single named constant').toMatch(
-      /const SHELL = '[^']*\bmax-w-(?:6xl|7xl|\[1200px\])(?![\w-])/,
+      /const SHELL = '[^']*\bmax-w-(?:6xl|7xl|\[1200px\]|\[1080px\])(?![\w-])/,
     );
     expect(page, 'pages must not re-declare their own wider wrapper').not.toMatch(
       /max-w-(screen|full|none)\b[^'"]*mx-auto/,

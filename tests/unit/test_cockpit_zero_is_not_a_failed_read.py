@@ -18,7 +18,7 @@ import sqlite3
 
 import pytest
 
-from prospector.control_center import readers
+from prospector.ops import readers
 
 _ZEROED_STATS = {
     "total": 0, "n_pass": 0, "n_kill": 0, "n_defer": 0, "n_provisional": 0,

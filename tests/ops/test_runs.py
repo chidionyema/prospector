@@ -28,8 +28,6 @@ import json
 import sqlite3
 import types
 
-import pytest
-
 from prospector.ops import runs as R
 from prospector.store import Store
 
@@ -218,76 +216,6 @@ def test_classify_check_is_exact_never_a_substring(tmp_path):
     assert kind == R.KIND_EVIDENCE
 
 
-# --------------------------------------------------------------------------- #
-# The R18 probe: PASS + KILL + retrieval_failed each render DISTINCTLY
-# --------------------------------------------------------------------------- #
-def test_pass_kill_and_a_retrieval_failed_row_each_render_distinctly(tmp_path):
-    """R18's own probe, run against the page's real shaping functions."""
-    st = pytest.importorskip("streamlit")  # noqa: F841 — the page imports it at module scope
-    from prospector.control_center.pages import _runs as page
-
-    p, k, o = "p" * 16, "k" * 16, "o" * 16
-    store = _write(
-        tmp_path,
-        _dossier(p, "pass", [_check("buyer_intent", "supported", 0.82,
-                                    sources=[_source()])], composite=4.4,
-                 publish_status="listed"),
-        _dossier(k, "kill", [_check("value_durability", "refuted", 0.77,
-                                    sources=[_source("s2")])],
-                 gate="value_durability", composite=1.1, reason="incumbent ships it free"),
-        _dossier(o, "defer", [_check("buyer_intent", "unverifiable", 0.0,
-                                     retrieval_failed=True, degraded=True,
-                                     rationale="Verdict call failed; fail-safe.")],
-                 composite=0.0, reason="Deferred — could not retrieve evidence."),
-    )
-    cfg = _cfg(tmp_path)
-    views = {d: R.candidate_view(cfg, d, store=store, directory=tmp_path / "audit")
-             for d in (p, k, o)}
-
-    # 1. The decisions are the engine's, unmodified.
-    assert [views[x]["gate"]["decision"] for x in (p, k, o)] == ["pass", "kill", "defer"]
-    assert views[k]["gate"]["gate_fired"] == "value_durability"
-    assert views[p]["gate"]["gate_fired"] is None
-
-    # 2. PASS and KILL both put a READING in the evidence table; the outage puts none.
-    assert len(page.evidence_rows(views[p])) == 1
-    assert len(page.evidence_rows(views[k])) == 1
-    assert page.evidence_rows(views[o]) == [], \
-        "a failed call must never occupy a row in the evidence table"
-
-    # 3. Only the outage draws an outage block, and it says so in words.
-    assert page.outage_blocks(views[p]) == [] and page.outage_blocks(views[k]) == []
-    block = page.outage_blocks(views[o])[0]
-    assert "OUTAGE" in block["headline"] and "never ran" in block["headline"]
-    assert "not a reading" in block["placeholder_note"].lower()
-
-    # 4. The three render as three different verdict strings, and 'unverifiable' appears in NONE
-    #    of the outage's rendered cells.
-    assert {r["verdict"] for r in page.evidence_rows(views[p])} == {"supported"}
-    assert {r["verdict"] for r in page.evidence_rows(views[k])} == {"refuted"}
-    assert "unverifiable" not in json.dumps(page.evidence_rows(views[o]))
-
-
-def test_the_page_quotes_the_passage_and_names_the_query_that_found_it(tmp_path):
-    pytest.importorskip("streamlit")
-    from prospector.control_center.pages import _runs as page
-
-    cid = "q" * 16
-    src = _source("s7", "https://x.test/p", "Councils pay £4,500 per audit.", "audit price uk")
-    store = _write(tmp_path, _dossier(cid, "pass", [
-        _check("buyer_intent", sources=[src], queries=["audit price uk"])]))
-    v = R.candidate_view(_cfg(tmp_path), cid, store=store, directory=tmp_path / "audit")
-
-    row = page.source_rows(v["evidence_checks"][0])[0]
-    assert row["quote"] == "Councils pay £4,500 per audit."
-    assert row["query"] == "audit price uk"
-    assert row["url"] == "https://x.test/p"
-    assert row["cited"] is True
-
-
-# --------------------------------------------------------------------------- #
-# Honest nulls
-# --------------------------------------------------------------------------- #
 def test_every_cost_is_null_and_every_null_names_its_reason(tmp_path):
     """Cost is not recorded at candidate or check grain. A zero here would read as free."""
     cid = "e" * 16

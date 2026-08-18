@@ -256,7 +256,18 @@ _CONFIRM_TEMPLATES: dict[str, list[str]] = {
     "incumbency": ["{q} market gap underserved segment"],
     "payer_solvency": ["{q} budget willingness to pay ROI"],
     "distribution": ["{q} acquisition channel case study"],
-    "pain_reality": ["{q} acute problem testimonial evidence"],
+    # SIZE-SEEKING ON PURPOSE (2026-08-16). The pack page now prints "how big it is", and
+    # `prompts/content_gen.md` may only quote a size a verified claim already states. Measured
+    # over 245 live/deferred dossiers before this change: an explicit market-size phrase
+    # appeared in 6, any countable population figure in 21. So the field shipped empty on ~91%
+    # of packs, not because the rule is strict but because nothing ever searched for a size.
+    #
+    # This is a swap, not an addition, and that is forced: `_templated_queries` emits
+    # `disconfirm[0]` and `confirm[0]` only, so a second entry here would never be searched --
+    # it would read as a fix and do nothing. The old wording asked for testimonials, which
+    # return one person's story. "how many affected" returns the same evidence of real pain
+    # WITH a number attached, which is what `pain_reality` wanted anyway.
+    "pain_reality": ["{q} how many affected statistics survey evidence"],
 }
 
 

@@ -1,8 +1,19 @@
 # Admin Console Programme — the Next.js console that replaces Streamlit
 
-**Owner:** founder · **Opened:** 2026-08-16 · **Status:** spec + first build
+**Owner:** founder · **Opened:** 2026-08-16 · **Status:** spec + first build ·
+**Streamlit deleted 2026-08-18**
 **Supersedes:** the Streamlit surface described in `docs/OPS_CONSOLE_PROGRAM.md` §14. It does not
 supersede that document's *requirements* (R15–R25) or its findings; it re-renders them.
+
+**2026-08-18 — this is now the only console.** The founder said the Streamlit control centre
+"needs to be deleted permanently, both code and everything". It is. `prospector/control_center/`,
+`.streamlit/`, `tests/control_center/`, the two launcher scripts and the
+`com.prospector.control-center` launchd job were removed, and `streamlit` came out of
+`requirements.txt`. Four modules the Next.js backend imports moved to `prospector/ops/`
+(`readers.py`, `config_editor.py`, `yaml_surgery.py`, `runner.py`); their tests are at
+`tests/ops/cc/`. The Streamlit caching those readers relied on is replaced by
+`prospector/ops/_cache.py`, a plain TTL memo with the same `.clear()` interface. `numpy` is now
+declared directly in `requirements.txt` — it used to arrive transitively through Streamlit.
 
 The founder's ask, 2026-08-16: move the console to Next.js, add full store admin and full engine
 admin. Store admin must write — change prices, unlist, republish — and expose every republish tool
@@ -324,7 +335,7 @@ commands. Prices are refused by design (§7).
 ## 5. Auth
 
 Single operator, one shared password, exactly as Streamlit does today
-(`control_center/auth.py`, env `CONTROL_CENTER_PASSWORD`, timing-safe compare, fail closed).
+(`control_center/auth.py`, env `CONTROL_CENTER_PASSWORD`, timing-safe compare, fail closed).  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 This console reuses the same environment variable so there is one password to remember.
 
 - The password is checked in a Next.js API route, never in client JavaScript.
@@ -332,7 +343,7 @@ This console reuses the same environment variable so there is one password to re
   signed with `CONTROL_CENTER_PASSWORD` as the key. Expiry 12 hours.
 - **Fail closed.** If `CONTROL_CENTER_PASSWORD` is unset the app refuses every route including the
   login page, and says why. An unconfigured portal is locked, not open. This is why
-  `scripts/install_control_center_agent.sh` refuses to install a plist without the variable —
+  `scripts/install_control_center_agent.sh` refuses to install a plist without the variable —  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
   `KeepAlive` would otherwise restart a fail-closed portal forever.
 - **The network is the real fence.** The app binds one tailnet address, never `0.0.0.0`. A
   password-only portal on whatever cafe wifi the laptop joins is not acceptable, and a single
@@ -538,7 +549,7 @@ writes. "Screen" is where the console surfaces it; **Run** means the console can
 | `tools/preview_packs.py` | read any pack in full without buying | R | `/catalogue/[id]` Show |
 | `tools/pack_defect_census.py` | count live packs carrying each defect | R | `/catalogue` Show |
 | `tools/floor_signature.py` | count deterministic-floor copy on the shelf | R | `/catalogue` Show |
-| tools/pack_banner_probe.py **(not built)** | live packs still showing a retired banner | R | `/catalogue` Show |
+| `scripts/pack_banner_probe.py` | live packs still showing a retired banner | R | `/catalogue` Show |
 
 ### 8.3 Backfill and repair
 
@@ -710,7 +721,7 @@ Three things the plist must not lose:
 1. **It execs `/usr/local/bin/node` directly, not `scripts/run_ops_console.sh`.** launchd runs a
    shell script through `/bin/bash`, and bash has no TCC grant for `~/Documents` on this Mac, so
    the agent dies with `Operation not permitted` before the first line runs. The same trap is
-   documented for the Streamlit agent in `scripts/install_control_center_agent.sh`.
+   documented for the Streamlit agent in `scripts/install_control_center_agent.sh`.  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 2. **The tailnet address is pinned in the plist**, because the app is started by launchd and there
    is no shell to resolve it. Re-run the install when the tailnet address changes.
 3. **`PROSPECTOR_ROOT` and `PROSPECTOR_PYTHON` are set in the plist**, since the launcher script
@@ -767,3 +778,124 @@ across 13 screens; the "18 routes" row above counted build output including API 
 | `POST /api/ops/session {"password":"nope"}` | `HTTP 401 {"ok":false,"error":"That password did not work."}` |
 | `POST /api/ops/session {"password":"test"}` | `HTTP 200 {"ok":true,"signed_in":true}` |
 | `GET /api/ops/read/{status,queue,providers,routing,spend,metrics}` | all `HTTP 200`, 543–11472 bytes of live engine data |
+
+## 13. The shop half (2026-08-18)
+
+The console covered the engine and had almost nothing for the shop. The cause was not a missing
+screen. **The data was always in the database; the operator routes never existed.** The only
+order lookups in `Store.Api` were the buyer's own — by grant token or by Stripe session id — so an
+operator could find an order only if the buyer first handed over their link.
+`prospector/ops/money.py` already said so in code, as a `MISSING_READS` list rather than a blank
+panel.
+
+### 13.1 What was built
+
+Five new routes on `Store.Api`, all behind the existing `X-Internal-Key` fence:
+
+| Route | File | Answers |
+|---|---|---|
+| `GET /internal/ops/orders` | `store_platform/src/Store.Api/Endpoints/OpsEndpoints.cs` | find an order by email fragment, status or pack |
+| `GET /internal/ops/orders/{id}` | same | one order, its entitlements, its deliveries, its siblings in the same payment |
+| `GET /internal/ops/sales` | same | revenue by currency, by day, by pack |
+| `GET /internal/ops/disputes` | same | refunds and chargebacks we already applied |
+| `GET /internal/ops/deliveries` | same | the delivery outbox by state |
+| `POST /internal/ops/deliveries/{id}/resend` | same | requeue one delivery |
+
+`store_platform/src/Store.Api/Auth/InternalKeyGate.cs` is new. The `X-Internal-Key` check already existed twice
+(`Program.cs`, `AnalyticsEndpoints.RejectUnlessInternal`). The ops routes read buyer email
+addresses and revenue, so they became a shared call rather than a third copy. It is fail-closed:
+**no key configured on the server is a 503, never an open door.**
+
+Gateway: `prospector/ops/shop.py` (views) and the `disputes` / `deliveries` entries in
+`console_api.READS`, plus `deliveries.resend` in `console_api.ACTIONS`.
+
+### 13.2 Four things these routes refuse to do
+
+1. **Never sum across currencies.** Revenue is a list of per-currency buckets. A single total is
+   the first way a money screen lies.
+2. **Revenue comes from `SalesAudit`, units come from `Order`.** `FulfilmentService.cs:31` writes
+   one audit row per transaction; `:64` writes one order row per cart item. A discounted cart
+   makes the order rows sum to more than the payment. Summing orders and calling it revenue
+   overstates it.
+3. **Never return the grant token.** It is the download credential. A support screen that renders
+   it hands out the product.
+4. **`abandoned` is its own delivery state.** `DeliveryDrain.cs:42` filters
+   `Attempts < Delivery:MaxAttempts`, so a row at the cap is invisible to the drain forever.
+   Folding it into "failed" tells the operator something will retry it. Nothing will.
+
+### 13.2b Resend resets one row; it cannot queue a second
+
+The first version of `POST /internal/ops/deliveries/{id}/resend` queued a NEW outbox row when the
+delivery had already been sent, so the original `SentAt` survived as a receipt. The database
+refused it: `StoreDbContext.cs:61` makes `PendingDeliveries.EntitlementId` **unique**, and the
+comment above it says why — that index is what makes enqueueing idempotent against a duplicate
+webhook. One entitlement may hold exactly one outbox row.
+
+So resend resets the row it has: `SentAt = null`, `Attempts = 0`, `LastError = null`. On a
+delivery that had already gone out, that **destroys the row-level receipt that a link was
+emailed**, which is the fact a support conversation turns on. Three things carry it instead:
+
+- the API returns `previousSentAt` in the response;
+- `console_api._act_delivery_resend` writes `previous_sent_at` into the intent receipt before the
+  row loses it;
+- the preview says plainly that the buyer will get a second email.
+
+`OpsResendTests.One_entitlement_may_hold_only_one_outbox_row` asserts the index directly, so if it
+is ever dropped the suite says so rather than silently allowing a double send.
+
+Resend is refused with 409 when the entitlement is revoked — refunded or disputed.
+
+### 13.3 What is still missing, and why
+
+Every item here is declared in code, not left as a blank panel. Reads go in
+`money.MISSING_READS`, writes in `money.MISSING_ACTIONS` (`prospector/ops/money.py`), and the Money
+screen renders both — the reads under "Not measured yet", the writes under "Cannot be done from
+here" (`store_platform/src/Ops.Console/src/pages/money.tsx`). A gap that exists only as a JSON field
+is not declared to anyone.
+
+- **Outbound refund.** `IPaymentProvider` has no refund method (`IPaymentProvider.cs:5-35`).
+  The disputes read shows reversals Stripe already told us about; issuing one is its own change.
+  An operator refunds in the Stripe dashboard today, and our database only learns of it when the
+  webhook lands and calls `FulfilmentService.RevokeAsync`. Carried as the `issue-refund` entry in
+  `money.MISSING_ACTIONS`.
+- **Dispute clock.** `FulfilmentService.RevokeAsync:177` applies every reversal but never persists
+  the `PaymentReversal` record, so no "disputed at" timestamp exists anywhere in the database.
+  The read therefore dates rows by **sale** date and says so in the payload
+  (`dateBasis`). Sorting disputes by urgency needs a persisted reversal row and its migration.
+  Carried as the `dispute-clock` entry in `money.MISSING_READS`.
+- **Storefront content** is still deploy-only (`Store.Web/src/lib/config.ts`, `copyConfig.ts`).
+
+### 13.4 Receipts (2026-08-18)
+
+| Command | Result |
+|---|---|
+| `dotnet test src/Store.Tests/Store.Tests.csproj --filter "FullyQualifiedName~Ops" -v n` | `Total tests: 35`, `Passed: 35` |
+| `pytest tests/ops/test_shop.py tests/ops/test_console_api.py -q` | 45 passed in 60.87s |
+| `pytest tests/ops/test_console_api_resend.py -q` | 5 passed in 28.89s |
+| `pytest tests/unit/test_ops_money_data_views.py -q` | 14 passed in 20.96s |
+| `ruff check prospector/ops/` | `All checks passed!` |
+| `npx tsc --noEmit` (Ops.Console) | `TSC_EXIT=0` |
+| `npx vitest run` (Ops.Console) | 10 files, 102 tests passed |
+| `npm run build` (Ops.Console) | `BUILD_EXIT=0`; `/delivery /disputes /orders /orders/[id] /revenue` compiled |
+
+Four defects the tests found, none of which a screen would have shown:
+
+1. `Entitlements.GrantToken` is unique, so a seed cannot put one literal token on three
+   entitlements. Every test in the class failed on the insert, not on the endpoint.
+2. `PendingDeliveries.EntitlementId` is unique, which refuted the resend design outright (§13.2b).
+3. `/internal/ops/deliveries` returned only the delivery row's own id. A console linking to
+   `/orders/{id}` with it lands on a 404 or, worse, on a different buyer's order. Delivery rows
+   now carry `orderId`, and the seed makes the two ids differ so the test cannot pass by
+   coincidence.
+4. The gateway's `DELIVERY_STATES` did not include `abandoned`, so it would have rejected a state
+   the API serves.
+
+### 13.5 Which screens survive the move to Fly
+
+Ops is moving to Fly. The split is not cosmetic:
+
+- **Shop screens port cleanly.** They reach `Store.Api` over HTTP. A Fly instance can call it.
+- **Engine screens do not.** They shell out to `.venv/bin/python -m prospector.ops.console_api` on
+  this laptop, against the canonical store at
+  `/Users/chidionyema/Documents/code/prospector/store`. There is no local process on Fly to shell
+  into, and the store is not on that machine.

@@ -48,7 +48,7 @@ export function sourceHost(url: string): string {
   }
 }
 
-export type SourceChipVariant = 'chip' | 'link';
+export type SourceChipVariant = 'chip' | 'link' | 'pill';
 
 export interface SourceChipProps {
   /** Absolute URL, exactly as it appeared in the prose. */
@@ -64,6 +64,10 @@ export interface SourceChipProps {
    * describes.
    * `link` -- bare mono underline, for a dense inline strip of domains where a border per source
    * would read as a toolbar rather than as evidence.
+   * `pill` -- `.srcchip` from `mockups/index.html:89`: a full-round bordered pill with a brand dot
+   * and no arrow. The home page's source strip, and only that. It is a THIRD declared variant of
+   * this one component rather than a sixth private implementation, which is the thing
+   * `sourceChipIsTheOnlyOne.test.ts` exists to prevent.
    */
   variant?: SourceChipVariant;
   className?: string;
@@ -85,6 +89,24 @@ export function SourceChip({
     title: quote ? `“${quote}”` : url,
     'data-source-chip': variant,
   } as const;
+
+  if (variant === 'pill') {
+    /*
+     * `.srcchip`: `border-radius:999px`, a 1px line, `padding:6px 12px`, mono at 12.5px, and a 5px
+     * brand dot at a 7px gap. The dot carries the "this is a live source" signal the arrow carries
+     * on the `chip` variant; the drawing has no arrow here, because four of these sit in a row
+     * under one sentence and four arrows read as a toolbar.
+     */
+    return (
+      <a
+        {...common}
+        className={`inline-flex max-w-full items-center gap-[7px] rounded-full border border-line bg-surface px-3 py-1.5 font-mono text-caption leading-normal text-muted transition-colors duration-[120ms] hover:border-border-strong hover:text-text ${className}`}
+      >
+        <span aria-hidden className="size-[5px] shrink-0 rounded-full bg-survive" />
+        <span className="truncate">{text}</span>
+      </a>
+    );
+  }
 
   if (variant === 'link') {
     return (

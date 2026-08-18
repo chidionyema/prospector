@@ -85,6 +85,7 @@ import importlib
 import io
 import json
 import os
+import re
 import sys
 import zipfile
 from dataclasses import dataclass, field
@@ -112,6 +113,7 @@ from prospector.bridge import (  # noqa: E402
     BUNDLE_FILES,
     BUNDLE_READING_ORDER,
 )
+from prospector.run import _load_dotenv  # noqa: E402
 
 # Env-overridable so a backfill can be pointed at staging. This script PATCHes live
 # catalogue rows; a hardcoded production constant means there is no way to rehearse
@@ -157,6 +159,19 @@ class Report:
 #: inside `rebuild_zip_with_index`, whose return type says "the new zip or nothing to do" and
 #: has no room for a third answer.
 PDF_FAILURES: List[str] = []
+
+
+#: What "our grade is STILL in this reader" looks like, as probes over the rendered HTML.
+#: Deliberately the same SHAPE `dossier.strip_our_grade_markdown` removes — the score-reason
+#: form `\bcomposite\s+\d`, never the bare word. A guard stricter than its own stripper
+#: condemns packs that nothing can fix: measured 2026-08-16, `d8aa7528aa73eabb` was reported
+#: as still leaking on "exterior-grade aluminum composite or acrylic for outdoor signs", a
+#: materials spec in a signage pack. Silently editing a buyer's spec sheet is worse than the
+#: leak, so the stripper leaves that prose alone and the guard must agree with it.
+_LEAK_PROBES = (
+    ("How it scored", re.compile(r"How it scored", re.IGNORECASE)),
+    ("composite <score>", re.compile(r"\bcomposite\s+\d")),
+)
 
 
 #: The report whose markdown carried our scoresheet. Named rather than pattern-matched: the
@@ -523,6 +538,15 @@ def main() -> int:
     import requests
     from botocore.config import Config as BotoConfig
 
+    # Same as every other live-catalogue tool (`publish_passes`, `unlist_killed`,
+    # `reprice_live_packs`): pull the gitignored `.env` so the credentials are present
+    # without a Claude Code session having exported them. This one was the exception, and
+    # the cost was not only that `--apply` refused — `current_key()` below falls back to
+    # newest-by-LastModified when STORE_INTERNAL_API_KEY is missing, so a DRY RUN made
+    # without it was reading a weaker authority than the database's own pointer. Honours
+    # PROSPECTOR_DISABLE_DOTENV, so the pytest credential fence still holds.
+    _load_dotenv()
+
     account_id = os.environ.get("R2_ACCOUNT_ID")
     bucket = os.environ.get("R2_BUCKET")
     if not all([account_id, os.environ.get("R2_ACCESS_KEY_ID"),
@@ -668,7 +692,7 @@ def main() -> int:
             # rather than swapped for another dirty zip.
             rebuilt = zipfile.ZipFile(io.BytesIO(new_bytes))
             reader = _text(rebuilt.read("index.html") if "index.html" in rebuilt.namelist() else b"")
-            still_leaking = [t for t in ("How it scored", "composite ") if t.lower() in reader.lower()]
+            still_leaking = [name for name, probe in _LEAK_PROBES if probe.search(reader)]
             if still_leaking:
                 report.add(PackResult(pid, "error",
                                       f"rebuilt reader STILL carries {still_leaking}; not uploading"))
@@ -728,6 +752,21 @@ def main() -> int:
             report.add(PackResult(pid, "error", str(e)))
 
     print(f"\n{mode} complete: {report.summary()}")
+
+    # The per-pack verdicts are written to disk, not just to the terminal. A run over the
+    # whole catalogue exists to tell you WHICH packs need attention; when that answer lives
+    # only in scrollback it is gone by the next session, and the only way to recover four
+    # pack ids is to re-run all 61 — which is exactly what happened on 2026-08-16. With this
+    # file, `--only` can be aimed at the handful that failed instead.
+    log_path = Path(".backfill-logs") / f"backfill_bundle_html.{mode.lower()}.json"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text(json.dumps(
+        {"mode": mode, "api_url": args.api_url,
+         "results": [{"pack_id": r.pack_id, "action": r.action, "detail": r.detail}
+                     for r in report.results]},
+        indent=2), encoding="utf-8")
+    print(f"per-pack verdicts written to {log_path}")
+
     errors = sum(1 for r in report.results if r.action in ("error", "no-object"))
     return 1 if errors else 0
 

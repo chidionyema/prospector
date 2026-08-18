@@ -72,7 +72,9 @@ function isActivePath(pathname: string, href: string): boolean {
    page's first Section, otherwise it hangs off the left of the content it belongs to. */
 const CRUMB_WIDTH = {
   '2xl': 'max-w-2xl', '3xl': 'max-w-3xl', '4xl': 'max-w-4xl',
-  '6xl': 'max-w-6xl', '7xl': 'max-w-7xl',
+  // Both wide keys resolve to the shell's 1080px, exactly as BAND_WIDTH does. The comment above
+  // says this map must mirror that one; before 2026-08-18 it mirrored it into the same defect.
+  '6xl': 'max-w-[1080px]', '7xl': 'max-w-[1080px]',
 } as const;
 
 interface MarketingLayoutProps {
@@ -110,18 +112,55 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
   }, [router]);
 
   const [scrolled, setScrolled] = useState(false);
+  // MASTER-BRIEF section 9: on mobile the header hides on scroll-down and comes back on scroll-up.
+  // A phone screen is short and the header is 80px of it. A reader scrolling into the page gets
+  // that height back; one scrolling up gets the navigation without first reaching the top.
+  const [headerHidden, setHeaderHidden] = useState(false);
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 4);
-    onScroll();
+    // One listener, not two. `lastY` is a closure variable rather than state because a re-render
+    // per scroll event is the cost this is trying to avoid.
+    let lastY = window.scrollY;
+    let queued = false;
+    // The header sliding away is motion the page plays at the reader, which is what the setting
+    // is about, so under prefers-reduced-motion the header simply stays put.
+    const reduced =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const read = () => {
+      queued = false;
+      const y = window.scrollY;
+      setScrolled(y > 4);
+      // 64px of travel before a direction change counts. Without it, the rubber-band at the top of
+      // iOS Safari and one pixel of trackpad jitter both read as a reversal and the header flickers.
+      if (!reduced && Math.abs(y - lastY) > 64) {
+        setHeaderHidden(y > lastY && y > 160);
+        lastY = y;
+      }
+    };
+    const onScroll = () => {
+      // Coalesce to one read per frame. `window.scrollY` forces layout, and the raw event fires
+      // far more often than the screen refreshes.
+      if (queued) return;
+      queued = true;
+      window.requestAnimationFrame(read);
+    };
+    read();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // §3.4: 1200px max, 24px gutters. Was `max-w-7xl px-4 sm:px-6 lg:px-8` -- 1280px with a gutter
-  // that stepped 16 -> 24 -> 32px across breakpoints. The step was the problem, not the width: a
-  // three-value gutter means the grid's outer margin is a different size on almost every device,
-  // so nothing on the page can be aligned to it reliably. One value, at every width.
-  const SHELL = 'mx-auto max-w-[1200px] px-6';
+  // 1080px max, 20px gutters -- `.wrap` in every one of the twelve mockups
+  // (docs/design/mumchimp-build-bundle/mockups/*.html: `max-width:1080px;margin:0 auto;padding:0
+  // 20px`). It was 1200/24, from §3.4, which itself replaced `max-w-7xl px-4 sm:px-6 lg:px-8` --
+  // 1280px with a gutter that stepped 16 -> 24 -> 32px across breakpoints.
+  //
+  // The step was the problem then and it is still fixed: ONE gutter value at every width, so the
+  // grid's outer margin is somewhere a component can align to. What changed on 2026-08-18 is the
+  // number. 120px of extra width is not a detail at this scale -- every row, card grid and measure
+  // on the site was laid out 11% wider than the drawing, so nothing inside them could line up with
+  // the mockup even where the component itself was right.
+  const SHELL = 'mx-auto max-w-[1080px] px-5';
 
   return (
     <div className="min-h-dvh bg-bg font-sans text-text antialiased">
@@ -163,9 +202,13 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
            The hairline still only changes COLOUR on scroll (see the note above): with an opaque
            header the border is no longer what separates header from content, so it is free to stay
            invisible at rest and appear as scroll feedback. */
-        className={`sticky top-0 z-30 w-full border-b bg-bg pt-[env(safe-area-inset-top)] transition-colors duration-200 ${
+        // `data-scrolled` is what globals.css reads with :has() to step --h-header from 5rem to
+        // 4rem. The filter bar's sticky offset and every anchor's scroll clearance measure from
+        // that token, so they contract with the header instead of having to be told about it.
+        data-scrolled={scrolled ? 'true' : 'false'}
+        className={`sticky top-0 z-30 w-full border-b bg-bg pt-[env(safe-area-inset-top)] transition-[color,background-color,border-color,transform] duration-200 md:!translate-y-0 ${
           scrolled ? 'border-border' : 'border-transparent'
-        }`}
+        } ${headerHidden ? '-translate-y-full' : 'translate-y-0'}`}
       >
         {/* COMPACT ON SCROLL, MORE ROOM AT REST (bumped 2026-08-09, founder override -- header
             was reading as sitting too close to the top edge and to the content below it).
@@ -420,8 +463,13 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
 
       {/* Full-width main: children own their contrast bands. */}
       <main id="main" className="bg-bg">
+        {/* `px-5 pt-[22px]` on the trail below: the drawing's gutter and the drawing's trail
+            offset (`mockups/sample.html:64`, `.crumb{padding:22px 0 0}`). The three-step gutter it
+            replaces put the trail 40px from the page edge on a laptop, under a header sitting at
+            20px. The note is here rather than inside the conditional because a JSX comment there
+            would be a second child of the `&&` expression. */}
         {breadcrumbs && breadcrumbs.length > 0 && (
-          <div className={`mx-auto ${CRUMB_WIDTH[breadcrumbsWidth]} px-6 pt-6 md:px-8 lg:px-10`}>
+          <div className={`mx-auto ${CRUMB_WIDTH[breadcrumbsWidth]} px-5 pt-[22px]`}>
             <Breadcrumbs items={breadcrumbs} />
           </div>
         )}

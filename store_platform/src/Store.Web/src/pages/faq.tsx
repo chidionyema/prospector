@@ -7,7 +7,19 @@ import { buttonClasses, chipClasses, Icon, SearchInput, textLinkClass } from '@/
 import { cx } from '@/components/ui/cx';
 import { LEGAL } from '@/lib/config';
 import { FAQS, isLink, plainAnswer, type FaqItem } from '@/lib/faqContent';
+import { track } from '@/lib/analytics';
 import { breadcrumbNode, faqPageNode, graph } from '@/lib/seo/schema';
+
+/**
+ * A stable key for one question, for the helpfulness beacon.
+ *
+ * The question TEXT, not its position. The list is ordered by purchase blocker and that order has
+ * already changed once; keyed by index, every vote recorded before a reorder would silently start
+ * describing whichever question moved into that slot.
+ */
+function questionSlug(question: string): string {
+  return question.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48);
+}
 
 /** One answer's segments as prose. */
 function Answer({ item }: { item: FaqItem }) {
@@ -52,21 +64,29 @@ function AccordionItem({
        rows sat item N's bottom hairline and item N+1's top hairline with no gap -- measured at
        1px + 1px against 1px at the ends of the list (Playwright getComputedStyle, 2026-08-06). A
        divider twice the weight of the one below it reads as a section break that isn't there. */
-    <div className="bg-surface transition-colors border-b border-border last:border-b-0">
+    /* mockups/faq.html:184 `.faq details{border-bottom:1px solid var(--line);padding:16px 0}`.
+       The rows are set as a plain run of rules on the page, NOT as a bordered card: the mockup's
+       list has no box and no side padding, so the questions start on the band's own left edge
+       like every other line of the page. The 16px is on the button (`py-4`) so the whole
+       summary row is the click target. */
+    <div className="transition-colors border-b border-border last:border-b-0">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-4 p-5 text-left"
+        className="flex w-full items-start justify-between gap-4 py-4 text-left"
       >
-        <h2 className="text-body font-semibold text-text leading-snug pr-8">{item.question}</h2>
-        <Icon
-          name="arrowRight"
-          size={16}
-          className={cx(
-            'flex-none text-muted transition-transform',
-            open && 'rotate-90',
-          )}
-        />
+        {/* mockups/faq.html:185 `.faq summary{font-size:16.5px;font-weight:620;letter-spacing:-.014em}` */}
+        <h2 className="text-body font-semibold tracking-[-0.014em] text-text leading-snug">{item.question}</h2>
+        {/* mockups/faq.html:187-188: the marker is a typographic + that becomes a minus when open,
+            20px, weight 400, in --ink-3. It was a rotating arrow glyph, which is a different
+            control. U+2212 MINUS SIGN, not an en dash: `__tests__/dashFree.test.ts` bans both
+            dashes in source, and a minus is the correct character here anyway. */}
+        <span
+          aria-hidden="true"
+          className={cx('flex-none text-[20px] font-normal leading-none text-subtle', open && 'pt-0.5')}
+        >
+          {open ? '−' : '+'}
+        </span>
       </button>
       {/* Native `hidden`, not a conditional unmount: a closed accordion used to remove the answer
           from the DOM entirely, so a crawler that does not click (or does not run JS at all) saw
@@ -74,19 +94,33 @@ function AccordionItem({
           own rule is that the structured data must match what the page actually shows. `hidden`
           keeps the text present and gives the same "not shown" result visually and to the
           accessibility tree, without the SSR gap. */}
-      <div className="px-5 pb-5 -mt-1" hidden={!open}>
-          <div className="text-meta leading-relaxed text-muted">
+      {/* mockups/faq.html:189 `.faq p{font-size:15px;line-height:1.62;max-width:66ch;margin-top:11px}`.
+          The answer sits on the same left edge as its question (no horizontal padding), the
+          measure is capped at 66ch rather than by the container, and the row closes with the
+          same 16px it opened with: `pb-4` minus the 5px the 11px top margin already spends. */}
+      <div className="-mt-[5px] pb-4" hidden={!open}>
+          <div className="max-w-[66ch] text-body leading-relaxed text-muted">
             <Answer item={item} />
           </div>
           {/*
             Was this helpful? Two words, not two emoji.
             `pricing.tsx` already stated the rule when it stopped rendering the pack-contents
             emoji: each one is a different vendor's artwork per OS, and it is the loudest thing on
-            a page about a professional research product. A 👍 next to a paragraph explaining the
-            refund policy is exactly that, and it survived here because the rule was written in a
-            comment on one page instead of applied across the set (desktop-faq-fold.png,
-            2026-08-06). Words also give the control a visible label rather than an `aria-label`
-            that only a screen reader ever hears.
+            a page about a professional research product. A thumbs-up next to a paragraph about the
+            refund policy is exactly that. Words also give the control a visible label rather than
+            an `aria-label` that only a screen reader ever hears.
+
+            IT NOW REPORTS. Until 2026-08-18 the click set a piece of React state that nothing read
+            and nothing sent, so the page carried 26 buttons that collected a vote we then threw
+            away on the next navigation. The founder wants the control, so the fix is to make it
+            true rather than to remove it: each vote fires the first-party beacon under
+            `faq_helpful`, keyed by a SLUG of the question rather than its index, because step 7
+            reordered this list and an index would have re-pointed every historic vote at a
+            different question.
+
+            The beacon fires only when a vote is CAST. Clicking the same answer again clears the
+            choice, and an un-vote sends nothing: there is no "retract" event, and re-firing the
+            same name on the way out would count the vote twice.
           */}
           <div className="mt-4 flex items-center gap-2 border-t border-border pt-3">
             <span className="text-caption text-muted">Was this helpful?</span>
@@ -94,7 +128,11 @@ function AccordionItem({
               <button
                 key={choice}
                 type="button"
-                onClick={() => setFeedback(feedback === choice ? null : choice)}
+                onClick={() => {
+                  const next = feedback === choice ? null : choice;
+                  setFeedback(next);
+                  if (next) track('faq_helpful', `${questionSlug(item.question)}:${next}`);
+                }}
                 aria-pressed={feedback === choice}
                 className={chipClasses({ selected: feedback === choice })}
               >
@@ -179,17 +217,26 @@ export default function Faq() {
           a control and its own result. They are one section; the split existed only to get
           different bottom padding -- still true, still one band. */}
       <SectionBand bg="white" width="6xl" className="!pt-0 !pb-16">
-        <div className="max-w-3xl">
-          <SearchInput
-            label="Search FAQs"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search FAQs…"
-          />
+        <div>
+          {/* The search box is OURS, not the mockup's: mockups/faq.html:334 opens straight on the
+              chips. It is kept because it is a working feature, and it is capped at 470px because
+              that is the widest input the drawing has anywhere (`.emailbox form{max-width:470px}`,
+              mockups/faq.html:193). Everything below it now runs the full 1080px band, as the
+              mockup does: line length is held by `max-w-[66ch]` on the answer itself
+              (mockups/faq.html:189), not by squeezing the whole column to 3xl. */}
+          <div className="max-w-[470px]">
+            <SearchInput
+              label="Search FAQs"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search FAQs…"
+            />
+          </div>
 
           {/* Category filters. `chipClasses` -- the same control the kill log and the shelf's
-              facet bar render, which this page used to draw square and tinted instead. */}
-          <div className="mt-4 flex flex-wrap gap-2">
+              facet bar render, which this page used to draw square and tinted instead.
+              `mt-[18px]`: mockups/faq.html:146 `.chips{gap:8px;margin:18px 0}`. */}
+          <div className="mt-[18px] flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => setActiveCategory(null)}
@@ -238,7 +285,7 @@ export default function Faq() {
           `mx-auto max-w-md`, a centred call-out, unaffected by the band width) but so the page
           doesn't reintroduce a second distinct container width of its own. */}
       <SectionBand bg="bg" width="6xl" className="!py-12">
-        <div className="mx-auto max-w-md rounded-md border border-border bg-surface p-6">
+        <div className="mx-auto max-w-md rounded-card border border-border bg-surface p-6">
           <div className="flex items-center gap-3 mb-4">
             <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-success/10 text-success">
               <Icon name="mail" size={14} />
@@ -266,6 +313,30 @@ export default function Faq() {
           >
             Browse the catalogue <Icon name="arrowRight" size={14} />
           </Link>
+        </div>
+      </SectionBand>
+
+      {/* THE CLOSING BLOCK (`mockups/faq.html`, `.closing`). The page ended on the support card,
+          so a reader who had their question answered was handed an email address and nothing to
+          do next. The drawing ends every page on a 2px ink rule, a question, and two routes. */}
+      <SectionBand bg="white" width="6xl" className="!pt-0 !pb-16">
+        <div className="mt-12 border-t-2 border-text pt-9">
+          <h2 className="text-h2 font-semibold text-text">Still deciding?</h2>
+          <p className="mt-3.5 mb-[22px] max-w-[56ch] text-body leading-relaxed text-muted">
+            Read a complete pack first. No payment, no email, no account.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/sample" className={buttonClasses({ size: 'lg' })}>
+              Read a full pack free
+              <Icon name="arrowRight" size={14} />
+            </Link>
+            <Link
+              href="/how-it-works"
+              className={buttonClasses({ variant: 'secondary', size: 'lg' })}
+            >
+              See how the filter works
+            </Link>
+          </div>
         </div>
       </SectionBand>
     </MarketingLayout>

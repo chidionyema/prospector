@@ -175,7 +175,7 @@ cat <<'NOTE'
 
   * If you `git worktree move` a tree you have already run pytest in, DELETE the bytecode
     caches afterwards. .pyc files bake the absolute path into co_filename, so anything
-    using inspect.getsource (the control_center auth tests do) fails with
+    using inspect.getsource fails with
     "OSError: could not get source code" — pointing at auth, not at the move:
       find . -name __pycache__ -type d -not -path '*/node_modules/*' -exec rm -rf {} +
 

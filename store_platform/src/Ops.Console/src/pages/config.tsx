@@ -6,7 +6,7 @@
  * batch_size". So the groups are named for the job, the YAML path is shown small and second, and
  * the search box matches the label as well as the path.
  *
- * The writer is `prospector/control_center/yaml_surgery.py`, always, through
+ * The writer is `prospector/ops/yaml_surgery.py`, always, through
  * `config_editor.write_config`. There is no second path. `yaml.safe_dump` on this file measured
  * 2034 lines in and 981 out — 1173 comment lines destroyed, including founder directives and
  * calibration receipts — which is why a knob the surgeon cannot locate is shown READ ONLY with

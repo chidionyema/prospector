@@ -381,7 +381,7 @@ export function PackContentsSection({
           is what the founder was asking for when the objection was "we are not selling to
           developers". The count beside the words counts DOCUMENTS, which is why the noun is
           "documents"; the files are counted in the tree above, where they are listed. */}
-      <div className="mt-4 flex flex-col gap-3 rounded-md border border-border bg-surface2 p-6 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-4 flex flex-col gap-3 rounded-card border border-border bg-surface2 p-6 sm:flex-row sm:items-center sm:justify-between">
         {/* THE WORD COUNT IS GONE, and so is the second documents count (founder, 2026-08-16).
             This line printed `14 documents, 5,000+ words` while the card header 80px above it
             already printed `14 documents`. Two problems, one sentence. The count was the same

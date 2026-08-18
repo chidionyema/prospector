@@ -27,9 +27,11 @@ export const ACTIONS = [
   'catalogue.set_listing',
   'shelf.repair_copy',
   'shelf.publish_pending',
+  'shelf.regate',
   'daemon.restart',
   'tools.run',
   'tools.undo',
+  'deliveries.resend',
   // Which platform the engine runs on. `engine.switch` starts a real cutover, which takes
   // minutes and opens a downtime window, so it returns as soon as the run is started and the
   // page follows the engine_location view to see it land.
