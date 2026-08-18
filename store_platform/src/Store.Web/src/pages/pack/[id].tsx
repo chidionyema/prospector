@@ -392,10 +392,13 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
         </a>
         . This is it already done.
       </p>
-      <span className="mt-4 block text-caption text-subtle">One-time price</span>
-      <div className="mt-1">
-        <PriceText className="text-h2">{priceLabel}</PriceText>
-      </div>
+      {/* `.buybox .p` is the drawing's price: 34px, one line, no label above it. The label said
+          "One-time price" and the line under the number says "one payment", so the panel opened
+          by stating the same fact twice. */}
+      <p className="p num mt-4">
+        <PriceText>{priceLabel}</PriceText>
+      </p>
+      <p className="per">one payment &middot; instant download</p>
       {/* The hedge sits with the number it hedges. The old note ("£49 at today's rate") named
           the wrong figure -- £49 is the catalogue's source price, the converted one is what the
           rate produced -- and it sat below a green guarantee box, four elements away from the
@@ -440,7 +443,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
        * Deliberately NOT stated as this pack's own tier: `PackDetails` carries no ambition tier
        * (lib/api/client.ts), so naming a rung here would be a number the page cannot source.
        */}
-      <p className="mt-2 text-caption leading-relaxed text-subtle">
+      <p className="why">
         Set by how big this idea could get and the market it targets, never by the size of the
         pack.{' '}
         <Link href="/pricing" className={textLinkClass()}>
@@ -454,19 +457,22 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
           this pack's real count (`parseCheckCounts`), not the flat "all 6" it used to claim.
           Packs whose summary does not parse say "every check", which is true of anything listed
           without asserting a number the page cannot back. */}
-      <ul className="mt-5 space-y-2.5 border-t border-border pt-5">
-        <li className="flex items-center gap-2 text-meta text-muted">
+      {/* `.buybox ul` carries the rule above the list and its spacing. The icons stay: the
+          drawing sets these lines in plain text, and the tick on the survival line is the one
+          mark on this panel that reports a check result. */}
+      <ul>
+        <li className="flex items-center gap-2">
           <Icon name="shield" size={16} className="flex-none" />
           14-day money back, no questions asked
         </li>
-        <li className="flex items-center gap-2 text-meta text-muted">
+        <li className="flex items-center gap-2">
           {/* §3.3. The shield above this line stays lucide on purpose: a refund window is a
               commercial policy we chose, not something the engine ruled on. This line is the
               ruling, so it gets the verdict mark. That is where the boundary sits. */}
           <Glyph name="survived" className="mt-0.5 text-success" />
           {checksLine}
         </li>
-        <li className="flex items-center gap-2 text-meta text-muted">
+        <li className="flex items-center gap-2">
           <Icon name="download" size={16} className="flex-none" />
           Instant download the moment you pay
         </li>
@@ -692,6 +698,13 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
             line wrapped where the drawing keeps it on one line. Kept as flex rather than grid
             because the rail is `hidden` below `lg` and a grid track would still reserve its
             column. */}
+        {/* THE SIGNATURE (MASTER-BRIEF §7): a hundred dots, six of them teal, immediately above
+            the six gates. The page already states the rate in words further up; this is the
+            same fact in the form a reader takes in without doing arithmetic, sitting where it
+            answers the question the gates raise -- "how hard is this actually?" -- before the
+            gates are read rather than after. It renders nothing if the derived label ever stops
+            being a rate we can parse. */}
+        <SixInHundred className="mt-[26px]" />
         {/* `.two` is the drawing's own grid: 1.55fr of prose to 1fr of rail at a 36px gap,
             collapsing to one column at 900px (`mockup.css:311`). It was a flex row at `lg`, which
             put the collapse at 1024 while the drawing puts it at 900, so the rail and the mobile
@@ -1055,13 +1068,6 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 already on screen; the reader who has not keeps reading and meets the closing bar
                 when the argument is finished. */}
 
-            {/* THE SIGNATURE (MASTER-BRIEF §7): a hundred dots, six of them teal, immediately above
-                the six gates. The page already states the rate in words further up; this is the
-                same fact in the form a reader takes in without doing arithmetic, sitting where it
-                answers the question the gates raise -- "how hard is this actually?" -- before the
-                gates are read rather than after. It renders nothing if the derived label ever stops
-                being a rate we can parse. */}
-            <SixInHundred className="mt-12" />
 
             {/* US-4: the six-check methodology collapses behind a details disclosure.
                 On mobile (the primary surface), the buyer is not forced to read 200px

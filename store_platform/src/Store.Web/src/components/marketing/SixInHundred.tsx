@@ -1,6 +1,9 @@
 import React from 'react';
 
+import Link from 'next/link';
+
 import { cx } from '@/components/ui/cx';
+import { COMMON_CHECKS } from '@/lib/checks';
 import { RESEARCH_STATS } from '@/lib/stats';
 
 /**
@@ -37,8 +40,6 @@ const TOTAL = SIDE * SIDE;
 
 /** In user units. Radius 0.3 of a 1-unit pitch leaves a 40% duty cycle, so the dots read as a field
  *  of separate marks rather than a texture. */
-const RADIUS = 0.3;
-
 /**
  * The teal count, read off the label rather than declared.
  *
@@ -65,40 +66,56 @@ export function SixInHundred({ className, label }: SixInHundredProps) {
 
   const dots: React.ReactElement[] = [];
   for (let i = 0; i < TOTAL; i += 1) {
-    /* The teal dots are the LAST ones in reading order, so the eye crosses the whole grey field
-       before it reaches them. Scattering them would be prettier and would also make the picture
-       change between renders unless we seeded it, and a signature that moves is not a signature. */
+    /* The survivors sit at the end of the field, together. A reader counts a block; they do not
+       count a scatter, and a scatter would move between renders unless we seeded it. */
     const alive = i >= TOTAL - survivors;
-    dots.push(
-      <circle
-        key={i}
-        cx={(i % SIDE) + 0.5}
-        cy={Math.floor(i / SIDE) + 0.5}
-        r={RADIUS}
-        className={alive ? 'fill-survive' : 'fill-faint'}
-      />,
-    );
+    dots.push(<i key={i} className={alive ? 'alive' : undefined} />);
   }
 
+  /* `.sigcard` with a `.hd` head, a `.fig` figure, a `.cap` caption, a `.key` legend and a
+     `.dotfield` of a hundred dots beside them, then the six `.gate` cells under it. This was an
+     SVG figure with a caption; the drawing sets the same fact as markup the stylesheet already
+     knows how to draw, and puts the six gates the number is ABOUT in the same card. */
   return (
-    <figure className={cx('rounded-card border border-line bg-surface p-4', className)}>
-      <svg
-        viewBox={`0 0 ${SIDE} ${SIDE}`}
-        className="block w-full max-w-[220px]"
-        role="presentation"
-        aria-hidden="true"
-      >
-        {dots}
-      </svg>
-      <figcaption className="mt-3 text-meta leading-relaxed text-muted">
-        <span>
-          Fewer than {RESEARCH_STATS.survivorBoundLabel} ideas get through.
-        </span>{' '}
-        This one did. Every check below was run against cited evidence, and the pack ships the
-        sources so you can read them yourself.
-      </figcaption>
+    <figure className={cx('sigcard', className)}>
+      <div className="hd">
+        <div>
+          <p className="fig num">{RESEARCH_STATS.survivorBoundLabel}</p>
+          <figcaption className="cap">
+            or fewer get through. This one did. Every check below was run against cited evidence,
+            and the pack ships the sources so you can read them yourself.
+          </figcaption>
+          <p className="key">
+            <span>
+              <i className="sw9" style={{ background: 'var(--brand)' }} />
+              <b>{survivors}</b> survived
+            </span>
+            <span>
+              <i className="sw9" style={{ background: 'var(--dead)' }} />
+              <b>{TOTAL - survivors}</b> killed
+            </span>
+            <span>
+              <Link href="/kill-log" className="tlink">
+                Read what killed them
+              </Link>
+            </span>
+          </p>
+        </div>
+        {/* Decoration, not a second sentence. The drawing labels the field as an image, but the
+            caption beside it already says the same thing, so a screen reader would hear the rate
+            twice. */}
+        <div className="dotfield" aria-hidden="true">
+          {dots}
+        </div>
+      </div>
+      <div className="gates">
+        {COMMON_CHECKS.map((check, i) => (
+          <div key={check.id} className="gate">
+            <b>{String(i + 1).padStart(2, '0')}</b>
+            <span>{check.name}</span>
+          </div>
+        ))}
+      </div>
     </figure>
   );
 }
-
-export default SixInHundred;
