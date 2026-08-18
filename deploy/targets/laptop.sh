@@ -45,6 +45,9 @@ t_release()   { :; }   # the code is already here
 
 t_start() {
   local n=0
+  # Paired with the assertion in t_stop. Starting the laptop means the laptop is the platform
+  # again, so its roll-forward follower belongs back on.
+  rm -f "$STORE/scheduler/NO_AUTO_UPDATE"
   for l in $(_labels); do :; done
   for f in "$AGENTS"/com.prospector.*.plist; do
     [ -e "$f" ] || continue
@@ -63,6 +66,18 @@ t_stop() {
   # (a watchdog tick, a launchd job outside the loop, a child re-exec), a single stop-and-check
   # cannot see it: the check passes before the thing returns. So: stop, kill, let it settle,
   # look again, and only call the store quiet when a round finds nothing to do.
+  # The proper answer to com.prospector.live-update, which runs every 60 seconds and, when it
+  # sees a new origin/main, fast-forwards the live checkout and RESTARTS the daemon - putting
+  # back the very jobs this function just stopped. `launchctl bootout` cannot prevent that on
+  # its own, because the job only has to fire once in the gap. The estate already has the right
+  # switch for it: scripts/live_checkout.py:298 refuses --update while
+  # store/scheduler/NO_AUTO_UPDATE exists, the same convention as the scheduler's PAUSE file.
+  # So the fence is asserted here, before anything is stopped, and lifted in t_start - which
+  # means a rollback restores the auto-update and a successful migration leaves it off, which
+  # is the correct end state for a laptop that is being decommissioned.
+  mkdir -p "$STORE/scheduler" && : > "$STORE/scheduler/NO_AUTO_UPDATE"
+  echo "laptop: NO_AUTO_UPDATE asserted (live-update cannot restart the daemon)"
+
   local round n l
   for round in 1 2 3; do
     n=0

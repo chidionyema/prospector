@@ -72,10 +72,26 @@ t_exec() {
 }
 
 # $1 = local file, $2 = absolute path inside the container
+#
+# `fly ssh sftp shell` exits 0 whatever happens inside it. On cutover attempt 6 the upload
+# printed "put ...: file exists on VM" and the script carried on and verified the tarball left
+# behind by attempt 5 - so a good pack failed with attempt 5's numbers
+# ("ledger_lines 906950 -> 906967"), which sent the diagnosis back to a bug that was already
+# fixed. A transfer that cannot fail is not a transfer, so: clear the destination first, then
+# prove the byte count from inside the container.
 t_put() {
+  local want got
+  want="$(wc -c < "$1" | tr -d ' ')"
+  t_exec "rm -f $2" >/dev/null 2>&1 || true
   fly ssh sftp shell -a "$APP" <<EOF
 put $1 $2
 EOF
+  # The marker matters: t_exec's output carries `Connecting to fdaa:73:...` on stderr and that
+  # line is full of digits. Grepping for a bare number would read the IPv6 address.
+  got="$(t_exec "echo PUTSIZE=\$(wc -c < $2)" 2>/dev/null | grep -o 'PUTSIZE=[0-9]*' | head -1 | cut -d= -f2)"
+  [ "$got" = "$want" ] \
+    || { echo "fly: $2 is ${got:-absent} bytes on the VM, expected $want" >&2; return 1; }
+  echo "fly: uploaded $2 ($want bytes, confirmed on the VM)"
 }
 
 # $1 = local .tar.gz to write. Used when Fly is the SOURCE, i.e. when we leave.
