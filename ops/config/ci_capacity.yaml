@@ -36,11 +36,26 @@ job_cpus:
 pools:
   # Jobs that check out, install a toolchain and run a suite: python, engine, dotnet, nextjs,
   # ops-console. heavy_runners x workers_per_heavy_job must fit in cpus - reserved_cpus.
+  # `nextjs` and `ops-console` were in here, and that was the throughput defect.
+  #
+  # They cost one CPU each, the same as a light job, but sitting in a three-runner pool they
+  # competed for a slot with the six-CPU pytest suite. Five heavy jobs on three runners means a
+  # single pull request cannot even start its own lanes at once: it serialises them, three at a
+  # time, and every other pull request queues behind that.
+  #
+  # Measured 2026-08-18 07:5x UTC: mumchimp-mac, -2 and -3 all busy, seven runs queued, and
+  # mumchimp-mac-4 idle -- it carries `self-hosted` but not `heavy`, so a quarter of the estate
+  # could not touch the backlog.
+  #
+  # Moving them changes nothing about the CPU budget. The check sums the widest `runners` jobs,
+  # and the widest three are still python 6 + engine 3 + dotnet 1 = 10, exactly `cpus -
+  # reserved_cpus`. What it changes is that those three now start together instead of queueing
+  # behind a node build.
   heavy:
     runners: 3
     variable: CI_HEAVY_RUNS_ON
     label: heavy
-    jobs: [python, engine, dotnet, nextjs, ops-console]
+    jobs: [python, engine, dotnet]
   # Short jobs: a checkout, a doc lint, a shell loop over already-computed results. They must
   # never wait behind a suite -- `ci-ok` queueing behind a 24-minute python job is what left runs
   # reading `queued` after every job in them had finished.
@@ -59,4 +74,4 @@ pools:
     runners: 4
     variable: CI_LIGHT_RUNS_ON
     label: self-hosted
-    jobs: [changes, guard, ci-ok]
+    jobs: [changes, guard, ci-ok, nextjs, ops-console]

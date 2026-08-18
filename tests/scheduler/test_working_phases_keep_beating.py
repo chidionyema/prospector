@@ -55,6 +55,27 @@ def _beat(cfg) -> dict:
     return json.loads(rs._heartbeat_path(cfg).read_text(encoding="utf-8"))
 
 
+def _sample_until_it_advances(cfg, seen, deadline_s: float = 20.0) -> None:
+    """Sample the heartbeat file until it advances, or `deadline_s` passes.
+
+    This used to be a fixed loop of 15 samples FAST_BEAT apart, which asserted two things at
+    once: that the refresher writes, and that this machine scheduled its thread promptly. Only
+    the first is about the daemon. On 2026-08-18 the box was at 97% disk with 7.7GB of 8GB swap
+    in use, so the refresher was starved for the whole loop -- all 15 samples read one timestamp
+    and CI went red on a defect that did not exist.
+
+    Polling to a generous deadline keeps the assertion exactly as strong. The beat MUST still
+    advance during long work; a refresher that never writes still runs out the deadline and
+    still fails. What is no longer asserted is that the run had the CPU to itself.
+    """
+    end = time.monotonic() + deadline_s
+    while time.monotonic() < end:
+        time.sleep(FAST_BEAT)
+        seen.append(_beat(cfg)["ts"])
+        if len(set(seen)) > 1:
+            return
+
+
 @pytest.fixture
 def quiet_tick(monkeypatch):
     """Let a tick reach its work branch without touching the network, the moat or the digest.
@@ -85,9 +106,7 @@ def test_a_long_generating_tick_restamps_its_heartbeat(tmp_path, quiet_tick, fas
     seen = []
 
     def _slow_gen(_cfg_arg, _n):
-        for _ in range(15):
-            time.sleep(FAST_BEAT)
-            seen.append(_beat(cfg)["ts"])
+        _sample_until_it_advances(cfg, seen)
         return {"dossiers": 1}
 
     rs.run_tick(cfg, generate_fn=_slow_gen)
@@ -110,9 +129,7 @@ def test_a_long_drain_restamps_its_heartbeat(tmp_path, monkeypatch, fast_beat):
     seen = []
 
     def _slow_drain(_cfg_arg, _n):
-        for _ in range(15):
-            time.sleep(FAST_BEAT)
-            seen.append(_beat(cfg)["ts"])
+        _sample_until_it_advances(cfg, seen)
         return {"resumed": 15}
 
     monkeypatch.setattr(rs, "_drain_pass", _slow_drain)
