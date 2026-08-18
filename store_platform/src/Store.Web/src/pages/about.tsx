@@ -65,10 +65,6 @@ export default function AboutPage() {
         <h1 style={{ marginTop: 12 }}>
           So I built the part I kept losing to doubt.
         </h1>
-
-        <p className="mt-6 max-w-[60ch] md:text-h2 lede">
-          I always wanted to run my own business, and the ideas were never the hard part.
-        </p>
         </div>
 
         {/* `id` is the ownership anchor, not a styling hook: §5.3 gives the founder story exactly
@@ -92,6 +88,17 @@ export default function AboutPage() {
           id="founder-story"
           className="essay mt-8 space-y-5"
         >
+          {/* THE OPENING LINE BELONGS TO THE ESSAY, and it was sitting outside it.
+              `docs/design/mumchimp-build-bundle/mockups/about.html` opens `div.essay` with this
+              sentence as a plain paragraph: 18px, line-height 30.24px, 632px wide. Ours was a
+              `md:text-h2 lede` in the page head, measured on the built page at 1280 as 23px across
+              921px, which is the marketing-lede treatment the essay note directly below argues
+              against for this page. It also cost the essay 40px of height, and that offset carried
+              down every block on the page. It reads `.quiet`-free like the drawing's, so it keeps
+              the darker ink the first line of a first-person piece should have. */}
+          <p>
+            I always wanted to run my own business, and the ideas were never the hard part.
+          </p>
           <p className="quiet">
             Launching them was. After a few attempts that never quite got off the ground, a habit
             set in: I would talk myself out of the next idea before it went anywhere. Not because I

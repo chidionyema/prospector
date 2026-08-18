@@ -583,6 +583,12 @@ export default function KillLogPage({
               return (
                 /* One `<li>` per record, so the summary and its argument panel are one group to
                    assistive tech rather than two unrelated rows that happen to be adjacent. */
+                /* The row's `onClick` is mouse sugar and nothing else: the `<button>` below is the
+                   real control, it is in the tab order, it carries `aria-expanded`, and it does
+                   the same `toggle`. Adding a key handler here would put a second stop in the tab
+                   order for an action the button already offers, which is worse for a keyboard
+                   user, not better. Same call, same two rules, as `ui/Dropdown.tsx:152`. */
+                /* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- the nested <button> is the accessible control for this action */
                 <li
                   key={entry.slug}
                   id={entry.slug}
