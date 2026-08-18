@@ -42,6 +42,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           BRANCH: ${{ github.event.pull_request.head.ref }}
+          # THIS run's id. It is on the PR's branch and it is in_progress while it executes, so
+          # the query below returns it and the job cancels itself. Measured on PR #308: the log
+          # reads `cancelled in_progress run 32094965534`, its own id, and the PR then carried a
+          # red `cancel` check that no re-run could clear, because this workflow only fires on
+          # `pull_request: closed`. Every closed PR was reddened by its own cleanup.
+          SELF: ${{ github.run_id }}
         run: |
           set -euo pipefail
           # Both states, because a run already executing on a merged PR is just as wasteful as a
@@ -50,6 +56,10 @@ jobs:
             ids=$(gh api "repos/$REPO/actions/runs?branch=$BRANCH&status=$status&per_page=100" \
                     --jq '.workflow_runs[].id' || true)
             for id in $ids; do
+              if [ "$id" = "$SELF" ]; then
+                echo "not cancelling this job's own run $id"
+                continue
+              fi
               # Never fail the job on one cancel. A run that finished between the list and the
               # cancel returns 409, and that is success by any measure that matters here.
               gh api -X POST "repos/$REPO/actions/runs/$id/cancel" >/dev/null 2>&1 \
