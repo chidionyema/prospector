@@ -2619,6 +2619,8 @@ TOOLS: list[dict] = [
     _t("tools/backfill_market.py", "Stamp legacy dossiers with market", True, "/tools",
        danger="no rehearsal flag — it writes on the first run"),
     _t("tools/sweep_shelf_copy.py", "Re-grade and rewrite shelf copy", True, "/tools"),
+    _t("tools/repair_stranded_shelf_lines.py", "Repair a pack's title and one-liner", True,
+       "/tools"),
     _t("tools/retitle_catalogue.py", "Rewrite live pack titles", True, "/tools",
        risk="external"),
     _t("tools/site_wide_dash_cleanup.py", "Rewrite dashes in storefront source", True, "/tools",
