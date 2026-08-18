@@ -211,7 +211,7 @@ with the daemons still running untouched.
 
 > **As the founder**, I want to watch the Fly engine do a full tick before it owns anything.
 
-1. `deploy/fly/engine.fly.toml` — 1 machine, `min_machines_running = 1`, `auto_stop_machines = false`,
+1. Create deploy/fly/engine.fly.toml (no such file yet) — 1 machine, `min_machines_running = 1`, `auto_stop_machines = false`,
    volume `engine_data` → `/data`, `PROSPECTOR_STORE_DIR=/data/store`. **HYPOTHESIS on size:**
    measured RSS today is scheduler 19 MB + consumer 32 MB + console 31 MB + control-center 10 MB
    ≈ 92 MB at rest, so `shared-cpu-4x` (4 cores / 1 GB) should fit and `performance-1x` (1 core /
