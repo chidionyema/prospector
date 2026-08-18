@@ -679,8 +679,8 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
     // was the one reason that produced no log line, no counter and no error anywhere.
     //
     // Measured that day: 74 listed against 182 registered, and nothing in the estate could name
-    // one of the other 108 or say why. GET /internal/catalog/unlisted is the standing report;
-    // this is the event that report is built from.
+    // one of the other 108 or say why. The standing report is GET /internal/catalog/unlisted,
+    // and this is the event that report is built from.
     if (request.IsListed && !wantsListing && string.IsNullOrEmpty(pack.ContentKey))
     {
         loggerFactory.CreateLogger("PublishPack").LogError(

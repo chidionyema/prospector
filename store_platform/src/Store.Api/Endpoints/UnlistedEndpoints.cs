@@ -90,47 +90,14 @@ public static class UnlistedEndpoints
         var hidden = await db.Packs.CountAsync(p => p.HiddenFromCatalogue, ct).ConfigureAwait(false);
 
         var rows = new List<object>();
-        var byReason = new Dictionary<string, int>();
+        // Ordinal, not the current culture. The keys are the fixed reason codes below, not
+        // user text, and a culture-sensitive comparer would make this report's buckets depend
+        // on the server's locale.
+        var byReason = new Dictionary<string, int>(StringComparer.Ordinal);
 
         foreach (var pack in packs.Where(p => !p.IsListed))
         {
-            string reason;
-            if (pack.DelistedAt is not null)
-            {
-                // Not a defect. Somebody withdrew this on purpose and said why.
-                reason = "delisted";
-            }
-            else if (string.IsNullOrEmpty(pack.ContentKey))
-            {
-                // The first gate at Program.cs:668. This is the silent one: the publisher POSTs
-                // IsListed=true, the pack has no deliverable, and `wantsListing` is computed to
-                // false without an error anyone sees.
-                reason = "no_content";
-            }
-            else if (sp.GetKeyedService<IPaymentProvider>(pack.PaymentProvider) is null)
-            {
-                reason = "no_payment_provider";
-            }
-            else if (string.IsNullOrEmpty(pack.ProviderPriceId))
-            {
-                reason = "no_price_id";
-            }
-            else if (!checkBilling)
-            {
-                reason = "billing_unproven";
-            }
-            else
-            {
-                var provider = sp.GetRequiredKeyedService<IPaymentProvider>(pack.PaymentProvider);
-                var billable = await provider
-                    .CanBillPriceAsync(pack.ProviderPriceId!, ct)
-                    .ConfigureAwait(false);
-                // Clears every gate this endpoint knows about and is still not listed. That is
-                // either a pack nobody asked to list, or a gate that exists and is not modelled
-                // here. Naming it `unexplained` rather than folding it into a neighbouring bucket
-                // is the point: it is the number that says this report is incomplete.
-                reason = billable ? "unexplained" : "unbillable_price";
-            }
+            var reason = await ClassifyAsync(pack, sp, checkBilling, ct).ConfigureAwait(false);
 
             byReason[reason] = byReason.GetValueOrDefault(reason) + 1;
             rows.Add(new
@@ -158,5 +125,42 @@ public static class UnlistedEndpoints
             ByReason = byReason,
             Packs = rows,
         });
+    }
+
+    /// <summary>
+    /// Which gate is holding this pack off the shelf.
+    ///
+    /// THE ORDER IS THE CONTRACT. These are the same conditions the publish path applies
+    /// (Program.cs:668), in the same order, so the report names the gate that actually fired
+    /// rather than the first one that happens to match. Change the publish path and change this
+    /// with it; UnlistedReportTests pins the two together.
+    /// </summary>
+    private static async Task<string> ClassifyAsync(
+        Store.Catalog.Domain.Pack pack,
+        IServiceProvider sp,
+        bool checkBilling,
+        CancellationToken ct)
+    {
+        // Not a defect. Somebody withdrew this on purpose and said why.
+        if (pack.DelistedAt is not null) return "delisted";
+
+        // The first gate at Program.cs:668. This is the silent one: the publisher POSTs
+        // IsListed=true, the pack has no deliverable, and `wantsListing` is computed to false
+        // without an error anyone sees.
+        if (string.IsNullOrEmpty(pack.ContentKey)) return "no_content";
+
+        if (sp.GetKeyedService<IPaymentProvider>(pack.PaymentProvider) is null) return "no_payment_provider";
+        if (string.IsNullOrEmpty(pack.ProviderPriceId)) return "no_price_id";
+        if (!checkBilling) return "billing_unproven";
+
+        var provider = sp.GetRequiredKeyedService<IPaymentProvider>(pack.PaymentProvider);
+        var billable = await provider
+            .CanBillPriceAsync(pack.ProviderPriceId!, ct)
+            .ConfigureAwait(false);
+        // Clears every gate this endpoint knows about and is still not listed. That is either a
+        // pack nobody asked to list, or a gate that exists and is not modelled here. Naming it
+        // `unexplained` rather than folding it into a neighbouring bucket is the point: it is the
+        // number that says this report is incomplete.
+        return billable ? "unexplained" : "unbillable_price";
     }
 }

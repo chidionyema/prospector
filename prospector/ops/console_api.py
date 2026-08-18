@@ -2853,6 +2853,10 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     # the console itself, and its predecessor
     "scripts/run_ops_console.sh": "launches this console; a button that starts the page you are already on",
     "tools/build_sample_fixture.py": "builds an offline retrieval fixture for the test suite, not a live action",
+    "scripts/build_docs_bundle.py": "bundles docs/ into one shareable HTML file and writes it "
+                                    "into the repo checkout, to be committed. The engine runs "
+                                    "from a detached mirror of main, so a button here would "
+                                    "write a file nothing ever reads and no one can commit",
     # libraries and experiments, not commands
     "tools/_backfill_driver.py": "a library for backfill_missing_listings.sh, not a CLI",
     "tools/l8_ab.sh": "the COST_PROGRAM §L8 A/B experiment harness",
