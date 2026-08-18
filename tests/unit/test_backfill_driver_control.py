@@ -244,11 +244,22 @@ class TestShellWrapperStopsTheWholeTree:
                "PYTHONPATH": os.pathsep.join([str(repo), str(ROOT)]),
                "PROSPECTOR_REPO_ROOT": str(repo)}
         proc = subprocess.Popen(["bash", str(sh)], cwd=repo, env=env, start_new_session=True)
+        # Wait for CONTENT, not for the path. The batch creates child.pid and writes to it as
+        # two steps, so on a loaded runner this read landed in between and int() got "" --
+        # ValueError: invalid literal for int() with base 10: '' in CI run 32101433859, against a
+        # test that passes every time on an idle laptop.
         deadline = time.time() + 30
-        while time.time() < deadline and not (repo / "child.pid").exists():
+        raw = ""
+        while time.time() < deadline:
+            try:
+                raw = (repo / "child.pid").read_text().strip()
+            except OSError:
+                raw = ""
+            if raw:
+                break
             time.sleep(0.1)
-        assert (repo / "child.pid").exists(), "batch never started"
-        child_pid = int((repo / "child.pid").read_text())
+        assert raw, "batch never started"
+        child_pid = int(raw)
 
         proc.send_signal(signal.SIGTERM)
         proc.wait(timeout=45)
