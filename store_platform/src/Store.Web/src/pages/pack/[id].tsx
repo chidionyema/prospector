@@ -692,9 +692,13 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
             line wrapped where the drawing keeps it on one line. Kept as flex rather than grid
             because the rail is `hidden` below `lg` and a grid track would still reserve its
             column. */}
-        <div className="mt-6 flex flex-col gap-9 lg:flex-row">
+        {/* `.two` is the drawing's own grid: 1.55fr of prose to 1fr of rail at a 36px gap,
+            collapsing to one column at 900px (`mockup.css:311`). It was a flex row at `lg`, which
+            put the collapse at 1024 while the drawing puts it at 900, so the rail and the mobile
+            buy bar now switch at the same width. */}
+        <div className="two mt-6">
           {/* Left: Content */}
-          <div className="flex-1">
+          <div className="min-w-0">
             {/*
              * Header block (brand v3, 2026-08-06). Three facts, then the title.
              *
@@ -1129,21 +1133,21 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                     </>
                   )}
                 </p>
-                <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {/* The drawing runs these as `.checkrow` inside one `.card incard`. Six bordered
+                    pills read as six unrelated things; one card with hairlines between the rows
+                    reads as one procedure, which is what it is. Still a numeral and not a tick: a
+                    success mark here would be this page asserting a per-check verdict it does not
+                    hold. */}
+                <div className="card incard mt-6">
                   {CHECKS.map((check, i) => (
-                    <li
-                      key={check}
-                      className="flex items-center gap-3 rounded-md border border-border bg-surface px-4 py-3"
-                    >
-                      {/* A numeral, not a tick: a green success mark on a static line reads as this
-                          pack's verdict on that check, which is exactly what this page cannot know. */}
-                      <span className="flex h-6 w-6 flex-none items-center justify-center rounded-sm border border-border bg-surface2 font-mono text-caption text-subtle">
-                        {i + 1}
-                      </span>
-                      <span className="text-meta font-medium text-text">{check}</span>
-                    </li>
+                    <div key={check} className="checkrow">
+                      <span className="i num">{String(i + 1).padStart(2, '0')}</span>
+                      <div className="min-w-0">
+                        <h5>{check}</h5>
+                      </div>
+                    </div>
                   ))}
-                </ul>
+                </div>
                 <Link
                   href="/how-it-works"
                   className="mt-5 inline-flex items-center gap-1.5 py-3 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
@@ -1184,7 +1188,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 {/* The engine's own tags, in the buyer's words. Absent facets render nothing:
                     "Effort to build" used to print the legacy `effortTag` string, which was never
                     defined to mean how much of delivery is machine-doable (spec 2.3). */}
-                <FacetChips pack={pack} className="mt-4" />
+                <FacetChips pack={pack} className="tags" />
                 {/*
                  * ONE SPEC SHEET, NOT THREE CARDS.
                  *
@@ -1377,20 +1381,20 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
 
               {/* Per-pack contents only. The generic four-asset list now lives once, above, so it
                   cannot contradict this section. */}
+              {/* `.docs` is the drawing's two-column list of hairline rows. It was a stack of
+                  full bordered cards, one per line of a table of contents, which spent a box on
+                  each entry and pushed the section past two screens. */}
               {pack.whatYouGet && pack.whatYouGet.length > 0 && (
-                <ul className="mt-6 list-none space-y-3 p-0">
+                <div className="docs">
                   {pack.whatYouGet.map((item, i) => (
-                    <li
-                      key={i}
-                      className="flex items-start gap-3 rounded-card border border-border bg-surface p-6"
-                    >
-           <span className="mt-0.5 text-caption font-medium text-subtle">
-                        {String(i + 1).padStart(2, '0')}
-                      </span>
-                      <span className="text-meta leading-relaxed text-muted">{item}</span>
-                    </li>
+                    <div key={i} className="docitem">
+                      <span className="i num">{String(i + 1).padStart(2, '0')}</span>
+                      <div className="min-w-0">
+                        <h5>{item}</h5>
+                      </div>
+                    </div>
                   ))}
-                </ul>
+                </div>
               )}
             </div>
 
@@ -1531,10 +1535,13 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
               itself instead, which costs nothing: the buy button sits in the panel's top third,
               so what scrolls is the trailing prose. macOS overlay scrollbars mean no permanent
               gutter appears. */}
-          <div className="hidden w-full shrink-0 lg:block lg:w-[394px]">
+          <div className="hidden min-[900px]:block">
+            {/* `.card buybox` carries the sticky, the offset below the header, the border and the
+                padding (`mockup.css`). The width comes from the `.two` track now, not from a
+                fixed 394px. The scroll cap below is ours and stays; see the note above. */}
             <div
               className={cx(
-                'sticky top-24 rounded-card border border-border bg-surface p-8',
+                'card buybox',
                 'max-h-[calc(100svh-7rem)] overflow-y-auto overscroll-contain [scrollbar-width:thin]',
               )}
             >
@@ -1545,7 +1552,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
 
         {/* Sticky mobile checkout bar, keeps price + CTA above the fold on phones. */}
         {canCheckout && !clientSecret && (
-          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface p-4 pb-[env(safe-area-inset-bottom)] lg:hidden">
+          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface p-4 pb-[env(safe-area-inset-bottom)] min-[900px]:hidden">
             <div className="flex items-center justify-between gap-3">
               {/* The terms, not the number. This said `One time  £79` beside a button reading
                   `Buy this pack  £79`, so the bar spent its whole left half repeating the figure
