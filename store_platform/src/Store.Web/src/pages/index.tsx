@@ -38,7 +38,7 @@ import { PackCardHeader } from '@/components/ui/PackCardHeader';
    verbatim so the catalogue, the regional group, search results and `SimilarPacks` all render the
    SAME row instead of four near-copies. `PackSpotlight` below is the other and only other format.
    `PackFigure` moved with the row because both formats draw it. */
-import { PackRow, PackRowList, PackFigure } from '@/components/discovery/PackRow';
+import { PackRow, PackRowList, PackFigure, PackTileGrid } from '@/components/discovery/PackRow';
 import { KillGateBand, SourcesBand } from '@/components/marketing/EvidenceBands';
 import { EvidenceBar } from '@/components/ui/EvidenceBar';
 
@@ -1340,12 +1340,9 @@ function CatalogBrowser({
                       pack already spotlit in the hero, so the duplicate it guarded against no
                       longer costs a screen -- and the internal link stays in the server HTML at
                       every width, which is what that guard was protecting. */}
-                  <PackRowList
-                    packs={newestRow}
-                    currency={currency}
-                    viewerMarket={market}
-                    viewedIds={viewedSet}
-                  />
+                  {/* TILES, as drawn. `mockups/index.html` breaks its column of rows exactly
+                      once, here, with three tiles. */}
+                  <PackTileGrid packs={newestRow.slice(0, 3)} currency={currency} viewedIds={viewedSet} />
                 </div>
               )}
 

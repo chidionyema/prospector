@@ -271,3 +271,59 @@ export function PackRowList({
     </div>
   );
 }
+
+
+/*
+ * THE DRAWING'S THREE-UP TILES (`mockups/index.html` section 5, `.three > a.htile`).
+ *
+ * The landing page showed its newest packs as three more rows, so the page ran as one unbroken
+ * column of rows from the hero to the footer. The drawing breaks that column once, with three
+ * tiles, and the copied stylesheet already carries every number they need.
+ */
+export function PackTileGrid({
+  packs,
+  currency,
+  viewedIds,
+  className,
+}: {
+  packs: Pack[];
+  currency?: Currency;
+  viewedIds?: Set<string>;
+  className?: string;
+}) {
+  const ambient = useCurrency();
+  const cur = currency ?? ambient;
+  if (packs.length === 0) return null;
+  return (
+    <div className={cx('three', className)}>
+      {packs.map((pack, i) => {
+        const cat = categoryFor(pack);
+        const stat = packLeadStat(pack);
+        const { heading, sub } = cardHeading(pack);
+        return (
+          <Link
+            key={pack.id}
+            className="htile"
+            href={`/pack/${pack.id}`}
+            onClick={() => trackCardClick(pack.id, i + 1)}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
+              <span className="eyebrow">{cat.label}</span>
+              {viewedIds?.has(pack.id) && <span className="new">Seen</span>}
+            </div>
+            <h4>{listHeading(heading)}</h4>
+            <p>{cardLine(repairTruncation(pack.oneLine) || sub, 30)}</p>
+            <span className="foot">
+              <span className="proof num">
+                {stat ? <PackFigure stat={stat} weight="row" /> : sourcesLabel(pack.sourceCount ?? 0)}
+              </span>
+              <span className="price num">
+                <PriceText>{formatPriceForMarket(pack.price, cur)}</PriceText>
+              </span>
+            </span>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
