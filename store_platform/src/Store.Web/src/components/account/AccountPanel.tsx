@@ -223,7 +223,9 @@ function OrdersTab() {
               // refund) is two rows, and `pack_id` alone would collide and drop one.
               <li
                 key={`${order.id}-${item.pack_id}`}
-                className="flex overflow-hidden rounded-md border border-border bg-surface"
+                // `rounded-card`: an owned pack drawn as a bordered row on the surface is a
+                // card, and 12px is the card corner the rest of the site uses.
+                className="flex overflow-hidden rounded-card border border-border bg-surface"
               >
                 {/*
                   THE MARK IS A SPINE NOW, AND THE AXIS IS THE WHOLE FIX.

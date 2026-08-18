@@ -27,7 +27,7 @@
 
 /*
   ── §3.2 TYPEFACES (2026-08-08) ───────────────────────────────────────────────────────────────
-  Switzer (Fontshare, free, variable) for anything a human wrote; Commit Mono for anything the
+  Inter (variable) for anything a human wrote; IBM Plex Mono for anything the
   engine produced. That split is the product feature, not the styling: monospace is the site's
   promise that a string is checkable.
 
@@ -36,23 +36,50 @@
   critical path of first paint; and a variable file serves 400/520/560 -- the three weights the
   §3.2 scale asks for -- from ONE request, which a static-weight family cannot.
 
-  Budget: 43,220B (Switzer variable) + 48,128B (Commit Mono latin 400) = 91,348B, against the
+  Budget: 48,256B (Inter variable latin) + 14,708B + 14,888B (IBM Plex Mono latin 400/500)
+  = 77,852B, against the
   "60-90KB total" §3.2 allows. One request each, both `swap`, both latin.
 
   `font-weight: 100 900` on the variable face is the DECLARED axis range, not a request -- it is
   what lets `font-weight: 560` render as 560 instead of snapping to the nearest static cut.
 */
+/* INTER AND IBM PLEX MONO, the two families the mockups are drawn in
+   (docs/design/mumchimp-build-bundle/mockups/*.html, every one of them loads exactly these).
+   They replace Switzer and Commit Mono, which were a separate decision made before the mockups
+   existed and were the single biggest reason the built site did not look like the drawing: a
+   typeface change moves every letter on every page, so no amount of matching colour or spacing
+   could have closed the gap while the faces were wrong.
+
+   Self-hosted rather than the mockups' `fonts.googleapis.com` link, which is the one place this
+   file deliberately departs from them: a third-party stylesheet in <head> is a render-blocking
+   request to another origin, and it puts every visitor's IP at Google before the page paints.
+   The bytes are identical -- these are the @fontsource builds of the same faces.
+
+   Inter ships as a variable font because the mockups ask for weights the static cuts do not
+   have: 520 on the nav, 550 on links, 620/640/645/650/655/660/665/670 across headings, 685 on
+   the featured price, 690 on the h1, 715 on the band figure. Rounding those to 400/500/600/700
+   would visibly re-weight the whole page. */
 @font-face {
-  font-family: 'Switzer';
-  src: url('/fonts/Switzer-Variable.woff2') format('woff2-variations');
+  font-family: 'Inter Variable';
+  src: url('/fonts/Inter-Variable.woff2') format('woff2-variations');
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
-  font-family: 'Commit Mono';
-  src: url('/fonts/CommitMono-400.woff2') format('woff2');
+  font-family: 'IBM Plex Mono';
+  src: url('/fonts/IBMPlexMono-400.woff2') format('woff2');
   font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+/* 500 is a real cut, not a synthesis. The mockups set `font-weight:500` on the numbers inside a
+   proof line (`.proof b`, `.gridkey b`), and a browser asked for 500 with only 400 available
+   fakes it by smearing the glyph, which is exactly where it is least wanted: on digits. */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('/fonts/IBMPlexMono-500.woff2') format('woff2');
+  font-weight: 500;
   font-style: normal;
   font-display: swap;
 }
@@ -65,8 +92,8 @@
      globals.css -- keeps working unchanged, because both were written to read these two names.
      _app.tsx no longer imports next/font; if it still did, its wrapper would win on specificity
      and Geist would silently keep rendering. */
-  --font-sans-pref: 'Switzer';
-  --font-mono-pref: 'Commit Mono';
+  --font-sans-pref: 'Inter Variable';
+  --font-mono-pref: 'IBM Plex Mono';
 
   /* What we fall back to when the webfont has not arrived (or was never wired). ONE family now:
      the serif is gone (v3 is sans-only), so there is no --font-fallback-serif. Mono falls back to
@@ -147,7 +174,14 @@
                                 carries a trace of blue, which is what keeps it from going brown
                                 against the warm paper. */
   --muted: #565B62;         /* --ink-2. Body copy, descriptions, nav. 6.54:1 on --bg. AA. */
-  --subtle: #707478;        /* --ink-3, at a legal weight. Tertiary text: meta rows, counts,
+  --subtle: #8B9096;        /* --ink-3, the mockups' exact value. Tertiary text: meta rows, counts,
+                               NOTE, and it is a real cost: this measures 3.03:1 on --bg, so it is
+                               below the 4.5:1 AA floor for body text and is only legal on the
+                               large or non-essential text the mockups use it for. It was #707478
+                               here, which passed AA and did not match the drawing. The drawing
+                               wins on a founder directive (2026-08-18, "pixel perfect ... to
+                               colours"); anything smaller than 18px that carries meaning must use
+                               --muted instead.
                                 timestamps, eyebrows, mono meta. 4.50:1 on --bg, 4.71:1 on
                                 --surface. AA -- and only just, deliberately: see finding 3 in the
                                 convergence note above. The brief's literal #8B9096 is 3.08:1 and
@@ -234,7 +268,10 @@
      Blue never appears on non-interactive text; the brand teal never fills a button; ink never
      fills a button. Those three sentences are the whole system, and each is pinned by a test in
      `__tests__/storefrontDesignContract.test.ts`. */
-  --action: #2D3436;        /* Charcoal. Every button fill and every commercial action. 12.68:1. */
+  --action: #17191C;        /* --ink. Every button fill and every commercial action.
+                               The mockups fill `.btn` with --ink, the same value as body text,
+                               and darken to #000 on hover. This was #2D3436, a charcoal half a
+                               step lighter, which read as a different brand next to the drawing. */
   --action-hover: #1F2426;  /* White on it is 15.69:1. AAA. */
   --action-active: #14181A; /* For :active. White on it is 17.87:1. AAA. */
   --on-action: #FFFFFF;     /* 12.68:1 on --action. AAA. */
@@ -277,7 +314,25 @@
      alternative is worse in a measurable way -- ink is also the button fill, and an ink ring on
      an ink button is invisible (the note above ::selection in globals.css records this). Green
      at 5.48:1 on white clears the 3:1 that UI components require. */
-  --focus: var(--survive);       /* #047857. 5.48:1 on --bg. Clears the 3:1 UI floor. */
+  /* THE LINK BLUE. Every mockup sets `--link:#2447C9` and reaches for it in five places: `.tlink`,
+     the `View ->` on a catalogue row, `Clear all` on the filter bar, a citation's domain, and the
+     focus ring. This file had no link colour at all -- text links were drawn in ink and told apart
+     by weight alone, which is the one distinction a reader with low vision cannot make. 7.31:1 on
+     --bg, so it is legal as body-size text.
+
+     It is also why `--color-link` now exists. A guard test used to assert this token was ABSENT,
+     written when `focus-visible:ring-link` on the collections tiles named a colour nothing defined
+     and so emitted no rule at all. The defect there was the missing definition, not the name. */
+  --link: #2447C9;
+  /* The teal at 12% or so, for the tint behind a NEW badge. `--survive` on its own tint is
+     unreadable; this is the mockups' `--brand-soft`. */
+  --survive-soft: #CFE3E0;
+
+  --focus: var(--link);          /* #2447C9, the mockups' focus ring. 7.31:1 on --bg, well clear of
+                                    the 3:1 UI floor. It was --survive, which made the focus ring
+                                    the same colour as the survived verdict -- a colour §2 reserves
+                                    for one meaning, spent on a state that has nothing to do with
+                                    it. */
 
   /* BRAND MARK ACCENT -- founder override, 2026-08-08, reversing §3.1's "no brand colour" for
      the header logo mark ONLY. CTAs and links are untouched and stay ink (--accent above); this
@@ -303,7 +358,11 @@
      the mark holds #0F766E as a LITERAL while the sector beside it moved. The consumer list also
      grows by one: Option B gives the SECONDARY button a teal outline, so `Button.tsx`'s
      `secondary` variant reads this token too. 5.32:1 on the warm --bg #FAF9F7. AA. */
-  --brand-mark: #0F766E;         /* 5.47:1 on white (MEASURED 2026-08-14;
+  /* #14706A, the fill every mockup gives the three funnel paths -- the same value as --success,
+     which is what makes the mark and the survived verdict read as one teal rather than two greens
+     a shade apart. It was #0F766E, close enough to look deliberate and wrong enough to be visible
+     side by side. 5.60:1 on --bg. */
+  --brand-mark: #14706A;         /* 5.47:1 on white (MEASURED 2026-08-14;
                                     this said 4.75:1, which was never right, and the separation
                                     from --survive stated nearby as "~12deg" measures 20.78deg in
                                     OKLCH / 22.09deg in Lab, dE76 15.90 -- so it fails BOTH limbs
@@ -674,6 +733,8 @@
      focus rings was dead, which is a keyboard-accessibility failure that no visual review would
      ever have caught. Found 2026-08-06 while rewiring this block. */
   --color-focus: var(--focus);
+  --color-link: var(--link);
+  --color-survive-soft: var(--survive-soft);
 
   /* STICKY GEOMETRY (MASTER-BRIEF section 9). The header is sticky at top:0 and the filter bar
      sticks under it, so both the bar's offset and every anchor's scroll clearance are the header's
@@ -685,8 +746,12 @@
 
      --h-filter is 0 by default and set by the page that actually has a sticky filter bar. An
      anchor on a page with no filter bar must not reserve room for one. */
-  --h-header: 5rem;
-  --h-header-compact: 4rem;
+  --h-header: 58px;
+  /* The mockups' header does not shrink: `.hdr-in` is a flat `height:58px` in all twelve of them,
+     scrolled or not. The compact token stays because globals.css and the filter bar's sticky offset
+     are both written against it, but it now holds the same 58px -- so the step is a no-op and the
+     header measures the same height at every scroll position, which is what the drawing shows. */
+  --h-header-compact: 58px;
   --h-filter: 0rem;
   --color-success: var(--success);
   --color-success-bg: var(--success-bg);
@@ -893,11 +958,30 @@
      load-bearing. Tracking returns to -0.02em, which that block itself states is the correct
      value at 48px, and leading to 1.05 -- 0.94 is a specimen setting for one or two words and
      collides ascender-to-descender once a headline wraps. */
-  --text-display: clamp(2.25rem, 1.5rem + 2.4vw, 3rem);
-  --text-display--line-height: 1.05; --text-display--letter-spacing: -0.02em; --text-display--font-weight: 560;
-  --text-h1: clamp(1.75rem, 1.25rem + 1.6vw, 2.25rem);
-  --text-h1--line-height: 1.1;       --text-h1--letter-spacing: -0.02em;       --text-h1--font-weight: 560;
-  --text-h2: 1.5rem;        --text-h2--line-height: 1.2;       --text-h2--letter-spacing: -0.015em;      --text-h2--font-weight: 520;
+  /* ── THE MOCKUPS' SCALE (2026-08-18) ────────────────────────────────────────────────────────
+     Founder, on the built site: "everything is wrong ... needs to be pixel perfect from logo to
+     colours to everything else", pointing at docs/design/mumchimp-build-bundle/mockups/. The three
+     display steps below are transcribed from `index.html`'s stylesheet, which all twelve files
+     share: `h1{font-size:clamp(33px,6vw,54px);line-height:1.05;letter-spacing:-.03em;
+     font-weight:690}`, `h2.sec{clamp(24px,4.6vw,32px);1.12;-.022em;665}`,
+     `h3.sub{clamp(19px,3.4vw,23px);-.02em;655}`.
+
+     This supersedes SITE_SPEC_PROGRAM.md §3.2's numbers (display 3rem/560, h1 2.25rem/560, h2
+     1.5rem/520) for these three tokens only. The gap was not a rounding difference: the drawing's
+     headings are one to three cuts heavier AND its display step is 6px larger at the top of the
+     clamp, so every heading on the site was lighter and smaller than the thing it was drawn from.
+     Those weights are real cuts on Inter Variable's 100-900 axis (declared in the @font-face
+     above), not synthesised bolds, which is the property `weightAndCasePolicy.test.ts` guards.
+
+     --text-body and --text-meta are UNTOUCHED, for the same reason they have been untouched
+     through every earlier retune: 39 and 173 call sites wear them, and the mockups set body at
+     16px/1.5 anyway. */
+  --text-display: clamp(2.0625rem, 6vw, 3.375rem);
+  --text-display--line-height: 1.05; --text-display--letter-spacing: -0.03em; --text-display--font-weight: 690;
+  --text-h1: clamp(1.5rem, 4.6vw, 2rem);
+  --text-h1--line-height: 1.12;      --text-h1--letter-spacing: -0.022em;      --text-h1--font-weight: 665;
+  --text-h2: clamp(1.1875rem, 3.4vw, 1.4375rem);
+  --text-h2--line-height: 1.2;       --text-h2--letter-spacing: -0.02em;       --text-h2--font-weight: 655;
   --text-body: 1rem;        --text-body--line-height: 1.55;
   --text-meta: 0.875rem;    --text-meta--line-height: 1.4;
   --text-caption: 0.75rem;  --text-caption--line-height: 1.3;
@@ -942,9 +1026,19 @@
      decision. 139 of the 187 `rounded-*` call sites on the site are retired by these two lines.
      The 40 `rounded-full` sites are not reachable from here (Tailwind hardcodes that one) and are
      swept individually -- true circles, radios and spinners keep their circle; a circle is not a
-     pill. */
-  --radius-sm: 2px;
-  --radius-md: 2px;
+     pill.
+
+     ── §3.4 IS RETIRED (2026-08-18, founder: "pixel perfect ... to colours to everything else") ──
+     2px was a written rule with no drawing behind it. The twelve mockups declare `--r-card:12px`
+     and `--r-ctl:8px` and use nothing else on a rectangle except 4px on the smallest chips, so a
+     2px corner was wrong on all 176 call sites at once -- and a corner radius is one of the two or
+     three properties a reader registers before any word, which is why the built site read as a
+     different product from the drawing.
+     The size-scaled rule from the top of this note comes BACK, retuned to the mockups' numbers:
+     8px for anything control-sized or larger, 4px for the chips and swatches under ~28px where 8px
+     would read as a lozenge. Cards keep their own 12px token below. */
+  --radius-sm: 4px;
+  --radius-md: 8px;
 
   /* ── §3.4 IS SUPERSEDED FOR CARDS AND CONTROLS (MASTER-BRIEF §4, 2026-08-17) ────────────────
      The brief declares "Radius 12px cards, 8px controls", which contradicts the one-radius rule
@@ -952,14 +1046,16 @@
      wins in a bounded way: TWO NEW TOKENS, adopted at the components that draw a card or a
      control, rather than a retune of `--radius-md`.
 
-     Retuning `--radius-md` was the smaller edit and it is the wrong one. That token is on 139
-     call sites of every size, so moving it to 12px would put a card's corner on a 20px checkbox
-     and a 26px segmented control -- the exact lozenge the note above exists to prevent, arrived
-     at from the other direction. A card radius has to be applied where something is card-sized,
-     and that is a decision per component, not per token.
+     Retuning `--radius-md` to 12px was and is the wrong edit. That token is on 129 call sites of
+     every size, so a card's corner would land on a 20px checkbox and a 26px segmented control --
+     the exact lozenge the note above exists to prevent, arrived at from the other direction. A
+     CARD radius has to be applied where something is card-sized, and that is a decision per
+     component, not per token.
 
-     `--radius-sm` and `--radius-md` stay at 2px and keep every call site they have. Nothing is
-     squared off by accident. */
+     What changed on 2026-08-18 is the other half: `--radius-md` now carries the mockups' CONTROL
+     radius, 8px, because that is what 129 mostly-control-sized call sites should have had all
+     along. A card still has to opt in to `--radius-card` to reach 12px; the difference between 8
+     and 12 is small and the difference between 2 and 8 was the whole gap. */
   --radius-card: 12px;
   --radius-ctl: 8px;
 

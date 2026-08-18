@@ -79,8 +79,8 @@ const CSS = readStylesheet(join(SRC, 'styles', 'globals.css')).replace(/\/\*[\s\
 /** Every radius utility, including the bare `rounded` and arbitrary `rounded-[5px]`. */
 const RADIUS = /\brounded(?:-(?:[trbl]{1,2}-)?[a-z0-9[\]#%.]+)?\b/g;
 const ALLOWED_RADII = new Set([
-  'rounded-sm',    // 2px. Controls under ~28px: checkbox, chip, small badge.
-  'rounded-md',    // 2px. The general rectangle, on 139 call sites.
+  'rounded-sm',    // 4px. Controls under ~28px: checkbox, chip, small badge.
+  'rounded-md',    // 8px. The mockups' control radius, on 129 call sites.
   'rounded-card',  // 12px. MASTER-BRIEF §4. Card, StatCard, and anything that IS a card.
   'rounded-ctl',   // 8px.  MASTER-BRIEF §4. Button and Input -- a control you press or type in.
   'rounded-full',

@@ -32,7 +32,7 @@ describe('the focus ring is visible on every interactive element', () => {
 
   it('names no colour utility the stylesheet does not define', () => {
     // `focus-visible:ring-link` on the collections tiles removed the global ring and replaced it
-    // with nothing: Tailwind v4 emits no rule for an unmapped colour, and there is no
+    // with nothing: Tailwind v4 emits no rule for an unmapped colour, and at the time there was no
     // `--color-link`. The tiles had no focus indicator at all, and nothing failed.
     const tokens = read('styles/tokens.css');
     const files = [
@@ -48,7 +48,12 @@ describe('the focus ring is visible on every interactive element', () => {
         .filter((name) => name === 'link');
       expect(named, `${file} names a colour with no --color-* mapping`).toEqual([]);
     }
-    expect(tokens).not.toContain('--color-link:');
+    // The token EXISTS now, and this assertion flipped deliberately. Every mockup draws text links
+    // and the focus ring in `--link:#2447C9`, so the fix for the original defect was to define the
+    // colour, not to ban the name. What still must not happen is a utility with no mapping behind
+    // it, which is what the loop above checks.
+    expect(tokens).toContain('--link: #2447C9;');
+    expect(tokens).toContain('--color-link: var(--link);');
   });
 
   it('never removes the outline without putting one back', () => {
@@ -90,8 +95,11 @@ describe('touch targets clear 44px', () => {
 describe('the header height is a token, not ten hand-written numbers', () => {
   it('declares both states and a filter allowance', () => {
     const tokens = read('styles/tokens.css');
-    expect(tokens).toContain('--h-header: 5rem;');
-    expect(tokens).toContain('--h-header-compact: 4rem;');
+    // 58px, the height every mockup gives `.hdr-in`. It was 5rem/80px, 22px taller than the
+    // drawing on every page at once. The compact value is the same number on purpose: the mockups'
+    // header does not shrink on scroll.
+    expect(tokens).toContain('--h-header: 58px;');
+    expect(tokens).toContain('--h-header-compact: 58px;');
     expect(tokens).toContain('--h-filter: 0rem;');
   });
 

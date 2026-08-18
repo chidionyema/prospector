@@ -46,7 +46,33 @@ const BAND_BG: Record<BandBg, string> = {
   white: 'bg-surface',
   bg: 'bg-bg',
 };
-const BAND_WIDTH = { '2xl': 'max-w-2xl', '3xl': 'max-w-3xl', '4xl': 'max-w-4xl', '6xl': 'max-w-6xl', '7xl': 'max-w-7xl' } as const;
+/*
+  THE BAND MEASURES, PINNED TO THE SHELL (2026-08-18).
+
+  `mockups/*.html` have exactly ONE content measure: `.wrap{max-width:1080px;padding:0 20px}`, used
+  by the header, the footer and every section of every page. This map had three measures wider than
+  that -- 6xl is 1152px and 7xl is 1280px -- and 33 of the 36 `width=` call sites in `src/` asked
+  for one of them. So on nearly every page the content band was 72px to 200px WIDER than the header
+  above it, and the left edge of a section did not line up with the left edge of the logo. That is
+  the single mechanical reason the built site did not read as the drawing: nothing inside a page
+  could align to anything, because the frame it sat in was not the frame the header used.
+
+  The two wide keys now both resolve to the shell's measure. They are kept as separate keys rather
+  than merged so the 36 call sites do not have to change in one commit, and so a future wide layout
+  has a name to move. The narrow keys are untouched: 2xl/3xl/4xl are READING measures for prose,
+  and the mockups run narrow prose columns inside the 1080 wrap too.
+
+  The gutter is `px-5` for the same reason -- 20px, the drawing's, and the same value
+  `MarketingLayout`'s SHELL uses. It was `px-6 md:px-8 lg:px-10`, so at a laptop width the band's
+  content started 40px in while the header's started 20px in.
+*/
+const BAND_WIDTH = {
+  '2xl': 'max-w-2xl',
+  '3xl': 'max-w-3xl',
+  '4xl': 'max-w-4xl',
+  '6xl': 'max-w-[1080px]',
+  '7xl': 'max-w-[1080px]',
+} as const;
 
 export function SectionBand({
   bg = 'surface',
@@ -117,7 +143,7 @@ export function SectionBand({
         4,082px tall). `clip` does not create a scroll container, so the clipping stays and sticky
         works. Anything inside a band that must stay put depends on this word.
       */}
-      <div className={`mx-auto ${BAND_WIDTH[width]} overflow-clip px-6 md:px-8 lg:px-10 ${className ?? ''}`}>
+      <div className={`mx-auto ${BAND_WIDTH[width]} overflow-clip px-5 ${className ?? ''}`}>
         {children}
       </div>
     </section>

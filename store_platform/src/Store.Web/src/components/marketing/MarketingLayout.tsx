@@ -72,7 +72,9 @@ function isActivePath(pathname: string, href: string): boolean {
    page's first Section, otherwise it hangs off the left of the content it belongs to. */
 const CRUMB_WIDTH = {
   '2xl': 'max-w-2xl', '3xl': 'max-w-3xl', '4xl': 'max-w-4xl',
-  '6xl': 'max-w-6xl', '7xl': 'max-w-7xl',
+  // Both wide keys resolve to the shell's 1080px, exactly as BAND_WIDTH does. The comment above
+  // says this map must mirror that one; before 2026-08-18 it mirrored it into the same defect.
+  '6xl': 'max-w-[1080px]', '7xl': 'max-w-[1080px]',
 } as const;
 
 interface MarketingLayoutProps {
@@ -148,11 +150,17 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // §3.4: 1200px max, 24px gutters. Was `max-w-7xl px-4 sm:px-6 lg:px-8` -- 1280px with a gutter
-  // that stepped 16 -> 24 -> 32px across breakpoints. The step was the problem, not the width: a
-  // three-value gutter means the grid's outer margin is a different size on almost every device,
-  // so nothing on the page can be aligned to it reliably. One value, at every width.
-  const SHELL = 'mx-auto max-w-[1200px] px-6';
+  // 1080px max, 20px gutters -- `.wrap` in every one of the twelve mockups
+  // (docs/design/mumchimp-build-bundle/mockups/*.html: `max-width:1080px;margin:0 auto;padding:0
+  // 20px`). It was 1200/24, from §3.4, which itself replaced `max-w-7xl px-4 sm:px-6 lg:px-8` --
+  // 1280px with a gutter that stepped 16 -> 24 -> 32px across breakpoints.
+  //
+  // The step was the problem then and it is still fixed: ONE gutter value at every width, so the
+  // grid's outer margin is somewhere a component can align to. What changed on 2026-08-18 is the
+  // number. 120px of extra width is not a detail at this scale -- every row, card grid and measure
+  // on the site was laid out 11% wider than the drawing, so nothing inside them could line up with
+  // the mockup even where the component itself was right.
+  const SHELL = 'mx-auto max-w-[1080px] px-5';
 
   return (
     <div className="min-h-dvh bg-bg font-sans text-text antialiased">
@@ -455,8 +463,13 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
 
       {/* Full-width main: children own their contrast bands. */}
       <main id="main" className="bg-bg">
+        {/* `px-5 pt-[22px]` on the trail below: the drawing's gutter and the drawing's trail
+            offset (`mockups/sample.html:64`, `.crumb{padding:22px 0 0}`). The three-step gutter it
+            replaces put the trail 40px from the page edge on a laptop, under a header sitting at
+            20px. The note is here rather than inside the conditional because a JSX comment there
+            would be a second child of the `&&` expression. */}
         {breadcrumbs && breadcrumbs.length > 0 && (
-          <div className={`mx-auto ${CRUMB_WIDTH[breadcrumbsWidth]} px-6 pt-6 md:px-8 lg:px-10`}>
+          <div className={`mx-auto ${CRUMB_WIDTH[breadcrumbsWidth]} px-5 pt-[22px]`}>
             <Breadcrumbs items={breadcrumbs} />
           </div>
         )}

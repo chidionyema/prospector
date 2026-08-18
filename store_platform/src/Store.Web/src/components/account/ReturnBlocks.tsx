@@ -64,7 +64,11 @@ function Block({
     <section className="mt-12">
       <h2 className="text-h2 font-semibold text-text">{title}</h2>
       <p className="mt-2 max-w-[62ch] text-meta leading-relaxed text-muted">{lead}</p>
-      <ul className="mt-4 rounded-md border border-border bg-surface px-6">{children}</ul>
+      {/* `rounded-card`, not `rounded-md`. A bordered box on `--surface` holding rows IS a card,
+          and 12px is what every other card on the site draws. The account area was the one place
+          that gave its cards the 8px CONTROL corner, which is the sort of difference nobody names
+          but everybody sees: the same shelf rows look softer on the catalogue than they do here. */}
+      <ul className="mt-4 rounded-card border border-border bg-surface px-6">{children}</ul>
       <Link href={moreHref} className={textLinkClass('mt-4 inline-flex items-center gap-1 text-meta font-medium')}>
         {moreLabel} <Icon name="arrowRight" size={12} />
       </Link>

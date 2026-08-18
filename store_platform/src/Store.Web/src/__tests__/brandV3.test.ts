@@ -99,7 +99,13 @@ describe('Brand v3 — palette, motion, surfaces', () => {
          secondary's outline. The assertion above is untouched and is the one that matters --
          `--primary` still points at `--action`, so there is still exactly one fill. Only the
          literal moved. */
-      expect(stripped, '--action must be charcoal #2D3436').toMatch(/--action\s*:\s*#2D3436/i);
+      /* 2026-08-18, founder: "needs to be pixel perfect from logo to colours to everything else".
+         The mockups fill every button with `--ink:#17191C`; #2D3436 was a warmer, lighter charcoal
+         that read as a near-miss beside the drawing. The contract is unchanged -- one action
+         colour, reached through `--primary` -- and again only the literal moved. */
+      expect(stripped, '--action must be the mockups\' ink #17191C').toMatch(
+        /--action\s*:\s*#17191C/i,
+      );
       expect(stripped, '--action must NOT be the superseded navy').not.toMatch(
         /--action\s*:\s*#1B3F8B/i,
       );

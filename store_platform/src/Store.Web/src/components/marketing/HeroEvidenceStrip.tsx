@@ -49,6 +49,20 @@ checks.forEach((check) => {
   });
 });
 
+/*
+  The chips the strip actually draws, and the word that counts them.
+
+  `mockups/index.html:304` labels this row "Four of the 29 sources behind the free sample pack",
+  and "Four" there is a typed-in word beside a hand-written list. Here both halves are read from
+  the report: the label cannot say four while the row draws three, which is the failure mode of
+  every hand-written count on this page that has already been removed. The word list stops at the
+  chip limit because that is the largest number this row can ever show.
+*/
+const CHIP_LIMIT = 4;
+const SHOWN_DOMAINS = DOMAINS.slice(0, CHIP_LIMIT);
+const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four'] as const;
+const SHOWN_WORD = COUNT_WORDS[SHOWN_DOMAINS.length] ?? String(SHOWN_DOMAINS.length);
+
 const SURVIVED = checks.filter((check) => check.verdict === 'supported').length;
 const PUSHED_BACK = checks.length - SURVIVED;
 
@@ -104,11 +118,20 @@ export function HeroEvidenceStrip({ className }: { className?: string }) {
         </p>
       </div>
 
+      {/* THE ROW'S OWN LABEL, from the drawing (`mockups/index.html:304`). The strip had none: the
+          chips sat under the verdict bar with nothing saying they were a SAMPLE of a longer list,
+          so four domains read as the whole evidence base rather than as four of twenty-nine. The
+          mockup's em dash is a comma-and-full-stop here, per the founder's standing note on
+          dashes in copy. */}
+      <p className="mt-4 text-caption text-subtle">
+        {`${SHOWN_WORD} of the ${report.sourceCount} sources behind the free sample pack. Every claim in every pack links back to one.`}
+      </p>
+
       {/* The domains are the part that cannot be faked, so they are the part that is clickable.
           `noopener` and the -45deg arrow copy `SourceChips` on `/sample` deliberately: this site
           has one way of drawing "a source you can open". */}
       <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        {DOMAINS.slice(0, 4).map((domain) => (
+        {SHOWN_DOMAINS.map((domain) => (
           <SourceChip key={domain} url={HREF_FOR.get(domain) ?? ''} host={domain} variant="link" />
         ))}
         <Link

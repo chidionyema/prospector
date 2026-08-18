@@ -32,21 +32,35 @@ import { tightDecimal } from '@/components/ui/Money';
  * them. Rank k of the survivors sits in bucket k of the field. Nothing in the caption, the legend
  * or the titles says otherwise.
  *
- * THE LEGEND NAMES THE TWO SQUARES AND COUNTS NEITHER, AND THAT IS A DELIBERATE DEPARTURE FROM THE
- * MOCKUP. `mockups/index.html:296` prints "1,364 killed / 68 survived" under the grid. The second
- * of those figures cannot ship. The founder's directive of 2026-08-13 is that the survivor count
- * is never printed -- "saying 80 when only 50 are listed should never happen regardless of the
- * reasons why survivors are unlisted" -- and `lib/stats.ts` enforces it by not exporting the
- * number at all, so this component could not print it without a new export and a new argument.
- * The two figures also do not partition the total: killed plus listed is short of researched,
- * because an idea that cleared the gates and is not packaged yet belongs to neither group. So the
- * only figure printed is the total, as the scale label of the picture it labels, and the kill
- * total stays in the proof strip that already owns it.
+ * THE LEGEND PRINTS THE KILL COUNT AND WITHHOLDS THE SURVIVOR COUNT. `mockups/index.html:295-297`
+ * prints "1,364 killed / 68 survived" under the grid. The first of those ships and the second
+ * cannot. The founder's directive of 2026-08-13 is that the survivor count is never printed --
+ * "saying 80 when only 50 are listed should never happen regardless of the reasons why survivors
+ * are unlisted" -- and `lib/stats.ts` enforces it by not exporting the number at all, so this
+ * component could not print it without a new export and a new argument. The kill total is under no
+ * such fence: it counts finished kills rather than making a claim about what is buyable today.
+ * The two figures also do not partition the total -- killed plus listed is short of researched,
+ * because an idea that cleared the gates and is not packaged yet belongs to neither group -- which
+ * is why the survivor entry is a NAME rather than a number with a gap in it.
  */
 
-/** One cell is 1 unit. Both marks are centred in their cell, so the gutter is even on all sides. */
-const DEAD_SIDE = 0.66;
-const LIVE_SIDE = 0.86;
+/**
+ * One cell is 1 unit. Both marks are centred in their cell, so the gutter is even on all sides.
+ *
+ * THE NUMBERS COME FROM THE DRAWING, 2026-08-18. `mockups/index.html:74` lays the field out as
+ * `grid-template-columns:repeat(38,1fr); gap:1.5px`, so at the 380px the hero column gives it the
+ * pitch is ~10px and each square fills ~8.5px of it -- 85% of its cell. Ours filled 66%, which is
+ * 43% of each cell's AREA against the drawing's 72%, and that is why the field read as a pale
+ * scatter next to a solid block of grey. It was the largest single difference between our hero and
+ * the mockup's, and no amount of colour work would have closed it.
+ *
+ * THE SIZE STEP SURVIVES THE RETUNE, and it is ours rather than the drawing's: the mockup draws
+ * every cell the same size and separates the shelf by hue alone, which §9's "colour is never the
+ * only signal" forbids. 0.96 against 0.80 is the same 0.16 of a cell the old pair carried, so a
+ * reader who cannot separate teal from grey still sees the shelf standing out of the field.
+ */
+const DEAD_SIDE = 0.8;
+const LIVE_SIDE = 0.96;
 
 /**
  * The dead cells as ONE path, which is the whole payload argument.
@@ -115,9 +129,13 @@ export function KillGrid({ packs, className }: KillGridProps) {
   // advance, so a comma sits in a full cell and `1,444` renders as `1 , 444` -- three tokens where
   // the reader is handed one figure. See `ui/Money.tsx`.
   const totalLabel = tightDecimal(total.toLocaleString('en-GB'));
+  const killedLabel = tightDecimal(RESEARCH_STATS.killed.toLocaleString('en-GB'));
 
+  // `p-[18px]`, not `p-4`. The drawing's `.gridwrap` is `padding:18px` (`mockups/index.html:73`)
+  // and Tailwind's scale has no 18px step, so the arbitrary value is the only way to draw the box
+  // that was drawn. A JSX comment cannot sit here: it would be a second root child of the return.
   return (
-    <figure className={cx('rounded-card border border-line bg-surface p-4', className)}>
+    <figure className={cx('rounded-card border border-line bg-surface p-[18px]', className)}>
       <svg
         viewBox={`0 0 ${side} ${side}`}
         className="block w-full"
@@ -134,7 +152,12 @@ export function KillGrid({ packs, className }: KillGridProps) {
            this renders twice on one page. */
         role="group"
       >
-        <title>{`${totalLabel} ideas researched`}</title>
+        {/* The PLAIN string, not `totalLabel`. `tightDecimal` returns a React node -- it wraps the
+            thousands separator in a span to close the gap around it -- and interpolating a node
+            into a template literal stringifies it, so this element read "[object Object] ideas
+            researched" to every screen reader and in every accessibility tree. The kerning fix has
+            nothing to offer inside <title>, which renders no markup. */}
+        <title>{`${total.toLocaleString('en-GB')} ideas researched`}</title>
         <desc>
           {`One square per idea, oldest first. ${RESEARCH_STATS.killed.toLocaleString('en-GB')} were killed on cited evidence. The teal squares are the packs on the shelf now, and each one links to its pack.`}
         </desc>
@@ -177,14 +200,35 @@ export function KillGrid({ packs, className }: KillGridProps) {
         ))}
       </svg>
 
+      {/* THE LEGEND, REDRAWN TO THE MOCKUP ON 2026-08-18, with one figure still withheld.
+
+          Order and the killed figure are the drawing's: `mockups/index.html:295-297` reads dead
+          square then live square, and the dead entry carries "1,364 killed".
+
+          THE RADIUS IS NOT the drawing's. `.sw` is `border-radius:2px` and this site's radius
+          vocabulary has no 2px step -- `threeRadiiTwoShadows.test.ts` bounds it to sm/md/card/ctl
+          and refused the arbitrary value, correctly: a bounded vocabulary is worth more than 2px
+          of corner on a 9px chip. `rounded-sm` is the step that exists for exactly this ("controls
+          under ~28px: checkbox, chip, small badge").
+
+          WHAT IS STILL NOT PRINTED is the survivor count beside it. The founder's directive of
+          2026-08-13 -- "saying 80 when only 50 are listed should never happen regardless of the
+          reasons why survivors are unlisted" -- is enforced in `lib/stats.ts` by not exporting the
+          number, so this file could not print it without a new export. `killed` IS exported and IS
+          safe: it is a count of finished kills, not a claim about what is buyable today.
+
+          THE TWO SWATCHES ARE DIFFERENT SIZES and the drawing's are not, for the same reason the
+          marks themselves are: 9px against 7px is the legend telling the truth about a field whose
+          live marks are larger. A uniform legend over a non-uniform field would describe a picture
+          we do not draw. */}
       <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1 font-mono text-caption text-subtle">
+        <span className="flex items-center gap-2">
+          <span aria-hidden className="inline-block size-[7px] rounded-sm bg-faint" />
+          <b className="font-medium tabular-nums text-muted">{killedLabel}</b> killed
+        </span>
         <span className="flex items-center gap-2">
           <span aria-hidden className="inline-block size-[9px] rounded-sm bg-survive" />
           On the shelf now
-        </span>
-        <span className="flex items-center gap-2">
-          <span aria-hidden className="inline-block size-[7px] rounded-sm bg-faint" />
-          Researched, not listed
         </span>
         <span className="ml-auto tabular-nums text-muted">{totalLabel}</span>
       </div>
