@@ -208,7 +208,15 @@ jobs:
       # filter, needs no virtualenv (doc_lint imports nothing outside the standard library) and
       # asks for no extra runner slot.
       - name: Docs may get more accurate, never less
-        run: python3 scripts/doc_lint.py --check
+        # `--against` scopes the ratchet to the docs THIS pull request changed. Without it the
+        # gate graded every doc in the repository against one shared baseline, so any branch
+        # that edited a doc without re-baselining turned every other open pull request red for a
+        # file none of them had touched. Measured 2026-08-18: main carried 184 findings across
+        # 14 docs, and #319 and #320 both failed here on docs/ENGINE_MIGRATION_PROGRAM.md, which
+        # neither contains a line of. Regressions inherited from the base are still printed;
+        # they just cannot fail a stranger's pull request. If git cannot resolve the ref the
+        # script grades everything, so a shallow clone cannot quietly switch the gate off.
+        run: python3 scripts/doc_lint.py --check --against "origin/${{ github.base_ref }}"
 
       # CI shares a 12-CPU Mac with the production daemons. `ops/config/ci_capacity.yaml` declares
       # how much of it CI may take; this fails when a new job, a wider pytest run or a renamed job
