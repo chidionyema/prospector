@@ -346,6 +346,7 @@ export function Section({
   children,
   className,
   outerClassName,
+  rule,
 }: {
   bg?: BandBg;
   width?: keyof typeof BAND_WIDTH;
@@ -355,6 +356,17 @@ export function Section({
   className?: string;
   /** Classes for the `<section>` element -- see the note on `SectionBand`. */
   outerClassName?: string;
+  /**
+   * The drawing's section separator: a 2px ink rule above the heading (`hr.rule2`, five of them on
+   * `mockups/how-it-works.html`, two on `mockups/kill-log.html`).
+   *
+   * A band's default separator is `border-b border-border`, a 1px hairline at the FOOT of the band
+   * it belongs to. Same job, half the weight and the wrong colour, and it sits under the section
+   * that ends rather than over the one that begins. So a ruled section also cancels its own bottom
+   * hairline, and the band above a ruled one must cancel its hairline too -- otherwise a page draws
+   * both, a hairline and then an ink rule a band's padding apart.
+   */
+  rule?: boolean;
 }) {
   return (
   /* MOBILE SECTION RHYTHM, CAPPED (brief 2026-08-15, item 7: "cap section gaps").
@@ -367,7 +379,16 @@ export function Section({
      `py-10` is 40px, on the brief's 8/16/24/40/64 scale, and takes the stacked gap to 80px. The
      desktop `md:py-24` is untouched: at 1280px a 96px band reads as composition, and the defect
      is specific to the width where the content column is 350px wide. */
-    <SectionBand bg={bg} width={width} outerClassName={outerClassName} className={`py-10 md:py-24 scroll-mt-16 ${className ?? ''}`}>
+    <SectionBand
+      bg={bg}
+      width={width}
+      outerClassName={cx(rule && '!border-b-0', outerClassName)}
+      className={`py-10 md:py-24 scroll-mt-16 ${className ?? ''}`}
+    >
+      {/* `!mt-0`: `.rule2` carries `margin:44px 0 0`, which is the drawing's gap between the end of
+          one section and the rule. Here the band's own top padding is already that gap, so the
+          class's margin would add a second one. */}
+      {rule && <hr className="rule2 !mt-0 mb-7" />}
       {(title || intro) && (
         <div className="mb-10">
           {title && <h2 className="sec">{title}</h2>}

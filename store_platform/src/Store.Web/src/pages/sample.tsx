@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { Badge, buttonClasses, Glyph, Icon, SourceChipRow, textLinkClass } from '@/components/ui';
+import { Badge, buttonClasses, Glyph, Icon, SourceChip, SourceChipRow, textLinkClass, VerdictChip } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { sourcesLabel } from '@/components/ui/ProofLine';
 import { Section, SectionBand } from '@/components/marketing/blocks';
@@ -69,6 +69,16 @@ const WITHHELD = report.withheld as Withheld[];
 const PUSHED_BACK = report.total - report.supported;
 
 /*
+  THE DRAWING'S SOURCE LIST (`mockups/sample.html`, `.srclist`): the pack's own "everything we
+  read, once" section, a numbered list at the foot of the sheet. Derived from the excerpt rather
+  than typed, so it can only ever name pages this page actually quotes. The hero says "six of them
+  quoted below"; this is that six, listed where the drawing lists them.
+*/
+const QUOTED_SOURCES = EXCERPT.flatMap((s) => s.blocks).filter(
+  (b): b is SourceBlock => b.type === 'source',
+);
+
+/*
   THE CHECKS THE EVIDENCE WOULD NOT SETTLE (MASTER-BRIEF section 7: "lead with the check that
   failed").
 
@@ -92,6 +102,9 @@ const SECTIONS: DocSectionRef[] = [
     ? [{ id: 'unsettled', label: 'What we could not settle', tone: 'warn' } as DocSectionRef]
     : []),
   ...EXCERPT.map((s): DocSectionRef => ({ id: s.id, label: s.title })),
+  ...(QUOTED_SOURCES.length > 0
+    ? [{ id: 'sources', label: 'Everything quoted, once' } as DocSectionRef]
+    : []),
   { id: 'boundary', label: 'Where the sample stops', note: `${WITHHELD.length} more`, tone: 'kill' },
   { id: 'buy', label: 'Browse the packs' },
 ];
@@ -168,15 +181,13 @@ function BlockView({ block }: { block: Block }) {
     case 'source':
       return <SourcePassage block={block} />;
     default:
+      /* The size, colour, line-height and 66ch measure now come from `.sheet-body p`
+         (mockups/sample.html:284), which only works because the utilities that set the same four
+         properties are GONE: `mockup.css` is imported into `layer(components)` (globals.css:8) and
+         Tailwind utilities sit above it, so a paragraph carrying both draws the utility. Only the
+         quote's rule and indent stay, because the drawing has no rule for them. */
       return (
-        <p
-          className={cx(
-            // `.sheet-body p{font-size:15.5px;line-height:1.65;max-width:66ch;margin-bottom:15px}`
-            // (mockups/sample.html:284). 66ch and a 16px step is the nearest the type scale carries.
-            'mt-4 max-w-[66ch] leading-relaxed',
-            block.quote ? 'border-l-2 border-border pl-4 text-meta italic text-muted' : 'text-body text-muted',
-          )}
-        >
+        <p className={cx(block.quote && 'border-l-2 border-border pl-4 italic')}>
           <Rich nodes={block.nodes} />
         </p>
       );
@@ -203,22 +214,19 @@ function SourcePassage({ block }: { block: SourceBlock }) {
      passage is a different KIND of thing from our own prose, and the teal edge is what says so.
      `rounded-r-md` is the bounded vocabulary's right-corner radius; the mockup's 0/12/12/0 has no
      utility here and 8px is the nearest legal corner. */
+  /* Now the class itself, not a copy of it in utilities. Everything the comment above describes
+     is in `.evidence` and `.evidence p` and `.evidence .src`; the utilities that restated it are
+     removed, because layered above `mockup.css` they were the reason the class drew nothing. */
   return (
-    <figure className="mt-5 rounded-r-md border-l-2 border-brand bg-brand-tint px-4 py-4">
+    <figure className="evidence">
       {block.quote ? (
-        <blockquote className="max-w-[64ch] text-body leading-relaxed text-text">
-          &ldquo;{block.quote}&rdquo;
-        </blockquote>
+        <blockquote>&ldquo;{block.quote}&rdquo;</blockquote>
       ) : (
-        <p className="max-w-[64ch] lede">
-          Read, but nothing in it was quotable as a clean passage.
-        </p>
+        <p>Read, but nothing in it was quotable as a clean passage.</p>
       )}
-      <figcaption className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
+      <figcaption className="src flex flex-wrap items-center gap-x-3 gap-y-2">
         <SourceChipRow sources={[{ url: block.url, host: block.host, label: block.label }]} />
-        {block.year && (
-          <span className="mono">{block.year}</span>
-        )}
+        {block.year && <span>{block.year}</span>}
       </figcaption>
     </figure>
   );
@@ -349,7 +357,15 @@ export default function SamplePage() {
                 <dl className="mt-6 space-y-5">
                   {UNSETTLED.map((check) => (
                     <div key={check.key}>
-                      <dt className="text-body font-semibold text-text">{check.name}</dt>
+                      {/* `.v.p`, the drawing's amber verdict tag (`mockups/sample.html`, where the
+                          same check reads `<span class="v p">Unverifiable</span>`). Through
+                          `VerdictChip` so the glyph comes with it and the colour is never the sole
+                          carrier. `.v.s` does not appear on this page: the drawing spends it on
+                          "Free to read", which is a price, not a verdict. */}
+                      <dt className="flex flex-wrap items-baseline gap-x-3 gap-y-2 text-body font-semibold text-text">
+                        <span>{check.name}</span>
+                        <VerdictChip kind="pushed-back" label="Unverifiable" />
+                      </dt>
                       <dd className="mt-1 ml-0 max-w-[68ch] text-meta leading-relaxed text-muted">
                         {check.rationale}
                       </dd>
@@ -367,25 +383,69 @@ export default function SamplePage() {
               </p>
             </div>
 
+            {/* THE SHEET (`mockups/sample.html`, `.sheet` / `.sheet-top` / `.sheet-body`). Each
+                section of the pack is a bordered sheet with a mono strip across the top naming the
+                document and its place in the run, then the prose inset by the drawing's 20px pad.
+                The strip is what makes the excerpt read as pages OUT OF something: the section
+                number and "of 14" are the fact the boundary block below depends on, and putting
+                them in the sheet's own header says it once per section instead of once per page. */}
             {EXCERPT.map((section, i) => (
               <section key={section.id} id={section.id} className="mt-14 scroll-mt-24">
-                <div className="flex items-baseline gap-3">
-                  {/* The numbering is not decoration: these are sections one, two and three of
-                      a fourteen-section document, and the count is the fact the boundary below
-                      depends on. A reader who has seen "01 / 02 / 03" understands what "11 more"
-                      means without being told twice. */}
-                  <span className="font-mono text-caption font-medium text-muted">
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  <h2 className="sec">{section.title}</h2>
-                </div>
-                <div className="mt-5">
-                  {section.blocks.map((block, j) => (
-                    <BlockView key={j} block={block} />
-                  ))}
+                <div className="sheet">
+                  <div className="sheet-top">
+                    <span>
+                      Section {String(i + 1).padStart(2, '0')} &middot; {section.title}
+                    </span>
+                    <span className="num">
+                      {i + 1} of {report.sectionsTotal}
+                    </span>
+                  </div>
+                  <div className="sheet-body">
+                    <h2 className="sec">{section.title}</h2>
+                    <div className="mt-5">
+                      {section.blocks.map((block, j) => (
+                        <BlockView key={j} block={block} />
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </section>
             ))}
+
+            {QUOTED_SOURCES.length > 0 && (
+              <section id="sources" className="mt-14 scroll-mt-24">
+                <div className="sheet">
+                  <div className="sheet-top">
+                    <span>Everything quoted above, once</span>
+                    <span className="num">
+                      {QUOTED_SOURCES.length} of {report.sourceCount} read
+                    </span>
+                  </div>
+                  <div className="sheet-body">
+                    {/* `.srclist`: the numbered list the drawing puts at the foot of the sheet.
+                        Every entry is a page quoted above, so the list cannot claim a source the
+                        page does not show. The other {report.sourceCount - QUOTED_SOURCES.length}
+                        are cited inside the sections the sample does not include. */}
+                    <ol className="srclist">
+                      {QUOTED_SOURCES.map((source, i) => (
+                        <li key={`${source.url}-${i}`}>
+                          <span className="i num">{i + 1}</span>
+                          {/* `SourceChip`, not a hand-rolled anchor. The drawing's srclist entry is
+                              a bare link on the hostname, which is exactly the `link` variant, and
+                              `sourceChipIsTheOnlyOne.test.ts` catches the copy: this list was a
+                              plain `<a target="_blank">{source.host}</a>` for one commit and the
+                              test failed it, which is the whole reason that test exists. */}
+                          <span>
+                            <SourceChip url={source.url} host={source.host} variant="link" />{' '}
+                            &middot; {source.label}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                </div>
+              </section>
+            )}
 
             {/* THE BOUNDARY. The whole point of the restructure: a visible stop that names what
                 is behind it, rather than a giveaway that gets walked back at the buy CTA. */}
