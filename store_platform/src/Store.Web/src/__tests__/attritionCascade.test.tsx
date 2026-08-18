@@ -76,7 +76,11 @@ describe('the cascade as rendered', () => {
 
   it('uses red only for the kills and teal only for what survived', () => {
     // §2: colour is a contract. Red where nothing died is a bug.
-    expect(html).toContain('text-kill-strong');
+    // The subtraction is the drawing's `.step .track b`, which mockup.css paints in `--kill`
+    // (`mockups/how-it-works.html:246`); it used to be a `text-kill-strong` utility here. The
+    // contract is the same and it is still asserted: the ONLY red in this chart is on the number
+    // of ideas a gate killed, and the shelf bar is the only teal.
+    expect(html).toMatch(/<b>\u2212[\d,]+<\/b>/);
     expect(html).toContain('bg-survive');
   });
 

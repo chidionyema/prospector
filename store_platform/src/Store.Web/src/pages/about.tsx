@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { Icon, buttonClasses, textLinkClass } from '@/components/ui';
+import { Icon, textLinkClass } from '@/components/ui';
 import { BRAND, FOUNDER, hasFounder } from '@/lib/config';
 import { RESEARCH_STATS } from '@/lib/stats';
 
@@ -49,9 +49,8 @@ export default function AboutPage() {
           crumb. The ESSAY keeps its own 56ch measure inside this frame; that is a reading measure
           and it is set on the prose itself, below. */}
       <section className="mx-auto max-w-[1080px] px-5 pt-3.5 pb-16">
-        <p className="mb-2 text-caption font-medium text-muted">
-          About
-        </p>
+        <div className="pagetop">
+        <p className="eyebrow">About</p>
         {/* The headline IS the thesis, quoted from the story below it rather than summarising it.
             It runs at `display`, the top of the six-step scale, which now carries its own mobile
             size. (The 96px `text-mega` this note used to contrast against was deleted from
@@ -63,6 +62,7 @@ export default function AboutPage() {
         <p className="mt-6 max-w-[60ch] md:text-h2 lede">
           I always wanted to run my own business, and the ideas were never the hard part.
         </p>
+        </div>
 
         {/* `id` is the ownership anchor, not a styling hook: §5.3 gives the founder story exactly
             one page, and `factOwnership.test.ts` matches on this id. It was previously told twice,
@@ -83,15 +83,15 @@ export default function AboutPage() {
             product description. */}
         <div
           id="founder-story"
-          className="mt-8 max-w-[56ch] space-y-5 text-[1.125rem] leading-[1.68] text-text"
+          className="essay mt-8 space-y-5"
         >
-          <p>
+          <p className="quiet">
             Launching them was. After a few attempts that never quite got off the ground, a habit
             set in: I would talk myself out of the next idea before it went anywhere. Not because I
             had checked it and found something wrong. Because I had not checked it at all, and
             doubt fills that space much faster than research does.
           </p>
-          <p>
+          <p className="quiet">
             {/* "the ideating" was the one word on this page a reader would not use themselves. */}
             What I enjoyed was having the ideas. What I kept losing was the bit in the middle,
             where you find out whether one holds up before you commit a year to it.
@@ -105,7 +105,7 @@ export default function AboutPage() {
           </p>
           {/* `.quiet` in the mockup: this paragraph steps out of the story and back to the
               product, so it drops to the muted ink the rest of the site uses. */}
-          <p className="text-muted">
+          <p className="quiet">
             That is the seed {BRAND.name} grew from. It runs on ideas that are not mine now, and it
             publishes its workings either way: the few it clears, and the many more it kills.
           </p>
@@ -117,7 +117,7 @@ export default function AboutPage() {
             captions everywhere else on the site, so the one page written by a person did not read
             as signed by one. */}
         {hasFounder() && (
-          <p className="mt-7 max-w-[56ch] border-t border-border-strong pt-5 lede">
+          <p className="sign">
             <strong className="font-semibold text-text">{FOUNDER.name}</strong>, who built{' '}
             {BRAND.name}
           </p>
@@ -140,36 +140,24 @@ export default function AboutPage() {
             "letterspaces nothing out into small caps"). Those rules are older founder decisions
             with tests behind them, so the labels keep the site's caption setting and the drawing
             loses this one. */}
-        <dl className="mt-6 grid grid-cols-1 overflow-hidden rounded-card border border-line bg-surface sm:grid-cols-3">
-          <div className="p-[17px] sm:border-r sm:border-line">
-            <dt className="mb-1.5 eyebrow">
-              Researched
-            </dt>
-            <dd className="price-lg num">
-              {totals.researched.toLocaleString('en-GB')}
-            </dd>
+        <dl className="facts">
+          <div>
+            <dt><span>Researched</span></dt>
+            <dd><b className="num">{totals.researched.toLocaleString('en-GB')}</b></dd>
           </div>
-          <div className="border-t border-line p-[17px] sm:border-l-0 sm:border-r sm:border-t-0">
-            <dt className="mb-1.5 eyebrow">
-              Killed, published
-            </dt>
-            <dd className="price-lg num">
-              {totals.killed.toLocaleString('en-GB')}
-            </dd>
+          <div>
+            <dt><span>Killed, published</span></dt>
+            <dd><b className="num">{totals.killed.toLocaleString('en-GB')}</b></dd>
           </div>
-          <div className="border-t border-line p-[17px] sm:border-t-0">
-            <dt className="mb-1.5 eyebrow">
-              Kill rate
-            </dt>
-            <dd className="price-lg num">
-              {totals.rejectRateLabel}
-            </dd>
+          <div>
+            <dt><span>Kill rate</span></dt>
+            <dd><b className="num">{totals.rejectRateLabel}</b></dd>
           </div>
         </dl>
 
         {/* `.rule2{border-top:2px solid var(--ink);margin:44px 0 0}`. A 2px ink rule, not a
             hairline: it separates the personal half of the page from the mechanical half. */}
-        <hr className="mt-11 break-major" />
+        <hr className="rule2" />
 
         <div className="mt-8">
           <h2 className="sec">
@@ -185,10 +173,10 @@ export default function AboutPage() {
 
         {/* Two links, not two more explanations. Each names what the page it points at holds, and
             the kill count is read from the totals file so this page cannot restate it wrongly. */}
-        <div className="mt-10 grid gap-3 sm:grid-cols-2">
+        <div className="twocard">
           <Link
             href="/how-it-works"
-            className="rounded-card border border-line bg-surface p-5 transition-colors hover:border-border-strong"
+            className="card tc transition-colors hover:border-border-strong"
           >
             <p className="text-meta font-semibold text-text">How it works</p>
             <p className="mt-1 lede">
@@ -207,7 +195,7 @@ export default function AboutPage() {
           */}
           <Link
             href="/kill-log"
-            className="rounded-card border border-line bg-surface p-5 transition-colors hover:border-border-strong"
+            className="card tc transition-colors hover:border-border-strong"
           >
             <p className="text-meta font-semibold text-text">The kill log</p>
             <p className="mt-1 lede">
@@ -224,24 +212,22 @@ export default function AboutPage() {
             margin-top:46px;padding:34px 0 0}`). It was a bordered card on a surface fill, which
             made the last thing on the page look like one more component. The drawing ends the page
             on a rule and lets the two actions sit on the canvas. */}
-        <div className="mt-12 border-t-2 border-text pt-9">
-          <p className="text-caption font-medium text-muted">
-            Read before you buy
-          </p>
+        <div className="closing">
+          <p className="eyebrow">Read before you buy</p>
           <h2 className="sec">
             See the work first.
           </h2>
-          <p className="mt-2 max-w-[60ch] lede">
+          <p>
             Read a full report, unredacted. Every check, every verdict, every source link. Judge
             the pack by it.
           </p>
           {/* `.ctarow`: the free report, then the shelf. Two actions, gap 12px. */}
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link href="/sample" className={buttonClasses({ size: 'lg' })}>
+          <div className="ctarow">
+            <Link href="/sample" className="btn">
               Read the free report
               <Icon name="arrowRight" size={14} />
             </Link>
-            <Link href="/" className={buttonClasses({ size: 'lg', variant: 'ghost' })}>
+            <Link href="/" className="btn ghost">
               Browse the packs
             </Link>
           </div>

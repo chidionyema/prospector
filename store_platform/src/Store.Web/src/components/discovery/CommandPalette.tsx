@@ -129,10 +129,14 @@ export function SearchTrigger({
       ref={triggerRef}
       type="button"
       onClick={onOpen}
-      className={cx(
-        'flex h-11 w-full items-center gap-2.5 rounded-md border border-border-strong bg-surface px-3 text-left transition-colors hover:border-text sm:h-10',
-        className,
-      )}
+      /* THE DRAWING'S `.fld` (`mockups/index.html` section 6: a 40px surface box, a 1px line
+         border, a 9px gap and the magnifier). It was ten Tailwind utilities holding those same
+         numbers by hand, which is how the search box could drift from the drawing with nothing
+         reporting it. The utilities are GONE rather than layered on top: Tailwind sits in a higher
+         cascade layer than mockup.css, so any utility left here would beat the class it is
+         supposed to be honouring. Only the width stays a utility, because the two call sites want
+         different widths. */
+      className={cx('fld w-full text-left transition-colors', className)}
     >
       <Icon name="search" size={16} className="flex-none text-subtle" />
       <span className="flex-1 text-meta text-subtle">Search the catalogue</span>

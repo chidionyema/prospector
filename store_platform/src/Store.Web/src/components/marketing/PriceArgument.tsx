@@ -37,8 +37,11 @@ import { formatGbp, type PriceRange } from '@/lib/priceRange';
  */
 export function MethodCostAnchor({ range }: { range: PriceRange | null }) {
   const documentary = citedFigure('documentary-research');
+  // No card. The drawing runs this argument straight on the canvas between two ink rules
+  // (`mockups/pricing.html`); the border and fill made it one more plate in a stack of plates,
+  // and nested a card inside it for each half of the comparison.
   return (
-    <div className="rounded-card border border-border bg-surface p-6 md:p-8">
+    <div>
       {/* h2, not h3. This is a top-level section of the page and is styled `text-h2` to say so;
           the tag disagreed with the type scale, and on /pricing that disagreement skipped a level
           and tripped axe's `heading-order`. The rule: the tag follows the ROLE, and the type scale
@@ -52,27 +55,31 @@ export function MethodCostAnchor({ range }: { range: PriceRange | null }) {
       {/* Two plates, one border weight. The old pair leaned on a green ring around the right-hand
           cell to signal "this is the good one", which is the shape of a pricing table trying to
           steer rather than a comparison trying to inform. The numbers make the point unaided. */}
-      <dl className="mt-6 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-card border border-border bg-surface2 p-6">
-          <dt className="eyebrow">
+      {/* The drawing's `.compare` pair (`mockups/pricing.html:167-175`): two `.card .comp` cells
+          in a `1fr 1fr` grid, each a `.h` label, a `.big` figure and a `.sub` line. It was a `<dl>`
+          of `dt`/`dd`, and it cannot stay one: `.comp dt` is the drawing's rule for the small mono
+          labels of the inner list, so a `dt` used as the cell's heading would take that rule and
+          lose `.h`. The grid, border and padding utilities are removed rather than layered, since
+          mockup.css sits under the utility layer (globals.css:8). */}
+      <div className="compare">
+        <div className="card comp">
+          <p className="h">
             {documentary.publisher},{' '}
             {new Date(documentary.publishedOn ?? documentary.checkedOn).getFullYear()} price list
-          </dt>
-          <dd className="mt-2 text-meta text-text">
+          </p>
+          <p className="big">
             <SourcedFigure id="documentary-research" />
-            <span className="mt-1 block text-caption text-subtle">for {documentary.of}</span>
-          </dd>
+          </p>
+          <p className="sub">for {documentary.of}</p>
         </div>
-        <div className="rounded-card border border-border bg-surface2 p-6">
-          <dt className="eyebrow">A pack, already run</dt>
-          <dd className="mt-2 text-meta text-text">
-            <span className="font-mono font-semibold text-text">{range ? range.label : 'One payment'}</span>
-            <span className="mt-1 block text-caption text-subtle">
-              one payment, {PACK_DOCUMENTS.length} documents, every claim sourced
-            </span>
-          </dd>
+        <div className="card comp">
+          <p className="h">A pack, already run</p>
+          <p className="big num">{range ? range.label : 'One payment'}</p>
+          <p className="sub">
+            one payment, {PACK_DOCUMENTS.length} documents, every claim sourced
+          </p>
         </div>
-      </dl>
+      </div>
 
       <p className="mt-5 max-w-[80ch] text-caption leading-relaxed text-subtle">
         <SourcedCaveat id="documentary-research" />
@@ -107,53 +114,52 @@ export function ComparisonBlock({ range }: { range: PriceRange | null }) {
         Idea feeds and trend tools sell you the search. We sell you the answer to one.
       </p>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+      {/* The same `.compare` pair the cost anchor above uses (`mockups/pricing.html`): two
+          `.card .comp` cells, each a `.h` label, a `.big` figure, a `.sub` line and the inner
+          `dl`. It was two hand-built flex columns at their own border, fill and padding, so the
+          two comparisons on this page were drawn as two different components making the same
+          kind of argument. The rows are bare `dt`/`dd` because `.comp dt` and `.comp dd` are what
+          the stylesheet selects; a wrapper carrying the classes would draw nothing. */}
+      <div className="compare">
         {/* Left: the category being compared against */}
-        <div className="flex flex-col rounded-card border border-border bg-surface2 p-6">
-          <div className="flex items-center gap-2">
-            <Icon name="close" size={16} className="text-subtle" />
-            <span className="text-body font-semibold text-text">Subscription idea feeds</span>
-          </div>
-          <p className="mt-2 lede">
+        <div className="card comp">
+          <p className="h flex items-center gap-2">
+            <Icon name="close" size={14} className="text-subtle" />
+            Subscription idea feeds
+          </p>
+          <p className="big">
             <SourcedFigure id="idea-feed-entry-plan" />
           </p>
-          <p className="mt-1 text-caption leading-relaxed text-subtle">
+          <p className="sub">
             <SourcedCaveat id="idea-feed-entry-plan" />
           </p>
-          <dl className="mt-6 space-y-4">
+          <dl>
             {rows.map((r) => (
-              <div key={r.label} className="flex flex-col gap-0.5">
-                <dt className="eyebrow">{r.label}</dt>
-                <dd className="text-meta text-muted">{r.feed}</dd>
-              </div>
+              <React.Fragment key={r.label}>
+                <dt>{r.label}</dt>
+                <dd>{r.feed}</dd>
+              </React.Fragment>
             ))}
           </dl>
         </div>
 
-        {/* Right: the offer */}
-        <div className="flex flex-col rounded-card border border-border-strong bg-surface p-6">
-          <div className="flex items-center gap-2">
-            <Icon name="check" size={16} className="text-success" />
-            <span className="text-body font-semibold text-text">A Mumchimp pack</span>
-          </div>
-          {/* Mono wraps the amount only. The clause around it is a sentence, and the line above
-              (`A pack, already run`) already sets the pattern: figure in the data voice, prose in
-              the sans. Setting the whole line in mono put "yours forever" in the evidence voice. */}
-          <p className="mt-2 text-meta font-medium text-text">
-            {range ? (
-              <>
-                <span className="font-mono">{formatGbp(range.mode)}</span> one time, yours forever
-              </>
-            ) : (
-              'One payment, yours forever'
-            )}
+        {/* Right: the offer. Ink border, as the drawing has it, so the side being offered is the
+            one the eye lands on without a second colour being spent on it. */}
+        <div className="card comp" style={{ borderColor: 'var(--ink)' }}>
+          <p className="h flex items-center gap-2">
+            <Icon name="check" size={14} className="text-success" />
+            A Mumchimp pack
           </p>
-          <dl className="mt-6 space-y-4">
+          <p className="big num">
+            {range ? `${formatGbp(range.mode)} one time` : 'One payment'}
+          </p>
+          <p className="sub">Yours forever.</p>
+          <dl>
             {rows.map((r) => (
-              <div key={r.label} className="flex flex-col gap-0.5">
-                <dt className="eyebrow">{r.label}</dt>
-                <dd className="text-meta text-text">{r.pack}</dd>
-              </div>
+              <React.Fragment key={r.label}>
+                <dt>{r.label}</dt>
+                <dd>{r.pack}</dd>
+              </React.Fragment>
             ))}
           </dl>
           <Link

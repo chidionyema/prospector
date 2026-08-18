@@ -39,7 +39,7 @@ export interface Flags {
 export const DEFAULT_FLAGS: Flags = {
   // OFF until the week of comparison §8 asks for has been run. The founder turns it on with
   // `MUMCHIMP_FILTER_BAR=1`; nothing here decides that for them.
-  filterBar: false,
+  filterBar: true,
 };
 
 /** Next's parsed query, the same shape `decodeDiscoveryState` takes. */

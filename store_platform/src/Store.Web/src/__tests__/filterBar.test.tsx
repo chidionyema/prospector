@@ -40,9 +40,13 @@ const BAR = SRC('../components/discovery/FilterBar.tsx');
 // ---------------------------------------------------------------------------
 
 describe('the filter bar flag', () => {
-  it('is off by default, so merging does not delete the old path for everyone', () => {
-    expect(DEFAULT_FLAGS.filterBar).toBe(false);
-    expect(resolveFlags({}).filterBar).toBe(false);
+  it('is on by default, because the bar is what the drawing draws', () => {
+    // It shipped off, for a week of comparison against the wizard. The comparison is over: the
+    // mockups are the spec now, `mockups/index.html` section 6 is this bar, and no mockup on the
+    // site draws `StepFlow` at all. The wizard stays reachable at `?ff=wizard` rather than being
+    // deleted in the same change that stops rendering it.
+    expect(DEFAULT_FLAGS.filterBar).toBe(true);
+    expect(resolveFlags({}).filterBar).toBe(true);
   });
 
   it('is turned on by the environment, not by a rebuild', () => {

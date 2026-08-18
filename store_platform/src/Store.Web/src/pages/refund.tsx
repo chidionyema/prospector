@@ -11,6 +11,7 @@ import Link from 'next/link';
 import LegalDoc, { LegalHeading, LegalText, LegalList } from '@/components/LegalDoc';
 import { LEGAL } from '@/lib/config';
 import Disclaimer from '@/components/Disclaimer';
+import { PACK_DISCLAIMER } from '@/lib/disclaimer';
 import { textLinkClass } from '@/components/ui';
 
 /**
@@ -26,6 +27,49 @@ export default function RefundPage() {
       title="Refund Policy"
       lede="Fourteen days, no questions. Email us and we refund in full."
     >
+
+      {/* THE DRAWING'S REFUND PAGE (`mockups/refund.html`) is five plain-English sections and
+          nothing else. Ours was the statutory contract with no summary, so a buyer asking "can I
+          get my money back" read seven numbered clauses to find out. The drawing's words go
+          first, verbatim; the clauses stay underneath, because deleting them would remove the
+          consumer-law detail the page exists to carry. */}
+      <LegalHeading>The short version</LegalHeading>
+      <LegalText>
+        If a pack is not what the description said, email{' '}
+        <a href={`mailto:${LEGAL.supportEmail}`} className={textLinkClass()}>
+          {LEGAL.supportEmail}
+        </a>{' '}
+        within fourteen days of purchase with your order reference. We refund in full. No forms,
+        no retention offers, no explanation required.
+      </LegalText>
+
+      <LegalHeading>What is covered</LegalHeading>
+      <LegalText>
+        Every pack sold on this site, at every price, whether or not you have downloaded the
+        files. A pack is a file you own, so downloading it does not waive the refund.
+      </LegalText>
+
+      <LegalHeading>How to ask</LegalHeading>
+      <LegalText>
+        One email to {LEGAL.supportEmail}. A human reads every email and replies in under one
+        business day. We do not route refund requests through a form or a chatbot.
+      </LegalText>
+
+      <LegalHeading>Timing</LegalHeading>
+      <LegalText>
+        Refunds are processed by Stripe, and typically appear within five working days depending
+        on your bank. We do not hold the funds; once we issue the refund the timing is between
+        Stripe and your card issuer.
+      </LegalText>
+
+      <LegalHeading>What this policy does not cover</LegalHeading>
+      <LegalText>
+        {/* The limit is imported, never retyped: `disclaimerSaidOnce.test.ts` fails the build if
+            this sentence exists in two files, because two wordings are two different limits. */}
+        {PACK_DISCLAIMER} The refund covers the pack not matching its description. It does not
+        cover the outcome of a business built from it, no analysis can promise that, and we say
+        so on every pack page.
+      </LegalText>
 
       <LegalText>
         This policy explains your rights and our approach to refunds when you purchase a Pack

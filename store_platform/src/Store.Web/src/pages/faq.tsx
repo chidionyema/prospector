@@ -236,12 +236,12 @@ export default function Faq() {
           {/* Category filters. `chipClasses` -- the same control the kill log and the shelf's
               facet bar render, which this page used to draw square and tinted instead.
               `mt-[18px]`: mockups/faq.html:146 `.chips{gap:8px;margin:18px 0}`. */}
-          <div className="mt-[18px] flex flex-wrap gap-2">
+          <div className="chips">
             <button
               type="button"
               onClick={() => setActiveCategory(null)}
               aria-pressed={!activeCategory}
-              className={chipClasses({ selected: !activeCategory })}
+              className="chip"
             >
               All
             </button>
@@ -251,7 +251,7 @@ export default function Faq() {
                 type="button"
                 onClick={() => setActiveCategory(cat.key)}
                 aria-pressed={activeCategory === cat.key}
-                className={chipClasses({ selected: activeCategory === cat.key })}
+                className="chip"
               >
                 {cat.label}
               </button>
@@ -270,8 +270,11 @@ export default function Faq() {
               </button>
             </div>
           ) : (
-            // The list owns the box; each row owns only its bottom rule (see `AccordionItem`).
-            <div className="mt-6 overflow-hidden rounded-md border border-border">
+            /* THE DRAWING'S `.faq` LIST (`mockups/faq.html:184`), which has no box: the rows are a
+               plain run of rules on the page. The wrapper drew `rounded-md border border-border`
+               around them, which contradicted the note in `AccordionItem` directly below saying
+               the list is not a bordered card. */
+            <div className="faq mt-6">
               {filtered.map((item, i) => (
                 <AccordionItem key={i} item={item} defaultOpen={i === 0} />
               ))}
@@ -308,20 +311,17 @@ export default function Faq() {
           so a reader who had their question answered was handed an email address and nothing to
           do next. The drawing ends every page on a 2px ink rule, a question, and two routes. */}
       <SectionBand bg="white" width="6xl" className="!pt-0 !pb-16">
-        <div className="mt-12 border-t-2 border-text pt-9">
+        <div className="closing">
           <h2 className="sec">Still deciding?</h2>
-          <p className="mt-3.5 mb-[22px] max-w-[56ch] lede">
+          <p>
             Read a complete pack first. No payment, no email, no account.
           </p>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/sample" className={buttonClasses({ size: 'lg' })}>
+          <div className="ctarow">
+            <Link href="/sample" className="btn">
               Read a full pack free
               <Icon name="arrowRight" size={14} />
             </Link>
-            <Link
-              href="/how-it-works"
-              className={buttonClasses({ variant: 'secondary', size: 'lg' })}
-            >
+            <Link href="/how-it-works" className="btn ghost">
               See how the filter works
             </Link>
           </div>

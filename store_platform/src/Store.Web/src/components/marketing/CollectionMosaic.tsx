@@ -59,11 +59,16 @@ export function bandFor(count: number, max: number): 0 | 1 | 2 {
 /* Written out as literals, never built from a template. Tailwind scans source text for class
    names, so `col-span-${n}` produces no rule at all and the tile silently collapses to one
    column -- the same failure mode as an unmapped colour token, and just as invisible in review. */
-const BAND_CLASS = [
-  'sm:col-span-2 sm:row-span-1',
-  'sm:col-span-3 sm:row-span-1',
-  'sm:col-span-3 sm:row-span-2',
-] as const;
+/* THE TILE IS SIZED BY `flex-grow`, WHICH IS WHAT THE DRAWING DOES.
+   `mockups/collections.html:334` writes every tile as `style="flex:<count> 1 <basis>px"` inside a
+   wrapping flex row (`.mosaic`), so a 44-pack tile grows 44 shares against a 5-pack tile's 5 and
+   the row still fills its width at any viewport. The three-band grid this replaces could only
+   rank tiles into three buckets, and it needed `sm:` breakpoints to do even that.
+   The basis keeps a small tile thumb-sized: the drawing's own numbers are 4px per pack with a
+   120px floor (44 -> 176, 35 -> 140, 31 -> 124, everything at or under 30 -> 120). */
+function tileFlex(count: number): string {
+  return `${count} 1 ${Math.max(120, count * 4)}px`;
+}
 
 /* ONE TYPE SIZE FOR EVERY TILE, and this also kills a dead token.
    `mockups/collections.html:270` sets `.mtile b{font-size:14.5px;font-weight:620;line-height:1.25}`
@@ -89,32 +94,31 @@ export function CollectionMosaic({ tiles, className }: CollectionMosaicProps) {
          (`.mosaic{gap:6px}`, `.mtile{min-height:78px}`). The tiles used to sit on a 7rem row with
          a 0.75rem gutter, which is a card grid; the mockup's mosaic is a tight field where the
          tiles read as one object. */
-      className={cx(
-        'grid list-none grid-cols-1 gap-1.5 p-0 sm:auto-rows-[4.875rem] sm:grid-cols-6',
-        className,
-      )}
+      className={cx('mosaic list-none p-0', className)}
     >
       {ordered.map((tile) => {
-        const band = bandFor(tile.count, max);
         return (
-          <li key={tile.slug} className={BAND_CLASS[band]}>
+          <li key={tile.slug} className="flex" style={{ flex: tileFlex(tile.count) }}>
             <Link
               href={`/collections/${tile.slug}`}
               title={tile.longName}
+              /* The accessible name is the LONG one. A screen reader user hearing "Evenings, 12
+                 packs" out of context has less than a sighted reader who can see the heading the
+                 mosaic sits under. It is an aria-label rather than a visually-hidden span inside
+                 the tile because `.mtile span` is the drawing's rule for the COUNT line, and a
+                 second span inside the title would have taken that rule too. */
+              aria-label={tile.longName}
               /* `mockups/collections.html:268-269`: 8px radius (so `rounded-ctl`, not the 12px
                  card radius), 12px/14px padding, 78px minimum height, and a hover that tints the
                  tile brand rather than greying it. */
-              className="flex h-full min-h-[4.875rem] flex-col justify-between rounded-ctl border border-line bg-surface px-3.5 py-3 transition-colors hover:border-brand hover:bg-brand-tint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              className="mtile w-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
-              {/* The accessible name is the LONG one. A screen reader user hearing "Evenings, 12
-                  packs" out of context has less than a sighted reader who can see the heading the
-                  mosaic sits under, so the tile carries the full sentence for them. */}
-              <span className={cx('font-semibold leading-snug text-text', TILE_TITLE)}>
-                <span aria-hidden>{tile.name}</span>
-                <span className="sr-only">{tile.longName}</span>
-              </span>
-              {/* 8px above the count, mono, ink-3: `mockups/collections.html:271`. */}
-              <span className="mt-2 font-mono text-caption tabular-nums text-subtle">
+              {/* `.mtile b` and `.mtile span` are the drawing's two lines. The utilities that
+                  used to set size, weight and colour here are REMOVED rather than layered:
+                  mockup.css is imported into `layer(components)` (globals.css:8) and Tailwind
+                  utilities sit above it, so leaving them would make the class inert. */}
+              <b>{tile.name}</b>
+              <span className="num">
                 {tile.count} {tile.count === 1 ? 'pack' : 'packs'}
               </span>
             </Link>

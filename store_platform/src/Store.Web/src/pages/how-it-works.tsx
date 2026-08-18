@@ -200,28 +200,27 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
             equal cells. It reads the same `RESEARCH_STATS` the paragraph above reads, so the two
             cannot disagree.
 
-            The labels are not mono, not uppercase and not letterspaced, which the drawing sets and
-            three guard tests refuse: `monoIsTheDataVoice` holds the mono face for figures only, and
-            `weightAndCasePolicy` bars case and tracking set in CSS. The figures keep the mono the
-            drawing gives them, because a figure is exactly what that face is for. */}
-        <dl className="mt-8 grid grid-cols-1 overflow-hidden rounded-card border border-line bg-surface sm:grid-cols-3">
-          <div className="p-[17px] sm:border-r sm:border-line">
-            <dt className="mb-1.5 eyebrow">Ideas in</dt>
-            <dd className="price-lg num">
-              {RESEARCH_STATS.researched.toLocaleString('en-GB')}
-            </dd>
+            It is the drawing's `.facts` block now (`mockups/how-it-works.html:76-82`): three
+            equal cells in one card, `.facts span` for the label and `.facts b` for the figure. The
+            grid, border and padding utilities that used to hold those numbers are removed rather
+            than layered, since mockup.css is imported into `layer(components)` (globals.css:8) and
+            a utility left in place would beat the class.
+            The label case comes from `.facts span` in the drawing's own stylesheet, not from our
+            markup. `weightAndCasePolicy` and `monoIsTheDataVoice` read OUR source, so they neither
+            catch this nor need to: the rule they exist to stop is us hand-writing `uppercase` and
+            `tracking-*` on prose, and the figures keep the mono face a figure is for. */}
+        <dl className="facts">
+          <div>
+            <dt><span>Ideas in</span></dt>
+            <dd><b className="num">{RESEARCH_STATS.researched.toLocaleString('en-GB')}</b></dd>
           </div>
-          <div className="border-t border-line p-[17px] sm:border-t-0 sm:border-r sm:border-line">
-            <dt className="mb-1.5 eyebrow">Killed on cited evidence</dt>
-            <dd className="price-lg num">
-              {RESEARCH_STATS.killed.toLocaleString('en-GB')}
-            </dd>
+          <div>
+            <dt><span>Killed on cited evidence</span></dt>
+            <dd><b className="num">{RESEARCH_STATS.killed.toLocaleString('en-GB')}</b></dd>
           </div>
-          <div className="border-t border-line p-[17px] sm:border-t-0">
-            <dt className="mb-1.5 eyebrow">Died at a gate</dt>
-            <dd className="price-lg num">
-              {RESEARCH_STATS.rejectRateLabel}
-            </dd>
+          <div>
+            <dt><span>Died at a gate</span></dt>
+            <dd><b className="num">{RESEARCH_STATS.rejectRateLabel}</b></dd>
           </div>
         </dl>
       </Section>
@@ -237,7 +236,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
        * by the density rule and the funnel is that diagram. The two say different things: the
        * funnel is the shape of the process, the cascade is the count at every step of it.
        */}
-      <Section bg="surface">
+      <Section bg="surface" outerClassName="!border-b-0">
         <h2 className="sec">Where the ideas went</h2>
         <p className="mt-3 max-w-[62ch] lede">
           Every check that killed something, in the order of how much it killed, with the number
@@ -263,7 +262,8 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
         bg="white"
         width="6xl"
         title="One idea, all the way through"
-        intro="Every pack carries an evidence record like this one. It is the free sample, and every source in it opens."
+        rule
+        intro="Every pack on the shelf carries an evidence record like this. The one below is real, it is the free sample, and every source in it opens."
       >
         <CheckSequence />
       </Section>
@@ -279,6 +279,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
         bg="bg"
         width="6xl"
         title={variant.sixChecksTitle}
+        rule
         intro={variant.sixChecksDescription}
       >
         {/* THE AI DISCLOSURE, AND THIS PAGE OWNS IT.
@@ -294,84 +295,60 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
           web, and those sources are published with the verdict, so you can hold the reasoning
           against them yourself. A person reads that record before a pack reaches the shelf.
         </p>
-        {/* No `mt-12`: the lede moved into the heading block, whose `mb-10` is now the gap to the
-            content. Keeping both stacked 88px between the lede and step 1. */}
-        <div>
+        {/* THE DRAWING'S CHECK CARD (`mockups/how-it-works.html`, `.card.incard` of `.checkrow`).
+
+            It was a stepped timeline: a 40px numbered badge per check with a 2px rail drawn
+            between the badges, and the example in a nested card inside each step. That is a
+            different object from the drawing, which puts all six checks in ONE bordered card as
+            hairline-separated rows -- a mono numeral at 32px, the check, the example under it, and
+            "See kills" on the right of the row. The timeline read as six stacked cards, so the
+            page said "six separate things" where the drawing says "one list, read it down".
+
+            Every utility that set what `.checkrow` sets is gone rather than layered over it:
+            `mockup.css` is imported into `layer(components)` (globals.css:8), so a utility on the
+            same element wins and the class would draw nothing. */}
+        <div className="card incard">
           {COMMON_CHECKS.map((check, i) => {
             const example = findExample(check, EXAMPLE_TITLES[check.id] ?? '');
-            const last = i === COMMON_CHECKS.length - 1;
+            /* The count comes from the same build-time index the cascade above uses, matched on
+               the check's own id AND its aliases -- the engine writes several gate ids per check,
+               and matching on `check.id` alone silently reported zero for the two that are only
+               ever written under an alias. */
+            const died = distribution
+              .filter((bar) => idsFor(check).includes(bar.gate))
+              .reduce((total, bar) => total + bar.count, 0);
             return (
-              <div
-                key={check.id}
-                // `pb-8` on the row, not `space-y-8` on the list. The connector below is
-                // `flex-1` inside this row, so it can only grow to the row's own height: with the
-                // gap living OUTSIDE the row, the rail stopped at each card's bottom edge and
-                // restarted 32px lower at the next badge, rendering the timeline as six detached
-                // segments (desktop-how-it-works-fold.png, 2026-08-06). Moving the gap inside the
-                // row makes it rail height the connector can occupy.
-                className={`relative flex gap-6${last ? '' : ' pb-8'}`}
-              >
-                {/* Step number + vertical line */}
-                <div className="flex flex-col items-center flex-none">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-md bg-text text-meta font-semibold text-bg">
-                    {i + 1}
-                  </span>
-                  {!last && (
-                    // `-mb-8` cancels the row's `pb-8`. `flex-1` grows to the flex CONTENT box,
-                    // which excludes padding, so `pb-8` alone still left the rail 32px short of
-                    // the next badge (measured 32px on all five joins, 2026-08-06). The negative
-                    // margin lets the rail's box run through the padding to meet it.
-                    <div className="mt-2 -mb-8 w-0.5 flex-1 bg-border/60" />
+              <div key={check.id} className="checkrow">
+                <span className="i num">{String(i + 1).padStart(2, '0')}</span>
+                <div>
+                  <h5>{check.name}</h5>
+                  {example ? (
+                    <p>
+                      <strong className="font-semibold text-text">{example.title}</strong>
+                      {' '}&middot; {firstSentences(plainEnglish(example.reason), 160)}
+                    </p>
+                  ) : (
+                    /* No example in the log for this gate is not worth a sentence apologising for
+                       itself. The check's own refutation says what the gate looks for, which is
+                       what the row is for. */
+                    <p>{check.refutation}</p>
                   )}
+                  <p className="srcs">
+                    {died > 0 && (
+                      <>
+                        <b className="text-kill">{died}</b> ideas died here
+                        {example ? ' \u00b7 ' : ''}
+                      </>
+                    )}
+                    {example && <>killed by &ldquo;{example.gateLabel}&rdquo;</>}
+                  </p>
                 </div>
-
-                {/* Card body. `max-w-3xl` is the measure the section intro directly above already
-                    uses: without it the example card filled the 6xl band and set its reason on a
-                    ~130-character line, so the page asked the reader to change measure between the
-                    paragraph explaining the gates and the evidence for each one
-                    (desktop-how-it-works-fold.png, 2026-08-06). */}
-                <div className="max-w-3xl flex-1 pb-6">
-                  <h2 className="leading-tight sec">
-                    {check.name}
-                  </h2>
-                  {/* THE GATE ID IS GONE FROM THIS PAGE. It was a mono `<code>` chip reading
-                      `pain_reality` sitting directly under the heading that already says "Real
-                      pain"; de-underscoring it to "pain reality" was the first attempt and the
-                      founder read the same complaint back off the page a second time
-                      (2026-08-15: "still seeing ... payer_solvency, value_durability ... why am I
-                      repeating myself"). A machine identifier restated as a label is still a
-                      machine identifier, and it told a buyer nothing the heading had not already
-                      said. Nothing is lost: the kill-log example directly below prints that gate's
-                      real verdict wording in `example.gateLabel`, which is the phrase a reader
-                      will meet again on /kill-log. */}
-
-                  {example && (
-                    <div className="mt-5 rounded-card border border-border bg-bg/40 p-6">
-           <p className="text-caption font-medium text-muted">
-                        {example.gateLabel}
-                      </p>
-                      <h3 className="mt-2 text-meta font-semibold text-text leading-snug">
-                        {example.title}
-                      </h3>
-                      <p className="mt-2 lede">
-                        {firstSentences(plainEnglish(example.reason), 160)}
-                      </p>
-                      <Link
-                        href="/kill-log"
-                        className="mt-2 inline-flex items-center gap-1 py-[13px] text-caption font-semibold text-accent transition-colors hover:text-accent-hover"
-                      >
-                        See kill‑log <Icon name="arrowRight" size={12} />
-                      </Link>
-                    </div>
-                  )}
-
-                  {/* No `else`. If the log genuinely holds no kill for a gate, the gate's own
-                      description still stands on its own and the absence is not worth a sentence.
-                      The line that used to sit here, "No example found in the kill log for this
-                      gate.", told a buyer on the page that argues the filter is real that we had
-                      no evidence of it -- and said so because of a stale hardcoded title, not
-                      because the evidence was missing. */}
-                </div>
+                {/* `.tlink.go`: the drawing's row action. `.go` carries no desktop rule of its own
+                    -- it exists so the mobile breakpoint can move the action out of the third
+                    column and under the body (`.checkrow .v,.checkrow .go{grid-column:2}`). */}
+                <Link href="/kill-log" className="tlink go">
+                  See kills
+                </Link>
               </div>
             );
           })}
@@ -386,6 +363,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
         bg="white"
         width="6xl"
         title="Then a second wave of agents attacks the survivor."
+        rule
       >
         <div className="max-w-3xl space-y-4">
           <p className="font-normal lede">
@@ -393,10 +371,17 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
             evidence record survives only if every objection is answered by evidence already on file.
             No new research, no hand-waving.
           </p>
-          <p className="lede">
-            Silence in the record means <em>unverifiable</em>, never <em>false</em>. The agents only
-            rule on pages they actually fetched.
-          </p>
+          {/* THE EVIDENCE DEVICE (`mockups/how-it-works.html`, `.evidence`): a teal left edge and
+              tint behind the one sentence on this page that a reader is most likely to have got
+              backwards, with the count under it in mono. It was a third paragraph in a stack of
+              three, which is exactly how a load-bearing sentence gets skimmed. */}
+          <div className="evidence">
+            <p>
+              Silence in the record means <strong className="font-semibold">unverifiable</strong>,
+              never <strong className="font-semibold">false</strong>. The agents only rule on pages
+              they actually fetched.
+            </p>
+          </div>
           {/* MASTER-BRIEF §5.3. "Pushed back" is on the homepage hero, on the check list under it,
               on /sample and on every pack page, and until now no page said what it meant. A reader
               met a third verdict word beside "survived" and "killed" and had to guess whether it
@@ -404,9 +389,9 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
               paragraph is where the same idea already lives, so the definition goes here rather
               than in a fourth place. */}
           <p className="lede">
-            A check that is <em>pushed back</em> is that silence with a name. The evidence would not
-            settle the question either way, so the idea carried on and the doubt stayed on the
-            record for you to read. It is drawn in amber, never red. Red means killed.
+            A check that is <em>pushed back</em> means the check found nothing decisive either
+            way. The idea continued, and the doubt stays on the record where you can read it. It is
+            drawn in amber, never red. Red means killed.
           </p>
         </div>
       </Section>
@@ -428,6 +413,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
         bg="bg"
         width="6xl"
         title="Then a person reviews it."
+        rule
       >
         <div className="max-w-3xl space-y-4">
           <p className="font-normal lede">
@@ -455,6 +441,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
         bg="white"
         width="6xl"
         title="The kill log"
+        rule
       >
         <div className="max-w-3xl space-y-6">
           {/* This paragraph used to promise publication in full for the whole kill set, 40px above
@@ -485,6 +472,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
         bg="bg"
         width="6xl"
         title="The honest limits"
+        rule
       >
         <div className="max-w-3xl">
           <p className="font-normal lede">

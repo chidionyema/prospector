@@ -81,18 +81,26 @@ export function AttritionCascade({ distribution, className }: AttritionCascadePr
   const pct = (n: number) => Math.max((n / researched) * 100, MIN_WIDTH_PCT);
 
   return (
-    <figure className={cx('rounded-card border border-line bg-surface p-4 md:p-6', className)}>
-      {/* A description list, not a table: each row is one label and one measurement, and `dl` is
-          the shape a screen reader announces as a pair rather than as two unrelated cells. */}
-      <dl className="m-0 space-y-3">
-        <div>
-          <dt className="text-caption text-subtle">Ideas researched</dt>
-          <dd className="mt-1 ml-0 flex items-center gap-3">
-            <span className="block h-4 bg-text" style={{ width: '100%' }} aria-hidden />
-            <span className="w-16 shrink-0 text-right font-mono text-caption tabular-nums text-text">
-              {researched.toLocaleString('en-GB')}
-            </span>
+    /* THE DRAWING'S `.sigcard` (`mockups/how-it-works.html:340`), which is what every framed
+       block on that page sits in. */
+    <figure className={cx('sigcard', className)}>
+      {/* THE DRAWING'S `.cascade` (`mockups/how-it-works.html:240-247`): one `.step` per gate, a
+          150px label, a 26px track carrying the survivors as a filled `i` and the subtraction as a
+          `b` pinned to its right edge, then the running total in mono. Every one of those numbers
+          was a Tailwind utility here (`h-4`, `w-16`, `gap-3`), so the page never emitted a single
+          class the mockup styles and the two could drift with nothing to catch it.
+
+          Still a description list, not a table: each row is one label and one measurement, which
+          is the pair a screen reader should announce. `dt`/`dd` inside a `div` inside a `dl` is
+          valid HTML, and the div is what `.step` puts the grid on. `ml-0` kills the browser's
+          default 40px indent on `dd`, which would otherwise eat the track's column. */}
+      <dl className="cascade">
+        <div className="step">
+          <dt className="lab">Ideas researched</dt>
+          <dd className="track ml-0">
+            <i style={{ width: '100%' }} />
           </dd>
+          <dd className="n num ml-0">{researched.toLocaleString('en-GB')}</dd>
         </div>
 
         {steps.map((step, i) => {
@@ -105,42 +113,52 @@ export function AttritionCascade({ distribution, className }: AttritionCascadePr
           const isLast = i === steps.length - 1;
           const left = step.before - step.killed;
           return (
-            <div key={step.label}>
-              <dt className="text-caption leading-snug text-muted">
-                {step.label}
+            <div key={step.label} className="step">
+              <dt className="lab">{step.label}</dt>
+              <dd className="track ml-0">
+                <i style={{ width: `${pct(left)}%` }} />
                 {/* The subtraction, stated. The bar shows the fall; the number says exactly how
                     far, and this page's whole claim is that the numbers are checkable. */}
-                <span className="ml-2 font-mono tabular-nums text-kill-strong">
-                  −{step.killed.toLocaleString('en-GB')}
-                </span>
-              </dt>
-              <dd className="mt-1 ml-0 flex items-center gap-3">
-                <span className="block h-4 bg-text" style={{ width: `${pct(left)}%` }} aria-hidden />
-                {/* Blank, not a dash. `dashFree.test.ts` bans em- and en-dashes from source, and a
-                    placeholder glyph would be pretending to say something anyway. The width is
-                    kept so the column of numbers above it stays aligned. */}
-                <span className="w-16 shrink-0 text-right font-mono text-caption tabular-nums text-subtle">
-                  {isLast ? '' : left.toLocaleString('en-GB')}
-                </span>
+                <b>&minus;{step.killed.toLocaleString('en-GB')}</b>
               </dd>
+              {/* Blank, not a dash, on the last row. `dashFree.test.ts` bans em- and en-dashes
+                  from source, and a placeholder glyph would be pretending to say something
+                  anyway. The cell is kept so the column of numbers above it stays aligned. */}
+              <dd className="n num ml-0">{isLast ? '' : left.toLocaleString('en-GB')}</dd>
             </div>
           );
         })}
 
-        <div>
-          <dt className="text-caption font-medium text-text">What is on the shelf</dt>
-          <dd className="mt-1 ml-0 flex items-center gap-3">
-            <span className="block h-4 bg-survive" style={{ width: `${pct(survived)}%` }} aria-hidden />
-            {/* Deliberately no number. See the docblock: the 2026-08-13 directive, not an oversight
-                and not a value we failed to compute. */}
-            <span className="w-16 shrink-0" />
+        <div className="step">
+          <dt className="lab">What is on the shelf</dt>
+          <dd className="track ml-0">
+            <i className="bg-survive" style={{ width: `${pct(survived)}%` }} />
           </dd>
+          {/* Deliberately no number. See the docblock: the 2026-08-13 directive, not an oversight
+              and not a value we failed to compute. */}
+          <dd className="n num ml-0" />
         </div>
       </dl>
 
-      <figcaption className="mt-4 max-w-[68ch] text-meta leading-relaxed text-muted">
+      {/* THE DRAWING'S KEY (`mockups/how-it-works.html`, `p.key` and `.sw9`, the 9px dot). The
+          chart had colour doing the talking and nothing saying what the colours mean, so a reader
+          had to infer it. The swatches state what THIS chart actually draws: the dark bar is what
+          is still alive at a gate, the empty track beside it is what the gate killed, and the teal
+          bar at the bottom is the shelf. */}
+      <p className="key mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-meta text-muted">
+        <span className="flex items-center gap-2">
+          <i className="sw9 bg-text" aria-hidden /> still alive at this gate
+        </span>
+        <span className="flex items-center gap-2">
+          <i className="sw9 border border-line bg-bg" aria-hidden /> gone
+        </span>
+        <span className="flex items-center gap-2">
+          <i className="sw9 bg-survive" aria-hidden /> on the shelf
+        </span>
+      </p>
+      <figcaption className="mt-3 max-w-[68ch] text-meta leading-relaxed text-muted">
         Every idea we researched, and the check that was first to kill it. The checks stop at the
-        first hard failure, so each idea is counted once, against the cheapest gate that killed it.
+        first hard failure. Each idea is counted once, against the first gate that killed it.
       </figcaption>
     </figure>
   );

@@ -39,11 +39,18 @@ function checkLines(): string[] {
   return COMMON_CHECKS.map((check) => check.refutation);
 }
 
-/** The <ul> that renders CHECKS, isolated the same way. */
+/** The block that renders CHECKS, isolated the same way. */
 function checksList(): string {
   const start = PAGE.indexOf('{CHECKS.map(');
   expect(start, 'CHECKS render site not found').toBeGreaterThan(-1);
-  return PAGE.slice(PAGE.lastIndexOf('<ul', start), PAGE.indexOf('</ul>', start));
+  // A <div>, not a <ul>: the drawing runs these as `.checkrow` rows inside one `.card incard`
+  // (`mockups/pack-detail.html`). The slice is the same span it always was, from the container
+  // to the end of the map. Bounding it at `</ul>` after the markup changed made this read the
+  // buy rail's own list instead, which legitimately carries a success mark.
+  return PAGE.slice(
+    PAGE.lastIndexOf('<div className="card incard', start),
+    PAGE.indexOf('))}', start),
+  );
 }
 
 describe('the six-checks block claims no per-pack finding', () => {
@@ -92,7 +99,7 @@ describe('the six-checks block claims no per-pack finding', () => {
       /\b(bg|text|border|ring)-success\b/,
     );
     expect(list).not.toContain('Icon name="check"');
-    expect(list).toContain('{i + 1}');
+    expect(list).toContain("String(i + 1).padStart(2, '0')");
   });
 
   it('says out loud that finding nothing is not a green light', () => {

@@ -52,8 +52,14 @@ export function PackRow({
   viewed = false,
   observeRef,
   position,
+  className,
 }: {
   pack: Pack;
+  /** Extra classes on the row itself. The home shelf hides its beyond-fold rows this way, because
+      the rows must stay DIRECT children of the drawing's `.rows` card: a wrapping `<li>` makes
+      every row its own parent's last child, and `.row:last-child{border-bottom:0}` then deletes
+      every divider in the list. */
+  className?: string;
   /**
    * Optional. The home shelf already resolves a currency for the whole page and passes it; the
    * landing grids and the related rail are layout components with no business knowing about
@@ -133,7 +139,7 @@ export function PackRow({
       href={`/pack/${pack.id}`}
       ref={observeRef}
       onClick={() => trackCardClick(pack.id, position)}
-      className="row"
+      className={cx('row', className)}
     >
       {cat.tagged && (
         <span className="top">
@@ -211,12 +217,14 @@ export function PackFigure({
     );
   }
 
+  /* THE DRAWING'S `.stat` (`mockups/index.html` section 7): the figure at 44px and its label on
+     the same baseline. It was two Tailwind spans re-stating those numbers; the copied stylesheet
+     already carries them, and a hand-kept copy is how the featured card drifted from the drawing
+     in the first place. */
   return (
-    <span className="block">
-      <span className="block font-mono text-display tabular-nums leading-none text-text">
-        {stat.figure}
-      </span>
-      <span className="mt-1.5 block text-meta text-muted">{stat.label}</span>
+    <span className="stat">
+      <span className="big num">{stat.figure}</span>
+      <span className="lbl">{stat.label}</span>
     </span>
   );
 }

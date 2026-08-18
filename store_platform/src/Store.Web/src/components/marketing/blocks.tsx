@@ -209,10 +209,13 @@ export function PageHero({
    */
   aside,
   children,
+  /** The page's own name in the breadcrumb. Defaults to `eyebrow`, which is already it. */
+  crumb,
 }: {
   bg?: BandBg;
   width?: keyof typeof BAND_WIDTH;
   eyebrow?: string;
+  crumb?: string;
   title: React.ReactNode;
   lead?: React.ReactNode;
   primary?: { href: string; label: string; onClick?: () => void; variant?: ButtonVariant };
@@ -224,6 +227,11 @@ export function PageHero({
   // the fold, so it is the LCP element on every route that uses this component, and `rise`
   // fades in from opacity 0 -- which is not LCP-eligible. Measured: /how-it-works 1824ms and
   // /collections 1860ms LCP against 164ms and 208ms first paint (F-005).
+  /* The breadcrumb reads "Catalogue / <page>". The eyebrow is already that page's own name on
+     every page that sets one, so it is the default rather than a second thing to keep in step; a
+     page with no eyebrow gets no crumb rather than an invented one. */
+  const crumbLabel = crumb ?? (typeof eyebrow === 'string' ? eyebrow : null);
+
   return (
     /* `page-hero` on the BAND, not the measure: `globals.css` uses it as an adjacent-sibling hook
        to stop the section below opening with a full 96px on top of this band's own closing space.
@@ -242,26 +250,34 @@ export function PageHero({
             : undefined
         }
       >
+      {/* THE DRAWING'S PAGE TOP (`mockups/about.html:328`, and the same three lines open every
+          other page): a mono breadcrumb, then `.pagetop` holding the eyebrow, the headline and the
+          lead. It was five Tailwind utilities per line holding the same sizes by hand, which is
+          how eight pages could each drift from the drawing separately. */}
       <div className="max-w-[46rem]">
-        {eyebrow && (
-          <p className="mb-3 text-caption font-medium text-subtle">{eyebrow}</p>
+        {crumbLabel && (
+          <p className="crumb">
+            <Link href="/">Catalogue</Link> / {crumbLabel}
+          </p>
         )}
-        <h1 className="max-w-[20ch]">{title}</h1>
-        {lead && (
-          <div className="mt-4 max-w-[60ch] text-body text-muted">
-            {lead}
-          </div>
-        )}
+        <div className="pagetop">
+          {eyebrow && <p className="eyebrow">{eyebrow}</p>}
+          <h1 className="max-w-[20ch]" style={{ marginTop: 12 }}>{title}</h1>
+          {lead && <div className="lede big mt-4">{lead}</div>}
+        </div>
         {(primary || secondary) && (
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="ctarow mt-8">
             {primary && (
-              <Link href={primary.href} onClick={primary.onClick} className="w-full sm:w-auto">
-                <Button variant={primary.variant || 'primary'} size="lg" className="w-full sm:w-auto">{primary.label}</Button>
+              <Link href={primary.href} onClick={primary.onClick} className="btn">
+                {primary.label}
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M2.5 8h11M9.5 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
               </Link>
             )}
             {secondary && (
-              <Link href={secondary.href} className="w-full sm:w-auto">
-                <Button variant={secondary.variant || 'secondary'} size="lg" className="w-full sm:w-auto">{secondary.label}</Button>
+              <Link href={secondary.href} className="btn ghost">
+                {secondary.label}
               </Link>
             )}
           </div>
@@ -330,6 +346,7 @@ export function Section({
   children,
   className,
   outerClassName,
+  rule,
 }: {
   bg?: BandBg;
   width?: keyof typeof BAND_WIDTH;
@@ -339,6 +356,17 @@ export function Section({
   className?: string;
   /** Classes for the `<section>` element -- see the note on `SectionBand`. */
   outerClassName?: string;
+  /**
+   * The drawing's section separator: a 2px ink rule above the heading (`hr.rule2`, five of them on
+   * `mockups/how-it-works.html`, two on `mockups/kill-log.html`).
+   *
+   * A band's default separator is `border-b border-border`, a 1px hairline at the FOOT of the band
+   * it belongs to. Same job, half the weight and the wrong colour, and it sits under the section
+   * that ends rather than over the one that begins. So a ruled section also cancels its own bottom
+   * hairline, and the band above a ruled one must cancel its hairline too -- otherwise a page draws
+   * both, a hairline and then an ink rule a band's padding apart.
+   */
+  rule?: boolean;
 }) {
   return (
   /* MOBILE SECTION RHYTHM, CAPPED (brief 2026-08-15, item 7: "cap section gaps").
@@ -351,7 +379,16 @@ export function Section({
      `py-10` is 40px, on the brief's 8/16/24/40/64 scale, and takes the stacked gap to 80px. The
      desktop `md:py-24` is untouched: at 1280px a 96px band reads as composition, and the defect
      is specific to the width where the content column is 350px wide. */
-    <SectionBand bg={bg} width={width} outerClassName={outerClassName} className={`py-10 md:py-24 scroll-mt-16 ${className ?? ''}`}>
+    <SectionBand
+      bg={bg}
+      width={width}
+      outerClassName={cx(rule && '!border-b-0', outerClassName)}
+      className={`py-10 md:py-24 scroll-mt-16 ${className ?? ''}`}
+    >
+      {/* `!mt-0`: `.rule2` carries `margin:44px 0 0`, which is the drawing's gap between the end of
+          one section and the rule. Here the band's own top padding is already that gap, so the
+          class's margin would add a second one. */}
+      {rule && <hr className="rule2 !mt-0 mb-7" />}
       {(title || intro) && (
         <div className="mb-10">
           {title && <h2 className="sec">{title}</h2>}
@@ -439,19 +476,25 @@ export function CtaBand({
 }) {
   return (
     <SectionBand bg="bg" width={width} className="scroll-mt-16 !pt-0 !pb-16">
-      <div className="mt-12 border-t-2 border-text pt-9">
-      <h2 className="sec" style={{ maxWidth: '20ch' }}>{title}</h2>
-      {lead && <p className="mt-3.5 max-w-[56ch] lede">{lead}</p>}
-      <div className="mt-[22px] flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-        <Link href={primary.href}>
-          <Button variant="primary" size="lg">{primary.label}</Button>
-        </Link>
-        {secondary && (
-          <Link href={secondary.href}>
-            <Button variant="secondary" size="lg">{secondary.label}</Button>
+      {/* THE DRAWING'S `.closing` (`mockups/about.html:359`), which closes every page: a 2px rule,
+          the heading, one paragraph and a `.ctarow` of a solid and a ghost button. The border, the
+          spacing and the button boxes were Tailwind utilities holding those numbers by hand. */}
+      <div className="closing">
+        <h2 className="sec" style={{ maxWidth: '20ch' }}>{title}</h2>
+        {lead && <p>{lead}</p>}
+        <div className="ctarow">
+          <Link href={primary.href} className="btn">
+            {primary.label}
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M2.5 8h11M9.5 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
           </Link>
-        )}
-      </div>
+          {secondary && (
+            <Link href={secondary.href} className="btn ghost">
+              {secondary.label}
+            </Link>
+          )}
+        </div>
       </div>
     </SectionBand>
   );

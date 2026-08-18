@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Icon, textLinkClass } from '@/components/ui';
+import { textLinkClass } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 // No `kill-log-totals.json` import: this row stopped printing counts on 2026-08-14 and the import
 // is what would make a future edit reach for one without noticing the page already states them.
@@ -81,11 +81,10 @@ export default function TrustGuaranteesRow({
    * duplicate of a number the page already states above the shelf. `listed` is still accepted so
    * callers do not have to change (see the note on the prop).
    */
-  const facts: { icon: 'money' | 'shield' | 'verified'; label: string }[] = [
-    { icon: 'shield', label: '14-day money back' },
-    { icon: 'verified', label: 'Every claim sourced' },
+  const facts: { label: string }[] = [
+    { label: '14-day money back' },
+    { label: 'Every claim sourced' },
     {
-      icon: 'money',
       label: price ? (price.uniform ? `One-time payment, ${price.label}` : 'One-time payment') : 'One-time payment',
     },
   ];
@@ -105,15 +104,20 @@ export default function TrustGuaranteesRow({
       <div className={stacked ? undefined : 'mx-auto max-w-[1080px] px-5 py-6'}>
         {/* No pills, no borders, no circles, left-aligned. These are three short factual lines;
             dressing each one in its own container implied three separate offers. */}
-        <ul className={cx('flex flex-col gap-3', !stacked && 'sm:flex-row sm:flex-wrap sm:gap-8')}>
+        {/* THE DRAWING'S `.guarantees` (`mockups/index.html` section 15): three mono pills, no
+            icons. The 2026-08-14 note above -- "No pills, no borders, no circles" -- was a ruling
+            against the row it replaced, which was icon-in-a-circle pills mixed with volume
+            statistics. Everything that ruling objected to is still gone: no icons, no circles, no
+            statistics. What comes back is only the drawing's own hairline pill, which is what the
+            structure check in `scripts/sections.mjs` reported this page never emitting. */}
+        <ul className="guarantees list-none p-0">
           {facts.map((fact) => (
-            <li key={fact.label} className="flex items-center gap-2 text-meta text-muted">
-              <Icon name={fact.icon} size={16} />
-              {fact.label}
+            <li key={fact.label}>
+              <span className="pillx">{fact.label}</span>
             </li>
           ))}
         </ul>
-        <p className={cx('text-caption text-subtle', stacked ? 'mt-5 border-t border-border pt-5' : 'mt-4')}>
+        <p className={cx('klog', stacked ? 'mt-5 border-t border-border pt-5' : 'mt-4')}>
           {/* THE KILL COUNT IS NOT REPEATED HERE (founder, 2026-08-14). The number of killed ideas
               was stated four times on one scroll; removing `LiveKillCard` from the home page took
               out one of them and left this one, which the note at that removal site in

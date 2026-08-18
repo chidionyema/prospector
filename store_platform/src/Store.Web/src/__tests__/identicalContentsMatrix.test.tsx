@@ -26,7 +26,7 @@ describe('the identical-contents matrix', () => {
   it('draws every document mark on every rung, not once with a note', () => {
     // 5 rungs x 14 documents. The repetition IS the proof; compressing it turns the proof back
     // into the assertion the reader was suspicious of.
-    expect(html.split('size-[7px]').length - 1).toBe(rungs.length * DOCS);
+    expect(html.split('<i class="bg-text"').length - 1).toBe(rungs.length * DOCS);
   });
 
   it('renders one row per rung, in the order given', () => {
