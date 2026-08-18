@@ -176,7 +176,14 @@ def _cmd(route: str, cid: str, publish: bool) -> list[str] | None:
         # and waits for --publish rather than pretending a dry run repaired anything.
         return [PY, "-m", "tools.publish_passes", path] if publish else None
     if route == "copy":
-        return [PY, "tools/sweep_shelf_copy.py", "--fix", "--stranded", "--only", cid,
+        # NOT `sweep_shelf_copy.py`. That tool rewrites one-liners and says so at the split in
+        # its own main(): "A row whose ONLY breach is its title is reported and skipped." Its
+        # grader is `check_shelf_copy`, which does not carry the title rules, so a
+        # title-breached pack made it print `defective: 0` and exit clean. This ledger counted
+        # that as a failed attempt and, after three of them, marked the pack unrecoverable —
+        # 60 rows by 2026-08-18. `repair_stranded_shelf_lines.py` repairs BOTH lines through
+        # `field_write`, graded by the publish gate's own `check_title`.
+        return [PY, "tools/repair_stranded_shelf_lines.py", "--fix", "--only", cid,
                 "--jobs", "1"]
     if route == "citations":
         # This tool selects by dead URL, not by pack: --dead-only is exactly the set the
@@ -219,19 +226,49 @@ def append(row: dict) -> None:
         fh.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
-def verdict(history: list[dict], route: str, signature: str) -> tuple[str, str]:
+def tool_of(cmd: str) -> str:
+    """The script a recorded command ran, e.g. `sweep_shelf_copy.py`.
+
+    The interpreter path and the pack id differ on every run; the TOOL is the part that makes
+    two attempts comparable.
+    """
+    for part in str(cmd or "").split():
+        if part.endswith(".py"):
+            return part.rsplit("/", 1)[-1]
+        if part.startswith("tools."):                      # `-m tools.publish_passes`
+            return part
+    return ""
+
+
+def verdict(history: list[dict], route: str, signature: str,
+            tool: str = "") -> tuple[str, str]:
     """(action, why) for a pack, from what the ledger already knows about it.
 
     action is "run" or "skip". This is the whole point of the tool: a pack that has failed
     the same way MAX_ATTEMPTS times is skipped, and so is one an operator marked dead.
+
+    `tool` is the script the route builds TODAY. Attempts made by a DIFFERENT script are not
+    evidence about this one, so they are dropped before the count. On 2026-08-18 the `copy`
+    route was moved off `sweep_shelf_copy.py`, which rewrites one-liners and cannot repair a
+    title, onto `repair_stranded_shelf_lines.py`, which can. 60 packs in the ledger carried an
+    `unrecoverable` mark earned entirely by the old tool printing `defective: 0` three times.
+    A mark records that a REPAIR failed; when the repair changes, the mark is stale, and
+    without this the fix would be inert for exactly the packs it was written for.
     """
     if not history:
         return "run", ""
+    if (history[-1].get("outcome")) == "published":
+        # Checked against the WHOLE history, before the tool filter: a pack that reached the
+        # shelf is on the shelf whichever tool put it there.
+        return "skip", "already published by an earlier run"
+    if tool:
+        history = [r for r in history
+                   if tool_of(r.get("cmd", "")) in ("", tool)]
+    if not history:
+        return "run", f"every recorded attempt used a different repair than {tool}"
     last = history[-1]
     if last.get("outcome") == "unrecoverable":
         return "skip", f"marked unrecoverable {str(last.get('ts', ''))[:10]}: {last.get('why', '')}"
-    if last.get("outcome") == "published":
-        return "skip", "already published by an earlier run"
     same = [
         r for r in history
         if r.get("route") == route and r.get("signature") == signature
@@ -355,7 +392,8 @@ def main() -> int:
             continue
         lint = _lint(cid)
         route = _route(lint)
-        action, why = verdict(ledger.get(cid, []), route, _signature(lint))
+        action, why = verdict(ledger.get(cid, []), route, _signature(lint),
+                              tool=tool_of(" ".join(_cmd(route, cid, args.publish) or [])))
         if routes and route not in routes:
             action, why = "skip", f"route {route} not selected"
         plan.append((cid, route, action, why))

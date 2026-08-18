@@ -2243,16 +2243,50 @@ def _act_tools_undo(cfg, payload: dict, preview: bool) -> dict:
     return receipt
 
 
+def _repair_copy_ids(cfg) -> list[str]:
+    """The packs the shelf reader marks `shelf.repair_copy`, named one by one.
+
+    Named, because the tool's own default selection cannot see them. `sweep_shelf_copy` picks
+    rows by whether a `store/listings/*.json` file exists, and its comment records what that
+    costs: 26 of the 29 copy-blocked packs on 2026-08-17 had a listing file and were still
+    absent from the shelf. So the button this action backs ran over packs that were already
+    fine and never touched the ones on the page the operator was looking at.
+    """
+    shelf = _read_shelf(cfg, {})
+    if not shelf.get("reachable"):
+        raise RuntimeError(
+            f"the live shelf could not be read, so which packs need their copy repaired is "
+            f"UNKNOWN, not none: {shelf.get('reason')}")
+    return sorted(str(r["id"]) for r in (shelf.get("rows") or [])
+                  if r.get("repair") == "shelf.repair_copy")
+
+
 def _act_shelf_repair_copy(cfg, payload: dict, preview: bool) -> dict:
-    """Rewrite the shelf copy that fails the linter, so those packs can be listed."""
-    argv = ["tools/sweep_shelf_copy.py", "--fix"]
+    """Rewrite the shelf copy that fails the linter, so those packs can be listed.
+
+    Runs `repair_stranded_shelf_lines.py`, not `sweep_shelf_copy.py`. The sweep rewrites the
+    one-liner only — a title over the 60-character limit made it print `defective: 0` and exit
+    clean, which is why 14 of the 34 stranded packs sat behind a button that could not move
+    them. The replacement repairs the title and the one-liner through `field_write`, graded by
+    the publish gate's own `check_title` and `check_shelf_copy`.
+    """
+    ids = _repair_copy_ids(cfg)
+    if not ids:
+        return {"action": "shelf.repair_copy", "applied": False, "changed": False,
+                "moat_affecting": False,
+                "message": "No pack needs its shelf copy repaired — nothing on the shelf "
+                           "reader is marked `shelf.repair_copy`."}
     limit = payload.get("limit")
     if limit:
-        argv += ["--limit", str(int(limit))]
+        ids = ids[:int(limit)]
+    argv = ["tools/repair_stranded_shelf_lines.py", "--fix", "--only", ",".join(ids)]
     return _run_repair(cfg, "shelf.repair_copy", argv, preview, payload=payload,
-                       effect="rewrites every shelf line that fails the copy check. A rewrite "
-                              "is re-graded before it is accepted, and it may only re-word — "
-                              "every figure and institution in the original must survive.")
+                       effect=f"rewrites the title and one-liner of the {len(ids)} pack(s) the "
+                              f"shelf reader marks `shelf.repair_copy`. A rewrite is re-graded "
+                              f"against the publish gate's own rules before it is accepted, and "
+                              f"it may only re-word — every figure and institution in the "
+                              f"original must survive. It does not list anything: publishing "
+                              f"stays a separate, explicit action.")
 
 
 def _pending_publish_paths(cfg) -> list[str]:
@@ -2585,6 +2619,8 @@ TOOLS: list[dict] = [
     _t("tools/backfill_market.py", "Stamp legacy dossiers with market", True, "/tools",
        danger="no rehearsal flag — it writes on the first run"),
     _t("tools/sweep_shelf_copy.py", "Re-grade and rewrite shelf copy", True, "/tools"),
+    _t("tools/repair_stranded_shelf_lines.py", "Repair a pack's title and one-liner", True,
+       "/tools"),
     _t("tools/retitle_catalogue.py", "Rewrite live pack titles", True, "/tools",
        risk="external"),
     _t("tools/site_wide_dash_cleanup.py", "Rewrite dashes in storefront source", True, "/tools",

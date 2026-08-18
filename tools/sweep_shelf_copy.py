@@ -36,14 +36,21 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from prospector.config import store_root  # noqa: E402
 from prospector.pack_linter import (  # noqa: E402
     expands_on_first_use,
     unexplained_initialisms,
 )
 
-DB = ROOT / "store" / "prospector.db"
-LISTINGS = ROOT / "store" / "listings"
-DOSSIERS = ROOT / "store" / "dossiers"
+# `config.store_root()`, never `ROOT`: a store path derived from `__file__` follows the CODE,
+# so this tool read the store inside whichever checkout it was launched from. On 2026-08-17
+# that wrote `sqlite3.OperationalError: unable to open database file` into
+# `store/ops/pack_recovery.jsonl`, and the recovery tool counted it as a failed repair and
+# marked two PASS packs unrecoverable over it.
+_STORE = store_root()
+DB = _STORE / "prospector.db"
+LISTINGS = _STORE / "listings"
+DOSSIERS = _STORE / "dossiers"
 
 # The prompt, the grader and the fact-preservation guard moved to
 # `prospector/shelf_copy_repair.py` on 2026-08-17 so the ENGINE can run the same repair
