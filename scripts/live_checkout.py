@@ -22,7 +22,6 @@ import argparse
 import os
 import plistlib
 import re
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -30,21 +29,9 @@ from pathlib import Path
 DEV = Path("/Users/chidionyema/Documents/code/prospector")
 LIVE = Path("/Users/chidionyema/Documents/code/prospector-live")
 STORE = DEV / "store"
-JOBS = ("com.prospector.scheduler", "com.prospector.consumer", "com.prospector.ops-console")
+JOBS = ("com.prospector.scheduler", "com.prospector.consumer")
 # untracked files the daemon needs that git will never bring across
 SECRETS = (".env", ".lux/keys/agent.pem")
-
-#: The ops console is a Next.js app served by `next start`, which reads a build directory and
-#: never rebuilds. Rolling the code forward therefore changes nothing the operator can see
-#: until this directory is regenerated, and restarting the job alone does not do it.
-#:
-#: Measured 2026-08-17: the console was serving a build made at 16:52 the previous day, out of
-#: the SHARED developer checkout on a retired branch, with eight console commits on main newer
-#: than it -- including the offsite-backup button merged that morning. The founder had to ask
-#: why his console work was not deployed. That is the failure this file already exists to
-#: prevent, happening in a second place because JOBS named only the two python daemons.
-CONSOLE = Path("store_platform/src/Ops.Console")
-CONSOLE_JOB = "com.prospector.ops-console"
 
 
 def run(cmd: list[str], cwd: Path | None = None, timeout: int = 30) -> tuple[int, str]:
@@ -121,71 +108,6 @@ def job_cwd(job: str) -> tuple[str | None, str | None]:
     return pid, cwd
 
 
-def _npm() -> str | None:
-    """Absolute path to npm, or None.
-
-    launchd hands a job a minimal PATH that does not include /usr/local/bin, so a bare
-    "npm" resolves interactively and fails under the scheduled job -- the difference that
-    makes a deploy step work when a human runs it and silently not when the machine does.
-    """
-    found = shutil.which("npm")
-    if found:
-        return found
-    for candidate in ("/usr/local/bin/npm", "/opt/homebrew/bin/npm"):
-        if Path(candidate).exists():
-            return candidate
-    return None
-
-
-def console_build_is_stale() -> tuple[bool, str]:
-    """Is the directory `next start` serves older than the console code in this checkout?
-
-    Compared against the COMMIT DATE of the newest commit touching the console, not against
-    source file mtimes. `git checkout` rewrites the mtime of every file it changes, so an
-    mtime comparison would call the build stale immediately after a successful rebuild.
-    """
-    build = LIVE / CONSOLE / ".next"
-    if not build.exists():
-        return True, "no build directory: the console has never been built in this checkout"
-    rc, out = run(["git", "log", "-1", "--format=%ct", "--", str(CONSOLE)], cwd=LIVE)
-    stamp = out.strip()
-    if rc != 0 or not stamp.isdigit():
-        return False, "could not read the console's last commit date, so not judging it"
-    code_at, built_at = int(stamp), int(build.stat().st_mtime)
-    if built_at >= code_at:
-        return False, "build is newer than the console code it serves"
-    return True, f"build predates the console code by {(code_at - built_at) // 3600}h"
-
-
-def build_console() -> int:
-    """Regenerate the build `next start` serves. Returns 0 on success.
-
-    `npm ci` when a lockfile is present, never `npm install`: a roll-forward that quietly
-    resolves different dependency versions than CI tested is a deploy nobody can reason
-    about. The timeouts are minutes rather than this module's 30-second default, because an
-    install and a Next build are the two slowest things here by a wide margin.
-    """
-    cwd = LIVE / CONSOLE
-    if not (cwd / "package.json").exists():
-        print(f"  no console at {cwd} — nothing to build")
-        return 0
-    npm = _npm()
-    if npm is None:
-        print("  npm not found on PATH — cannot rebuild the console")
-        return 1
-    install = [npm, "ci"] if (cwd / "package-lock.json").exists() else [npm, "install"]
-    rc, out = run(install, cwd=cwd, timeout=900)
-    if rc != 0:
-        print(f"  console dependency install failed (rc={rc}): {out[-800:]}")
-        return rc
-    rc, out = run([npm, "run", "build"], cwd=cwd, timeout=1800)
-    if rc != 0:
-        print(f"  console build failed (rc={rc}): {out[-800:]}")
-        return rc
-    print("  console rebuilt")
-    return 0
-
-
 def plist_store_dir(job: str) -> str | None:
     path = Path.home() / "Library/LaunchAgents" / f"{job}.plist"
     if not path.exists():
@@ -194,16 +116,47 @@ def plist_store_dir(job: str) -> str | None:
     return (data.get("EnvironmentVariables") or {}).get("PROSPECTOR_STORE_DIR")
 
 
+def active_side() -> str:
+    """Which platform runs the engine right now: `fly`, `laptop`, or `unknown`.
+
+    Read from `~/.prospector/ACTIVE`, which is deliberately outside both platforms, so the answer
+    survives either of them being down. `engine_failover.py` is the writer.
+
+    This probe used to assume the laptop. After the 2026-08-18 cutover it graded a correctly
+    migrated estate as broken: `com.prospector.scheduler is not running` is the DESIRED state when
+    Fly is active and the laptop is fenced, and printing it as a problem trains the operator to
+    ignore the probe.
+    """
+    marker = Path.home() / ".prospector" / "ACTIVE"
+    try:
+        side = marker.read_text(encoding="utf-8").strip().lower()
+    except OSError:
+        return "unknown"
+    return side if side in ("fly", "laptop") else "unknown"
+
+
 def report() -> int:
     """Print live state. Returns 0 when production is on origin/main and healthy."""
     problems: list[str] = []
+    side = active_side()
+
+    if side == "fly":
+        print("== the engine runs on FLY (~/.prospector/ACTIVE) ==")
+        print("  The laptop is the standby. Its launchd jobs are EXPECTED to be stopped, so they")
+        print("  are reported below without being counted as problems. `engine_failover.py status`")
+        print("  is the probe for the Fly side; this one grades the laptop checkout it may fail")
+        print("  back to.")
+        print()
 
     print("== the checkout the daemons are actually running from ==")
     for job in JOBS:
         pid, cwd = job_cwd(job)
         if pid is None:
-            print(f"  {job:26s} NOT RUNNING")
-            problems.append(f"{job} is not running")
+            if side == "fly":
+                print(f"  {job:26s} not running (expected: Fly is the active side)")
+            else:
+                print(f"  {job:26s} NOT RUNNING")
+                problems.append(f"{job} is not running")
             continue
         # A subdirectory of the live checkout counts. The console runs `next start` from
         # store_platform/src/Ops.Console, so an exact match reported the correctly deployed
@@ -275,17 +228,6 @@ def report() -> int:
     print(f"  {'.venv/bin/python':24s} {'present' if venv.exists() else 'MISSING'}")
     if not venv.exists():
         problems.append(".venv missing from the live checkout")
-    modules = LIVE / CONSOLE / "node_modules"
-    print(f"  {'console node_modules':24s} {'present' if modules.exists() else 'MISSING'}")
-    if not modules.exists():
-        problems.append("the console's node_modules is missing, so it cannot be built here")
-
-    print()
-    print("== is the console serving current code? ==")
-    stale, why = console_build_is_stale()
-    print(f"  {why}")
-    if stale:
-        problems.append(f"the ops console is serving a stale build ({why})")
 
     print()
     if problems:
@@ -455,21 +397,8 @@ def update(unattended: bool = False) -> int:
     if unattended and before == after:
         # Already current. Restarting the daemons for nothing would kill a tick in flight
         # every time the job runs, which is a worse outage than the drift it prevents.
-        #
-        # The console is the exception, and it is the case that actually happened. Code being
-        # current says nothing about the build being current: `next start` serves a directory
-        # that only a build writes, so a console build made before the code it serves stays
-        # stale forever behind this early return. Rebuild for that, and only that.
-        stale, why = console_build_is_stale()
-        if not stale:
-            print("already at origin/main — no restart")
-            return 0
-        print(f"already at origin/main, but the console build is stale ({why}) — rebuilding")
-        if build_console() != 0:
-            return 1
-        rc, out = run(["launchctl", "kickstart", "-k", f"gui/{os.getuid()}/{CONSOLE_JOB}"])
-        print(f"restarted {CONSOLE_JOB} (rc={rc}){' ' + out if out else ''}")
-        return report()
+        print("already at origin/main — no restart")
+        return 0
 
     for rel in SECRETS:
         target = LIVE / rel
@@ -479,15 +408,7 @@ def update(unattended: bool = False) -> int:
             target.symlink_to(source)
             print(f"linked {rel} -> {source}")
 
-    console_rc = build_console()
-
     for job in JOBS:
-        if job == CONSOLE_JOB and console_rc != 0:
-            # A failed build must not take the console down. `next start` keeps serving the
-            # previous build directory, so not restarting leaves the operator with the old
-            # console rather than no console.
-            print(f"NOT restarting {job}: its build failed, so the previous build stays up")
-            continue
         rc, out = run(["launchctl", "kickstart", "-k", f"gui/{os.getuid()}/{job}"])
         print(f"restarted {job} (rc={rc}){' ' + out if out else ''}")
 
