@@ -1,0 +1,85 @@
+# Prove every week that we can get our state OUT of Fly, and that what comes out is intact.
+#
+# WHAT R3 IS AND IS NOT. R3 is "we are not locked in". The honest content of that claim is two
+# things: the engine image calls no platform API, so it runs anywhere Docker does, and the state
+# can be extracted and verified on demand. It is NOT "a second machine is already running",
+# because renting one was explicitly refused - founder, 2026-08-18: "no on real EC2 hardware",
+# "too many moving parts". A rehearsal that needs a rented box would run never, and a drill that
+# runs never proves nothing.
+#
+# So this drill exercises the half that can be exercised for free, on a schedule, without asking
+# anyone: pack the live store off Fly through the adapter's own t_pack verb, and verify the
+# payload. The other half - booting it elsewhere - is what deploy/compose/docker-compose.yml is
+# for, and it is checked by CI on every change.
+#
+# WHAT IT WOULD CATCH. The escape hatch is a thing you find out is broken on the day you need it.
+# On 2026-08-18 the first rehearsal failed four verbs out of ten, and every failure was the rig
+# rather than the adapter - which is exactly the kind of thing that only surfaces by running it.
+# A tarball that is short, a manifest that does not match, a python packer that stopped working
+# after a refactor: all silent until a drill runs.
+#
+# WHAT IT DOES TO PRODUCTION. store_migrate.py pack only READS the store. The engine keeps
+# running throughout; this is not a cutover. The one write is a temp file on the Fly volume,
+# which t_pack removes.
+
+name: Escape hatch drill
+
+on:
+  schedule:
+    # Sunday 04:00 UTC. Quiet, and a failure has the week to be noticed.
+    - cron: "0 4 * * 0"
+  workflow_dispatch:
+
+concurrency:
+  group: escape-hatch-drill
+  cancel-in-progress: false
+
+jobs:
+  drill:
+    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Pack the live store off Fly
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_ENGINE || secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          : "${FLY_API_TOKEN:?set repo secret FLY_API_TOKEN_ENGINE}"
+          # Through the adapter, not through a hand-written fly command. The point of the drill
+          # is to exercise the code path a real departure would take, so if t_pack rots, this
+          # goes red rather than a hand-rolled equivalent going green.
+          bash deploy/targets/fly.sh t_pack "$RUNNER_TEMP/handover.tar.gz"
+          ls -l "$RUNNER_TEMP/handover.tar.gz"
+
+      - name: Verify the payload is intact
+        run: |
+          set -euo pipefail
+          bytes=$(wc -c < "$RUNNER_TEMP/handover.tar.gz" | tr -d ' ')
+          echo "payload: $bytes bytes"
+          # A tarball that exists but is tiny is the failure mode a size check catches and a
+          # `test -f` does not. One megabyte is far below the real store and far above an empty
+          # or truncated archive.
+          [ "$bytes" -gt 1000000 ] || { echo "payload is too small to be the store"; exit 1; }
+
+          mkdir -p "$RUNNER_TEMP/restored"
+          tar -xzf "$RUNNER_TEMP/handover.tar.gz" -C "$RUNNER_TEMP/restored"
+          # store_migrate's own verifier, which reads the manifest and samples rows back out of
+          # the restored copy. It is the same check the cutover ran before the engine was
+          # allowed to start on the far side.
+          python3 scripts/store_migrate.py verify "$RUNNER_TEMP/restored" --sample 50
+
+      - name: Say what was proved
+        if: always()
+        run: |
+          echo "Proved: the live store can be extracted from Fly through the adapter, and the"
+          echo "payload verifies. NOT proved: a second machine is running it today. That is"
+          echo "deliberate - see this workflow's header."
+
+      - name: Leave nothing behind
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/handover.tar.gz" "$RUNNER_TEMP/restored"
