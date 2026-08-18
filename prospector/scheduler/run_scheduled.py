@@ -2354,6 +2354,14 @@ def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn
             # the next cycle re-evaluates the guard rather than crash-looping under launchd.
             logger.exception("Scheduler tick failed; continuing to next cycle")
         cycles += 1
+        # After the tick, not before: the backup copies what the tick just wrote, and a tick that
+        # ran long has already spent its budget. Never inside `run_tick` — a tick can be skipped
+        # for a dozen reasons (PAUSE, spend cap, moat blind) and none of them is a reason to stop
+        # backing up the state that already exists.
+        try:
+            run_backup_if_due(cfg)
+        except Exception:  # noqa: BLE001 — see the docstring: a backup must cost one tick, never the daemon.
+            logger.exception("Backup step failed; continuing to next cycle")
         if max_cycles is not None and cycles >= max_cycles:
             break
         # A healthy tick sleeps the full cadence; a failed/barren one retries in minutes so a
@@ -2421,6 +2429,134 @@ def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn
                 since_beat = 0
     logger.info("Daemon stopped after %d cycle(s)", cycles)
     return cycles
+
+
+#: How often the store is backed up when `ENGINE_BACKUPS_ENABLED` is on. Override with
+#: `schedule.backup_interval_s`. A day, matching the 03:40 launchd job this replaces.
+_BACKUP_INTERVAL_S_DEFAULT = 86_400
+
+#: How long a backup may run before the tick abandons it. The 2026-08-17 run took ~90s against
+#: R2 for 2,579 dossiers; ten minutes is generous and still far under the 2h cadence.
+_BACKUP_TIMEOUT_S = 600
+
+_TRUTHY = ("1", "true", "yes", "on")
+
+
+def _backups_enabled() -> bool:
+    """Whether this process owns the offsite backup.
+
+    Off by default, and read from the environment rather than config, because the answer is a
+    property of the DEPLOYMENT and not of the code: exactly one machine may hold the schedule,
+    or two copies race for the same R2 keys. `ENGINE_BACKUPS_ENABLED=true` is already set on the
+    Fly engine app; nothing read it until now.
+    """
+    return os.environ.get("ENGINE_BACKUPS_ENABLED", "").strip().lower() in _TRUTHY
+
+
+def _backup_stamp_path(cfg) -> Path:
+    return _store_dir(cfg) / "scheduler" / "last_backup.json"
+
+
+def _read_backup_stamp(cfg) -> dict:
+    try:
+        return json.loads(_backup_stamp_path(cfg).read_text()) or {}
+    except (OSError, ValueError):
+        # No stamp, or an unreadable one, means "never backed up as far as we can tell", which
+        # makes the backup run. A backup that runs twice costs an upload; one that silently never
+        # runs is how the estate lost 34 hours of offsite cover after the Fly cutover.
+        return {}
+
+
+def _write_backup_stamp(cfg, record: dict) -> None:
+    path = _backup_stamp_path(cfg)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(record, indent=2, sort_keys=True))
+    tmp.replace(path)
+
+
+def _backup_due(cfg, *, now: float) -> bool:
+    interval = float(_sched(cfg, "backup_interval_s", _BACKUP_INTERVAL_S_DEFAULT) or 0)
+    if interval <= 0:
+        return False
+    last = _read_backup_stamp(cfg).get("ok_mono_wall")
+    if not isinstance(last, (int, float)):
+        return True
+    # A clock that jumped BACKWARDS must not park the backup for a day. Treat any negative age as
+    # due — the cost of an extra run is one upload.
+    return (now - float(last)) >= interval or now < float(last)
+
+
+def run_backup_if_due(cfg, *, now_fn=time.time, run_fn=subprocess.run) -> dict | None:
+    """Back the store up to R2, at most once per `schedule.backup_interval_s`.
+
+    The tick owns this because the tick is the only thing that reliably runs on the machine that
+    holds the store. Before the Fly cutover a launchd job at 03:40 did it. After the cutover that
+    job kept running on the laptop, against a `store/` nothing writes to any more, and it would
+    have reported PASS on a frozen snapshot. It was also calling `--mirror-only`, a flag this
+    script has never had, so argparse exited 2 and nothing alerted. Production went 34 hours with
+    no offsite copy and no signal (last receipt `2026-08-17T08:37Z`).
+
+    Three deliberate choices:
+
+    * `--skip-mirror`. The git mirror needs a checkout; the engine runs from a Docker image with
+      no `/app/.git`, so the mirror step can only fail there. GitHub already holds the code.
+    * A subprocess, not an import. A backup that dies must cost one tick, not the daemon.
+    * A CRITICAL alert on failure. The whole defect being fixed is that a backup can stop and
+      look exactly like a backup that is quietly succeeding.
+
+    Returns the receipt dict, or None when it was not this process's job or was not yet due.
+    """
+    if not _backups_enabled():
+        return None
+    now = now_fn()
+    if not _backup_due(cfg, now=now):
+        return None
+
+    from prospector.paths import repo_path
+    from prospector.scheduler.alerts import CRITICAL, emit_alert, resolve_alert
+
+    script = repo_path("scripts", "backup_store.py")
+    cmd = [sys.executable, str(script), "--skip-mirror"]
+    started = datetime.now(timezone.utc).isoformat()
+    logger.info("Backup starting: %s", " ".join(cmd))
+    try:
+        proc = run_fn(cmd, capture_output=True, text=True, timeout=_BACKUP_TIMEOUT_S)
+        rc, out, err = proc.returncode, proc.stdout or "", proc.stderr or ""
+    except subprocess.TimeoutExpired:
+        rc, out, err = -1, "", f"timed out after {_BACKUP_TIMEOUT_S}s"
+    except Exception as exc:  # noqa: BLE001 — a backup must never kill the daemon.
+        rc, out, err = -1, "", f"{type(exc).__name__}: {exc}"
+
+    # The receipt line the script prints. Kept verbatim so the stamp answers "what was backed up"
+    # and not merely "did it exit 0".
+    verdict = ""
+    for line in reversed((out + "\n" + err).splitlines()):
+        if line.startswith("STORE_BACKUP"):
+            verdict = line.strip()
+            break
+
+    record = {"started": started, "rc": rc, "verdict": verdict,
+              "detail": (err or out).strip()[-2000:]}
+    if rc == 0:
+        record["ok_mono_wall"] = now
+        record["ok_at"] = datetime.now(timezone.utc).isoformat()
+        _write_backup_stamp(cfg, record)
+        logger.info("Backup PASS: %s", verdict or "(no receipt line)")
+        resolve_alert(cfg, key="backup", reason=verdict or "backup exited 0")
+        return record
+
+    # Failure does NOT stamp `ok_mono_wall`, so the next tick retries rather than waiting a day.
+    stamp = _read_backup_stamp(cfg)
+    stamp["last_failure"] = record
+    _write_backup_stamp(cfg, stamp)
+    logger.critical("Backup FAILED rc=%s: %s", rc, record["detail"][:400])
+    emit_alert(cfg, severity=CRITICAL, key="backup",
+               title="Offsite backup FAILED",
+               message=(f"`backup_store.py --skip-mirror` exited {rc}.\n\n"
+                        f"{record['detail'][:800]}"),
+               throttle_s=3600)
+    return record
 
 
 def _route_ledger(cfg) -> None:
