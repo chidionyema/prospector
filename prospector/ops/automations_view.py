@@ -147,6 +147,13 @@ def run_one(name: str, root: Optional[Path] = None,
     # still print a hopeful JSON body, and the shell's answer is the one that cannot lie about
     # whether the process finished.
     coded = _STATUS_BY_CODE.get(proc.returncode)
+    if coded is not None and not isinstance(payload, dict):
+        # A STATUS NEEDS A PAYLOAD BEHIND IT. `raise RuntimeError(...)` exits 1, which
+        # `_STATUS_BY_CODE` reads as "findings" - so a crashed automation rendered as a normal
+        # red line with an empty findings list, which is exactly the "failure looks like an
+        # answer" defect this view exists to catch. No parsed body means the automation never
+        # reported, whatever the exit code was.
+        coded = None
     if coded is None:
         line["status"] = "unknown"
         tail = (proc.stderr or "").strip().splitlines()

@@ -1024,8 +1024,14 @@ def _read_shelf(cfg, args: dict) -> dict:
         # disk still said "blocked" — this page would have printed that, confidently, with no
         # way for the operator to tell. `verdict` is the honest label, and `shelf.regate` is the
         # button that resolves it. Same function the tool and the tick use.
-        current = pack_linter.receipt_is_current(_lint_receipt(root, cid))
-        if not current:
+        # `receipt` first, because a MISSING receipt is not a STALE one. `receipt_is_current`
+        # answers False for both, so a pack with no `<id>.lint.json` at all had its real repair
+        # replaced by `shelf.regate` - the button that re-grades a receipt that does not exist.
+        # A pack that was never published has no receipt by definition, so this hit exactly the
+        # rows `shelf.publish_pending` was written for.
+        receipt = _lint_receipt(root, cid)
+        current = pack_linter.receipt_is_current(receipt)
+        if receipt is not None and not current:
             fix = "shelf.regate"
         rows.append({"id": cid, "created": str(created)[:10], "why": why,
                      "checks": checks, "repair": fix,
@@ -2294,6 +2300,10 @@ def _act_shelf_publish_pending(cfg, payload: dict, preview: bool) -> dict:
     argv += paths
     if not paths:
         return {"action": "shelf.publish_pending", "applied": False, "changed": False,
+                # Every act result carries this key, including the ones that do nothing. A
+                # console reading `doc["data"]["moat_affecting"]` to decide how loudly to warn
+                # got a KeyError on the do-nothing branch instead of a False.
+                "moat_affecting": False,
                 "message": "No stranded pass needs publishing — every pack the shelf reader "
                            "marks `shelf.publish_pending` is either already listed or its "
                            "dossier file is missing."}
