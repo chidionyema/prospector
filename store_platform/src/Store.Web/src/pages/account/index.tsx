@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
-import { PageHeader, Skeleton } from '@/components/ui';
+import { Skeleton } from '@/components/ui';
 import { AuthPanel } from '@/components/account/AuthPanel';
 import { AccountPanel } from '@/components/account/AccountPanel';
 import { ReturnBlocks } from '@/components/account/ReturnBlocks';
@@ -23,7 +23,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
  */
 export default function AccountPage() {
   const router = useRouter();
-  const { status } = useAuth();
+  const { status, account } = useAuth();
 
   const initial = useMemo(() => {
     const q = router.query;
@@ -78,16 +78,27 @@ export default function AccountPage() {
           the extra 312px is for is the SIGNED-IN branch -- owned packs, receipts and the shortlist
           are wide rows, and `mockups/account.html` draws them across the full wrap. */}
       <div className="mx-auto max-w-[1080px] px-5 pt-6 pb-16">
-        <PageHeader
-          /* "Your shelf" signed in (`mockups/account.html` h1). The page is the customer's
-             packs, not a settings screen, and the drawing names it after what is on it. */
-          title={status === 'authenticated' ? 'Your shelf' : 'Sign in'}
-          description={
-            status === 'authenticated'
-              ? undefined
-              : 'Your purchases are tied to the email address you bought with, sign in with it to see them.'
-          }
-        />
+        {/* THE DRAWING'S `.pagetop`, NOT THE AUTHED-APP `PageHeader` (`mockups/account.html`).
+            `PageHeader` sits on a hairline rule and is right for the operator screens it was built
+            for; the drawing opens this page with a mono line saying who is signed in, then the
+            title, and no rule at all. Kept local to this page, so the operator screens that share
+            `PageHeader` are untouched. `.metastrip` carries `margin:16px 0 0`, so the top margin is
+            cancelled here rather than fought with a wrapper.
+
+            The title is "Your shelf" when signed in: the page is the customer's packs, not a
+            settings screen, and the drawing names it after what is on it. */}
+        <div className="pagetop">
+          {status === 'authenticated' && account && (
+            <p className="metastrip num !mt-0 mb-3">Signed in as {account.email}</p>
+          )}
+          <h1>{status === 'authenticated' ? 'Your shelf' : 'Sign in'}</h1>
+          {status !== 'authenticated' && (
+            <p className="lede big mt-4">
+              Your purchases are tied to the email address you bought with, sign in with it to see
+              them.
+            </p>
+          )}
+        </div>
 
         {/* min-h-[400px]: CLS fix (measured 0.184 at 360px, first of two shift entries, ~710ms
             after navigation, GET /auth/me resolving in AuthContext.tsx). The three-line skeleton
