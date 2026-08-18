@@ -90,13 +90,24 @@ def check_uncommitted(r: Report) -> None:
 
 
 def check_unpushed(r: Report) -> None:
-    """W21. A commit that exists only on this disk is one disk failure from gone."""
-    code, out = run(["git", "log", "--branches", "--not", "--remotes", "--pretty=%h %s"])
+    """W21. A commit that exists only on this disk is one disk failure from gone.
+
+    Scoped to THIS branch on purpose. `--branches --not --remotes` counts every branch in the
+    shared checkout, so it reported 152 unpushed commits that belonged to other sessions' branches
+    and were none of this session's business. A checker that cries wolf about someone else's work
+    gets ignored, which costs more than the check is worth."""
+    branch = current_branch()
+    if branch in {"", "HEAD"}:
+        return
+    code, out = run(["git", "log", f"origin/{branch}..HEAD", "--pretty=%h %s"])
+    if code != 0:
+        # No upstream yet: everything on this branch that is not on origin/main is unpushed.
+        code, out = run(["git", "log", "origin/main..HEAD", "--pretty=%h %s"])
     if code == 0 and out:
         n = len(out.splitlines())
         first = out.splitlines()[0]
-        r.flag("W21", f"{n} commit(s) exist only locally, first: {first}",
-               "git push origin HEAD:<branch>")
+        r.flag("W21", f"{n} commit(s) on {branch} exist only locally, first: {first}",
+               f"git push origin HEAD:{branch}")
 
 
 def current_branch() -> str:
@@ -149,9 +160,15 @@ def check_worktrees(r: Report) -> None:
     if code != 0:
         return
     paths = [ln.split(" ", 1)[1] for ln in out.splitlines() if ln.startswith("worktree ")]
-    if len(paths) > 4:
-        r.flag("W23", f"{len(paths)} worktrees exist; each is a tree a session can edit by mistake",
-               "git worktree list  # then: git worktree remove <path>")
+    # Only this session's worktrees are this session's problem. scripts/worktree_gc.py owns the
+    # same session fence; the two must agree or the checker demands work it will not let you do.
+    here = Path.cwd().resolve()
+    mine_id = next((p for p in here.parts if len(p) == 36 and p.count("-") == 4), "")
+    ours = [p for p in paths if not mine_id or mine_id in p]
+    if len(ours) > 1:
+        r.flag("W23", f"{len(ours)} worktree(s) belong to this session ({len(paths)} in the "
+                      f"checkout in total)",
+               ".venv/bin/python scripts/worktree_gc.py  # report, then --fix")
 
 
 def check_claims(r: Report, local_only: bool) -> None:
