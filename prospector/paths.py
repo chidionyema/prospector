@@ -32,7 +32,9 @@ re-introduces exactly the binding this module exists to remove.
 
 Overrides
 ---------
-``PROSPECTOR_STORE_ROOT`` moves everything under ``store/``; ``PROSPECTOR_REPO_ROOT`` moves the
+``PROSPECTOR_STORE_ROOT`` and ``PROSPECTOR_STORE_DIR`` both move everything under
+``store/`` (the first wins if both are set, and ``PROSPECTOR_STORE_DIR`` is the one
+the deployments actually set); ``PROSPECTOR_REPO_ROOT`` moves the
 repo anchor itself (and therefore ``store/`` too, unless the first is also set). Both are read
 per call, so a fixture that sets them with ``monkeypatch.setenv`` works on an already-imported
 module — the case the audit-log fence had to work around by patching a module attribute.
@@ -50,6 +52,9 @@ ANCHOR = Path(__file__).resolve().parent.parent
 
 REPO_ROOT_ENV = "PROSPECTOR_REPO_ROOT"
 STORE_ROOT_ENV = "PROSPECTOR_STORE_ROOT"
+#: The variable every real deployment sets. `config.store_root()` reads this one and
+#: nothing else, so this module must read it too or the two disagree.
+STORE_DIR_ENV = "PROSPECTOR_STORE_DIR"
 
 #: The name production actually sets. Both launchd plists and the Fly engine export
 #: ``PROSPECTOR_STORE_DIR``, and until 2026-08-18 only ``config.store_root()`` read it, so every
@@ -84,6 +89,13 @@ def store_root() -> Path:
     variables is the same split-brain the project documents at CLAUDE.md -- the daemon writes one
     copy of the state while a probe reads another, and neither can see the other. There is
     exactly one store.
+
+    That is not hypothetical. Measured on the production engine on 2026-08-18:
+    `config.store_root()` returned `/data/store`, the mounted volume, while this function
+    returned `/app/store`, the container filesystem. Sixteen files written that morning --
+    eight listings and eight pricing rationales -- were sitting in the copy a deploy throws
+    away. `ops/readers.py` resolves through `store_path()` at eleven sites, so the ops console
+    was reading a root the engine never wrote to.
     """
     override = (os.environ.get(STORE_ROOT_ENV) or "").strip()
     if not override:

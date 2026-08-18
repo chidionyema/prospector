@@ -242,7 +242,7 @@ def catalogue_has_rows() -> bool:
 @_cache_data(ttl=10)
 def load_dossier(candidate_id: str, decision: str) -> Optional[dict[str, Any]]:
     """Load a full dossier JSON from store/dossiers/<id>.<decision>.json."""
-    path = Path(f"store/dossiers/{candidate_id}.{decision.lower()}.json")
+    path = paths.store_path("dossiers", f"{candidate_id}.{decision.lower()}.json")
     if not path.exists():
         return None
     try:
@@ -257,7 +257,7 @@ def load_dossier(candidate_id: str, decision: str) -> Optional[dict[str, Any]]:
 @_cache_data(ttl=10)
 def load_listing(candidate_id: str) -> Optional[dict[str, Any]]:
     """Load a listing JSON if one exists for this candidate."""
-    path = Path(f"store/listings/{candidate_id}.json")
+    path = paths.store_path("listings", f"{candidate_id}.json")
     if not path.exists():
         return None
     try:
