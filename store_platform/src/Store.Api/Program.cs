@@ -1467,6 +1467,12 @@ app.MapCheckoutEndpoints();
 app.MapWebhookEndpoints();
 app.MapDeliveryEndpoints();
 
+// Portable backup fetch for the money database and the Data Protection key ring - see
+// Endpoints/BackupEndpoints.cs. Replaces `fly ssh sftp get`, which tied disaster recovery to
+// one platform's CLI and could not run from the engine container at all.
+app.MapBackupEndpoints();
+
+
 // First-party storefront analytics (ingest + key-gated summary) — see Endpoints/AnalyticsEndpoints.cs.
 app.MapAnalyticsEndpoints();
 

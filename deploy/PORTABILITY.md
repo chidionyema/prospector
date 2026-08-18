@@ -31,22 +31,42 @@ candidate.
 
 ## The adapters
 
-`deploy/targets/<name>.sh` implements eight shell functions. Each is a handful of lines.
+`deploy/targets/<name>.sh` implements eleven shell functions. Each is a handful of lines.
 
 ```
-t_preflight            the platform CLI is installed and logged in
+t_name                 what to call this platform in the log
+t_preflight            the platform CLI is installed and logged in, AND the local tools exist
 t_provision            the app and the persistent volume exist
 t_secrets FILE         push a KEY=VALUE file as the container's environment
 t_release              build and deploy the image
 t_start / t_stop       run exactly one container, or none
 t_exec CMD...          run a command inside the running container
 t_put LOCAL REMOTE     copy one file from here into the container's volume
+t_pack OUT.tar.gz      pack this platform's store, for when it is the SOURCE of a move
 t_logs                 stream the container's logs
+t_health               is this platform actually carrying the load right now?
 ```
+
+Three of those carry a rule that cost a cutover attempt each, so they are worth stating
+plainly rather than leaving to the reader:
+
+- **`t_start` means started, not created.** `fly scale count 1` returns as soon as the machine
+  exists. The next thing the cutover does is `fly ssh`, which then fails with "no started VMs" —
+  a message that reads like a broken image. An adapter's `t_start` must not return until the
+  container is up.
+- **`t_put` must prove the bytes landed.** `fly ssh sftp shell` exits 0 whether or not the file
+  transferred. An adapter that trusts the exit status will happily verify whatever was on the
+  volume from last time.
+- **`t_preflight` checks the LOCAL side too.** Everything after phase 4 runs with the engine
+  stopped and customers waiting. A missing script on the operator's machine must fail before that
+  window opens, not inside it.
 
 Shipped today:
 
 - `deploy/targets/fly.sh` — Fly.io. Where the engine runs from tonight.
+- `deploy/targets/laptop.sh` — the founder's Mac, running launchd rather than Docker. It is an
+  adapter like any other, which is what makes the rollback the same command with the ends
+  swapped, and what keeps "come back to the laptop" a tested path.
 - `deploy/targets/sshdocker.sh` — any Linux box with Docker and an SSH login. This is the escape
   hatch, and it exists **now**, not later. Hetzner, a Mac mini in an office, an EC2 instance and a
   Raspberry Pi are all the same target.

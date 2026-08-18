@@ -55,8 +55,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-from prospector import content_contract
-from prospector import pack_linter
+from prospector import content_contract, pack_linter
 
 #: Bumped when the JSON contract changes shape. The web app asserts on it at boot, so a console
 #: talking to an older engine says so instead of rendering blanks.
@@ -1025,8 +1024,14 @@ def _read_shelf(cfg, args: dict) -> dict:
         # disk still said "blocked" — this page would have printed that, confidently, with no
         # way for the operator to tell. `verdict` is the honest label, and `shelf.regate` is the
         # button that resolves it. Same function the tool and the tick use.
-        current = pack_linter.receipt_is_current(_lint_receipt(root, cid))
-        if not current:
+        # `receipt` first, because a MISSING receipt is not a STALE one. `receipt_is_current`
+        # answers False for both, so a pack with no `<id>.lint.json` at all had its real repair
+        # replaced by `shelf.regate` - the button that re-grades a receipt that does not exist.
+        # A pack that was never published has no receipt by definition, so this hit exactly the
+        # rows `shelf.publish_pending` was written for.
+        receipt = _lint_receipt(root, cid)
+        current = pack_linter.receipt_is_current(receipt)
+        if receipt is not None and not current:
             fix = "shelf.regate"
         rows.append({"id": cid, "created": str(created)[:10], "why": why,
                      "checks": checks, "repair": fix,
@@ -1108,6 +1113,114 @@ def _read_method(cfg: Any, args: dict) -> dict:
     }
 
 
+# --------------------------------------------------------------------------- #
+# Where the engine is running, and whether the other side could take over
+# --------------------------------------------------------------------------- #
+
+_FAILOVER_SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "engine_failover.py"
+
+
+def _failover(*argv: str, timeout: int = 120) -> str:
+    """Run scripts/engine_failover.py and hand back its stdout.
+
+    The console asks a script rather than reimplementing the probes, because the same answer has
+    to be available to a launchd job at 4am with no browser open. One implementation, three
+    callers: this console, the failover watchdog, and an operator at a terminal.
+    """
+    proc = subprocess.run([sys.executable, str(_FAILOVER_SCRIPT), *argv],
+                          capture_output=True, text=True, timeout=timeout)
+    if proc.returncode not in (0, 1):   # 1 only means "the active side is unhealthy"
+        raise RuntimeError((proc.stderr or proc.stdout).strip()[:400] or
+                           f"engine_failover.py {' '.join(argv)} exited {proc.returncode}")
+    return proc.stdout
+
+
+def _read_engine_location(cfg, args: dict) -> dict:
+    """Both platforms at once, so the console can never show one side and imply the other.
+
+    `deep` also reads each side's ledger, which costs an SSH round trip to Fly. The page polls
+    without it and asks for it on demand.
+    """
+    argv = ["status", "--json"]
+    if str(args.get("deep") or "").lower() in ("1", "true", "yes"):
+        argv.append("--deep")
+    return json.loads(_failover(*argv, timeout=180))
+
+
+def _act_engine_arm(cfg, payload: dict, preview: bool) -> dict:
+    if preview:
+        st = json.loads(_failover("status", "--json"))
+        return {
+            "action": "engine.arm",
+            "effect": "Automatic failover will move the engine from fly to laptop, unattended.",
+            "fires_when": ("Fly's own API answers that the machine is not started, on 5 "
+                           "consecutive one-minute polls. An unreachable Fly API does NOT fire "
+                           "it — that is far more likely to be this machine's network, and "
+                           "acting on it would leave two engines running."),
+            "standby_staleness_min": st["standby"].get("staleness_min"),
+            "would_lose": "whatever the Fly ledger gained since the last sync, in minutes above",
+            "already_armed": st["autofailover"] == "armed",
+        }
+    _failover("arm")
+    return json.loads(_failover("status", "--json"))
+
+
+def _act_engine_disarm(cfg, payload: dict, preview: bool) -> dict:
+    if preview:
+        st = json.loads(_failover("status", "--json"))
+        return {"action": "engine.disarm", "already_disarmed": st["autofailover"] != "armed",
+                "effect": "Nothing will move the engine on its own. Switching stays manual."}
+    _failover("disarm")
+    return json.loads(_failover("status", "--json"))
+
+
+def _act_engine_switch(cfg, payload: dict, preview: bool) -> dict:
+    """Move the engine deliberately, from the dashboard.
+
+    The cutover takes minutes and opens a downtime window, so this does NOT block the request.
+    It starts the real `deploy/cutover.sh` detached, writes its log where the console can read it
+    back, and returns the path. A console that waits six minutes for an HTTP response is a
+    console that times out halfway through a migration and leaves nobody able to say what state
+    the engine is in.
+    """
+    to = str(payload.get("to") or "").strip()
+    if to not in ("fly", "laptop", "sshdocker"):
+        raise ValueError(f"unknown side {to!r}; expected fly, laptop or sshdocker")
+    reason = str(payload.get("reason") or "").strip()
+    if not reason:
+        raise ValueError("a reason is required — an unexplained engine move reads as an outage")
+
+    st = json.loads(_failover("status", "--json"))
+    frm = st["active"]
+    if frm == to:
+        raise ValueError(f"the engine is already on {to}")
+
+    if preview:
+        return {
+            "action": "engine.switch", "from": frm, "to": to, "reason": reason,
+            "downtime": ("Yes. The engine stops on the source before its state is packed, and "
+                         "starts on the target only after the copy is proved. The last measured "
+                         "window was 5 minutes 40 seconds."),
+            "target_state": st["sides"].get(to, {}),
+            "source_state": st["sides"].get(frm, {}),
+            "single_writer": ("The source is stopped and fenced before the target starts. Two "
+                              "engines would keep two spend ledgers and could spend twice the "
+                              "daily cap."),
+            "effect": f"runs deploy/cutover.sh --from {frm} --to {to}",
+        }
+
+    root = _FAILOVER_SCRIPT.parent.parent
+    log = root / "store" / "ops" / f"engine-switch-{time.strftime('%Y%m%dT%H%M%S')}.log"
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with open(log, "wb") as fh:
+        subprocess.Popen(
+            [sys.executable, str(_FAILOVER_SCRIPT), "switch", "--to", to],
+            stdout=fh, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+            cwd=str(root), start_new_session=True)
+    return {"action": "engine.switch", "from": frm, "to": to, "reason": reason,
+            "started": True, "log": str(log),
+            "note": "Poll the engine_location view; `active` flips when the cutover finishes."}
+
 def _read_content_rules(cfg, args: dict) -> dict:
     """C2 of `docs/CONTENT_CONTRACT_PROGRAM.md`: how often each content rule is breached.
 
@@ -1124,6 +1237,7 @@ def _read_content_rules(cfg, args: dict) -> dict:
 
 
 READS: dict[str, Callable[[Any, dict], Any]] = {
+    "engine_location": _read_engine_location,
     "method": _read_method,
     "shelf": _read_shelf,
     "content_rules": _read_content_rules,
@@ -2186,6 +2300,10 @@ def _act_shelf_publish_pending(cfg, payload: dict, preview: bool) -> dict:
     argv += paths
     if not paths:
         return {"action": "shelf.publish_pending", "applied": False, "changed": False,
+                # Every act result carries this key, including the ones that do nothing. A
+                # console reading `doc["data"]["moat_affecting"]` to decide how loudly to warn
+                # got a KeyError on the do-nothing branch instead of a False.
+                "moat_affecting": False,
                 "message": "No stranded pass needs publishing — every pack the shelf reader "
                            "marks `shelf.publish_pending` is either already listed or its "
                            "dossier file is missing."}
@@ -2295,6 +2413,9 @@ ACTIONS: dict[str, Callable[[Any, dict, bool], dict]] = {
     "deliveries.resend": _act_delivery_resend,
     "tools.run": _act_tools_run,
     "tools.undo": _act_tools_undo,
+    "engine.switch": _act_engine_switch,
+    "engine.arm": _act_engine_arm,
+    "engine.disarm": _act_engine_disarm,
 }
 
 #: Actions the console refuses by name rather than by absence, so the error says WHY.
@@ -2590,6 +2711,19 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     # on disk but unclassified until now. `run_ops_console.sh` and `build_sample_fixture.py`
     # are covered above; these two are the remainder.
     "scripts/ci_local.py": "replays a CI job's shell steps on this machine; a developer's loop",
+    "scripts/prune_branches.py": "retires merged git branches and dead worktrees; a developer's "
+                                 "housekeeping, not an estate action",
+    "scripts/warm_ci_uv_cache.sh": "prebuilds wheels into the runners' shared uv cache; CI "
+                                   "plumbing, run on the runner box",
+    "tools/_audit_baseline_tmp.py": "a one-off inventory of failure-swallowing call sites; the "
+                                    "audit it fed is done, it is kept as the baseline",
+    # the migration control plane. Both are reachable from the console already, as actions rather
+    # than as tool buttons, so listing them again would give the operator two ways to do one thing.
+    "scripts/engine_failover.py": "the engine failover control plane; the console drives it through "
+                                  "the engine.switch, engine.arm and engine.disarm actions and the "
+                                  "engine_location view, not as a tool button",
+    "scripts/store_migrate.py": "packs and verifies the engine store during a cutover; "
+                                "deploy/cutover.sh calls it, never an operator",
 }
 
 

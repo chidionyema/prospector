@@ -5,7 +5,10 @@ the engine uses (`register_lint.measurable_prose` + `prose_target.grade_text`), 
 `artifacts._prose_findings` calls on draft one. So the "documents with findings" figure below
 IS the share of drafts that would spend a repair turn under `listing.human_register_repair`.
 """
-import json, sys, collections, pathlib
+import collections
+import json
+import pathlib
+import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from prospector import prose_target

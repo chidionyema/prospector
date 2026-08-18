@@ -1,0 +1,40 @@
+# The CI runner fleet on Fly.
+#
+# Read deploy/runner/Dockerfile for what the container is and deploy/runners.sh for how the
+# fleet is sized. This file only says how one machine of it is shaped.
+
+app = "prospector-ci"
+primary_region = "lhr"
+
+[build]
+  dockerfile = "Dockerfile"
+
+# No [http_service], no [[services]], and no public IP. A runner makes only OUTBOUND calls -
+# it long-polls GitHub for work. Nothing ever needs to reach it, so nothing can. This is the
+# same fence the engine uses, and it is the reason a stolen runner PAT is the worst case
+# rather than a stolen box.
+
+[env]
+  GITHUB_REPO = "chidionyema/prospector"
+  # These land on the runner as labels. `vars.CI_RUNS_ON` is `self-hosted`, so carrying that
+  # label is the entire integration: no workflow file changes, and jobs go to whichever
+  # runner is free, Fly or Mac. That is also the migration path - bring these up, watch them
+  # take jobs, then remove the Mac runners.
+  RUNNER_LABELS = "self-hosted,Linux,X64,container"
+
+[[restart]]
+  # An ephemeral runner EXITS after every job, cleanly, with status 0. Without `always` the
+  # machine would stop after its first job and the fleet would drain itself to nothing in an
+  # afternoon.
+  policy = "always"
+
+[[vm]]
+  # Sized from the measured CI profile, not guessed. `.github/workflows/ci.yml:55` sets
+  # PYTEST_XDIST_AUTO_NUM_WORKERS=3 because four Mac runners share twelve cores; each pytest
+  # worker imports the whole engine. Three workers want three cores and roughly 4 GB, and the
+  # Next.js build and `dotnet test` are the memory peaks, not the CPU ones.
+  #
+  # Unlike the Macs, these do not share: four machines is four independent 4-CPU boxes, so
+  # the same env var is now conservative rather than a hard constraint.
+  size = "shared-cpu-4x"
+  memory = "8gb"

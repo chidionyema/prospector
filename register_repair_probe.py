@@ -7,14 +7,18 @@ the recorded sequence is [draft-1 findings, draft-2 findings]. Claim-check is of
 
 Report only. Writes nothing to store/.
 """
-import json, sys, pathlib, collections, argparse
+import argparse
+import collections
+import json
+import pathlib
+import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from prospector import artifacts as A
 from prospector.config import load_config
 from prospector.models import Candidate
-from prospector.prompts import market_kwargs, ALL_MARKET_KEYS  # noqa: F401
 from prospector.operator import _build_operator
+from prospector.prompts import ALL_MARKET_KEYS, market_kwargs  # noqa: F401
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--packs", type=int, default=3)
