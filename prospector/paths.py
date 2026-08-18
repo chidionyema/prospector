@@ -32,7 +32,9 @@ re-introduces exactly the binding this module exists to remove.
 
 Overrides
 ---------
-``PROSPECTOR_STORE_ROOT`` moves everything under ``store/``; ``PROSPECTOR_REPO_ROOT`` moves the
+``PROSPECTOR_STORE_ROOT`` and ``PROSPECTOR_STORE_DIR`` both move everything under
+``store/`` (the first wins if both are set, and ``PROSPECTOR_STORE_DIR`` is the one
+the deployments actually set); ``PROSPECTOR_REPO_ROOT`` moves the
 repo anchor itself (and therefore ``store/`` too, unless the first is also set). Both are read
 per call, so a fixture that sets them with ``monkeypatch.setenv`` works on an already-imported
 module — the case the audit-log fence had to work around by patching a module attribute.
@@ -50,6 +52,9 @@ ANCHOR = Path(__file__).resolve().parent.parent
 
 REPO_ROOT_ENV = "PROSPECTOR_REPO_ROOT"
 STORE_ROOT_ENV = "PROSPECTOR_STORE_ROOT"
+#: The variable every real deployment sets. `config.store_root()` reads this one and
+#: nothing else, so this module must read it too or the two disagree.
+STORE_DIR_ENV = "PROSPECTOR_STORE_DIR"
 
 
 def repo_root() -> Path:
@@ -64,9 +69,31 @@ def repo_path(*parts: str) -> Path:
 
 
 def store_root() -> Path:
-    """The runtime state root, honouring `PROSPECTOR_STORE_ROOT` then `PROSPECTOR_REPO_ROOT`."""
-    override = os.environ.get(STORE_ROOT_ENV)
-    return Path(override) if override else repo_root() / "store"
+    """The runtime state root.
+
+    Resolution order: `PROSPECTOR_STORE_ROOT`, then `PROSPECTOR_STORE_DIR`, then
+    `repo_root()/store`.
+
+    `PROSPECTOR_STORE_DIR` is in that list because `config.store_root()` reads it and
+    reads nothing else. Until 2026-08-18 this function ignored it, so any deployment
+    that set only `PROSPECTOR_STORE_DIR` ran with two store roots at once. Every
+    deployment sets only that one.
+
+    Measured on the production engine on 2026-08-18: `config.store_root()` returned
+    `/data/store`, the mounted volume, while this function returned `/app/store`, the
+    container filesystem. Sixteen files written that morning — eight listings and eight
+    pricing rationales — were sitting in the copy a deploy throws away. `ops/readers.py`
+    resolves through `store_path()` at eleven sites, so the ops console was reading a
+    root the engine never wrote to.
+
+    One resolver, one root. `PROSPECTOR_STORE_ROOT` stays ahead of it because test
+    fixtures set that variable to redirect a single test at a tmp_path.
+    """
+    for env in (STORE_ROOT_ENV, STORE_DIR_ENV):
+        override = os.environ.get(env, "").strip()
+        if override:
+            return Path(override)
+    return repo_root() / "store"
 
 
 def store_path(*parts: str) -> Path:
