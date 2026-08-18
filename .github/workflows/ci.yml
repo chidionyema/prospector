@@ -558,7 +558,7 @@ jobs:
   nextjs:
     needs: changes
     if: needs.changes.outputs.web == 'true'
-    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 40
 
     defaults:
@@ -628,7 +628,7 @@ jobs:
   ops-console:
     needs: changes
     if: needs.changes.outputs.console == 'true'
-    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 40
 
     defaults:
