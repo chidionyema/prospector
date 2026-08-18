@@ -1181,12 +1181,12 @@ stylesheet, last changed in `bec2060f`. There is no newer bundle anywhere in the
 | ID | What the prompt asked | State | Evidence |
 |----|----------------------|-------|----------|
 | D1 | Hero "6 in 100" ratio device: `figure.gridwrap` holding `p.ratiofig`, `div.ratio` of 100 `<i>` with 6 `.alive`, `.gridkey`, `.gridcap` | **BLOCKED — the mockup contradicts the prompt** | see 10.2 |
-| D2 | H1 exactly `Business ideas with the research already done.` | DONE | `pages/index.tsx`, `mockups/index.html:295` |
+| D2 | H1 exactly `Business ideas with the research already done.` | DONE | `pages/index.tsx`, `docs/design/mumchimp-build-bundle/mockups/index.html:295` |
 | D3a | Remove every character-budget cut in the data layer | DONE | `cardLine(..., Infinity)` at 3 call sites |
 | D3b | Nothing overflows a card horizontally | DONE | `CardProof` replaces the nowrap `truncate` label |
 | D4 | ONE proof-line component: `41 sources` / `17× payback · 28 sources` | DONE | `components/ui/ProofLine.tsx` `CardProof` |
 | D5 | One `.rows` container with internal hairlines, not separate cards | ALREADY TRUE | `PackRow.tsx` `PackRowList`, `pages/index.tsx:714` |
-| D6 | `Read a full pack free — no email needed`, em dash, no full stop, no arrow | DONE | `mockups/index.html:299` |
+| D6 | `Read a full pack free — no email needed`, em dash, no full stop, no arrow | DONE | `docs/design/mumchimp-build-bundle/mockups/index.html:299` |
 | D7 | `US · CA` not `US · CA market`; canonical kill-cause names | DONE | `lib/gateLabels.ts`, `PackRow.tsx` |
 | D8 | Remove "Based on your browsing" (not in the mockup) | DONE | `pages/index.tsx` |
 
@@ -1200,7 +1200,7 @@ The prompt describes a hero device that is not in the file it cites. Measured on
 - `ratiofig`, `ratiosub` and `class="ratio"` appear in **no** mockup file.
 - `6 in 100` appears once, in `pack-detail.html:337`, as `<p class="fig num">6 in 100</p>`. The
   app already renders it, in `components/marketing/SixInHundred.tsx`, on `/pack/[id]`.
-- The hero grid is `1fr 380px` with `align-items:start` (`mockups/index.html:67`), not
+- The hero grid is `1fr 380px` with `align-items:start` (`docs/design/mumchimp-build-bundle/mockups/index.html:67`), not
   `1fr 400px` with `align-items:center`.
 
 So the governing rule and D1 disagree. The rule says the drawing wins, and under the rule the
@@ -1211,10 +1211,10 @@ revision that was never committed, or D1 should be dropped.** Nothing was change
 
 Both resolved in favour of the drawing, per the governing rule, and both are one line to reverse.
 
-- **H1 width.** D2 says `max-width:12ch`; `mockups/index.html:70` says `max-width:14ch`. Kept 14ch.
+- **H1 width.** D2 says `max-width:12ch`; `docs/design/mumchimp-build-bundle/mockups/index.html:70` says `max-width:14ch`. Kept 14ch.
 - **`the price back in month one, modelled`.** D4 says delete it from all card/row components.
   Deleted from the row and the tile. KEPT on the featured card's 44px `.stat`, because
-  `mockups/index.html:388` prints that exact sentence there:
+  `docs/design/mumchimp-build-bundle/mockups/index.html:388` prints that exact sentence there:
   `<div class="stat"><span class="big num">13×</span><span class="lbl">the price back in month
   one, modelled</span></div>`. A grep for the phrase will therefore return 1, in `lib/packStat.ts`.
 
@@ -1268,20 +1268,20 @@ rule rather than switched off, and the reason is in the test file beside the ass
 
 | Test | What it pinned | What it pins now | Why |
 |------|----------------|------------------|-----|
-| `dashFree.test.ts` | No em dash in any `pages/`, `components/`, `lib/` source line | Unchanged. The one line carrying the dash uses the file's own `dash-free-ignore` pragma | D6's sentence is `mockups/index.html:299` verbatim. The pragma is per-LINE (`dashFree.test.ts:68` reads `line.includes(IGNORE)`), so it leads the JSX text node and renders nothing |
-| `usTwoPackArt.test.ts:124` | Three `<PackFigure />` mounts: row, spotlight, tile | One mount, the spotlight, plus two `<CardProof />` | D4. The drawing gives the big `.stat` figure to the featured card only (`mockups/index.html:388`); rows and tiles print the one-line mono proof |
+| `dashFree.test.ts` | No em dash in any `pages/`, `components/`, `lib/` source line | Unchanged. The one line carrying the dash uses the file's own `dash-free-ignore` pragma | D6's sentence is `docs/design/mumchimp-build-bundle/mockups/index.html:299` verbatim. The pragma is per-LINE (`dashFree.test.ts:68` reads `line.includes(IGNORE)`), so it leads the JSX text node and renders nothing |
+| `usTwoPackArt.test.ts:124` | Three `<PackFigure />` mounts: row, spotlight, tile | One mount, the spotlight, plus two `<CardProof />` | D4. The drawing gives the big `.stat` figure to the featured card only (`docs/design/mumchimp-build-bundle/mockups/index.html:388`); rows and tiles print the one-line mono proof |
 | `categoryScale.test.ts:273` | Same three-mount count | Same split, both halves pinned | As above. The guarantee an untagged pack leans on is that every variant states a number of its own, and both mounts are now asserted |
 | `crossCuttingSweep.test.ts:214` | `PackRow.tsx` calls `sourcesLabel(pack.sourceCount)` | `PackRow.tsx` mounts `<CardProof` | D4. The rule ("a card never words its own count") is unchanged; the shared thing it calls moved |
 | `usTwoPackArt.test.ts:189` | Chip renders `{marketLabel(pack.market)} market` | Chip renders `{marketLabel(pack.market)}` | D7. The rule is still "in words, never a flag or a bare code". A bordered chip that reads `US · CA market` states its own column heading inside itself |
 | `bannedWords.test.ts:93` | The word "incumbent" appears in no source file but `lib/plainEnglish.ts` | Same, with `lib/gateLabels.ts` added to the allow-list | D7 writes the six kill-cause labels out in full and names this one `Incumbents already own the space`. The prompt's governing rule is that the copy is given, never composed here. The word is allowed in the one file that holds given sentences, and nowhere a sentence gets written |
 
 One further D4 consequence, not caught by a test. `packStat.ts`'s source fallback read
-`cited sources behind it` — a sentence in no mockup file. `mockups/index.html:391` prints the
+`cited sources behind it` — a sentence in no mockup file. `docs/design/mumchimp-build-bundle/mockups/index.html:391` prints the
 featured card's count as `30 sources` and `:403` prints a row's as `41 sources`, so the noun is
 `sources` on every surface that states one. The label is now `sources` / `source`.
 
 The payback label `the price back in month one, modelled` SURVIVES, in `lib/packStat.ts` only.
-D4 names it as a defect, but `mockups/index.html:388` prints it verbatim on the featured card's
+D4 names it as a defect, but `docs/design/mumchimp-build-bundle/mockups/index.html:388` prints it verbatim on the featured card's
 `.stat`, and the drawing outranks the prompt by the prompt's own governing rule. It reaches one
 device on one card. It reaches no row and no tile.
 
