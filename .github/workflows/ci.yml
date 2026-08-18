@@ -591,6 +591,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # WHERE .NET INSTALLS, and why it is not the default.
+      #
+      # actions/setup-dotnet installs to /usr/share/dotnet on Linux, which needs root. Our own
+      # runners do not have it, so on 2026-08-18 every dotnet job on main and on every open PR
+      # died in "Set up .NET 9.0" with `mkdir: cannot create directory '/usr/share/dotnet':
+      # Permission denied` (run 32149741450). That is not a test failure and it says nothing
+      # about the code, but it is a red X on the pull request all the same.
+      #
+      # $HOME is writable on every runner we use, hosted or not, and it PERSISTS on the
+      # self-hosted ones, so the SDK is downloaded once rather than per job. setup-dotnet puts
+      # DOTNET_INSTALL_DIR on PATH and sets DOTNET_ROOT itself, so nothing downstream changes.
+      - name: Install .NET under the runner's own HOME
+        run: echo "DOTNET_INSTALL_DIR=$HOME/.dotnet" >> "$GITHUB_ENV"
+
       - name: Set up .NET ${{ env.DOTNET_VERSION }}
         uses: actions/setup-dotnet@v4
         with:
