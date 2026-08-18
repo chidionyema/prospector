@@ -1691,27 +1691,41 @@ number: a solid band is a layout defect, speckle inside a paragraph is copy.
 ```bash
 cd store_platform/src/Store.Web
 python3 -m http.server 3002 --bind 127.0.0.1 -d ../../../docs/design/mumchimp-build-bundle/mockups &
-NEXT_PUBLIC_API_URL=https://api.mumchimp.com npm run build && npx next start -p 3000 &
+pkill -f "next start"                       # BEFORE the build, not after. See below.
+NEXT_PUBLIC_API_URL=https://api.mumchimp.com npm run build
+(NEXT_PUBLIC_API_URL=https://api.mumchimp.com npx next start -p 3000 &) && sleep 8
 node scripts/visual_regression.mjs
 ```
 
 `next start` serves the BUILD, so a number taken without a rebuild and a restart is stale.
 
-**The measurement, 2026-08-18, after all five defects below were fixed.** Two numbers per cell:
+**Stop the old server BEFORE the build.** `next build` rewrites `.next` in place, and a `next start`
+still holding the old build serves HTTP 500 with no stylesheet for the whole build. Anyone looking
+at localhost during that window sees an unstyled, broken site and reports a style bug that does not
+exist. Observed 2026-08-18. Killing the server first makes the window an honest connection refused
+instead of a page that looks wrong.
+
+**The measurement, 2026-08-18, after defects 1 to 8 below were fixed.** Two numbers per cell:
 the whole page, then the first 2400px (`FOLD_PX`). Threshold is 2%. No page is under it yet.
+Defect 9 landed after this run and is not in these numbers.
 
 | Page | 390 page / fold | 1280 page / fold |
 |---|---|---|
-| index | 5.83 / 10.89 | 3.06 / 5.88 |
-| ideas | 3.44 / 3.60 | 1.61 / 2.40 |
-| how-it-works | 10.28 / 16.13 | 6.15 / 13.53 |
-| kill-log | 5.04 / 15.92 | 7.95 / 33.09 |
-| faq | 7.02 / 8.14 | 3.51 / 3.77 |
-| pricing | 6.18 / 9.74 | 4.38 / 7.26 |
-| about | 6.71 / 7.46 | 3.89 / 3.92 |
-| account | 5.56 / 6.05 | 3.48 / 3.48 |
-| refund | 5.99 / 8.22 | 3.05 / 3.76 |
-| sample | 5.86 / 8.29 | 3.19 / 5.00 |
+| index | 5.91 / 11.05 | 3.06 / 5.88 |
+| ideas | 3.46 / 3.53 | 1.62 / 2.40 |
+| how-it-works | 10.23 / 16.11 | 6.20 / 13.65 |
+| kill-log | 5.07 / 16.08 | 7.79 / 32.30 |
+| faq | 7.02 / 8.43 | 3.56 / 3.80 |
+| pricing | 6.09 / 9.49 | 4.28 / 6.93 |
+| about | 6.66 / 7.19 | 3.96 / 3.96 |
+| account | 5.53 / 6.01 | 3.53 / 3.53 |
+| refund | 6.05 / 8.43 | 3.07 / 3.77 |
+| sample | 5.81 / 8.18 | 3.20 / 5.05 |
+
+**Defect 7 removed 24px from the top of every page and the numbers barely moved.** `pricing` went
+6.18 to 6.09, `kill-log`'s 1280 fold 33.09 to 32.30, and `faq`'s 390 fold went UP, 8.14 to 8.43.
+That is the useful result: the diff was never dominated by vertical offset, so chasing offsets will
+not reach the bar. See 11.9.
 
 **`kill-log` got WORSE and that is the correct direction.** Its 1280 fold went 25.06% to 33.09%
 because the ranked chart was fixed on our side and the drawing still renders the bug. Screenshots
@@ -1855,3 +1869,31 @@ The same question stands separately for `kill-log`, where the drawing renders it
 `hr.rule2` hairlines, and the app is a stack of full-bleed `section` bands with alternating
 backgrounds and a `border-b`. Measured on how-it-works at 1280, the drawing's `main` is 4940px and
 ours is 8104px. Reworking that is a ten-page port and has not been started.
+
+**The header proves the point, and it is measurable.** Measured 2026-08-18 at 1280 on `/about`,
+every element in the top 100px compared box by box between the drawing and the built page:
+
+| element | drawing | built |
+|---|---|---|
+| `div.strip` | y=0 h=44 | y=0 h=44 |
+| `span.tag` | y=10 x=120 | y=10 x=120 |
+| `span.txt` | y=12 x=244 | y=12 x=244 |
+| `span.go` | y=13 x=1030 | y=13 x=1030 |
+| `header.hdr` | y=44 h=59 | y=44 h=59 |
+| `span.wordmark` | y=63 x=155 fs=21px | y=63 x=155 fs=21px |
+| first nav link | "Categories" x=654 | "Good for" x=716 |
+| strip headline | "Subscription box for allotment growers" | "Sound Check Rounds, the monthly noise test" |
+
+Not one geometry difference. Yet the diff PNG shows 18.8% of the pixels differing in the 10px band
+at y=20 and 13.0% in the band at y=70, and those two figures are identical to one decimal on
+`about`, `account`, `index` and `faq`. Those bands are the strip's text line and the nav line. The
+pixels differ because the WORDS differ: the nav says "Good for" where the drawing says
+"Categories", so every link after it starts 62px further right.
+
+The computed `font-family` also differs, `Inter` against `Inter Variable`, and that is NOT a
+defect: "How it works" advances 117px in both.
+
+**So the bar as written measures copy.** A raw pixel diff between two documents whose text differs
+cannot reach 2%, however correct the layout is. Whether to make the drawings render live copy, or
+to grade geometry instead of pixels (element boxes, which is what the table above does and what
+found every real defect in 11.8), is the founder's call. Nothing in the app changes either way.
