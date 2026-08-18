@@ -91,7 +91,7 @@
       "title": "The Brief Winnow",
       "oneLiner": "A weekly paid newsletter that filters and scores public RFPs, agency briefs, and project leaks for freelance creatives, delivering a curated shortlist of high-probability opportunities before they hit mass job boards.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "Klento already scores leads on 50+ signals and writes pitches automatically for the same freelancer/agency buyer, and Upwork/Fiverr are described as dominant, high-volume platforms (25.7M+ jobs, 3300+ skills) that funnel freelancers into finding and bidding on work, leaving no clearly open lane for a curated-brief scoring newsletter.",
       "citations": [],
       "date": "2026-08-07"
@@ -100,7 +100,7 @@
       "title": "Care Home True Cost Index",
       "oneLiner": "A localized intelligence pack revealing the all‑in real cost of care homes (including hidden fees) built from mystery‑shopping data, enabling retirees to negotiate and compare beyond listed prices.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "shows a UK-wide directory that is already the leading review site with 16,500+ homes, i.e. a dominant incumbent in care-home comparison; and show existing directories (Autumna, others) already publish regional and type-based fee breakdowns, undercutting the claim that this space is open.",
       "citations": [
         {
@@ -122,7 +122,7 @@
       "title": "FlightBite DIY, The Delay Compensation Claim Kit",
       "oneLiner": "A comprehensive self-serve tool that generates airline compensation claims for squeezed_middle travelers, using a proprietary database of carrier refusal tactics and escalation patterns to maximize payouts without paying a 25% commission.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "AirHelp is described as the '#1 Flight Compensation Experts' and 'market leader' among several established players (AirHelp, Skycop, ClaimCompass, Flightright), and travelers are shown comparing only these named incumbents when deciding who to hand a claim to, indicating the space is already dominated, not open.",
       "citations": [],
       "date": "2026-08-07"
@@ -157,7 +157,7 @@
       "title": "PotBridge, moves your old pensions to a better one, and lets the new provider pay the fee, not you",
       "oneLiner": "A broker that finds your old workplace pensions, checks each one against the new government-rated poor-value list, and switches the bad ones for you, free.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "PensionBee is a UK-based pension consolidation platform with over $7B in assets, 275,000+ customers, and a public market cap of £285.2m, showing it already dominates the exact consolidation/transfer niche PotBridge targets. Additional comparison-site passages show multiple existing tools already helping savers find and compare pensions, further undercutting the claim that the space is unserved.",
       "citations": [
         {
@@ -210,7 +210,7 @@
       "title": "The Vet's Fee Extractor",
       "oneLiner": "A solo operator provides a 'last resort' payment recovery service for veterinary clinics by filing small claims court cases on behalf of the clinic against non-paying pet owners, taking a 30% cut of recovered fees, targeting the gap where clinics are too busy or conflict-averse to pursue unpaid bills themselves.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "One passage advertises a veterinary-specific debt collection agency inviting practices to partner with it to recover outstanding fees, and several UK firms already offer the exact commercial proposition here, no-win-no-fee recovery where the fee is a share of what is collected, including one claiming £6 billion recovered for UK businesses.",
       "citations": [
         {
@@ -236,7 +236,7 @@
       "title": "ShiftSole, Custom Insoles by Mail for Standing Workers",
       "oneLiner": "A physical moulding kit mailed to nurses, teachers, and other standing workers to create a foot impression, then 3D‑printed into bespoke orthotic insoles, fueled by a compounding dataset of foot‑shape‑to‑pain‑relief outcomes.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "Multiple UK sellers already offer 3D-printed custom orthotic insoles for arch support, plantar fasciitis and heel pain, and budget/branded alternatives are readily available via mainstream retail and eBay from £2.99. This shows the exact custom-3D-printed-insole niche is already served by existing providers, so the space is not open.",
       "citations": [
         {
@@ -310,7 +310,7 @@
       "title": "VanVault: The Trades Van Depreciation Guard",
       "oneLiner": "Pay a small upfront fee and lock in a guaranteed resale price for your work van in 3 years, transferring depreciation risk to a solo financier who hedges with proprietary value models.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "The passages describe Guaranteed Future Value as a standard, established feature of UK PCP car finance, in which a finance company guarantees what the vehicle will be worth at the end of the term regardless of its actual depreciation, precisely the guaranteed-buyback protection VanVault proposes to sell, and it is widely marketed and explained to buyers by mainstream finance brokers.",
       "citations": [
         {
@@ -332,7 +332,7 @@
       "title": "WorkLog Shield, the day-by-day proof that you're really self-employed, not a hidden employee",
       "oneLiner": "A logging tool for freelance designers, developers and consultants that quietly builds the evidence HMRC needs to believe you're genuinely self-employed, before an IR35 enquiry ever starts.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "Qdos and Kingsbridge already run automated status-review tools combined with in-house consultancy/expert support for contract and working-practices assessment, with Kingsbridge explicitly branding itself as combining automated review with expert consultancy, and this ecosystem is described as trusted by thousands of businesses, showing established, funded incumbents already serving this exact need.",
       "citations": [
         {
@@ -389,7 +389,7 @@
       "title": "The Uni Fee Refund Sleuth",
       "oneLiner": "A digital pack that reveals FOI-obtained data on student complaint outcomes at UK universities, paired with a template-filling engine that generates a formal fee-dispute letter tailored to specific courses and breaches.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "A no-win-no-fee group claim operator already runs UK university tuition-fee compensation claims for pandemic-disrupted studies, complete with per-student estimates and a live court case, the exact service this candidate proposes to fuel with FOI data. That existing funded rival, not a lack of competition, is what the evidence shows.",
       "citations": [],
       "date": "2026-08-07"
@@ -438,7 +438,7 @@
       "title": "The Solo Builder's Warranty Audit",
       "oneLiner": "A solo operator in the UK offers a fixed-price, pre-completion inspection and snagging service specifically for self-build homeowners, using a proprietary checklist and thermal camera to identify defects before the builder's warranty expires, charging per property.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "The passages show established UK snagging-inspection firms already selling exactly this service to new-build owners, including one claiming over 20,000 surveys and 20+ years as the country's leading independent provider, another claiming to be the only RICS-regulated nationwide snagging company, plus a directory and a postcode matching service quoting prices from £249.",
       "citations": [
         {
@@ -534,7 +534,7 @@
       "title": "The Site Surplus Scout",
       "oneLiner": "A solo operator uses a predictive inventory model to alert local tradespeople to surplus building materials from major construction sites, pocketing the margin with zero site disruption.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "The passages name several existing services doing exactly this: Globechain, described as the world's largest marketplace for reusing surplus materials and already engaged by a major UK developer (British Land), plus the Excess Materials Exchange ($5M funded) and CMEx for business-to-business trading of leftover construction materials, and Gumtree, which already runs a UK second-hand building materials and supplies category.",
       "citations": [],
       "date": "2026-08-06"
@@ -543,7 +543,7 @@
       "title": "The Padel Court Referee Booking Engine",
       "oneLiner": "A vertical SaaS for padel clubs that replaces the ad-hoc, manual process of booking referees for tournaments and league matches with an automated scheduling, payment, and dispute resolution system.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "The passages show that padel club software in the UK is already concentrated: Playtomic is described as the dominant choice used by most UK clubs, with its rating system the de facto national standard, and four to five platforms cover virtually every UK padel court.",
       "citations": [
         {
@@ -569,7 +569,7 @@
       "title": "SoilKeep, the arable farmer's field-by-field record that proves your soil work to the payer, the auditor and the buyer",
       "oneLiner": "A phone-and-desktop record for English arable and mixed farms that logs each field's soil work as it happens, so payment claims, inspections and grain-buyer audits all draw on one evidence file.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "The passages describe Gatekeeper as the long-standing dominant player in UK arable farm management software with Muddy Boots alongside it, both called market-leading, and say the market has consolidated further over the past two years.",
       "citations": [
         {
@@ -595,7 +595,7 @@
       "title": "FareFare Forensics, The Rideshare Driver's Earnings Audit & Claim System",
       "oneLiner": "A done-for-you audit of your Uber/Lyft trip history that identifies fare miscalculations, missing bonuses, and payment errors, and files a claim for a share of recovered earnings.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "Worker Info Exchange International is already running algorithmic audits of driver trip data (1.5 million trips across 258 drivers) and using that analysis to send Uber a legal Letter Before Action on behalf of UK and European drivers, plus pursuing funded litigation against Uber and Ola in Amsterdam. That is the same core activity the candidate proposes, trip-data audit plus claim pursuit against the platform, already operating at scale with legal and grant backing, so the space is not open.",
       "citations": [],
       "date": "2026-08-06"
@@ -604,7 +604,7 @@
       "title": "HMRC Inheritance Tax Valuation Benchmark Report",
       "oneLiner": "A solo‑operated data‑intelligence query‑tool that uses FOI‑derived datasets on settled probate cases to show executors the real HMRC settlement values for unique assets (classic cars, fine art, antiques), providing an evidence‑backed negotiating range to challenge aggressive estate valuations.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "The passages show established firms already selling exactly this to UK executors: nationwide HMRC-compliant probate valuations for classic cars from £25, and Gurr Johns, a 100-year-old appraiser with 160 specialists worldwide covering art, antiques, jewellery, watches, collectibles and automobiles for fiduciaries, with further referral routes to specialist art valuers.",
       "citations": [
         {
@@ -665,7 +665,7 @@
       "title": "HostReady Box, the baby hosting kit that arrives before your visitors do",
       "oneLiner": "A subscription rental of sanitised kits of premium baby gear (travel cot, high chair, monitor, stair gate) delivered to UK households before visiting family arrives, with collection after.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "One UK operator already hires out exactly this gear, prams, travel cots, car seats, with nationwide delivery, same-day delivery in London, free returns and over 20,000 UK customers served, and BabyQuip, which turned down a $500,000 investment offer, runs over 1,300 local providers who deliver and set up baby gear at private residences as well as hotels and rentals.",
       "citations": [
         {
@@ -761,7 +761,7 @@
       "title": "The Inheritance Heat Map",
       "oneLiner": "A solo-operated data intelligence service that maps and scores UK residential properties by their inheritance tax (IHT) exposure risk, sold to regional estate agents and solicitors as a prospecting tool for probate and downsizing instructions.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "Two passages describe Sprift, a live commercial service selling UK property data, EPC ratings and property reports specifically to estate agents and conveyancers, pitched as improving valuations and client relationships, and a third passage advertises estate-agent market-data products explicitly sold as a way to generate more leads and convert more appraisals, that is the same buyer and the same job the candidate proposes to sell.",
       "citations": [
         {
@@ -783,7 +783,7 @@
       "title": "The Council Parking Penalty FoI Appeal Builder",
       "oneLiner": "A service that generates a bespoke, council-aware parking ticket appeal letter by querying a live, FOI-sourced database of every UK council's formal and informal appeal success rates, combined with the specific grounds for the contravention.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "and show existing operators already generate council-referenced appeal letters from uploaded PCNs, and/ show a large volunteer community (Pepipoo/MSE) has long supplied free, experience-based per-council guidance, none proves a dominant single leader, but they show the exact niche (automated + community appeal guidance) is already served by multiple players, so it is not open and unserved.",
       "citations": [
         {
@@ -831,7 +831,7 @@
       "title": "The Fire Safety Photo Audit for HMO Landlords",
       "oneLiner": "A solo operator provides a legally-defensible, photo-evidenced fire safety audit for Houses in Multiple Occupation (HMO) landlords, using a proprietary checklist and a smartphone camera, delivered as a PDF report with a fixed price per property, to preempt council enforcement and insurance claim rejections.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "The passages show an established, crowded market of fire risk assessment providers already serving UK landlords and property managers, including London-focused firms, a nationwide bookable service promising fast delivery and a best-price guarantee, and specialists selling clear, user-friendly reports, plus Rocket Lawyer offering a free-trial, legally-reviewed fire risk assessment document at the cheap end.",
       "citations": [
         {
@@ -871,7 +871,7 @@
       "title": "Business Rates Overpayment Recovery Agent",
       "oneLiner": "A solo bureau that audits small business premises rateable values, identifies overcharges, and manages the entire appeal process for a success fee, using a proprietary database of winning comparables.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "Two established UK firms already sell exactly this service, one advertising business rates advice, valuations, appeals and historic audits over 65 years, and another claiming £2bn saved for clients since 2010, and a 'No Win No Fee Business Rates' offer already exists, which is the same success-fee model the candidate proposes. The passages therefore show entrenched, long-running providers occupying this need rather than an open space, though they do not state how much of the small single-premises segment those firms hold.",
       "citations": [],
       "date": "2026-08-06"
@@ -880,7 +880,7 @@
       "title": "The Septic Sentinel",
       "oneLiner": "A solo-operated mobile septic tank health MOT service using proprietary IoT probes to deliver predictive maintenance reports and Environmental Agency compliance for time-poor rural public sector workers.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "The passages describe established UK firms already selling exactly this bundle to property owners, engineers who advise on and maintain septic tanks and treatment plants, and specialists with 'decades of combined experience' working across the UK for property owners, management companies and insurers, including impartial condition assessment for insurance claims.",
       "citations": [
         {
@@ -902,7 +902,7 @@
       "title": "The Mould-Proof Home Audit & Sensor Service",
       "oneLiner": "A solo operator conducts a physical damp-proofing audit and installs a proprietary multi-sensor array in homes of time-poor public sector workers, coupled with a predictive AI that forecasts mould growth 2-3 weeks in advance, plus automated dehumidifier dispatch, on a subscription model, building a hyperlocal data moat that no off-the-shelf sensor can match.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "The passages name three funded technology providers already delivering exactly this service in the UK, Aico's HomeLINK, which pairs connected sensors with a purpose-built damp-and-mould case management platform for landlords and councils, and Switchee, which works with social housing providers across the country on the same problem, alongside an established paid market of independent damp surveyors charging £150, £400 for the physical inspection half of the offer.",
       "citations": [
         {
@@ -928,7 +928,7 @@
       "title": "ChargeBreak, find and fight the overcharges in your California hospital bill, for $29",
       "oneLiner": "A web app that uses hospital price transparency data to slash your out-of-pocket medical costs.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "The passages show several services already doing this work for patients: one venture-backed company, Goodbill, raised $3.4M specifically to tackle medical billing, another advertises finding errors in hospital bills and negotiating them down, and Dollar For, a charity-rated nonprofit, gets hospital bills reduced or wiped for free and says it has cleared tens of millions of dollars, alongside other free bill-forgiveness helpers.",
       "citations": [
         {
@@ -1007,7 +1007,7 @@
       "title": "The Garden Office Power Broker",
       "oneLiner": "A solo operator who sources, negotiates, and project-manages the installation of pre-fabricated garden offices for cash-strapped professional couples, taking a fixed fee from the installer rather than the buyer.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "The passages show that matching UK buyers to garden-room installers is already an established service: one site runs a vetted network of approved garden-room retailers and installers that collects a buyer's requirements and returns quotes from local professionals, two independent portals already publish buying advice plus directories of garden-room and annexe companies, and a UK trades directory lists 34 businesses supplying garden rooms/annexes with reviews and booking.",
       "citations": [
         {
@@ -1047,7 +1047,7 @@
       "title": "The AI Tool Liability Brief",
       "oneLiner": "A paid weekly briefing for billable creative freelancers that translates active AI copyright lawsuits, vendor TOS shifts and brand AI-procurement clauses into a tool-by-tool, deliverable-by-deliverable liability score, paired with a reverse-engineered clause library freelancers can deploy to push back on unfair AI terms.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "The passages describe Mishcon de Reya, a law firm, running an AI resource centre and a generative AI & copyright case tracker that is explicitly promoted as keeping pace with fast-moving AI litigation, and being actively marketed to sign-ups, which is the same weekly AI-lawsuit tracking the briefing proposes to sell, already published by an established firm.",
       "citations": [
         {
@@ -1073,7 +1073,7 @@
       "title": "SettleShare, the family carer's fixed-fee route to sell an unwanted care home place back to the waiting list",
       "oneLiner": "When your parent's care home contract locks you into weeks of notice you cannot use, we find the family waiting for that exact bed and broker a paid handover of the room.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "The passages show several established UK services already occupying the care-home placement space at no cost to families: a directory covering over 16,500 UK care homes that calls itself the UK's number one site for finding a care home, plus free comparison and advice services with provider networks.",
       "citations": [
         {
@@ -1117,7 +1117,7 @@
       "title": "TutorBrief Engine, The Independent UK Personal Tutor's Exam-Board-Aligned Parental Progress Brief Generator",
       "oneLiner": "A vertical SaaS that ingests an independent UK GCSE/A-level tutor's weekly session notes and outputs a defensible, exam-board-specific parental progress brief with per-paper content-gap mapping (across AQA, OCR A/B, Edexcel, WJEC, CCEA and SQA specs) plus diplomatically-worded suspected-need flags (dyslexia / ADHD / visual stress / anxiety) aligned to NHS / GP referral language the tutor can review in under ten minutes per pupil.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "The passages show several established products already generating student progress reports in this market: TutorCruncher's AI tutoring-management platform tracks lessons, monitors student progress and produces insights for tutoring businesses, while Twinkl and TeachMateAI both ship AI report writers that turn pupil details into personalised written reports, and one round-up lists ten tutor-tracking tools that already join scheduling to measurable progress.",
       "citations": [],
       "date": "2026-08-06"
@@ -1126,7 +1126,7 @@
       "title": "AccountKey CA, we unlock your parent's digital accounts after death or incapacity, for a flat fee",
       "oneLiner": "For a flat fee per account, we send the legal requests and follow up until you get into your parent's online accounts.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "The passages show a crowded field of funded companies already handling a deceased person's online accounts for families, Empathy raised a Series B led by Index Ventures and automates closing digital accounts, while Sunset, GoodTrust, Trustworthy, Everplans and Trust & Will are compared side by side on inheritance support, with one option listed at $0 cost.",
       "citations": [
         {
@@ -1152,7 +1152,7 @@
       "title": "RotaRest, the day-room network that lets NHS night-shift staff sleep before driving home",
       "oneLiner": "Vetted hotel day-rooms near major NHS trusts, booked and paid through staff payroll deduction, so night-shift nurses, paramedics and doctors can sleep safely before driving.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "The passages show the core need is already being met by the hospitals themselves: an NHS trust spent £300,000 refurbishing 34 on-call overnight rooms at The Royal London, Whipps Cross and Newham so staff can rest between shifts, and a healthcare health, safety and wellbeing group has issued formal guidance on staff welfare facilities.",
       "citations": [
         {
@@ -1170,7 +1170,7 @@
       "title": "The Gig Deactivation Appeal Engine",
       "oneLiner": "A web service that turns a gig worker's deactivation notice into a tailored, legally-structured appeal dossier using a proprietary dataset of 10,000+ successful arguments, with a machine learning model predicting the optimal evidence package and likelihood of reinstatement.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "Two passages show the App Drivers & Couriers Union already offers exactly this service to UK drivers and couriers, 'expert support to challenge the decision and restore your livelihood' when an account is unfairly deactivated, and a second organisation, Worker Info Exchange, exists specifically to help Uber drivers and Deliveroo riders extract the platform data that an appeal would rest on.",
       "citations": [
         {
@@ -1218,7 +1218,7 @@
       "title": "CareEstate, The Specialist Care Equipment Liquidator",
       "oneLiner": "A transaction broker that takes consigned specialist disability and care equipment (hoists, profiling beds, riser-recliner chairs, bath lifts, mobility scooters) from bereaved or transitioning families, coordinates inspection and valuation, and routes it to vetted B2B/B2C buyers, recovering £3,000-£15,000 per estate for time-poor primary carers.",
       "gate": "incumbency",
-      "gateLabel": "Incumbents already own the space",
+      "gateLabel": "The space is already taken",
       "reason": "Two passages describe Mobility Buyers as an existing UK service doing exactly this job, buying used or unwanted disability and mobility equipment from sellers, with photo-based submission and arranged collection, and Gumtree is described as the UK's #1 classifieds site carrying this same equipment category, so the proposed 'no one does specialist care-equipment resale' position is not open.",
       "citations": [
         {
