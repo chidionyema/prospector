@@ -6,6 +6,7 @@ fail is the defect it exists to prevent.
 """
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import sys
@@ -73,8 +74,17 @@ def test_a_declared_width_that_ci_yml_does_not_run_fails(sandbox: Path):
 def test_a_pool_naming_a_job_that_does_not_exist_fails(sandbox: Path):
     """A renamed or deleted job leaves the contract describing a workflow that is gone."""
     cfg = sandbox / "ops/config/ci_capacity.yaml"
-    cfg.write_text(cfg.read_text().replace("jobs: [changes, guard, ci-ok]",
-                                           "jobs: [changes, guard, ci-ok, no-such-job]", 1))
+    # Append to whatever the light pool lists, rather than pinning one exact membership.
+    # This wrote the literal "jobs: [changes, guard, ci-ok]". When nextjs and ops-console moved
+    # into that pool the line stopped matching, so the replace did nothing, the config stayed
+    # valid, the script exited 0, and the test failed asserting exit 1 — reading as a broken
+    # capacity checker when the checker was fine and the fixture was stale. It cost a full CI
+    # round trip to learn that, on 2026-08-18.
+    head, sep, tail = cfg.read_text().partition("\n  light:")
+    assert sep, "the light pool is gone from ci_capacity.yaml"
+    tail, n = re.subn(r"(jobs: \[[^\]]*)\]", r"\1, no-such-job]", tail, count=1)
+    assert n == 1, "the light pool has no jobs list"
+    cfg.write_text(head + sep + tail)
     r = run(sandbox)
     assert r.returncode == 1
     assert "no such job" in r.stderr
