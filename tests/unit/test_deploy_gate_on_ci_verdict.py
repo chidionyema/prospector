@@ -249,6 +249,35 @@ def test_the_kill_switch_still_wins_over_everything(lc, monkeypatch, tmp_path, s
     assert not fake.checked_out
 
 
+# ------------------------------------------------------------------ workflows that vote
+
+def test_the_auto_merge_workflow_does_not_vote(lc, monkeypatch):
+    """It acts on pull requests and tests nothing.
+
+    Measured 2026-08-18 on 48f3cfb9, the commit production was running: CI success,
+    Deploy Engine success, and eighteen "Auto-merge green PRs" rows of which two were
+    cancelled. This gate answered `fail` and refused to roll production forward onto a
+    commit whose tests had all passed.
+    """
+    _stub_gh(lc, monkeypatch, 0, _rows(("CI", "completed", "success"),
+                                       ("Auto-merge green PRs", "completed", "cancelled"),
+                                       ("Auto-merge green PRs", "completed", "skipped")))
+    assert lc.ci_verdict("deadbeef")[0] == "pass"
+
+
+def test_a_skipped_run_has_no_opinion(lc, monkeypatch):
+    """A path filter that skips a lane must not read as that lane failing."""
+    _stub_gh(lc, monkeypatch, 0, _rows(("CI", "completed", "success"),
+                                       ("Some future lane", "completed", "skipped")))
+    assert lc.ci_verdict("deadbeef")[0] == "pass"
+
+
+def test_only_skipped_runs_is_none_not_pass(lc, monkeypatch):
+    """Nothing tested this commit. Dropping the skipped rows must not turn that into a pass."""
+    _stub_gh(lc, monkeypatch, 0, _rows(("CI", "completed", "skipped")))
+    assert lc.ci_verdict("deadbeef")[0] == "none"
+
+
 def test_the_gate_tests_never_ask_the_machine_which_side_is_live(lc, monkeypatch, tmp_path):
     """Guard the guard. If `_arm` ever stops pinning `active_side`, these tests silently go back
     to grading whichever path the developer's `~/.prospector/ACTIVE` happens to name."""
