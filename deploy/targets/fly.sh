@@ -86,3 +86,16 @@ t_pack() {
 }
 
 t_logs() { fly logs -a "$APP"; }
+
+# Is this platform actually carrying the load right now? Used by deploy/decommission.sh before
+# it turns the OTHER side off for good. `fly status` is not enough: an app with a machine in
+# state=stopped still reports an app.
+t_health() {
+  local state
+  state="$(fly machines list -a "$APP" --json 2>/dev/null \
+           | python3 -c 'import sys,json;m=json.load(sys.stdin);print(m[0]["state"] if m else "none")' 2>/dev/null || echo none)"
+  [ "$state" = "started" ] || { echo "fly:$APP machine state=$state" >&2; return 1; }
+  t_exec "test -f /data/store/prospector.jsonl" >/dev/null 2>&1 \
+    || { echo "fly:$APP is up but has no ledger at /data/store/prospector.jsonl" >&2; return 1; }
+  echo "fly:$APP started, ledger present"
+}

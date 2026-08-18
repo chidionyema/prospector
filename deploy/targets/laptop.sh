@@ -100,3 +100,11 @@ t_put() { cp "$1" "$2"; }
 t_pack() { "$PY" "$TOOLS/scripts/store_migrate.py" pack "$1" --store "$STORE"; }
 
 t_logs() { tail -f "$REPO"/store/logs/*.log 2>/dev/null || true; }
+
+# See fly.sh. Healthy here means the scheduler is running and the ledger is on disk.
+t_health() {
+  pgrep -f 'prospector.scheduler.run_scheduled' >/dev/null \
+    || { echo "laptop: scheduler is not running" >&2; return 1; }
+  [ -f "$STORE/prospector.jsonl" ] || { echo "laptop: no ledger at $STORE/prospector.jsonl" >&2; return 1; }
+  echo "laptop: scheduler running, ledger present"
+}
