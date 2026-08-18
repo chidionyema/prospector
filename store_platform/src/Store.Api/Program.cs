@@ -666,6 +666,28 @@ app.MapPost("/internal/catalog", async (PublishRequest request, HttpRequest http
     // answer that cannot drift, so the check lives here rather than in the publisher.
     var logger = loggerFactory.CreateLogger("PublishPack");
     var wantsListing = request.IsListed && !string.IsNullOrEmpty(pack.ContentKey);
+
+    // The publisher ASKED for this pack to go live and it is not going live. Say so, once, here.
+    //
+    // Founder, 2026-08-18: "why only 74 listed? u have blidspots" ... "it has to do with content"
+    // ... "proper data collection, it would be obvious". It was not obvious, and this line is why.
+    // The two gates below each write a LogError when they refuse. The content gate did not: when
+    // ContentKey was empty `wantsListing` was simply false, the block below never ran, the request
+    // returned 200, and the pack was stored unlisted in silence. It is also the gate that fires
+    // most often, because content generation failing is the common failure and a missing payment
+    // provider is not. So the single most frequent reason a finished pack never reaches the shelf
+    // was the one reason that produced no log line, no counter and no error anywhere.
+    //
+    // Measured that day: 74 listed against 182 registered, and nothing in the estate could name
+    // one of the other 108 or say why. GET /internal/catalog/unlisted is the standing report;
+    // this is the event that report is built from.
+    if (request.IsListed && !wantsListing && string.IsNullOrEmpty(pack.ContentKey))
+    {
+        loggerFactory.CreateLogger("PublishPack").LogError(
+            "Refusing to list {PackId}: no content uploaded (ContentKey is empty). Stored UNLISTED.",
+            pack.Id);
+    }
+
     if (wantsListing)
     {
         var provider = sp.GetKeyedService<IPaymentProvider>(pack.PaymentProvider ?? "stripe");
@@ -1471,6 +1493,7 @@ app.MapDeliveryEndpoints();
 // Endpoints/BackupEndpoints.cs. Replaces `fly ssh sftp get`, which tied disaster recovery to
 // one platform's CLI and could not run from the engine container at all.
 app.MapBackupEndpoints();
+app.MapUnlistedEndpoints();
 
 
 // First-party storefront analytics (ingest + key-gated summary) — see Endpoints/AnalyticsEndpoints.cs.
