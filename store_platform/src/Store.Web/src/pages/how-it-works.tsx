@@ -1,4 +1,5 @@
 import React from 'react';
+import type { GetStaticProps } from 'next';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { PageHero, Section, CtaBand, HeroList } from '@/components/marketing/blocks';
@@ -11,6 +12,8 @@ import { plainEnglish } from '@/lib/plainEnglish';
 import { PACK_DISCLAIMER, PACK_SCOPE } from '@/lib/disclaimer';
 import CheckSequence from '@/components/marketing/CheckSequence';
 import FunnelDiagram from '@/components/marketing/FunnelDiagram';
+import AttritionCascade from '@/components/marketing/AttritionCascade';
+import { buildKillIndex, type GateBar } from '@/lib/killLog.server';
 /* `kill-log-examples.json`, NOT the full `kill-log.json`. This page draws ONE illustrative kill per
    check and needs the whole record (reason, citations), so the names file is not enough. The
    examples file is `entries[:60]` with every field intact -- byte-for-byte what `kill-log.json`
@@ -103,7 +106,19 @@ function firstSentences(reason: string, budget: number): string {
   return out || text;
 }
 
-export default function HowItWorks() {
+/**
+ * The cascade's counts, read once at build time from the same place the kill log reads them.
+ *
+ * `buildKillIndex` is imported by a `getStaticProps` and nothing else on this page, so Next drops
+ * it from the client bundle along with the 400-entry JSON behind it. The alternative was a second
+ * table of gate counts typed into this file, which is the defect the shared data layer exists to
+ * stop: three pages once stated three different pack totals because each counted for itself.
+ */
+export const getStaticProps: GetStaticProps<{ distribution: GateBar[] }> = async () => ({
+  props: { distribution: buildKillIndex().distribution },
+});
+
+export default function HowItWorks({ distribution }: { distribution: GateBar[] }) {
   const { variant } = useCopyVariant();
   return (
     <MarketingLayout
@@ -180,6 +195,26 @@ export default function HowItWorks() {
           </div>
           <FunnelDiagram className="w-full md:w-[340px]" />
         </div>
+      </Section>
+
+      {/*
+       * THE ATTRITION CASCADE (MASTER-BRIEF section 7), and it is the signature of this page.
+       *
+       * Everything else here describes what the checks ARE. This is the only thing that shows what
+       * they DID. A reader who watches the bar lose most of its width at one gate has understood
+       * that the filter is real in a way six paragraphs about six checks cannot achieve.
+       *
+       * Its own section, not beside the funnel, because the section above is held to one diagram
+       * by the density rule and the funnel is that diagram. The two say different things: the
+       * funnel is the shape of the process, the cascade is the count at every step of it.
+       */}
+      <Section bg="surface">
+        <h2 className="text-h2 font-semibold text-text">Where the ideas went</h2>
+        <p className="mt-3 max-w-[62ch] text-body leading-relaxed text-muted">
+          Every check that killed something, in the order of how much it killed, with the number
+          taken off the total each time.
+        </p>
+        <AttritionCascade distribution={distribution} className="mt-8" />
       </Section>
 
       {/*

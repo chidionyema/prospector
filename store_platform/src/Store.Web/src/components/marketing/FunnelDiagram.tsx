@@ -201,7 +201,7 @@ export function FunnelDiagram({ className }: { className?: string }) {
           open -- without putting a number on the diagram. */}
       <figcaption className="mt-3 max-w-[46ch] text-meta leading-relaxed text-muted">
         The stub at the bottom is the shelf.{' '}
-        <Link href="/ideas" className={textLinkClass()}>
+        <Link href="/collections" className={textLinkClass()}>
           Count it yourself
         </Link>
         .

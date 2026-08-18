@@ -190,6 +190,17 @@ const nextConfig: NextConfig = {
       { source: "/forgot-password", destination: "/account", permanent: false },
       { source: "/verify-email", destination: "/account?verify=1", permanent: false },
       { source: "/reset-password", destination: "/account?reset=1", permanent: false },
+      // `/ideas` became `/collections` (MASTER-BRIEF section 7). The old paths are in the sitemap
+      // Google already has, in the internal links of every pack page it has crawled, and in
+      // anything anyone has shared. Both rules are 308: the move is permanent, and a 307 would
+      // ask every crawler to keep re-checking a page that is never coming back.
+      //
+      // The slug rule must come FIRST. Next.js takes the first match, and `/ideas` with no
+      // `:slug` would otherwise be tried against `/ideas/evenings` before the specific rule is
+      // reached. Two rules rather than one `/ideas/:slug*`, because the index needs its own
+      // destination and a wildcard would send `/ideas` to `/collections/`.
+      { source: "/ideas/:slug", destination: "/collections/:slug", permanent: true },
+      { source: "/ideas", destination: "/collections", permanent: true },
     ];
   },
 };

@@ -27,7 +27,7 @@ import { useCardImpressions } from '@/lib/useCardImpressions';
  *
  * WHAT THIS REPLACES. Three formats used to render packs: `lead` and `mid` and `row` weights of
  * `PackCard` (the home shelf ran all three in ONE vertical section, `index.tsx:1686-1755`), plus
- * `DossierCard`, a fourth format used by `PackGrid` on /ideas/<slug> and by `SimilarPacks` on the
+ * `DossierCard`, a fourth format used by `PackGrid` on /collections/<slug> and by `SimilarPacks` on the
  * pack page. `mid` and `DossierCard` are both deleted; every surface that browsed packs -- the
  * catalogue tail, the other-market groups, the landing grids, the related rail -- now renders
  * THIS.

@@ -32,7 +32,8 @@ export interface DocSectionRef {
   /** A short mono annotation on the right, e.g. a verdict. Never prose. */
   note?: string;
   /** Tints the note. `kill` marks the objection the reader most wants to find. */
-  tone?: 'kill';
+  /** 'kill' is red and means something died. 'warn' is amber and means unsettled, never dead. */
+  tone?: 'kill' | 'warn';
 }
 
 export function DocRail({
@@ -105,7 +106,7 @@ export function DocRail({
                     <span
                       className={cx(
                         'flex-none font-mono text-caption',
-                        section.tone === 'kill' ? 'text-kill' : 'text-subtle',
+                        section.tone === 'kill' ? 'text-kill' : section.tone === 'warn' ? 'text-warning-strong' : 'text-subtle',
                       )}
                     >
                       {section.note}
