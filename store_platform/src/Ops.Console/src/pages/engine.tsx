@@ -129,7 +129,16 @@ type EngineLocation = {
   consecutive_failed_polls: number;
   sides: Record<string, Side | undefined>;
   standby: {
-    files?: Record<string, { bytes: number; age_min: number }>;
+    /**
+     * A file the standby copy is SUPPOSED to have. The value is null when it is not there.
+     *
+     * This said `{ bytes, age_min }` with no null until 2026-08-18. The live view returns
+     * `{"prospector.jsonl": null, "prospector.db": null}` — honest, because the laptop holds
+     * no copy since the engine moved to Fly — and reading `.bytes` off null threw
+     * `TypeError: null is not an object`, which took the whole engine page down. The type was
+     * the thing that was wrong, so tsc could not catch it.
+     */
+    files?: Record<string, { bytes: number; age_min: number } | null>;
     staleness_min: number | null;
     usable: boolean;
   };
@@ -398,7 +407,9 @@ function EngineLocationCard() {
               <div className="mt-2 font-mono text-[11px] text-subtle">
                 {Object.entries(loc.standby.files).map(([f, m]) => (
                   <div key={f}>
-                    {f} · {m.bytes} bytes · {duration(m.age_min * 60)} old
+                    {m
+                      ? `${f} · ${m.bytes} bytes · ${duration(m.age_min * 60)} old`
+                      : `${f} · not on the standby at all`}
                   </div>
                 ))}
               </div>

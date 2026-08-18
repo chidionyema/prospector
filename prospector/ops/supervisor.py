@@ -86,6 +86,27 @@ def _launchctl(*args: str, timeout: int = _PROBE_TIMEOUT_S) -> tuple[int | None,
     return proc.returncode, ((proc.stdout or "") + (proc.stderr or "")).strip()
 
 
+def _unaskable_reason(raw: str) -> str:
+    """Turn "could not ask launchctl" into a sentence the founder can act on.
+
+    launchd is macOS only. Since the engine moved to Fly on 2026-08-18 this code runs on Linux,
+    where every job read answered with the raw exception string
+
+        FileNotFoundError: [Errno 2] No such file or directory: 'launchctl'
+
+    which the console printed against all three jobs. Three red rows quoting a Python traceback
+    read as three broken jobs. Nothing is broken: launchd is simply not the supervisor here, and
+    the tri-state `loaded=None` already says the question was never asked. Only the words were
+    wrong.
+    """
+    if "launchctl" in raw and ("FileNotFoundError" in raw or "No such file" in raw):
+        return ("not supervised by launchd on this machine — launchd is macOS only, and this "
+                "engine runs in a container. The Fly machine restarts it, not a plist.")
+    if "TimeoutExpired" in raw:
+        return "launchctl did not answer in time, so this job's state is unknown"
+    return raw
+
+
 def job_state(label: str) -> dict:
     """Whether launchd holds this job, and its pid if it is running.
 
@@ -98,7 +119,7 @@ def job_state(label: str) -> dict:
 
     if rc is None:
         loaded: bool | None = None
-        reason = out
+        reason = _unaskable_reason(out)
     elif rc == 0:
         loaded, reason = True, "loaded"
     else:
