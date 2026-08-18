@@ -1,6 +1,7 @@
 import type { AppProps } from 'next/app';
 import Head from 'next/head';
 
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import '@/styles/globals.css';
 
 export default function App({ Component, pageProps }: AppProps) {
@@ -18,7 +19,9 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta name="color-scheme" content="light" />
         <title>prospector ops</title>
       </Head>
-      <Component {...pageProps} />
+      <ErrorBoundary>
+        <Component {...pageProps} />
+      </ErrorBoundary>
     </>
   );
 }

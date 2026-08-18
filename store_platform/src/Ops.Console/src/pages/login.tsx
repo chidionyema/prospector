@@ -1,10 +1,11 @@
 /**
  * The door.
  *
- * One password, checked on the server, held in an HttpOnly cookie. This console runs on the
- * founder's laptop and is reached over the tailnet, so the threat it defends against is not a
- * stranger on the internet — it is a device on the tailnet, or a phone left unlocked, reaching a
- * page that can pause the engine and rewrite config.yaml.
+ * One password, checked on the server, held in an HttpOnly cookie. Since 2026-08-18 this
+ * console runs on Fly and answers on the open internet, so a stranger IS the threat, alongside
+ * the older one: a phone left unlocked reaching a page that can pause the engine and rewrite
+ * config.yaml. What stands in the way is TLS, this password, and the five-strikes-per-address
+ * limiter in lib/ratelimit.ts.
  */
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
@@ -90,8 +91,9 @@ export default function Login() {
       </form>
 
       <Note>
-        This console reads and writes the engine on this machine. It is not on the public internet
-        and must never be exposed there.
+        This console reads and writes the live engine. It is on the public internet, so the
+        password is the only thing between a stranger and the shelf. Five wrong tries from one
+        address locks that address for fifteen minutes.
       </Note>
     </main>
   );
