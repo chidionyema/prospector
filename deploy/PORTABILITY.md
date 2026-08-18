@@ -5,6 +5,12 @@ pre-planned"*, alongside *"nothing business critical can run off this laptop"*.
 
 Both at once. We go to Fly now. Leaving Fly is a pre-built, tested path, not a future project.
 
+**Siblings.** [`docs/ESTATE_MAP.md`](../docs/ESTATE_MAP.md) maps every component this has to
+move. [`docs/personas/ops.md`](../docs/personas/ops.md) and
+[`docs/personas/sre-on-call.md`](../docs/personas/sre-on-call.md) say who runs the move and what
+they watch while it runs. [`docs/personas/architect.md`](../docs/personas/architect.md) carries
+the reasoning for the adapter shape below.
+
 ## The contract
 
 There is **one artifact**: the container image built from `deploy/engine/Dockerfile`. It contains
