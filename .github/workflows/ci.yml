@@ -271,15 +271,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      # This job runs two stdlib-only python scripts and needs no virtualenv, but it does need an
-      # interpreter. The Macs ship one; the Fly runner image deliberately installs no language
-      # runtimes (deploy/runner/Dockerfile), so `python3` is not on its PATH. Measured on run
-      # 32143929996: `python3: command not found`, exit 127, on every pull request that happened
-      # to land on a Fly runner. The image is right and this is the fix the image asks for --
-      # every toolchain arrives through an action that fetches its own copy.
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
       - name: Guard against silent deletion of protected files
         run: |
           git fetch origin "${{ github.base_ref }}" --depth=50

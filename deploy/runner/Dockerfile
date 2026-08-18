@@ -36,11 +36,18 @@ FROM ubuntu:24.04
 #                            fails as "Couldn't find a valid ICU package" rather than as a
 #                            missing command.
 #   liblttng-ust1, libssl3 - the rest of the runner agent's .NET dependencies
+#   python3                - NOT a language toolchain for the build. It is the interpreter the
+#                            repo's own shell scripts shell out to. store_platform/scripts/
+#                            deploy_web.sh:175 runs `python3 prove_live.py` after every web
+#                            deploy, and about twenty other scripts do the same. The Macs ship
+#                            one, so the Linux runners differing here fails as
+#                            "python3: command not found", exit 127, AFTER a successful deploy.
+#                            Stdlib only -- no pip, no venv; anything needing packages uses uv.
 #   sudo                   - some third-party actions call it; without it they fail late
 #   locales, tzdata        - test output that compares formatted dates otherwise differs
 #                            between this runner and the Macs
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates curl git jq tar unzip zstd sudo locales tzdata \
+      ca-certificates curl git jq tar unzip zstd sudo locales tzdata python3 \
       libicu74 liblttng-ust1 libssl3 gnupg xz-utils \
     && locale-gen en_GB.UTF-8 \
     && rm -rf /var/lib/apt/lists/*
