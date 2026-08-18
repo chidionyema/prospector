@@ -56,7 +56,14 @@ REPO = Path(__file__).resolve().parent.parent
 STORE = Path(os.environ.get("PROSPECTOR_STORE_DIR") or REPO / "store")
 LEDGER = STORE / "ops" / "pack_recovery.jsonl"
 DOSSIERS = STORE / "dossiers"
-PY = str(REPO / ".venv" / "bin" / "python")
+# The interpreter that is ALREADY running this script, never a path built from the checkout
+# layout. `REPO / ".venv" / "bin" / "python"` is a developer-machine assumption: production
+# moved into a container on 2026-08-18 where there is no `.venv` at all, so every repair route
+# died on `FileNotFoundError: [Errno 2] No such file or directory: '/app/.venv/bin/python'`
+# before it ran a single command. The daemon launches this script with its own `sys.executable`
+# and a human launches it with the venv's, so `sys.executable` is right in both places and
+# cannot drift when the deployment target changes again.
+PY = sys.executable
 
 #: A route that fails this many times with an IDENTICAL failure signature is not going to
 #: succeed on the next identical run. Three, not one: a provider outage and a torn write
