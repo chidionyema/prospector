@@ -1,0 +1,104 @@
+# Merge a pull request as soon as its CI run goes green.
+#
+# WHY THIS EXISTS. Founder, 2026-08-18: "we need auto merge if checks pass". Until now every merge
+# needed a person to watch a queue and type `gh pr merge`, so finished green PRs sat open for
+# hours.
+#
+# WHY NOT GITHUB'S OWN AUTO-MERGE. `gh pr merge --auto` refuses here with "Protected branch rules
+# not configured for this branch". Native auto-merge only arms when something is BLOCKING the
+# merge, and the only things that can block are required checks or required reviews, both of which
+# come from branch protection. This account cannot create branch protection: both
+# /branches/main/protection and /rulesets answer 403 "Upgrade to GitHub Pro or make this
+# repository public" (measured 2026-08-17, still true 2026-08-18). The repository switch is
+# already on (allow_auto_merge: true); it is the rules that cannot exist. So the wait-for-green
+# lives here instead.
+#
+# THE TOKEN MATTERS. A push made with the default GITHUB_TOKEN does not start new workflow runs,
+# by design. A merge done with it would not run CI on main and would not run deploy-engine.yml, so
+# production would quietly stop receiving merged code. One secret fixes that:
+#
+#   gh secret set AUTOMERGE_TOKEN     # a classic PAT with `repo` scope, pasted at the prompt
+#
+# Without the secret this still merges, and says so in the log so nobody assumes a deploy fired.
+name: Auto-merge green PRs
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# One merge at a time. Two merges racing onto main is how a green PR lands on top of a commit its
+# own CI run never saw.
+concurrency:
+  group: automerge
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request'
+    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    steps:
+      - name: Merge every open PR this run proved green
+        env:
+          GH_TOKEN: ${{ secrets.AUTOMERGE_TOKEN || secrets.GITHUB_TOKEN }}
+          HAS_PAT: ${{ secrets.AUTOMERGE_TOKEN != '' }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          if [ "$HAS_PAT" != "true" ]; then
+            echo "::warning::AUTOMERGE_TOKEN is not set, so this merge uses GITHUB_TOKEN."
+            echo "::warning::GITHUB_TOKEN pushes do not start workflows, so CI and deploy-engine"
+            echo "::warning::will NOT run on main for this merge. See the top of this file."
+          fi
+
+          # Find the PRs whose head is the exact commit CI just passed. Matching on the sha, not
+          # on a PR number carried through the event, is what keeps this honest: a PR that has
+          # been pushed to since the run started no longer matches, so a green verdict can never
+          # merge code that verdict did not cover.
+          prs=$(gh api "repos/$REPO/commits/$HEAD_SHA/pulls" \
+                  --jq '.[] | select(.state == "open") | .number' || true)
+          if [ -z "$prs" ]; then
+            echo "no open PR has $HEAD_SHA at its head - nothing to merge"
+            exit 0
+          fi
+
+          for pr in $prs; do
+            info=$(gh pr view "$pr" --repo "$REPO" --json isDraft,baseRefName,labels)
+            draft=$(echo "$info" | jq -r '.isDraft')
+            base=$(echo "$info" | jq -r '.baseRefName')
+            labels=$(echo "$info" | jq -r '[.labels[].name] | join(",")')
+            echo "PR #$pr: draft=$draft base=$base labels=${labels:-none}"
+
+            if [ "$draft" = "true" ]; then
+              echo "  skipping: still a draft"
+              continue
+            fi
+            if [ "$base" != "main" ]; then
+              echo "  skipping: targets $base, not main"
+              continue
+            fi
+            case ",${labels}," in
+              *,hold,*|*,do-not-merge,*|*,wip,*)
+                echo "  skipping: held by a label"
+                continue
+                ;;
+            esac
+
+            # The head sha is asserted a second time, by GitHub, at the moment of the merge.
+            # Between the checks above and this line someone can push; --match-head-commit makes
+            # the merge fail rather than land a commit CI never ran on.
+            if gh pr merge "$pr" --repo "$REPO" --squash --delete-branch \
+                 --match-head-commit "$HEAD_SHA"; then
+              echo "  merged #$pr"
+            else
+              echo "::warning::could not merge #$pr (conflict, or it moved). Left open."
+            fi
+          done
