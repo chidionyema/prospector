@@ -48,7 +48,23 @@ t_release() {
     --dockerfile "$ENGINE_DIR/Dockerfile" --strategy immediate --yes
 }
 
-t_start() { fly scale count 1 -a "$APP" --yes; }
+# `fly scale count 1` returns as soon as the machine is CREATED, not when it is running. The very
+# next command in the cutover is `fly ssh console`, which fails with "app X has no started VMs" -
+# a message that reads like the image is broken when the machine is simply still booting. It cost
+# cutover attempt 4 at 02:40 on 2026-08-18, inside the downtime window. So start means started.
+t_start() {
+  fly scale count 1 -a "$APP" --yes
+  local i state
+  for i in $(seq 1 60); do
+    state="$(fly machines list -a "$APP" --json 2>/dev/null \
+             | python3 -c 'import sys,json;m=json.load(sys.stdin);print(m[0]["state"] if m else "none")' 2>/dev/null || echo none)"
+    [ "$state" = "started" ] && { echo "fly: machine started after ${i}0s"; return 0; }
+    sleep 10
+  done
+  echo "fly: machine never reached state=started (last: ${state:-unknown})" >&2
+  fly logs -a "$APP" --no-tail 2>&1 | tail -30 >&2
+  return 1
+}
 t_stop()  { fly scale count 0 -a "$APP" --yes; }
 
 t_exec() {

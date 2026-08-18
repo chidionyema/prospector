@@ -600,3 +600,26 @@ settings page and permission to use.
 **Portability, same contract as the engine.** `PROSPECTOR_RUNNER_TARGET` names an adapter in
 `deploy/targets/`. The image calls no platform API — a runner makes only outbound calls, so
 moving it is `fly deploy` becoming `docker run` and nothing else.
+
+## 11. Cutover log — the five attempts and what each one fixed
+
+Every defect below was found by running the cutover, not by reading it. Each is now fixed in the
+script, so a repeat run cannot hit it again. Attempts 2, 3 and 4 failed with the engine already
+stopped, which is why every fix moves the check EARLIER.
+
+| # | Time | Failed at | Cause | Fix |
+|---|------|-----------|-------|-----|
+| 1 | 02:27 | phase 3, build | `failed to calculate checksum ... "/requirements.txt": not found` — the docker build context was `deploy/`, but every `COPY` in the engine Dockerfile is repo-root-relative | `REPO_ROOT` in `deploy/targets/fly.sh`; `fly deploy "$REPO_ROOT" --config .../fly.toml` |
+| 2 | 02:30 | phase 5, pack | `can't open file '.../prospector/scripts/store_migrate.py'` — the adapter read its TOOLS from the main checkout, where the new script does not exist | `TOOLS` in `deploy/targets/laptop.sh`, plus a `t_preflight` check so a missing tool fails in phase 1 |
+| 3 | 02:36 | phase 5, pack | `store_migrate.py: error: unrecognized arguments: --store` | parent parser with `default=argparse.SUPPRESS`, so `--store` works on both sides of the subcommand |
+| 4 | 02:40 | phase 6, ship | `Error: app prospector-engine has no started VMs` — `fly scale count 1` returns when the machine is CREATED, and the next command is `fly ssh console` | `t_start` polls `fly machines list` until `state=started`, up to 10 minutes, and dumps the logs if it never gets there |
+| 5 | 02:44 | — | — | — |
+
+Downtime from each failure was bounded by the rollback, which restarted all seven launchd jobs
+every time: 6s on attempt 2, 3m35s on attempt 4. No customer data was lost and no state was
+deleted — the packed tarball is kept at `$TMPDIR/prospector-cutover` on every path.
+
+**The runner image had one of the same class.** `actions/runner` 2.328.0 ships an
+`installdependencies.sh` that asks apt for `libicu72`, which does not exist on Ubuntu 24.04. The
+build died with `E: Unable to locate package libicu72`, which reads like a broken base image.
+`deploy/runner/Dockerfile` installs the 24.04 equivalents itself and does not run that script.

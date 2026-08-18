@@ -60,8 +60,19 @@ WORKDIR /home/runner/actions-runner
 RUN curl -fsSL -o runner.tar.gz \
       "https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-${RUNNER_ARCH}-${RUNNER_VERSION}.tar.gz" \
     && tar xzf runner.tar.gz && rm runner.tar.gz \
-    && ./bin/installdependencies.sh \
     && chown -R runner:runner /home/runner
+
+# `./bin/installdependencies.sh` is NOT run, on purpose. Runner 2.328.0 ships a script that asks
+# apt for `libicu72`, which does not exist on Ubuntu 24.04 - the build dies with
+# "E: Unable to locate package libicu72", which reads like a broken base image rather than a
+# runner script that has not caught up with the distro. The apt-get above already installs the
+# 24.04 equivalents (libicu74, liblttng-ust1, libssl3), which is the whole list that script
+# would have installed. Verified rather than assumed: `Runner.Listener` is the .NET binary the
+# agent runs, so asking it for its version exercises the runtime, and a missing ICU package fails
+# right here with "Couldn't find a valid ICU package" instead of at registration time on Fly.
+# It is Runner.Listener and not `config.sh --version`, because the wrapper scripts refuse to run
+# as root and exit 1 before reaching any .NET code - a check that proves nothing about ICU.
+RUN ./bin/Runner.Listener --version
 
 COPY deploy/runner/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
