@@ -1,0 +1,32 @@
+# Deploy:  fly deploy -c ops/ci-runner/fly.toml
+# Secret:  fly secrets set GH_RUNNER_PAT=<fine-grained PAT, repo administration:write> -a prospector-ci
+# Scale:   fly scale count 3 -a prospector-ci
+app = "prospector-ci"
+primary_region = "lhr"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[deploy]
+  strategy = "immediate"
+
+[env]
+  GITHUB_REPO = "chidionyema/prospector"
+  # `fly` is the label ci.yml's CI_* repo variables point at during the trial, so a Fly runner
+  # takes work only when we say so. Adding `self-hosted` here would put it straight into
+  # competition with the Mac runners on every job.
+  RUNNER_LABELS = "self-hosted,Linux,X64,container,fly"
+  # ci.yml sets this so pytest-xdist's `-n auto` does not spawn one worker per core and thrash.
+  # 4 vCPU here, so 4.
+  PYTEST_XDIST_AUTO_NUM_WORKERS = "4"
+
+# No [http_service]. A runner dials out to GitHub and listens on nothing, so it needs no public
+# address and no health check. A health check on a port nobody serves is how a working machine
+# gets killed and restarted in a loop.
+
+[[restart]]
+  policy = "always"
+
+[[vm]]
+  size = "shared-cpu-4x"
+  memory = "8gb"
