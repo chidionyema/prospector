@@ -109,3 +109,50 @@ def test_shrinking_the_boxs_own_slots_is_what_moves_the_budget(sandbox: Path):
     r = run(sandbox)
     assert r.returncode == 1
     assert "CPU budget" in r.stderr, r.stderr
+
+
+# --------------------------------------------------------------------------- #
+# An offline runner takes no work
+# --------------------------------------------------------------------------- #
+def _runner(name: str, label: str, status: str, busy: bool = False) -> dict:
+    return {"name": name, "status": status, "busy": busy,
+            "labels": [{"name": "self-hosted"}, {"name": label}]}
+
+
+def _live_report(monkeypatch, capsys, runners: list[dict]) -> tuple[int, str]:
+    """Run the --live check against a stubbed GitHub runner list."""
+    import scripts.ci_capacity as cc
+    monkeypatch.setattr(cc, "registered_runners", lambda: runners)
+    monkeypatch.setattr(sys, "argv", ["ci_capacity.py", "--live"])
+    rc = cc.main()
+    out = capsys.readouterr()
+    return rc, out.out + out.err
+
+
+def test_a_registered_but_offline_runner_does_not_count_as_capacity(monkeypatch, capsys):
+    """The whole point. On 2026-08-18 this script printed 'heavy pool: 5 registered ... contract:
+    holds' while a CI run sat queued for 25 minutes. Three of the five were the laptop's Mac
+    runners, offline since the estate moved to Fly. Counting registration measured GitHub's
+    record; the queue measured the fleet."""
+    runners = [_runner("mac-1", "heavy", "offline"),
+               _runner("mac-2", "heavy", "offline"),
+               _runner("mac-3", "heavy", "offline"),
+               _runner("fly-1", "heavy", "online", busy=True)]
+    rc, text = _live_report(monkeypatch, capsys, runners)
+    assert rc == 1, "an all-but-one-offline fleet was reported as holding"
+    assert "1 online" in text, text
+    assert "mac-1" in text, "the offline runners must still be named — that is what explains the queue"
+
+
+def test_an_online_fleet_that_meets_the_contract_holds(monkeypatch, capsys):
+    """Guard the guard: if --live failed for any fleet, the test above would prove nothing."""
+    import scripts.ci_capacity as cc
+    pools = cc.read_contract(cc.CONTRACT)["pools"] if hasattr(cc, "CONTRACT") else None
+    if pools is None:                                   # contract path named differently
+        pytest.skip("contract constant not exposed")
+    runners = []
+    for name, p in pools.items():
+        for i in range(p["runners"]):
+            runners.append(_runner(f"{name}-{i}", p["label"], "online"))
+    rc, text = _live_report(monkeypatch, capsys, runners)
+    assert rc == 0, text
