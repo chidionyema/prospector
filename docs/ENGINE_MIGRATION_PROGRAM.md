@@ -883,20 +883,40 @@ It becomes two things:
 - The receipt layer already works from Fly. §12.5 R6 closed today on exactly that evidence:
   `capability_receipts.jsonl` now carries `"source": "fly"` rows for the engine.
 
-### 13.5 The one dependency that must go first
+### 13.5 The Claude Code dependency is smaller than it looked
 
-Hermes shells out to Claude Code, and it is narrower than it first looked. Chat completions
-already go through a provider abstraction (`hermes-agent/hermes_cli/providers.py`), which is
-portable as it stands. The dependency is in one file: `scripts/coordinator.py` spawns a real
-`claude -p` agent as its tool-capable executor, with deny rules, a circuit breaker and a
-`claude --version` liveness probe (`coordinator.py:967`, `:982`, `:991`). Its own comment says
-why a chat completion will not do: "A raw chat completion can only NARRATE a fix; this runs a
-REAL agent (claude -p)".
+Measured, not assumed. Chat completions already go through a provider abstraction
+(`hermes-agent/hermes_cli/providers.py`), which is portable as it stands.
 
-A Fly container has no `claude` binary and no interactive login, so that executor has to become
-optional the same way the engine's did in PR #303 — present when it can be, with a working path
-when it cannot. This is the first task of the phase, not a detail of it, and it is one file
-rather than a rewrite.
+The tool-capable executor in `scripts/coordinator.py` is already tiered, and the tiers are
+already written down at `coordinator.py:1209`:
 
-This is the first task of the phase, not a detail of it.
+```
+Tier 1: claude -p (Claude Code CLI, full tool-capable agent)
+Tier 2: route.route("executor", prompt) - pure LLM via route.py, no tools
+Tier 3: hard-coded minimal narrative - final floor if route.py itself is unavailable
+```
 
+`agentic_execute` is documented as never-raising (`coordinator.py:1421`), and the whole Tier 1
+block sits inside a `try` behind a circuit breaker (`coordinator.py:1299`). A container with no
+`claude` binary raises `FileNotFoundError` inside that `try` and falls to Tier 2. **So Hermes
+already starts and runs without Claude Code.** It does not need PR #303's treatment to boot.
+
+What it loses is the thing that matters. Tier 1 is the only tier that can Read, Edit, Write and
+Bash — the only one that can actually PERFORM a fix. Tier 2 writes a reasoned account of what
+should be done. The file says so itself at `coordinator.py:967`: "A raw chat completion can only
+NARRATE a fix; this runs a REAL agent (claude -p) that can Read/Edit/Write/Bash to actually
+perform it."
+
+Hermes on Fly with no Tier 1 would therefore look healthy, answer every task, and quietly stop
+doing any work — a capability loss that reports as success, which is the exact failure class §12.5
+R6 exists to catch.
+
+**The replacement already exists.** `~/.claude/mcp/pi_bridge.py` is a headless executor that
+shells out to `pi -p -ne` from a self-contained plan and returns a summary plus a diffstat. It
+needs no interactive login and no Anthropic subscription, so it runs in a container. Wiring it in
+as a Tier 1 alternative is the first task of this phase.
+
+The task is therefore: **give the executor a second tool-capable tier**, not "remove the Claude
+dependency". The removal is already done and was done by somebody else, earlier, for a different
+reason.
