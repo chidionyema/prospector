@@ -50,7 +50,7 @@ import signal
 import subprocess
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -232,13 +232,14 @@ class Lane:
 
 
 LANES: dict[str, Lane] = {
-    # ruff runs FIRST and repo-wide (no path args), for two reasons. First, it is seconds
-    # against pytest's ~175s, so a lint failure comes back fast. Second, `lanes_for` maps
-    # ANY `.py` to this lane, including files outside prospector/tools/scripts/tests —
-    # scoping ruff to those four dirs would green-light a staged `run_v2.py` that was never
-    # linted. The step loop breaks on a non-zero exit, so ruff's own status blocks the
-    # commit; _parse_pytest then reads 0/0 off the ruff output and the verdict is FAIL on
-    # `returncode != 0`, with ruff's findings already printed by the non-zero branch.
+    # ruff runs FIRST because it is seconds against pytest's ~175s, so a lint failure comes
+    # back fast. It is declared here with NO path arguments, which means the whole repository.
+    # That is the fallback, not the normal case: `scope_ruff` narrows it to the .py files in
+    # the commit whenever the caller knows what they are (`--staged`, which is what the hook
+    # uses). Read the note on `scope_ruff` for why both halves are needed. The step loop
+    # breaks on a non-zero exit, so ruff's own status blocks the commit; _parse_pytest then
+    # reads 0/0 off the ruff output and the verdict is FAIL on `returncode != 0`, with ruff's
+    # findings already printed by the non-zero branch.
     "python": Lane(
         key="python",
         label="python — ruff + pytest suite",
@@ -346,6 +347,40 @@ def lanes_for(paths: list[str]) -> tuple[list[str], list[str]]:
         elif ext in SOURCE_EXTS:
             unclassified.append(path)
     return [k for k in LANE_ORDER if k in lanes], unclassified
+
+
+def scope_ruff(lane: Lane, paths: list[str]) -> Lane:
+    """Point ruff at the .py files in THIS commit instead of the whole repository.
+
+    A gate must grade the diff in front of it. Repo-wide ruff did not: one unformatted file
+    anywhere walled every commit in every worktree, for a file the committer had never opened.
+    `main` itself carried 12 such errors until 2b38ca3 cleared them for exactly this reason,
+    and a worktree on an older base failed the gate until it rebased. The person who has to
+    fix it is never the person the gate stopped.
+
+    Scoping to the STAGED PATHS, not to a directory list, is what keeps the guarantee the old
+    comment here was protecting. `lanes_for` routes any `.py` to this lane, including
+    `run_v2.py` and `publish/publish.py` at the repo root; scoping to
+    prospector/tools/scripts/tests would have reported green over files it never opened. A
+    staged file is in the diff wherever it lives, so it is still linted.
+
+    `--force-exclude` keeps parity with the repo-wide run: without it, ruff lints a path given
+    explicitly even when the config excludes it, so scoping would have found NEW errors in
+    generated files that the repo-wide run never reported.
+
+    When the caller does not know the paths — `--lanes`, or a bare invocation — the lane is
+    returned untouched and ruff runs repo-wide. Failing safe means grading MORE, never less.
+    """
+    if lane.key != "python":
+        return lane
+    py = sorted({p for p in paths if p.endswith(".py")})
+    if not py:
+        return lane
+    steps = tuple(
+        (name, [*argv, "--force-exclude", *py] if name == "ruff" else argv)
+        for name, argv in lane.steps
+    )
+    return replace(lane, steps=steps)
 
 
 def staged_paths() -> list[str]:
@@ -617,6 +652,7 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     unclassified: list[str] = []
+    paths: list[str] = []
     if args.lanes:
         selected = [k.strip() for k in args.lanes.split(",") if k.strip()]
         unknown = [k for k in selected if k not in LANES]
@@ -657,7 +693,7 @@ def main(argv: list[str] | None = None) -> int:
         if not acquired:
             return 1
         for key in selected:
-            if not run_lane(agent, LANES[key]):
+            if not run_lane(agent, scope_ruff(LANES[key], paths)):
                 ok = False
                 break   # kill-fast: a failed lane already blocks the commit
 

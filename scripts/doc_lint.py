@@ -254,23 +254,62 @@ def counts_by_file(findings: list[dict]) -> dict[str, int]:
     return dict(sorted(out.items()))
 
 
-def check_ratchet(findings: list[dict]) -> tuple[bool, list[str]]:
-    """True when no doc got worse. Also reports docs that improved, so the baseline can drop."""
+def changed_docs(base_ref: str) -> set[str] | None:
+    """Docs this branch actually changed, relative to `base_ref`. None if git cannot answer.
+
+    A gate must fail a pull request for what that pull request did, and for nothing else.
+    Returning None means "could not tell", and the caller then grades everything -- a shallow
+    clone must not silently turn the ratchet off.
+    """
+    try:
+        out = subprocess.run(["git", "diff", "--name-only", f"{base_ref}...HEAD"],
+                             cwd=REPO_ROOT, capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0:
+        return None
+    return {line.strip() for line in out.stdout.splitlines() if line.strip()}
+
+
+def check_ratchet(findings: list[dict], scope: set[str] | None = None) -> tuple[bool, list[str]]:
+    """True when no doc got worse. Also reports docs that improved, so the baseline can drop.
+
+    `scope` limits which docs may FAIL the run. A doc outside it is still counted and still
+    reported, but it cannot turn this pull request red.
+
+    WHY THIS EXISTS. The ratchet graded every doc in the repository against one shared baseline
+    file. Any branch that edited a doc without re-baselining turned every OTHER open pull
+    request red, for a file none of them had touched. Measured 2026-08-18: main carried 184
+    findings across 14 docs, and #319 and #320 both failed `guard` on
+    docs/ENGINE_MIGRATION_PROGRAM.md, which neither of them contains a single line of. The
+    author of the regression sees green; three strangers see red. That is the defect.
+    """
     if not BASELINE_PATH.exists():
         return False, [f"no baseline at {BASELINE_PATH.relative_to(REPO_ROOT)} — "
                        f"run `python3 scripts/doc_lint.py --write-baseline`"]
     baseline = json.loads(BASELINE_PATH.read_text())
     now = counts_by_file(findings)
     problems: list[str] = []
+    inherited: list[str] = []
     for rel, count in now.items():
         was = baseline.get(rel, 0)
-        if count > was:
-            problems.append(f"{rel}: {was} -> {count} — a doc may only get more accurate")
+        if count <= was:
+            continue
+        message = f"{rel}: {was} -> {count} — a doc may only get more accurate"
+        if scope is not None and rel not in scope:
+            inherited.append(message)
+        else:
+            problems.append(message)
     improved = [f"{rel}: {was} -> {now.get(rel, 0)}"
                 for rel, was in baseline.items() if now.get(rel, 0) < was]
     if improved and not problems:
         problems = []  # improving is never a failure; the message below tells you to re-baseline
-    return not problems, problems + [f"IMPROVED (re-baseline to lock it in) {i}" for i in improved]
+    notes = [f"IMPROVED (re-baseline to lock it in) {i}" for i in improved]
+    if inherited:
+        notes.append(f"INHERITED from the base branch, not this change ({len(inherited)} doc(s)) "
+                     f"-- reported, not fatal:")
+        notes.extend(f"    {m}" for m in inherited)
+    return not problems, problems + notes
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -283,6 +322,9 @@ def main(argv: list[str] | None = None) -> int:
                         help="ratchet mode: fail only when a doc got WORSE than the baseline")
     parser.add_argument("--write-baseline", action="store_true",
                         help="record today's per-file counts as the new ceiling")
+    parser.add_argument("--against", metavar="REF", default=None,
+                        help="with --check: only docs changed since REF may fail the run. "
+                             "Docs that were already worse on REF are reported, not fatal.")
     args = parser.parse_args(argv)
 
     if args.list:
@@ -304,7 +346,12 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.check:
-        ok, messages = check_ratchet(findings)
+        scope = changed_docs(args.against) if args.against else None
+        if args.against and scope is None:
+            print(f"could not diff against {args.against} -- grading every doc")
+        elif scope is not None:
+            print(f"grading {len(scope)} file(s) changed since {args.against}")
+        ok, messages = check_ratchet(findings, scope)
         for message in messages:
             print(message)
         print(f"doc_lint --check: {'PASS' if ok else 'FAIL'} "

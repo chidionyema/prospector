@@ -125,6 +125,13 @@ def test_the_budget_is_a_fraction_of_what_is_left(monkeypatch):
     monkeypatch.setattr("prospector.run.run_signal", fake_run_signal)
     monkeypatch.setattr("prospector.run._resolve_lanes", lambda *a, **k: None)
     monkeypatch.setattr(run_scheduled.time, "monotonic", frozen_monotonic)
+    # Pin the deadline this test measures against. `_TICK_HARD_DEADLINE_S` is a MUTABLE module
+    # global that 26 references across 8 test files write directly, and `_refresh_tick_deadline`
+    # deliberately leaves it alone when config names no deadline. Under `-n auto --dist loadfile`
+    # a worker runs many files in one process, so whatever the previous file left behind is what
+    # this test read: in CI run 32101433859 it was 60, which makes `left` -240s and the assertion
+    # arithmetic meaningless. 600 is only "comfortably more than the 300s spent below".
+    monkeypatch.setattr(run_scheduled, "_TICK_HARD_DEADLINE_S", 600)
 
     run_scheduled._default_generate(types.SimpleNamespace(schedule={"resume_per_tick": 0}), 15)
 

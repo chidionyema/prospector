@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+# One encrypted file holds every secret the stack needs, and every target reads that same file.
+#
+# WHY. Moving the stack to another provider currently means finding the secrets again. They live
+# in a `.env` on the laptop, in `fly secrets` on Fly, and nowhere at all on a box we have not
+# rented yet. Three copies with no single source is how a migration ends with a machine that runs
+# and cannot authenticate — which is exactly what happened on 2026-08-17, when the production
+# checkout moved and every MiniMax tier died with "All operators unavailable - check API keys",
+# because the key file was simply not there.
+#
+# WHY age AND NOT sops. `age` is already installed and already used in this estate
+# (~/.hermes/secrets.age, ~/.hermes/scripts/secrets_manager.py). sops is not installed. A new
+# dependency needs a reason the existing one cannot serve, and there isn't one here: we encrypt a
+# whole file, not selected YAML fields.
+#
+# WHAT IS AND IS NOT IN HERE. Secrets only. Domain names are NOT secret and belong in
+# deploy/compose/stack.env, where the compose file and the image builds can read them without a
+# key. Putting a hostname in here would mean needing the private key to find out what the site is
+# called.
+#
+# THE KEY NEVER ENTERS THE REPO. It lives at ~/.config/prospector/age-key.txt, mode 600. The
+# encrypted file deploy/secrets.env.age IS committed - that is the point, it is useless without
+# the key. Losing the key means re-minting every credential, so back it up somewhere that is not
+# this laptop, which is the same reason this whole programme exists.
+#
+#   bash deploy/secrets.sh init                 # make the keypair, once per machine
+#   bash deploy/secrets.sh set KEY value        # add or change one secret
+#   bash deploy/secrets.sh list                 # key NAMES only, never values
+#   bash deploy/secrets.sh import path/to/.env  # take a whole existing .env in one go
+#   bash deploy/secrets.sh push fly             # decrypt and hand to that target's t_secrets
+#   bash deploy/secrets.sh check                # every key in secrets.required is present
+#
+# `push` writes the plaintext to a file mode 600 under $TMPDIR, hands it to the adapter, and
+# deletes it on any exit path including a failure - the trap is set before the file is written.
+
+set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+STORE="${PROSPECTOR_SECRETS_FILE:-$HERE/secrets.env.age}"
+KEY="${PROSPECTOR_AGE_KEY:-$HOME/.config/prospector/age-key.txt}"
+REQUIRED="$HERE/secrets.required"
+
+die() { echo "$*" >&2; exit 1; }
+
+need_age() {
+  command -v age >/dev/null || die "age is not installed: brew install age"
+}
+
+need_key() {
+  [ -f "$KEY" ] || die "no key at $KEY - run: bash deploy/secrets.sh init"
+}
+
+# Decrypt to stdout. Every reader goes through this, so there is one place that knows the format.
+plaintext() {
+  need_age; need_key
+  [ -f "$STORE" ] || die "no encrypted secrets at $STORE - run: bash deploy/secrets.sh import <file>"
+  age -d -i "$KEY" "$STORE"
+}
+
+# Encrypt stdin to the store, to the public half of our own key.
+encrypt_stdin() {
+  need_age; need_key
+  local pub
+  pub="$(age-keygen -y "$KEY")"
+  age -r "$pub" -o "$STORE.tmp"
+  mv "$STORE.tmp" "$STORE"
+}
+
+cmd_init() {
+  need_age
+  if [ -f "$KEY" ]; then
+    echo "key already exists at $KEY (public: $(age-keygen -y "$KEY"))"
+    return 0
+  fi
+  mkdir -p "$(dirname "$KEY")"
+  age-keygen -o "$KEY" 2>/dev/null
+  chmod 600 "$KEY"
+  echo "made $KEY (public: $(age-keygen -y "$KEY"))"
+  echo "back this file up somewhere that is not this machine. Without it the store cannot be read."
+}
+
+cmd_set() {
+  local k="${1:?usage: set KEY VALUE}" v="${2:?usage: set KEY VALUE}"
+  local current=""
+  [ -f "$STORE" ] && current="$(plaintext)"
+  # Drop any existing line for this key, then append the new one. grep -v with an anchored
+  # pattern, so KEY=... never matches OTHER_KEY=... .
+  { printf '%s\n' "$current" | grep -v "^${k}=" || true; printf '%s=%s\n' "$k" "$v"; } \
+    | grep -v '^$' | sort | encrypt_stdin
+  echo "set $k"
+}
+
+cmd_list() {
+  plaintext | grep -o '^[A-Za-z_][A-Za-z0-9_]*=' | tr -d '=' | sort
+}
+
+cmd_import() {
+  local f="${1:?usage: import <file>}"
+  [ -f "$f" ] || die "no such file: $f"
+  # Keep only real KEY=VALUE lines. Comments and blanks are dropped rather than encrypted, so
+  # `list` never shows something that is not a key.
+  grep -E '^[A-Za-z_][A-Za-z0-9_]*=' "$f" | sort | encrypt_stdin
+  echo "imported $(cmd_list | wc -l | tr -d ' ') keys from $f"
+}
+
+cmd_push() {
+  local target="${1:?usage: push <target>}"
+  local adapter="$HERE/targets/${target}.sh"
+  [ -f "$adapter" ] || die "no adapter at $adapter"
+  local tmp
+  tmp="$(mktemp "${TMPDIR:-/tmp}/prospector-secrets.XXXXXX")"
+  # Set BEFORE anything is written, so an interrupt between mktemp and the write still cleans up.
+  trap 'rm -f "$tmp"' EXIT INT TERM
+  chmod 600 "$tmp"
+  plaintext > "$tmp"
+  # shellcheck disable=SC1090
+  source "$adapter"
+  t_secrets "$tmp"
+  echo "pushed $(grep -c '=' "$tmp") secrets to $(t_name)"
+}
+
+cmd_check() {
+  [ -f "$REQUIRED" ] || die "no $REQUIRED to check against"
+  local have missing=0
+  have="$(cmd_list)"
+  while read -r k; do
+    case "$k" in ''|'#'*) continue ;; esac
+    printf '%s\n' "$have" | grep -qx "$k" || { echo "MISSING $k"; missing=1; }
+  done < "$REQUIRED"
+  [ "$missing" = 0 ] && echo "every required secret is present" || die "the store is incomplete"
+}
+
+case "${1:-}" in
+  init)   shift; cmd_init "$@" ;;
+  set)    shift; cmd_set "$@" ;;
+  list)   shift; cmd_list ;;
+  import) shift; cmd_import "$@" ;;
+  push)   shift; cmd_push "$@" ;;
+  check)  shift; cmd_check ;;
+  *) die "usage: $(basename "$0") {init|set KEY VALUE|list|import <file>|push <target>|check}" ;;
+esac

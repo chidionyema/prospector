@@ -31,15 +31,27 @@ type PackSales = {
 };
 type StatusCount = { status: string | null; orders: number | null };
 
+/**
+ * TWO NAMING CONVENTIONS, AND BOTH ARE CORRECT.
+ *
+ * The view's own keys are snake_case, because `console_api` is Python and writes them.
+ * The keys INSIDE each row are camelCase, because those rows come from the store API and
+ * are passed through untouched. Nothing in between renames anything.
+ *
+ * This block used camelCase names for all six until 2026-08-18. Every one of them read
+ * undefined off the live view, and reading `.length` off the missing status list threw,
+ * which took the whole page down with "a client-side exception has occurred".
+ * TypeScript could not catch it: the type was the thing that was wrong.
+ */
 type SalesView = {
   today: Gross[];
-  byCurrency: Gross[];
-  byDay: DayGross[];
-  byPack: PackSales[];
-  orderStatuses: StatusCount[];
-  orderCount: number | null;
+  by_currency: Gross[];
+  by_day: DayGross[];
+  by_pack: PackSales[];
+  order_statuses: StatusCount[];
+  order_count: number | null;
   days: number | null;
-  dayBoundary: string | null;
+  day_boundary: string | null;
   warnings: string[];
 };
 
@@ -96,14 +108,14 @@ export default function Revenue() {
 
   const byDay = useMemo(() => {
     const grouped = new Map<string, DayGross[]>();
-    for (const r of data?.byDay ?? []) {
+    for (const r of data?.by_day ?? []) {
       const key = r.date ?? ABSENT;
       grouped.set(key, [...(grouped.get(key) ?? []), r]);
     }
     return [...grouped.entries()].sort((a, b) => b[0].localeCompare(a[0]));
   }, [data]);
 
-  const packs = data?.byPack ?? [];
+  const packs = data?.by_pack ?? [];
 
   return (
     <Shell title="Revenue" intro="What the shop took, today and over a window.">
@@ -117,9 +129,9 @@ export default function Revenue() {
         right={<AsOf asOf={envelope?.as_of} tookMs={envelope?.took_ms} />}
       >
         {!data ? <Spinner what="the shop's sales" /> : <GrossTiles rows={data.today} what="today" />}
-        {data?.dayBoundary ? (
+        {data?.day_boundary ? (
           <Row label="A day starts at">
-            <Mono>{data.dayBoundary}</Mono>
+            <Mono>{data.day_boundary}</Mono>
           </Row>
         ) : null}
       </Card>
@@ -150,14 +162,14 @@ export default function Revenue() {
           </button>
         </div>
         <div className="mt-3">
-          {!data ? <Spinner what="the window" /> : <GrossTiles rows={data.byCurrency} what="this window" />}
+          {!data ? <Spinner what="the window" /> : <GrossTiles rows={data.by_currency ?? []} what="this window" />}
         </div>
         {data ? (
           <div className="mt-3">
             <Stat
               label="orders in the window"
-              value={data.orderCount}
-              note={data.orderCount === null ? 'the store did not report a count' : null}
+              value={data.order_count}
+              note={data.order_count === null ? 'the store did not report a count' : null}
             />
           </div>
         ) : null}
@@ -165,11 +177,11 @@ export default function Revenue() {
 
       {data ? (
         <Card title="Where the orders stand">
-          {data.orderStatuses.length === 0 ? (
+          {(data.order_statuses ?? []).length === 0 ? (
             <Empty>No order status was reported for this window.</Empty>
           ) : (
             <div className="flex flex-wrap gap-1.5">
-              {data.orderStatuses.map((s) => (
+              {(data.order_statuses ?? []).map((s) => (
                 <Pill key={s.status ?? 'unknown'} tone="mute">
                   {s.status || 'no status'} ·{' '}
                   {s.orders === null || s.orders === undefined ? 'not counted' : s.orders}

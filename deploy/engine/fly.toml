@@ -38,6 +38,13 @@ primary_region = "lhr"
   # (prospector/bridge.py:610), which in a container resolves to the container itself and
   # would fail every publish with a connection refused that reads like an API outage.
   STORE_API_URL = "https://api.mumchimp.com"
+  # Our own metasearch, deployed by deploy/searxng/. It has NO public IP; .internal is Fly's
+  # private 6PN network, so only apps in this org can reach it. It is declared here rather than
+  # left as a hand-set `fly secrets` value because a hostname is not a secret, and because a
+  # rebuild of this app from the repo has to bring grounding back with it. Without this the
+  # provider falls back to localhost:8080 (retrieval.py:1388), which in a container is the
+  # container itself, and every search dies with a connection refused.
+  SEARXNG_URL = "http://prospector-searxng.internal:8080"
 
 # The ops console, and nothing else.
 [http_service]
