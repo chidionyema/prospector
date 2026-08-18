@@ -99,6 +99,20 @@ def sh(cmd: list[str], timeout: int = 60) -> tuple[int, str, str]:
         return 127, "", str(exc)
 
 
+def standing_on() -> str:
+    """Which side is this process running ON. Not which side is active — where the code is.
+
+    Fly sets FLY_MACHINE_ID inside every machine. Until 2026-08-18 nothing here asked, and both
+    probes were written from the laptop's point of view. Once the console started running inside
+    the Fly machine, `probe_fly` shelled out to a `fly` CLI the container does not have and
+    reported the engine UNREACHABLE while it was serving that very page, and `probe_laptop` read
+    PROSPECTOR_STORE_DIR — which on Fly is /data/store — and reported the Fly ledger as the
+    laptop's. The console's engine page therefore read: active unknown, Fly unreachable, laptop
+    unhealthy. Every one of those three was wrong.
+    """
+    return "fly" if os.environ.get("FLY_MACHINE_ID") else "laptop"
+
+
 def active_side() -> str:
     try:
         return ACTIVE_F.read_text().strip() or "unknown"
@@ -120,6 +134,23 @@ def probe_fly(deep: bool = False) -> dict:
     difference between "Fly says it is down" and "we could not ask Fly".
     """
     out: dict = {"side": "fly", "app": FLY_APP, "reachable": False, "healthy": False}
+    here = os.environ.get("FLY_MACHINE_ID")
+    if here:
+        # Standing on it. "Is the machine started" cannot be asked from inside the machine that
+        # would have to be started to ask, so it is answered rather than asked. The ledger is a
+        # local file read, not the SSH round trip the laptop needs, so `deep` costs nothing here.
+        out.update(reachable=True, healthy=True, state="started", machine_id=here, machines=1,
+                   probed_from="inside this machine")
+        ledger = LAPTOP_STORE / "prospector.jsonl"
+        if ledger.exists():
+            out["ledger_age_min"] = round((time.time() - ledger.stat().st_mtime) / 60, 1)
+            if deep:
+                with ledger.open("rb") as fh:
+                    out["ledger_lines"] = sum(1 for _ in fh)
+        else:
+            out["error"] = f"no ledger at {ledger}"
+            out["healthy"] = False
+        return out
     if not shutil.which("fly"):
         out["error"] = "fly CLI not installed on this machine"
         return out
@@ -161,6 +192,11 @@ def probe_fly(deep: bool = False) -> dict:
 
 def probe_laptop(deep: bool = False) -> dict:
     """Is this machine running the engine? Always reachable - we are standing on it."""
+    if standing_on() == "fly":
+        # The laptop is a different computer with no route in from here. Saying "reachable, not
+        # healthy" would read as "the laptop is broken" when the truth is that nothing asked it.
+        return {"side": "laptop", "reachable": False, "healthy": False,
+                "error": "not visible from the Fly machine — run this on the laptop to read it"}
     out: dict = {"side": "laptop", "reachable": True, "healthy": False}
     rc, so, _ = sh(["pgrep", "-f", "prospector.scheduler.run_scheduled"], timeout=15)
     out["scheduler_pids"] = [p for p in so.split() if p]
@@ -199,12 +235,31 @@ def probe_standby() -> dict:
 
 # --------------------------------------------------------------------------- commands
 
+def _reported_active(fly: dict, lap: dict) -> str:
+    """What to SHOW as the active side. Deliberately not what the failover rules read.
+
+    ~/.prospector/ACTIVE is the marker, and rule 2 keeps reading it through `active_side()`,
+    untouched: inferring the active side inside the failover logic is how a network blip turns
+    into two live engines. But the marker lives on whichever box wrote it, and the cutover never
+    wrote one inside the Fly machine, so the console showed "unknown" while the engine it was
+    reading ran under its own feet. Displaying the side we are standing on is not a guess.
+    """
+    marked = active_side()
+    if marked in ("fly", "laptop"):
+        return marked
+    here = standing_on()
+    side = fly if here == "fly" else lap
+    return here if side.get("healthy") else "unknown"
+
+
 def cmd_status(args) -> int:
     fly = probe_fly(deep=args.deep)
     lap = probe_laptop(deep=args.deep)
     report = {
         "at": now(),
-        "active": active_side(),
+        "active": _reported_active(fly, lap),
+        "active_marker": active_side(),
+        "standing_on": standing_on(),
         "autofailover": "armed" if ARMED_F.exists() else "disarmed",
         "consecutive_failed_polls": read_fails(),
         "sides": {"fly": fly, "laptop": lap},
