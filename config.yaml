@@ -272,8 +272,33 @@ retrieval:
   # Hence BACKSTOP, not primary. Leading with it would spend 3.2s to return results the relevance
   # gate then throws away. In the backstop slot it runs only when duckduckgo actually RAISES, and
   # there it costs nothing and can save a check that would otherwise reach claude_cli.
+  # SEARXNG NOW LEADS, BECAUSE PRODUCTION LEFT THE LAPTOP (2026-08-18).
+  # Everything above this paragraph was measured on the laptop and is still true THERE. It stopped
+  # describing production at 03:09 on 2026-08-18, when the engine cut over to Fly. From a
+  # datacenter IP the free providers refuse us outright, measured from prospector-engine:
+  #     ddg        curl exit 000 after 12s, on IPv4 and IPv6, on both duckduckgo.com and lite.
+  #     exa        HTTP 402 NO_MORE_CREDITS
+  #     claude_cli "Not logged in" (no interactive session in a container)
+  # while example.com answered 200 in 0.08s from the same machine, so egress was never the
+  # problem. The engine logged "ALL grounding providers dead" continuously for six hours.
+  #
+  # We now run our OWN SearXNG on Fly (deploy/searxng/), private, no public IP, reachable only at
+  # http://prospector-searxng.internal:8080 over 6PN. Re-measured on prospector-engine through
+  # the real composed chain (make_provider, so fetch_pages and the relevance ranker included, the
+  # thing the laptop number above did NOT measure), same 5 queries, same _mean_coverage:
+  #     fly searxng   mean coverage 0.42, 6.6s, cleared the 0.35 bar on 3 of 5
+  #     laptop ddg    mean coverage 0.40, 6.2s, cleared it on 3 of 5   (the old leader)
+  #     laptop searxng 0.10  — the 2026-08-16 number above, snippets only, no page fetch
+  # So on the host that matters it is not worse than the provider it replaces, and it is the only
+  # one that answers at all. Bing and google carry those results; SearXNG's own log shows mojeek
+  # 403, brave 429 and duckduckgo CAPTCHA, which is why a metasearch box beats any single engine.
+  #
+  # THIS ORDER IS CORRECT ON THE LAPTOP TOO, and does not need a per-host config. A weak result
+  # set does not end the chain: `FallbackSearchProvider` escalates off any provider scoring under
+  # `min_relevance` (retrieval.py:2283) and keeps the best set it saw (retrieval.py:2295). On the
+  # laptop searxng scores 0.10, misses the bar, and ddg still answers the query.
   # Options: ddg | claude_cli | exa | brave | searxng | fixture
-  provider: [ddg, exa, searxng, claude_cli]
+  provider: [searxng, ddg, exa, claude_cli]
   # Providers here answer an OUTAGE only. They are skipped whenever an earlier provider in
   # the chain answered at all, even off-topic, so the relevance escalation can never reach
   # them. Founder directive 2026-08-16, on the measurement: "unacceptable use of claude cli"
@@ -285,7 +310,9 @@ retrieval:
   # ORDER INSIDE THE CHAIN STILL DECIDES WHO GOES FIRST. searxng sits ahead of claude_cli, so a
   # real outage tries the free keyless one before the expensive model — see the measurement above
   # the `provider:` line for why searxng is here rather than leading.
-  backstop_only_providers: [searxng, claude_cli]
+  # searxng LEFT this list on 2026-08-18. A backstop-only provider is skipped whenever anything
+  # earlier answered, so it can never lead — and on Fly nothing earlier answers at all.
+  backstop_only_providers: [claude_cli]
   queries_per_check: 2              # LLM query-gen: 2 distinct queries per check for grounding depth
   results_per_query: 3             # 3 sources per query (~6 passages/check) so checks can reach 'supported'
   max_passage_chars: 1500

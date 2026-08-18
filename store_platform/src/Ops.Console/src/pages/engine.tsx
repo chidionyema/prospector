@@ -123,6 +123,8 @@ type Side = {
 type EngineLocation = {
   at: string;
   active: string;
+  /** 'marker' when the switch recorded it, 'observed' when only one side answered as alive. */
+  active_from?: string;
   autofailover: string;
   consecutive_failed_polls: number;
   sides: Record<string, Side | undefined>;
@@ -339,6 +341,11 @@ function EngineLocationCard() {
               The engine is running on{' '}
               <span className="text-text">{SIDE_TITLE[active] ?? active}</span>.
             </div>
+            {loc.active_from === 'observed' ? (
+              <Pill tone="mute">
+                observed, not recorded
+              </Pill>
+            ) : null}
             <Pill tone={armed ? 'warn' : 'mute'}>
               {armed ? 'automatic failover ARMED' : 'automatic failover off'}
             </Pill>
