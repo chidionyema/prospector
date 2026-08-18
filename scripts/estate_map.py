@@ -33,7 +33,6 @@ import shutil
 import subprocess
 import sys
 import time
-from pathlib import Path
 
 # --- the estate, declared -------------------------------------------------------------------
 # Everything below is a NAME plus how to prove it. Adding a component means adding a row here,
@@ -195,7 +194,7 @@ def probe_runners() -> dict:
     if rc != 0:
         return {"state": "unknown", "note": out.splitlines()[0] if out else "gh did not answer",
                 "runners": []}
-    rs = [l for l in out.splitlines() if l.strip()]
+    rs = [row for row in out.splitlines() if row.strip()]
     online = [r for r in rs if " online" in r]
     return {"state": "ok" if online else "fail", "runners": rs,
             "note": f"{len(online)} of {len(rs)} online -- all on the laptop until R8 lands"}
@@ -206,7 +205,7 @@ def probe_volume_usage(app: str, path: str = "/data") -> dict:
                    f"sh -lc 'df -h {path} | tail -1'"], 40)
     if rc != 0:
         return {"state": "unknown", "note": out.splitlines()[-1] if out else "no answer"}
-    line = [l for l in out.splitlines() if path in l or "%" in l]
+    line = [row for row in out.splitlines() if path in row or "%" in row]
     return {"state": "ok" if line else "unknown", "note": line[-1].strip() if line else out[-120:]}
 
 
