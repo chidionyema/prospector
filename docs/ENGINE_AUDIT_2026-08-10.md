@@ -6,7 +6,7 @@
 >
 > | The audit says | `main` on 2026-08-18 | Command |
 > |---|---|---|
-> | `prospector/publish.py` is a 0-byte stub (§1) | the file does not exist at all | `ls prospector/publish.py` |
+> | `prospector/publish.py` is a 0-byte stub (§1) | the file does not exist at all | `ls prospector/publish.py` | <!-- doc-lint-ok: this row exists BECAUSE the path is gone -->
 > | `MOAT_PRIMARY` is at `operator.py:1068` (§1) | there is no `MOAT_PRIMARY`. It is `MOAT_PRIMARY_DEFAULT` at `operator.py:1405`, and the live set is declared by `config.yaml moat_primary:` | `grep -n MOAT_PRIMARY prospector/operator.py` |
 > | `candidates_per_signal: 20` at `config.yaml:764`, `batch_size: 15` (§1) | `50` at `config.yaml:1154`; `batch_size: 50` at `config.yaml:2397` | `grep -n 'candidates_per_signal:\|batch_size:' config.yaml` |
 > | the moat is claude-led, with `standardcompute` in the chain (scope, finding 4) | `operator: [minimax, claude_cli]`, `moat_primary: [minimax, claude_cli]`, `noncritical_operator: [minimax, minimax_m27]`. MiniMax leads and rules finally since 2026-08-15 | `grep -n '^operator:\|^moat_primary:\|^noncritical_operator:' config.yaml` |

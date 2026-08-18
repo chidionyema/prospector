@@ -1,0 +1,40 @@
+{
+  "id": "INC-2026-08-18-silent-acceptance",
+  "opened": "2026-08-18",
+  "title": "208 Hermes tasks closed as done on an acceptance test that exited 0 and printed nothing, while the executor had fallen back to a brain with no tools",
+  "severity": "high",
+  "detected_by": "founder",
+  "first_order": {
+    "what_broke": "The founder said the agent produces alerts instead of work. Task c53a1e4b2841 on 2026-08-18 is the shape of it. claude -p timed out at 900s, so the coordinator fell back to MiniMax, which has no tool runtime and printed its tool calls as prose. verify() then ran the acceptance test, got exit 0 with no output, and closed the task done with the reason 'acceptance test passed (ground truth); fingerprint resolved. (exit 0, no output)'. Nothing was done.",
+    "receipt": "coordinator.db events, kind=verify, payload contains '(exit 0, no output)' and ok=true, on a task whose result carries an executor fallback marker: 208 tasks, first 2026-07, most recent 2026-08-18. The acceptance test on c53a1e4b2841 was `python3 ~/.hermes/tests/test_resilience_ticks_unreadable.py >/dev/null 2>&1 && grep -q 'Failed to read ticks.jsonl' ~/.hermes/scripts/resilience.py` — silent by construction on both halves.",
+    "fixed_by": "~/.hermes 3861d76"
+  },
+  "cause_chain": [
+    "verify() checked the acceptance test BEFORE the chat-fallback gate, by design, with the comment 'a passing ground-truth check is authoritative REGARDLESS of execution narration'. That is right when the check reports what it saw and wrong when it says nothing.",
+    "An acceptance test is a STATE check, not a CHANGE check. It cannot tell 'this run fixed it' from 'it was already true when the task was opened'. Output is the only thing that carries that difference, and these tests suppress their own output.",
+    "The executor reached the fallback tier at all because claude -p exceeded EXEC_TIMEOUT_S of 900s. MEASURED 2026-08-18: the most trivial possible executor turn (one Bash echo, reply OK) took 82 seconds. On 2026-08-06 the same shape of turn measured 27s. The per-turn cost tripled; the budget did not move.",
+    "The fallback tiers are not tool-capable. Falling back from the only tool-capable tier to a chat brain cannot perform executor work under any circumstances, so a fallback on a remediation task is always a failure, never a slower success.",
+    "CLASS: a check whose pass condition is the absence of an error passes vacuously when it does nothing. Same class as pytest exiting 0 on zero collected tests, a guard that iterates an empty list, and dotnet test reporting exit 0 while failing. This is that class inside the verifier that grades every other piece of automation."
+  ],
+  "second_order": {
+    "sweep_command": "rg -n 'returncode == 0|rc == 0|exit 0' ~/.hermes/scripts/*.py scripts/*.py | rg -v 'test_'",
+    "siblings_found": null,
+    "siblings_fixed": 0,
+    "note": "NOT YET RUN. Every place that reads an exit code as a verdict without requiring the command to say something is a candidate."
+  },
+  "third_order": {
+    "tier": "refuse",
+    "mechanism": "verify() refuses a silent exit-0 acceptance test when the evidence carries an executor fallback marker. _acceptance_was_silent() is the named predicate so the rule is greppable rather than an inline condition.",
+    "landed_on": "2026-08-18",
+    "note": "Deliberately narrow. Silence alone still closes a task, because `test -f path` is a legitimate silent check. Silence PLUS 'the executor could not act' is the pair that carries no information at all. Pinned by three tests, including the two that must keep passing."
+  },
+  "grade": {
+    "signature": "a verify event with ok=true whose reason contains '(exit 0, no output)' on a task whose result carries an executor fallback marker",
+    "before": 208,
+    "after": null,
+    "window_days": 14,
+    "verdict": "unproven"
+  },
+  "issue": null,
+  "state": "open"
+}
