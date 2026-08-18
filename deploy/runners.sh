@@ -40,6 +40,62 @@ ENV_FILE="${PROSPECTOR_ENV_FILE:-$(_default_env)}"
 
 say() { printf '\n\033[1m[%s] %s\033[0m\n' "$(date +%H:%M:%S)" "$*"; }
 
+cmd_set_pat() {
+  # Store the runner credential once, safely, and prove it works before storing it.
+  #
+  # GitHub has no API that CREATES a personal access token, so this verb cannot mint one - only
+  # a signed-in human at the web form can. What it removes is every other step: the token never
+  # appears in a shell history, a chat log, or a file mode other than 600, and a token that
+  # cannot actually register a runner is refused here rather than at the first CI job.
+  #
+  # Reads the token from stdin, never from an argument: an argument lands in `ps` output and in
+  # the shell's history file.
+  local token
+  if [ -t 0 ]; then
+    cat >&2 <<MSG
+Paste the token on stdin, so it never reaches your shell history:
+
+  pbpaste | deploy/runners.sh set-pat
+
+Mint it first, at:
+  https://github.com/settings/personal-access-tokens/new
+  Repository access : Only select repositories -> prospector
+  Permissions       : Repository -> Administration -> Read and write
+  Expiration        : 90 days
+MSG
+    exit 2
+  fi
+  IFS= read -r token
+  token="$(printf '%s' "$token" | tr -d '[:space:]')"
+  [ -n "$token" ] || { echo "nothing on stdin" >&2; exit 2; }
+
+  say "checking the token can register a runner on $GH_REPO, and nothing more"
+  local code
+  code="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
+    -H "Authorization: Bearer $token" \
+    -H "Accept: application/vnd.github+json" \
+    "https://api.github.com/repos/$GH_REPO/actions/runners/registration-token")"
+  if [ "$code" != "201" ]; then
+    echo "  REFUSED: the token could not mint a registration token (HTTP $code)." >&2
+    echo "  It needs Repository -> Administration -> Read and write on $GH_REPO." >&2
+    exit 1
+  fi
+  echo "  ok: HTTP 201, the token can add and remove runners on $GH_REPO"
+
+  # Written to the env file the whole estate already treats as the source of truth, so it is
+  # carried into the encrypted offsite backup with everything else and needs no second store.
+  local tmp
+  tmp="$(mktemp)"
+  chmod 600 "$tmp"
+  grep -v '^GITHUB_RUNNER_PAT=' "$ENV_FILE" > "$tmp" 2>/dev/null || true
+  printf 'GITHUB_RUNNER_PAT=%s\n' "$token" >> "$tmp"
+  mv "$tmp" "$ENV_FILE"
+  chmod 600 "$ENV_FILE"
+  say "stored in $ENV_FILE (mode 600)"
+  echo "  read it back any time with:  grep '^GITHUB_RUNNER_PAT=' $ENV_FILE"
+  echo "  then bring the fleet up:     deploy/runners.sh up 4"
+}
+
 cmd_up() {
   local n="${1:?usage: runners.sh up <count>}"
   command -v fly >/dev/null || { echo "fly CLI not installed" >&2; exit 1; }
@@ -137,6 +193,7 @@ cmd_laptop_on() {
 }
 
 case "${1:-}" in
+  set-pat) shift; cmd_set_pat "$@" ;;
   up)         shift; cmd_up "$@" ;;
   down)       cmd_down ;;
   status)     cmd_status ;;
