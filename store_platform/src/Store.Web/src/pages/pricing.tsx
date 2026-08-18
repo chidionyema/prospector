@@ -55,11 +55,12 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
       {/* The drawing's frame, not a 768px column at a 24px gutter: `mockups/pricing.html`
           `.wrap{max-width:1080px;padding:0 20px}` with `.pagetop{padding:14px 0 8px}`. */}
       <section className="mx-auto max-w-[1080px] px-5 pt-3.5 pb-16">
-        <p className="mb-3 text-caption font-medium text-subtle">Pricing</p>
+        <div className="pagetop">
+        <p className="eyebrow">Pricing</p>
         <h1>
           {range ? range.headline : 'One payment per pack.'}
         </h1>
-        <p className="mt-4 max-w-[60ch] lede">
+        <p className="lede big mt-4">
           {/* Was "One price, every pack." The mode is stated alongside the spread on purpose:
               quoting only "from £29" when most packs are dearer is the airline-fare move. */}
           {/* "No seat fees, no drip-feed" is cut, along with "no upsell" in the fallback meta
@@ -75,6 +76,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
           </Link>
           .
         </p>
+        </div>
 
         {/*
           COST ANCHOR, PROMOTED TO POSITION 2 (email §5).

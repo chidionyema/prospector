@@ -87,9 +87,28 @@ function sections(html) {
     .filter((s) => s.html.trim());
 }
 
+/*
+ * PER-PACK CONTENT IS DATA, NOT COPY, and leaving it in made the ledger lie in the expensive
+ * direction. The drawing hard-codes the packs that were on the shelf the day it was drawn; the
+ * built page renders whatever the catalogue holds now. So every pack title and description in the
+ * drawing read as a missing sentence forever. Section 11 scored 0% with all four "misses" being
+ * pack titles, which buried the one real gap on the page.
+ *
+ * A pack card is exactly an `<a href="/pack/...">`, so that is the strip. The featured card is the
+ * one place the pack's title and description sit OUTSIDE the link, and there they are a bare
+ * `<h3>` and a `<p class="d">` -- both of which only ever hold pack data in these drawings, while
+ * the headings the page owns carry a class (`h3.sub`, `h2.sec`).
+ */
+function stripPackData(html) {
+  return html
+    .replace(/<a\b[^>]*href="\/pack\/[^"]*"[\s\S]*?<\/a>/g, ' ')
+    .replace(/<h3>[\s\S]*?<\/h3>/g, ' ')
+    .replace(/<p class="d">[\s\S]*?<\/p>/g, ' ');
+}
+
 /** The prose a drawing prints: text nodes only, no markup, no data. */
 function prose(html) {
-  const text = html.replace(/<(script|style)[\s\S]*?<\/\1>/g, '').replace(/<!--[\s\S]*?-->/g, '');
+  const text = stripPackData(html).replace(/<(script|style)[\s\S]*?<\/\1>/g, '').replace(/<!--[\s\S]*?-->/g, '');
   const runs = [];
   for (const raw of text.split(/<[^>]*>/)) {
     const t = norm(raw);

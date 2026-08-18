@@ -388,7 +388,13 @@ export default function IdeasHub({ categories, total, variant }: Props) {
             (`mockups/collections.html`), and `.closing p` owns the size, colour and measure. The
             utilities that used to hold those same numbers are removed rather than layered, since
             mockup.css sits under the utility layer (globals.css:8). */}
-        <div className="closing flex flex-wrap items-center justify-between gap-x-10 gap-y-5">
+        {/* THE DRAWING STACKS THIS BLOCK (`mockups/collections.html`, `.closing`): the sentence,
+            then a `.ctarow` of two buttons. It was one flex row with the paragraph on the left and
+            a single button on the right, so the ghost button the drawing puts beside it had
+            nowhere to go and the row was the only closing on the site with one way out.
+            The drawing's heading here is "Or see everything at once", which the founder deleted on
+            2026-08-13; the paragraph carries the block instead. */}
+        <div className="closing">
           <p>
             Categories appear once enough packs have cleared the checks to fill them. Ideas that failed are in the{' '}
             <Link href="/kill-log" className={textLinkClass('font-medium')}>
@@ -396,10 +402,15 @@ export default function IdeasHub({ categories, total, variant }: Props) {
             </Link>{' '}
             with the sourced reason why.
           </p>
-          <Link href="/" className="btn">
-            Browse every pack
-            <Icon name="arrowRight" size={14} />
-          </Link>
+          <div className="ctarow">
+            <Link href="/" className="btn">
+              Browse every pack
+              <Icon name="arrowRight" size={14} />
+            </Link>
+            <Link href="/sample" className="btn ghost">
+              Read a full pack free
+            </Link>
+          </div>
         </div>
       </Section>
     </MarketingLayout>

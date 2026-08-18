@@ -264,7 +264,7 @@ export default function KillLogPage({
             left column to 40rem and closing the gap to 3rem gives the caveat 384px, which is about
             38 characters a line instead of 27. */}
         <div className="grid gap-10 lg:grid-cols-[minmax(0,40rem)_minmax(0,1fr)] lg:items-start lg:gap-12">
-        <div className="max-w-3xl">
+        <div className="pagetop max-w-3xl">
           <p className="eyebrow">The kill log</p>
           {/* THE HERO: ONE COUNT. It read "1,364 killed. 80 survived.", and the second half was
               the figure the founder cut on 2026-08-13, because the shelf this page links to holds
@@ -277,7 +277,7 @@ export default function KillLogPage({
           <h1 className="mt-3">
             {killed.toLocaleString('en-GB')} ideas killed.
           </h1>
-          <p className="mt-5 max-w-[60ch] lede">
+          <p className="lede big mt-5">
             Most ideas do not survive. Here is what we rejected, the reason each one failed, and
             the sources, so you can check the reasoning yourself.
           </p>

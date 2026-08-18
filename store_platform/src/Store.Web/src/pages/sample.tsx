@@ -264,7 +264,8 @@ export default function SamplePage() {
             {/* NOT MONO, though `.metastrip` is (`mockups/sample.html`). The line is mostly words,
                 and `monoIsTheDataVoice.test.ts` caps the site's mono budget and holds the face for
                 figures. The drawing's position, size and colour survive; the face does not. */}
-            <p className="mb-3.5 flex flex-wrap items-center gap-2.5 text-caption text-subtle">
+            <div className="pagetop">
+            <p className="metastrip num mb-3.5">
               <Badge tone="success">Free to read</Badge>
               <span>
                 no payment · no email · no account · {report.sectionsShown} of{' '}
@@ -277,13 +278,14 @@ export default function SamplePage() {
             <h1 className="max-w-[24ch]">
               The opening of a real pack, in full.
             </h1>
-            <p className="mt-6 max-w-[64ch] lede">
+            <p className="lede big mt-6">
               Not a mock-up and not a summary. These are the first three sections of a pack that
               is on the shelf right now, exactly as they were published: the situation somebody is
               already dealing with, what you would actually be selling, and who is already in the
               field, quoted from their own pages, with every link open.
             </p>
-            <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 text-meta font-semibold text-muted">
+            </div>
+            <div className="metastrip num mt-7">
               {/* THE UNSETTLED COUNT COMES FIRST. It used to sit second, behind "N checks
                   cleared", which is the ordering a shop reaches for and the wrong one here. The
                   cleared count is what every seller claims; the count we could not settle is the
@@ -320,7 +322,10 @@ export default function SamplePage() {
       </SectionBand>
 
       <Section bg="bg" width="7xl" className="!pt-6 !pb-24">
-        <div className="lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-14">
+        {/* THE DRAWING'S READER (`mockups/sample.html`, `.reader`): a 230px contents card and the
+            sheet beside it, 30px apart, both aligned to the top. The utilities held the same two
+            columns at different numbers, one layer above the class, which made the class inert. */}
+        <div className="reader">
           <DocRail sections={SECTIONS} eyebrow="The excerpt · contents" />
           <div className="min-w-0">
             {/* What the reader is about to read, named before they read it. The pack itself
@@ -423,21 +428,27 @@ export default function SamplePage() {
               </p>
             </section>
 
-            <div
-              id="buy"
-              className="mt-12 scroll-mt-24 rounded-card border border-border bg-surface p-8 text-center md:p-10"
-            >
+            {/* THE DRAWING'S CLOSING (`mockups/sample.html`, `.closing`): a 2px ink rule, the
+                sentence, then a `.ctarow` of two ways out. It was a centred card, which reads as
+                one more panel in a stack of panels rather than as the end of the document, and it
+                offered only the shelf. */}
+            <div id="buy" className="closing scroll-mt-24">
               <h2 className="sec" style={{ maxWidth: '26ch' }}>
                 Now read one that survived all of it.
               </h2>
-              <p className="mx-auto mt-3 max-w-[56ch] lede">
+              <p>
                 You can now go and read the shelf with these answers in mind. One payment, yours to
                 keep, no account to make.
               </p>
-              <Link href="/#catalog" className={buttonClasses({ size: 'lg', className: 'mt-6' })}>
-                Browse the packs
-                <Icon name="arrowRight" size={15} />
-              </Link>
+              <div className="ctarow">
+                <Link href="/#catalog" className="btn">
+                  Browse the packs
+                  <Icon name="arrowRight" size={15} />
+                </Link>
+                <Link href="/how-it-works" className="btn ghost">
+                  See how the filter works
+                </Link>
+              </div>
             </div>
 
             {/* Second position, under the buy CTA: a reader who wants a pack should buy one, and
