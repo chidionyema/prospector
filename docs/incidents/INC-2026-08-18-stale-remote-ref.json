@@ -1,0 +1,37 @@
+{
+  "id": "INC-2026-08-18-stale-remote-ref",
+  "opened": "2026-08-18",
+  "title": "The branch-PR guard demanded a pull request for a branch that no longer exists",
+  "severity": "low",
+  "detected_by": "founder",
+  "first_order": {
+    "what_broke": "branch-pr-guard.py reported that ci/automerge-without-gh-cli was pushed with no pull request. The branch had already been merged and deleted on GitHub; gh pr create then failed with 'No commits between main and ..., Head ref must be a branch'.",
+    "receipt": "git ls-remote --heads origin ci/automerge-without-gh-cli returns nothing, while refs/remotes/origin/ci/automerge-without-gh-cli was still present locally. origin/main already carries the fix at cancel-ci-on-pr-close.yml:52 and automerge.yml:58.",
+    "fixed_by": "~/.claude/scripts/branch-pr-guard.py, patched in place"
+  },
+  "cause_chain": [
+    "The guard treated a local refs/remotes/origin/<name> as proof the branch exists on the remote.",
+    "A merged-and-deleted branch leaves its remote-tracking ref behind until somebody prunes, so the local ref outlives the remote branch.",
+    "CLASS: a guard that asks the local cache a question about a remote produces confident false findings, and a guard that cries wolf gets ignored."
+  ],
+  "second_order": {
+    "sweep_command": "rg -n 'refs/remotes/origin' ~/.claude/scripts/*.py scripts/*.py",
+    "siblings_found": null,
+    "siblings_fixed": 0,
+    "note": "NOT YET RUN."
+  },
+  "third_order": {
+    "tier": "heal",
+    "mechanism": "The guard now asks git ls-remote, and when the branch is gone it deletes the stale remote-tracking ref itself rather than reporting a finding. A probe failure returns None and passes, so a network outage can never manufacture a block.",
+    "landed_on": "2026-08-18"
+  },
+  "grade": {
+    "signature": "a guard reading a remote-tracking ref as remote state",
+    "before": 1,
+    "after": null,
+    "window_days": 14,
+    "verdict": "unproven"
+  },
+  "issue": null,
+  "state": "open"
+}

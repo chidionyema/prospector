@@ -12,6 +12,10 @@ Rules for this file (`docs/OPS_AUTOMATION_PRINCIPLES.md` R5):
 - Every automation exits **0 clean, 1 findings, 2 could not establish**. Exit 2 is not clean; it
   means the check could not run and the real state is unknown.
 
+This file says what to do while a thing is red. [`INCIDENT_PROCESS.md`](INCIDENT_PROCESS.md) says
+what to do once it is green again: sweep for the siblings, land the mechanism that retires the
+class, and grade it. A runbook entry that keeps getting used is an incident nobody raised.
+
 ---
 
 ## retired-terms

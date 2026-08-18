@@ -1,0 +1,42 @@
+{
+  "id": "INC-2026-08-18-doc-rot-ratchet",
+  "opened": "2026-08-18",
+  "title": "every live doc_lint finding is baselined, so the gate can never go red",
+  "severity": "medium",
+  "detected_by": "founder",
+  "first_order": {
+    "what_broke": "The founder opened the docs bundle and hit a document describing an architecture that has since changed. scripts/doc_lint.py already detects this class. On main it reports 45 findings and the baseline contains all 45, so the ratchet is green while every single finding is live.",
+    "receipt": "On main (worktree at 2073c274, 0 commits behind origin/main) `scripts/doc_lint.py` reports 45 problems; docs/doc_lint_baseline.json holds 45 entries across 14 files, so `--check` is green and `doc_lint.py` plain is red. Worst files: OPS_CONSOLE_PROGRAM.md 8, SUBSCRIPTION_PROGRAM.md 7, ENGINE_RELIABILITY_PROGRAM.md 6, HARDCODED_MODEL_AUDIT_TICKET.md 5, PAYMENT_P0_GEMINI_BRIEF.md 5. CORRECTION: this record first said 184 findings behind a 27-entry baseline. That was measured in the shared checkout, which was 38 commits behind origin/main. Same defect, smaller number, and the number itself was an instance of the class in `read-docs-on-origin-main-not-the-shared-checkout`.",
+    "fixed_by": null
+  },
+  "cause_chain": [
+    "docs/doc_lint_baseline.json contains every finding doc_lint can currently produce, and check_ratchet only fails on a regression against that baseline, so no live finding fails anything.",
+    "The gate was installed with the existing rot grandfathered in, and nothing was scheduled to burn the baseline down, so grandfathered became permanent.",
+    "Nothing measures whether a doc's CLAIMS still match the live estate — only whether the paths it names exist. docs/ENGINE_AUDIT_2026-08-10.md passed doc_lint on 2026-08-18 while six of its concrete statements about the engine were false, because a wrong line number and a retired provider roster are not missing paths.",
+    "CLASS: a ratchet with no burn-down schedule is a warning fence, and a warning fence is not a fence."
+  ],
+  "second_order": {
+    "sweep_command": "rg --files -g '*baseline*' -g '*allowlist*' . | grep -v node_modules",
+    "siblings_found": 1,
+    "siblings_fixed": 0,
+    "sibling_list": [
+      "tests/unit/swallow_ratchet_baseline.json — 23 grandfathered tier-1 swallows across 16 files, plus 5 waivers. Same shape: existing findings suppressed, no burn-down date."
+    ],
+    "note": "SWEPT 2026-08-18. Two candidates rejected on inspection and named so nobody re-sweeps them: tests/fixtures/gen_quality_baseline.json is a reference fixture, not a suppression list; register_baseline.py is a report-only script. register_baseline.py:18 does hardcode an absolute store path, which is a sibling of INC-2026-08-18-store-resolver, not of this one."
+  },
+  "third_order": {
+    "tier": "refuse",
+    "mechanism": null,
+    "landed_on": null,
+    "note": "The mechanism is a burn-down date on the baseline file itself: doc_lint --check fails when today is past the date, so a suppression cannot outlive its own deadline. Not written yet."
+  },
+  "grade": {
+    "signature": "doc_lint findings suppressed by the baseline",
+    "before": 45,
+    "after": null,
+    "window_days": 14,
+    "verdict": "unproven"
+  },
+  "issue": null,
+  "state": "open"
+}

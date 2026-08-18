@@ -1,0 +1,37 @@
+{
+  "id": "INC-2026-08-18-store-resolver",
+  "opened": "2026-08-18",
+  "title": "The live engine wrote listing files into the container image layer",
+  "severity": "high",
+  "detected_by": "production",
+  "first_order": {
+    "what_broke": "On the running Fly machine 80d34da6636478, listing and pricing-rationale files were written to /app/store instead of the volume at /data/store. /app is the image layer and every deploy erases it. A listing file is what puts a pack on the shelf, so those packs would have silently left the shelf on the next deploy.",
+    "receipt": "fly ssh console -a prospector-engine -C 'find /app/store -type f' returned 8 files at 21:20Z on 2026-08-18, including /app/store/listings/aee5f8f26657c9b0.json",
+    "fixed_by": "PR #350"
+  },
+  "cause_chain": [
+    "paths.store_root() read PROSPECTOR_STORE_ROOT, which nothing outside the test suite sets, and fell back to a path derived from __file__.",
+    "Two resolvers existed for one concept: config.store_root() reads PROSPECTOR_STORE_DIR and is the one the plists and the Fly machine set.",
+    "A rule written as prose with no sweep and no guard. On 2026-08-17 four __file__-derived store constants were fixed and the rule was written into CLAUDE.md. Nothing searched for a fifth, and nothing would have failed if one existed.",
+    "CLASS: a rule that lives only in prose is enforced only by whoever remembers it."
+  ],
+  "second_order": {
+    "sweep_command": "rg -n 'def store_root|Path\\(__file__\\).*store' prospector/ scripts/ tools/",
+    "siblings_found": 2,
+    "siblings_fixed": 1,
+    "note": "One resolver beyond config.store_root(). The 2026-08-17 pass fixed four call sites but never swept for other RESOLVERS, which is the level the bug lived at. register_baseline.py:18 hardcodes pathlib.Path(\"/Users/chidionyema/Documents/code/prospector/store/dossiers\") instead of config.store_root(). Found 2026-08-18 by the doc-rot sweep, not by the store-resolver sweep, which is the point: it is report-only so it loses no data, but it reads the wrong store on any box that is not this laptop."
+  },
+  "third_order": {
+    "tier": "test",
+    "mechanism": "tests/unit/test_one_store_resolver.py::test_no_third_resolver_appears fails if any module grows its own store_root. Heal was not available: nothing can repair a file already written to a layer that is about to be deleted. Refuse was not available either: no PreToolUse guard can see a runtime path resolution.",
+    "landed_on": null
+  },
+  "grade": {
+    "signature": "a module-level store path derived from __file__",
+    "before": 5,
+    "after": null,
+    "window_days": 14,
+    "verdict": "unproven"
+  },
+  "state": "open"
+}
