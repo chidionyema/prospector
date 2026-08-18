@@ -54,10 +54,17 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
 
       {/* The drawing's frame, not a 768px column at a 24px gutter: `mockups/pricing.html`
           `.wrap{max-width:1080px;padding:0 20px}` with `.pagetop{padding:14px 0 8px}`. */}
-      <section className="mx-auto max-w-[1080px] px-5 pt-3.5 pb-16">
+        {/* THE DRAWING'S `.wrap` HAS NO TOP PADDING, AND `.pagetop` ALREADY CARRIES 14px.
+            `pt-3.5` here sat on top of `.pagetop{padding:14px 0 8px}` (`mumchimp.css:49`), so the
+            page head started 14px lower than the drawing's. Measured on /about at 1280: the
+            eyebrow sat 38px below the drawing's, 24px of it the breadcrumb tap target and 14px
+            this. The `<h1>` gets the drawing's own `margin-top:12px`
+            (`docs/design/mumchimp-build-bundle/mockups/about.html:458`), which the hand-rolled
+            page tops dropped; `PageHero` (`blocks.tsx:263`) already sets it. */}
+      <section className="mx-auto max-w-[1080px] px-5 pb-16">
         <div className="pagetop">
         <p className="eyebrow">Pricing</p>
-        <h1>
+        <h1 style={{ marginTop: 12 }}>
           {range ? range.headline : 'One payment per pack.'}
         </h1>
         <p className="lede big mt-4">

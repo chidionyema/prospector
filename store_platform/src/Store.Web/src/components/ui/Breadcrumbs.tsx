@@ -28,7 +28,13 @@ export function Breadcrumbs({ items }: { items: { href: string; label: string }[
                   {item.label}
                 </span>
               ) : (
-                <Link href={item.href} className="inline-block py-3">
+                /* `-my-3 py-3`: A 44px TAP TARGET THAT COSTS THE LINE NO HEIGHT. `py-3` alone
+                   made this link 43px tall, so the breadcrumb line was 43px where the drawing's
+                   is 19px -- measured on /about at 1280, the eyebrow below it sat 38px lower than
+                   the drawing's, and 24px of that was this. The trail is the first thing on every
+                   page, so the whole page below it was pushed down. The negative margin pulls the
+                   padding back out of the flex line while the link keeps the hit area. */
+                <Link href={item.href} className="-my-3 inline-block py-3">
                   {item.label}
                 </Link>
               )}

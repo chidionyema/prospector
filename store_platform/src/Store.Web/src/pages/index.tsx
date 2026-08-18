@@ -2031,8 +2031,13 @@ export default function Home({ packs, stats, flags, initialState, market, curren
 
           `hidden md:block` is carried over from where it stood, for the reason recorded there:
           on a phone this is the last object between the fold and a product. */}
-      <SectionBand bg="bg" width="7xl" className="!pt-5 !pb-6">
-        <HeroEvidenceStrip className="hidden md:block" />
+      {/* HIDE THE BAND, NOT JUST WHAT IS IN IT. `hidden md:block` sat on the strip alone, so on a
+          phone the SectionBand still rendered: an empty 45px block with a background and a
+          `border-b`, measured at 390 on the built page at y=1264, exactly where the drawing has
+          the 224px source strip. An empty ruled band reads as a broken section. The control now
+          sits on the outer `<section>`, so the whole band leaves the page below `md`. */}
+      <SectionBand bg="bg" width="7xl" className="!pt-5 !pb-6" outerClassName="hidden md:block">
+        <HeroEvidenceStrip />
       </SectionBand>
 
       {/*

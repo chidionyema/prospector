@@ -48,14 +48,21 @@ export default function AboutPage() {
           (`mockups/about.html`), and gives the page head `.pagetop{padding:14px 0 8px}` under the
           crumb. The ESSAY keeps its own 56ch measure inside this frame; that is a reading measure
           and it is set on the prose itself, below. */}
-      <section className="mx-auto max-w-[1080px] px-5 pt-3.5 pb-16">
+        {/* THE DRAWING'S `.wrap` HAS NO TOP PADDING, AND `.pagetop` ALREADY CARRIES 14px.
+            `pt-3.5` here sat on top of `.pagetop{padding:14px 0 8px}` (`mumchimp.css:49`), so the
+            page head started 14px lower than the drawing's. Measured on /about at 1280: the
+            eyebrow sat 38px below the drawing's, 24px of it the breadcrumb tap target and 14px
+            this. The `<h1>` gets the drawing's own `margin-top:12px`
+            (`docs/design/mumchimp-build-bundle/mockups/about.html:458`), which the hand-rolled
+            page tops dropped; `PageHero` (`blocks.tsx:263`) already sets it. */}
+      <section className="mx-auto max-w-[1080px] px-5 pb-16">
         <div className="pagetop">
         <p className="eyebrow">About</p>
         {/* The headline IS the thesis, quoted from the story below it rather than summarising it.
             It runs at `display`, the top of the six-step scale, which now carries its own mobile
             size. (The 96px `text-mega` this note used to contrast against was deleted from
             tokens.css on 2026-08-08 -- §3.2 has six sizes and that was a seventh.) */}
-        <h1>
+        <h1 style={{ marginTop: 12 }}>
           So I built the part I kept losing to doubt.
         </h1>
 
@@ -178,7 +185,12 @@ export default function AboutPage() {
             href="/how-it-works"
             className="card tc transition-colors hover:border-border-strong"
           >
-            <p className="text-meta font-semibold text-text">How it works</p>
+            {/* THE BUNDLE ALREADY STYLES THIS AND WE WERE NOT USING IT. `mumchimp.css:230` is
+                `.tc h4{font-size:17px;font-weight:640;letter-spacing:-.014em;margin-bottom:7px}`,
+                written for exactly this card. The title was a `<p class="text-meta">`, so it
+                rendered at 14px, measured on the built page at 1280 against 18.72px in the
+                drawing. It is a heading in a card, so it is a heading. */}
+            <h4>How it works</h4>
             <p className="mt-1 lede">
               One idea taken through the checks end to end, with every source it was judged on.
             </p>
@@ -197,7 +209,7 @@ export default function AboutPage() {
             href="/kill-log"
             className="card tc transition-colors hover:border-border-strong"
           >
-            <p className="text-meta font-semibold text-text">The kill log</p>
+            <h4>The kill log</h4>
             <p className="mt-1 lede">
               Most ideas die. Every kill is public, with the argument that made it. The log is
               the evidence behind the catalogue; the catalogue is what’s left.

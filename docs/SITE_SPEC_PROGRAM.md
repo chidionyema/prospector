@@ -1785,3 +1785,73 @@ compares tag-and-class trees, and these are absence, colour, width, height and a
 measurements of one thing. Step 3 proves the markup is the drawing's; step 4 is the only step that
 looks at the page.
 
+
+**Four more defects, same shape, found the same way.** The five above were things drawn wrong. These
+four are height taken by markup that the drawing does not spend, which is why they showed up as a
+growing vertical offset rather than as a visibly broken element.
+
+6. **The source strip's BAND rendered on phones after the strip inside it was hidden.**
+   `index.tsx` had `<SectionBand ...><HeroEvidenceStrip className="hidden md:block" /></SectionBand>`.
+   The control sat on the strip, not on the band, so at 390 the built page drew an empty 45px block
+   with a background and a `border-b` at y=1264 -- an empty ruled section, which reads as broken.
+   `SectionBand` already takes `outerClassName` for exactly this (`blocks.tsx:136`); the control
+   moved there. This one made index's number WORSE (390 page 5.83 to 5.91, fold 10.89 to 11.05),
+   because the drawing has a 224px source strip at that point and we now correctly have nothing:
+   founder decision F-001 moves that strip below the shelf on phones. The band was still a defect.
+
+7. **The breadcrumb tap target cost every page 24px of height.** `Breadcrumbs.tsx` set
+   `inline-block py-3` on the trail link, so the crumb line measured 43px where
+   `mumchimp.css:47` gives the drawing's `.crumb` 19px. The trail is the first thing on every page,
+   so everything below it started 24px low. Fixed with `-my-3 py-3`: the link keeps its 44px hit
+   area and the flex line keeps the drawing's height.
+
+8. **The About cards used a heading style the bundle already ships, as a paragraph.**
+   `mumchimp.css:230` is `.tc h4{font-size:17px;font-weight:640;letter-spacing:-.014em}`, written
+   for exactly this card. The titles were `<p className="text-meta font-semibold">` at 14px against
+   18.72px in the drawing. They are `<h4>` now. (The drawing has its own bug here:
+   `docs/design/mumchimp-build-bundle/mockups/about.html:483` writes `<h3>` in a `.tc`, which the
+   bundle does not style, so it renders at the browser default.)
+
+9. **`pt-3.5` on the page shell doubled `.pagetop`'s own top padding.** `about.tsx:51` and
+   `pricing.tsx:57` wrapped a `.pagetop` in a section carrying `pt-3.5`, and
+   `mumchimp.css:49` is `.pagetop{padding:14px 0 8px}`; the drawing's `.wrap` has no top padding at
+   all. Both page heads therefore started 14px below the drawing's. Removed. The same two `<h1>`s
+   were missing the drawing's own `margin-top:12px`
+   (`docs/design/mumchimp-build-bundle/mockups/about.html:458`,
+   `docs/design/mumchimp-build-bundle/mockups/pricing.html:459`), which `PageHero`
+   (`blocks.tsx:263`) sets and the hand-rolled page tops dropped. Together with defect 7 this closes
+   the measured 38px eyebrow offset on `/about` exactly: 24 plus 14.
+
+   `LegalDoc.tsx:135` and `sample.tsx:264` carry the same `pt-3.5` and were deliberately left alone:
+   their inner structure differs (a `space-y-6` header, no eyebrow) and
+   `docs/design/mumchimp-build-bundle/mockups/sample.html:459` has no `margin-top` on its `h1`.
+
+### 11.9 Why three pages cannot reach 2% by editing code - FOUNDER DECISION OPEN
+
+The remaining large numbers are not layout defects. On three pages the drawing and the built page
+carry **different sections**, and each difference is a decision recorded in the source, not drift.
+Measured 2026-08-18 by listing every `<h2>` on the drawing and on the built page at 1280.
+
+| Page | drawing | built | the difference |
+|---|---|---|---|
+| index | 7 | 8 | built adds "What survived"; the failed-check card is 2nd in the drawing and 6th in the build |
+| how-it-works | 6 | 8 | built adds "Where the ideas went" and "The kill log" |
+| kill-log | 3 | 2 | built drops "Nothing available now for your space yet?" |
+
+Each addition carries its own reasoning where it was made: `index.tsx:943` records "What survived"
+as a measured change on 2026-08-08, and `how-it-works.tsx:232` records why the attrition cascade
+gets its own section. Deleting them to move a percentage would throw away design work that was done
+on purpose and measured at the time.
+
+A section inserted near the top displaces every pixel below it, which is why `how-it-works` measures
+13.53% over its fold at 1280 while nothing on it looks broken.
+
+**Two ways out, and it is the founder's call which:** update those three drawings so they show the
+pages as designed, or exclude the three pages from the 2% bar and state that in the harness. No code
+change closes this.
+
+The same question stands separately for `kill-log`, where the drawing renders its own chart broken
+(defect 4 above), and for the page skeleton in general: the drawings are one flat `div.wrap` with
+`hr.rule2` hairlines, and the app is a stack of full-bleed `section` bands with alternating
+backgrounds and a `border-b`. Measured on how-it-works at 1280, the drawing's `main` is 4940px and
+ours is 8104px. Reworking that is a ten-page port and has not been started.
