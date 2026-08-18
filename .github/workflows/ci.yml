@@ -156,6 +156,32 @@ jobs:
       web: ${{ steps.filter.outputs.web }}
       console: ${{ steps.filter.outputs.console }}
     steps:
+      # WHY THE BOX IS SLOW, PRINTED BEFORE ANYTHING ELSE RUNS.
+      #
+      # On 2026-08-18 four CI jobs sat for an hour. `npm test` was at 0.0% CPU for 72 seconds,
+      # pytest at 0.0% for ten and a half minutes, and one worker had no child process at all for
+      # seventeen. Nothing was CPU-starved. The box had 7.7 GB of its 8 GB swap in use, so every
+      # job was blocked on the pager, and the three biggest consumers were a Docker VM at 3.7 GB,
+      # a `docker build` feeding it and a searxng container -- none of them CI.
+      #
+      # The jobs' own process trees measured 1123 MB, 577 MB and two at ~75 MB: under 2 GB of a
+      # 16 GB machine. So this is deliberately NOT a budget check, and it deliberately cannot fail
+      # the run. A static per-job RAM number would have been green all night while the box
+      # thrashed, and a red check for a machine condition is the "red X that means nothing"
+      # problem in another costume.
+      #
+      # It prints, in one second, the four numbers that took a whole night to find by hand.
+      - name: Box state before the run
+        continue-on-error: true
+        run: |
+          echo "load:  $(uptime | sed 's/.*load averages*: //')"
+          echo "swap:  $(sysctl -n vm.swapusage 2>/dev/null || echo 'n/a')"
+          echo "ram:   $(( $(sysctl -n hw.memsize 2>/dev/null || echo 0) / 1073741824 )) GB physical"
+          echo "top memory holders (RSS MB, elapsed, command):"
+          ps -eo rss,etime,comm -m 2>/dev/null | sed -n '2,7p' \
+            | awk '{printf "  %6.0f  %9s  %s\n", $1/1024, $2, $3}'
+          echo "runner workers live: $(pgrep -f Runner.Worker 2>/dev/null | wc -l | tr -d ' ')"
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
