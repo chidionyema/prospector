@@ -574,6 +574,10 @@ See **[store_platform/README.md](store_platform/README.md)** for the full launch
 **The estate, not just the engine.** Start at
 [docs/ESTATE_MAP.md](docs/ESTATE_MAP.md) and [docs/personas/](docs/personas/README.md) — see
 [Start here](#start-here) for which seat to read.
+[docs/LINKS.md](docs/LINKS.md) indexes every shareable web page we have published: the twenty
+persona audits, the consultant briefs, the design decisions and the product samples. Thirty-nine
+pages existed and none of them was linked from anywhere until that file. If you publish a page,
+add it there in the same commit.
 
 Engine-level contracts:
 
