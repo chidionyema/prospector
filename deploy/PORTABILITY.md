@@ -19,7 +19,7 @@ A platform has to give the engine exactly six things. Nothing else.
 | 3 | Environment variables | injected at start, never baked into the image |
 | 4 | Outbound HTTPS | normal internet |
 | 5 | A way to run a command inside the container | used by the cutover and by `verify` |
-| 6 | A private way to reach two local ports | ports 8601 and 8611 on loopback, no public IP |
+| 6 | A private way to reach two ports | 8601 and 8611, private network only, no public IP |
 
 That is the whole list. There is no Fly API call anywhere in the engine's code. `fly.toml` is
 configuration for the adapter, not for the application.

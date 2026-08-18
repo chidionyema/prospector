@@ -38,7 +38,7 @@ because it is the noisy one. The critical system is the 1GB disk under the store
 
 | # | Risk | What it costs | Likelihood | State today |
 |---|---|---|---|---|
-| **R1** | **Switching the laptop off also switches off the only backup of the money database** | Silent. The migration looks clean and leaves orders and entitlements uncovered from that day on. | **Certain, if we follow the migration plan as written** | **§4.1 — the order effect** |
+| **R1** | **Stopping the laptop's background jobs also stops the only backup of the money database** | Silent. The migration looks clean and leaves orders and entitlements uncovered from that day on. | **Certain, if we follow the migration plan as written** | **§4.1 — the order effect** |
 | **R1b** | The store API's single volume is lost or corrupted | Every order, entitlement and delivery-outbox row. Buyers who paid cannot download. | Low per year, but non-zero — one volume, one host, one zone | Covered, from the laptop: `money-db/store.db` and the key ring, hourly-ish to R2, 30 kept (§4.1) |
 | **R2** | Fly loses the `lhr` region, or the account is suspended | Store and API both down. No sales. | Low | Exit path exists (§6), untested |
 | **R3** | This laptop dies tonight, before the migration | The engine's 0.49 GiB store: 2,935 dossiers, 119 listings, 906,341 ledger lines | Real — it is a laptop | Offsite backup runs (§4.2) |
@@ -88,11 +88,16 @@ a note explaining that it sits on a single 1GB volume in `lhr`.
 The problem is **where the job runs**. It is a launchd job on this laptop
 (`ops/launchd/com.prospector.offsite-backup.json`), reaching into Fly from here. So:
 
-> **ORDER EFFECT — the one that would have bitten us.** Switching this laptop off after a
-> successful engine migration also switches off the only backup of the money database. The
+> **ORDER EFFECT — the one that would have bitten us.** Stopping the laptop's background jobs
+> after a successful engine migration also stops the only backup of the money database. The
 > migration would look clean and would quietly leave R1 uncovered.
 
-That is exactly why the plan says the laptop stays cold-but-alive for seven days, and why the
+To be exact about what "migration" does to this machine, because the phrasing matters: the
+**eight launchd daemons** stop — scheduler, consumer, watchdog, two backups, two dashboards,
+live-update. **The laptop itself carries on as the development machine.** Nothing about the
+checkout, the worktrees, git or the editor changes. What moves is the unattended work.
+
+That is why the plan leaves the laptop's jobs installed but stopped for seven days, and why the
 backup job is one of the programs moving **into the engine container** rather than being left
 behind. `deploy/engine/supervisord.conf` already runs `offsite-backup`; what has to be true is
 that the container's copy carries the same declaration and can reach `prospector-store-api` —
@@ -212,7 +217,7 @@ The four things that would tie us down, and what we did instead:
 4. **This week — write the Stripe rebuild script.** Turns R1 from fatal into slow.
 5. **Then — CI runners off the laptop**, onto the same kind of box the `sshdocker` adapter
    already targets. Keeps them self-hosted and free of GitHub minutes.
-6. **Then — delete the `tie-*` apps.** Five apps, last deployed 13 June, two of them Postgres
-   machines with 11GB of volumes between them, all still running. Dormant spend and clutter in
-   the same account as production.
+6. **The `tie-*` apps stay.** Five apps, last deployed 13 June, two Postgres machines with 11GB
+   of volumes between them. Founder decision 2026-08-18: **keep them for now.** Recorded here so
+   the spend is a choice on the page rather than a surprise on a bill.
 7. **Quarterly — the restore drill in §4.4.** Otherwise this document is a wish.

@@ -77,8 +77,15 @@ fi
 if phase 2 "provision the target and push its secrets"; then
   run call "$TO" t_provision
   # Only the keys the engine actually needs travel. Dead keys are not carried to a new platform.
-  KEEP='^(MINIMAX_API_KEY|EXA_API_KEY|STORE_INTERNAL_API_KEY|STORE_API_URL|STRIPE_LIVE_API_KEY|PROSPECTOR_ENTITLEMENTS_API_KEY|R2_ACCOUNT_ID|R2_ACCESS_KEY_ID|R2_SECRET_ACCESS_KEY|R2_BUCKET|TELEGRAM_[A-Z_]+)='
+  KEEP='^(MINIMAX_API_KEY|EXA_API_KEY|STORE_INTERNAL_API_KEY|STORE_API_URL|STRIPE_LIVE_API_KEY|PROSPECTOR_ENTITLEMENTS_API_KEY|R2_ACCOUNT_ID|R2_ACCESS_KEY_ID|R2_SECRET_ACCESS_KEY|R2_BUCKET|CONTROL_CENTER_PASSWORD|FLY_API_TOKEN|TELEGRAM_[A-Z_]+)='
   grep -E "$KEEP" "$ENV_FILE" > "$WORK/engine.env" || true
+  # Exactly one copy of this image may write to the backup bucket. The target is it from
+  # the moment the source stops, which is phase 4.
+  echo 'ENGINE_BACKUPS_ENABLED=true' >> "$WORK/engine.env"
+  grep -q '^CONTROL_CENTER_PASSWORD=' "$WORK/engine.env" \
+    || echo "  WARNING: no CONTROL_CENTER_PASSWORD — the control centre will be unauthenticated" >&2
+  grep -q '^FLY_API_TOKEN=' "$WORK/engine.env" \
+    || echo "  WARNING: no FLY_API_TOKEN — the MONEY DATABASE backup will not run from the target" >&2
   echo "  carrying $(wc -l < "$WORK/engine.env" | tr -d ' ') secrets"
   chmod 600 "$WORK/engine.env"
   run call "$TO" t_secrets "$WORK/engine.env"

@@ -462,19 +462,56 @@ not move the store, and moving the store does not move the code.
 - **A local `dotnet` on `127.0.0.1:55664`** — a development Store.Api. Production is
   `api.mumchimp.com` on Fly and is unaffected.
 
-### 10.3 The dependency that is NOT solved
+### 10.3 The dashboards — DECIDED AND BUILT, 2026-08-18
 
-**The two admin dashboards read the store as a local directory, and both bind to a Tailscale
-address on this Mac.** `100.93.240.113:8601` (control center) and `100.93.240.113:8611` (ops
-console). If the engine's store moves to a Fly volume, both of them are looking at a store that
-has stopped changing, and they will keep rendering it without complaint — a stale dashboard that
-reads as a quiet business.
+**The problem was:** the two admin dashboards read the store as a local directory and bind to a
+Tailscale address on this Mac — `100.93.240.113:8601` (control center) and `100.93.240.113:8611`
+(ops console). Move the store to a Fly volume and both keep rendering a store that has stopped
+changing, without complaint. A stale dashboard reads as a quiet business.
 
-This is P5 in the delivery plan and it is the reason P5 is two days rather than an afternoon.
-Options, in cost order: run both on the Fly machine and reach them over `fly proxy` (no public
-IP, matching the `fly.toml` comment); or give them a read path to the store over the API. Not
-decided. **Until it is, the cutover is not finished — it is an engine that runs with no
-window into it.**
+**Founder decision, 2026-08-18:** *"they need to move to fly, nothing business critical can run
+off this laptop."* Both move into the engine image. No API read path, no second app.
+
+Built:
+
+- `deploy/engine/Dockerfile` gains a `console` build stage that runs `npm ci && npm run build` in
+  `store_platform/src/Ops.Console`, and copies `.next` and `node_modules` into the final image.
+  `PROSPECTOR_PYTHON` and `PROSPECTOR_ROOT` are set to the container's paths, keeping the same
+  variable names the launchd plist used so the console's own code needs no change.
+- `deploy/engine/supervisord.conf` gains `control-center` (streamlit, priority 60) and
+  `ops-console` (`next start`, priority 70). `streamlit>=1.40` was already at
+  `requirements.txt:61`, so the control centre needed no new dependency.
+- Both bind `0.0.0.0`, not loopback. The app has **no public IP** (`fly.toml` has no
+  `[http_service]`), so the only route in is the private network:
+  `fly proxy 8601:8601 8611:8611 -a prospector-engine`. Binding `127.0.0.1` would have broken
+  that, because `fly proxy` reaches the machine's private address rather than its loopback. On a
+  plain Docker host the equivalent fence is publishing to `127.0.0.1` on the host, which
+  `deploy/targets/sshdocker.sh` does.
+- `CONTROL_CENTER_PASSWORD` joins the secrets the cutover carries, and `deploy/cutover.sh` warns
+  if it is absent rather than starting an unauthenticated console.
+
+### 10.3b The dependency that was hiding behind it — the money database backup
+
+Found while mapping this, and worth more than the dashboards were.
+
+The only backup of the storefront's SQLite database — orders, entitlements, grant tokens — runs
+as a **launchd job on this laptop** (`ops/config/offsite_backup.yaml:29-49`), reaching into Fly
+with `fly ssh sftp` and writing `money-db/store.db` to R2. It also backs up the ASP.NET data
+protection key ring, without which a restored database hands every buyer a broken download link.
+
+**Switching the laptop off after a successful migration would have switched that backup off too,
+and nothing would have said so.** Measured healthy the same night:
+
+```
+$ .venv/bin/python ops/automations/offsite_backup.py --config ops/config/offsite_backup.yaml
+OK   money-db: 5.8h old
+OK   data-protection-keys: 5.8h old
+```
+
+`offsite-backup` was already a supervisord program, but the container had no `flyctl` and no Fly
+token, so the money-db source would have failed after the move. Both fixed: the Dockerfile
+installs `flyctl`, and `FLY_API_TOKEN` joins the carried secrets with a loud warning in
+`deploy/cutover.sh` when it is missing. Full risk picture: `docs/ESTATE_CONTINUITY_PLAN.md`.
 
 ### 10.4 Secrets — 20 keys, and which the engine actually needs
 
