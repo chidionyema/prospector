@@ -71,6 +71,10 @@ FLY_APP = os.environ.get("PROSPECTOR_FLY_APP", "prospector-engine")
 LAPTOP_STORE = Path(os.environ.get("PROSPECTOR_STORE_DIR",
                                    "/Users/chidionyema/Documents/code/prospector/store"))
 NEEDED_AGREEING_POLLS = int(os.environ.get("PROSPECTOR_FAILOVER_POLLS", "5"))
+# How old the scheduler heartbeat may get before the side counts as down. Matches the
+# `stale_after_s` the ops console status view reports, so one machine cannot be alive on one
+# screen and dead on the other.
+HEARTBEAT_STALE_S = int(os.environ.get("PROSPECTOR_HEARTBEAT_STALE_S", "300"))
 
 # The two files that carry money. The spend ledger decides whether the daily cap has been hit;
 # the database carries the catalogue and the entitlements. Everything else - dossiers, logs,
@@ -142,17 +146,36 @@ def probe_fly(deep: bool = False) -> dict:
         out["machine_id"] = os.environ["FLY_MACHINE_ID"]
         out["state"] = "started"
         out["machines"] = 1
-        rc, so, _ = sh(["pgrep", "-f", "prospector.scheduler.run_scheduled"], timeout=15)
-        out["scheduler_pids"] = [x for x in so.split() if x]
-        ledger = Path(os.environ.get("PROSPECTOR_STORE_DIR", "/data/store")) / "prospector.jsonl"
+        store = Path(os.environ.get("PROSPECTOR_STORE_DIR", "/data/store"))
+        # The HEARTBEAT, not pgrep. The engine image has no pgrep - `pgrep: not found`, measured
+        # on prospector-engine 2026-08-18 - so a process probe here reports no scheduler and the
+        # panel calls a running engine DOWN. The heartbeat is the engine's own liveness signal,
+        # it is what the console's status view already grades, and it carries the pid anyway.
+        beat_f = store / "scheduler" / "heartbeat.json"
+        beat_age = None
+        if beat_f.exists():
+            beat_age = round(time.time() - beat_f.stat().st_mtime, 1)
+            out["heartbeat_age_s"] = beat_age
+            try:
+                beat = json.loads(beat_f.read_text(errors="replace"))
+                out["phase"] = beat.get("phase")
+                out["scheduler_pids"] = [str(beat["pid"])] if beat.get("pid") else []
+            except (OSError, json.JSONDecodeError, TypeError):
+                out["scheduler_pids"] = []
+        else:
+            out["scheduler_pids"] = []
+            out["error"] = f"no heartbeat at {beat_f}"
+        ledger = store / "prospector.jsonl"
         if ledger.exists():
             out["ledger_age_min"] = round((time.time() - ledger.stat().st_mtime) / 60, 1)
             if deep:
                 with ledger.open("rb") as fh:
                     out["ledger_lines"] = sum(1 for _ in fh)
-        else:
+        elif "error" not in out:
             out["error"] = f"no ledger at {ledger}"
-        out["healthy"] = bool(out["scheduler_pids"]) and ledger.exists()
+        # Same 300s floor the console's status view uses, so the two cannot disagree about
+        # whether the same heartbeat is stale.
+        out["healthy"] = beat_age is not None and beat_age < HEARTBEAT_STALE_S and ledger.exists()
         return out
     if not shutil.which("fly"):
         out["error"] = "fly CLI not installed on this machine"
