@@ -56,8 +56,11 @@ after minting, which is enough to prove the image and the job pickup:
 
 ```bash
 gh api -X POST repos/chidionyema/prospector/actions/runners/registration-token --jq .token \
-  | xargs -I{} fly secrets set RUNNER_TOKEN={} -a prospector-ci
+  | sed 's/^/RUNNER_TOKEN=/' | fly secrets import -a prospector-ci
 ```
+
+`fly secrets import` reads `KEY=VALUE` from stdin. `xargs` and `fly secrets set` would put the
+token in the argument list, where `ps` can read it.
 
 ## Cutting over
 
@@ -70,3 +73,23 @@ CI_RUNS_ON=self-hosted   CI_LIGHT_RUNS_ON=self-hosted   CI_HEAVY_RUNS_ON=heavy
 
 The Fly runners carry `fly` as well as `self-hosted`, so point the variables at `fly` to move a
 lane over and back to `self-hosted` to return it. Move one lane first, not all five.
+
+## What has been proven, and where to check it
+
+| claim | receipt |
+|---|---|
+| the runner registers and takes jobs | run 32137813966 — guard, changes, ci-ok, all success on `fly-8e4530a7712248` |
+| the python suite passes on Linux | run 32138559273, job `python-on-fly` — every step success, golden-set gate included, 9m40s cold with the venv built from scratch |
+| the toolchains are there | `shasum sha256sum git curl jq node dotnet uv perl tar` all resolve in the container; `nproc`=4, 8 GB RAM, 7.8 G disk |
+
+`.github/workflows/fly-trial.yml` is what produced those runs. It copies each job out of `ci.yml`
+by script and pins it to `runs-on: fly`. It is temporary and must be deleted before this branch
+merges.
+
+## The `self-hosted` label cannot be removed
+
+GitHub applies `self-hosted` to every self-hosted runner and there is no way to drop it. A Fly
+machine is therefore eligible for every job that says `runs-on: self-hosted` from the moment it
+registers — which today is `changes`, `guard`, `ci-ok`, `nextjs` and `ops-console`. Standing up a
+runner is not a no-op you can prepare quietly: it starts taking other people's pull requests
+immediately. Prove a lane on Fly before a machine is online, not after.
