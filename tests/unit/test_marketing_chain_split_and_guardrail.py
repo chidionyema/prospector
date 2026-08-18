@@ -75,12 +75,23 @@ def test_marketing_operator_is_loaded_from_the_shipped_config():
         f"config.yaml leads marketing_operator with {chain[0]}")
 
 
-def test_the_deliverable_chain_is_still_led_by_claude():
-    """The £49 prose is not ancillary work — the 2026-08-14 directive was about ancillary."""
+def test_the_deliverable_chain_keeps_claude_as_an_option_behind_the_lead():
+    """REWRITTEN 2026-08-18. This test used to assert `chain[0] == "claude_cli"`.
+
+    The 2026-08-14 reading still holds — the £49 prose is not ancillary work, so it does not run
+    on the non-critical chain. What changed is the founder's 2026-08-18 directive: "we cant be
+    depedint on claude code, it has to be a option only". `claude_cli` is a binary whose auth
+    lives in `~/.claude`, so LEADING with it made a Claude subscription a hard requirement for
+    producing the product, on a server as much as on the laptop.
+
+    It stays in the chain, second, where the shelf-copy escalation reaches it. The full fence is
+    `tests/unit/test_claude_code_is_an_option_not_a_dependency.py`.
+    """
     cfg = load_config()
     chain = cfg.artifact_operator
     chain = [chain] if isinstance(chain, str) else list(chain)
-    assert chain[0] == "claude_cli"
+    assert chain[0] != "claude_cli"
+    assert "claude_cli" in chain
 
 
 def test_the_two_chains_are_read_from_two_different_keys():
@@ -220,7 +231,10 @@ def test_a_breach_escalates_the_rewrite_to_the_deliverable_chain(spy):
         object(), _cand(), [], query_op=object(), quality_op=dear, cfg=_cfg_blocking(),
         score=None, marketing_op=cheap)
     assert calls["marketing"][0] is cheap, "cheap chain gets first refusal"
-    assert calls["marketing"][1:] and all(o is dear for o in calls["marketing"][1:]), (
+    # Was `all(o is dear ...)` until 2026-08-18. The rewrite now goes to the quality chain MINUS
+    # the brain that just failed (`_escalation_order`), which is a freshly built operator rather
+    # than the `quality_op` object, because both chains lead with `minimax` now.
+    assert calls["marketing"][1:] and all(o is not cheap for o in calls["marketing"][1:]), (
         "a chain that just failed the publish-time bar has no claim on the retries")
 
 

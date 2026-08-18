@@ -140,9 +140,20 @@ model_fast: ""                   # cheap model for query-gen/prescreen; blank = 
 model_version_tag: ""            # filled at runtime for audit
 
 # Quality chain for the customer-facing £49 deliverable (build_spec / gtm_plan / ops_plan
-# and the storefront listing_page). Subscription CLIs first, cheap tail behind them.
+# and the storefront listing_page).
 # Falls back to the moat operator if none are available.
-artifact_operator: [claude_cli, minimax]
+#
+# CLAUDE CODE IS AN OPTION, NOT A DEPENDENCY (founder directive 2026-08-18: "we cant be
+# depedint on claude code, it has to be a option only"). This was the LAST line in the file
+# where `claude_cli` led a chain, and so the only reason the engine could not run without a
+# Claude subscription. `claude_cli` is a subscription BINARY whose auth lives in `~/.claude`,
+# which does not travel to a server — that dependency is what blocked the Fly migration.
+#
+# It stays in the chain, second, and it still has real work: a shelf-copy breach escalates the
+# rewrite past the brain that just failed (`run.py::_escalation_order`), so on this roster the
+# escalation lands on `claude_cli` when the binary is installed. Where it is not installed the
+# chain is simply MiniMax, and `_build_prose_chain` logs the missing tier.
+artifact_operator: [minimax, claude_cli]
 
 # Shelf and marketing copy — SPLIT off artifact_operator 2026-08-14 (founder: "isplit it but we
 # needd strong guardrails to keep minimax. in check"). Measured live on 2026-08-13 the daemon ran
@@ -152,8 +163,14 @@ artifact_operator: [claude_cli, minimax]
 # THE GUARDRAIL IS NOT THIS LINE. `run.py::_generate_pack_content` grades what this chain writes
 # against the SAME shelf bar `bridge.py` applies at publish time (`pack_linter.check_shelf_copy`,
 # gated by `listing.shelf_copy_block_on_breach`), and a breach REGENERATES the copy on
-# `artifact_operator` instead of publishing the pack UNLISTED. Cheap gets first refusal, never the
-# last word — and a breach costs a rewrite, not a dead pack.
+# `artifact_operator` MINUS the brain that just failed, instead of publishing the pack UNLISTED.
+# Cheap gets first refusal, never the last word — and a breach costs a rewrite, not a dead pack.
+#
+# "MINUS the brain that just failed" is load-bearing since 2026-08-18. Both chains now lead with
+# `minimax`, so escalating to `artifact_operator` as written would have re-run the rewrite on the
+# brain whose copy had just been refused: a guardrail that logs an escalation and changes nothing.
+# `run.py::_escalation_order` drops this chain's lead from the quality chain, so the rewrite is
+# always a DIFFERENT brain or an honest "no escalation available".
 marketing_operator: [minimax, claude_cli]
                                   # cursor_cli removed 2026-08-06 (founder directive; it was at
                                   # its usage limit per the probe above, so it answered none of
