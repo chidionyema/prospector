@@ -73,7 +73,7 @@ export function PriceLadder({ rungs, className }: { rungs: LadderRung[]; classNa
               {/* The price. The dearest rung takes the display cut, not because it is the one we
                   want bought, but because a ladder whose every rung is set at the same size is not
                   drawn as a ladder at all. */}
-              <b className={cx(top && 'text-h2')}>{formatGbp(rung.amount)}</b>
+              <b className={cx('num', top && 'text-h2')}>{formatGbp(rung.amount)}</b>
 
               {/* The varying axis. `aria-hidden` because it carries no information the row does not
                   already state in text: a screen reader gets the price, the count and the constant
@@ -83,7 +83,7 @@ export function PriceLadder({ rungs, className }: { rungs: LadderRung[]; classNa
                 <i style={{ width: `${width}%` }} />
               </span>
 
-              <span className="n">
+              <span className="n num">
                 {rung.count} pack{rung.count === 1 ? '' : 's'}
               </span>
 

@@ -118,11 +118,22 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
               * The rungs are the SAME `ladder` the drawing above uses, computed from the live
               * catalogue. No second copy of the price list on the page that quotes prices.
               */}
-            <IdenticalContentsMatrix
-              className="mt-10"
-              documents={PACK_DOCUMENTS.length}
-              rungs={ladder.map((rung) => ({ price: formatGbp(rung.amount), count: rung.count }))}
-            />
+            {/* THE DRAWING'S `.sigcard` (`mockups/pricing.html`): the matrix is not loose on the
+                canvas, it sits in a bordered surface panel under one mono eyebrow, and the matrix
+                inside drops its own frame so the page draws one border and not two. `!border-0`
+                and `!m-0` remove the `.matrix` rule rather than layering over it, because
+                mockup.css is imported into the components layer (globals.css:8) and a utility
+                would otherwise be the only thing painting the edge. */}
+            <div className="sigcard mt-10">
+              <p className="eyebrow">
+                The same {PACK_DOCUMENTS.length} documents, at every price
+              </p>
+              <IdenticalContentsMatrix
+                className="mt-4 !m-0 !border-0"
+                documents={PACK_DOCUMENTS.length}
+                rungs={ladder.map((rung) => ({ price: formatGbp(rung.amount), count: rung.count }))}
+              />
+            </div>
             <p className="mt-8 max-w-[60ch] lede">
               Two things set the rung, not a guess: how big the idea could realistically become,
               and which market it targets. US-market packs sit one price step higher, because the
@@ -168,7 +179,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
           <ol className="docs">
             {PACK_DOCUMENTS.map((item, i) => (
               <li key={item.section} className="docitem">
-                <span className="i">{String(i + 1).padStart(2, '0')}</span>
+                <span className="i num">{String(i + 1).padStart(2, '0')}</span>
                 <div className="min-w-0">
                   <h5>{item.title}</h5>
                   <p>{item.desc}</p>
@@ -181,36 +192,79 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
         {/* What's not included. THIS is the sitewide owner of the honest limits: /how-it-works
             states the one-line version and links to `#what-you-do-not-get` here, so the anchor is
             part of the contract, not decoration. Renaming it breaks that link silently. */}
-        <div className="mt-12">
-          <h2 id="what-you-do-not-get" className="scroll-mt-24 text-h2 font-semibold text-text">
+        <hr className="rule2" />
+        <div className="mt-8">
+          <h2 id="what-you-do-not-get" className="scroll-mt-24 sec">
             What you do not get
           </h2>
           <p className="mt-3 max-w-[60ch] lede">
             Honesty about the limits is part of the brand.
           </p>
-          <ul className="mt-6 space-y-3">
+          {/* THE DRAWING'S CARD OF `.checkrow`s (`mockups/pricing.html`): one bordered surface,
+              four rows divided by hairlines, each row a 32px mark, a title and one line of
+              explanation. It rendered as four separate bordered cards carrying a single run-on
+              sentence, so the limit and its reason ran together and the block read as a stack of
+              unrelated notices. The title is now the limit and the paragraph is the reason. */}
+          <div className="card incard mt-6">
             {[
-              `A guarantee that the business will succeed. ${PACK_DISCLAIMER}`,
-              'Live updates. Packs are a one-time artefact, dated at publish. The kill log is the live surface.',
-              'Personal coaching. The pack is the deliverable. If you want a person, that is a different product, sold elsewhere.',
-              'A subscription, dashboard, or seat. The pack is a file you own.',
-            ].map((line) => (
-              <li key={line} className="flex items-start gap-3 rounded-card border border-border bg-surface p-4">
-                <span aria-hidden className="mt-0.5 text-meta text-subtle">×</span>
-                <span className="text-meta leading-relaxed text-muted">{line}</span>
-              </li>
+              { title: 'A guarantee that the business will succeed', body: PACK_DISCLAIMER },
+              {
+                title: 'Live updates',
+                body: 'Packs are a one-time artefact, dated at publish. The kill log is the live surface.',
+              },
+              {
+                title: 'Personal coaching',
+                body: 'The pack is the deliverable. If you want a person, that is a different product, sold elsewhere.',
+              },
+              {
+                title: 'A subscription, dashboard, or seat',
+                body: 'The pack is a file you own.',
+              },
+            ].map((item) => (
+              <div key={item.title} className="checkrow">
+                <span aria-hidden className="i">×</span>
+                <div className="min-w-0">
+                  <h5>{item.title}</h5>
+                  <p>{item.body}</p>
+                </div>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
 
-        {/* Trust + refund */}
-        <div className="mt-12 grid gap-4 sm:grid-cols-2">
-          <div className="gridwrap">
-            <div className="flex items-center gap-2">
-              <Icon name="shield" size={16} className="text-success" />
-              <h3 className="text-meta font-semibold text-text">14 day money back</h3>
-            </div>
-            <p className="mt-2 lede">
+        {/* Trust + refund. THE DRAWING'S `.facts` PANEL (`mockups/pricing.html`), which is the
+            three numbers a buyer checks before paying, on one three-column surface. It was two
+            bordered cards each headed by an icon and a small title, which drew the promises at the
+            size of a footnote. `.facts span` and `.facts b` are what the stylesheet selects, so
+            the label is a span and the figure is a b: classes on the dt and dd draw nothing
+            (`mockup.css:296-297`). The two paragraphs below keep every word that was in the two
+            cards, so nothing is traded for the panel. */}
+        <dl className="facts mt-12">
+          <div>
+            <dt>
+              <span className="inline-flex items-center gap-1.5">
+                <Icon name="shield" size={14} className="text-success" />
+                Refund window
+              </span>
+            </dt>
+            <dd><b className="num">14 days</b></dd>
+          </div>
+          <div>
+            <dt>
+              <span className="inline-flex items-center gap-1.5">
+                <Icon name="verified" size={14} className="text-success" />
+                Ideas killed, published
+              </span>
+            </dt>
+            <dd><b className="num">{killTotals.killed.toLocaleString('en-GB')}</b></dd>
+          </div>
+          <div>
+            <dt><span>Payment</span></dt>
+            <dd><b>One-time</b></dd>
+          </div>
+        </dl>
+        <div className="space-y-4">
+            <p className="lede">
               If the pack is not what the description said, email{' '}
               <a href={`mailto:${LEGAL.supportEmail}`} className={textLinkClass()}>
                 {LEGAL.supportEmail}
@@ -222,13 +276,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
               </Link>
               .
             </p>
-          </div>
-          <div className="gridwrap">
-            <div className="flex items-center gap-2">
-              <Icon name="verified" size={16} className="text-success" />
-              <h3 className="text-meta font-semibold text-text">Every claim cited</h3>
-            </div>
-            <p className="mt-2 lede">
+            <p className="lede">
               {/* Was "Every figure in every pack links to a retrievable source." Our own zero-LLM
                   probe falsifies that sentence: 15 of the 50 packs then on sale asserted at least
                   one figure that appears in NO passage the run retrieved (programme doc §33). The
@@ -246,14 +294,14 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
               </Link>
               .
             </p>
-          </div>
         </div>
 
+        <hr className="rule2" />
         {/* The subscription comparison, once (email §5).
             The previous two-up grid (feed vs pack) was five rows long. The email cuts it to
             three rows -- the three facts a buyer actually compares on: cost cadence, what
             arrives, and what happens on cancel. The other two are restatements of those three. */}
-        <div className="mt-14">
+        <div className="mt-8">
           <ComparisonBlock range={range} />
         </div>
 
