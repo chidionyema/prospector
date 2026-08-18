@@ -88,7 +88,13 @@ describe('EvidenceRunOg: the share card actually rasterises', () => {
     expect(bytes.length).toBeGreaterThan(0);
     // PNG magic number. Asserting the header rather than a byte count, which would pin the encoder.
     expect(bytes.subarray(0, 8)).toEqual(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
-  }, 30_000);
+    // 120s, not 30s. This is the FIRST satori render in the file, so it pays the one-time cost of
+    // importing `next/og` and loading its fonts. The heavier test below it, which rasterises three
+    // whole cards, already asked for 60s. The short timeout sat on the expensive call.
+    // Raising it hides nothing. A satori tree this test would catch THROWS, it does not hang, so
+    // the timeout only sets how much slow-machine tolerance the test has. It failed on main at
+    // 1714b71 (run 32131979212) with the box at load 202: the file took 37443ms, 1 failed of 770.
+  }, 120_000);
 
   it('renders nothing at all for a pack carrying no source count', () => {
     expect(EvidenceRunOg({ count: undefined })).toBeNull();
