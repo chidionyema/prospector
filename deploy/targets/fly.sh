@@ -115,3 +115,20 @@ t_health() {
     || { echo "fly:$APP is up but has no ledger at /data/store/prospector.jsonl" >&2; return 1; }
   echo "fly:$APP started, ledger present"
 }
+
+# Run a verb directly: `bash deploy/targets/<name>.sh t_release`.
+#
+# Without this, running the file instead of sourcing it defines every function, reaches the end
+# and exits 0 - a silent success that deploys nothing. Measured 2026-08-18: three consecutive
+# `bash fly.sh t_release` calls each exited 0 with no output while `fly releases` never moved off
+# v3. The guard means `source`ing it, which deploy/cutover.sh does, still runs nothing.
+if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+  verb="${1:?usage: $(basename "${BASH_SOURCE[0]}") <verb> [args...]}"
+  case "$verb" in
+    t_*) ;;
+    *) echo "unknown verb: $verb (verbs start with t_)" >&2; exit 2 ;;
+  esac
+  declare -F "$verb" >/dev/null || { echo "no such verb: $verb" >&2; exit 2; }
+  shift
+  "$verb" "$@"
+fi

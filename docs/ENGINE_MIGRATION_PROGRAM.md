@@ -729,6 +729,37 @@ library, because the frozen copy runs under the system python.
 there. Without it every poll would report Fly unreachable, which under rule 3 alerts and does
 nothing — so the failure would be quiet.
 
+### 12.4b Reaching the console after the move
+
+The console moved with everything else. It runs in the container as supervisord program
+`ops-console` and answers HTTP 200 on port 8611. It has no public address, and that is on
+purpose: it can move the engine, arm failover and act on the money rail, so putting it on the
+open internet is a decision, not a detail. `fly ips list -a prospector-engine` returns an empty
+table, which is the proof there is no public IP.
+
+The founder reaches it at the same URL as before, `http://localhost:8611`. A launchd job,
+`com.prospector-control.console-proxy`, holds `fly proxy 8611:8611 -a prospector-engine` open
+and restarts it if it drops. Nothing new is exposed; the traffic goes over Fly's private
+WireGuard network.
+
+One trap, and it cost an hour. Next was started with `-H 0.0.0.0`, which is the IPv4 wildcard.
+**Fly's private network is IPv6 only.** So the console answered HTTP 200 on 127.0.0.1 inside the
+container while every proxied request from the laptop timed out, and `/proc/net/tcp6` had no
+listener on 8611 at all. The bind is `-H ::` now, which is dual stack on Linux. Any service that
+has to be reachable across a Fly private network has the same requirement.
+
+### 12.4c An adapter run as a script deployed nothing, three times
+
+`deploy/targets/fly.sh` was a library. It defined eleven functions and had no dispatch at the
+bottom, because `deploy/cutover.sh` sources it. So `bash deploy/targets/fly.sh t_release` defined
+every function, reached the end of the file and exited 0. Three deploys in a row reported success,
+printed nothing, and `fly releases` never moved off v3. The fix carrying the nightly backup repair
+sat undeployed for over an hour while the log said it had shipped.
+
+All three adapters now end with a dispatch guarded by `[ "${BASH_SOURCE[0]}" = "${0}" ]`, so the
+file still works when sourced and refuses an unknown verb with exit 2 when run. This is the same
+class as every other failure in §11: the failure mode was a silent success.
+
 ### 12.5 Business risk register
 
 | # | Risk | State | What closes it |
