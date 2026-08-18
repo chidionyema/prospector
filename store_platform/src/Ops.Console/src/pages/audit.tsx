@@ -59,6 +59,8 @@ export default function Audit() {
   return (
     <Shell title="Audit" intro="Every write this console tried, and every one it refused.">
       {error ? <Problem>{error}</Problem> : null}
+
+      <ConsoleTrouble />
       {!data ? (
         <Card>
           <Spinner what="reading the intent log" />
@@ -190,5 +192,112 @@ export default function Audit() {
         );
       })}
     </Shell>
+  );
+}
+
+
+/**
+ * The console's own faults, newest first.
+ *
+ * Written by the Next.js routes rather than the engine, so it answers a question no engine view
+ * can: what did the PORTAL do when the operator says it was broken. It is on this page because
+ * the audit log answers the same shape of question for writes.
+ */
+type ConsoleEvent = {
+  at?: string;
+  kind?: string;
+  view?: string;
+  status?: number;
+  took_ms?: number;
+  error?: string;
+  error_kind?: string;
+  who?: string;
+  where?: string;
+  message?: string;
+  detail?: string;
+};
+
+type ConsoleLogView = {
+  path: string;
+  present: boolean;
+  total: number;
+  unreadable_lines: number;
+  kinds: Record<string, number>;
+  rows: ConsoleEvent[];
+};
+
+/** Plain words for one row. No jargon: the operator reads this at the moment it is going wrong. */
+function say(e: ConsoleEvent): string {
+  const view = e.view ?? 'a panel';
+  switch (e.kind) {
+    case 'read_refused':
+      return e.error_kind === 'unconfigured'
+        ? `${view} was refused because no console password is set on the machine`
+        : `${view} was refused because the session had expired or was missing`;
+    case 'read_failed':
+      return `${view} failed (${e.error_kind ?? 'no kind'})${e.error ? `: ${e.error}` : ''}`;
+    case 'read_slow':
+      return `${view} worked but took ${Math.round((e.took_ms ?? 0) / 100) / 10}s`;
+    case 'client_error':
+      return `the page crashed at ${e.where ?? 'an unknown place'}: ${e.message ?? 'no message'}`;
+    case 'signed_in':
+      return `someone signed in from ${e.who ?? 'an unknown address'}`;
+    case 'signed_out':
+      return `someone signed out from ${e.who ?? 'an unknown address'}`;
+    case 'signin_failed':
+      return `a wrong password from ${e.who ?? 'an unknown address'}`;
+    case 'signin_locked':
+      return `sign-in locked out ${e.who ?? 'an unknown address'} for fifteen minutes`;
+    default:
+      return e.message || e.error || e.kind || 'no detail';
+  }
+}
+
+function toneOf(kind?: string): 'ok' | 'warn' | 'bad' {
+  if (kind === 'signed_in' || kind === 'signed_out') return 'ok';
+  if (kind === 'read_slow' || kind === 'read_refused') return 'warn';
+  return 'bad';
+}
+
+function ConsoleTrouble() {
+  const { data, envelope } = useOps<ConsoleLogView>('console_log', { limit: 50 });
+  const rows = data?.rows ?? [];
+
+  return (
+    <Card
+      title="What the console itself did"
+      right={<AsOf asOf={envelope?.as_of} tookMs={envelope?.took_ms} />}
+    >
+      {!data ? (
+        <Spinner what="reading the console log" />
+      ) : rows.length === 0 ? (
+        <Note>
+          Nothing has gone wrong since this log started. A line lands here only when a read is
+          refused, fails or runs slow, when the page crashes, or when someone signs in or out — so
+          an empty list is the healthy state, not a broken panel.
+        </Note>
+      ) : (
+        <>
+          <Row label="Entries">{data.total}</Row>
+          {data.unreadable_lines > 0 ? (
+            <Problem>{data.unreadable_lines} line(s) were torn and could not be read.</Problem>
+          ) : null}
+          <ul className="mt-2 flex flex-col gap-1.5">
+            {rows.slice(0, 20).map((e, i) => (
+              <li
+                key={`${e.at ?? i}-${e.kind ?? i}-${i}`}
+                className="flex flex-wrap items-baseline gap-2 text-[13px]"
+              >
+                <Pill tone={toneOf(e.kind)}>{e.kind ?? 'event'}</Pill>
+                <span className="text-[12px] text-subtle">
+                  {e.at ? `${clock(e.at)} · ${ago(e.at)}` : ABSENT}
+                </span>
+                <span className="wrap-any">{say(e)}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </Card>
   );
 }

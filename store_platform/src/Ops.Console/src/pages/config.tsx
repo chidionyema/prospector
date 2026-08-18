@@ -66,7 +66,9 @@ const GROUP_TITLE: Record<string, string> = {
 };
 
 export default function ConfigPage() {
-  const cfg = useOps<ConfigView>('config');
+  // NOT polled. Every other panel re-reads on a timer; this one holds a half-typed form, and
+  // a re-read underneath it would throw the operator's edit away mid-sentence.
+  const cfg = useOps<ConfigView>('config', {}, { pollMs: 0 });
   const intents = useOps<{ rows: Intent[] }>('intents', { limit: 50 });
   const [q, setQ] = useState('');
 

@@ -4,6 +4,18 @@
 > (`reference-project-claude-md-full-2026-08-06.md` is the verbatim pre-compression text).
 > This file carries the RULE; the memory files carry the incident that produced it.
 >
+> `docs/ARCHITECTURE_SECURITY_BASELINE.md` is the measured state of the system: what it is,
+> whether the money path and the engine are tested, the security findings, and where the mud
+> is. Re-measure it, never quote it from memory.
+>
+> `docs/WAYS_OF_WORKING.md` is how work is done here: 25 rules, each one a named repeated
+> failure rather than a preference. Part 7 marks honestly which are enforced by a machine
+> and which are still only words. `scripts/session_check.py` enforces the first five.
+>
+> `docs/PLATFORM_MANIFESTO.md` is the constitution: the ten platform laws, the agent tenets
+> every session is bound by, the portability target matrix and its drills, and the measured
+> automation audit. Read it before proposing anything structural.
+>
 > **When something breaks, the fix is half the job.** `docs/INCIDENT_PROCESS.md` is the other
 > half: sweep for the siblings, land a mechanism that refuses the whole class, and grade it
 > afterwards. Records: `docs/incidents/*.json`. Gate: `.venv/bin/python scripts/incident.py check`.

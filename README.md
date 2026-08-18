@@ -578,6 +578,25 @@ See **[store_platform/README.md](store_platform/README.md)** for the full launch
 [docs/ESTATE_MAP.md](docs/ESTATE_MAP.md) and [docs/personas/](docs/personas/README.md) — see
 [Start here](#start-here) for which seat to read.
 
+- **[docs/PLATFORM_MANIFESTO.md](docs/PLATFORM_MANIFESTO.md)** — the constitution. Ten laws
+  the platform is held to, the tenets every agent works under, which platforms we can move
+  to and how that is drilled, and an honest measured audit of the automation.
+- **[docs/WAYS_OF_WORKING.md](docs/WAYS_OF_WORKING.md)** — how work is done here. 30 rules,
+  each one a repeated failure rather than a preference, and an honest table of which are
+  enforced by a machine. Run `scripts/session_check.py` before you stop.
+- **[docs/ARCHITECTURE_SECURITY_BASELINE.md](docs/ARCHITECTURE_SECURITY_BASELINE.md)** — what
+  the system is, whether the critical paths are tested, where the security findings are, and
+  where the mud is. Every number has its command.
+- **[docs/LINKS.md](docs/LINKS.md)** — every shareable web page we have published, in one
+  index: the twenty persona audits, the consultant briefs, the design decisions and the
+  product samples. Thirty-nine pages existed and none of them was linked from anywhere until
+  this file. If you publish a page, add it there in the same commit.
+- **[docs/ESTATE_MAP.md](docs/ESTATE_MAP.md)** — what runs, where, and how the parts connect.
+  The factual spine. `bash ~/.hermes/scripts/verify_estate.sh` is the live answer to whether
+  it is working.
+- **[docs/personas/README.md](docs/personas/README.md)** — the same platform written twenty
+  times, once per role. Start here if you do not know which document is yours.
+
 Engine-level contracts:
 
 - **[AGENTS.md](AGENTS.md)** — the onboarding contract for any agent working on this

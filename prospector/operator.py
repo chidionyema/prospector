@@ -12,6 +12,7 @@ output with repair-retries (Part 9) — a bad parse never crashes a run. Adapter
 """
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import re
@@ -477,6 +478,55 @@ def _urlopen_read_bounded(req, *, timeout: float, total_deadline: float) -> byte
     return box["data"]
 
 
+#: How much of an HTTP error body to keep. The MiniMax refusal that matters is ~180 bytes; 800
+#: is room for a longer one without turning a health file into a log.
+_ERROR_BODY_CHARS = 800
+
+
+def _http_error_with_body(e: "urllib.error.HTTPError") -> RuntimeError:
+    """Turn an HTTPError into one whose message carries the provider's own explanation.
+
+    `str(HTTPError)` is the status line and nothing else — `HTTP Error 429: Too Many Requests`.
+    The reason is in the BODY, and urllib discards it unless someone reads the exception as a
+    file. Measured 2026-08-18 against the live endpoint while the engine was moat-blind:
+
+        $ curl -s -X POST https://api.minimax.io/v1/chat/completions ...
+        {"type":"error","error":{"type":"rate_limit_error","message":"Token Plan usage limit
+         reached: Upgrade your Token Plan or purchase Credits for more usage. (2056)",
+         "http_code":"429"},"request_id":"06d39d81b21ad83755fc36146cd0e843"}
+
+    Everything an operator needs is in that body, and none of it reached us. `provider_health.json`
+    recorded `MiniMax quota exhausted: HTTP Error 429: Too Many Requests` — a sentence whose first
+    half is our guess and whose second half is a generic status line. So the engine could not tell
+    a plan window from a busy endpoint, `errors.classify_exhaustion` graded it TRANSIENT on the
+    bare `\b429\b` and benched MiniMax for 60s at a time, and the founder had to be the one who
+    knew the plan resets on a clock.
+
+    With the body attached, the same failure classifies through `_PERMANENT_MARKERS` ("usage
+    limit") and earns the hour-long mark that an allowance limit deserves, and the alert quotes
+    the provider instead of paraphrasing it. Nothing here decides anything; it stops throwing
+    away the evidence the decision needs.
+
+    Returned rather than raised so the caller keeps its own `raise ... from` chain.
+    """
+    body = ""
+    try:
+        raw = e.read()
+        if isinstance(raw, bytes):
+            raw = raw.decode("utf-8", "replace")
+        body = " ".join(str(raw).split())[:_ERROR_BODY_CHARS]
+    except (OSError, ValueError, http.client.HTTPException) as read_err:
+        # Narrow on purpose, and NOT the empty string. A body that is empty and a body we
+        # could not read are different facts, and this message is the only place either one is
+        # ever seen. `tools/audit_swallow_sites.py` grades a broad, silent except that returns
+        # the success path's own value as tier 1 — "the caller cannot tell" — and it is right.
+        body = f"<error body unreadable: {type(read_err).__name__}>"
+    # The status line stays FIRST and verbatim: `\b429\b` word-boundary matching in the retry
+    # loop and in `errors` keys off it, and a body that happened to contain another number must
+    # not be able to move it.
+    return RuntimeError(f"HTTP Error {e.code}: {e.reason}" + (f" — {body}" if body else ""))
+
+
 def _read_sse_bounded(req, *, stall_timeout: float,
                       total_deadline: float) -> tuple[str, dict, str]:
     """Read an OpenAI-compatible SSE stream, bounded by a per-chunk STALL timeout and a hard total.
@@ -504,7 +554,11 @@ def _read_sse_bounded(req, *, stall_timeout: float,
     the hard ceiling a trickled body cannot defeat — the same thread-and-close construction as
     `_urlopen_read_bounded` above, and for the same 46-hour reason.
     """
-    resp = urllib.request.urlopen(req, timeout=stall_timeout)
+    try:
+        resp = urllib.request.urlopen(req, timeout=stall_timeout)
+    except urllib.error.HTTPError as e:
+        # The provider said why. Keep it — see `_http_error_with_body`.
+        raise _http_error_with_body(e) from e
     box: dict = {"parts": [], "usage": {}, "finish": ""}
 
     def _read():

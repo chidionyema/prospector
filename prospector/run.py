@@ -2076,8 +2076,15 @@ def run_signal(
         # Halt only AFTER the completion loop has drained. Every vet that was already
         # running got to finish and persist itself (store.save lives inside vet_candidate),
         # so the daemon halt costs us no evidence we have already paid for.
-        if infra_halt is not None:
-            raise infra_halt
+        #
+        # The raise itself is DEFERRED to the end of this function, past the summary and the
+        # batch diagnostics. Raising here skipped both, so a batch halted by a dead brain
+        # recorded nothing at all: `batch_diagnostics.jsonl` stopped on 2026-08-16T03:33 while
+        # the engine went on producing 326 dossiers a day, and `rates_over_time` — the only
+        # per-day pass/kill/outage series there is — showed a flat line instead of an outage.
+        # The measurement went blind at exactly the moment it was needed. `metrics._rate_point`
+        # was already written for this case; it prints "N of M vetted deferred and nothing was
+        # ruled — a retrieval/moat outage, not a 0% pass rate", and it never received the row.
 
     # --- Summary ---
     n_pass = sum(1 for d in dossiers if d.decision == Decision.PASS)
@@ -2128,6 +2135,11 @@ def run_signal(
                     "decisions": _bd.get("decisions")})
     except Exception as _diag_exc:  # never let diagnostics break a run
         logger.warning(f"batch diagnostics failed (non-fatal): {_diag_exc}")
+
+    # Now re-raise the infrastructure halt, with this batch's evidence already on disk. The
+    # caller's behaviour is unchanged: it still sees the same exception and still DEFERS.
+    if infra_halt is not None:
+        raise infra_halt
 
     return dossiers
 

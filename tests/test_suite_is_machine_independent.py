@@ -115,7 +115,15 @@ def test_no_test_hardcodes_an_interpreter_path():
     for path in TEST_FILES:
         if path.name == Path(__file__).name:
             continue
-        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        source = path.read_text(encoding="utf-8")
+        # Skip docstrings, for the reason `_docstring_lines` already gives: prose that QUOTES a
+        # bad interpreter path is documentation of the bug, not the bug. Four files whose whole
+        # subject was the `/app/...` failure tripped this guard on 2026-08-18. The receipt for a
+        # string defect is the string, so the guard reads code and leaves prose alone.
+        prose = _docstring_lines(ast.parse(source, filename=str(path)))
+        for lineno, line in enumerate(source.splitlines(), 1):
+            if lineno in prose:
+                continue
             if pattern.search(line.split("#")[0]):
                 offenders.append(f"{_relevant(path)}:{lineno}: {line.strip()}")
     assert not offenders, (

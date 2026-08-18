@@ -79,7 +79,23 @@ type Status = {
   // Declaring it required told TypeScript a lie the browser then paid for; see the guard below.
   stuck?: Stuck;
   pause: { scopes: PauseScope[]; any_armed: boolean };
-  providers: { tiers: Tier[]; moat_blind: string; drain_blind: string; trusted_final: string[] };
+  providers: {
+    tiers: Tier[];
+    moat_blind: string;
+    drain_blind: string;
+    trusted_final: string[];
+    /** The last few transitions. A recovery deletes the mark, so the pills above cannot
+     *  show that a brain broke and healed; these rows can. */
+    events?: {
+      ts_iso: string | null;
+      kind: string;
+      provider: string;
+      chain: string;
+      down_for_s?: number;
+      dead_for_s?: number;
+      error?: string;
+    }[];
+  };
   queue: {
     backlog: {
       workable: number;
@@ -209,6 +225,25 @@ export default function Now() {
               </Pill>
             ))}
           </div>
+          {data.providers.events?.length ? (
+            <div className="mt-3">
+              <div className="text-[12px] uppercase tracking-[0.06em] text-subtle">
+                Last few changes
+              </div>
+              <ul className="mt-1 flex flex-col gap-1 font-mono text-[12px] text-muted">
+                {data.providers.events.slice(0, 4).map((e, i) => (
+                  <li key={`${e.ts_iso}:${e.provider}:${e.kind}:${i}`}>
+                    {ago(e.ts_iso ?? undefined)} — {e.provider} ({e.chain}){' '}
+                    {e.kind === 'recovered'
+                      ? `came back on its own after ${duration(e.down_for_s ?? 0)} down`
+                      : e.kind === 'benched'
+                        ? `was benched for ${duration(e.dead_for_s ?? 0)}`
+                        : 'was re-probed'}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           {data.routing.problems?.length ? (
             <div className="mt-3 flex flex-col gap-2">
               {data.routing.problems.map((p) => (

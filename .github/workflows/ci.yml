@@ -453,11 +453,20 @@ jobs:
         # test_ui_theme.py is excluded as it always was. test_golden_set.py is excluded here
         # and run as its own hard gate below.
         #
-        # -n 6 is explicit rather than `auto`. `auto` resolves through
+        # -n 4 is explicit rather than `auto`. `auto` resolves through
         # PYTEST_XDIST_AUTO_NUM_WORKERS, which is set to 3 at the top of this file for a world
-        # with three concurrent pytest jobs. There is one now, so it gets more of the box: 6
-        # pytest workers alongside the nextjs, dotnet and engine jobs is 9 busy processes on 12
-        # cores, which is the same total load the 3x3 arrangement asked for.
+        # with three concurrent pytest jobs on one shared laptop.
+        #
+        # 4, not the 6 this said until 2026-08-18, because the machine underneath changed. CI
+        # no longer runs on the founder's 12-core Mac beside the production daemons; it runs on
+        # `prospector-ci` Fly machines, `shared-cpu-4x` with 8 GB (deploy/runner/fly.toml), and
+        # a GitHub runner takes ONE job at a time. So the job does not share four cores with
+        # anything: it gets all of them, and 6 workers on 4 vCPUs was 1.5x oversubscription of a
+        # burstable CPU with every worker importing the whole engine.
+        #
+        # NOT a wall-clock claim. I have not measured 4 against 6 on this machine. What it is:
+        # the declared width now equals the vCPUs the runner actually has, which is what
+        # ops/config/ci_capacity.yaml checks, and what nothing checked while CI moved hosts.
         run: |
           set -eu
           files=$(git ls-files 'tests' \
@@ -468,7 +477,7 @@ jobs:
           if [ "$count" -eq 0 ]; then
             echo "::error::collected no test files — the pattern is wrong"; exit 1
           fi
-          python -m pytest -q $files -n 6 --tb=short -p no:warnings
+          python -m pytest -q $files -n 4 --tb=short -p no:warnings
 
       # ── Hard gate ──────────────────────────────────────────────
       # Block the pipeline if the golden set does not achieve 100 %

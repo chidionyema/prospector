@@ -126,8 +126,19 @@ def scan(root: Path, decl: dict[str, Any]) -> dict[str, Any]:
         # The linter names its rule in `check`; `code`/`rule` are accepted too so this survives a
         # rename in the linter without going quiet. "unnamed" is deliberately visible rather than
         # silently dropped: a reason we cannot read is a reason nobody will fix.
+        #
+        # ONLY severity=error, because only an error blocks a sale. Measured 2026-08-17 across
+        # 123 lint receipts: 10,546 warnings against 197 errors, NO pack fails on warnings alone,
+        # and 47 packs are sellable while carrying warnings. Counting both made this report name
+        # house_style, house_quote, human_register and repetition as the top four blockers, each
+        # on all 73 stranded packs -- four rules that have never blocked anything. The real list
+        # is nine checks led by shelf_copy (42 packs) and placeholders (21). A report that points
+        # at the wrong repair is worse than no report: it costs a day fixing prose that was never
+        # in the way. Anything without a severity counts, so a linter that stops emitting the
+        # field fails loud rather than reporting zero blockers.
         codes = sorted({str(p.get("check") or p.get("code") or p.get("rule") or "unnamed")
-                        for p in (record.get("problems") or []) if isinstance(p, dict)})
+                        for p in (record.get("problems") or []) if isinstance(p, dict)
+                        and p.get("severity", "error") == "error"})
         for code in codes:
             problem_codes[code] += 1
         by_reason["lint_failed"] += 1

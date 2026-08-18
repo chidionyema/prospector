@@ -8,6 +8,10 @@ runs, what it costs, what is broken, what is unknown, and which command settles 
 target is that a reader — human or model — can hand one of these to an unfamiliar reader and they
 can reason about the whole system from that angle without opening anything else.
 
+**Every one of these is also published as a shareable web page.** The URLs are in
+[docs/LINKS.md](../LINKS.md), not here, so there is one list to keep right rather than two.
+Send someone the page when they do not have the repo; send them the file when they do.
+
 **The rule that governs the set.** A fact lives in **one** place. The shared factual spine is
 [../ESTATE_MAP.md](../ESTATE_MAP.md) — deployment topology, service names, store paths, config keys,
 the risk register. A persona document reads that spine and adds the *seat's* reading of it: what

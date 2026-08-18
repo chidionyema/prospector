@@ -168,15 +168,28 @@ class _Fake:
         return any(c[:2] == ["git", "checkout"] for c in self.calls)
 
 
-def _arm(lc, monkeypatch, tmp_path, verdict: str, *, bypass: bool = False):
-    # Pin the platform. `update()` dispatches on `active_side()`, which reads
-    # `~/.prospector/ACTIVE` — a file outside the repo, on the developer's machine. These
-    # tests arm the laptop path, so without this line they ran the Fly path on any box
-    # where that marker says `fly`, and four of them failed. That is what turned main red
-    # on 2026-08-18 and, through it, held every open pull request and the deploy.
-    monkeypatch.setattr(lc, "active_side", lambda: "laptop")
+SIDES = ["laptop", "fly"]
+
+
+def _arm(lc, monkeypatch, tmp_path, verdict: str, *, bypass: bool = False, side: str = "laptop"):
+    """Arm update() so it exercises the CI gate and nothing else.
+
+    `side` is not optional decoration. `update()` branches on `active_side()`, which reads
+    `~/.prospector/ACTIVE` — a file in the DEVELOPER'S HOME. Before this parameter existed the
+    tests never pinned it, so which of the two code paths they graded depended on the machine.
+    On a CI runner the file is absent, `active_side()` returns "unknown", and every test below
+    took the laptop path; on the founder's laptop after the 2026-08-18 Fly cutover the file says
+    "fly", `update()` called the real `fly machines list`, and four tests failed locally while CI
+    stayed green. The gate on the path production actually takes had never run anywhere.
+
+    So every gate test now runs twice, once per side, and neither run touches the network.
+    """
+    assert side in SIDES, side
+    monkeypatch.setattr(lc, "active_side", lambda: side)
+
     monkeypatch.setattr(lc, "LIVE", tmp_path / "live")
     (tmp_path / "live").mkdir()
+    monkeypatch.setattr(lc, "DEPLOY_SOURCE", tmp_path / "live")
     monkeypatch.setattr(lc, "NO_AUTO_UPDATE", tmp_path / "NO_AUTO_UPDATE")
     allow = tmp_path / "ALLOW_UNVERIFIED_DEPLOY"
     if bypass:
@@ -187,38 +200,50 @@ def _arm(lc, monkeypatch, tmp_path, verdict: str, *, bypass: bool = False):
     monkeypatch.setattr(lc, "report", lambda: 0)
     fake = _Fake(target="b" * 40, current="a" * 40)
     monkeypatch.setattr(lc, "run", fake)
+
+    # The Fly path's two live probes. `fly_report` shells out to `fly machines list` and reads the
+    # deploy stamp over the network; `deployed_commit` is what decides "already deployed", so it
+    # must answer from the fake LAZILY — a test that reassigns fake.target after arming is asking
+    # exactly that question.
+    monkeypatch.setattr(lc, "fly_report", lambda: 0)
+    monkeypatch.setattr(lc, "deployed_commit", lambda: (fake.current, "stubbed"))
     return fake
 
 
+@pytest.mark.parametrize("side", SIDES)
 @pytest.mark.parametrize("verdict", ["fail", "none", "pending", "unknown"])
 def test_update_refuses_to_ship_a_commit_without_a_green_verdict(
-        lc, monkeypatch, tmp_path, verdict):
-    fake = _arm(lc, monkeypatch, tmp_path, verdict)
+        lc, monkeypatch, tmp_path, verdict, side):
+    fake = _arm(lc, monkeypatch, tmp_path, verdict, side=side)
     assert lc.update(unattended=True) == 1
     assert not fake.checked_out, f"deployed on a {verdict} verdict"
 
 
-def test_update_ships_a_green_commit(lc, monkeypatch, tmp_path):
-    fake = _arm(lc, monkeypatch, tmp_path, "pass")
+@pytest.mark.parametrize("side", SIDES)
+def test_update_ships_a_green_commit(lc, monkeypatch, tmp_path, side):
+    fake = _arm(lc, monkeypatch, tmp_path, "pass", side=side)
     assert lc.update(unattended=True) == 0
     assert fake.checked_out
 
 
-def test_the_bypass_file_ships_a_red_commit(lc, monkeypatch, tmp_path):
-    fake = _arm(lc, monkeypatch, tmp_path, "fail", bypass=True)
+@pytest.mark.parametrize("side", SIDES)
+def test_the_bypass_file_ships_a_red_commit(lc, monkeypatch, tmp_path, side):
+    fake = _arm(lc, monkeypatch, tmp_path, "fail", bypass=True, side=side)
     assert lc.update(unattended=True) == 0
     assert fake.checked_out
 
 
-def test_an_already_current_checkout_is_not_gated(lc, monkeypatch, tmp_path):
+@pytest.mark.parametrize("side", SIDES)
+def test_an_already_current_checkout_is_not_gated(lc, monkeypatch, tmp_path, side):
     """A red verdict on code ALREADY live must not take away the restart button."""
-    fake = _arm(lc, monkeypatch, tmp_path, "fail")
+    fake = _arm(lc, monkeypatch, tmp_path, "fail", side=side)
     fake.target = fake.current
     assert lc.update(unattended=False) == 0
 
 
-def test_the_kill_switch_still_wins_over_everything(lc, monkeypatch, tmp_path):
-    fake = _arm(lc, monkeypatch, tmp_path, "pass")
+@pytest.mark.parametrize("side", SIDES)
+def test_the_kill_switch_still_wins_over_everything(lc, monkeypatch, tmp_path, side):
+    fake = _arm(lc, monkeypatch, tmp_path, "pass", side=side)
     lc.NO_AUTO_UPDATE.write_text("")
     assert lc.update(unattended=True) == 0
     assert not fake.checked_out
@@ -253,66 +278,11 @@ def test_only_skipped_runs_is_none_not_pass(lc, monkeypatch):
     assert lc.ci_verdict("deadbeef")[0] == "none"
 
 
-# ------------------------------------------------------------------------- the fly path
-
-def _arm_fly(lc, monkeypatch, tmp_path, verdict: str, *, bypass: bool = False,
-             deployed: str = "a" * 40):
-    """Arm `update()` on the side that actually serves production.
-
-    `~/.prospector/ACTIVE` has said `fly` since the 2026-08-18 cutover, so this is the
-    branch every real deploy takes. It had no test of its own.
-    """
-    monkeypatch.setattr(lc, "active_side", lambda: "fly")
-    monkeypatch.setattr(lc, "DEPLOY_SOURCE", tmp_path / "source")
-    (tmp_path / "source").mkdir()
-    monkeypatch.setattr(lc, "NO_AUTO_UPDATE", tmp_path / "NO_AUTO_UPDATE")
-    allow = tmp_path / "ALLOW_UNVERIFIED_DEPLOY"
-    if bypass:
-        allow.write_text("")
-    monkeypatch.setattr(lc, "ALLOW_UNVERIFIED_DEPLOY", allow)
-    monkeypatch.setattr(lc, "_code_changes", lambda _: [])
-    monkeypatch.setattr(lc, "ci_verdict", lambda sha: (verdict, "stubbed"))
-    monkeypatch.setattr(lc, "fly_report", lambda: 0)
-    monkeypatch.setattr(lc, "deployed_commit", lambda: (deployed, "stubbed"))
-    fake = _Fake(target="b" * 40, current="a" * 40)
-    monkeypatch.setattr(lc, "run", fake)
-    return fake
-
-
-def _released(fake) -> bool:
-    return any("fly.sh" in " ".join(c) for c in fake.calls)
-
-
-@pytest.mark.parametrize("verdict", ["fail", "none", "pending", "unknown"])
-def test_fly_refuses_to_release_without_a_green_verdict(lc, monkeypatch, tmp_path, verdict):
-    fake = _arm_fly(lc, monkeypatch, tmp_path, verdict)
-    assert lc.update(unattended=True) == 1
-    assert not _released(fake), f"released on a {verdict} verdict"
-
-
-def test_fly_releases_a_green_commit(lc, monkeypatch, tmp_path):
-    fake = _arm_fly(lc, monkeypatch, tmp_path, "pass")
-    assert lc.update(unattended=True) == 0
-    assert _released(fake)
-
-
-def test_the_bypass_file_releases_a_red_commit_to_fly(lc, monkeypatch, tmp_path):
-    fake = _arm_fly(lc, monkeypatch, tmp_path, "fail", bypass=True)
-    assert lc.update(unattended=True) == 0
-    assert _released(fake)
-
-
-def test_fly_does_not_rebuild_what_is_already_deployed(lc, monkeypatch, tmp_path):
-    """The image already carries origin/main. A red verdict on it must not matter, and
-    neither must a rebuild: `fly deploy` restarts the machine, and doing that every 60
-    seconds on a schedule is an outage the gate would be causing itself."""
-    fake = _arm_fly(lc, monkeypatch, tmp_path, "fail", deployed="b" * 40)
-    assert lc.update(unattended=True) == 0
-    assert not _released(fake)
-
-
-def test_the_kill_switch_stops_a_fly_release(lc, monkeypatch, tmp_path):
-    fake = _arm_fly(lc, monkeypatch, tmp_path, "pass")
-    lc.NO_AUTO_UPDATE.write_text("")
-    assert lc.update(unattended=True) == 0
-    assert not _released(fake)
+def test_the_gate_tests_never_ask_the_machine_which_side_is_live(lc, monkeypatch, tmp_path):
+    """Guard the guard. If `_arm` ever stops pinning `active_side`, these tests silently go back
+    to grading whichever path the developer's `~/.prospector/ACTIVE` happens to name."""
+    asked = []
+    monkeypatch.setattr(lc, "active_side", lambda: asked.append(1) or "fly")
+    _arm(lc, monkeypatch, tmp_path, "pass", side="laptop")
+    assert lc.active_side() == "laptop", "_arm did not pin active_side"
+    assert not asked, "the real active_side was consulted"

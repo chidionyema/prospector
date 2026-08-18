@@ -18,6 +18,8 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import { logConsoleEvent } from '@/lib/oplog';
+
 const MAX_FIELD = 4096;
 
 function clip(value: unknown): string {
@@ -44,6 +46,16 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   console.error(`[ops-console client-error] message=${message}`);
   if (stack) console.error(`[ops-console client-error] stack=${stack}`);
   if (componentStack) console.error(`[ops-console client-error] components=${componentStack}`);
+
+  // AND on the volume, because stderr is a four-minute window. `fly logs --no-tail` returns
+  // 100 lines, so a crash reported an hour later has already scrolled out of the only place
+  // it was ever written. This is the copy that is still there tomorrow.
+  logConsoleEvent({
+    kind: 'client_error',
+    where,
+    message,
+    detail: stack || componentStack,
+  });
 
   return res.status(204).end();
 }

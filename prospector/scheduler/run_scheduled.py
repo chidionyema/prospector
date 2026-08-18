@@ -1124,9 +1124,22 @@ def _recover_pass(cfg) -> dict | None:
     # URL over the network (`lint_check_urls`) and a pack with 30+ citations, some of them
     # timing out, runs for minutes. Without a per-pack cap the FIRST slow pack eats the whole
     # budget and the outer timeout kills the run before it writes a single ledger row.
-    cmd = [sys.executable, str(script), "--apply", "--routes", "audit,rebundle,copy",
+    # `publish` belongs in this list whenever --publish is on, and leaving it out cost the
+    # shelf a day of sales. The child routes each pack to exactly ONE route, and a pack that
+    # lints clean and was simply never listed routes to `publish`
+    # (`tools/recover_stranded_passes.py::_route`). The route filter runs FIRST
+    # (`recover_stranded_passes.py:397`), so a `publish`-routed pack was dropped with
+    # "route publish not selected" before the --publish flag could ever apply to it. Measured
+    # on the live tick of 2026-08-18T18:53Z: `SKIP [0fcc840981645d85] publish: route publish
+    # not selected`, one of three packs that were finished, clean and unsold. Two switches
+    # that have to agree, so derive one from the other rather than writing it twice.
+    routes = ["audit", "rebundle", "copy"]
+    publish = bool(_sched(cfg, "recover_publish", True))
+    if publish:
+        routes.append("publish")
+    cmd = [sys.executable, str(script), "--apply", "--routes", ",".join(routes),
            "--limit", str(limit), "--jobs", "2", "--timeout", "240"]
-    if _sched(cfg, "recover_publish", True):
+    if publish:
         # The same money-rail action the engine already takes on any fresh PASS, applied to
         # a repaired one: it lists only what the deterministic gate now passes.
         cmd.append("--publish")

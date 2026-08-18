@@ -15,19 +15,23 @@
 # until it is, CI has to share this box without stalling it.
 
 box:
-  cpus: 12
-  ram_gb: 16
-  # Cores left for the production daemons, the light runner and the OS. The scheduler and
-  # consumer sit at roughly one core between them.
-  reserved_cpus: 2
-  # How many heavy jobs can land ON THIS BOX at once: the three Macs that carry `heavy`.
+  # THE RUNNER MACHINE, not the founder's laptop. Rewritten 2026-08-18 when CI moved to Fly.
   #
-  # This used to be `pools.heavy.runners`, and one number did two jobs. That worked only while
-  # every runner was on this Mac. Since 2026-08-18 three Fly containers carry `heavy` too, so the
-  # registered count is 6 while the count that spends this box's CPUs is still 3. Summing the six
-  # widest jobs against a 10-CPU budget would have declared the contract broken for adding
-  # capacity that is not on the box at all.
-  heavy_slots: 3
+  # Everything this section used to say was about sharing one 12-core Mac with the production
+  # scheduler and consumer: 12 cpus, 2 reserved for the daemons, 3 heavy jobs landing at once.
+  # None of it is true any more. CI runs on `prospector-ci` Fly machines, `shared-cpu-4x` with
+  # 8 GB each (deploy/runner/fly.toml), and production runs in its own Fly apps. Nothing CI does
+  # can stall the engine now, and nothing the engine does slows CI.
+  #
+  # So the budget is per MACHINE. A GitHub Actions runner takes one job at a time, so the widest
+  # single job has to fit one machine: heavy_slots is 1 and reserved_cpus is 0. The old numbers
+  # kept passing while the ground moved, which is the failure this contract exists to catch and
+  # did not.
+  cpus: 4
+  ram_gb: 8
+  reserved_cpus: 0
+  # One job per runner process. This is a property of GitHub Actions, not a tuning knob.
+  heavy_slots: 1
 
 # How many processes each heavy job actually runs. `python` says `-n 6` on its pytest command
 # line; the rest are one build or one suite at the file's default width. At most `heavy.runners`
@@ -35,7 +39,7 @@ box:
 # A number here that ci.yml does not agree with is itself a failure: the point is that the two
 # cannot drift.
 job_cpus:
-  python: 6
+  python: 4
   engine: 3
   dotnet: 1
   nextjs: 1
@@ -70,8 +74,16 @@ pools:
   # at least `runners`, at most `runners + ephemeral`. An exact count flakes on its own fleet.
   # Only `runners` bears on the CPU budget; see box.heavy_slots.
   heavy:
-    runners: 3
-    ephemeral: 3
+    # THE FLY FLEET. Three `prospector-ci` machines carry every label; the four Mac runners are
+    # registered but have been offline since the estate moved, and an offline runner is not
+    # capacity. `scripts/ci_capacity.py --live` counts ONLINE runners for exactly that reason.
+    #
+    # 2 persistent + 1 ephemeral = a range of 2-3 against a fleet of 3. The tolerance is one
+    # machine, and it is needed: these runners are `--ephemeral`, so each one deregisters when a
+    # job ends and re-registers when Fly restarts it about two seconds later. A blink is normal;
+    # two machines down at once is not.
+    runners: 2
+    ephemeral: 1
     variable: CI_HEAVY_RUNS_ON
     label: heavy
     jobs: [python, engine, dotnet]
@@ -92,8 +104,12 @@ pools:
   #
   # Every self-hosted instance: four persistent Macs, plus up to three Fly containers.
   light:
-    runners: 4
-    ephemeral: 3
+    # The same three machines. They carry `self-hosted` as well as `heavy`, so the light pool is
+    # not a separate fleet any more -- the reservation the split existed for came from the Macs,
+    # where mumchimp-mac-4 deliberately lacked `heavy`. Keep the split declared: it costs
+    # nothing, and it is how a light job gets its own capacity again the moment one is added.
+    runners: 2
+    ephemeral: 1
     variable: CI_LIGHT_RUNS_ON
     label: self-hosted
     jobs: [changes, guard, ci-ok, nextjs, ops-console]
