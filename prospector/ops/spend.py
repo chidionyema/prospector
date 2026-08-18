@@ -69,9 +69,20 @@ SUBSCRIPTION_TIERS = frozenset({"claude_cli"})
 
 
 def _iso(ts: Optional[float]) -> Optional[str]:
+    """A timestamp as ISO-8601, or None when it is not a date a calendar can hold.
+
+    `_project` divides the headroom by a measured rate. A few pence an hour against a cap
+    nowhere near being reached gives a date thousands of years out, and `datetime` refuses any
+    year above 9999 -- `ValueError: year must be in 1..9999, not 17751` in CI run 32101433859,
+    raised out of `spend_view` so the operator got NO spend page rather than a page with one
+    unprintable field. The question that field answers is already answered by `hits_today`.
+    """
     if ts is None:
         return None
-    return datetime.fromtimestamp(float(ts), timezone.utc).isoformat()
+    try:
+        return datetime.fromtimestamp(float(ts), timezone.utc).isoformat()
+    except (ValueError, OverflowError, OSError):
+        return None
 
 
 def load_cfg(path: Optional[str] = None):
