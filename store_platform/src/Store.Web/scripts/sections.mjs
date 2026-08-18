@@ -138,6 +138,15 @@ const EXCEPT = [
  * MISSING is that. THIN is the same defect at partial strength: the build emits it, but for a
  * fraction of the elements the drawing does, which is what a list rendered as cards looks like.
  */
+/*
+ * DELIBERATE STRUCTURAL DIFFERENCES, each with the reason it is not a defect. Anything not in here
+ * that the drawing styles and the build never emits is a real gap and gets reported. Keep this list
+ * tiny: it is the one place the structure check can be told to look away.
+ */
+const STRUCT_EXCEPT = {
+  killgrid: 'the 1,444-square field is one <svg> of rects, not 1,444 <i> elements',
+};
+
 async function styleParity(page, html, cssClasses) {
   const drawn = new Map();
   for (const m of html.matchAll(/class="([^"]+)"/g)) {
@@ -160,6 +169,7 @@ async function styleParity(page, html, cssClasses) {
   const thin = [];
   for (const [c, n] of [...drawn].sort((a, b) => b[1] - a[1])) {
     const got = built.get(c) ?? 0;
+    if (STRUCT_EXCEPT[c]) continue;
     if (got === 0) missing.push(`${c} (drawing uses ${n})`);
     else if (n >= 3 && got * 2 < n) thin.push(`${c} ${got}/${n}`);
   }

@@ -100,9 +100,9 @@ export function SourceChip({
     return (
       <a
         {...common}
-        className={`inline-flex max-w-full items-center gap-[7px] rounded-full border border-line bg-surface px-3 py-1.5 font-mono text-caption leading-normal text-muted transition-colors duration-[120ms] hover:border-border-strong hover:text-text ${className}`}
+        className={`srcchip ${className}`}
       >
-        <span aria-hidden className="size-[5px] shrink-0 rounded-full bg-survive" />
+        <i aria-hidden className="dot" />
         <span className="truncate">{text}</span>
       </a>
     );
