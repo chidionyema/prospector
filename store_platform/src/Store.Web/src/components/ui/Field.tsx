@@ -31,7 +31,7 @@ export function Field({
         className={cx('text-body font-semibold text-text', hideLabel && 'sr-only')}
       >
         {label}
-        {required && <span className="text-danger"> *</span>}
+        {required && <span className="text-error"> *</span>}
       </label>
       {children}
       {hint && !error && (
@@ -40,7 +40,7 @@ export function Field({
         </p>
       )}
       {error && (
-        <p id={`${htmlFor}-error`} role="alert" className="text-caption text-danger">
+        <p id={`${htmlFor}-error`} role="alert" className="text-caption text-error">
           {error}
         </p>
       )}

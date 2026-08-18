@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# Fly.io adapter. Everything in this repo that knows the word "fly" is in this file.
+#
+# Read deploy/PORTABILITY.md first. This implements the eight-verb contract described there.
+# A second platform is a copy of this file with different commands in the same eight functions.
+
+set -euo pipefail
+
+APP="${PROSPECTOR_FLY_APP:-prospector-engine}"
+REGION="${PROSPECTOR_FLY_REGION:-lhr}"
+VOLUME="${PROSPECTOR_FLY_VOLUME:-prospector_store}"
+VOLUME_GB="${PROSPECTOR_FLY_VOLUME_GB:-20}"
+ENGINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../engine" && pwd)"
+
+t_name() { echo "fly:${APP}"; }
+
+t_preflight() {
+  command -v fly >/dev/null || { echo "fly CLI not installed: brew install flyctl" >&2; return 1; }
+  fly auth whoami >/dev/null 2>&1 || { echo "fly CLI not logged in: fly auth login" >&2; return 1; }
+  # `fly auth whoami` passes on a dead token in some versions, so make one real API call.
+  fly apps list >/dev/null || { echo "fly token is dead; run: fly auth login" >&2; return 1; }
+}
+
+t_provision() {
+  fly apps list 2>/dev/null | awk '{print $1}' | grep -qx "$APP" \
+    || fly apps create "$APP" --org personal
+  # No public IP on purpose. The dashboards are reached over `fly proxy`, never the internet.
+  fly ips list -a "$APP" 2>/dev/null | grep -q . && {
+    echo "NOTE: $APP has a public IP. Remove it with: fly ips release <addr> -a $APP" >&2; }
+  fly volumes list -a "$APP" --json 2>/dev/null | grep -q "\"$VOLUME\"" \
+    || fly volumes create "$VOLUME" -a "$APP" -r "$REGION" -s "$VOLUME_GB" --yes
+}
+
+# $1 = path to a KEY=VALUE file
+t_secrets() {
+  fly secrets import -a "$APP" --stage < "$1"
+}
+
+t_release() {
+  fly deploy "$ENGINE_DIR/.." --config "$ENGINE_DIR/fly.toml" -a "$APP" \
+    --dockerfile "$ENGINE_DIR/Dockerfile" --strategy immediate --yes
+}
+
+t_start() { fly scale count 1 -a "$APP" --yes; }
+t_stop()  { fly scale count 0 -a "$APP" --yes; }
+
+t_exec() {
+  fly ssh console -a "$APP" -C "/bin/sh -lc $(printf '%q' "$*")"
+}
+
+# $1 = local file, $2 = absolute path inside the container
+t_put() {
+  fly ssh sftp shell -a "$APP" <<EOF
+put $1 $2
+EOF
+}
+
+# $1 = local .tar.gz to write. Used when Fly is the SOURCE, i.e. when we leave.
+t_pack() {
+  t_exec "python /app/scripts/store_migrate.py pack /data/handover.tar.gz --store /data/store"
+  fly ssh sftp get -a "$APP" /data/handover.tar.gz "$1"
+  t_exec "rm -f /data/handover.tar.gz"
+}
+
+t_logs() { fly logs -a "$APP"; }

@@ -45,7 +45,7 @@ export default function OrderPage() {
     return (
       <MarketingLayout
         breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Your order' }]}
-        breadcrumbsWidth="3xl"
+        breadcrumbsWidth="6xl"
       >
         <div className="flex min-h-dvh items-center justify-center px-6">
           <div className="text-center">
@@ -74,7 +74,7 @@ export default function OrderPage() {
   return (
     <MarketingLayout
       breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Your order' }]}
-      breadcrumbsWidth="3xl"
+      breadcrumbsWidth="6xl"
     >
       <div className="flex min-h-dvh items-center justify-center px-6 py-16">
         <div className="bg-surface rounded-md border border-border p-8 max-w-md w-full mx-4">

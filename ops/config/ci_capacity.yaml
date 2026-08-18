@@ -1,0 +1,52 @@
+# HOW MUCH OF THIS MACHINE CI IS ALLOWED TO TAKE.
+#
+# CI runs on self-hosted runner processes on the same Mac that runs the production scheduler and
+# consumer. Nothing used to connect the two numbers that decide the load: how many runner
+# processes are registered (a `config.sh` run nobody records) and how wide each pytest job runs
+# (`PYTEST_XDIST_AUTO_NUM_WORKERS` in ci.yml). Neither knew about the other, and neither knew the
+# box also runs the daemons. Measured 2026-08-18 with four runners busy: load average 110 on a
+# 12-CPU box, roughly nine times oversubscribed.
+#
+# `scripts/ci_capacity.py` checks these numbers against the workflow files and, with --live,
+# against the runners actually registered on GitHub. Change a number here and the check tells you
+# what else has to move.
+#
+# This is a contract for a temporary arrangement. The engine is being moved to hosted capacity;
+# until it is, CI has to share this box without stalling it.
+
+box:
+  cpus: 12
+  ram_gb: 16
+  # Cores left for the production daemons, the light runner and the OS. The scheduler and
+  # consumer sit at roughly one core between them.
+  reserved_cpus: 2
+
+# How many processes each heavy job actually runs. `python` says `-n 6` on its pytest command
+# line; the rest are one build or one suite at the file's default width. At most `heavy.runners`
+# of these run at once, so the check sums the widest that many and compares against the budget.
+# A number here that ci.yml does not agree with is itself a failure: the point is that the two
+# cannot drift.
+job_cpus:
+  python: 6
+  engine: 3
+  dotnet: 1
+  nextjs: 1
+  ops-console: 1
+
+pools:
+  # Jobs that check out, install a toolchain and run a suite: python, engine, dotnet, nextjs,
+  # ops-console. heavy_runners x workers_per_heavy_job must fit in cpus - reserved_cpus.
+  heavy:
+    runners: 3
+    variable: CI_HEAVY_RUNS_ON
+    label: heavy
+    jobs: [python, engine, dotnet, nextjs, ops-console]
+  # Jobs that are a shell loop over already-computed results. They hold a slot for seconds, so
+  # one runner clears any queue they can make, and they must never wait behind a suite: `ci-ok`
+  # queueing behind a 24-minute python job is what left runs reading `queued` after every job in
+  # them had finished.
+  light:
+    runners: 1
+    variable: CI_LIGHT_RUNS_ON
+    label: light
+    jobs: [changes, guard, ci-ok]

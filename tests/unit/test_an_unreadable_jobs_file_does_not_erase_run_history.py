@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 
-from prospector.control_center import runner
+from prospector.ops import runner
 
 
 def test_read_jobs_file_separates_absent_from_corrupt(tmp_path):

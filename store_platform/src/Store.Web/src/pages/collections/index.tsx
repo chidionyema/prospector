@@ -371,7 +371,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
          * sentence about what the catalogue does and does not contain; the way out of a category
          * list is a control on that sentence, not a second screen restating it.
          */}
-        <div className="mt-12 flex flex-wrap items-center justify-between gap-x-10 gap-y-5 border-t border-border pt-8">
+        <div className="mt-12 flex flex-wrap items-center justify-between gap-x-10 gap-y-5 border-t-2 border-text pt-9">
           <p className="max-w-[62ch] text-meta leading-relaxed text-muted">
             Categories appear once enough packs have cleared the checks to fill them. Ideas that failed are in the{' '}
             <Link href="/kill-log" className={textLinkClass('font-medium')}>

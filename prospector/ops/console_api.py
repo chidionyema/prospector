@@ -56,6 +56,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 from prospector import content_contract
+from prospector import pack_linter
 
 #: Bumped when the JSON contract changes shape. The web app asserts on it at boot, so a console
 #: talking to an older engine says so instead of rendering blanks.
@@ -156,7 +157,6 @@ def _read_status(cfg, args: dict) -> dict:
     from .routing import routing_view
 
     out: dict[str, Any] = {"heartbeats": _heartbeats(cfg), "alerts": _alerts(cfg)}
-    out["stuck"] = _stuck(cfg, args)
     out["supervisor"] = _supervisor_view()
     out["pause"] = pause_view(cfg)
     out["providers"] = provider_view(cfg)
@@ -325,65 +325,6 @@ def _alerts(cfg) -> dict:
     }
 
 
-def _stuck(cfg, args: dict) -> dict:
-    """Candidates that started and never finished, on the front page instead of three clicks in.
-
-    The engine cannot write its own `candidate_done` when it is killed (`run.py:1063`), so work
-    that died leaves no error anywhere — only a missing row. That made a dead batch invisible
-    until someone opened the run. `runs.unfinished` names each one, and only the ones that need
-    a human are counted: work still being vetted is not a fault.
-    """
-    from .runs import unfinished
-
-    try:
-        view = unfinished(days=int(args.get("days") or 3))
-    except Exception as exc:  # noqa: BLE001 — a broken audit read is information, not a 500
-        return {"error": f"{exc}", "error_kind": type(exc).__name__, "needs_attention": None,
-                "needs_attention_null_reason": "the audit log could not be read, so whether work "
-                                               "is stuck is unmeasured — treat this as unknown, "
-                                               "not as clear"}
-    worst = [e for e in view["items"] if e["state"] != "in_flight"]
-    return {
-        "needs_attention": view["needs_attention"],
-        "in_flight": view["counts"]["in_flight"],
-        "counts": view["counts"],
-        "window_days": view["window_days"],
-        "stall_after_min": int(view["stall_after_s"] // 60),
-        # Capped for the front page. `needs_attention` above is the FULL count, so a long tail
-        # is never silently reported as a short one.
-        "items": worst[:8],
-        "shown": min(len(worst), 8),
-        "note": view["note"],
-        # WHAT THE ENGINE WILL FIX BY ITSELF, separated from what it cannot. `unfinished` above
-        # is read from the audit log and is a HISTORY: it still names work that died four days
-        # ago even after the candidate has been recovered. The in-flight ledger is the LIVE
-        # answer — a record is deleted the moment a verdict exists — so this is the count that
-        # actually falls to zero, and the one that says whether a human has to do anything.
-        "awaiting_recovery": _awaiting_recovery(cfg),
-    }
-
-
-def _awaiting_recovery(cfg) -> dict:
-    """Abandoned work the next `vet --resume` will re-vet on its own.
-
-    Every drain pass starts with `run._recover_orphans`, so this number needs no operator action
-    and falls without one. It is reported anyway: work that is queued for repair and work that is
-    lost look identical from the audit log, and the founder has to be able to tell them apart.
-    """
-    from .. import inflight
-    from .runs import _store
-
-    try:
-        view = inflight.survey(_store(cfg).root)
-    except Exception as exc:  # noqa: BLE001
-        return {"count": None, "count_null_reason": f"the in-flight ledger could not be read: "
-                                                    f"{exc}"}
-    return {"count": view["counts"]["orphaned"], "in_progress": view["counts"]["live"],
-            "unreadable": view["counts"]["unreadable"], "dir": view["dir"],
-            "note": "these are re-vetted automatically at the start of every drain pass; "
-                    "nothing to do"}
-
-
 def _spend_headline(cfg) -> dict:
     """The four numbers the `/` screen needs, lifted from `spend_view` without re-deriving any.
 
@@ -533,7 +474,7 @@ def _read_config(cfg, args: dict) -> dict:
     a save that the writer then refuses, which reads to the operator as a broken button rather
     than as an unreachable key.
     """
-    from prospector.control_center import config_editor as ce
+    from prospector.ops import config_editor as ce
 
     raw, readable = ce._read_config_raw()
     path = ce._config_path()
@@ -583,7 +524,7 @@ def _read_config(cfg, args: dict) -> dict:
         "history": ce.read_history(limit=int(args.get("history_limit") or 50)),
         "backups": ce.list_backups(),
         "moat_affecting_keys": sorted([list(k) for k in ce.MOAT_AFFECTING_KEYS]),
-        "writer": "prospector/control_center/yaml_surgery.py via config_editor.write_config",
+        "writer": "prospector/ops/yaml_surgery.py via config_editor.write_config",
         "writer_note": "Any path that writes this file without going through yaml_surgery is a "
                        "defect. yaml.safe_dump on this file measured 2034 lines in, 981 out — "
                        "1173 comment lines destroyed, including founder directives and "
@@ -617,7 +558,7 @@ def _probe_all(text: str, raw: dict) -> dict[tuple, Optional[str]]:
     a 2,316-line config — a four-second page load on a phone, to answer a question one pass
     answers. `apply_edits` returns the paths it could not resolve, which is exactly the answer.
     """
-    from prospector.control_center import yaml_surgery as ys
+    from prospector.ops import yaml_surgery as ys
 
     edits: dict[tuple, Any] = {}
     for spec in KNOBS:
@@ -1040,6 +981,15 @@ def _shelf_repair_for(why: str, checks: list[str]) -> str:
     return content_contract.MANUAL
 
 
+def _lint_receipt(root: str, cid: str) -> Any:
+    """The pack's stored gate verdict, or None if there is not one this reader can parse."""
+    try:
+        return json.loads(
+            (Path(root) / "store" / "dossiers" / f"{cid}.lint.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
 def _read_shelf(cfg, args: dict) -> dict:
     """Every PASS the engine produced that a buyer cannot buy, and what is holding each one back.
 
@@ -1068,20 +1018,37 @@ def _read_shelf(cfg, args: dict) -> dict:
         checks = sorted({c.strip() for m in re.findall(r"error\(s\): ([^)]+)\)", why)
                          for c in m.split(",") if c.strip()})
         fix = _shelf_repair_for(why, checks)
+        # WHETHER TO BELIEVE `why` AT ALL. It is read from the pack's stored `<id>.lint.json`,
+        # and a receipt outlives the rules that wrote it: editing the linter touches no dossier,
+        # so every receipt stays byte-identical and reads as current forever. On 2026-08-17 five
+        # rules stopped blocking and seven stranded packs became sellable while every receipt on
+        # disk still said "blocked" — this page would have printed that, confidently, with no
+        # way for the operator to tell. `verdict` is the honest label, and `shelf.regate` is the
+        # button that resolves it. Same function the tool and the tick use.
+        current = pack_linter.receipt_is_current(_lint_receipt(root, cid))
+        if not current:
+            fix = "shelf.regate"
         rows.append({"id": cid, "created": str(created)[:10], "why": why,
-                     "checks": checks, "repair": fix})
+                     "checks": checks, "repair": fix,
+                     "verdict": "current" if current else "stale — rules changed since"})
         for c in checks or ["other"]:
             reasons[c] = reasons.get(c, 0) + 1
 
     by_repair: dict[str, int] = {}
     for r in rows:
         by_repair[r["repair"]] = by_repair.get(r["repair"], 0) + 1
+    stale = sum(1 for r in rows if r["verdict"] != "current")
     return {"reachable": True, "shelf_packs": len(shelf), "stranded": len(rows),
+            "stale_verdicts": stale,
             "rows": rows, "by_reason": dict(sorted(reasons.items(), key=lambda kv: -kv[1])),
             "by_repair": by_repair,
             "note": "Every row here is a pack that cleared every gate and earns nothing. "
                     "`repair` names the console action that fixes that class; `manual` means "
-                    "no tool repairs it today."}
+                    "no tool repairs it today."
+                    + (f" {stale} of {len(rows)} carry a verdict from rules that have since "
+                       f"changed — the reason shown for those is the OLD answer. Run "
+                       f"`shelf.regate` (a rehearsal: no Stripe object, nothing"
+                       f"listed) to find out what today's rules say." if stale else "")}
 
 
 def _repo_root() -> Path:
@@ -1622,8 +1589,8 @@ def _act_config_set(cfg, payload: dict, preview: bool) -> dict:
     so and the apply refuses. Falling back to a serialiser is the destruction the module exists
     to prevent.
     """
-    from prospector.control_center import config_editor as ce
-    from prospector.control_center import yaml_surgery as ys
+    from prospector.ops import config_editor as ce
+    from prospector.ops import yaml_surgery as ys
 
     key = _normalise_key(payload.get("key"))
     label = ".".join(key)
@@ -1761,7 +1728,7 @@ def _act_config_restore(cfg, payload: dict, preview: bool) -> dict:
     rather than a second mechanism. A restore is moat-affecting by construction — the file it
     replaces may differ on any key — so certification drops.
     """
-    from prospector.control_center import config_editor as ce
+    from prospector.ops import config_editor as ce
 
     filename = str(payload.get("filename") or "").strip()
     if not filename:
@@ -2569,6 +2536,10 @@ TOOLS: list[dict] = [
        "/audit", cmd="python3 scripts/ops_state.py"),
     _t("scripts/launchd_plists.py", "Has a scheduler's job definition drifted?", False, "/engine",
        cmd="python3 scripts/launchd_plists.py --check"),
+    # --live also asks GitHub which runners are registered, which is the half CI cannot check
+    # itself: the workflow can only see the workflow.
+    _t("scripts/ci_capacity.py", "Does CI still fit on this machine alongside the daemons?",
+       False, "/engine", cmd="python3 scripts/ci_capacity.py --live", risk="external"),
     _t("scripts/launchd_plists.py", "Record the current job definitions", True, "/engine",
        cmd="python3 scripts/launchd_plists.py --snapshot",
        danger="overwrites the tracked copies with whatever is live, so run --check first "
@@ -2593,14 +2564,12 @@ TOOLS: list[dict] = [
 NOT_AN_OPS_TOOL: dict[str, str] = {
     # developer and CI tooling — it runs in a terminal or in GitHub Actions, never from an ops page
     "scripts/ci-gate.sh": "the POPDD CI gate; GitHub Actions runs it, not an operator",
+    "scripts/seed_action_cache.sh": "fills the self-hosted runners' action cache; CI plumbing, "
+                                    "run once on the runner box, not from an ops page",
     "scripts/setup_worktree.sh": "makes a git worktree usable; a developer's machine, not ops",
-    "scripts/test_impacted.py": "picks the tests a diff can affect; a developer's and CI's shortcut",
+    "scripts/test_impacted.py": "picks the tests a local edit can affect; a developer's loop",
     "scripts/verify_engine_change.sh": "the pre-commit proof that an engine change is safe",
-    "scripts/seed_action_cache.sh": "seeds the CI runner's action archive cache; runs on the runner",
-    "scripts/warm_ci_uv_cache.sh": "warms the CI runner's uv cache; runs on the runner",
     "tools/commit_mine.sh": "commits exactly the named paths; a developer's git helper",
-    "scripts/prune_branches.py": "retires git branches already merged into main; git hygiene on a "
-                                 "developer's machine, nothing an operator runs",
     # Claude Code hooks — the harness fires these, they have no operator-facing run
     "scripts/graphify_query_hook.py": "a UserPromptSubmit hook; the harness fires it",
     "scripts/graphify_session_hook.py": "a SessionStart hook; the harness fires it",
@@ -2608,9 +2577,6 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     # the console itself, and its predecessor
     "scripts/run_ops_console.sh": "launches this console; a button that starts the page you are already on",
     "tools/build_sample_fixture.py": "builds an offline retrieval fixture for the test suite, not a live action",
-    # the legacy Streamlit console — superseded by this Next.js one
-    "scripts/run_control_center.sh": "launches the older Streamlit console that this one replaces",
-    "scripts/install_control_center_agent.sh": "installs that older console's launchd agent",
     # libraries and experiments, not commands
     "tools/_backfill_driver.py": "a library for backfill_missing_listings.sh, not a CLI",
     "tools/l8_ab.sh": "the COST_PROGRAM §L8 A/B experiment harness",
@@ -2623,14 +2589,7 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
                                   "split it before it becomes a single button",
     # on disk but unclassified until now. `run_ops_console.sh` and `build_sample_fixture.py`
     # are covered above; these two are the remainder.
-    #
-    # Two keys were written twice in this dict (`ci_local.py`, `test_impacted.py`), each with a
-    # different reason. Python keeps the last one, so the first reason was dead text nobody could
-    # see. Deduplicated 2026-08-17; the drift test counts keys, so it could not catch this.
     "scripts/ci_local.py": "replays a CI job's shell steps on this machine; a developer's loop",
-    "tools/_audit_baseline_tmp.py": "a one-off inventory of failure-to-empty-answer sites, kept "
-                                    "for its findings; the leading underscore says it is not a "
-                                    "command",
 }
 
 

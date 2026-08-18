@@ -74,12 +74,16 @@ export default function AuthCallbackPage() {
     // Width '3xl' matches the max-w-3xl the panel below already uses, so the two line up.
     <MarketingLayout
       breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Signing in' }]}
-      breadcrumbsWidth="3xl"
+      breadcrumbsWidth="6xl"
     >
       <Head>
         <meta name="robots" content="noindex, nofollow" />
       </Head>
-      <div className="mx-auto max-w-3xl px-4 py-24 text-center sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1080px] px-5 py-24 text-center">
+        {/* Visually hidden, because this page is a redirect step and shows no chrome. It still
+            needs a heading: with none, the route has no h1 and a screen reader has nothing to
+            navigate to. */}
+        <h1 className="sr-only">Signing in</h1>
         <p className="text-body text-muted">
           {incomplete ? 'That sign-in link is incomplete. Please start again.' : 'Signing you in…'}
         </p>

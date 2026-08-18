@@ -47,7 +47,7 @@ const controlClass = (invalid: boolean, padding = 'px-3') =>
     'focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-accent/25',
     'disabled:cursor-not-allowed disabled:bg-surface2 disabled:opacity-40',
     invalid
-      ? 'border-danger focus-visible:border-danger focus-visible:outline-danger/25'
+      ? 'border-error focus-visible:border-error focus-visible:outline-error/25'
       : 'border-border-control',
   );
 

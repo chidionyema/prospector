@@ -1035,3 +1035,127 @@ is trying to remove. **Remove the black media block until there is real imagery 
 **Status: NOT STARTED.** No code changed for v5 in this session. Do not mark any row ✅ without a
 computed-value proof in a real browser — §3's ledger row is the precedent (Playwright over five
 routes, `getComputedStyle`, not a grep of the stylesheet). Memory `never-judge-design-by-grepping-html`.
+
+---
+
+## 9. MASTER-BRIEF build bundle — status, 2026-08-18
+
+The brief lives at `docs/design/mumchimp-build-bundle/MASTER-BRIEF.md`, checked in on 2026-08-17.
+It supersedes nothing above; it is a second, later specification with its own build order in §8,
+and this section is its ledger. Everything below is a claim about commits, not about a browser.
+No row here means "verified with eyes" — §3's precedent stands, and the v5 critique above is still
+NOT STARTED.
+
+### Build order (§8)
+
+| Step | What it is | Commit | Where it landed |
+| --- | --- | --- | --- |
+| 2 | The shared design layer | `56dc12f` | PR #301 |
+| 3 | Kill grid in the hero, one filter bar | `1e55b97`, `0d224c7` | PR #301 |
+| 4 | Pack page: one buy box, hundred-dot field | `06019c6` | PR #301 |
+| 5 | Kill log: cause grid, argument on every row | `43feb31` | PR #301 |
+| 6 | `/ideas` → `/collections`, four signature graphics | `e157be8` | PR #301 |
+| 7 | About, FAQ, account, legal, error pages | `e9da6af` | PR #306 |
+| 9 | The cross-cutting sweep | `35fff8d` | PR #306 |
+
+PR #293 carried steps 2 to 7 and was closed as superseded by #301. #301 did NOT pick up step 7,
+because it was pushed after the branch was taken. #306 carries step 7 and the §9 sweep, based on
+#301's head. If #306 is merged and step 7 is still missing from `main`, check that #301 landed
+first.
+
+### §10 audit boxes still open
+
+- **Box 6 — colours outside the §1 token set.** `--cat-*`, `--action`, `--ins-*`,
+  `--border-control` and `--faint` are all declared in `tokens.css` and used deliberately; the
+  brief's §1 list is shorter than what the site actually needs. The raw hexes in
+  `pages/og/pack/[id].tsx` are a separate case and cannot be tokens: the OG image is rendered by
+  Satori, which does not resolve CSS custom properties. This box needs a decision about the
+  brief's list, not a code change.
+- **Box 12 — pack descriptions ending in an ellipsis rather than a full stop.** The cut happens
+  upstream in `bridge.py` when the listing row is written, so it is engine work, not storefront
+  work. `repairTruncation` in `lib/copy.ts` patches the symptom on the shelf.
+
+Both are recorded here rather than fixed because neither is a defect in the storefront code.
+
+### Mockup walk, 2026-08-18
+
+Twelve mockups in `docs/design/mumchimp-build-bundle/mockups/`. This pass walked the built pages
+against the drawings and fixed what did not match. Claims about commits, not about a browser.
+
+The page frame is `.wrap` — `max-width:1080px; padding:0 20px`. Every hand-rolled shell now uses
+it: pricing, about, the legal pages, `orders/success`, `auth/callback`, `TrustGuaranteesRow`, and
+the four pages whose breadcrumb trail was still on `max-w-3xl`. `CRUMB_WIDTH` in
+`MarketingLayout.tsx` resolves both `6xl` and `7xl` to `max-w-[1080px]`, so the trail sits on the
+same band as the content under it.
+
+The closing block is `.closing` — `border-top:2px solid var(--ink); margin-top:46px;
+padding:34px 0 0`. It replaced a filled `surface2` panel on kill-log, collections, the legal pages
+and `CtaBand` itself, which three pages use. The heading dropped from `text-h1` to `text-h2`,
+because the drawing sets it at `h2.sec` and the closing ask was competing with the page headline.
+
+Card corners: 28 bordered surfaces moved from `rounded-md` (6px) to `rounded-card` (12px), plus
+one more on how-it-works that the first scan missed because it is `bg-bg/40` rather than
+`bg-surface`.
+
+Pack detail: the two-column split is `1.55fr 1fr` at a 36px gap, which inside the 1080px frame is
+a 394px buy rail. Ours was `lg:w-80` at `gap-12`, so the rail was 74px narrower than drawn. Two
+tests located the rail by the literal string `lg:w-80`; both now stop at `lg:w-`, because the
+claim they make is that the desktop rail survives, not that it is 20rem.
+
+Three places where the drawing lost to a guard test, each recorded in a comment at the site:
+
+- The facts-row labels and the 404/500 codes are not mono, not uppercase and not letterspaced.
+  `monoIsTheDataVoice.test.ts` holds the mono face for figures and caps the site's mono budget at
+  90 usages; `weightAndCasePolicy.test.ts` bars case and tracking set in CSS.
+- The error pages offer one route onward, not the drawing's two. `stepSevenSurfaces.test.ts` pins
+  it.
+- The about page's facts row prints researched, killed and the kill rate. The drawing's third cell
+  is the survivor count, which `lib/stats.ts` does not export by founder directive of 2026-08-13.
+
+Kill-log did NOT get the drawing's `.facts` row. The page already prints those figures twice, in
+the chip row and in the caveat beside the hero, and its own docblocks record two earlier defects
+from printing one number twice.
+
+### Landing page walk, 2026-08-18
+
+The founder's words: "the landning page stilstill looks othing log like the nockupss". Walked
+`src/pages/index.tsx` and its hero components against `docs/design/mumchimp-build-bundle/mockups/index.html`
+section by section. What changed, and what the built site's own tests refused.
+
+**The kill grid stopped drawing wallpaper.** Survivors were placed at the centre of an even bucket
+(`Math.floor((k + 0.5) * bucket)`), and a bucket of 19.5 against a 38-column row draws regular
+diagonal stripes. It read as a pattern, not as a population. Placement is now a deterministic
+FNV-1a hash of the pack id inside each bucket, so rank order and SSR/hydration agreement both
+survive and the field scatters (`components/marketing/KillGrid.tsx`).
+
+**The kill grid legend fits on one line again.** It carried a third entry, a bare `1,444` hard
+right, which wrapped at the hero column's width. The total moved into the caption sentence, where
+it is a scale label rather than a legend entry. `killGrid.test.tsx` still finds it in visible text.
+
+**The source strip is the drawing's `.srcstrip` now.** It rendered inside the hero's left column at
+a 46rem cap, so four source pills and "See the whole thing" wrapped onto two rows. It is a
+full-width section directly under the hero, at `padding:20px 0 24px`, and the row fits on one line.
+
+**The source chips are the drawing's `.srcchip`.** `SourceChip` gained a third variant, `pill`:
+full-round, 1px line, mono at 12.5px, a 5px brand dot at a 7px gap. It is a variant of the one
+implementation rather than a fourth private copy, which is what `sourceChipIsTheOnlyOne.test.ts`
+exists to enforce.
+
+**The hero grid is `1fr 380px`, the drawing's, not `1fr 420px`.**
+
+**The proof strip is the drawing's `.split`.** One bordered card, two equal cells, a 1px line
+between, 22px padding, each cell a label, a figure, a sentence and a route out.
+
+Three walk-backs, each forced by a test that encodes an earlier founder decision:
+
+- The left cell prints the SHELF count, not the drawing's "68 survived". `lib/stats.ts` does not
+  export a survivor count and will not (founder directive, 2026-08-13).
+- The cell labels are not mono, not uppercase and not letterspaced. `weightAndCasePolicy.test.ts`
+  bars case and tracking set in CSS; `monoIsTheDataVoice.test.ts`'s audit is explicit that a word
+  under a tally is a label and only the figure is data.
+- The copy reads "Passed every check we ran", not the drawing's "Passed all six checks".
+  `fixedCheckCount.test.ts` refuses a bare cardinal beside a checks-noun.
+
+Two test locators were widened, neither claim weakened: `usThreeLiveHero.test.ts` matched the hero
+grid by the literal `1fr_420px`, and the mono budget in `monoIsTheDataVoice.test.ts` went 90 to 91
+with the reason named, which is what that file asks of anyone raising it.

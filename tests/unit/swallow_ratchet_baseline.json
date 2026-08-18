@@ -1,12 +1,8 @@
 {
-  "_why": "Generated from the post-batch-fix tree, 2026-08-15. THE NUMBER MAY FALL FREELY AND MAY NOT RISE without a human editing this file in the same commit as the code, where a reviewer sees it. Raising an entry is a decision to ship a failure the caller cannot distinguish from a real empty answer. Read the fix ladder in tools/audit_swallow_sites.py first: propagate a typed error, or carry the failure in the return value, or (best-effort paths only) narrow the except and log at ERROR. A per-file count can also rise for an innocent reason -- splitting one `except (OSError, ValueError)` into a silent FileNotFoundError branch plus a logged one scores as TWO sites, because the tool counts returns inside handlers and cannot see log levels. Say which it is in the commit message.",
+  "_why": "Generated from the post-batch-fix tree, 2026-08-15. THE NUMBER MAY FALL FREELY AND MAY NOT RISE without a human editing this file in the same commit as the code, where a reviewer sees it. Raising an entry is a decision to ship a failure the caller cannot distinguish from a real empty answer. Read the fix ladder in tools/audit_swallow_sites.py first: propagate a typed error, or carry the failure in the return value, or (best-effort paths only) narrow the except and log at ERROR. A per-file count can also rise for an innocent reason -- splitting one `except (OSError, ValueError)` into a silent FileNotFoundError branch plus a logged one scores as TWO sites, because the tool counts returns inside handlers and cannot see log levels. Say which it is in the commit message. REBASED 2026-08-18: prospector/control_center/ was deleted. Two of its files moved to prospector/ops/ and carry their counts under the new path (readers.py 1, runner.py 1) \u2014 the same sites, not new ones. Nothing rose.",
   "tier1_by_file": {
     "prospector/archive.py": 1,
-    "prospector/bridge.py": 2,
-    "prospector/control_center/pages/_diagnostics.py": 1,
-    "prospector/control_center/pages/_reports.py": 1,
-    "prospector/control_center/readers.py": 1,
-    "prospector/control_center/runner.py": 1,
+    "prospector/bridge.py": 1,
     "prospector/coverage.py": 2,
     "prospector/denylist.py": 2,
     "prospector/discover.py": 1,
@@ -14,12 +10,14 @@
     "prospector/generate.py": 2,
     "prospector/landscape.py": 1,
     "prospector/numeric_citation.py": 1,
+    "prospector/ops/readers.py": 1,
+    "prospector/ops/runner.py": 1,
     "prospector/pack_data.py": 2,
     "prospector/prescreen_prefilter.py": 1,
     "prospector/run.py": 1,
     "prospector/scheduler/alerts.py": 1,
     "prospector/scheduler/run_scheduled.py": 4
   },
-  "_waivers_why": "5 on 2026-08-16, and the rise is the MERGE of main into integrate/minimax-into-main, not a new decision to swallow anything. Two are main's: prospector/control_center/config_editor.py:353 (an unreadable on-disk config is treated as an EMPTY config, which subtracts nothing from the routing problems reported, and the read is separately fenced by the mtime and parse checks in `write_config`) and prospector/verify.py:434 gen_queries_batched. Three arrive with the integration branch and were already argued there: prospector/control_center/pages/_runs.py:211, prospector/control_center/pages/_spend.py:80 and prospector/scheduler/run_scheduled.py:1898 _emit_tick_digest. Measured, not assumed: the merged tree fails this test at 2 and passes at 5, and the five sites it names are exactly those. No waiver was added by the merge itself.",
-  "waivers": 7
+  "_waivers_why": "5 on 2026-08-18, down from 5, because prospector/control_center/ was deleted with the Streamlit console and three of the waived sites lived in its pages (pages/_runs.py:211 and pages/_spend.py:80) and in config_editor.py:353, which moved to prospector/ops/. What remains is argued where it sits.",
+  "waivers": 5
 }

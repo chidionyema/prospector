@@ -87,8 +87,19 @@ describe('the mosaic', () => {
   });
 
   it('carries a focus ring, because this is sixteen links in a grid', () => {
-    // §9 accessibility: focus-visible ring on every interactive element. A mosaic is exactly the
-    // layout where a keyboard user loses their place without one.
-    expect(html).toContain('focus-visible:ring-2');
+    // Section 9 accessibility: focus-visible ring on every interactive element. A mosaic is exactly
+    // the layout where a keyboard user loses their place without one.
+    //
+    // THIS ASSERTION USED TO PIN THE BROKEN VERSION. It required `focus-visible:ring-2`, which the
+    // tiles carried along with `focus-visible:ring-link` and `focus-visible:outline-none`. There is
+    // no `--color-link`, so Tailwind emitted no colour for the ring, and `outline-none` had already
+    // removed the global one: these tiles had no focus indicator at all and this test was green.
+    // A class name is not a rendered ring, and the only way to tell the difference is to name the
+    // colour and check it resolves.
+    expect(html).toContain('focus-visible:outline-2');
+    expect(html).toContain('focus-visible:outline-offset-2');
+    expect(html).toContain('focus-visible:outline-focus');
+    expect(html).not.toContain('focus-visible:outline-none');
+    expect(html).not.toContain('ring-link');
   });
 });

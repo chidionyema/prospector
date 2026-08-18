@@ -84,7 +84,7 @@ export function CartButton() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label={`Basket, ${cart.count} ${cart.count === 1 ? 'pack' : 'packs'}`}
-        className="relative inline-flex items-center gap-2 rounded-md px-3 py-2 text-meta font-semibold text-text transition-colors hover:bg-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        className="relative inline-flex items-center gap-2 rounded-md px-3 py-2 text-meta font-semibold text-text transition-colors hover:bg-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
         <Icon name="cart" size={18} />
         <span className="hidden sm:inline">Basket</span>
@@ -153,8 +153,8 @@ export function CartButton() {
                 }}
                 aria-label={`Remove ${line.title} from basket`}
                 className={cx(
-                  'inline-flex h-8 w-8 flex-none items-center justify-center rounded-md text-muted transition-colors',
-                  'hover:bg-danger/10 hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
+                  'inline-flex h-11 w-11 flex-none items-center justify-center rounded-md text-muted transition-colors sm:h-8 sm:w-8',
+                  'hover:bg-danger/10 hover:text-danger focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
                 )}
               >
                 <Icon name="trash" size={15} />

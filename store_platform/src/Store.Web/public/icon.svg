@@ -1,36 +1,32 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Mumchimp">
-  <!-- The brand mark, mirroring Logo.tsx's `BrandMark` EXACTLY: same viewBox, same three slab
-       paths, so the tab-strip icon and the header lockup cannot drift apart.
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 26 26" role="img" aria-label="Mumchimp">
+  <!-- The brand mark, mirroring Logo.tsx's `BrandMark` stratum for stratum: the same three path
+       strings, so the tab-strip icon and the header lockup cannot drift apart.
 
-       THE TILE IS GONE (founder decision, 2026-08-14, option D of six concepts rendered side by
-       side at 16/24/32/48px, as a 180px iOS tile, and in the live header at 1280 and 390). The
-       tile had been rejected three times; twice the fix changed a parameter and the verdict did
-       not move, because a rounded square with bars knocked out of it is the generic app icon
-       silhouette at any radius. This is a concept change: no container, just the funnel. Three
-       slabs narrowing in width and height together, wide intake to one output.
+       THE SHAPE IS THE ONE IN THE BRIEF (2026-08-18). Both files used to carry a 100x100 redrawing
+       of the funnel whose edges ran (3,6)-(97,6) down to (37,94)-(63,94). The mockups
+       (docs/design/mumchimp-build-bundle/mockups/*.html, all twelve, header and footer) draw a
+       different funnel: three trapezoids on a 26-wide canvas, tapering to a point rather than
+       finishing on a bar. Same idea, and not the same drawing, which is the only thing a logo has
+       to get right.
 
-       SOLID SLABS, NOT KNOCKOUTS. The tile knocked its bands out in white, which is only correct
-       on a white ground; in a favicon those white bars would have shown against a dark browser
+       SQUARE BOX, SAME DRAWING. The lockup's box is 26x24, the mark's own proportions. A favicon is
+       rendered into a square slot, so this file pads the box to 26x26 and translates the drawing
+       0.75 down, which centres it exactly. The three `d` strings are byte-identical to BrandMark's
+       and the parity test compares them directly; only the padding differs, and it has to.
+
+       SOLID SLABS, NOT KNOCKOUTS. An earlier tile knocked its bands out in white, which is only
+       correct on a white ground; in a favicon those white bars would show against a dark browser
        tab strip. Three closed paths in one colour have no dependency on the surface behind them.
 
-       TEAL, NOT INK (founder review, 2026-08-16, viewing the live tab next to Gmail and Mail).
-       This mark used to render at #171717 here while `Logo.tsx`'s `BrandMark` recoloured the same
-       geometry with the "brand mark" custom property (CSS var, two leading hyphens, spelled out
-       in words here because a literal double hyphen inside an XML comment is malformed and this
-       file's own test pins that), on the stated argument that the favicon should stay ink to
-       match every other static icon in this directory. That argument was about internal
-       consistency, and it cost the actual goal: at 16px, three near-black slabs on a white tab
-       carry no hue at all, so next to a blue-and-red Mail icon and a red Gmail M the tab reads as
-       a grey smudge, and the two Mumchimp tabs (this page, the catalogue) were indistinguishable
-       from each other for the same reason. That brand-mark teal (#0F766E) is on screen nowhere
-       else on first paint, so this is now the one place a reader can identify the product by colour before
-       reading a word. The geometry is untouched, so the "mirrors `BrandMark` EXACTLY" claim above
-       is now true of colour as well, not only shape.
-
-       Geometry: the funnel edges run from (3,6) and (97,6) to (37,94) and (63,94); the slabs are
-       that trapezoid cut at y=38..46 and y=70..78, so each slab is shorter as well as narrower
-       than the one above it (32, 24 and 16 units tall). -->
-  <path d="M 3 6 L 97 6 L 84.64 38 L 15.36 38 Z" fill="#0F766E" />
-  <path d="M 18.45 46 L 81.55 46 L 72.27 70 L 27.73 70 Z" fill="#0F766E" />
-  <path d="M 30.82 78 L 69.18 78 L 63 94 L 37 94 Z" fill="#0F766E" />
+       TEAL, NOT INK (founder review, 2026-08-16, viewing the live tab next to Gmail and Mail). At
+       16px, three near-black slabs on a white tab carry no hue at all, so the tab read as a grey
+       smudge and two Mumchimp tabs were indistinguishable from each other. The teal is on screen
+       nowhere else on first paint, so it is the one thing that identifies the product before a
+       word is read. The value is #14706A, the mockups' fill and the same teal as the survived
+       verdict; it was #0F766E, a shade off, invisible alone and obvious side by side. -->
+  <g transform="translate(0 .75)">
+    <path d="M1 2h24l-4.1 5H5.1L1 2Z" fill="#14706A" />
+    <path d="M6.2 9.5h13.6l-3.3 5H9.5l-3.3-5Z" fill="#14706A" />
+    <path d="M10.7 17h4.6L13 22.5 10.7 17Z" fill="#14706A" />
+  </g>
 </svg>

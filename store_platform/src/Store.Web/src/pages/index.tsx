@@ -48,7 +48,12 @@ import { fetchCatalog, fetchCatalogStats, freshnessLabel, marketLabel, Pack, Cat
 import { freshCatalog, lastKnownCatalog, rememberCatalog } from '@/lib/catalogCache';
 import { formatPriceForMarket, currencyForCountry, type Currency } from '@/lib/fx';
 import { repairTruncation } from '@/lib/copy';
-import { track } from '@/lib/analytics';
+import {
+  startScrollDepthTracking,
+  track,
+  trackFilterChange,
+  trackFilterZeroResults,
+} from '@/lib/analytics';
 import { useCardImpressions } from '@/lib/useCardImpressions';
 import { priceRange, formatGbp } from '@/lib/priceRange';
 // `type Category` was imported here for `PackCoverArt`'s `category` prop and went with it
@@ -522,8 +527,14 @@ function SectorChips({
     [packs, state],
   );
 
-  const offered = allCategories().filter((cat) => (counts[cat.key] ?? 0) > 0);
-  if (offered.length === 0) return null;
+  /* A DEAD SECTOR IS SHOWN AND DISABLED, not hidden (MASTER-BRIEF section 9; the same rule
+     `FacetBar` now follows). Hiding it removes two facts at once: that the sector exists, and that
+     the filters already on screen are what emptied it. A buyer who narrowed to UK and watched four
+     chips vanish cannot tell a sector we have never carried from one their own query excluded, so
+     the rail silently rewrites itself and the shelf reads as a smaller catalogue than it is.
+     Disabled says both: the sector is real, and nothing in it survives the current filters. */
+  const offered = allCategories();
+  if (offered.every((cat) => (counts[cat.key] ?? 0) === 0)) return null;
 
   return (
     /* Bleeds to the viewport edge and scrolls on a phone rather than wrapping to four rows above
@@ -572,13 +583,21 @@ function SectorChips({
         </button>
         {offered.map((cat) => {
           const active = state.sector === cat.key;
+          const dead = (counts[cat.key] ?? 0) === 0 && !active;
           return (
             <button
               key={cat.key}
               type="button"
               aria-pressed={active}
+              disabled={dead}
               onClick={() => onChange({ ...state, sector: active ? null : (cat.key as Sector) })}
-              className={chipClasses({ selected: active, className: 'snap-start gap-1.5 whitespace-nowrap' })}
+              className={chipClasses({
+                selected: active,
+                className: cx(
+                  'snap-start gap-1.5 whitespace-nowrap',
+                  dead && 'cursor-not-allowed opacity-45',
+                ),
+              })}
             >
               {/* THE GLYPH IS NEUTRAL (founder review, 2026-08-15). It used to take `cat.ink`, on
                   the argument recorded here before -- "the hue is the card's hue, so the chip and
@@ -598,7 +617,7 @@ function SectorChips({
               <Icon name={cat.icon} size={12} className={active ? undefined : 'text-subtle'} />
               {cat.label}
               <span className={cx('text-caption tabular-nums', active ? 'text-white/70' : 'text-subtle')}>
-                {counts[cat.key]}
+                {counts[cat.key] ?? 0}
               </span>
             </button>
           );
@@ -692,6 +711,47 @@ type SortKey = (typeof SORTS)[number]['value'];
  *  heading form produced "Show any what you already have" (see the note in `lib/facets.ts`). */
 function relaxLabelFor(kind: keyof typeof KIND_NOUN): string {
   return `Show any ${KIND_NOUN[kind]}`;
+}
+
+/**
+ * The discovery dimensions a `filter_change` beacon can name, in a fixed order.
+ *
+ * Written out rather than read off `Object.keys`, because a beacon has to report the same name
+ * for the same control forever. Key order is not something the type promises, and a dimension
+ * added to `DiscoveryState` should be a deliberate addition here too.
+ */
+const FILTER_DIMENSIONS = [
+  'q',
+  'advantage',
+  'sector',
+  'payer',
+  'effort',
+  'commitment',
+  'mechanism',
+  'maxPence',
+] as const;
+
+type FilterDimension = (typeof FILTER_DIMENSIONS)[number];
+
+/**
+ * The value a beacon reports for one dimension, or `null` when the visitor has not set it.
+ *
+ * The advantage facet is multi-select, so its selections are sorted and joined. Sorting is what
+ * stops "picking A then B" and "picking B then A" from looking like two different filters.
+ */
+function filterValueOf(state: DiscoveryState, dimension: FilterDimension): string | number | null {
+  const value = state[dimension];
+  if (Array.isArray(value)) return value.length > 0 ? [...value].sort().join('+') : null;
+  if (value === '' || value === undefined) return null;
+  return value;
+}
+
+/**
+ * The names of the dimensions the visitor has constrained. Names only, never values: the search
+ * box holds text the visitor typed, and this page does not send that anywhere.
+ */
+function constrainedDimensions(state: DiscoveryState): string[] {
+  return FILTER_DIMENSIONS.filter((dimension) => filterValueOf(state, dimension) !== null);
 }
 
 /**
@@ -799,11 +859,40 @@ function CatalogBrowser({
   const apply = React.useCallback(
     (next: DiscoveryState) => {
       setState(next);
+      /* MASTER-BRIEF section 9, the discovery instrument. Every control on this page changes
+         the shelf by calling `apply`, so this is the one place that cannot miss a control: the
+         chips, the sheet, the wizard, the palette and the near-miss "show any X" all arrive
+         here. Sorting is not counted, because it reorders the shelf rather than filtering it.
+
+         The count comes from `filterPacks`, the same function the shelf renders from, so the
+         number in the beacon is the number the visitor is looking at. */
+      const resultCount = filterPacks(packs, next).length;
+      for (const dimension of FILTER_DIMENSIONS) {
+        const before = filterValueOf(state, dimension);
+        const after = filterValueOf(next, dimension);
+        if (before !== after) trackFilterChange(dimension, after, resultCount);
+      }
+      /* Fired every time a change lands on an empty shelf, not only on the first one. A visitor
+         who tries three combinations and finds nothing three times is three failures, and the
+         thing this counter exists to size is how often the catalogue disappoints. */
+      if (resultCount === 0) trackFilterZeroResults(constrainedDimensions(next));
       const qs = encodeDiscoveryState(next);
       void router.replace(qs ? `/?${qs}` : '/', undefined, { shallow: true, scroll: false });
     },
-    [router],
+    [packs, router, state],
   );
+
+  /* An empty shelf the visitor never filtered their way into. A filtered URL is a link people
+     send each other, so it can land on nothing without a single control being touched, and the
+     `apply` beacon above would never see it. Fires once per page view. */
+  const zeroOnLandingReported = React.useRef(false);
+  React.useEffect(() => {
+    if (zeroOnLandingReported.current) return;
+    zeroOnLandingReported.current = true;
+    if (isFiltered(initialState) && filterPacks(packs, initialState).length === 0) {
+      trackFilterZeroResults(constrainedDimensions(initialState));
+    }
+  }, [initialState, packs]);
 
   /* The filter sheet, and the block it is a second way into. The open state lives HERE rather than
      inside the trigger because two things open it -- the pinned trigger, and (when the shelf came
@@ -1362,7 +1451,17 @@ function CatalogBrowser({
                   cap, the ordering and what is hidden are all untouched: this is the label. */}
               {shown < tailPacks.length && (
                 <div className="mt-8 flex flex-col items-center gap-2">
-                  <Button variant="secondary" size="lg" onClick={() => setShowAll(true)}>
+                  <Button
+                    variant="secondary"
+                    size="lg"
+                    onClick={() => {
+                      /* MASTER-BRIEF section 9, `catalogue_page_more`. Meta is "shown:total" for
+                         the reader's own market, which is the same pair the button label states,
+                         so a press can be read against how much shelf the reader already had. */
+                      track('catalogue_page_more', `${shown}:${tailPacks.length}`);
+                      setShowAll(true);
+                    }}
+                  >
                     Show the other {tailPacks.length - shown} {marketLabel(market)} packs
                     <Icon name="arrowRight" size={15} />
                   </Button>
@@ -1594,6 +1693,56 @@ export default function Home({ packs, stats, flags, initialState, market, curren
      the featured slot is `hidden lg:block`, and on mobile the reader simply meets it as the first
      card in the grid. */
   const featured = packs[0];
+
+  /* MASTER-BRIEF section 9. Three page-level beacons, wired here because each is about the page
+     rather than about any one component inside it. */
+
+  /* How far down this page readers get. `startScrollDepthTracking` returns its own stop
+     function, so leaving the page ends the page view and the next arrival starts a fresh set of
+     thresholds rather than staying silent. */
+  React.useEffect(() => startScrollDepthTracking(), []);
+
+  /* The waitlist ask was taken. The form is `WaitlistForm`, which /kill-log and /sample render
+     too, so putting the beacon inside it would file every page's signups under one name.
+     Listening for the submit event here counts only the asks made on this page, and it adds no
+     wrapper element to the shelf layout.
+
+     Once per page view. A visitor who submits without ticking the consent box is refused and
+     submits again. That is one visitor who asked, not two.
+
+     No meta. `WaitlistForm` already posts a `source` tag that the waitlist ledger stores, so a
+     placement written here would be a second copy of one fact, free to disagree with the first. */
+  const emailSubmitReported = React.useRef(false);
+  React.useEffect(() => {
+    const onSubmit = () => {
+      if (emailSubmitReported.current) return;
+      emailSubmitReported.current = true;
+      track('email_submit');
+    };
+    document.addEventListener('submit', onSubmit);
+    return () => document.removeEventListener('submit', onSubmit);
+  }, []);
+
+  /* A click on the hero's featured product. The handler is attached to the DOM node rather than
+     written as an `onClick` prop because the slot is a plain container: jsx-a11y fails the build
+     on a static element with a click handler, and the keyboard path is the card's own link,
+     which needs no help from here.
+
+     Only a click that landed on a link counts, so the heading above the card and the padding
+     around it are not counted as a click on the product. */
+  const featuredSlotRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const el = featuredSlotRef.current;
+    if (!el || !featured) return;
+    const onClick = (event: MouseEvent) => {
+      if ((event.target as HTMLElement | null)?.closest('a')) {
+        track('featured_click', featured.id);
+      }
+    };
+    el.addEventListener('click', onClick);
+    return () => el.removeEventListener('click', onClick);
+  }, [featured]);
+
   /* THE KILL TOTAL IS STATED ONCE ON THIS PAGE, in the proof strip below the hero. It was in
      `HeroEvidenceStrip` as well until 2026-08-13, which put "1,364" and an identically-worded
      "Read the kill log" link at y=735 and again at y~1180 of the same 1440x900 screen. The strip
@@ -1658,6 +1807,9 @@ export default function Home({ packs, stats, flags, initialState, market, curren
       <SectionBand
         bg="white"
         width="7xl"
+        // `band_view` (MASTER-BRIEF section 9). The hero is the band every visitor should reach,
+        // so its count is the baseline the bands below it are read against.
+        bandId="home-hero"
         // The mobile padding is `pt-8 pb-8`, not `pt-10 pb-12`. Moving the filter-log panel below
         // the shelf (see the note there) put the first card at y=728/753/689 on the three phone
         // sizes measured, which clears the 40px-visible bar at 390x844 and 430x932 but left only
@@ -1678,7 +1830,10 @@ export default function Home({ packs, stats, flags, initialState, market, curren
             replaced it and the measurement that condemned it -- and the stacking context is kept only
             because the featured card's opaque fill still relies on it. */}
         <div className="relative">
-        <div className="relative z-10 flex flex-col gap-10 lg:grid lg:grid-cols-[1fr_420px] lg:items-start lg:gap-12">
+        {/* `1fr 380px` at a 48px gap, which is `mockups/index.html`'s `.hero` exactly. The right
+            column was 420px, so the kill grid drew 40px wider than the drawing and the headline
+            column 40px narrower. */}
+        <div className="relative z-10 flex flex-col gap-10 lg:grid lg:grid-cols-[1fr_380px] lg:items-start lg:gap-12">
           <div className="w-full min-w-0">
             {/* Mono because both halves are quantities. This replaces an uppercase
                 `tracking-[0.2em]` eyebrow -- letterspaced small caps is the single most dated
@@ -1745,37 +1900,30 @@ export default function Home({ packs, stats, flags, initialState, market, curren
                 from the scale token (`--text-display--font-weight`, 660) via the
                 `:is(h1,h2,h3).text-display` rule added alongside that fix. A class that does
                 nothing is worse than no class: it reads as the answer to "what weight is this?" */}
-            <h1 className="w-full min-w-0 max-w-full text-display text-text md:max-w-[56rem] md:text-balance">
-              {/* PROMOTED FROM THE `<Seo>` TITLE (founder review, 2026-08-16, item 4). The old H1
-                  read `variant.globalHookLead` -- a noun phrase from `copyConfig.ts` such as
-                  "Business ideas with the research already done." -- while the page's own
-                  `<title>` carried an actor/verb/tension line ("survived a filter built to kill
-                  them") that the founder judged stronger and that was ragging over three uneven
-                  lines with no control over where it broke. This H1 is that line, moved, with the
-                  break points now chosen instead of left to the browser. `copyConfig.ts`'s
-                  docblock ("OWNER: the founder... no AI generation, no runtime modification")
-                  still stands and is not violated: this line is not a variant, it replaces what
-                  used to read a variant field, the same way the file's own `<title>` already did.
+            <h1 className="w-full min-w-0 max-w-full text-balance text-display text-text md:max-w-[14ch]">
+              {/* THE FOUNDER'S LINE, 2026-08-18, given verbatim: "Business ideas with the
+                  research and starter packs ready." The founder gave it twice that day, the
+                  second time trimming "already done" to "ready"; this is the second, final
+                  wording. It replaces "Business ideas that survived a filter built to kill them",
+                  which was itself promoted from the page `<title>` on 2026-08-16. Read the round
+                  trip before changing it again.
 
-                  HAND-BROKEN BELOW `md`, grounded in real measurement (Playwright, self-hosted
-                  Switzer at weight 660, the token's own live clamp size per width -- 36px at
-                  390px, 44.8px at 640px, computed from `clamp(2.25rem, 1.2rem + 4vw, 4.5rem)`).
-                  The unbroken line is 859px wide at the 390px clamp size and 1069px at 640px, so
-                  it cannot fit two lines at either width: every two-way split overflows too
-                  (checked -- "Business ideas that survived" alone measures 597px against a 592px
-                  column at 640px). This three-way split is the one break that fits BOTH the
-                  390px and 640px column on the same words: "Business ideas" (252.5px / 314.3px),
-                  "that survived a filter" (332.3px / 413.5px), "built to kill them" (260.8px /
-                  324.5px), against columns of 358px and 592px. From `md` the column widens to
-                  720px and `md:text-balance` already wraps the plain string to two natural lines
-                  there ("Business ideas that survived" / "a filter built to kill them", 665px and
-                  517px, both under 720px) -- so the hand break is hidden from `md` rather than
-                  given a third variant: adding one more explicit break at a width that already
-                  wraps correctly would just be a second opinion `text-balance` could disagree
-                  with. */}
-              Business ideas<br className="md:hidden" />{' '}
-              that survived a filter<br className="md:hidden" />{' '}
-              built to kill them
+                  What the new line does that neither predecessor did: it names the DELIVERABLE.
+                  "Survived a filter built to kill them" is a claim about our process, and a
+                  visitor who has never heard of us has no reason to care how hard our filter is
+                  until they know what arrives when they pay. "The research and starter packs
+                  ready" says what is in the box. The filter claim is not lost -- it is the
+                  sub, the kill grid beside it, and the page `<title>`, all of which still lead
+                  with it.
+
+                  ONE STRING, NO HAND BREAKS. The previous line carried two `<br className=
+                  "md:hidden" />` chosen from Playwright measurements of three specific word
+                  groups at 390px and 640px. Those measurements are about words that are no longer
+                  here, so keeping the breaks would have split this sentence at points nobody
+                  measured. `text-balance` wraps it evenly at every width, and at the display
+                  token's 33px mobile size (`clamp(2.0625rem, 6vw, 3.375rem)`) there is room for
+                  it to. `max-w-[14ch]` is the mockups' own cap on `h1`. */}
+              Business ideas with the research and starter packs ready.
             </h1>
             {/* Shown on mobile too. This was `hidden sm:block`, so a phone got the headline, then
                 a CTA, then a ~120px void where the explanation should be. */}
@@ -1838,7 +1986,6 @@ export default function Home({ packs, stats, flags, initialState, market, curren
 
                 `hidden md:block` is kept from the line it replaces, for the same reason: on a
                 phone this is the last object between the fold and a product. */}
-            <HeroEvidenceStrip className="mt-5 hidden md:mt-6 md:block" />
           </div>
           {/* THE SIGNATURE DEVICE (MASTER-BRIEF §7, `mockups/index.html`). Every idea the
               engine has researched, one square each, with the shelf in teal and every teal square
@@ -1880,7 +2027,10 @@ export default function Home({ packs, stats, flags, initialState, market, curren
              shows through any more; the fill stays because `--surface` and `--bg` are the same
              white (tokens.css:80,81) and removing it would be a no-op edit on a card whose
              background is otherwise inherited from whatever band it is dropped into. */
-          <div className="relative z-10 mt-10 hidden w-full max-w-[420px] rounded-card bg-surface p-4 lg:block">
+          <div
+            ref={featuredSlotRef}
+            className="relative z-10 mt-10 hidden w-full max-w-[420px] rounded-card bg-surface p-4 lg:block"
+          >
             {/* Sentence case, and the same `text-meta font-semibold` as every other row heading
                 on the shelf below. It was `uppercase tracking-wide text-caption`, which the
                 house policy forbids (`__tests__/weightAndCasePolicy.test.ts`): CSS caps leave
@@ -1898,6 +2048,20 @@ export default function Home({ packs, stats, flags, initialState, market, curren
           </div>
         )}
         </div>
+      </SectionBand>
+
+      {/* THE SOURCE STRIP (`mockups/index.html:304`, `.srcstrip`).
+
+          It used to render INSIDE the hero's left column, capped at 46rem. At that measure four
+          source pills and the "See the whole thing" link did not fit on one line, so the row
+          wrapped and read as two rows of chips. The drawing puts this on its own full-width
+          section directly under the hero, at `padding:20px 0 24px`, which is why its four chips
+          and its link sit on one line.
+
+          `hidden md:block` is carried over from where it stood, for the reason recorded there:
+          on a phone this is the last object between the fold and a product. */}
+      <SectionBand bg="bg" width="7xl" className="!pt-5 !pb-6">
+        <HeroEvidenceStrip className="hidden md:block" />
       </SectionBand>
 
       {/*
@@ -1944,38 +2108,66 @@ export default function Home({ packs, stats, flags, initialState, market, curren
           `e2e/discovery.spec.ts` only runs at 1280x720 and physically cannot see it. */}
       <div className="flex flex-col">
       <Section bg="bg" width="7xl" outerClassName="order-1 sm:order-none" className="!py-10 md:!py-12">
-        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-          <div className="max-w-3xl">
-            {/* TWO COUNTS, BOTH ABOUT KILLING, AND NO SURVIVOR FIGURE. This strip has been wrong
-                three ways in one week, and every version failed for the same reason: it printed
-                the survivor count, which is 80, next to a shelf holding 50. First it printed
-                "80 survived. That's a 6% pass rate" (6% of 1,444 is 87). Then it explained the
-                gap. Then it explained the whole partition. The founder cut the figure instead:
-                the strip now states what we researched and what we killed, and the shelf states
-                its own live count where the copy is about the shelf. Nothing left to reconcile. */}
-            <p className="text-body font-semibold text-text">
-              {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas researched.{' '}
-              {RESEARCH_STATS.killed.toLocaleString('en-GB')} killed on cited evidence.
+        {/* THE SPLIT (`mockups/index.html:322`, `.split`): one bordered card, two equal cells,
+            a 1px line between them, `padding:22px`. What stood here was a single prose line and
+            a link, floated apart on one row. The drawing gives each number its own cell, its own
+            label and its own route out, which is why a reader can take in both counts without
+            reading a sentence.
+
+            THE COPY SAYS "every check we ran", NOT the drawing's "all six checks".
+            `fixedCheckCount.test.ts` refuses a bare cardinal next to a checks-noun: the number of
+            checks a pack ran is not fixed, and this page has already paid for printing one as if
+            it were.
+
+            THE LEFT FIGURE IS THE SHELF COUNT, NOT THE SURVIVOR COUNT. The drawing prints "68
+            survived" there; `lib/stats.ts` does not export that number and will not
+            (founder directive, 2026-08-13), and this page has already been wrong three ways
+            printing it. `packs.length` is what is listed today, it is the number the hero prints
+            two rows above, and it is the only one of the two a buyer can act on.
+
+            THE LABELS ARE NOT MONO, NOT UPPERCASE AND NOT LETTERSPACED, all three of which the
+            drawing sets. Case and tracking are refused by `weightAndCasePolicy.test.ts`: CSS caps
+            leave the accessible name in sentence case while a screen reader may spell the
+            rendered form out. Mono is refused by `monoIsTheDataVoice.test.ts`, whose audit is
+            explicit that a WORD under a tally is a label and only the FIGURE is data. The
+            figures above them keep their tabular numerals.
+
+            THE RESEARCH TOTAL IS STILL HERE, in the right cell's sentence. It has to be: on a
+            phone `KillGrid` is not rendered and this strip is the only place the total appears
+            at all. */}
+        <div className="grid grid-cols-1 overflow-hidden rounded-card border border-line bg-surface sm:grid-cols-2">
+          <div className="p-[22px]">
+            <p className="mb-3 text-caption text-subtle">On the shelf now</p>
+            <b className="mb-1.5 block text-h2 font-semibold leading-none tabular-nums text-text">
+              {packs.length}
+            </b>
+            <p className="mb-3 max-w-[38ch] text-meta leading-relaxed text-muted">
+              Passed every check we ran. Every claim sourced, every number traceable.
             </p>
-            {/* THIS LINE NAMES NO NUMBER, and every number it used to name was wrong or unasked
-                for. What shipped read "80 survived the checks; 50 are packaged and listed so far.
-                The other 1,364 are published, each with the evidence that killed it." -- a
-                partition of 1,414 printed under a total of 1,444, with "published" attached to
-                1,364 when 400 kills are published. The first repair stated all three denominators
-                inline; the founder cut it on 2026-08-13 as a headache the buyer never asked for.
-                So the only figures on this strip are the three in the line above, all from
-                `RESEARCH_STATS`, which no longer exports a survivor count at all, so no page can
-                reprint it. The receipts live on /kill-log, which the link beside this strip
-                opens. */}
-            <p className="mt-2 max-w-[64ch] text-meta text-muted">{killsSummary()}.</p>
+            <Link
+              href="#catalog"
+              className="inline-flex items-center gap-1.5 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
+            >
+              Browse the catalogue
+              <Icon name="arrowRight" size={14} />
+            </Link>
           </div>
-          <Link
-            href="/kill-log"
-            className="inline-flex flex-none items-center gap-1.5 py-3 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
-          >
-            Read the kill log
-            <Icon name="arrowRight" size={14} />
-          </Link>
+          <div className="border-t border-line p-[22px] sm:border-t-0 sm:border-l">
+            <p className="mb-3 text-caption text-subtle">Researched, not listed</p>
+            <b className="mb-1.5 block text-h2 font-semibold leading-none tabular-nums text-text">
+              {RESEARCH_STATS.killed.toLocaleString('en-GB')}
+            </b>
+            <p className="mb-3 max-w-[38ch] text-meta leading-relaxed text-muted">
+              {`We have researched ${RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas. ${killsSummary()}, and the evidence behind it.`}
+            </p>
+            <Link
+              href="/kill-log"
+              className="inline-flex items-center gap-1.5 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
+            >
+              Read the kill log
+              <Icon name="arrowRight" size={14} />
+            </Link>
+          </div>
         </div>
       </Section>
 
@@ -2175,7 +2367,9 @@ export default function Home({ packs, stats, flags, initialState, market, curren
           kill figure is stated once here, by the terms column, and the standalone
           "Find your next business" band is REMOVED from this page (it survives on /how-it-works,
           /collections and /collections/[slug], which is where `CtaBand` is still the right closing shape). */}
-      <SectionBand bg="surface2" width="7xl" className="py-10 md:py-24">
+      {/* `band_view` (MASTER-BRIEF section 9). This is the closing band, below the whole shelf,
+          so its count against the hero's says how many readers got to the end of the page. */}
+      <SectionBand bandId="home-stress-tested" bg="surface2" width="7xl" className="py-10 md:py-24">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-16">
         <div className="max-w-[46rem]">
           {/*

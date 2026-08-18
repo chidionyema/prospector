@@ -114,9 +114,14 @@ function BrandMark({ className, standalone = false }: { className?: string; stan
     <svg
       aria-hidden="true"
       focusable="false"
-      viewBox="0 0 100 100"
+      viewBox="0 0 26 24"
       className={cx(
-        standalone ? 'h-[1em] w-[1em]' : 'h-[0.82em] w-[0.82em]',
+        /* THE MOCKUPS' RATIO, and it is not square. Every mockup draws the mark 26 wide by 24
+           tall beside a 21px wordmark, so the mark is 1.238em wide and 1.143em tall relative to
+           the letters it stands next to -- and stands proud of the caps, which is what the old
+           cap-height derivation was reaching for by another route. Square sizing here would
+           squash the funnel, because this geometry is wider than it is tall. */
+        standalone ? 'h-[1em] w-[1.083em]' : 'h-[1.143em] w-[1.238em]',
         'flex-none',
         /* Founder override, 2026-08-08 (see --brand-mark in tokens.css for the collision this
            carries): the mark alone breaks the ONE colour / no-brand-colour rule the rest of the
@@ -126,24 +131,23 @@ function BrandMark({ className, standalone = false }: { className?: string; stan
         className,
       )}
     >
-      {/* THE GEOMETRY, so a future edit does not have to re-derive it. The funnel's edges run from
-          (3, 6) and (97, 6) down to (37, 94) and (63, 94). The three slabs are that trapezoid cut
-          by two horizontal gaps, at y=38..46 and y=70..78, so each slab is both narrower AND
-          shorter than the one above it: 32, 24 and 16 units tall. Two things descend at once,
-          which is what stops the stack reading as a list of equal rows.
+      {/* THE GEOMETRY, taken verbatim from the mockups (every one of the twelve carries these
+          three paths, e.g. mockups/index.html header and footer). Three trapezoids narrowing to a
+          point: a wide intake at the top, one thing out at the bottom, which is what the engine
+          does -- 1,444 ideas in, the shelf out.
 
-          The slab corners are square. `--radius-sm` is 2px sitewide (`tokens.css`, "ONE RADIUS,
-          2px, AND NO PILLS") and a 2-unit radius on a 100-unit viewBox is 0.32px at the 16px
-          favicon -- a rounding that cannot be seen at the size that matters and that softens the
-          diagonal edge at the size that does. The mark's own geometry is the exception the token
-          block already allows; it does not contradict the system, it just declines a radius.
+          This replaced a 100x100 redrawing of the same idea whose edges ran (3,6)-(97,6) down to
+          (37,94)-(63,94). Same concept, different shape: its slabs were shallower, its taper
+          gentler, and its third slab was a bar rather than the point the drawing ends on. Nothing
+          was wrong with it except that it was not the mark in the brief, which is the only test a
+          logo has to pass.
 
-          Coordinates are literal rather than computed from the edge equations at render time: the
-          favicon in `public/icon.svg` carries the same three paths as static text, and two
-          derivations of one shape are two shapes waiting to diverge. */}
-      <path d="M 3 6 L 97 6 L 84.64 38 L 15.36 38 Z" fill="currentColor" />
-      <path d="M 18.45 46 L 81.55 46 L 72.27 70 L 27.73 70 Z" fill="currentColor" />
-      <path d="M 30.82 78 L 69.18 78 L 63 94 L 37 94 Z" fill="currentColor" />
+          Coordinates are literal rather than computed: `public/icon.svg` carries the same three
+          paths as static text, and two derivations of one shape are two shapes waiting to
+          diverge. */}
+      <path d="M1 2h24l-4.1 5H5.1L1 2Z" fill="currentColor" />
+      <path d="M6.2 9.5h13.6l-3.3 5H9.5l-3.3-5Z" fill="currentColor" />
+      <path d="M10.7 17h4.6L13 22.5 10.7 17Z" fill="currentColor" />
     </svg>
   );
 }
@@ -187,13 +191,13 @@ export function Logo({ className, monogramOnly = false }: LogoProps) {
       role="img"
       aria-label={BRAND.name}
       className={cx(
-        'inline-flex items-center gap-[0.34em] whitespace-nowrap font-sans leading-none tracking-[-0.02em] text-text',
+        'inline-flex items-center gap-[0.43em] whitespace-nowrap font-sans leading-none tracking-[-0.02em] text-text',
         className,
       )}
     >
       <BrandMark />
       {/* One wrapper span, not two loose ones: the outer element is a flex container with
-          `gap-[0.34em]` so the icon sits clear of the wordmark, but flex `gap` lands between
+          `gap-[0.43em]` so the icon sits clear of the wordmark, but flex `gap` lands between
           EVERY adjacent flex-item sibling, not just the ones a developer meant to space. Two
           bare spans here were both direct flex children, so the gap opened up between "Mum"
           and "chimp" too, rendering the wordmark as two words with a visible space -- the

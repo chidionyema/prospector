@@ -50,7 +50,7 @@ export function MoneyHero({ cents, currency, state, label, caption, action, clas
   return (
     <div
       className={cx(
-        'relative overflow-hidden rounded-md border border-border bg-surface p-6 sm:p-8',
+        'relative overflow-hidden rounded-card border border-border bg-surface p-6 sm:p-8',
         isReleased && 'border-l-2 border-l-success',
         className,
       )}
