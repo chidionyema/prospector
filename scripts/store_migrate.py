@@ -124,6 +124,34 @@ def sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+class _HashingReader:
+    """A read-only file wrapper that hashes and counts newlines as `tarfile` copies the bytes.
+
+    `tarfile.addfile` reads exactly `limit` bytes, so this sees precisely what lands in the
+    archive. That is the point: a file that grows during the pack is truncated to its header
+    size in the tar, and the hash has to describe that same prefix or the tarball fails its own
+    verification. `read` deliberately never returns more than the remaining budget.
+    """
+
+    def __init__(self, fh, hasher, limit: int) -> None:
+        self._fh, self._h, self._left = fh, hasher, limit
+        self.lines = 0
+
+    def read(self, size: int = -1) -> bytes:
+        if self._left <= 0:
+            return b""
+        want = self._left if size is None or size < 0 else min(size, self._left)
+        block = self._fh.read(want)
+        if not block:
+            # Truncated under us. Pad, so the tar member still matches its header size and the
+            # hash still describes what the archive holds.
+            block = b"\0" * self._left
+        self._left -= len(block)
+        self._h.update(block)
+        self.lines += block.count(b"\n")
+        return block
+
+
 def live_writers() -> list[str]:
     """Processes currently able to append to the store. Empty list means it is safe to copy."""
     try:
@@ -216,25 +244,55 @@ def cmd_pack(root: Path, out: Path, force: bool) -> int:
         return 2
 
     files = walk(root)
-    manifest = {
-        "source": str(root),
-        "census": census(root),
-        "files": {str(f.relative_to(root)): {"bytes": _size(f), "sha256": sha256(f)}
-                  for f in files},
-    }
 
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = Path(tempfile.mkdtemp(prefix="store_migrate_"))
     try:
-        mpath = tmp / MANIFEST_NAME
-        mpath.write_text(json.dumps(manifest, indent=2, sort_keys=True))
-        # `w:gz` and not `w:xz`: the payload is mostly JSON lines and gzip already takes the bulk
-        # of it, while xz on a 500 MB tree costs minutes for a fraction more. A cutover window is
-        # the wrong place to spend that.
+        # The manifest describes the BYTES THAT WENT INTO THE TAR, hashed as they are written,
+        # not a separate stat-and-hash pass beforehand. Those are different numbers whenever the
+        # tree changes during the pack, and a 0.5 GiB tree takes about four minutes to compress.
+        #
+        # Cutover attempt 5 at 02:44 on 2026-08-18 failed on exactly that: `verify` reported
+        # "3 wrong size" and "ledger_lines 906950 -> 906967" for prospector.jsonl,
+        # scheduler/audit/2026-08-18.jsonl and scheduler/launchd.err.log. The copy was fine. The
+        # manifest was describing a store seventeen ledger lines older than the one in the
+        # tarball, so a good copy failed its own proof, inside the downtime window.
+        #
+        # `live_writers()` above still refuses a pack while the engine is up, and that stays the
+        # first line of defence. This is the second: even if something slips past it, or a log is
+        # appended to by a process the writer check does not name, the tarball still proves
+        # itself. The tar header size wins - `tarfile` writes exactly `tarinfo.size` bytes - so
+        # hashing that same prefix is what makes the two agree by construction.
+        entries: dict[str, dict] = {}
+        ledger_lines = 0
         with tarfile.open(out, "w:gz") as tar:
-            tar.add(mpath, arcname=MANIFEST_NAME)
             for f in files:
-                tar.add(f, arcname=str(f.relative_to(root)))
+                rel = str(f.relative_to(root))
+                info = tar.gettarinfo(str(f), arcname=rel)
+                if not info.isreg():
+                    tar.addfile(info)
+                    continue
+                h = hashlib.sha256()
+                with open(f, "rb") as fh:
+                    reader = _HashingReader(fh, h, info.size)
+                    tar.addfile(info, reader)
+                if rel == "prospector.jsonl":
+                    ledger_lines = reader.lines
+                entries[rel] = {"bytes": info.size, "sha256": h.hexdigest()}
+
+            # The census is re-derived from what was archived, for the same reason the hashes
+            # are. Re-walking the source here would put a count of the CURRENT tree next to
+            # hashes of the tree as it was four minutes ago, and `verify` compares the two.
+            c = census(root)
+            c["files"] = len(entries)
+            c["bytes"] = sum(e["bytes"] for e in entries.values())
+            c["dossiers"] = sum(1 for r in entries if Path(r).parent.name == "dossiers")
+            c["listings"] = sum(1 for r in entries if Path(r).parent.name == "listings")
+            c["ledger_lines"] = ledger_lines
+            manifest = {"source": str(root), "census": c, "files": entries}
+            mpath = tmp / MANIFEST_NAME
+            mpath.write_text(json.dumps(manifest, indent=2, sort_keys=True))
+            tar.add(mpath, arcname=MANIFEST_NAME)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

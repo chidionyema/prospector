@@ -54,21 +54,42 @@ t_start() {
   echo "laptop: bootstrapped $n launchd jobs"
 }
 
+WRITERS='prospector.scheduler.run_scheduled|prospector\.run|prospector\.ops\.'
+
 t_stop() {
-  local n=0
-  for l in $(_labels); do
-    launchctl bootout "gui/$(id -u)/$l" 2>/dev/null || true
-    n=$((n+1))
+  # Three rounds, and the repetition is the point. On cutover attempt 5 the first round reported
+  # "no writers live" at 02:44:09, and then a fresh generation run started at 02:46:59 - three
+  # minutes into the pack - and appended 17 lines to prospector.jsonl. Whatever brought it back
+  # (a watchdog tick, a launchd job outside the loop, a child re-exec), a single stop-and-check
+  # cannot see it: the check passes before the thing returns. So: stop, kill, let it settle,
+  # look again, and only call the store quiet when a round finds nothing to do.
+  local round n l
+  for round in 1 2 3; do
+    n=0
+    for l in $(_labels); do
+      launchctl bootout "gui/$(id -u)/$l" 2>/dev/null || true
+      n=$((n+1))
+    done
+    [ "$round" = 1 ] && echo "laptop: stopped $n launchd jobs"
+
+    # A bootout does not kill a tick already in flight, and a generation call can sit on a model
+    # for four minutes. Ask politely, then insist.
+    pkill -f "$WRITERS" 2>/dev/null || true
+    for _ in $(seq 1 24); do
+      pgrep -f "$WRITERS" >/dev/null || break
+      sleep 5
+    done
+    pkill -9 -f "$WRITERS" 2>/dev/null || true
+
+    sleep 10   # the settle window: long enough for anything that restarts things to do it
+    if ! pgrep -f "$WRITERS" >/dev/null && [ "$n" = 0 ]; then
+      echo "laptop: no writers live (quiet after round $round)"
+      return 0
+    fi
+    echo "laptop: round $round left $n job(s) to re-stop; going again"
   done
-  echo "laptop: stopped $n launchd jobs"
-  # A launchd bootout does not kill a tick already in flight. Wait for the writers to finish
-  # rather than tarring a half-written dossier.
-  for _ in $(seq 1 60); do
-    pgrep -f 'prospector.scheduler.run_scheduled|prospector\.run' >/dev/null || break
-    sleep 5
-  done
-  pgrep -f 'prospector.scheduler.run_scheduled|prospector\.run' >/dev/null \
-    && { echo "laptop: writers STILL live after 5 minutes; refusing" >&2; return 1; }
+  pgrep -f "$WRITERS" >/dev/null \
+    && { echo "laptop: writers STILL live after three rounds; refusing" >&2; return 1; }
   echo "laptop: no writers live"
 }
 

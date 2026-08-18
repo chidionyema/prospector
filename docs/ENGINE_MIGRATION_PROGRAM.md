@@ -613,7 +613,8 @@ stopped, which is why every fix moves the check EARLIER.
 | 2 | 02:30 | phase 5, pack | `can't open file '.../prospector/scripts/store_migrate.py'` — the adapter read its TOOLS from the main checkout, where the new script does not exist | `TOOLS` in `deploy/targets/laptop.sh`, plus a `t_preflight` check so a missing tool fails in phase 1 |
 | 3 | 02:36 | phase 5, pack | `store_migrate.py: error: unrecognized arguments: --store` | parent parser with `default=argparse.SUPPRESS`, so `--store` works on both sides of the subcommand |
 | 4 | 02:40 | phase 6, ship | `Error: app prospector-engine has no started VMs` — `fly scale count 1` returns when the machine is CREATED, and the next command is `fly ssh console` | `t_start` polls `fly machines list` until `state=started`, up to 10 minutes, and dumps the logs if it never gets there |
-| 5 | 02:44 | — | — | — |
+| 5 | 02:44 | phase 6, verify | `STORE_MIGRATE VERIFY FAIL — 3 wrong size`, `ledger_lines 906950 -> 906967`. The copy was good; the manifest was not. It was built by a stat-and-hash pass BEFORE the tar, and a 0.5 GiB tree takes four minutes to compress, so it described a store 17 ledger lines older than the tarball | `cmd_pack` hashes the bytes as `tarfile` writes them (`_HashingReader`) and derives the census from what was archived, so the tarball proves itself by construction |
+| 5b | 02:46 | the cause of 5 | A generation run started three minutes AFTER phase 4 reported "no writers live" and appended to `prospector.jsonl`. One stop-and-check cannot see something that comes back after the check | `t_stop` now does three rounds of bootout, `pkill`, `pkill -9`, a 10s settle, then looks again, and calls the store quiet only when a round finds nothing to do |
 
 Downtime from each failure was bounded by the rollback, which restarted all seven launchd jobs
 every time: 6s on attempt 2, 3m35s on attempt 4. No customer data was lost and no state was
