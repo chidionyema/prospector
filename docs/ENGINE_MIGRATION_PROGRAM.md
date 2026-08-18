@@ -886,9 +886,10 @@ It becomes two things:
 ### 13.5 The Claude Code dependency is smaller than it looked
 
 Measured, not assumed. Chat completions already go through a provider abstraction
-(`hermes-agent/hermes_cli/providers.py`), which is portable as it stands.
+(`~/.hermes/hermes-agent/hermes_cli/providers.py`, in the Hermes checkout), which is
+portable as it stands.
 
-The tool-capable executor in `scripts/coordinator.py` is already tiered, and the tiers are
+The tool-capable executor in `~/.hermes/scripts/coordinator.py` is already tiered, and the tiers are
 already written down at `coordinator.py:1209`:
 
 ```
