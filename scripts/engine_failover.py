@@ -79,6 +79,17 @@ NEEDED_AGREEING_POLLS = int(os.environ.get("PROSPECTOR_FAILOVER_POLLS", "5"))
 MONEY_FILES = ("prospector.jsonl", "prospector.db")
 
 
+def on_fly() -> bool:
+    """Are we standing ON the Fly machine, rather than watching it from outside?
+
+    Fly sets FLY_MACHINE_ID in every machine's environment, so this needs no API call and no
+    credential. It matters because both probes below were written for one vantage point - the
+    laptop, looking out at Fly - and the ops console now runs INSIDE the Fly machine, where both
+    of them answered wrongly. See probe_fly and probe_laptop.
+    """
+    return bool(os.environ.get("FLY_MACHINE_ID"))
+
+
 def now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
@@ -120,6 +131,29 @@ def probe_fly(deep: bool = False) -> dict:
     difference between "Fly says it is down" and "we could not ask Fly".
     """
     out: dict = {"side": "fly", "app": FLY_APP, "reachable": False, "healthy": False}
+    if on_fly():
+        # We ARE the Fly machine. Asking the Fly API whether we exist is both absurd and, from in
+        # here, impossible: the container holds no FLY_API_TOKEN on purpose, so the call returned
+        # `failed to list VMs: unauthorized` and the ops console reported the live side as
+        # "unknown" from the 2026-08-18 cutover onward. Answer from the process table and the
+        # ledger instead, which is the same evidence probe_laptop uses for its own side.
+        out["reachable"] = True
+        out["vantage"] = "self"
+        out["machine_id"] = os.environ["FLY_MACHINE_ID"]
+        out["state"] = "started"
+        out["machines"] = 1
+        rc, so, _ = sh(["pgrep", "-f", "prospector.scheduler.run_scheduled"], timeout=15)
+        out["scheduler_pids"] = [x for x in so.split() if x]
+        ledger = Path(os.environ.get("PROSPECTOR_STORE_DIR", "/data/store")) / "prospector.jsonl"
+        if ledger.exists():
+            out["ledger_age_min"] = round((time.time() - ledger.stat().st_mtime) / 60, 1)
+            if deep:
+                with ledger.open("rb") as fh:
+                    out["ledger_lines"] = sum(1 for _ in fh)
+        else:
+            out["error"] = f"no ledger at {ledger}"
+        out["healthy"] = bool(out["scheduler_pids"]) and ledger.exists()
+        return out
     if not shutil.which("fly"):
         out["error"] = "fly CLI not installed on this machine"
         return out
@@ -162,6 +196,17 @@ def probe_fly(deep: bool = False) -> dict:
 def probe_laptop(deep: bool = False) -> dict:
     """Is this machine running the engine? Always reachable - we are standing on it."""
     out: dict = {"side": "laptop", "reachable": True, "healthy": False}
+    if on_fly():
+        # We are in a container, not on the laptop, so every probe below would answer about the
+        # WRONG machine - and quietly. pgrep finds no scheduler and reports the laptop dead;
+        # launchctl does not exist and reports it unfenced; worst of all, PROSPECTOR_STORE_DIR is
+        # /data/store in here, so LAPTOP_STORE resolves to FLY's ledger and the laptop's copy
+        # reads 0.3 minutes old when it may be hours stale. That number is the failover exposure,
+        # so a wrong one is worse than no answer. Rule 3 in this file's header already says what
+        # to do with a side we cannot ask: report unreachable, and never act on it.
+        out["reachable"] = False
+        out["error"] = "cannot see the laptop from inside the Fly machine"
+        return out
     rc, so, _ = sh(["pgrep", "-f", "prospector.scheduler.run_scheduled"], timeout=15)
     out["scheduler_pids"] = [p for p in so.split() if p]
     rc2, so2, _ = sh(["launchctl", "print-disabled", f"gui/{os.getuid()}"], timeout=15)
@@ -202,9 +247,22 @@ def probe_standby() -> dict:
 def cmd_status(args) -> int:
     fly = probe_fly(deep=args.deep)
     lap = probe_laptop(deep=args.deep)
+    active = active_side()
+    active_from = "marker"
+    if active == "unknown":
+        # ~/.prospector/ACTIVE is deliberately outside both engines, which means a machine that
+        # has never written it - every fresh Fly container, since the volume does not carry the
+        # home directory - has no marker to read. The ops console then showed ACTIVE=unknown from
+        # the 2026-08-18 cutover on, while standing on the machine that was doing the work.
+        # A side we can SEE running is evidence; say so, and say where the answer came from,
+        # because an observed answer must never be mistaken for the marker the switch writes.
+        healthy = [p["side"] for p in (fly, lap) if p["healthy"]]
+        if len(healthy) == 1:
+            active, active_from = healthy[0], "observed"
     report = {
         "at": now(),
-        "active": active_side(),
+        "active": active,
+        "active_from": active_from,
         "autofailover": "armed" if ARMED_F.exists() else "disarmed",
         "consecutive_failed_polls": read_fails(),
         "sides": {"fly": fly, "laptop": lap},
@@ -231,7 +289,11 @@ def cmd_status(args) -> int:
     print(f"  standby copy: {'stale by %s min' % sb['staleness_min'] if sb['usable'] else 'MISSING - a failover would start from the laptop own store'}")
     if report["consecutive_failed_polls"]:
         print(f"  !! {report['consecutive_failed_polls']} consecutive failed polls of the active side")
-    return 0 if report["sides"][report["active"]]["healthy"] else 1
+    # An unknown active side is not a side, so it cannot be indexed into `sides`. This used to
+    # raise KeyError and take the whole status command down with a traceback, which is the worst
+    # possible way to report "I do not know where the engine is".
+    side = report["sides"].get(report["active"])
+    return 0 if side and side["healthy"] else 1
 
 
 def read_fails() -> int:
