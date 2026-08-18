@@ -34,6 +34,7 @@ import json
 import os
 import plistlib
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -162,6 +163,59 @@ def store_pin_faults() -> list[str]:
     return faults
 
 
+def disabled_labels() -> set[str]:
+    """Labels launchd has been told never to load.
+
+    Read from launchd, not from a `Disabled` key in the plist: `launchctl disable` writes to
+    the per-user override database and the file on disk does not change. A retired job keeps
+    its plist in ~/Library/LaunchAgents, so without this every retired job would be reported
+    broken the moment its checkout was deleted — which is the outcome retiring it was for.
+
+    Fails OPEN. If launchctl cannot be read the set is empty and every job is checked. A false
+    alarm about a missing program is cheap; silence about one is what this exists to stop.
+    """
+    try:
+        out = subprocess.run(["launchctl", "print-disabled", "gui/%d" % os.getuid()],
+                             capture_output=True, text=True, timeout=20).stdout
+    except Exception:  # noqa: BLE001 — no launchctl, timeout, permission: all mean "unknown"
+        return set()
+    return {m.group(1) for m in re.finditer(r'"([^"]+)"\s*=>\s*disabled', out)}
+
+
+def broken_programs(live: dict[str, dict],
+                    disabled: set[str] | None = None) -> list[str]:
+    """Enabled jobs whose program or working directory is not on disk.
+
+    Snapshot drift cannot see this, and the gap is not theoretical. `com.prospector.backup`
+    matched its tracked snapshot exactly while every path in it pointed into
+    /Users/chidionyema/Documents/code/prospector-live, a checkout that no longer exists. The
+    nightly git mirror to R2 stopped on 2026-08-17, `--check` kept printing PASS, and the
+    Hermes receipt for `backup_store.py` stayed green because Fly writes one under the same
+    key. Nothing compared a declaration against the filesystem it names.
+
+    Like the store-pin faults below, this is judged against the filesystem rather than against
+    the snapshot, so `--snapshot` cannot silence it.
+    """
+    if disabled is None:
+        disabled = disabled_labels()
+    findings: list[str] = []
+    for label in sorted(live):
+        job = live[label]
+        if label in disabled or "__unreadable__" in job:
+            continue
+        argv = job.get("ProgramArguments") or []
+        program = str(argv[0]) if argv else str(job.get("Program") or "")
+        # Absolute paths only. A bare `bash` is resolved against the job's own PATH at load
+        # time, and this check has no business guessing what that resolves to.
+        if program.startswith("/") and not Path(program).exists():
+            findings.append("%s  program not found: %s" % (label, program))
+            continue
+        wd = str(job.get("WorkingDirectory") or "")
+        if wd.startswith("/") and not Path(wd).exists():
+            findings.append("%s  WorkingDirectory not found: %s" % (label, wd))
+    return findings
+
+
 def load_tracked() -> dict[str, dict]:
     out: dict[str, dict] = {}
     if not TRACKED.is_dir():
@@ -247,14 +301,21 @@ def cmd_check() -> int:
     for fault in faults:
         print("STORE PIN    %s" % fault)
 
-    n = len(added) + len(gone) + len(changed) + len(unreadable) + len(faults)
+    broken = broken_programs(live)
+    for finding in broken:
+        print("BROKEN       %s" % finding)
+
+    n = (len(added) + len(gone) + len(changed) + len(unreadable) + len(faults) + len(broken))
     if n == 0:
-        print("LAUNCHD PLISTS PASS  %d job(s) match the tracked snapshot" % len(live))
+        print("LAUNCHD PLISTS PASS  %d job(s) match the tracked snapshot, and every enabled "
+              "job's program is on disk" % len(live))
         return 0
     print("LAUNCHD PLISTS FAIL  %d finding(s)  "
-          "(new=%d missing=%d drifted=%d unreadable=%d store-pin=%d)  — review, then "
-          "--snapshot to accept (store-pin faults must be FIXED, not snapshotted)"
-          % (n, len(added), len(gone), len(changed), len(unreadable), len(faults)))
+          "(new=%d missing=%d drifted=%d unreadable=%d store-pin=%d broken=%d)  — review, "
+          "then --snapshot to accept (store-pin and broken faults must be FIXED, not "
+          "snapshotted)"
+          % (n, len(added), len(gone), len(changed), len(unreadable), len(faults),
+             len(broken)))
     return 1
 
 
