@@ -133,7 +133,7 @@ export function WaitlistForm({ source, query, submitLabel = 'Put it in the queue
      *
      * It renders plain elements rather than `Input` and `Button` because the styled components
      * could not be made to look like the drawing. Their utility classes sit in Tailwind's
-     * `utilities` layer; mockup.css is imported into `components`, which loses to it. So
+     * `utilities` layer; mumchimp.css is imported into `components`, which loses to it. So
      * `.emailbox input` (height 46, paper ground, 15px type) was overruled on every declaration
      * it made, and the box rendered as a Tailwind control inside a hand-drawn card. Plain
      * elements hand the drawing's stylesheet back the control it is supposed to have.

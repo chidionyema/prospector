@@ -115,7 +115,7 @@ export function CollectionMosaic({ tiles, className }: CollectionMosaicProps) {
             >
               {/* `.mtile b` and `.mtile span` are the drawing's two lines. The utilities that
                   used to set size, weight and colour here are REMOVED rather than layered:
-                  mockup.css is imported into `layer(components)` (globals.css:8) and Tailwind
+                  mumchimp.css is imported into `layer(components)` (globals.css:8) and Tailwind
                   utilities sit above it, so leaving them would make the class inert. */}
               <b>{tile.name}</b>
               <span className="num">

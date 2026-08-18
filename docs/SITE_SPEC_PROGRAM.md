@@ -1159,3 +1159,509 @@ Three walk-backs, each forced by a test that encodes an earlier founder decision
 Two test locators were widened, neither claim weakened: `usThreeLiveHero.test.ts` matched the hero
 grid by the literal `1fr_420px`, and the mono budget in `monoIsTheDataVoice.test.ts` went 90 to 91
 with the reason named, which is what that file asks of anyone raising it.
+
+---
+
+## 10. Live-defect fix prompt (D1–D8) — founder, 2026-08-18
+
+The founder reported the live site as broken: "landing page layout and polish fully broken on
+prod, text falling out of cards etc, shabby polish", "and not just landing page", "these are live
+defects so critical". Then gave a written fix prompt. This section is that prompt, its evidence,
+and what shipped. Append here; do not restate it in chat.
+
+**The governing rule, verbatim:** "The mockup HTML files in `/mockups` are the specification, not
+illustrations of it." For every page: open the mockup, copy its markup structure and class names
+verbatim, bind real data, change nothing else. "Do not rewrite a single word of copy."
+
+The mockups are `docs/design/mumchimp-build-bundle/mockups/*.html`. Twelve files, one shared
+stylesheet, last changed in `bec2060f`. There is no newer bundle anywhere in the repo.
+
+### 10.1 Ledger
+
+| ID | What the prompt asked | State | Evidence |
+|----|----------------------|-------|----------|
+| D1 | Hero "6 in 100" ratio device: `figure.gridwrap` holding `p.ratiofig`, `div.ratio` of 100 `<i>` with 6 `.alive`, `.gridkey`, `.gridcap` | **BLOCKED — the mockup contradicts the prompt** | see 10.2 |
+| D2 | H1 exactly `Business ideas with the research already done.` | DONE | `pages/index.tsx`, `mockups/index.html:295` |
+| D3a | Remove every character-budget cut in the data layer | DONE | `cardLine(..., Infinity)` at 3 call sites |
+| D3b | Nothing overflows a card horizontally | DONE | `CardProof` replaces the nowrap `truncate` label |
+| D4 | ONE proof-line component: `41 sources` / `17× payback · 28 sources` | DONE | `components/ui/ProofLine.tsx` `CardProof` |
+| D5 | One `.rows` container with internal hairlines, not separate cards | ALREADY TRUE | `PackRow.tsx` `PackRowList`, `pages/index.tsx:714` |
+| D6 | `Read a full pack free — no email needed`, em dash, no full stop, no arrow | DONE | `mockups/index.html:299` |
+| D7 | `US · CA` not `US · CA market`; canonical kill-cause names | DONE | `lib/gateLabels.ts`, `PackRow.tsx` |
+| D8 | Remove "Based on your browsing" (not in the mockup) | DONE | `pages/index.tsx` |
+
+### 10.2 D1 is blocked, and why
+
+The prompt describes a hero device that is not in the file it cites. Measured on disk:
+
+- `mockups/index.html`'s `.hero` right column is `<figure class="gridwrap">` containing
+  `.killgrid`, `.gridkey` (`1,364` killed / `68` survived) and `.gridcap`. That is what the app
+  already renders, in `components/marketing/KillGrid.tsx`.
+- `ratiofig`, `ratiosub` and `class="ratio"` appear in **no** mockup file.
+- `6 in 100` appears once, in `pack-detail.html:337`, as `<p class="fig num">6 in 100</p>`. The
+  app already renders it, in `components/marketing/SixInHundred.tsx`, on `/pack/[id]`.
+- The hero grid is `1fr 380px` with `align-items:start` (`mockups/index.html:67`), not
+  `1fr 400px` with `align-items:center`.
+
+So the governing rule and D1 disagree. The rule says the drawing wins, and under the rule the
+hero is already correct. **This needs the founder's call: either the prompt describes a mockup
+revision that was never committed, or D1 should be dropped.** Nothing was changed here.
+
+### 10.3 Two smaller places the prompt and the drawing disagree
+
+Both resolved in favour of the drawing, per the governing rule, and both are one line to reverse.
+
+- **H1 width.** D2 says `max-width:12ch`; `mockups/index.html:70` says `max-width:14ch`. Kept 14ch.
+- **`the price back in month one, modelled`.** D4 says delete it from all card/row components.
+  Deleted from the row and the tile. KEPT on the featured card's 44px `.stat`, because
+  `mockups/index.html:388` prints that exact sentence there:
+  `<div class="stat"><span class="big num">13×</span><span class="lbl">the price back in month
+  one, modelled</span></div>`. A grep for the phrase will therefore return 1, in `lib/packStat.ts`.
+
+### 10.4 The `...` on every card was the description, not the title
+
+Founder, mid-work: "broken titles still coming thru", "with ....".
+
+Measured against the live site with Playwright at 390px and 1280px, and against
+`https://mumchimp.com/api/store/catalog` (74 packs):
+
+- **No title is clipped anywhere** on `/` or `/ideas`, at either width. Zero.
+- **No API field is truncated at source**: 0 of 74 `title`, `oneLine`, `headline` or `cardLine`
+  values end in `...` or `…`.
+- **Every card description was clipped.** `.row .d` is a 2-line box, 44px tall; its content
+  measured 65–87px on 17 of 17 cards at 390px and 5 of 5 at 1280px. The ellipsis a
+  `-webkit-line-clamp` paints is what the founder was reading.
+- Field lengths: `oneLine` 124–268 chars (median 169); two lines of 14.5px type in that column
+  hold about 120. So the clamp fired on 100% of the shelf and always would have.
+
+Fixed by removing the clamp (`styles/globals.css`, marked as a deliberate deviation from the
+drawing with the measurements inline). Nothing is cut now, at any width.
+
+### 10.5 OPEN: the description has no short form
+
+Founder: "actually description should be short and long form."
+
+The catalogue does not carry one. What it carries, measured over 74 live packs:
+
+| field | present | length (min/median/max) | what it actually is |
+|-------|---------|------------------------|---------------------|
+| `title` | 74 | 37 / 52 / 60 | the heading |
+| `cardLine` | 68 | 34 / 52 / 60 | a short TITLE — `cardHeading()` consumes it as the heading |
+| `headline` | 70 | — | a marketing sentence |
+| `oneLine` | 74 | 124 / 169 / 268 | the only description, long form |
+
+There is a short title and one long description. Adding a genuine short description is a
+publish-path change (engine → `bridge.py` → catalogue row → API), not a storefront change. Until
+it lands, the shelf renders the whole long sentence unclamped, because that is the only setting
+under which "no rendered description ends mid-word" is true for every pack.
+
+**Decision needed:** add `shortLine` (target ≤ 110 chars, one clause, no cut) to the publish path,
+or accept the long form on cards.
+
+---
+
+### 10.6 Six pinned tests said the old copy was the rule. Each one was changed, not deleted.
+
+The fix prompt changes copy that six existing contract tests pin. None of them was wrong when it
+was written; each encodes a rule the site still wants. So each was rewritten to encode the NEW
+rule rather than switched off, and the reason is in the test file beside the assertion.
+
+| Test | What it pinned | What it pins now | Why |
+|------|----------------|------------------|-----|
+| `dashFree.test.ts` | No em dash in any `pages/`, `components/`, `lib/` source line | Unchanged. The one line carrying the dash uses the file's own `dash-free-ignore` pragma | D6's sentence is `mockups/index.html:299` verbatim. The pragma is per-LINE (`dashFree.test.ts:68` reads `line.includes(IGNORE)`), so it leads the JSX text node and renders nothing |
+| `usTwoPackArt.test.ts:124` | Three `<PackFigure />` mounts: row, spotlight, tile | One mount, the spotlight, plus two `<CardProof />` | D4. The drawing gives the big `.stat` figure to the featured card only (`mockups/index.html:388`); rows and tiles print the one-line mono proof |
+| `categoryScale.test.ts:273` | Same three-mount count | Same split, both halves pinned | As above. The guarantee an untagged pack leans on is that every variant states a number of its own, and both mounts are now asserted |
+| `crossCuttingSweep.test.ts:214` | `PackRow.tsx` calls `sourcesLabel(pack.sourceCount)` | `PackRow.tsx` mounts `<CardProof` | D4. The rule ("a card never words its own count") is unchanged; the shared thing it calls moved |
+| `usTwoPackArt.test.ts:189` | Chip renders `{marketLabel(pack.market)} market` | Chip renders `{marketLabel(pack.market)}` | D7. The rule is still "in words, never a flag or a bare code". A bordered chip that reads `US · CA market` states its own column heading inside itself |
+| `bannedWords.test.ts:93` | The word "incumbent" appears in no source file but `lib/plainEnglish.ts` | Same, with `lib/gateLabels.ts` added to the allow-list | D7 writes the six kill-cause labels out in full and names this one `Incumbents already own the space`. The prompt's governing rule is that the copy is given, never composed here. The word is allowed in the one file that holds given sentences, and nowhere a sentence gets written |
+
+One further D4 consequence, not caught by a test. `packStat.ts`'s source fallback read
+`cited sources behind it` — a sentence in no mockup file. `mockups/index.html:391` prints the
+featured card's count as `30 sources` and `:403` prints a row's as `41 sources`, so the noun is
+`sources` on every surface that states one. The label is now `sources` / `source`.
+
+The payback label `the price back in month one, modelled` SURVIVES, in `lib/packStat.ts` only.
+D4 names it as a defect, but `mockups/index.html:388` prints it verbatim on the featured card's
+`.stat`, and the drawing outranks the prompt by the prompt's own governing rule. It reaches one
+device on one card. It reaches no row and no tile.
+
+### 10.7 Widening the sweep to every page found the same defect on `/kill-log`
+
+D3a names the catalogue. The founder said "and not just landing page", so the acceptance harness
+was pointed at all eight storefront pages at 390px and 1280px, not the two the prompt names. It
+found one more instance of the same defect and one false alarm.
+
+**`/kill-log`: 364 of the 400 rows ended in a literal `…`.** Measured against
+`src/data/kill-log.json` on 2026-08-18. `killLog.server.ts::excerptOf` took the first 150
+characters of each kill argument, cut on a sentence end if one fell inside that window and on a
+word boundary with a trailing ellipsis otherwise. A median argument's first sentence is 270
+characters, so the window almost never contained one and the ellipsis branch was the normal path.
+The page whose entire claim is that we are careful with evidence published 91% of its arguments
+cut off mid-thought.
+
+The fix is the first COMPLETE SENTENCE, no ellipsis, no CSS clamp. A CSS clamp is not available
+here for the same reason it was removed from the cards: `-webkit-line-clamp` paints its own
+ellipsis, so clamping a long reason to two lines reproduces the exact mark being removed. A first
+sentence is a whole unit of copy — it never ends mid-word and needs no mark to say something was
+taken away. The row still expands to the full argument on click, so nothing is hidden either way.
+
+Measured cost, same 400 entries: shipped strings 21.6 KB gzipped → 40.1 KB; page props 149,153
+bytes → 201,063. Two ratchets moved deliberately and both carry the number in the test file:
+`killLogRow.test.ts`'s per-row cap 170 → 700 characters (a backstop against a runaway sentence,
+no longer the width the row is cut to), and `killLogPayload.test.ts`'s props ceiling 175,000 →
+220,000 bytes. The ban on the `reason` field itself is untouched, and `reason` is 198 KB on its
+own, so the ceiling still catches the thing it was built to catch.
+
+Nine of the 400 excerpts contain an ellipsis INSIDE a quoted passage ("no breed-based pricing...
+a calendar event doesn't know"). That is the source's punctuation in a quotation, not our cut, so
+the new test bans a truncation mark only at the END of an excerpt. Banning it everywhere would
+ban quoting evidence accurately, on the page whose whole claim is that we quote accurately.
+
+**`/pricing` at 390px was a false alarm, and the harness was wrong, not the page.**
+`IdenticalContentsMatrix` puts a `min-w-[38rem]` table inside `figure.matrix.overflow-x-auto`.
+The table scrolls inside its own box and the page does not, which is the correct treatment for a
+wide table on a phone. The harness compared child rectangles against the card rectangle without
+asking whether anything between them scrolls, so it reported six escapes on a page whose own
+overflow check passed. It now walks the ancestors and skips a child inside a horizontal scroll
+container.
+
+**Two more harness defects, both found by the harness passing when it should not have.** The
+first run went green on every check with an EMPTY page: the local build had no
+`NEXT_PUBLIC_API_URL`, every catalogue fetch died `ECONNREFUSED`, and there was nothing on screen
+to clip or overflow. It now fails unless the shelf renders at least ten rows. And `sr-only`
+headings are 1×1 clipped boxes by design, so they were being reported as clipped copy; they are
+skipped by measured size rather than by class name.
+
+## 11. Polish layer — founder, 2026-08-18
+
+A second spec, sent the same day, explicitly additive: "None of it changes the design; all of it
+changes how the site feels." Nine sections, ordered by impact per hour. Nothing here is a
+mockup change, so none of it is blocked on section 10.
+
+**Not started unless marked.** Two items shipped early because they fixed a defect already in
+flight in section 10, and are noted as such.
+
+| § | Item | State |
+|---|------|-------|
+| 1.1 | Prefetch on pointer intent, skipped under `saveData` | TODO |
+| 1.2 | `@view-transition { navigation: auto }` + reduced-motion off | TODO |
+| 1.3 | No `unload` handlers; use `pagehide` so bfcache survives | TODO — audit needed |
+| 1.4 | `content-visibility:auto` + `contain-intrinsic-size` on `.row`, `.klrow` | TODO |
+| 1.5 | Skeleton height equals loaded row height; reserve `min-height` | TODO |
+| 2.1 | `:active` pressed states at `scale(.985)` | TODO |
+| 2.2 | `-webkit-tap-highlight-color: transparent`, `touch-action: manipulation` | TODO |
+| 2.3 | Hover rules behind `@media (hover:hover) and (pointer:fine)` | TODO |
+| 2.4 | `overscroll-behavior: contain` on the filter sheet | TODO |
+| 2.5 | `::selection` and `caret-color` carry the brand | TODO |
+| 3.1 | Non-breaking space between figure and unit | **PARTIAL** — done in `CardProof` |
+| 3.2 | `text-wrap: balance` on headings, `pretty` on body copy | **PARTIAL** — `pretty` shipped |
+| 3.3 | Curly quotes, en dashes in ranges, em dashes in asides | TODO — collides with `dashFree.test.ts` |
+| 3.4 | `hyphens:auto` below 520px on `.d` and `.lede` only | TODO |
+| 4 | Email box: `enterkeyhint`, validate on blur, never disable submit, error below field in `--warn-t`, success in place, no mobile autofocus | TODO |
+| 5.1 | Mobile sticky bottom buy bar on the pack page | TODO |
+| 5.2 | One sentence above the pay button saying what happens next | TODO |
+| 5.3 | Post-purchase page as a product surface, not a receipt | TODO |
+| 5.4 | Receipt email uses the same tokens, wordmark and voice | TODO |
+| 6.1 | Per-pack OG images generated from pack data | TODO |
+| 6.2 | Stable anchor + copy-link on every check and kill-log entry | TODO |
+| 6.3 | Unique factual `<title>` per page | TODO |
+| 6.4 | `favicon.svg`, `apple-touch-icon.png` 180, `icon-maskable.png` 512, `site.webmanifest` | TODO |
+| 7 | Focus return from the filter sheet; `aria-live` on the result count; `prefers-reduced-transparency` / `prefers-contrast: more`; light focus ring on ink surfaces; survive 1.5 line-height + 0.12em user stylesheet | TODO |
+| 8 | INP under 200ms on filter chips; rage-click logging; kill-log scroll depth | TODO |
+| 9 | Loading and error states for every async list; print stylesheet | TODO |
+
+**One known collision.** Section 3.3 asks for real em and en dashes in copy.
+`src/__tests__/dashFree.test.ts` bans both characters from every `.ts`/`.tsx` file under
+`pages/`, `components/` and `lib/`, as "the most universally recognised AI writing signature".
+The escape hatch is a `dash-free-ignore` comment on the line, which is what the D6 hero link uses.
+Adopting 3.3 broadly means either pragma-marking every line or narrowing that test to prose it
+should still guard. **Founder's call.**
+
+---
+
+## §11 — The delivered bundle, and the four streams it opened (2026-08-18)
+
+The founder delivered `mumchimp-build-bundle (1).zip` at 16:42 on 2026-08-18. It is imported at
+`docs/design/mumchimp-build-bundle/`, replacing the earlier bundle wholesale. **This is the
+specification. The mockups are not illustrations of it.**
+
+What the new bundle carries that the old one did not:
+
+| File | What it settles |
+|---|---|
+| `mumchimp.css` (37,799 bytes) | The complete production stylesheet. Every rule from the approved drawings, extracted once. |
+| `components.html` (74,825 bytes) | 15 components, each drawn in default, worst-case and 390px form, with `.rule` notes. |
+| `AGENT-FIX-PROMPT.md` | D1–D8 and the nine verification checks. |
+| `POLISH-LAYER.md` | The nine polish sections. |
+| `PLAIN-ENGLISH-AND-PARITY.md` | The word bans and the five-step parity mechanism. |
+| `mockups/ideas.html` | Replaces `mockups/collections.html`, which is archived under `archive-2026-08-18/`. |
+
+Every one of the eleven surviving mockups changed. `collections.html` is gone from the bundle,
+which is the "Good for" rename landing in the drawings rather than only in the prose.
+
+### 11.1 The stylesheet is shipped, never written — DONE
+
+Founder's rule, verbatim: *"`mumchimp.css` in this bundle is the complete stylesheet for the site.
+Import it unchanged. Do not write CSS. Do not rename classes. Do not 'tidy' it. If a style you need
+is not in that file, stop and ask."*
+
+| Step | State | Evidence |
+|---|---|---|
+| `src/styles/mockup.css` (44,343 bytes, 12 drawings concatenated) deleted | DONE | file absent; `rg 'mockup\.css'` returns nothing |
+| `src/styles/mumchimp.css` = the bundle's file, byte for byte | DONE | `src/__tests__/stylesheetIsShippedVerbatim.test.ts` compares the two buffers |
+| `globals.css:8` imports it into `layer(components)` | DONE | `@import "./mumchimp.css" layer(components);` |
+| `scripts/sections.mjs` reads the new file | DONE | `:212` now `src/styles/mumchimp.css` |
+| 38 source comments citing `mockup.css:NNN` repointed | DONE | line refs stripped, since they no longer resolve |
+| Verification after the swap | GREEN | `tsc=0`, `Test Files 72 passed (72)`, `Tests 765 passed (765)`, `build=0` |
+
+**The class vocabulary barely moved, which is what made the swap safe.** Measured before it:
+200 classes in the new file against 188 in the old. Exactly one styled class was dropped
+(`.killgrid`, which no page uses); `.consent` is a local deviation and stays in `globals.css`.
+Fifteen classes are new, and they are the ones the fix prompt asked for and no drawing had:
+`ratio`, `ratiofig`, `ratiosub`, `dchip`, `filterstrip`, `ribbon`, `strip`, `strip-in`, `tag`,
+`tile`, `txt`, `colh`, `desc`, `filter-sheet`, `hot`, `menu`.
+
+**Three deviations survive in `globals.css`'s `@layer components` block, each with its
+measurement.** Nothing else may go there.
+
+1. **`.band .bars` — the collision is still in the shipped file.** `mumchimp.css:103` sets
+   `.bars{flex-direction:column}` and `:356` sets `.bars i{flex:1;max-width:26px}`. Those are the
+   two drawings' versions merged: the pack page's stack of score bars won the direction, the home
+   page's row of kill-gate columns won the item rule, and neither draws correctly alone. Scoping
+   the home page's version to `.band` restores it without editing the shipped file.
+   **This is the one thing in the bundle that needs the founder's eye.**
+2. **`.row .d` / `.htile p` are not clamped.** The shipped file clamps them to 2 and 3 lines.
+   Measured 2026-08-18 against the live catalogue: `oneLine` runs 124–268 characters (median 169,
+   74 packs) and a 2-line box at this column width holds about 120, so `-webkit-line-clamp` fired
+   on 17 of 17 cards at 390px — and the ellipsis a clamp paints is the "...." the founder reported.
+   The drawing is not wrong about the shape; it is drawn against copy that fits and ours does not.
+   Removing the clamp is the only setting under which "no rendered description ends mid-word" is
+   true for every pack. **The real fix is the short description field, §10.5, still open.**
+3. **`h2.sub` / `h4.sub` / `.f-col h2`** — the drawing's `h3.sub` and `h6` declarations repeated at
+   the heading levels the app's document outline actually reaches. Same numbers, no new design.
+
+### 11.2 D1 — the hero signature device — DONE
+
+The old hero drew `KillGrid`: 1,444 squares, one per idea, the listed packs in teal, each a link.
+The new drawing throws it away and draws a **rate** instead.
+
+`HeroRatio.tsx` ports `mockups/index.html` element for element: `figure.gridwrap` >
+`p.ratiofig.num`, `p.ratiosub`, `div.ratio[role=img]` of a hundred `<i>`, `div.gridkey` of two
+swatched counts, `figcaption.gridcap`. It sets no CSS. The six live dots sit at the drawing's own
+indices — 6, 23, 41, 58, 77, 92 — scattered rather than blocked, because a block reads as "the
+first six" and a scatter reads as a rate. The count is still derived from
+`RESEARCH_STATS.survivorBoundLabel`, so if the rate moves the dots spread evenly instead.
+
+`KillGrid` still exists and is still tested. Nothing on the home page renders it.
+
+**One conflict inside the drawing, resolved.** Its kicker says "74 packs in the catalogue" and its
+legend says "68 available now" — two counts of one shelf, in one picture. The founder's own
+do-not-regress rule settles it: the pack count is 74 on every page from one source, so the legend
+takes `packs.length`, the same value the kicker takes. This does not reopen the 2026-08-13
+directive; that bars claiming more survivors than are listed, and this prints exactly what is
+listed.
+
+### 11.3 Stream: copy — the Plain English sweep — DONE (all four steps)
+
+The rule: *site chrome and marketing copy use only words a reader would use with a friend in a
+pub.* Inside a pack a term the buyer uses daily is allowed. The test is never "is this the correct
+term", it is **"does the person this page is for already say this word?"**
+
+Naming decision, settled and applied: nav label **"Good for"**, page heading **"Find one that
+suits how you work."**, the subject taxonomy keeps **Categories** on the landing pages, and the
+replacement closing line for "shelf" is *"A claim without a source dies before it ever goes on
+sale."* The ROUTE stays `/collections`: renaming a path costs redirects and a sitemap entry, and
+the label is what a reader sees.
+
+**Step 1, measure.** The first count was wrong by 2x and that is worth recording, because it is
+the reason report-mode comes before fix-mode. A naive comment stripper that skipped only lines
+matching `^\s*[*]` reported 248 hits; this codebase writes multi-line block comments WITHOUT
+leading asterisks, so most of those "hits" were prose explaining an earlier fix. A real
+character-by-character state machine that tracks block, line and string state gave the true
+number: **123 real hits across 25 terms.**
+
+**Step 2, replace.** 123 to 0. The substantive rewrites, not just the swaps:
+
+| Where | Was | Now |
+| --- | --- | --- |
+| `lib/facets.ts` | `Operators` / `Suits operators` | `People who run things well` / `Suits people who run things` |
+| `lib/facets.ts` | `Productised service` | `Fixed-price service` |
+| `lib/facets.ts` | `Transaction broker` | `Connecting two sides of a deal` |
+| `lib/seo/landings.ts` | h1 `Productised service ideas` | `Fixed-price service ideas` |
+| `lib/seo/landings.ts` | h1 `Vertical software ideas` | `Software for one trade` |
+| `lib/seo/landings.ts` | h1 `Marketplace and broker ideas` | `Ideas that connect two sides of a deal` |
+| `lib/seo/landings.ts` | `the cold-start problem addressed` | `how you get the first people on both sides` |
+| `lib/gateLabels.ts`, `lib/killLog.server.ts` | `did not survive the adversarial pass` | `did not survive the second round of checks` |
+| `components/Seo.tsx`, `pages/_document.tsx` | `GTM plan, operations and unit economics` | `a plan for your first customers, operations and the numbers` |
+| `components/marketing/PackContents.tsx` | `The machine-readable record` | `A version other software can read` |
+| `components/marketing/PackContents.tsx` | `the non-goals for v1`, `on what stack` | `what to leave out at first`, `what to build it with` |
+| `components/marketing/PackContents.tsx` | `the beachhead to start in` | `the first group to sell to` |
+| `components/marketing/PackContents.tsx` | `Claim-checked like the research.` | `Checked against the sources, like the research.` |
+| `pages/pack/[id].tsx` | `LTV : CAC` | `Earned back per customer won` |
+| `pages/pack/[id].tsx` | `no drip feed` | `you get everything at once` |
+| `pages/pack/[id].tsx` | `Unlocks the moment you buy` | `Yours the moment you buy` |
+| `pages/pricing.tsx` | `a one-time artefact`, `the live surface` | `a one-time file`, `the live page` |
+| `pages/pricing.tsx` | `The pack is the deliverable.` | `The pack is what you get.` |
+| `pages/orders/success.tsx` | `the persona dossier` | `the customer profile` |
+| `components/LegalDoc.tsx` | `how the platform actually works` | `how the site actually works` |
+
+Plus the whole "shelf" sweep (17 files) and the "Good for" rename, both recorded in the section
+above this one.
+
+**Step 3, the pack-generation prompt.** `prompts/style/voice.md` now carries all three tables:
+the 24 fog words banned outright, the 21 consultant's words with their replacements, and the
+punctuation and grammar bans. It went in `voice.md` rather than in a new fragment because
+`prompts.py:25` maps `style_guide` to that one file and it already reaches all six templates that
+write prose (`generate_system`, `refine_system`, `revise_system`, `content_gen`, `artifacts`,
+`retitle`). A new placeholder would have needed six template edits and reached only the ones
+somebody remembered. The block also carries the founder's own conditional test verbatim, so the
+model does not flatten a term the buyer says daily: *"A cannabis SaaS founder knows what a schema
+is. A bricklayer does not."*
+
+**Step 4, the CI check.** `src/__tests__/bannedWords.test.ts` now runs the table. A banned word
+fails the build. It extends the file that already banned "receipt" and "incumbent" rather than
+adding a second mechanism, so there is one `walk`, one `stripComments`, one `offendersFor`.
+
+Three kinds of entry, and the difference is what keeps the check honest:
+
+* `say` is the founder's replacement, printed in the failure message, so nobody has to open the
+  table to know what to write instead.
+* `allow` exempts a **file**, and only where the word is not copy: `pages/privacy.tsx` (the
+  statutory GDPR phrase "machine-readable format"), `components/marketing/BespokeIcon.tsx` (icon
+  names in a union type), `components/discovery/CommandPalette.tsx` (`navigator.platform`),
+  `lib/sources.ts` (which QUOTES "documentary research" as their term and glosses it as desk
+  research), `lib/plainEnglish.ts` (the table that removes the word — banning it there bans the
+  fix).
+* `sanitize` exempts a **form** on any line: the `/collections` URL path, the four landing slugs,
+  the `shelf-end` analytics source. Those are names the code joins on, not sentences.
+
+The check is guarded against passing vacuously: it asserts the walk finds >100 files, and it
+asserts the sanitizer clears `href="/collections"` while still catching `The shape of the
+collection`.
+
+Not in the check, deliberately: the grammar bans. "No sentence starting with Not", "one em dash
+per paragraph", "no Title Case headings" and "no exclamation marks" need a sentence parser, and a
+bad grep on those fires on aria-labels and regex literals. They are stated here and in
+`voice.md`, and reviewed by eye. The em-dash ban already has its own file, `dashFree.test.ts`.
+
+### 11.4 Stream: titles and descriptions — PART DONE, ONE BLOCKER
+
+Founder: *"also broken titles still coming thru after all the work we have done, ridiculous"*,
+*"with ...."*, *"actually description should be short and long form"*.
+
+| Item | State | Evidence |
+|---|---|---|
+| No title is clipped anywhere | WAS ALREADY TRUE | measured at 390 and 1280 on `/` and `/ideas`; every ellipsis was a DESCRIPTION |
+| `/kill-log` excerpts no longer end in "…" | DONE | `EXCERPT_CHARS = 150` deleted; `excerptOf` returns the first complete sentence. 364 of 400 rows took the ellipsis branch before — 91% of the page. Harness now reports PASS at both widths. |
+| Card descriptions no longer clipped | DONE | the `globals.css` deviation above |
+| Short AND long description | **BLOCKED** | the catalogue has no short description field. It has a short TITLE (`cardLine`, 34–60 chars) and one long `oneLine` (124–268). A real short form is a publish-path change: engine → `bridge.py` → catalogue row → API. **Founder's call on whether to spend that.** |
+
+### 11.5 Stream: UI design — the parity mechanism — STEPS 1, 2, 3 AND 5 DONE; STEP 4 OPEN
+
+Founder's diagnosis, verbatim: *"The gap you're seeing has one cause: the agent is writing its own
+CSS from a description. No amount of prose will fix that, because prose is interpretable and CSS is
+not."*
+
+| Step | What it is | State |
+|---|---|---|
+| 1 | Ship the stylesheet, write no CSS | DONE — §11.1. `mumchimp.css` is byte-identical to the bundle's copy, pinned by `src/__tests__/stylesheetIsShippedVerbatim.test.ts` |
+| 2 | Templates copy markup, they do not reinterpret it | DONE — all nine graded components report `ALL COMPONENTS MATCH`, `parity_exit=0` |
+| 3 | A structural diff test over eight components | DONE — `scripts/parity.mjs`, nine components graded |
+| 4 | Visual regression at 390 and 1280, `diff < 0.02` | NOT STARTED |
+| 5 | One data source, one copy source | DONE — `src/lib/siteCopy.ts` |
+
+**Step 3, how it grades.** `scripts/parity.mjs` fetches the built page from the running server and
+reads the mockup off disk, walks both in document order, and reduces each element to its tag plus
+only the classes `mumchimp.css` actually defines. A Tailwind utility is invisible to it, which is
+the point: the grade is about the drawing's structure, not about our layout scaffolding. It then
+LCS-diffs the two sequences and reports the diff as a percentage of the larger one.
+
+Three normalisations apply to both sides, so the diff cannot be gamed:
+
+- svg subtrees are dropped (an icon set is not structure),
+- consecutive identical sibling subtrees collapse to one (three rows and thirty rows are the same
+  shape),
+- `button` counts as `a` (the drawing draws a link where the app needs a form control).
+
+**Declared exceptions, and why they are not a way of passing.** Three kinds exist — `tagMap`,
+`allowMissing`, `allowExtra`. Each carries a written reason, each PRINTS that reason on every run,
+and each fires only on a genuine surplus of that one token. An exception can never hide a
+difference the page did not actually have. They exist because the mockup and the stylesheet
+themselves disagree in two places, and **the stylesheet wins** (parity step 1 forbids adding CSS to
+make a mockup's tag look right): `mumchimp.css:68` styles `.checkrow h5` while the mockup writes
+`h3`, and `mumchimp.css:116` styles `.klrow h4` while the mockup writes `h3`.
+
+**Measured, 2026-08-18**, after `npx tsc --noEmit`, `npm run build` with
+`NEXT_PUBLIC_API_URL=https://api.mumchimp.com`, and a server restart onto the new build:
+
+| Component | Diff | Elements (mockup / page) | Declared exceptions |
+|---|---|---|---|
+| catalogue row | 0.0% | 11 / 11 | page omits `span.new` — the catalogue payload has no publish date; `verifiedAt` is a re-check stamp, not a first-seen date |
+| hero figure | 0.0% | 26 / 26 | none |
+| featured card | 0.0% | 15 / 15 | none |
+| check row | 0.0% | 8 / 8 | mockup writes `h3` (stylesheet styles `h5`); `div.checkrow` (ours is `li`); unclassed source link (ours carries `.tlink`, `mumchimp.css:27`) |
+| kill row | 0.0% | 8 / 8 | mockup writes `h3` (stylesheet styles `h4`); `div.klrow` (ours is `li`); page omits `a` — the row is a disclosure, its title control opens the sources in place |
+| buy box | 0.0% | 15 / 15 | page adds `span` (the CTA carries the price in the mono face); page adds `a.tlink` (the day-rate anchor cites its source — source-or-die) |
+| header | 0.0% | 10 / 10 | none |
+| tile foot | 0.0% | 5 / 5 | none |
+| page footer | 0.0% | 29 / 29 | none |
+
+**What porting each component actually cost**, since "copy the markup" hides the real trap. The
+recurring defect is `@layer components` precedence: `globals.css:8` imports the stylesheet as
+`layer(components)`, so **any Tailwind utility duplicating a stylesheet rule silently makes the
+stylesheet rule inert**. Fixing a component means DELETING the utilities that restate it, not
+layering the class on top of them. That single mechanism accounts for most of the parity gap.
+
+- **tile foot** was 20.0%: the proof line rendered `p.num.proof` where the drawing writes
+  `span.num.proof`.
+- **check row** was 62.5%: our version had collapsed the drawing's `h3 + p + p.srcs + a + span.s.v`
+  into four elements. `CheckSequence.tsx` now writes `span.i.num` and `p.srcs`.
+- **kill row** was 22.2%, entirely the `div`/`li` and `h3`/`h4` disagreements now declared.
+- **buy box** was 63.6% and took the most work: the price became `PriceText as="p"` so the drawing's
+  `p.p.num` renders (`Money.tsx` gained an `as` prop and its `styled` regex now covers `.p`), the
+  day-rate anchor moved from the top of the panel to the drawing's closing `.per` line, the buy
+  button and sample link moved above the guarantee list, the icon rows became the drawing's four
+  plain `<li>`s, and everything the drawing has no counterpart for moved BELOW the card into
+  `checkoutExtras` — the basket button, the buyer identity note, the founder preview link, and the
+  two closing paragraphs. Nothing was deleted to make a number go down. Every one of those still
+  renders, immediately under the panel.
+
+**Step 5, the constants file.** `src/lib/siteCopy.ts` holds the strings that appear on more than one
+page: the H1 (`Business ideas with the research already done.`) and the three sample-link wordings.
+Its header records where the rest already lives, so there is one home per kind and no second copy:
+the six check names stay in `lib/checks.ts` (`COMMON_CHECKS`), the proof-line format stays in
+`components/ui/ProofLine.tsx`, and variant-keyed copy stays in `lib/copyConfig.ts`. Call sites now
+reading from it: `pages/index.tsx`, `pages/faq.tsx`, `pages/collections/index.tsx` and
+`pages/pack/[id].tsx`.
+
+**Founder's acceptance bar, verbatim:** *"Report the diff percentage per page. Do not report done
+while any page exceeds 2%."*
+
+### 11.7 The component sheet's countable rules, measured — DONE
+
+`components.html` states rules under each of its fifteen components. Most are judgements. A few are
+counts, and a count is a test, so they are now measured rather than asserted:
+`store_platform/src/Store.Web/scripts/component-rules.mjs`, both widths, against the running build.
+
+| Rule (quoted from the sheet) | 390px | 1280px |
+|---|---|---|
+| Component 12 — *"Never render two full buy boxes"* | PASS (1 in DOM, 0 visible — the desktop panel is `hidden min-[900px]:block`) | PASS (1 in DOM, 1 visible) |
+| a phone buyer still has a control to press | PASS (2 visible: the mobile bar and the closing bar, which the sheet allows) | PASS (2 visible: the sticky panel and the closing bar) |
+| Component 01 — *"One wordmark in the DOM — the live site currently renders it twice"* | PASS (1) | PASS (1) |
+| Component 15 — *"Identical on every page… The live /ideas page ships a different one"* | — | PASS on `/ideas`, `/collections`, `/kill-log`, `/how-it-works`, `/faq` — identical element signature to `/` |
+
+The buy-control check is deliberately SEPARATE from the buy-box count. "Zero visible buy boxes"
+passes the first rule and fails the buyer, and the first version of this script measured its own
+selector rather than the site: it looked for `a.btn` when the control is a `<button class="btn">`,
+and reported a false FAIL at 1280 where a buy box was plainly visible.
+
+Verdict: `ALL MEASURABLE RULES HOLD`, exit 0.
+
+### 11.6 Open collision, still the founder's call
+
+Polish Layer §3.3 asks for real em and en dashes in copy. `src/__tests__/dashFree.test.ts` bans both
+characters from every `.ts`/`.tsx` file under `pages/`, `components/` and `lib/`. The escape hatch
+is a `dash-free-ignore` comment on the same line, which the D6 hero link uses. The new bundle
+sharpens this: `mumchimp.css` and `components.html` are full of real em dashes in copy strings.
+Adopting §3.3 broadly means either pragma-marking every line or narrowing that test to the prose it
+should still guard.

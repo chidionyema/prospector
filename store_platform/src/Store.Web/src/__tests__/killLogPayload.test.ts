@@ -67,11 +67,19 @@ describe('the kill log ships the table, not the corpus', () => {
     //
     //   84,497 bytes  2026-08-16  slug, title, cause, date, source count
     //  149,153 bytes  2026-08-17  + `excerpt`, MASTER-BRIEF §7 -- 64,656 bytes, ~162 a row
+    //  201,063 bytes  2026-08-18  excerpt is a whole first sentence, D3a -- ~289 a row
     //
-    // Both numbers measured by this line. The ceiling has room for the log to grow but not for a
+    // Every number measured by this line. The ceiling has room for the log to grow but not for a
     // prose field to come back: `reason` alone is 198 KB and would blow straight through it.
+    //
+    // WHY IT MOVED. The excerpt was the first 150 characters of the argument with an ellipsis on
+    // the end, and 364 of the 400 rows took that ellipsis. The founder reported it as a live
+    // defect. A first sentence costs 52 KB more here (18 KB gzipped) and it is the only evidence
+    // on the page a reader gets without a tap, so it is the field worth the bytes. `reason` is
+    // still banned above and still 198 KB, so the ceiling below still catches the thing it was
+    // built to catch.
     const bytes = JSON.stringify(index).length;
-    expect(bytes, 'the kill-log page props grew -- did a prose field return?').toBeLessThan(175_000);
+    expect(bytes, 'the kill-log page props grew -- did a prose field return?').toBeLessThan(220_000);
   });
 
   it('gives every row an argument to open, under the same slug', () => {

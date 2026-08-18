@@ -19,7 +19,7 @@ export function WaitlistCallout() {
   return (
     <div className="mt-6 rounded-card border border-border bg-surface p-8 text-left md:p-10">
       <h3 className="sub">
-        Nothing on the shelf for your space yet?
+        Nothing for your trade yet?
       </h3>
       {/* No subscriber count and no cadence. We have neither to honestly claim, and the consent
           text this form sends says "No newsletter", copy implying a regular send would contradict

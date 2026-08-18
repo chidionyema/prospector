@@ -136,7 +136,7 @@ export function CauseGrid({ distribution, className }: CauseGridProps) {
           publishes; the teal block carries no number, per the 2026-08-13 directive.
           `.legend` and `.swb` (`mockups/kill-log.html:252-253`) own the layout, the mono face and
           the rule above; the utilities that used to set those here are removed rather than
-          layered, since mockup.css sits under the utility layer (globals.css:8). */}
+          layered, since mumchimp.css sits under the utility layer (globals.css:8). */}
       <div className="legend">
         {causes.map((bar, i) => (
           <span key={bar.gate}>

@@ -63,11 +63,11 @@ const CATEGORY_H1_A: Record<string, string> = {
   'part-time-business-ideas': 'Part-time business ideas',
   'part-automated-business-ideas': 'Part‑automated business ideas',
   'business-ideas-for-developers': 'Business ideas for developers',
-  'business-ideas-for-operators': 'Business ideas for operators',
+  'business-ideas-for-operators': 'Business ideas for people who run things well',
   'business-ideas-for-salespeople': 'Business ideas for salespeople',
-  'productised-service-ideas': 'Productised service ideas',
-  'vertical-software-ideas': 'Vertical‑software business ideas',
-  'marketplace-and-broker-ideas': 'Marketplace and broker business ideas',
+  'productised-service-ideas': 'Fixed-price service ideas',
+  'vertical-software-ideas': 'Software ideas for one trade',
+  'marketplace-and-broker-ideas': 'Business ideas connecting two sides of a deal',
   'red-tape-and-licensing-ideas': 'Red‑tape and licensing business ideas',
   'pay-and-worker-rights-ideas': 'Pay and worker‑rights business ideas',
   'care-and-benefits-ideas': 'Care and benefits business ideas',
@@ -173,7 +173,7 @@ export const VARIANTS: Record<VariantKey, CopyVariant> = {
   b: {
     globalHookLead: 'Business ideas with the economics already verified.',
     globalHookDescription:
-      'The buyer, the price, the unit economics and the plan, checked by an AI paid to find the flaw.',
+      'The buyer, the price, the numbers and the plan, checked by an AI paid to find the flaw.',
 
     howItWorksEyebrow: 'The checks',
     howItWorksTitle: 'Every idea is tested to destruction.',

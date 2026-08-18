@@ -316,7 +316,7 @@ export default function KillLogPage({
                 <dt>
                   <span className="inline-flex items-center gap-1.5">
                     <Glyph name="survived" className="text-survive" />
-                    On the shelf
+                    Available now
                   </span>
                 </dt>
                 <dd><b className="num">{listed.toLocaleString('en-GB')}</b></dd>
@@ -407,7 +407,7 @@ export default function KillLogPage({
               that rendered "The defensibility claim was not evidence-b...". Truncating the CAUSE
               of a rejection is the one thing this chart cannot do: the label IS the finding. The
               utilities below `sm` turn the wrap back on, and they win over the class because
-              mockup.css is imported into `layer(components)` and utilities sit above it. */}
+              mumchimp.css is imported into `layer(components)` and utilities sit above it. */}
           <ul className="bars">
             {distribution.map((d) => (
               <li key={d.gate} className="barline">
@@ -570,7 +570,7 @@ export default function KillLogPage({
                         }}
                         /* `.klrow h4` owns the size, weight and leading. The mono/caption/muted
                            utilities that used to set them here are removed rather than layered:
-                           mockup.css sits in `layer(components)` (globals.css:8), under the
+                           mumchimp.css sits in `layer(components)` (globals.css:8), under the
                            utilities, so leaving one in place makes the class inert. The
                            strike-through stays -- it is what says "this one is dead". */
                         className="text-left line-through decoration-kill/60"
@@ -594,7 +594,11 @@ export default function KillLogPage({
                       {/* The mono meta line. A literal 0 for the sources, never a blank or a
                           placeholder glyph: this page is about evidence, and 0 is the actual
                           stated fact. */}
-                      <p className="m">
+                      {/* `m num`, both classes, as the drawing writes it
+                          (`mockups/kill-log.html`, `.klrow > p.m.num`). `.m` is the mono meta
+                          line; `num` is the tabular-figures class every counted line on the site
+                          carries, and this line is a date and a count. */}
+                      <p className="m num">
                         {formatDate(entry.date)} &middot; {entry.sources}{' '}
                         {entry.sources === 1 ? 'source' : 'sources'}
                       </p>
@@ -738,7 +742,7 @@ export default function KillLogPage({
               className="btn ghost"
               onClick={() => track('catalog_cta_clicked')}
             >
-              {listed ? `Browse the ${listed} on the shelf` : 'Browse the packs on the shelf'}
+              {listed ? `Browse the ${listed} available now` : 'Browse the packs available now'}
             </Link>
           </div>
         </div>

@@ -6,7 +6,7 @@ export function Breadcrumbs({ items }: { items: { href: string; label: string }[
        above it, links in --link). It was `text-meta` on the list and `text-muted` on each link,
        which is the same line said in utilities, so no page on the site emitted the class the
        mockups style. The utilities that set colour and size are REMOVED rather than layered:
-       mockup.css is imported into `layer(components)` (globals.css:8) and Tailwind utilities sit
+       mumchimp.css is imported into `layer(components)` (globals.css:8) and Tailwind utilities sit
        above it, so a utility left in place beats the class and the change would be a no-op. */
     <nav aria-label="Breadcrumb" className="crumb">
       <ol className="flex flex-wrap items-center gap-x-1.5">

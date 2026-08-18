@@ -210,9 +210,14 @@ describe('the site states its evidence one way', () => {
   // "6 checks · 12 sources · verified 2026-08-01", "12 sources cited", "12 cited sources" -- because
   // each was written where it stood and nobody saw them together.
   it('routes every proof line through the shared component', () => {
-    expect(codeOnly(read('components/discovery/PackRow.tsx'))).toContain(
-      'sourcesLabel(pack.sourceCount)',
-    );
+    /* THE ROW'S SHARED COMPONENT IS `CardProof`, NOT `sourcesLabel` (2026-08-18, D4).
+       The rule is unchanged and this test still enforces it: a card never words its own count.
+       What moved is which shared thing it calls. Three proof sentences were live on the shelf
+       that day ("38 sources", "16 cited sources behind it", "2x the price back in month one,
+       modelled"), because a card could reach a raw label through `packLeadStat` as well as
+       through `sourcesLabel`. `CardProof` takes the two raw numbers and renders the drawing's
+       two forms, so there is one sentence per fact and no way to word a third. */
+    expect(codeOnly(read('components/discovery/PackRow.tsx'))).toContain('<CardProof');
     const seq = codeOnly(read('components/marketing/CheckSequence.tsx'));
     expect(seq).toContain('<ProofLine');
     expect(seq).toContain('sourcesLabel(report.sourceCount)');

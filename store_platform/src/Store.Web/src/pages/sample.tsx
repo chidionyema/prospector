@@ -183,7 +183,7 @@ function BlockView({ block }: { block: Block }) {
     default:
       /* The size, colour, line-height and 66ch measure now come from `.sheet-body p`
          (mockups/sample.html:284), which only works because the utilities that set the same four
-         properties are GONE: `mockup.css` is imported into `layer(components)` (globals.css:8) and
+         properties are GONE: `mumchimp.css` is imported into `layer(components)` (globals.css:8) and
          Tailwind utilities sit above it, so a paragraph carrying both draws the utility. Only the
          quote's rule and indent stay, because the drawing has no rule for them. */
       return (
@@ -216,7 +216,7 @@ function SourcePassage({ block }: { block: SourceBlock }) {
      utility here and 8px is the nearest legal corner. */
   /* Now the class itself, not a copy of it in utilities. Everything the comment above describes
      is in `.evidence` and `.evidence p` and `.evidence .src`; the utilities that restated it are
-     removed, because layered above `mockup.css` they were the reason the class drew nothing. */
+     removed, because layered above `mumchimp.css` they were the reason the class drew nothing. */
   return (
     <figure className="evidence">
       {block.quote ? (
@@ -288,7 +288,7 @@ export default function SamplePage() {
             </h1>
             <p className="lede big mt-6">
               Not a mock-up and not a summary. These are the first three sections of a pack that
-              is on the shelf right now, exactly as they were published: the situation somebody is
+              is available right now, exactly as they were published: the situation somebody is
               already dealing with, what you would actually be selling, and who is already in the
               field, quoted from their own pages, with every link open.
             </p>
@@ -350,7 +350,7 @@ export default function SamplePage() {
                     Nothing died here. These are checks the retrieval could not decide either way,
                     which is a different state and gets a different colour. */}
                 <p className="mt-3 max-w-[68ch] text-meta leading-relaxed text-warning-strong">
-                  This pack is on the shelf, so it cleared every check that can kill an idea. These
+                  This pack is available now, so it cleared every check that can kill an idea. These
                   are the ones the sources would not answer. They are in the pack you would buy,
                   worded exactly like this.
                 </p>
@@ -497,7 +497,7 @@ export default function SamplePage() {
                 Now read one that survived all of it.
               </h2>
               <p>
-                You can now go and read the shelf with these answers in mind. One payment, yours to
+                You can now go and read the catalogue with these answers in mind. One payment, yours to
                 keep, no account to make.
               </p>
               <div className="ctarow">

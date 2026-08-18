@@ -39,19 +39,13 @@ export function tightDecimal(formatted: string): React.ReactNode {
   if (parts.length === 1) return formatted;
   // `split` with one capture group yields [text, sep, text, sep, text, ...] -- odd indexes are the
   // separators, and those are the only spans that get the negative margin.
-  return (
-    <>
-      {parts.map((part, i) =>
-        i % 2 === 1 ? (
-          <span key={i} className="mx-[-0.17em]">
-            {part}
-          </span>
-        ) : (
-          <React.Fragment key={i}>{part}</React.Fragment>
-        ),
-      )}
-    </>
-  );
+  /* THE KERN IS GONE (2026-08-18, parity step 1: "the agent writes no CSS at all").
+     This wrapped every decimal separator in a `mx-[-0.17em]` span to close the gap. It is a style
+     that does not exist in mumchimp.css, and it cost two extra elements inside every `.price`,
+     which is what the structural parity harness reported against `mockups/index.html`: the
+     drawing's price is `<span class="price num"><span class="cur">£</span>29.99</span>` and
+     nothing else. If the separator needs closing up, the rule belongs in the stylesheet. */
+  return <>{parts.join('')}</>;
 }
 
 /** The leading currency run: everything before the first digit. `£`, `$`, `US$`, `€`. */
@@ -83,7 +77,9 @@ function withSmallSymbol(formatted: string): React.ReactNode {
   return (
     <>
       {/* Not aria-hidden: the symbol is the only thing saying which currency this is. */}
-      <span className="cur text-[0.8em]">{symbol}</span>
+      {/* No size utility: mumchimp.css:32 already sets `.price .cur` to 14px, and 341 sets
+          `.price-lg .cur` to 18px. A `text-[0.8em]` here is a utility, so it OUTRANKS both. */}
+      <span className="cur">{symbol}</span>
       {tightDecimal(rest)}
     </>
   );
@@ -107,6 +103,13 @@ export function Money({ cents, currency, className }: MoneyProps) {
 
 export interface PriceTextProps {
   /**
+   * The element to render. `p` exists for the buy box, where the drawing writes the price as
+   * `<p class="p num"><span class="cur">£</span>49.99</p>` (mockups/pack-detail.html:525) --
+   * wrapping a `<span>` PriceText in a `<p>` put an extra element inside the one the stylesheet
+   * styles, which is a structural difference from the drawing and nothing else.
+   */
+  as?: 'span' | 'p';
+  /**
    * An ALREADY-FORMATTED price, as the catalogue carries it (`pack.price`, `formatGbp(...)`). This
    * component formats nothing and converts nothing -- the money rail owns that, and a second
    * formatter on the display side is how a catalogue row and a Stripe charge start to disagree.
@@ -125,10 +128,20 @@ export interface PriceTextProps {
  * body copy. Hue is not available for this job any more -- blue means "do something", and a price
  * does nothing.
  */
-export function PriceText({ children, className }: PriceTextProps) {
+export function PriceText({ children, className, as: Tag = 'span' }: PriceTextProps) {
+  /* WHEN THE CALLER HANDS OVER THE STYLESHEET'S OWN CLASS, THE STYLESHEET WINS.
+     `.price` (mumchimp.css:31) and `.price-lg` (:340) set size, weight and letter-spacing. A
+     utility on the same element outranks them, because globals.css:8 imports the stylesheet into
+     `layer(components)` and Tailwind utilities sit above that layer -- so `font-semibold` (600)
+     silently replaced the drawing's 655, on every price on the site. Call sites that pass no
+     price class still get the house mono treatment, which is what they were relying on. */
+  /* `p` is the buy box's price class (mumchimp.css:83 `.buybox .p`), on the same footing as
+     `.price` and `.price-lg`: when the caller hands over a class the stylesheet already sizes,
+     the stylesheet wins and no utility is added beside it. */
+  const styled = /\b(price(-lg)?|p)\b/.test(className ?? '');
   return (
-    <span className={cx('font-mono font-semibold tabular-nums text-text', className)}>
+    <Tag className={styled ? className : cx('font-mono font-semibold tabular-nums text-text', className)}>
       {withSmallSymbol(children)}
-    </span>
+    </Tag>
   );
 }

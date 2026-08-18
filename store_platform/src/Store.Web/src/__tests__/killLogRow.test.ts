@@ -30,13 +30,35 @@ describe('excerptOf cuts an argument to a row', () => {
     expect(excerptOf('The incumbent bundles this free.')).not.toContain('…');
   });
 
-  it('never cuts mid-word', () => {
+  it('never cuts at all when there is no sentence to cut on', () => {
+    // WAS "never cuts mid-word", and it cut on a word with a trailing ellipsis. The character
+    // budget is gone (2026-08-18, D3a), so a reason with no sentence end in it comes back whole.
+    // The ellipsis is what the founder reported as a live defect, and 364 of the 400 rows in
+    // `src/data/kill-log.json` took that branch, so it is not an edge case being tidied away.
     const long = `${'evidence '.repeat(40)}end`;
-    const cut = excerptOf(long);
-    expect(cut.endsWith('…')).toBe(true);
-    expect(cut.replace('…', '').endsWith(' ')).toBe(false);
-    // Everything before the ellipsis is whole words of the original.
-    expect(long.startsWith(cut.replace('…', ''))).toBe(true);
+    expect(excerptOf(long)).toBe(long.replace(/\s+/g, ' ').trim());
+    expect(excerptOf(long)).not.toContain('…');
+  });
+
+  it('cuts on a sentence end wherever it falls, not inside a window', () => {
+    // The old rule looked for a sentence end in the first 150 characters and gave up past that.
+    // A median kill argument's first sentence is 270 characters long, so the old rule gave up on
+    // most of them.
+    const text = `${'a'.repeat(260)} runs out here. And a second sentence follows.`;
+    const cut = excerptOf(text);
+    expect(cut.endsWith('here.')).toBe(true);
+    expect(cut).not.toContain('…');
+  });
+
+  it('leaves no ellipsis anywhere in the shipped log', () => {
+    // The check that speaks directly to the defect: not "the function can avoid an ellipsis" but
+    // "no row on the live page has one".
+    // AT THE END, and only at the end. Nine of the 400 reasons quote a passage that contains its
+    // own ellipsis ("no breed-based pricing... a calendar event doesn't know"). That is the
+    // source's punctuation inside a quotation, not our cut, and banning it everywhere would ban
+    // quoting evidence accurately -- on the page whose whole claim is that we quote accurately.
+    const marked = index.summaries.filter((s) => /(…|\.\.\.)$/.test(s.excerpt)).map((s) => s.slug);
+    expect(marked, 'a kill-log row still ships a truncation mark').toEqual([]);
   });
 
   it('prefers a sentence boundary when there is one in range', () => {
@@ -71,17 +93,36 @@ describe('every row carries its own argument', () => {
     // screenshot and would tell the reader nothing they did not already have in the row above it.
     const details = buildKillDetails();
     const wrong = index.summaries
-      .filter((s) => !details[s.slug].reason.replace(/\s+/g, ' ').trim().startsWith(s.excerpt.replace('…', '')))
+      // No `.replace('…', '')` any more: the excerpt carries no truncation mark to strip, and
+      // stripping one would corrupt the nine excerpts that quote an ellipsis of their own.
+      .filter((s) => !details[s.slug].reason.replace(/\s+/g, ' ').trim().startsWith(s.excerpt))
       .map((s) => s.slug)
       .slice(0, 3);
     expect(wrong).toEqual([]);
   });
 
-  it('stays inside the width it was cut for', () => {
+  it('stays inside one sentence, which is the width it is cut to now', () => {
     // The per-row ratchet, which is the one that matters: the payload ceiling in
     // killLogPayload.test.ts is a total, and a total hides one row that grew by 4,000 characters.
-    const over = index.summaries.filter((s) => s.excerpt.length > 170).map((s) => s.slug);
+    //
+    // The number moved from 170 to 700 on 2026-08-18 with the character budget (D3a). It is no
+    // longer the width the row is cut TO -- the row is cut to a sentence -- it is a backstop
+    // against a reason whose first sentence is a runaway. Measured over the 400 entries the day
+    // it changed: 39 / 270 / 402 / 511 characters (min / median / p90 / max).
+    const over = index.summaries.filter((s) => s.excerpt.length > 700).map((s) => s.slug);
     expect(over).toEqual([]);
+
+    // And the rule the length backstop cannot state: every row ends on a sentence, or is the
+    // whole reason. Neither ends mid-word, which is what the founder reported.
+    const details = buildKillDetails();
+    const midThought = index.summaries
+      .filter((s) => {
+        const full = details[s.slug].reason.replace(/\s+/g, ' ').trim();
+        return s.excerpt !== full && !/[.!?]$/.test(s.excerpt);
+      })
+      .map((s) => s.slug)
+      .slice(0, 3);
+    expect(midThought, 'a row is cut somewhere other than the end of a sentence').toEqual([]);
   });
 
   it('renders in the page HTML, not behind the fetch', () => {

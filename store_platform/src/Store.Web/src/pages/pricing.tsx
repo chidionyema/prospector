@@ -122,7 +122,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
                 canvas, it sits in a bordered surface panel under one mono eyebrow, and the matrix
                 inside drops its own frame so the page draws one border and not two. `!border-0`
                 and `!m-0` remove the `.matrix` rule rather than layering over it, because
-                mockup.css is imported into the components layer (globals.css:8) and a utility
+                mumchimp.css is imported into the components layer (globals.css:8) and a utility
                 would otherwise be the only thing painting the edge. */}
             <div className="sigcard mt-10">
               <p className="eyebrow">
@@ -153,7 +153,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
           <p className="mt-3 max-w-[60ch] lede">
             Every pack is the same shape: {PACK_DOCUMENTS.length} documents, sourced
             and cited. No tier, no add-on. The list below is
-            identical for every pack on the shelf
+            identical for every pack in the catalogue
             {range && !range.uniform ? `, whether it is ${formatGbp(range.min)} or ${formatGbp(range.max)}` : ''}
             .
           </p>
@@ -210,11 +210,11 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
               { title: 'A guarantee that the business will succeed', body: PACK_DISCLAIMER },
               {
                 title: 'Live updates',
-                body: 'Packs are a one-time artefact, dated at publish. The kill log is the live surface.',
+                body: 'Packs are a one-time file, dated at publish. The kill log is the live page.',
               },
               {
                 title: 'Personal coaching',
-                body: 'The pack is the deliverable. If you want a person, that is a different product, sold elsewhere.',
+                body: 'The pack is what you get. If you want a person, that is a different product, sold elsewhere.',
               },
               {
                 title: 'A subscription, dashboard, or seat',
@@ -237,7 +237,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
             bordered cards each headed by an icon and a small title, which drew the promises at the
             size of a footnote. `.facts span` and `.facts b` are what the stylesheet selects, so
             the label is a span and the figure is a b: classes on the dt and dd draw nothing
-            (`mockup.css:296-297`). The two paragraphs below keep every word that was in the two
+            (`mumchimp.css`). The two paragraphs below keep every word that was in the two
             cards, so nothing is traded for the panel. */}
         <dl className="facts mt-12">
           <div>
