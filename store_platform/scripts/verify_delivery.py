@@ -34,7 +34,6 @@ import argparse
 import hashlib
 import io
 import json
-import sys
 import time
 import urllib.error
 import urllib.request

@@ -164,13 +164,23 @@ class TestGenerateMarketingContentBudget:
         at a shared deadline. It must get the LAST slice of the budget alone rather than
         being dropped alongside whichever ancillary pieces are also still running.
         """
-        # Total budget ~0.3s. _MARKETING_BATCH_SHARE=0.9 -> the shared wait is ~0.27s.
-        # listing_page finishes at ~0.29s (after the shared cutoff, before the true
-        # deadline) so it can ONLY survive via the dedicated grace wait. The ancillary
+        # Total budget 3.0s. _MARKETING_BATCH_SHARE=0.9 -> the shared wait is ~2.7s.
+        # listing_page finishes at 2.85s: after the shared cutoff, before the true
+        # deadline, so it can ONLY survive via the dedicated grace wait. The ancillary
         # pieces sleep far longer than the whole budget and must be dropped.
+        #
+        # THE MARGINS ARE 130ms, AND THEY USED TO BE 13ms. This test ran the same shape
+        # ten times faster (budget 0.3s, listing 0.29s) and failed on the CI runners on
+        # 2026-08-18 (run 32153140788, PR #344): listing_page survived, but the grace-wait
+        # log line was absent. `as_completed`'s timeout starts when it is CALLED, while
+        # the sleep starts at `ex.submit`, so ~20ms of submit overhead on a loaded runner
+        # was enough for listing_page to land INSIDE the shared window -- collected by the
+        # batch, never by the grace wait, with nothing logged. The behaviour under test is
+        # unchanged; only the clock it is measured against got a margin that survives a
+        # busy box.
         monkeypatch.setattr(
-            art_mod, "_gen_one_content", self._fake_content(0.29, 5.0))
-        deadline = time.monotonic() + 0.3
+            art_mod, "_gen_one_content", self._fake_content(2.85, 5.0))
+        deadline = time.monotonic() + 3.0
 
         t0 = time.monotonic()
         with caplog.at_level("INFO"):
@@ -178,7 +188,9 @@ class TestGenerateMarketingContentBudget:
                 object(), _Cand(), [], cfg=None, deadline_mono=deadline)
         elapsed = time.monotonic() - t0
 
-        assert elapsed < 2.0, f"blocked {elapsed:.2f}s — an ancillary piece was awaited"
+        # 4.0s, not 2.0s: the budget itself is 3.0s now. An awaited ancillary piece
+        # sleeps 5.0s, so this still fails loudly if one is waited on.
+        assert elapsed < 4.0, f"blocked {elapsed:.2f}s — an ancillary piece was awaited"
         types = [r.get("type") for r in results]
         assert types == ["listing_page"], (
             f"listing_page must survive a partial result; got {types}")

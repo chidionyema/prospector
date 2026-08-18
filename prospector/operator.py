@@ -1404,12 +1404,12 @@ class MockOperator(Operator):
 # must fail at import rather than silently read a set the config has since overridden.
 MOAT_PRIMARY_DEFAULT: frozenset[str] = frozenset({"claude_cli"})
 
-# Tier names `_build_operator` can actually construct. A `moat_primary` naming anything else is a
-# typo, and a typo here fails SILENTLY in the worst direction: every ruling would be stamped
-# provisional, nothing would publish, and the engine would look merely unproductive. Same doctrine
-# as the removed-operator ValueErrors below — fail loudly at declaration time.
-_BUILDABLE_TIERS: frozenset[str] = frozenset(
-    {"claude_cli", "minimax", "deepseek", "ollama", "mock"})
+# There is ONE list of buildable tier names in this module and it is `BUILDABLE_TIERS` below.
+# This used to be a second, hand-maintained copy, and the copies drifted: `minimax_m27` was added
+# to the public tuple and to `_build_operator` on 2026-08-15 and never to this one, so a config
+# naming it in `moat_primary` was refused as unbuildable by the only surface that checks — while
+# `noncritical_operator: [minimax, minimax_m27]` ran it in production. The console could not even
+# save the roster already on disk.
 
 MOAT_PRIMARY_ENV = "PROSPECTOR_MOAT_PRIMARY"
 
@@ -1431,11 +1431,15 @@ def _coerce_moat_primary(names, *, source: str) -> frozenset[str]:
             f"{source} declares an EMPTY trusted verdict set. Every ruling would be stamped "
             "`provisional`, nothing would ever publish on PASS, and the engine would look "
             "unproductive rather than misconfigured. Name at least one tier.")
-    unknown = sorted(resolved - _BUILDABLE_TIERS)
+    # Read at CALL time, not import time: `BUILDABLE_TIERS` is defined further down the module.
+    # A typo here fails SILENTLY in the worst direction — every ruling stamped provisional,
+    # nothing published, the engine looking merely unproductive — so it is refused at declaration.
+    buildable = frozenset(BUILDABLE_TIERS)
+    unknown = sorted(resolved - buildable)
     if unknown:
         raise ValueError(
             f"{source} names unbuildable operator tier(s) {unknown}; expected a subset of "
-            f"{sorted(_BUILDABLE_TIERS)}. A name that no tier ever serves would stamp every "
+            f"{sorted(buildable)}. A name that no tier ever serves would stamp every "
             "ruling `provisional` without ever saying why.")
     return resolved
 

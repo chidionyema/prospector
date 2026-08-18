@@ -58,7 +58,7 @@ type ContentRulesView = {
 };
 
 const REPAIR_LABEL: Record<string, string> = {
-  'shelf.repair_copy': 'rewrite the copy',
+  'shelf.repair_copy': 'rewrite the title and one-liner',
   'shelf.publish_pending': 'publish it',
   manual: 'needs a person',
 };
@@ -129,13 +129,13 @@ export default function StrandedShelf() {
           <div className="flex flex-col gap-5">
             <div>
               <Row label={`Rewrite the shelf copy (${copyCount})`}>
-                the linter rejected the one-liner a buyer reads
+                the linter rejected the title or the one-liner a buyer reads
               </Row>
               <div className="mt-2">
                 <Confirm
                   action="shelf.repair_copy"
                   kind="primary"
-                  label={`Rewrite copy on ${copyCount} pack${copyCount === 1 ? '' : 's'}`}
+                  label={`Rewrite title and line on ${copyCount} pack${copyCount === 1 ? '' : 's'}`}
                   disabled={copyCount === 0}
                   payload={() => ({ actor: 'console', reason: 'unblock the stranded shelf' })}
                   renderPreview={(p) => (

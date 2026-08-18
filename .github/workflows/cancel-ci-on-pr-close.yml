@@ -15,6 +15,17 @@ name: Cancel CI when a PR closes
 # `ci.yml`'s concurrency block cannot help here. It groups on `github.ref`, so it only ever
 # supersedes a run with a NEWER run on the same branch. A merged PR produces no newer run --
 # there is nothing to supersede it with, so it is never collected.
+#
+# WHY IT STOPPED USING THE gh CLI (2026-08-18). It never cancelled a single run. Our
+# self-hosted runners do not have the GitHub CLI installed, so every invocation printed
+# `gh: command not found` -- twice, once per status -- and the `|| true` on the list call turned
+# that into an empty id list. The loop then had nothing to iterate, the job exited 0, and the
+# check went green. Proof: run 32169451195, `line 6: gh: command not found`. The ghost runs this
+# workflow exists to collect were still being collected by hand.
+#
+# actions/github-script talks to the API through octokit on the node the runner already ships
+# for JavaScript actions. No CLI, no jq, no PATH assumptions -- and an API error throws and
+# fails the job instead of being hidden.
 
 on:
   pull_request:
@@ -38,32 +49,43 @@ jobs:
     runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     steps:
       - name: Cancel queued and in-progress runs for this PR's branch
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-          BRANCH: ${{ github.event.pull_request.head.ref }}
-          # THIS run's id. It is on the PR's branch and it is in_progress while it executes, so
-          # the query below returns it and the job cancels itself. Measured on PR #308: the log
-          # reads `cancelled in_progress run 32094965534`, its own id, and the PR then carried a
-          # red `cancel` check that no re-run could clear, because this workflow only fires on
-          # `pull_request: closed`. Every closed PR was reddened by its own cleanup.
-          SELF: ${{ github.run_id }}
-        run: |
-          set -euo pipefail
-          # Both states, because a run already executing on a merged PR is just as wasteful as a
-          # queued one -- it holds a runner for its full twenty minutes to answer a dead question.
-          for status in queued in_progress; do
-            ids=$(gh api "repos/$REPO/actions/runs?branch=$BRANCH&status=$status&per_page=100" \
-                    --jq '.workflow_runs[].id' || true)
-            for id in $ids; do
-              if [ "$id" = "$SELF" ]; then
-                echo "not cancelling this job's own run $id"
-                continue
-              fi
-              # Never fail the job on one cancel. A run that finished between the list and the
-              # cancel returns 409, and that is success by any measure that matters here.
-              gh api -X POST "repos/$REPO/actions/runs/$id/cancel" >/dev/null 2>&1 \
-                && echo "cancelled $status run $id" \
-                || echo "could not cancel $id (already finished?)"
-            done
-          done
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const {owner, repo} = context.repo
+            const branch = context.payload.pull_request.head.ref
+            // THIS run's id. It is on the PR's branch and it is in_progress while it executes,
+            // so the query below returns it and the job would cancel itself. Measured on PR
+            // #308: the log read `cancelled in_progress run 32094965534`, its own id, and the
+            // PR then carried a red `cancel` check that no re-run could clear, because this
+            // workflow only fires on `pull_request: closed`. Every closed PR was reddened by
+            // its own cleanup.
+            const self = context.runId
+
+            let cancelled = 0
+            // Both states, because a run already executing on a merged PR is just as wasteful
+            // as a queued one -- it holds a runner for its full twenty minutes to answer a dead
+            // question.
+            for (const status of ['queued', 'in_progress']) {
+              const runs = await github.paginate(
+                github.rest.actions.listWorkflowRunsForRepo,
+                {owner, repo, branch, status, per_page: 100})
+              for (const run of runs) {
+                if (run.id === self) {
+                  core.info(`not cancelling this job's own run ${run.id}`)
+                  continue
+                }
+                try {
+                  await github.rest.actions.cancelWorkflowRun(
+                    {owner, repo, run_id: run.id})
+                  core.info(`cancelled ${status} run ${run.id} (${run.name})`)
+                  cancelled++
+                } catch (e) {
+                  // Never fail the job on one cancel. A run that finished between the list and
+                  // the cancel answers 409, and that is success by any measure that matters.
+                  core.info(`could not cancel ${run.id} (already finished?): ${e.message}`)
+                }
+              }
+            }
+            core.info(`cancelled ${cancelled} run(s) on ${branch}`)

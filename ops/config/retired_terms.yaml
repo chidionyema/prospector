@@ -58,6 +58,14 @@ terms:
       # the evidence that the removal happened, which is what the ledger is for. The live
       # risk table above carries no Paddle row: PAY-5 closed when the code went.
       - docs/LAUNCH_OPS_PROGRAM.md
+      # The persona documents describe the estate as it IS, and part of what it is
+      # is this check. `content-management.md` quotes the checker's own output line,
+      # which names the term it found nothing of; `machine-learning-engineer.md`
+      # reproduces the HARD_PATTERNS list that keeps the pi bridge away from the
+      # money rail, and `\bpaddle` is one of those patterns. Both are naming the
+      # removal, not pointing a reader at a rail that does not exist. Deleting the
+      # word from either would make the document describe a system we do not run.
+      - docs/personas/
       # Tracked runtime state written by the engine and by pytest.
       - store/
       - storage/

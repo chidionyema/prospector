@@ -34,6 +34,26 @@ JOBS = ("com.prospector.scheduler", "com.prospector.consumer", "com.prospector.o
 # untracked files the daemon needs that git will never bring across
 SECRETS = (".env", ".lux/keys/agent.pem")
 
+#: The Fly app that runs the engine. Same default and same override as deploy/targets/fly.sh,
+#: which is the only other file in this repo that knows the word "fly".
+FLY_APP = os.environ.get("PROSPECTOR_FLY_APP", "prospector-engine")
+
+#: Where the image records the commit it was built from. deploy/engine/Dockerfile writes it.
+#: An image built before that existed has no file, which reads as "unknown" and is reported as
+#: a problem: not being able to say what production runs is the condition this probe exists for.
+IMAGE_STAMP = Path("/app/GIT_SHA")
+
+#: A full sha, optionally marked as built from a dirty tree. Matched rather than sliced because
+#: `fly ssh console` writes "Connecting to fdaa:73:..." on stderr and run() merges the streams.
+#: An IPv6 group is four hex characters at most, so it can never match forty.
+_STAMP_RE = re.compile(r"\b([0-9a-f]{40})(-dirty)?\b")
+
+#: Where a Fly deploy is built FROM. It must be a clean checkout at origin/main: `fly deploy`
+#: uploads the working tree, so deploying from the shared developer checkout would ship whatever
+#: branch a session happened to leave it on -- the exact defect that moved production off it.
+DEPLOY_SOURCE = LIVE
+
+
 #: The ops console is a Next.js app served by `next start`, which reads a build directory and
 #: never rebuilds. Rolling the code forward therefore changes nothing the operator can see
 #: until this directory is regenerated, and restarting the job alone does not do it.
@@ -218,23 +238,18 @@ def report() -> int:
     problems: list[str] = []
     side = active_side()
 
+    # Grade the platform that is actually serving. Reporting on the standby and calling its
+    # stopped jobs healthy is not the same as answering "which commit is production running?",
+    # and after the 2026-08-18 cutover only the second question had a subject.
     if side == "fly":
-        print("== the engine runs on FLY (~/.prospector/ACTIVE) ==")
-        print("  The laptop is the standby. Its launchd jobs are EXPECTED to be stopped, so they")
-        print("  are reported below without being counted as problems. `engine_failover.py status`")
-        print("  is the probe for the Fly side; this one grades the laptop checkout it may fail")
-        print("  back to.")
-        print()
+        return fly_report()
 
     print("== the checkout the daemons are actually running from ==")
     for job in JOBS:
         pid, cwd = job_cwd(job)
         if pid is None:
-            if side == "fly":
-                print(f"  {job:26s} not running (expected: Fly is the active side)")
-            else:
-                print(f"  {job:26s} NOT RUNNING")
-                problems.append(f"{job} is not running")
+            print(f"  {job:26s} NOT RUNNING")
+            problems.append(f"{job} is not running")
             continue
         # A subdirectory of the live checkout counts. The console runs `next start` from
         # store_platform/src/Ops.Console, so an exact match reported the correctly deployed
@@ -340,9 +355,19 @@ NO_AUTO_UPDATE = DEV / "store" / "scheduler" / "NO_AUTO_UPDATE"
 #: able to freeze production deploys indefinitely with no way out.
 ALLOW_UNVERIFIED_DEPLOY = DEV / "store" / "scheduler" / "ALLOW_UNVERIFIED_DEPLOY"
 
-#: Workflow runs this gate ignores. Deploys and smoke tests run AFTER a merge and describe
-#: the deployment, not the code; requiring them would deadlock the deploy on itself.
-_IGNORED_WORKFLOWS = ("deploy", "smoke", "e2e")
+#: Workflow runs this gate ignores. Two kinds, for two different reasons.
+#:
+#: Deploys and smoke tests run AFTER a merge and describe the deployment, not the code;
+#: requiring them would deadlock the deploy on itself.
+#:
+#: `automerge` and `cancel` are repository plumbing. They act on pull requests and never
+#: test anything, and `automerge.yml` concludes `skipped` on almost every run by design.
+#: Measured 2026-08-18 on 48f3cfb9, the commit production was running: `CI=success`,
+#: `Deploy Engine=success`, and eighteen "Auto-merge green PRs" rows of which two were
+#: `cancelled`. This gate read that as `fail` and refused to roll production forward onto
+#: a commit whose tests had all passed. A green build cannot be allowed to read as red
+#: because an unrelated automation was cancelled.
+_IGNORED_WORKFLOWS = ("deploy", "smoke", "e2e", "auto-merge", "automerge", "cancel")
 
 
 def ci_verdict(sha: str) -> tuple[str, str]:
@@ -394,6 +419,11 @@ def ci_verdict(sha: str) -> tuple[str, str]:
     rows = [ln.split("\t") for ln in out.splitlines() if ln.strip()]
     relevant = [r for r in rows
                 if not any(w in r[0].lower() for w in _IGNORED_WORKFLOWS)]
+    # A skipped run tested nothing, so it has no opinion about the code. Counting it as a
+    # failure is how one workflow with a path filter walls every deploy. Dropping the rows
+    # BEFORE the emptiness check keeps the safe answer: a commit whose only run was skipped
+    # is "none", which this gate refuses, not "pass".
+    relevant = [r for r in relevant if r[2] != "skipped"]
     if not relevant:
         return "none", "no CI run recorded against this commit"
 
@@ -404,6 +434,189 @@ def ci_verdict(sha: str) -> tuple[str, str]:
     if bad:
         return "fail", ", ".join(bad[:5])
     return "pass", f"{len(relevant)} run(s) green"
+
+
+def fly_machine_state() -> str:
+    """State of the engine machine, or a word explaining why it could not be read.
+
+    `fly status` reports an app whose machine is stopped, so the app is not the question.
+    Same JSON read as deploy/targets/fly.sh t_health, for the same reason.
+    """
+    if not shutil.which("fly"):
+        return "unknown (fly CLI not on PATH)"
+    rc, out = run(["fly", "machines", "list", "-a", FLY_APP, "--json"], timeout=60)
+    if rc != 0:
+        return f"unknown (fly machines list rc={rc})"
+    try:
+        import json
+        machines = json.loads(out[out.index("["):])
+    except Exception:  # noqa: BLE001 - any parse failure means the same thing: cannot tell
+        return "unknown (could not parse fly machines list)"
+    if not machines:
+        return "none (the app has no machine)"
+    return str(machines[0].get("state") or "unknown")
+
+
+def deployed_commit() -> tuple[str, str]:
+    """The commit the running engine was built from, and how it was read.
+
+    Two paths, because this probe runs in two places. Inside the engine image -- which is where
+    the ops console runs, so this is the path the console button takes -- the stamp is a local
+    file and costs nothing. From a laptop it needs one `fly ssh console`, which is slow enough
+    to be worth not doing twice.
+    """
+    if IMAGE_STAMP.exists():
+        try:
+            return IMAGE_STAMP.read_text(encoding="utf-8").strip(), "read inside the container"
+        except OSError as exc:
+            return "", f"{IMAGE_STAMP} unreadable: {exc}"
+    if not shutil.which("fly"):
+        return "", "fly CLI not on PATH and not running inside the image"
+    rc, out = run(["fly", "ssh", "console", "-a", FLY_APP, "-C",
+                   f"/bin/cat {IMAGE_STAMP}"], timeout=120)
+    match = _STAMP_RE.search(out)
+    if match:
+        return match.group(0), "read over fly ssh"
+    if "unknown" in out:
+        return "unknown", "the image was built without a GIT_SHA build argument"
+    if "No such file" in out or "cat:" in out:
+        return "", ("the running image predates commit stamping "
+                    "(deploy/engine/Dockerfile writes /app/GIT_SHA)")
+    return "", f"could not read the stamp (rc={rc}): {out.splitlines()[-1][:120] if out else ''}"
+
+
+def fly_report() -> int:
+    """Grade the platform production actually runs on.
+
+    Until 2026-08-18 this probe graded the laptop checkout whatever `~/.prospector/ACTIVE` said,
+    so after the cutover it answered "MISSING: /Users/chidionyema/Documents/code/prospector-live"
+    and exited 1 -- a permanent red about a directory production no longer uses, while the
+    question it was built to answer, which commit is live, had no answer at all on Fly.
+    """
+    problems: list[str] = []
+    print(f"== the engine runs on FLY ({FLY_APP}) ==")
+
+    state = fly_machine_state()
+    print(f"  machine state   {state}")
+    if state != "started":
+        problems.append(f"the {FLY_APP} machine is {state}, not started")
+
+    sha, how = deployed_commit()
+    print(f"  deployed commit {sha or '(unknown)'}   ({how})")
+    if not sha or sha == "unknown":
+        problems.append("cannot tell which commit production runs")
+    elif sha.endswith("-dirty"):
+        problems.append("production runs an image built from a modified working tree")
+
+    bare = sha[:40] if sha and sha != "unknown" else ""
+    if bare and (DEV / ".git").exists():
+        run(["git", "fetch", "--quiet", "origin", "main"], cwd=DEV, timeout=25)
+        rc, main_sha = run(["git", "rev-parse", "origin/main"], cwd=DEV, timeout=15)
+        if rc == 0 and main_sha:
+            if main_sha == bare:
+                print("  origin/main     SAME COMMIT")
+            else:
+                rc, behind = run(["git", "rev-list", "--count", f"{bare}..origin/main"], cwd=DEV)
+                gap = behind if rc == 0 and behind.isdigit() else "?"
+                print(f"  origin/main     {main_sha[:12]}   production is {gap} commit(s) behind")
+                problems.append(f"production is {gap} commit(s) behind origin/main")
+        _, subject = run(["git", "log", "-1", "--format=%h %ad %s", "--date=short", bare],
+                         cwd=DEV, timeout=15)
+        if subject:
+            print(f"  which is        {subject}")
+
+    if bare:
+        verdict, detail = ci_verdict(bare)
+        print(f"  CI on it        {verdict}: {detail}")
+        if verdict in ("fail", "none"):
+            problems.append(f"production runs {bare[:12]}, whose CI verdict is {verdict}")
+
+    print()
+    print("== the laptop standby ==")
+    if DEPLOY_SOURCE.exists():
+        _, dirty = run(["git", "status", "--porcelain"], cwd=DEPLOY_SOURCE)
+        tracked = _code_changes(dirty)
+        _, head = run(["git", "rev-parse", "--short", "HEAD"], cwd=DEPLOY_SOURCE)
+        print(f"  {DEPLOY_SOURCE} at {head}"
+              f"{', %d local change(s)' % len(tracked) if tracked else ', clean'}")
+    else:
+        # Not counted as a problem. Production is up; this is the failover source, and
+        # recreating it is a decision, not a repair this probe should imply is urgent.
+        print(f"  {DEPLOY_SOURCE} is MISSING, so --update has nothing to deploy from and")
+        print("  failing back to the laptop is not possible. Recreate with:")
+        print(f"    git clone {DEV} {DEPLOY_SOURCE}")
+
+    print()
+    if problems:
+        print("PROBLEMS:")
+        for problem in problems:
+            print(f"  - {problem}")
+        print("\nRun with --update to build origin/main and release it to Fly.")
+        return 1
+    print(f"OK: {FLY_APP} runs origin/main, machine started, CI green on that commit.")
+    return 0
+
+
+def fly_update(unattended: bool = False) -> int:
+    """Build origin/main and release it to Fly, behind the same gates as the laptop path.
+
+    The deploy SOURCE is the clean mirror, never the shared developer checkout: `fly deploy`
+    uploads a working tree, so building from a tree with a branch checked out ships that branch
+    to production without saying so.
+    """
+    if unattended and NO_AUTO_UPDATE.exists():
+        print(f"PAUSED: {NO_AUTO_UPDATE} exists - reporting only, not deploying.")
+        return fly_report()
+    if not DEPLOY_SOURCE.exists():
+        print(f"MISSING: {DEPLOY_SOURCE} - nothing to build from.")
+        print(f"  git clone {DEV} {DEPLOY_SOURCE}")
+        return 1
+
+    rc, out = run(["git", "fetch", "origin", "main"], cwd=DEPLOY_SOURCE)
+    if rc != 0:
+        print(f"fetch failed: {out}")
+        return 1
+    _, dirty = run(["git", "status", "--porcelain"], cwd=DEPLOY_SOURCE)
+    tracked = _code_changes(dirty)
+    if tracked:
+        print(f"REFUSING: {DEPLOY_SOURCE} has local modifications, so the image would not be")
+        print("the commit it claims. Changes belong in a branch and a PR:")
+        for line in tracked[:10]:
+            print(f"  {line}")
+        return 1
+
+    _, target = run(["git", "rev-parse", "origin/main"], cwd=DEPLOY_SOURCE)
+    live_sha, _ = deployed_commit()
+    if live_sha[:40] == target and target:
+        print(f"already deployed: {target[:12]} is what Fly is running")
+        return fly_report()
+
+    verdict, detail = ci_verdict(target)
+    if verdict == "pass":
+        print(f"CI green on {target[:12]}: {detail}")
+    elif ALLOW_UNVERIFIED_DEPLOY.exists():
+        print(f"CI {verdict} on {target[:12]}: {detail}")
+        print(f"shipping anyway - {ALLOW_UNVERIFIED_DEPLOY.name} is present")
+    else:
+        print(f"REFUSING to deploy {target[:12]}: CI {verdict} - {detail}")
+        print(f"To ship regardless: touch {ALLOW_UNVERIFIED_DEPLOY}")
+        return 1
+
+    rc, out = run(["git", "checkout", "--detach", "--force", target], cwd=DEPLOY_SOURCE)
+    if rc != 0:
+        print(f"checkout failed: {out}")
+        return 1
+    print(f"deploy source at {target[:12]}; building and releasing to {FLY_APP}")
+    # 25 minutes: the image builds a Next.js console and a python environment. A shorter
+    # timeout kills a deploy that is working, which leaves the app mid-release.
+    rc, out = run(["bash", str(DEPLOY_SOURCE / "deploy/targets/fly.sh"), "t_release"],
+                  cwd=DEPLOY_SOURCE, timeout=1500)
+    print(out[-2000:] if out else "")
+    if rc != 0:
+        print(f"fly release failed (rc={rc})")
+        return 1
+    print()
+    return fly_report()
 
 
 def update(unattended: bool = False) -> int:
@@ -420,6 +633,9 @@ def update(unattended: bool = False) -> int:
     to run this by hand because it was reported to him rather than fixed. A fix that needs
     a human to press it is not a fix; it is a dashboard.
     """
+    if active_side() == "fly":
+        return fly_update(unattended=unattended)
+
     if not LIVE.exists():
         print(f"MISSING: {LIVE} — create it with: git clone {DEV} {LIVE}")
         return 1

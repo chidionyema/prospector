@@ -11,10 +11,12 @@ the load and nothing said so.
 
   1. every job in ci.yml is assigned to exactly one pool, and its `runs-on` reads that pool's
      variable — a new job cannot land in the shared pool by default
-  2. the widest `heavy.runners` jobs, running at once, fit in cpus - reserved_cpus — and each
-     declared width is read back out of ci.yml, so the two cannot drift apart
-  3. with --live, the runners actually registered on GitHub carry the pool labels in the
-     declared numbers
+  2. the widest `box.heavy_slots` jobs, running at once, fit in cpus - reserved_cpus — and each
+     declared width is read back out of ci.yml, so the two cannot drift apart. It is heavy_slots
+     and not `heavy.runners` because the heavy pool now spans two machines: only the runners on
+     this box spend its CPUs.
+  3. with --live, the runners actually registered on GitHub carry the pool labels, between the
+     declared persistent count and that plus the ephemeral allowance
 
 Exit 0 = the contract holds. Exit 1 = it does not, with the specific line that broke it.
 
@@ -157,7 +159,8 @@ def main() -> int:
                        f"declares label {p['label']!r} -- change one of them so they agree")
 
     # 2. The arithmetic. At most `heavy.runners` heavy jobs run at once, so the worst case is the
-    #    widest that many. The widths are read back out of ci.yml so the yaml cannot drift.
+    #    widest that many, counting only the runners on this box. The widths are read back out
+    #    of ci.yml so the yaml cannot drift.
     hit = _WORKERS.search(text)
     if not hit:
         bad.append("ci.yml no longer sets PYTEST_XDIST_AUTO_NUM_WORKERS, so how wide a heavy job "
@@ -171,7 +174,9 @@ def main() -> int:
             if n != want:
                 bad.append(f"{CONTRACT.name} says {job!r} runs {n} process(es), but ci.yml runs "
                            f"{want} — change one to match the other")
-        heavy = pools["heavy"]["runners"]
+        # box.heavy_slots, not pools.heavy.runners: the pool now contains runners that are not
+        # on this box, and those do not spend its CPUs.
+        heavy = box["heavy_slots"]
         budget = box["cpus"] - box["reserved_cpus"]
         worst = sorted(widths.values(), reverse=True)[:heavy]
         used = sum(worst)
@@ -192,10 +197,17 @@ def main() -> int:
         for name, p in sorted(pools.items()):
             labels = [r["name"] for r in runners if p["label"] in
                       {lbl["name"] for lbl in r.get("labels", [])}]
-            print(f"{name:5} pool: {len(labels)} registered {sorted(labels)}")
-            if len(labels) != p["runners"]:
-                bad.append(f"the {name} pool declares {p['runners']} runner(s) but "
-                           f"{len(labels)} carry the {p['label']!r} label: {sorted(labels)}")
+            lo = p["runners"]
+            hi = lo + p.get("ephemeral", 0)
+            print(f"{name:5} pool: {len(labels)} registered (want {lo}-{hi}) {sorted(labels)}")
+            # A RANGE, not an equality. The Fly runners are ephemeral: each takes one job, then
+            # deregisters and is restarted. Between jobs it is legitimately not registered, so
+            # `== runners + ephemeral` would fail on a healthy fleet several times an hour. Too
+            # few still fails, which is the case worth catching -- that is a runner that died.
+            if not lo <= len(labels) <= hi:
+                bad.append(f"the {name} pool declares {lo} persistent runner(s) and up to "
+                           f"{hi - lo} ephemeral, but {len(labels)} carry the {p['label']!r} "
+                           f"label: {sorted(labels)}")
         unlabelled = [r["name"] for r in runners
                       if not ({lbl["name"] for lbl in r.get("labels", [])}
                               & {p["label"] for p in pools.values()})]

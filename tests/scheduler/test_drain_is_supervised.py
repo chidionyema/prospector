@@ -32,6 +32,24 @@ import pytest
 from prospector.scheduler import run_scheduled as rs
 
 
+@pytest.fixture(autouse=True)
+def _default_tick_deadline(monkeypatch):
+    """Judge every budget below against the SHIPPED deadline, not the one this machine sets.
+
+    `rs._TICK_HARD_DEADLINE_S` is read from `PROSPECTOR_TICK_DEADLINE_S` at import time, for
+    tuning a manual run without a code change. Every budget in `_liveness` is derived from it,
+    so a machine that sets it moves the numbers these tests assert.
+
+    Measured 2026-08-18 on main: the CI runners have it set to 60, so `stall_min` was 11 minutes
+    and `test_a_long_but_healthy_drain_is_not_killed` failed with "82 min ... (deadline 1 min
+    should have force-exited it)" -- a green suite on every laptop and a red main, for a reason
+    in neither the diff nor the repository. The tests that WANT a different deadline still
+    monkeypatch it themselves; this only stops the ambient one leaking in.
+    """
+    monkeypatch.delenv("PROSPECTOR_TICK_DEADLINE_S", raising=False)
+    monkeypatch.setattr(rs, "_TICK_HARD_DEADLINE_S", rs._TICK_DEADLINE_DEFAULT_S)
+
+
 def _cfg(tmp_path, **schedule):
     # recover_per_tick 0 because these tests time the drain against a sub-second deadline. Pack
     # recovery spawns a python child that opens the real catalogue; on a machine that has one it

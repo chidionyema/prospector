@@ -88,3 +88,24 @@ def test_a_pool_naming_a_job_that_does_not_exist_fails(sandbox: Path):
     r = run(sandbox)
     assert r.returncode == 1
     assert "no such job" in r.stderr
+
+
+def test_adding_a_runner_off_the_box_does_not_break_the_cpu_budget(sandbox: Path):
+    """The failure that actually happened. Three Fly containers joined the heavy pool on
+    2026-08-18. `pools.heavy.runners` was the count used BOTH to check the registered fleet and to
+    sum the CPU worst case, so raising it to include machines that are not this Mac declared the
+    contract broken for adding capacity that spends none of this box's CPUs."""
+    cfg = sandbox / "ops/config/ci_capacity.yaml"
+    cfg.write_text(cfg.read_text().replace("    runners: 3\n", "    runners: 30\n", 1))
+    r = run(sandbox)
+    assert r.returncode == 0, f"a bigger off-box pool must not touch the budget:\n{r.stderr}"
+    assert "3 heavy jobs at once" in r.stdout, r.stdout
+
+
+def test_shrinking_the_boxs_own_slots_is_what_moves_the_budget(sandbox: Path):
+    """The other half: `box.heavy_slots` is the number the arithmetic reads, so it still fails."""
+    cfg = sandbox / "ops/config/ci_capacity.yaml"
+    cfg.write_text(cfg.read_text().replace("  heavy_slots: 3", "  heavy_slots: 5", 1))
+    r = run(sandbox)
+    assert r.returncode == 1
+    assert "CPU budget" in r.stderr, r.stderr
