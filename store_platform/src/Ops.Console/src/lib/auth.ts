@@ -8,10 +8,14 @@
  * FAIL CLOSED. With no password configured the console refuses everything and says why. An
  * unconfigured portal is locked, not open.
  *
- * THE NETWORK IS THE REAL FENCE. Bind one tailnet address, never 0.0.0.0. A password-only portal
- * on whatever wifi the laptop joins is not acceptable, and the single-address bind is what stops
- * it. This module cannot enforce that; the launchd plist does, by passing `-H <tailnet address>`
- * to `next start`.
+ * THE NETWORK USED TO BE THE REAL FENCE, and it is not any more. Until 2026-08-18 the console
+ * bound one private address and was reached over `fly proxy` from the founder's laptop, so the
+ * password was a second lock behind a closed door. Founder, 2026-08-18: "relying on a tunnel on
+ * this macbook to run operations is not smart" - a dashboard whose only door is the laptop dies
+ * with the laptop, which is the dependency the whole migration exists to remove. The console now
+ * answers on the open internet over HTTPS, so this password IS the fence. Three things carry that
+ * weight: the timing-safe compare below, the Secure+HttpOnly+SameSite=Strict cookie, and the
+ * per-address limiter in lib/ratelimit.ts.
  */
 import crypto from 'node:crypto';
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -67,13 +71,26 @@ export function readCookie(req: NextApiRequest, name: string): string | undefine
   return undefined;
 }
 
-export function setSessionCookie(res: NextApiResponse, token: string): void {
+/**
+ * `secure` is decided by the CALLER from the request, not hardcoded, because both doors are
+ * real: https://ops.mumchimp.com through Fly's proxy, and http://127.0.0.1:8611 for anyone
+ * already inside the machine. A Secure cookie is never sent over plain HTTP, so hardcoding it
+ * on would break the local door with the message "that password did not work" - the same
+ * failure this comment warned about in the other direction before 2026-08-18.
+ */
+export function setSessionCookie(res: NextApiResponse, token: string, secure = false): void {
   res.setHeader(
     'Set-Cookie',
-    // `Secure` is deliberately absent: the tailnet address is plain HTTP, and a Secure cookie
-    // over HTTP is simply never sent, which reads as "the password did not work".
-    `${COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${SESSION_TTL_S}`,
+    `${COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict; ` +
+      `Max-Age=${SESSION_TTL_S}${secure ? '; Secure' : ''}`,
   );
+}
+
+/** True when the request reached us over TLS. Fly terminates TLS and sets the header. */
+export function isSecureRequest(req: NextApiRequest): boolean {
+  const proto = req.headers['x-forwarded-proto'];
+  const first = Array.isArray(proto) ? proto[0] : proto;
+  return typeof first === 'string' && first.split(',')[0]!.trim() === 'https';
 }
 
 export function clearSessionCookie(res: NextApiResponse): void {
