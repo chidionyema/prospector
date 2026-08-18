@@ -2,6 +2,7 @@ import Link from 'next/link';
 import report from '@/data/sample-report.json';
 import { SourceChip, VerdictChip, textLinkClass } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
+import { ProofLine, sourcesLabel } from '@/components/ui/ProofLine';
 import { plainEnglish } from '@/lib/plainEnglish';
 
 /*
@@ -65,14 +66,16 @@ export function CheckSequence({ className }: { className?: string }) {
         <p className="text-caption text-subtle">The idea that went in</p>
         <h3 className="mt-2 text-h2 font-semibold leading-tight text-text">{report.title}</h3>
         <p className="mt-2 max-w-[62ch] text-meta leading-relaxed text-muted">{report.oneLiner}</p>
-        {/* `slice(0, 10)` and not a formatter: `verifiedAt` is a full ISO timestamp with
-            microseconds and a UTC offset, and printing the time of day implies a precision that
-            means nothing about a research run. The ISO date is also the one date format that is
-            unambiguous to a reader in any market, which matters on a page that sells UK and US
-            research side by side. */}
-        <p className="mt-3 font-mono text-caption text-subtle">
-          {`${CHECKS.length} checks · ${report.sourceCount} sources · verified ${report.verifiedAt.slice(0, 10)}`}
-        </p>
+        {/* ONE PROOF-LINE FORMAT SITEWIDE (MASTER-BRIEF section 10). This line, the catalogue
+            row, the summary strip below and the /sample hero all said the same thing in four
+            different wordings, because each was written where it stood. The wording is now one
+            decision in `ProofLine`; this call site only chooses which parts it has room for. */}
+        <ProofLine
+          checks={CHECKS.length}
+          sources={report.sourceCount}
+          verifiedAt={report.verifiedAt}
+          className="mt-3"
+        />
       </div>
 
       {/* THE RUN. An ordered list, because the order is the content: check eight only means what it
@@ -179,7 +182,7 @@ export function CheckSequence({ className }: { className?: string }) {
               not. The chip is what makes that a property of the component rather than of this
               line. */}
           <VerdictChip kind="pushed-back" label={`${PUSHED_BACK} pushed back`} />
-          <span className="text-subtle">{`${report.sourceCount} sources cited`}</span>
+          <span className="text-subtle">{`${sourcesLabel(report.sourceCount)} cited`}</span>
         </p>
         <Link
           href="/sample"

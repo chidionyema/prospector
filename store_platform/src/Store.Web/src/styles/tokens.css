@@ -586,6 +586,19 @@
   --survive: var(--success);
   --survive-bg: var(--success-bg);
   --survive-strong: var(--success-strong);
+  /* FORM VALIDATION IS NOT A KILL (MASTER-BRIEF section 2, checklist box 5). Every form error,
+     every required-field asterisk and every invalid-input border drew --danger, which IS the kill
+     red: the same ink that means "this idea died on the evidence" was telling a reader they had
+     mistyped an email address. That is the one reuse section 2 forbids by name.
+
+     The brief says form validation uses --warn-b. It cannot: --warn-b is #C9A227 at 2.31:1 on the
+     page ground (measured, see the note above), which fails AA for text and the 3:1 floor for a
+     border. --warning (#8A6D0B, 4.91:1) is the same amber decision at a contrast that passes, so
+     --error points there. The colour of a warning, at a legible strength. */
+  --error: var(--warning);
+  --error-bg: var(--warning-bg);
+  --error-strong: var(--warning-strong);
+
   --kill: var(--danger);
   --kill-bg: var(--danger-bg);
   --kill-strong: var(--danger-strong);
@@ -661,9 +674,26 @@
      focus rings was dead, which is a keyboard-accessibility failure that no visual review would
      ever have caught. Found 2026-08-06 while rewiring this block. */
   --color-focus: var(--focus);
+
+  /* STICKY GEOMETRY (MASTER-BRIEF section 9). The header is sticky at top:0 and the filter bar
+     sticks under it, so both the bar's offset and every anchor's scroll clearance are the header's
+     height. That height was written out by hand in ten places as 5.5rem, scroll-mt-24, scroll-mt-20
+     and scroll-mt-16, which is four different answers to one question. It is one number now.
+
+     Two values because the header contracts once the page has scrolled (MarketingLayout.tsx:183).
+     globals.css switches between them with :has(), so no JavaScript keeps them in sync.
+
+     --h-filter is 0 by default and set by the page that actually has a sticky filter bar. An
+     anchor on a page with no filter bar must not reserve room for one. */
+  --h-header: 5rem;
+  --h-header-compact: 4rem;
+  --h-filter: 0rem;
   --color-success: var(--success);
   --color-success-bg: var(--success-bg);
   --color-success-strong: var(--success-strong);
+  --color-error: var(--error);
+  --color-error-bg: var(--error-bg);
+  --color-error-strong: var(--error-strong);
   --color-warning: var(--warning);
   --color-warning-bg: var(--warning-bg);
   --color-warning-strong: var(--warning-strong);

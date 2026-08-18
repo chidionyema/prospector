@@ -48,7 +48,12 @@ import { fetchCatalog, fetchCatalogStats, freshnessLabel, marketLabel, Pack, Cat
 import { freshCatalog, lastKnownCatalog, rememberCatalog } from '@/lib/catalogCache';
 import { formatPriceForMarket, currencyForCountry, type Currency } from '@/lib/fx';
 import { repairTruncation } from '@/lib/copy';
-import { track } from '@/lib/analytics';
+import {
+  startScrollDepthTracking,
+  track,
+  trackFilterChange,
+  trackFilterZeroResults,
+} from '@/lib/analytics';
 import { useCardImpressions } from '@/lib/useCardImpressions';
 import { priceRange, formatGbp } from '@/lib/priceRange';
 // `type Category` was imported here for `PackCoverArt`'s `category` prop and went with it
@@ -522,8 +527,14 @@ function SectorChips({
     [packs, state],
   );
 
-  const offered = allCategories().filter((cat) => (counts[cat.key] ?? 0) > 0);
-  if (offered.length === 0) return null;
+  /* A DEAD SECTOR IS SHOWN AND DISABLED, not hidden (MASTER-BRIEF section 9; the same rule
+     `FacetBar` now follows). Hiding it removes two facts at once: that the sector exists, and that
+     the filters already on screen are what emptied it. A buyer who narrowed to UK and watched four
+     chips vanish cannot tell a sector we have never carried from one their own query excluded, so
+     the rail silently rewrites itself and the shelf reads as a smaller catalogue than it is.
+     Disabled says both: the sector is real, and nothing in it survives the current filters. */
+  const offered = allCategories();
+  if (offered.every((cat) => (counts[cat.key] ?? 0) === 0)) return null;
 
   return (
     /* Bleeds to the viewport edge and scrolls on a phone rather than wrapping to four rows above
@@ -572,13 +583,21 @@ function SectorChips({
         </button>
         {offered.map((cat) => {
           const active = state.sector === cat.key;
+          const dead = (counts[cat.key] ?? 0) === 0 && !active;
           return (
             <button
               key={cat.key}
               type="button"
               aria-pressed={active}
+              disabled={dead}
               onClick={() => onChange({ ...state, sector: active ? null : (cat.key as Sector) })}
-              className={chipClasses({ selected: active, className: 'snap-start gap-1.5 whitespace-nowrap' })}
+              className={chipClasses({
+                selected: active,
+                className: cx(
+                  'snap-start gap-1.5 whitespace-nowrap',
+                  dead && 'cursor-not-allowed opacity-45',
+                ),
+              })}
             >
               {/* THE GLYPH IS NEUTRAL (founder review, 2026-08-15). It used to take `cat.ink`, on
                   the argument recorded here before -- "the hue is the card's hue, so the chip and
@@ -598,7 +617,7 @@ function SectorChips({
               <Icon name={cat.icon} size={12} className={active ? undefined : 'text-subtle'} />
               {cat.label}
               <span className={cx('text-caption tabular-nums', active ? 'text-white/70' : 'text-subtle')}>
-                {counts[cat.key]}
+                {counts[cat.key] ?? 0}
               </span>
             </button>
           );
@@ -692,6 +711,47 @@ type SortKey = (typeof SORTS)[number]['value'];
  *  heading form produced "Show any what you already have" (see the note in `lib/facets.ts`). */
 function relaxLabelFor(kind: keyof typeof KIND_NOUN): string {
   return `Show any ${KIND_NOUN[kind]}`;
+}
+
+/**
+ * The discovery dimensions a `filter_change` beacon can name, in a fixed order.
+ *
+ * Written out rather than read off `Object.keys`, because a beacon has to report the same name
+ * for the same control forever. Key order is not something the type promises, and a dimension
+ * added to `DiscoveryState` should be a deliberate addition here too.
+ */
+const FILTER_DIMENSIONS = [
+  'q',
+  'advantage',
+  'sector',
+  'payer',
+  'effort',
+  'commitment',
+  'mechanism',
+  'maxPence',
+] as const;
+
+type FilterDimension = (typeof FILTER_DIMENSIONS)[number];
+
+/**
+ * The value a beacon reports for one dimension, or `null` when the visitor has not set it.
+ *
+ * The advantage facet is multi-select, so its selections are sorted and joined. Sorting is what
+ * stops "picking A then B" and "picking B then A" from looking like two different filters.
+ */
+function filterValueOf(state: DiscoveryState, dimension: FilterDimension): string | number | null {
+  const value = state[dimension];
+  if (Array.isArray(value)) return value.length > 0 ? [...value].sort().join('+') : null;
+  if (value === '' || value === undefined) return null;
+  return value;
+}
+
+/**
+ * The names of the dimensions the visitor has constrained. Names only, never values: the search
+ * box holds text the visitor typed, and this page does not send that anywhere.
+ */
+function constrainedDimensions(state: DiscoveryState): string[] {
+  return FILTER_DIMENSIONS.filter((dimension) => filterValueOf(state, dimension) !== null);
 }
 
 /**
@@ -799,11 +859,40 @@ function CatalogBrowser({
   const apply = React.useCallback(
     (next: DiscoveryState) => {
       setState(next);
+      /* MASTER-BRIEF section 9, the discovery instrument. Every control on this page changes
+         the shelf by calling `apply`, so this is the one place that cannot miss a control: the
+         chips, the sheet, the wizard, the palette and the near-miss "show any X" all arrive
+         here. Sorting is not counted, because it reorders the shelf rather than filtering it.
+
+         The count comes from `filterPacks`, the same function the shelf renders from, so the
+         number in the beacon is the number the visitor is looking at. */
+      const resultCount = filterPacks(packs, next).length;
+      for (const dimension of FILTER_DIMENSIONS) {
+        const before = filterValueOf(state, dimension);
+        const after = filterValueOf(next, dimension);
+        if (before !== after) trackFilterChange(dimension, after, resultCount);
+      }
+      /* Fired every time a change lands on an empty shelf, not only on the first one. A visitor
+         who tries three combinations and finds nothing three times is three failures, and the
+         thing this counter exists to size is how often the catalogue disappoints. */
+      if (resultCount === 0) trackFilterZeroResults(constrainedDimensions(next));
       const qs = encodeDiscoveryState(next);
       void router.replace(qs ? `/?${qs}` : '/', undefined, { shallow: true, scroll: false });
     },
-    [router],
+    [packs, router, state],
   );
+
+  /* An empty shelf the visitor never filtered their way into. A filtered URL is a link people
+     send each other, so it can land on nothing without a single control being touched, and the
+     `apply` beacon above would never see it. Fires once per page view. */
+  const zeroOnLandingReported = React.useRef(false);
+  React.useEffect(() => {
+    if (zeroOnLandingReported.current) return;
+    zeroOnLandingReported.current = true;
+    if (isFiltered(initialState) && filterPacks(packs, initialState).length === 0) {
+      trackFilterZeroResults(constrainedDimensions(initialState));
+    }
+  }, [initialState, packs]);
 
   /* The filter sheet, and the block it is a second way into. The open state lives HERE rather than
      inside the trigger because two things open it -- the pinned trigger, and (when the shelf came
@@ -1362,7 +1451,17 @@ function CatalogBrowser({
                   cap, the ordering and what is hidden are all untouched: this is the label. */}
               {shown < tailPacks.length && (
                 <div className="mt-8 flex flex-col items-center gap-2">
-                  <Button variant="secondary" size="lg" onClick={() => setShowAll(true)}>
+                  <Button
+                    variant="secondary"
+                    size="lg"
+                    onClick={() => {
+                      /* MASTER-BRIEF section 9, `catalogue_page_more`. Meta is "shown:total" for
+                         the reader's own market, which is the same pair the button label states,
+                         so a press can be read against how much shelf the reader already had. */
+                      track('catalogue_page_more', `${shown}:${tailPacks.length}`);
+                      setShowAll(true);
+                    }}
+                  >
                     Show the other {tailPacks.length - shown} {marketLabel(market)} packs
                     <Icon name="arrowRight" size={15} />
                   </Button>
@@ -1594,6 +1693,56 @@ export default function Home({ packs, stats, flags, initialState, market, curren
      the featured slot is `hidden lg:block`, and on mobile the reader simply meets it as the first
      card in the grid. */
   const featured = packs[0];
+
+  /* MASTER-BRIEF section 9. Three page-level beacons, wired here because each is about the page
+     rather than about any one component inside it. */
+
+  /* How far down this page readers get. `startScrollDepthTracking` returns its own stop
+     function, so leaving the page ends the page view and the next arrival starts a fresh set of
+     thresholds rather than staying silent. */
+  React.useEffect(() => startScrollDepthTracking(), []);
+
+  /* The waitlist ask was taken. The form is `WaitlistForm`, which /kill-log and /sample render
+     too, so putting the beacon inside it would file every page's signups under one name.
+     Listening for the submit event here counts only the asks made on this page, and it adds no
+     wrapper element to the shelf layout.
+
+     Once per page view. A visitor who submits without ticking the consent box is refused and
+     submits again. That is one visitor who asked, not two.
+
+     No meta. `WaitlistForm` already posts a `source` tag that the waitlist ledger stores, so a
+     placement written here would be a second copy of one fact, free to disagree with the first. */
+  const emailSubmitReported = React.useRef(false);
+  React.useEffect(() => {
+    const onSubmit = () => {
+      if (emailSubmitReported.current) return;
+      emailSubmitReported.current = true;
+      track('email_submit');
+    };
+    document.addEventListener('submit', onSubmit);
+    return () => document.removeEventListener('submit', onSubmit);
+  }, []);
+
+  /* A click on the hero's featured product. The handler is attached to the DOM node rather than
+     written as an `onClick` prop because the slot is a plain container: jsx-a11y fails the build
+     on a static element with a click handler, and the keyboard path is the card's own link,
+     which needs no help from here.
+
+     Only a click that landed on a link counts, so the heading above the card and the padding
+     around it are not counted as a click on the product. */
+  const featuredSlotRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const el = featuredSlotRef.current;
+    if (!el || !featured) return;
+    const onClick = (event: MouseEvent) => {
+      if ((event.target as HTMLElement | null)?.closest('a')) {
+        track('featured_click', featured.id);
+      }
+    };
+    el.addEventListener('click', onClick);
+    return () => el.removeEventListener('click', onClick);
+  }, [featured]);
+
   /* THE KILL TOTAL IS STATED ONCE ON THIS PAGE, in the proof strip below the hero. It was in
      `HeroEvidenceStrip` as well until 2026-08-13, which put "1,364" and an identically-worded
      "Read the kill log" link at y=735 and again at y~1180 of the same 1440x900 screen. The strip
@@ -1658,6 +1807,9 @@ export default function Home({ packs, stats, flags, initialState, market, curren
       <SectionBand
         bg="white"
         width="7xl"
+        // `band_view` (MASTER-BRIEF section 9). The hero is the band every visitor should reach,
+        // so its count is the baseline the bands below it are read against.
+        bandId="home-hero"
         // The mobile padding is `pt-8 pb-8`, not `pt-10 pb-12`. Moving the filter-log panel below
         // the shelf (see the note there) put the first card at y=728/753/689 on the three phone
         // sizes measured, which clears the 40px-visible bar at 390x844 and 430x932 but left only
@@ -1880,7 +2032,10 @@ export default function Home({ packs, stats, flags, initialState, market, curren
              shows through any more; the fill stays because `--surface` and `--bg` are the same
              white (tokens.css:80,81) and removing it would be a no-op edit on a card whose
              background is otherwise inherited from whatever band it is dropped into. */
-          <div className="relative z-10 mt-10 hidden w-full max-w-[420px] rounded-card bg-surface p-4 lg:block">
+          <div
+            ref={featuredSlotRef}
+            className="relative z-10 mt-10 hidden w-full max-w-[420px] rounded-card bg-surface p-4 lg:block"
+          >
             {/* Sentence case, and the same `text-meta font-semibold` as every other row heading
                 on the shelf below. It was `uppercase tracking-wide text-caption`, which the
                 house policy forbids (`__tests__/weightAndCasePolicy.test.ts`): CSS caps leave
@@ -2175,7 +2330,9 @@ export default function Home({ packs, stats, flags, initialState, market, curren
           kill figure is stated once here, by the terms column, and the standalone
           "Find your next business" band is REMOVED from this page (it survives on /how-it-works,
           /collections and /collections/[slug], which is where `CtaBand` is still the right closing shape). */}
-      <SectionBand bg="surface2" width="7xl" className="py-10 md:py-24">
+      {/* `band_view` (MASTER-BRIEF section 9). This is the closing band, below the whole shelf,
+          so its count against the hero's says how many readers got to the end of the page. */}
+      <SectionBand bandId="home-stress-tested" bg="surface2" width="7xl" className="py-10 md:py-24">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-16">
         <div className="max-w-[46rem]">
           {/*

@@ -11,6 +11,7 @@ import { useCurrency } from '@/lib/currency';
 import { cardHeading, cardLine, listHeading } from '@/lib/discovery';
 import { repairTruncation } from '@/lib/copy';
 import { formatPriceForMarket, type Currency } from '@/lib/fx';
+import { sourcesLabel } from '@/components/ui/ProofLine';
 import { packMarket } from '@/lib/market';
 import { packLeadStat, type PackLeadStat } from '@/lib/packStat';
 import { trackCardClick } from '@/lib/analytics';
@@ -209,7 +210,7 @@ export function PackRow({
               cutting it silently would have dropped information rather than just decoration. */}
           {evidenceLabel && typeof pack.sourceCount === 'number' && pack.sourceCount > 0 && (
             <span className="flex-none font-mono text-caption text-subtle">
-              {pack.sourceCount} {pack.sourceCount === 1 ? 'source' : 'sources'}
+              {sourcesLabel(pack.sourceCount)}
             </span>
           )}
           {/* COMPARE LIKE WITH LIKE. `groupByMarket` buckets on `packMarket(pack)`, which

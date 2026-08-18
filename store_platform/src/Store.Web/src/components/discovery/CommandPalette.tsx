@@ -130,7 +130,7 @@ export function SearchTrigger({
       type="button"
       onClick={onOpen}
       className={cx(
-        'flex h-10 w-full items-center gap-2.5 rounded-md border border-border-strong bg-surface px-3 text-left transition-colors hover:border-text',
+        'flex h-11 w-full items-center gap-2.5 rounded-md border border-border-strong bg-surface px-3 text-left transition-colors hover:border-text sm:h-10',
         className,
       )}
     >
@@ -297,7 +297,7 @@ function PaletteDialog({
         aria-label="Search the catalogue"
         className="w-full max-w-2xl overflow-hidden rounded-md border border-border bg-surface"
       >
-        <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+        <div className="flex items-center gap-3 border-b border-border px-4 py-3 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-focus">
           <Icon name="search" size={16} className="flex-none text-subtle" />
           <input
             ref={inputRef}
@@ -319,7 +319,7 @@ function PaletteDialog({
             type="button"
             onClick={onClose}
             aria-label="Close search"
-            className="rounded-md p-1 text-subtle transition-colors hover:bg-surface2 hover:text-text"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-subtle transition-colors hover:bg-surface2 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
             <Icon name="close" size={16} />
           </button>

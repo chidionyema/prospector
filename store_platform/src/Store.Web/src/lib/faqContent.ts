@@ -50,7 +50,35 @@ export function plainAnswer(item: FaqItem): string {
   return item.answer.map((segment) => (isLink(segment) ? segment.text : segment)).join('');
 }
 
+/*
+ * THE ORDER IS THE PURCHASE BLOCKERS, BIGGEST FIRST (MASTER-BRIEF section 7 `/faq`).
+ *
+ * It used to be grouped by the three filter categories, which is the order the copy was WRITTEN in,
+ * not the order a buyer reads in. The page opens with the first row expanded, so whatever sits at
+ * index 0 is the only answer a visitor is guaranteed to see.
+ *
+ * "Why not just ask a chatbot?" is first because in 2026 it is the objection every visitor arrives
+ * with, and no other answer matters until it is dealt with. Then what the thing is, then why to
+ * believe it, then the two fears that stop a purchase (someone else buys the same pack; it might not
+ * work), then money and delivery, then the housekeeping questions nobody is blocked on.
+ *
+ * The category filters still work: `category` is on every item and the chips filter on it. Order and
+ * grouping are separate, and only the order is a claim about what a buyer needs first.
+ */
 export const FAQS: FaqItem[] = [
+  { category: 'process',
+    // THE OBJECTION THE SITE HAD NO ANSWER FOR (2026-08-13). Being quiet about AI was never an
+    // ethics decision, it was this question going unanswered: in 2026 a buyer has already had
+    // free business ideas from a chatbot and already knows it invents numbers, so naming the AI
+    // without answering "why pay" reads as an admission. Answered here, next to the kill log
+    // question it sets up, because the two together are the whole argument.
+    question: 'Why not just ask a chatbot?',
+    answer: [
+      'Because it will agree with you. Ask a chatbot about your idea and you get an encouraging answer full of numbers it invented on the spot. Every figure here links to the page it came from, and the ideas that failed are published too, in the ',
+      { text: 'kill log', href: '/kill-log' },
+      '. No chatbot will ever show you that, because it costs nothing to tell you yes.',
+    ],
+  },
   { category: 'packs',
     question: 'What am I actually buying?',
     answer: [
@@ -87,11 +115,18 @@ export const FAQS: FaqItem[] = [
       'Every verdict ships with the sources it was ruled on, so you can open them and judge the evidence yourself. Anything the engine could not verify is marked unverifiable rather than quietly dropped. The QA report inside the pack is the audit trail.',
     ],
   },
-  { category: 'payment',
-    question: 'How do I get the pack after I pay?',
+  { category: 'packs',
+    question: 'If 500 people buy the same pack, aren’t 500 people copying my idea?',
     answer: [
-      // Per email §6: answer in the first sentence.
-      'A download link, the moment payment clears. Also emailed to you. No account needed.',
+      // Per email §6: 50 words, the only question that gets a longer answer because the answer
+      // is the whole product.
+      'In practice, almost nobody executes. And most packs win on a local patch (one school, one council, one trade) where the first mover in your area is the only one who matters. The research is shared; the ground isn’t.',
+    ],
+  },
+  { category: 'process',
+    question: 'Are the opportunities guaranteed to work?',
+    answer: [
+      'No. The research is done and sourced; the execution is yours. No one can promise a business outcome, and we don’t.',
     ],
   },
   { category: 'payment',
@@ -108,42 +143,11 @@ export const FAQS: FaqItem[] = [
       '.',
     ],
   },
-  { category: 'process',
-    question: 'Is a pack financial or investment advice?',
-    answer: [
-      'No. It’s research, sold for information. Nothing in a pack is advice about your money.',
-    ],
-  },
-  { category: 'process',
-    question: 'Are the opportunities guaranteed to work?',
-    answer: [
-      'No. The research is done and sourced; the execution is yours. No one can promise a business outcome, and we don’t.',
-    ],
-  },
-  { category: 'packs',
-    question: 'Can I share or resell a pack?',
-    answer: [
-      // Same reason as the refund answer: the licence question is answered in plain words, and the
-      // words are a summary of a document the reader is entitled to reach from here.
-      'It’s licensed to you. Build from it, edit it, quote it. Don’t republish or resell the pack itself. The full licence terms are in the ',
-      { text: 'Terms of Service', href: '/terms' },
-      '.',
-    ],
-  },
-  { category: 'process',
-    question: 'Is the store live right now?',
-    answer: [
-      'Yes. Everything on this site works today, and new packs are published as they clear the checks.',
-    ],
-  },
   { category: 'payment',
-    question: 'Can I have my data removed?',
+    question: 'How do I get the pack after I pay?',
     answer: [
-      'Of course. Email us at ',
-      { text: LEGAL.supportEmail, href: `mailto:${LEGAL.supportEmail}` },
-      ' or read how we handle data in the ',
-      { text: 'Privacy Policy', href: '/privacy' },
-      '.',
+      // Per email §6: answer in the first sentence.
+      'A download link, the moment payment clears. Also emailed to you. No account needed.',
     ],
   },
   { category: 'packs',
@@ -160,32 +164,43 @@ export const FAQS: FaqItem[] = [
       'A zip you open like any other. A web page for reading the whole pack, a typeset PDF for printing, a one-page plan for your first fortnight, a spreadsheet of the assumptions, and the marketing copy as plain text to paste. Nothing to install, no account.',
     ],
   },
-  { category: 'packs',
-    question: 'If 500 people buy the same pack, aren’t 500 people copying my idea?',
-    answer: [
-      // Per email §6: 50 words, the only question that gets a longer answer because the answer
-      // is the whole product.
-      'In practice, almost nobody executes. And most packs win on a local patch (one school, one council, one trade) where the first mover in your area is the only one who matters. The research is shared; the ground isn’t.',
-    ],
-  },
-  { category: 'process',
-    // THE OBJECTION THE SITE HAD NO ANSWER FOR (2026-08-13). Being quiet about AI was never an
-    // ethics decision, it was this question going unanswered: in 2026 a buyer has already had
-    // free business ideas from a chatbot and already knows it invents numbers, so naming the AI
-    // without answering "why pay" reads as an admission. Answered here, next to the kill log
-    // question it sets up, because the two together are the whole argument.
-    question: 'Why not just ask a chatbot?',
-    answer: [
-      'Because it will agree with you. Ask a chatbot about your idea and you get an encouraging answer full of numbers it invented on the spot. Every figure here links to the page it came from, and the ideas that failed are published too, in the ',
-      { text: 'kill log', href: '/kill-log' },
-      '. No chatbot will ever show you that, because it costs nothing to tell you yes.',
-    ],
-  },
   { category: 'process',
     question: 'What happens to ideas that don’t survive?',
     answer: [
       // Per email §6: short, link to the log.
       'They go in the kill log, in public, with the evidence that killed them.',
+    ],
+  },
+  { category: 'packs',
+    question: 'Can I share or resell a pack?',
+    answer: [
+      // Same reason as the refund answer: the licence question is answered in plain words, and the
+      // words are a summary of a document the reader is entitled to reach from here.
+      'It’s licensed to you. Build from it, edit it, quote it. Don’t republish or resell the pack itself. The full licence terms are in the ',
+      { text: 'Terms of Service', href: '/terms' },
+      '.',
+    ],
+  },
+  { category: 'process',
+    question: 'Is a pack financial or investment advice?',
+    answer: [
+      'No. It’s research, sold for information. Nothing in a pack is advice about your money.',
+    ],
+  },
+  { category: 'process',
+    question: 'Is the store live right now?',
+    answer: [
+      'Yes. Everything on this site works today, and new packs are published as they clear the checks.',
+    ],
+  },
+  { category: 'payment',
+    question: 'Can I have my data removed?',
+    answer: [
+      'Of course. Email us at ',
+      { text: LEGAL.supportEmail, href: `mailto:${LEGAL.supportEmail}` },
+      ' or read how we handle data in the ',
+      { text: 'Privacy Policy', href: '/privacy' },
+      '.',
     ],
   },
 ];

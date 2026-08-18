@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Button, Card, Icon, cx } from '@/components/ui';
 import type { IconName, ButtonVariant } from '@/components/ui';
+import { track } from '@/lib/analytics';
 
 /**
  * Small presentational blocks shared across the WR-014 GTM marketing pages.
@@ -50,12 +51,22 @@ const BAND_WIDTH = { '2xl': 'max-w-2xl', '3xl': 'max-w-3xl', '4xl': 'max-w-4xl',
 export function SectionBand({
   bg = 'surface',
   width = '3xl',
+  bandId,
   className,
   outerClassName,
   children,
 }: {
   bg?: BandBg;
   width?: keyof typeof BAND_WIDTH;
+  /**
+   * Opt-in name for the `band_view` beacon (MASTER-BRIEF section 9).
+   *
+   * A band with no id is not counted. Counting every band on the site would report mostly
+   * bands nobody chose to measure, and the id has to be a stable name a person picked: a
+   * position in the file would change the meaning of the historic rows the next time a band
+   * moves.
+   */
+  bandId?: string;
   className?: string;
   /**
    * Classes for the `<section>` itself, as opposed to the centred measure inside it.
@@ -70,8 +81,33 @@ export function SectionBand({
   outerClassName?: string;
   children: React.ReactNode;
 }) {
+  const sectionRef = React.useRef<HTMLElement>(null);
+  /**
+   * Fire `band_view` once, the first time this band enters the viewport.
+   *
+   * IntersectionObserver rather than a scroll handler: the browser does the geometry off the
+   * main thread, so nothing here reads layout. The observer disconnects on the first hit, so a
+   * reader who scrolls past a band four times counts as one reader who reached it.
+   */
+  React.useEffect(() => {
+    const el = sectionRef.current;
+    if (!bandId || !el || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer.disconnect();
+        track('band_view', bandId);
+      },
+      // A quarter of the band on screen. A single pixel counts a band the reader scrolled
+      // straight past, which is not the same as reaching it.
+      { threshold: 0.25 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [bandId]);
+
   return (
-    <section className={cx(BAND_BG[bg], "border-b border-border last:border-b-0", outerClassName)}>
+    <section ref={sectionRef} className={cx(BAND_BG[bg], "border-b border-border last:border-b-0", outerClassName)}>
       {/*
         `overflow-clip`, NEVER `overflow-hidden`. The two clip identically, but `hidden` makes this
         div a SCROLL CONTAINER, and a scroll container is the containing block for every descendant

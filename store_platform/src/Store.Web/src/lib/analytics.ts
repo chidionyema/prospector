@@ -19,6 +19,24 @@ import { recordAnalyticsEvent } from '@/lib/api/client';
  * that does the job.
  *
  * Only the pathname is sent, never query strings, which can carry order tokens.
+ *
+ * MASTER-BRIEF SECTION 9 NAMES THAT AN EXISTING EVENT ALREADY SERVES.
+ *
+ * Four names in the brief describe signals this file already emits. They were not renamed.
+ * A rename has to land on both sides of the allowlist at the same moment, and until the API
+ * deploys the new name every beacon 400s and is counted nowhere. It also orphans the history:
+ * old rows keep the old name, so a chart of the new name starts at zero and reads as a feature
+ * nobody uses. The mapping is written down here instead.
+ *
+ *   brief name           served by           note
+ *   landing_view         page_view           Same event. The path field says which page it was.
+ *   grid_survivor_click  card_click          Meta carries the pack id.
+ *   pack_row_click       card_click          Same event. Meta already carries the position.
+ *   sample_cta_click     sample_cta_clicked  Same event. Only the tense of the name differs.
+ *
+ * The brief writes a slug where these events carry a pack id. The catalogue is keyed by pack
+ * id, so the id is what a join against the catalogue needs. Swapping in a slug would mean a
+ * lookup at beacon time and would break the card CTR report that reads these rows today.
  */
 export type AnalyticsEventName =
   | 'page_view'
@@ -38,7 +56,40 @@ export type AnalyticsEventName =
   // rare trial. Adding these two here without adding them to AnalyticsEndpoints.cs would
   // make them 400 silently, and a dropped beacon looks exactly like a card nobody clicked.
   | 'card_impression'
-  | 'card_click';
+  | 'card_click'
+  // The FAQ helpfulness control. Meta is `<question-slug>:up|down`, so a reorder of the list
+  // cannot re-point historic votes at a different question. Adding this here without adding it
+  // to AnalyticsEndpoints.cs would 400 silently, which reads as "nobody voted".
+  | 'faq_helpful'
+  // MASTER-BRIEF section 9, the signals nothing else covers. Each one must also be added to
+  // AllowedNames in AnalyticsEndpoints.cs or it 400s and is counted nowhere.
+  //
+  // The discovery instrument. `filter_change` says which control the visitor moved and how
+  // many packs were left. `filter_zero_results` says the combination emptied the shelf. The
+  // second is not derivable from the first, because a visitor can reach an empty shelf by
+  // landing on a filtered link without touching a control.
+  | 'filter_change'
+  | 'filter_zero_results'
+  // The shelf is capped at nine rows with a button that reveals the rest. This counts the
+  // press, which is how many readers wanted more than the first page.
+  | 'catalogue_page_more'
+  // A marketing band scrolled into view. Meta is the band id, so a band can be judged on how
+  // many readers reached it rather than on where it sits in the file.
+  | 'band_view'
+  // The waitlist form was submitted. The placement is not in meta on purpose: WaitlistForm
+  // already posts a `source` tag that the waitlist ledger stores, so putting it here would be
+  // a second copy of one fact, free to disagree with the first.
+  | 'email_submit'
+  // How far down the page the reader got. Meta is the threshold as a bare number.
+  | 'scroll_depth'
+  // A kill-log row was opened. Meta is `<slug>:<cause>`, so the causes readers actually open
+  // can be compared against the causes the chart says are biggest.
+  | 'kill_row_click'
+  // The hero's featured product was clicked. Kept apart from `card_click` because the hero is
+  // a different card format, and a click-through rate that mixes formats measures the format
+  // rather than the title. The shelf's own CTR report excludes the spotlight for the same
+  // reason (see the note on ShelfRows in pages/index.tsx).
+  | 'featured_click';
 
 /**
  * Fire-and-forget. Analytics must never break the page or delay navigation.
@@ -157,4 +208,141 @@ export function trackCardClick(packId: string, position?: number): void {
     'card_click',
     JSON.stringify({ s: sessionId(), p: packId, i: typeof position === 'number' ? position : null }),
   );
+}
+
+/**
+ * The one filter dimension whose value is typed by the visitor.
+ *
+ * Every other discovery control is a fixed set of facet keys, which are safe to send. The
+ * search box is free text, and free text a visitor typed is exactly the thing this module
+ * must never carry. Its value is reported as `set` or `cleared` instead.
+ */
+export const FREE_TEXT_FILTER_DIMENSION = 'q';
+
+/**
+ * Reduce a facet value to the characters a facet key is allowed to contain.
+ *
+ * Facet keys are lowercase identifiers, so anything else in the string means the value did not
+ * come from the facet list. Replacing rather than dropping keeps the length honest, so a
+ * malformed value shows up in the data as a malformed value instead of vanishing.
+ */
+function safeFacetValue(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+}
+
+/**
+ * Build the meta for `filter_change`: `dimension:value:resultCount`.
+ *
+ * Compact on purpose. This fires on every control the visitor moves, so it is the highest
+ * volume event on the page, and three fields in one short string beat a JSON object that
+ * spends most of its characters on quotes and braces.
+ *
+ * `null` means the dimension was cleared, and reads as `any` so a cleared filter and a filter
+ * set to a value called "null" cannot be confused.
+ */
+export function filterChangeMeta(
+  dimension: string,
+  value: string | number | null,
+  resultCount: number,
+): string {
+  const rendered =
+    dimension === FREE_TEXT_FILTER_DIMENSION
+      ? value
+        ? 'set'
+        : 'cleared'
+      : value === null || value === ''
+        ? 'any'
+        : safeFacetValue(String(value));
+  return `${safeFacetValue(dimension)}:${rendered}:${resultCount}`;
+}
+
+/** One beacon per control the visitor moved. See `filterChangeMeta` for the shape. */
+export function trackFilterChange(
+  dimension: string,
+  value: string | number | null,
+  resultCount: number,
+): void {
+  track('filter_change', filterChangeMeta(dimension, value, resultCount));
+}
+
+/**
+ * The shelf came back empty. Meta is the names of the dimensions that were constrained,
+ * comma separated, so the combinations that fail can be counted.
+ *
+ * Names only, never values. The search text is a value, and this event exists to learn which
+ * controls fight each other, which the names answer on their own.
+ */
+export function trackFilterZeroResults(dimensions: readonly string[]): void {
+  track('filter_zero_results', dimensions.map(safeFacetValue).join(',') || 'none');
+}
+
+/** The thresholds `startScrollDepthTracking` reports, in percent of document height. */
+export const SCROLL_DEPTH_THRESHOLDS = [25, 50, 75, 100] as const;
+
+/**
+ * Report how far down the page the reader got, at most once per threshold per page view.
+ *
+ * Returns a stop function, so the caller unregisters on unmount. A page view ends when the
+ * component unmounts, and the thresholds live in this closure, so a client-side navigation
+ * back to the page starts a fresh set rather than staying silent.
+ *
+ * The listener is passive and the measurement runs inside `requestAnimationFrame`. Scroll
+ * fires many times per gesture, and reading `scrollHeight` is a layout read, so measuring on
+ * every event would force layout in a tight loop and make the page stutter. One frame is the
+ * finest granularity the reader can see anyway.
+ *
+ * `prefers-reduced-motion` does not gate this. That setting is about animation the page plays
+ * at the reader; this measures scrolling the reader did themselves and moves nothing.
+ *
+ * A page shorter than the viewport counts as fully read. There is nothing to scroll, so the
+ * reader has already seen all of it, and reporting nothing would make short pages look
+ * abandoned.
+ */
+export function startScrollDepthTracking(): () => void {
+  if (typeof window === 'undefined') return () => {};
+
+  const pending = new Set<number>(SCROLL_DEPTH_THRESHOLDS);
+  /* Two variables, not one. The frame id is what cancels a pending callback, and it is assigned
+     only after `requestAnimationFrame` returns. A separate flag is set before the call, so the
+     throttle is already closed while the callback is being scheduled. Collapsing the two would
+     wedge the tracker for good against any implementation that runs the callback synchronously,
+     because the id would be written back after the callback had already cleared it. */
+  let scheduled = false;
+  let frame = 0;
+
+  const stop = (): void => {
+    window.removeEventListener('scroll', schedule);
+    window.removeEventListener('resize', schedule);
+    if (frame) window.cancelAnimationFrame(frame);
+    scheduled = false;
+    frame = 0;
+  };
+
+  const measure = (): void => {
+    scheduled = false;
+    const height = document.documentElement.scrollHeight;
+    const seen = height <= window.innerHeight
+      ? 100
+      : Math.min(100, ((window.scrollY + window.innerHeight) / height) * 100);
+    for (const threshold of SCROLL_DEPTH_THRESHOLDS) {
+      if (seen >= threshold && pending.delete(threshold)) {
+        track('scroll_depth', String(threshold));
+      }
+    }
+    if (pending.size === 0) stop();
+  };
+
+  function schedule(): void {
+    if (scheduled) return;
+    scheduled = true;
+    frame = window.requestAnimationFrame(measure);
+  }
+
+  window.addEventListener('scroll', schedule, { passive: true });
+  window.addEventListener('resize', schedule, { passive: true });
+  // Measure once on mount, on the next frame so the first read happens after layout. A reader
+  // who lands on a short page never scrolls, and without this they would report nothing.
+  schedule();
+
+  return stop;
 }
