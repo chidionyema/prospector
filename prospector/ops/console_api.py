@@ -56,6 +56,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 from prospector import content_contract, pack_linter
+from prospector.operator import BUILDABLE_TIERS
 
 #: Bumped when the JSON contract changes shape. The web app asserts on it at boot, so a console
 #: talking to an older engine says so instead of rendering blanks.
@@ -1279,7 +1280,10 @@ GROUP_BLURBS = {
                 "of the catalogue the moment it is promoted."),
     "work": "How much the engine takes on, and when it stops taking on more.",
     "evidence": "Where the engine looks for proof, and what counts as relevant.",
-    "brains": "Which model rules a verdict. The highest blast radius in the portal.",
+    "brains": ("Which brain does which job, and which model each one runs. Every role the "
+               "engine has is here: the verdict chain and its trusted roster, the cheap chain, "
+               "the pack writer, the marketing writer, and the model pin for each provider. "
+               "The highest blast radius in the portal."),
     "speed": "How many calls run at once. Throughput, not correctness.",
     "money": "The daily ceiling and where the warning fires.",
 }
@@ -1366,16 +1370,64 @@ KNOBS: list[dict] = [
     # ---- brains (high blast) ----
     {"path": ["operator"], "group": "brains", "high_blast": True,
      "label": "Verdict chain — who is asked, in order", "kind": "list",
+     "choices": list(BUILDABLE_TIERS),
      "help": "The first entry that answers rules. Anything in this chain but NOT in the trusted "
              "roster below is stamped provisional, never publishes on PASS, and is re-vetted."},
     {"path": ["moat_primary"], "group": "brains", "high_blast": True,
      "label": "Trusted roster — who may rule FINALLY", "kind": "list",
+     "choices": list(BUILDABLE_TIERS),
      "help": "Only these may finalise a verdict and let a PASS reach the shelf. Blank falls back "
              "to operator.MOAT_PRIMARY_DEFAULT. Changing this changes what can be sold."},
     {"path": ["noncritical_operator"], "group": "brains", "high_blast": True,
      "label": "Cheap chain — generation, prescreen, scoring", "kind": "list",
+     "choices": list(BUILDABLE_TIERS),
      "help": "Never rules a verdict. claude_cli is BARRED here by founder directive and the "
              "builder strips it, so adding it back has no effect."},
+    # The two chains below were unreachable from this page until 2026-08-18. They are real roles
+    # with their own config keys, so changing the brain that writes what a buyer reads meant
+    # editing config.yaml on the box — the one thing this page exists to remove.
+    {"path": ["artifact_operator"], "group": "brains", "high_blast": True,
+     "label": "Pack writer — who writes what the buyer reads", "kind": "list",
+     "choices": list(BUILDABLE_TIERS),
+     "help": "Runs the model-written parts of a pack. It never rules a verdict, so a change here "
+             "moves prose quality and cost, never what is allowed to publish."},
+    {"path": ["marketing_operator"], "group": "brains", "high_blast": True,
+     "label": "Marketing writer — shelf copy and launch text", "kind": "list",
+     "choices": list(BUILDABLE_TIERS),
+     "help": "Writes titles, one-liners and marketing copy. The publish gate still grades every "
+             "line it produces, so a weaker brain here strands packs rather than shipping bad ones."},
+    # ---- the model each brain runs ----
+    # A tier name says WHICH adapter; these say which model that adapter asks for. Swapping
+    # MiniMax M3 for another version is a change of THIS value, not of the chain above.
+    {"path": ["model"], "group": "brains", "kind": "str",
+     "label": "Verdict model pin (blank = each provider default)",
+     "help": "Applied only to the provider it names, by prefix match in `_build_operator`. Blank "
+             "means every brain uses its own default from the pins below. Wrong here is not a "
+             "typo you see — it is a provider erroring on an unknown model on every call."},
+    {"path": ["model_fast"], "group": "brains", "kind": "str",
+     "label": "Cheap-call model pin (query-gen, prescreen)",
+     "help": "Same rule as the pin above, for the mechanical calls. Blank falls back to the "
+             "main pin, then to the provider default."},
+    {"path": ["model_defaults", "minimax"], "group": "brains", "kind": "str",
+     "label": "MiniMax model", "help": "The model the `minimax` tier asks for. This is where a "
+     "different MiniMax version goes — the tier name stays `minimax`."},
+    {"path": ["model_defaults", "minimax_fast"], "group": "brains", "kind": "str",
+     "label": "MiniMax model for cheap calls",
+     "help": "M3 by standing order: MiniMax has no non-reasoning model, so a `_fast` pin here "
+             "buys nothing unless it names a genuinely different model."},
+    {"path": ["model_defaults", "minimax_m27"], "group": "brains", "kind": "str",
+     "label": "Second MiniMax tier model",
+     "help": "The whole point of the `minimax_m27` tier is being a DIFFERENT model from the one "
+             "above, so an M3 stall does not imply this one stalls too. Setting both the same "
+             "makes the second tier inert depth."},
+    {"path": ["model_defaults", "deepseek"], "group": "brains", "kind": "str",
+     "label": "DeepSeek model",
+     "help": "Read only when `deepseek` appears in a chain above. Naming a model here does not "
+             "put DeepSeek to work; adding it to a chain does."},
+    {"path": ["model_defaults", "ollama"], "group": "brains", "kind": "str",
+     "label": "Ollama model (local)",
+     "help": "Fully local, zero token cost, CPU-only on this box. Same rule: this pin is inert "
+             "until `ollama` is in a chain."},
     # ---- speed ----
     {"path": ["retrieval", "minimax_concurrency"], "group": "speed",
      "label": "MiniMax calls at once", "kind": "int", "min": 1, "max": 32,
@@ -1534,6 +1586,17 @@ def _coerce(spec: dict, value: Any) -> Any:
                                  f"Allowed: {', '.join(choices)}")
         if len(set(coerced)) != len(coerced):
             raise ValueError("the same entry appears twice")
+        return coerced
+    elif kind == "str":
+        # Explicit, not the fall-through below: model pins are free text, and the fall-through
+        # would have written back whatever JSON type arrived — a number, a list, a dict — into a
+        # key the engine reads as a string.
+        if isinstance(value, bool) or not isinstance(value, (str, int, float)):
+            raise ValueError("expected text")
+        coerced = str(value).strip()
+        choices = spec.get("choices")
+        if choices and coerced not in choices:
+            raise ValueError(f"not allowed here: {coerced!r}. Allowed: {', '.join(choices)}")
         return coerced
     else:
         coerced = value
