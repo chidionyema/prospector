@@ -119,8 +119,12 @@ def p_live_checkout() -> str:
     code, out = _sh([str(py) if py.exists() else sys.executable, str(s)], timeout=60)
     # The last line is the advice ("run with --update"), not the finding. Keep the lines
     # that carry a verdict; a probe that quotes the footer answers nothing.
+    # These words are what the probe PRINTS, on either platform. It reported "no verdict line"
+    # after the Fly cutover because every word here described the laptop report -- `cwd`, `HEAD`,
+    # `secret` -- and the Fly report says "deployed commit" and "machine state" instead.
     keep = [ln.strip() for ln in out.splitlines()
-            if re.search(r"PASS|FAIL|BEHIND|AHEAD|HEAD|cwd|missing|secret", ln, re.I)]
+            if re.search(r"PASS|FAIL|BEHIND|AHEAD|HEAD|cwd|missing|secret"
+                         r"|deployed commit|machine state|origin/main|^OK:|^  - ", ln, re.I)]
     return (" | ".join(keep[:3])[:200] if keep else "no verdict line") + ("  [exit %d]" % code)
 
 
@@ -231,7 +235,7 @@ LOCAL = [
     ("ENG-3", "retrieval chain declared in config.yaml", p_eng3_chain),
     ("ENG-4", "hard-deadline kills in the scheduler error log", p_eng4),
     ("ENG-7", "operator roster declared in config.yaml", p_moat),
-    ("KEY-1", "which checkout production runs from", p_live_checkout),
+    ("KEY-1", "which commit production runs", p_live_checkout),
     ("OPS-1", "launchd job definitions vs their tracked snapshot", p_launchd),
 ]
 
