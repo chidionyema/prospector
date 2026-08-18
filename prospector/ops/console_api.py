@@ -2536,6 +2536,10 @@ TOOLS: list[dict] = [
        "/audit", cmd="python3 scripts/ops_state.py"),
     _t("scripts/launchd_plists.py", "Has a scheduler's job definition drifted?", False, "/engine",
        cmd="python3 scripts/launchd_plists.py --check"),
+    # --live also asks GitHub which runners are registered, which is the half CI cannot check
+    # itself: the workflow can only see the workflow.
+    _t("scripts/ci_capacity.py", "Does CI still fit on this machine alongside the daemons?",
+       False, "/engine", cmd="python3 scripts/ci_capacity.py --live", risk="external"),
     _t("scripts/launchd_plists.py", "Record the current job definitions", True, "/engine",
        cmd="python3 scripts/launchd_plists.py --snapshot",
        danger="overwrites the tracked copies with whatever is live, so run --check first "

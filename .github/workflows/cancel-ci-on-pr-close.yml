@@ -35,7 +35,7 @@ jobs:
     # Delayed beats dead. This is one API call, so it clears its own backlog the moment a slot
     # opens, and `${{ vars.CI_RUNS_ON }}` is `self-hosted` today. The fallback stays hosted so
     # the workflow still works in a fork or once hosted minutes come back.
-    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     steps:
       - name: Cancel queued and in-progress runs for this PR's branch
         env:

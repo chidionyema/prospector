@@ -51,7 +51,7 @@ jobs:
   bring-forward:
     # Same runner pool as the rest of CI. Hosted runners are unavailable on this account, so a
     # job pinned to `ubuntu-latest` does not run at all.
-    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     steps:
       - name: Merge main into the pull requests at the front of the queue
         env:

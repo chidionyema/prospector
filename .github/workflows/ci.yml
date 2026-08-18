@@ -16,6 +16,25 @@ name: CI
 # The jobs are OS-portable already: no apt-get, no sudo, no docker, no service containers. They
 # use checkout, setup-python, setup-uv, setup-node, setup-dotnet and cache, every one of which
 # supports macOS, so the same five jobs run unchanged wherever CI_RUNS_ON points.
+#
+# TWO POOLS, BECAUSE THE JOBS ARE NOT THE SAME SIZE.
+#
+# CI_HEAVY_RUNS_ON gets the jobs that build and test: python, engine, dotnet, nextjs, ops-console.
+# CI_LIGHT_RUNS_ON gets the ones that are a shell loop and finish in seconds: changes, guard,
+# ci-ok. Both fall back to CI_RUNS_ON, then to GitHub's hosted runners, so unsetting them puts
+# the old single-pool behaviour back with no commit.
+#
+# It exists because `ci-ok` is a two-second loop over `needs.*.result` with no checkout and no
+# toolchain, and it was queueing behind 24-minute python jobs for the same four slots. Measured
+# 2026-08-18 on run 32085367960: changes and guard passed, python and engine were cancelled,
+# dotnet skipped, nextjs finished — and the run still read `queued` half an hour later because
+# `ci-ok` could not get a slot. The run never reaches a terminal state, so the PR shows a queue
+# that has in fact already finished, and the merge guard refuses to merge a PR whose work is done.
+#
+# THE ARITHMETIC, which `scripts/ci_capacity.py` checks rather than trusting this comment:
+# three heavy runners x PYTEST_XDIST_AUTO_NUM_WORKERS (3) = 9 of the box's 12 CPUs, leaving three
+# for the production daemons, the light runner and the OS. One light runner is enough because a
+# light job holds a slot for seconds.
 
 on:
   push:
@@ -92,7 +111,7 @@ jobs:
   # the full suite runs. A filter that guesses wrong must guess towards more testing.
   # ──────────────────────────────────────────────────────────────────
   changes:
-    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 5
     outputs:
       python: ${{ steps.filter.outputs.python }}
@@ -159,7 +178,7 @@ jobs:
   # Born from: account/social-login deleted unannounced inside a logo commit.
   # ──────────────────────────────────────────────────────────────────
   guard:
-    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
@@ -182,6 +201,13 @@ jobs:
       # asks for no extra runner slot.
       - name: Docs may get more accurate, never less
         run: python3 scripts/doc_lint.py --check
+
+      # CI shares a 12-CPU Mac with the production daemons. `ops/config/ci_capacity.yaml` declares
+      # how much of it CI may take; this fails when a new job, a wider pytest run or a renamed job
+      # stops matching that. Offline, no virtualenv, no GitHub token. `--live` also checks the
+      # registered runners and is an operator command, not a CI step.
+      - name: CI still fits on the machine it runs on
+        run: python3 scripts/ci_capacity.py
 
   # ──────────────────────────────────────────────────────────────────
   # Python — full test suite + golden-set hard gate
@@ -212,7 +238,7 @@ jobs:
   python:
     needs: changes
     if: needs.changes.outputs.python == 'true'
-    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     # 40, not the 25 a shard needed. One job now runs all 352 test files instead of ~117, and
     # a timeout is the one failure that looks exactly like the cancellations this change is
     # fixing. Reference points: 445s for the whole suite at 12 workers on a quiet box, 1281s
@@ -361,7 +387,7 @@ jobs:
   engine:
     needs: changes
     if: needs.changes.outputs.python == 'true'
-    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 30
 
     # Same shared cache directory as the python job. Both install the same requirements.txt, so
@@ -442,7 +468,7 @@ jobs:
   dotnet:
     needs: changes
     if: needs.changes.outputs.dotnet == 'true'
-    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 30
 
     steps:
@@ -485,7 +511,7 @@ jobs:
   nextjs:
     needs: changes
     if: needs.changes.outputs.web == 'true'
-    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 40
 
     defaults:
@@ -552,7 +578,7 @@ jobs:
   ops-console:
     needs: changes
     if: needs.changes.outputs.console == 'true'
-    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 40
 
     defaults:
@@ -614,7 +640,7 @@ jobs:
   ci-ok:
     needs: [changes, guard, python, engine, dotnet, nextjs, ops-console]
     if: always()
-    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 5
     steps:
       - name: Every job either passed or was not needed
