@@ -34,6 +34,18 @@ export const GROUPS: Group[] = [
     ],
   },
   {
+    // Sitting between Shelf and Money on purpose. Shelf is what is on offer, Shop is what actually
+    // sold, Money is whether the rail that took it is healthy. That is the order an operator walks
+    // when a buyer says they paid and got nothing.
+    label: 'Shop',
+    screens: [
+      { href: '/orders', label: 'Orders', what: 'who bought what, and did they get it' },
+      { href: '/revenue', label: 'Revenue', what: 'what the shop took, today and over a window' },
+      { href: '/delivery', label: 'Delivery', what: 'who paid and has not received their link' },
+      { href: '/disputes', label: 'Disputes', what: 'money a buyer has pulled back, or is trying to' },
+    ],
+  },
+  {
     label: 'Money',
     screens: [
       { href: '/money', label: 'Rail', what: 'can the shop take money right now' },

@@ -35,6 +35,11 @@ export const VIEWS = [
   'shelf',
   'method',
   'content_rules',
+  'orders',
+  'order',
+  'sales',
+  'deliveries',
+  'disputes',
 ] as const;
 
 /** Arguments each view accepts. Anything else in the query string is dropped, not forwarded. */
@@ -49,6 +54,11 @@ const ALLOWED_ARGS: Record<string, string[]> = {
   intents: ['limit'],
   pack: ['id'],
   job: ['job'],
+  orders: ['q', 'status', 'packId', 'limit', 'offset'],
+  order: ['order_id'],
+  sales: ['days'],
+  deliveries: ['state', 'limit'],
+  disputes: ['days'],
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
