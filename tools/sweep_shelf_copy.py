@@ -27,7 +27,6 @@ import argparse
 import json
 import logging
 import os
-import re
 import sqlite3
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -37,10 +36,6 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from prospector.config import store_root  # noqa: E402
-from prospector.pack_linter import (  # noqa: E402
-    expands_on_first_use,
-    unexplained_initialisms,
-)
 
 # `config.store_root()`, never `ROOT`: a store path derived from `__file__` follows the CODE,
 # so this tool read the store inside whichever checkout it was launched from. On 2026-08-17
@@ -55,19 +50,26 @@ DOSSIERS = _STORE / "dossiers"
 # The prompt, the grader and the fact-preservation guard moved to
 # `prospector/shelf_copy_repair.py` on 2026-08-17 so the ENGINE can run the same repair
 # before a pack is built, instead of this tool curing it on the shelf afterwards.
-# One definition, two callers.
+# The glossary expander followed on 2026-08-19, for the same reason and after the same
+# defect: it lived here, so the publish path could not run it, and twenty packs stayed off
+# the shelf for want of expansions that were already declared in config.yaml.
+# One definition, two callers. They are re-exported below because this module's own tests
+# import them from here.
 from prospector.shelf_copy_repair import (  # noqa: E402
     SYSTEM,
     USER,
     RewriteUnavailable,
     _new_facts,
     breaches,
+    expand_initialisms,
+    expand_row,
+    glossary,
     rewrite_one,
     voice_breaches,
 )
 
-__all__ = ["SYSTEM", "USER", "RewriteUnavailable", "_new_facts", "breaches", "rewrite_one",
-           "voice_breaches"]
+__all__ = ["SYSTEM", "USER", "RewriteUnavailable", "_new_facts", "breaches",
+           "expand_initialisms", "expand_row", "glossary", "rewrite_one", "voice_breaches"]
 
 log = logging.getLogger(__name__)
 
@@ -94,120 +96,6 @@ def _rewrite_row(op, row) -> str | RewriteUnavailable | None:
                   extra={"candidate_id": row[0], "error": str(exc), "rewrite_failed": True})
         print(f"    rewrite call failed for {row[0]}: {exc}")
         return exc
-
-
-def glossary() -> dict[str, str]:
-    """The operator's declared expansions, `config.yaml listing.initialism_glossary`.
-
-    Empty is a valid answer and means "expand nothing" — the sweep then reports every
-    unexplained term and changes no copy, which is the honest outcome when nobody has said
-    what the letters stand for."""
-    from prospector.config import load_config
-    return dict(load_config().listing.get("initialism_glossary") or {})
-
-
-def _plural(words: str) -> str | None:
-    """`independent software vendor` -> `independent software vendors`.
-
-    Only regular plurals. A last word already ending in `s` gets None, and the caller then
-    reports the term instead of writing `Resourcess` onto the shelf — the operator rewords
-    it, which is the same answer we give for a term with no entry at all."""
-    head, _, last = words.rpartition(" ")
-    if not last or last.endswith("s"):
-        return None
-    if last.endswith("y") and last[-2:-1].lower() not in "aeiou":
-        last = last[:-1] + "ies"
-    elif last.endswith(("x", "ch", "sh", "z")):
-        last += "es"
-    else:
-        last += "s"
-    return f"{head} {last}".strip()
-
-
-#: `a` before a consonant, `an` before a vowel. The article sits OUTSIDE the run, so
-#: expanding in place leaves it agreeing with the letters and not with the words: the live
-#: line `an HSE improvement notice` became `an Health and Safety Executive (HSE) notice`.
-#: Letter-based, not sound-based, which is right for every term in the glossary today.
-_ARTICLE_RE = re.compile(r"\b(a|an|A|An)\s+$")
-
-
-def expand_initialisms(text: str, gloss: dict[str, str]):
-    """Spell out the initialisms the operator has declared. No model call, no judgement.
-
-    Returns `(new_text, unresolved, rejected, embedded)`.
-
-    This exists because `voice_breaches` deliberately refuses to send an initialism to a
-    brain: an expansion is a FACT, and a rewrite that invents one ships an unsourced claim on
-    a source-or-die storefront. A declared glossary is the safe half of the same job — the
-    words come from the operator, and this only pastes them in.
-
-    Three things it will not do, each reported rather than guessed at:
-
-    * `unresolved` — no glossary entry, or a plural this cannot form regularly.
-    * `rejected` — an entry whose initials do not spell the run, judged by
-      `expands_on_first_use`, the same function the publish gate uses. A typo in
-      `config.yaml` cannot put a wrong gloss on the shelf.
-    * `embedded` — the run only ever appears inside a longer word, as `STRS` does in
-      `CalSTRS`. Pasting an expansion into the middle of a word is worse than leaving it,
-      so the copy needs a human, not a substitution.
-    """
-    out, unresolved, rejected, embedded = text, [], [], []
-    for run in unexplained_initialisms(text):
-        words = gloss.get(run)
-        if not words:
-            unresolved.append(run)
-            continue
-        # A trailing `s` is the plural of the term (`IFAs`, `PACs`), and a following hyphen
-        # is a compound (`FOI-sourced`, `RMF-ready`) — both are the term in use. A LEADING
-        # letter or digit is not: `STRS` in `CalSTRS` is part of another word.
-        pattern = re.compile(rf"(?<![A-Za-z0-9]){re.escape(run)}(s?)(?![A-Za-z0-9])")
-        match = pattern.search(out)
-        if match is None:
-            embedded.append(run)
-            continue
-        if match.group(1):
-            words = _plural(words)
-            if words is None:
-                unresolved.append(run)
-                continue
-        replacement = f"{words} ({run}{match.group(1)})"
-        # Sentence start: the glossary holds common nouns in lower case (`independent
-        # software vendor`), and the line it replaces began the sentence.
-        head = out[:match.start()]
-        if not head.strip() or head.rstrip().endswith((".", "!", "?")):
-            replacement = replacement[:1].upper() + replacement[1:]
-        else:
-            article = _ARTICLE_RE.search(head)
-            if article:
-                want = "an" if replacement[0].lower() in "aeiou" else "a"
-                if article.group(1)[0].isupper():
-                    want = want.capitalize()
-                head = head[:article.start()] + want + " "
-        candidate = head + replacement + out[match.end():]
-        if not expands_on_first_use(candidate, run):
-            rejected.append(run)
-            continue
-        out = candidate
-    return out, unresolved, rejected, embedded
-
-
-def expand_row(title: str, one: str, gloss: dict[str, str]):
-    """Apply the glossary to both shelf strings, keeping only a change that helps.
-
-    Returns `(new_title|None, new_line|None, needs_operator, rejected)`; None means "leave
-    it". An expansion makes a line longer and the gate has a length limit, so it can trade
-    one error for another. The test is the gate's own count: a field is only rewritten when
-    the errors it would raise strictly go down."""
-    new_t, unres_t, rej_t, emb_t = expand_initialisms(title, gloss)
-    if new_t != title and len(breaches(new_t, one)) >= len(breaches(title, one)):
-        new_t = title
-    new_o, unres_o, rej_o, emb_o = expand_initialisms(one, gloss)
-    if new_o != one and len(breaches(new_t, new_o)) >= len(breaches(new_t, one)):
-        new_o = one
-    return (new_t if new_t != title else None,
-            new_o if new_o != one else None,
-            sorted(set(unres_t) | set(unres_o) | set(emb_t) | set(emb_o)),
-            sorted(set(rej_t) | set(rej_o)))
 
 
 def listed_ids() -> set[str]:

@@ -65,21 +65,73 @@ def grade_title(value: str, cand: Any = None) -> list[str]:
             if p.get("severity") == "error"]
 
 
+#: Prefix of the breach `grade_one_liner` raises for an initialism the reader has never met.
+#: `_propose_one_liner` matches on it to decide whether a model may touch the line at all, so it
+#: is a constant rather than a string typed twice.
+INITIALISM_BREACH = "unexplained initialism"
+
+
 def grade_one_liner(value: str, cand: Any = None) -> list[str]:
-    """Voice, then the catalogue's cut.
+    """Voice, the catalogue's cut, then the initialism the reader has never met.
 
     Voice is `shelf_copy_repair.voice_breaches`, the live sweep's own checker — deliberately the
-    founder's two only (second person, an opener on a bare pronoun). An unexplained initialism is
-    reported and left, because asking a cheap brain to expand `BS 4142` while it rewords is how a
-    rewrite invents a fact on a source-or-die storefront.
+    founder's two only (second person, an opener on a bare pronoun).
+
+    The initialism used to be left ungraded here, on the reasoning that asking a cheap brain to
+    expand `BS 4142` while it rewords is how a rewrite invents a fact on a source-or-die
+    storefront. That reasoning is right about a MODEL and wrong about the outcome. The publish
+    gate grades it either way, so leaving it out of this grader did not spare anyone the breach:
+    it only meant the writer never saw what the gate was going to refuse. Measured 2026-08-18,
+    twenty packs sat unlisted on an initialism alone, fifteen of them on terms the operator had
+    already declared in `config.yaml listing.initialism_glossary`.
+
+    So it is graded, and it is repaired WITHOUT a model — `Field.prepare` pastes in the declared
+    expansion and `_propose_one_liner` refuses to hand a bare initialism to a brain. A term with
+    no declared expansion stays a breach and the pack stays off the shelf, which is the honest
+    answer: the operator declares the words, or the copy gets reworded.
+
+    Context is the title AND this line, because that is what the buyer reads together and what
+    the publish gate grades (`pack_linter.py:1376` builds its context from every graded field).
+    Note the argument widens where an expansion may APPEAR, so it has to include the line itself:
+    passing the title alone made a line that spelled the term out perfectly well read as
+    unexplained, because the expansion was in the text and not in the context.
     """
+    from .pack_linter import unexplained_initialisms
     from .shelf_copy_repair import voice_breaches
 
     why = list(voice_breaches(value))
     if len(value) > ONE_LINER_CUT_AT:
         why.append(f"{len(value)} chars — over the {ONE_LINER_CUT_AT} the catalogue cuts at, "
                    f"and a cut line trails off on the shelf")
+    context = f"{getattr(cand, 'title', '') or ''}\n{value}"
+    unknown = unexplained_initialisms(value, context=context)
+    if unknown:
+        why.append(f"{INITIALISM_BREACH}(s) {', '.join(unknown)} — spell it out on first use, "
+                   f"declare it in config.yaml listing.initialism_glossary, or reword the line")
     return why
+
+
+def _is_initialism_breach(detail: str) -> bool:
+    return detail.startswith(INITIALISM_BREACH)
+
+
+def _expand_one_liner(value: str, cand: Any = None) -> Optional[str]:
+    """Paste in the expansions the operator has declared. No model call, no judgement.
+
+    This is `Field.prepare` for the one-liner: it runs once, before any provider call, and costs
+    nothing. `expand_initialisms` reports rather than guesses — a term with no entry, a plural it
+    cannot form regularly, an entry whose initials do not spell the run, and a run that only ever
+    appears inside a longer word are all left alone. So the worst case is that it changes nothing.
+    """
+    from .shelf_copy_repair import expand_initialisms, glossary
+
+    # No handler here on purpose. `glossary()` returns {} when the operator has declared
+    # nothing, so the only way it raises is a broken config load, which is our bug. `repair()`
+    # already catches it, keeps the candidate, and writes the reason into the trail — visible,
+    # rather than a second silent `return None` that reads exactly like an empty glossary.
+    gloss = glossary()
+    expanded, _unresolved, _rejected, _embedded = expand_initialisms(value, gloss)
+    return expanded if expanded != value else None
 
 
 # --------------------------------------------------------------------------------------------- #
@@ -114,6 +166,15 @@ def _propose_one_liner(cand: Any, current: str, feedback: str, attempt: int,
     # the engine can never end up bound to different versions of it.
     from . import shelf_copy_repair
 
+    # An expansion is a FACT. If everything still wrong with this line is an initialism nobody
+    # has declared, there is no rewrite a model can honestly produce: it would have to invent
+    # what the letters stand for, on a source-or-die storefront. Refuse, spend nothing, and let
+    # the line stay off the shelf until the operator declares the words or rewords the copy.
+    # `Field.prepare` has already pasted in every expansion that WAS declared.
+    still = grade_one_liner(current, cand)
+    if still and all(_is_initialism_breach(b) for b in still):
+        return None
+
     # `feedback` is `_reject_feedback`, which quotes the breach VERBATIM — including the
     # character count. It used to be dropped on the floor here, so the loop computed the one
     # number the model cannot work out for itself and then threw it away, and every attempt
@@ -144,6 +205,11 @@ class Field:
     grade: Callable[[str, Any], list[str]]
     #: `(cand, current, feedback, attempt, op) -> proposal or None`. None means "no repair".
     propose: Optional[Callable[[Any, str, str, int, Any], Optional[str]]] = None
+    #: `(value, cand) -> better value or None`. A deterministic repair, run once BEFORE any
+    #: provider call and outside the attempt budget, because it cannot fail in the way an
+    #: attempt can: no brain, no prompt, no spend. It is kept only when it strictly reduces the
+    #: breach count, so it can never trade one error for another.
+    prepare: Optional[Callable[[str, Any], Optional[str]]] = None
     attempts: int = 1
     #: An absent field is not a wrong field. A one-liner nobody has written yet must not park a
     #: candidate; a title is graded even when empty, because a pack with no title is a defect.
@@ -171,6 +237,7 @@ FIELDS: dict[str, Field] = {
         write=lambda c, v: setattr(c, "one_liner", v),
         grade=grade_one_liner,
         propose=_propose_one_liner,
+        prepare=_expand_one_liner,
         # Two, like the title, and for the same reason: the second attempt is the one that gets
         # told what was wrong. At one attempt `_reject_feedback` was computed on the way out of
         # the loop and never sent, so the retry that names the character overage could not fire.
@@ -234,11 +301,46 @@ def repair(cand: Any, name: str, *, op: Any, log: Any = None) -> Outcome:
     before = f.grade(value, cand)
     if not before:
         return Outcome(field=name)
-    if f.propose is None:
-        return Outcome(field=name, before=before, after=before,
-                       trail=[f"{f.noun} breaches: {'; '.join(before)}", "no repair declared"])
 
     trail = [f"{f.noun} breaches: {'; '.join(before)}"]
+
+    # The deterministic pass, before any provider call. It is outside the attempt budget on
+    # purpose: an attempt is a request to a brain that can fail, refuse or invent, and this is a
+    # substitution from a table the operator wrote. Spending an attempt on it would leave the
+    # model one fewer try at the breaches it is the only thing that can fix.
+    if f.prepare is not None:
+        try:
+            prepared = f.prepare(value, cand)
+        except Exception as e:  # noqa: BLE001 — a field repair must never lose a PASS
+            # swallow-ok: best effort by contract, same as the proposer below.
+            prepared = None
+            trail.append(f"deterministic pass failed — {e}")
+        if prepared and prepared != value:
+            after_prep = f.grade(prepared, cand)
+            # Strictly fewer, never equal. An expansion makes a line longer and the cut is a
+            # breach too, so a pass that trades an initialism for an overage has helped nobody.
+            if len(after_prep) < len(before):
+                trail.append(f"deterministic pass: {len(before)} -> {len(after_prep)} breach(es)")
+                value = prepared
+                if not after_prep:
+                    lg.warning("Repaired the %s of %s from the operator's own glossary, with no "
+                               "model call: %r -> %r (%s)",
+                               f.noun, cid, _value(f, cand), value, "; ".join(before),
+                               extra={"candidate_id": cid, "field": name,
+                                      "old_value": _value(f, cand), "new_value": value,
+                                      "field_breaches": before, "field_repaired": True,
+                                      "field_repaired_without_a_model": True,
+                                      f"{name}_repaired": True})
+                    f.write(cand, value)
+                    return Outcome(field=name, before=before, repaired=True, attempts_used=0,
+                                   trail=trail)
+            else:
+                trail.append("deterministic pass: no improvement, discarded")
+
+    if f.propose is None:
+        trail.append("no repair declared")
+        return Outcome(field=name, before=before, after=before, trail=trail)
+
     feedback = ""
     still: list[str] = list(before)
 
