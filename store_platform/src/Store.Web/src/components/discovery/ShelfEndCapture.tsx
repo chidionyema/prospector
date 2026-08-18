@@ -1,5 +1,6 @@
 import React from 'react';
 
+import { cx } from '@/components/ui/cx';
 import { WaitlistForm } from '@/components/waitlist/WaitlistForm';
 
 /**
@@ -25,52 +26,35 @@ import { WaitlistForm } from '@/components/waitlist/WaitlistForm';
  */
 export function ShelfEndCapture({ className }: { className?: string }) {
   return (
-    <div className={className}>
-      <div className="rounded-md border border-border bg-surface px-6 py-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
-          <div className="max-w-md">
-            {/* THE PROMISE, ONCE. This block stated it four times over three elements: the
-                heading ("the next survivor can come to you"), the first half of the body ("most
-                ideas die on the checks"), the second half ("one email per survivor, nothing
-                else") and the submit label ("tell me when one survives"). Four restatements of
-                one offer read as persuasion, which is the register this whole pass is removing.
+    /* THE DRAWING'S EMAIL BOX (`mockups/index.html:553`, section 14). This was a two-column card:
+       heading and lede on the left, a stacked form on the right. The drawing runs it as one
+       block -- `h2.sec`, the sentence, the field and the button on one row, then the fine print
+       -- so the ask reads top to bottom instead of across. Founder, 2026-08-18: use the mockup's
+       version. The copy and the consent mechanism are unchanged. */
+    <section className={cx('emailbox', className)}>
+      {/* THE PROMISE, ONCE. This block stated it four times over three elements: the heading,
+          both halves of the body, and the submit label. Four restatements of one offer read as
+          persuasion, which is the register this pass removes.
 
-                The unsubscribe line is deliberately NOT repeated here. `WaitlistForm` renders
-                `WAITLIST_CONSENT_TEXT` directly under the field and `WaitlistService` hashes that
-                exact string as the evidence of what the subscriber agreed to, so a second
-                promise written here would be a fifth telling AND a second hash for one consent.
+          The unsubscribe line is deliberately NOT repeated here. `WaitlistForm` renders
+          `WAITLIST_CONSENT_TEXT` directly under the field and `WaitlistService` hashes that exact
+          string as the evidence of what the subscriber agreed to, so a second promise written
+          here would be a fifth telling AND a second hash for one consent.
 
-                §6.1 of docs/SITE_SPEC_PROGRAM.md asks for the microcopy "Unsubscribe any time."
-                That promise IS rendered, once, as the last clause of `WAITLIST_CONSENT_TEXT`
-                ("Unsubscribe in one click"). Rewording it is not a copy edit: the string is
-                SHA-256'd into every stored signup and its `WAITLIST_CONSENT_VERSION` is pinned to
-                `WaitlistService.CurrentConsentVersion` in the API, so changing the words needs a
-                version bump deployed on both sides, not an edit here. Adding the shorter sentence
-                on top of it would restore exactly the duplicate-promise defect this block was
-                rewritten to remove. */}
-            <h2 className="sub">
-              The next survivor can come to you.
-            </h2>
-            <p className="mt-1 lede">
-              Most ideas die in the filter. When one survives, you get one email. That’s the whole
-              list.
-            </p>
-          </div>
-
-          <div className="w-full max-w-md">
-            {/* No `submitLabel` override, 2026-08-14: the homepage carried two email forms whose
-                buttons named the same action two different ways, this one and the discovery
-                placement's default. One action, one verb, set in `WaitlistForm` and inherited
-                everywhere, so a third placement cannot invent a fourth wording.
-
-                The wording itself ("Put it in the queue") is inherited rather than endorsed and is
-                flagged for the content review: "queue" is the engine's word for its own backlog,
-                and the buyer here is a sole trader who does not know the engine exists. Changing it
-                is one string in `WaitlistForm.tsx:51` now that nothing overrides it. */}
-            <WaitlistForm source="homepage-shelf-end" />
-          </div>
-        </div>
-      </div>
-    </div>
+          §6.1 of docs/SITE_SPEC_PROGRAM.md asks for the microcopy "Unsubscribe any time." That
+          promise IS rendered, once, as the last clause of `WAITLIST_CONSENT_TEXT` ("Unsubscribe
+          in one click"). Rewording it is not a copy edit: the string is SHA-256'd into every
+          stored signup and its `WAITLIST_CONSENT_VERSION` is pinned to
+          `WaitlistService.CurrentConsentVersion` in the API, so changing the words needs a
+          version bump deployed on both sides, not an edit here. */}
+      <h2 className="sec">The next survivor can come to you.</h2>
+      <p>
+        Most ideas die in the filter. When one survives, you get one email. That’s the whole list.
+      </p>
+      {/* No `submitLabel` override, 2026-08-14: the homepage carried two email forms whose buttons
+          named the same action two different ways. One action, one verb, set in `WaitlistForm` and
+          inherited everywhere, so a third placement cannot invent a fourth wording. */}
+      <WaitlistForm source="homepage-shelf-end" inline />
+    </section>
   );
 }

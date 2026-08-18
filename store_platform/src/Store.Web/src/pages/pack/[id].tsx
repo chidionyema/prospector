@@ -1051,91 +1051,6 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 already on screen; the reader who has not keeps reading and meets the closing bar
                 when the argument is finished. */}
 
-            {/* Deliverables first: "what do I actually receive for £49" is the question that stalls a
-                digital purchase, and it has to be answered before the trust argument. */}
-            <div className="mt-12">
-              <PackContentsSection
-                heading="What’s inside your pack"
-                lead={`The moment you pay, you download the whole pack. ${PACK_DOCUMENTS.length} documents, no drip feed, no login.`}
-                sourceCount={pack.sourceCount}
-              />
-            </div>
-
-            {/*
-             * WHO RUNS IT -- moved ABOVE the two methodology disclosures.
-             *
-             * The order the page shipped was: deliverables, how we tried to kill it, how it
-             * scores, and only then who this is for. That is the order of OUR interests. The
-             * buyer's questions arrive as: what is it, could I do it, does it make money, is the
-             * research real. "Could I do it" was the third-from-last thing the page answered, two
-             * collapsed disclosures deep -- on the surface where the reader decides whether any
-             * of the rest applies to them at all.
-             *
-             * The heading changed with the position. "Is this for you?" is a shopping question
-             * about a document; "Could you run this?" is a question about the reader's own next
-             * six months, which is the thing actually being sold. Nothing below it changed -- the
-             * facts were always here, they were just filed under the wrong question, behind the
-             * methodology.
-             */}
-            {/* `whoPays` used to be a row in the list below as well. It moved up into the
-                opportunity block at the top of the page on 2026-08-16 and is not repeated here:
-                this page already has a rule against stating the same fact in two places, and it
-                is the rule that caught the check count disagreeing with itself. */}
-            {(pack.market || pack.timeToFirstRevenue) && (
-              <div className="mt-12">
-                <h2 className="sec">Could you run this?</h2>
-                <p className="mt-2 max-w-[60ch] lede">
-                  Behind the research is a business somebody has to actually operate. Here is the
-                  market it runs in, and how soon the first money arrives.
-                </p>
-                {/* The engine's own tags, in the buyer's words. Absent facets render nothing:
-                    "Effort to build" used to print the legacy `effortTag` string, which was never
-                    defined to mean how much of delivery is machine-doable (spec 2.3). */}
-                <FacetChips pack={pack} className="mt-4" />
-                {/*
-                 * ONE SPEC SHEET, NOT THREE CARDS.
-                 *
-                 * These were three bordered boxes in a `sm:grid-cols-3` where two carried
-                 * `sm:col-span-3`, so on any desktop width the grid was a lie: Market and Who pays
-                 * each sat alone in a 976px box holding a label and one line, and the third took a
-                 * third of a row on its own. Measured at 1440 on 2026-08-14, the block spent ~390px
-                 * of height and three borders to state three fields.
-                 *
-                 * They are three fields OF ONE THING -- the business behind the research -- so they
-                 * are a description list with the labels in their own column, which is the idiom
-                 * this page already uses for the economics table below. A reader scanning for
-                 * "who pays" now finds it down a rule of aligned labels instead of by reading three
-                 * card headers of different widths.
-                 */}
-                <dl className="mt-6 divide-y divide-border overflow-hidden rounded-md border border-border bg-surface">
-                  {pack.market && (
-                    <div className="grid gap-1 p-5 sm:grid-cols-[9.5rem_1fr] sm:gap-6">
-                      <dt className="text-caption font-medium text-subtle sm:pt-0.5">Market</dt>
-                      <dd className="min-w-0">
-                        <span className="text-meta font-semibold text-text">
-                          {marketLabel(pack.market)}
-                        </span>
-                        {/* State it plainly: the research is about this jurisdiction, and the
-                            pack is still sold in GBP. Leaving that implicit invites a refund. */}
-                        <span className="mt-1.5 block max-w-[62ch] text-caption leading-relaxed text-muted">
-                          The opportunity, its evidence and its economics are researched for this
-                          market. The pack itself is priced and sold in GBP.
-                        </span>
-                      </dd>
-                    </div>
-                  )}
-                  {pack.timeToFirstRevenue && (
-                    <div className="grid gap-1 p-5 sm:grid-cols-[9.5rem_1fr] sm:gap-6">
-                      <dt className="text-caption font-medium text-subtle sm:pt-0.5">Time to first revenue</dt>
-                      <dd className="min-w-0 text-meta font-semibold text-text">
-                        {pack.timeToFirstRevenue}
-                      </dd>
-                    </div>
-                  )}
-                </dl>
-              </div>
-            )}
-
             {/* THE SIGNATURE (MASTER-BRIEF §7): a hundred dots, six of them teal, immediately above
                 the six gates. The page already states the rate in words further up; this is the
                 same fact in the form a reader takes in without doing arithmetic, sitting where it
@@ -1149,13 +1064,12 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 of methodology before the deliverables. They can tap to expand if
                 they care. The disclosure is open by default on lg+ where the page
                 has the room. */}
-            <details className="mt-12 group" open={undefined}>
-              <summary className="cursor-pointer list-none text-h2 font-semibold text-text transition-colors hover:text-muted">
-                <span className="inline-flex items-center gap-2">
-                  <Icon name="arrowRight" size={16} className="transition-transform group-open:rotate-90" />
-                  How we tried to kill it
-                </span>
-              </summary>
+            {/* OPEN, AND FIRST. `mockups/pack-detail.html:364` draws this as a plain section with
+                an `h2.sec` heading, ahead of the deliverables. It was a collapsed `<details>` here
+                and it sat third, so the page's strongest argument was the one thing a reader had
+                to click for. */}
+            <div className="mt-12">
+              <h2 className="sec">How we tried to kill it</h2>
               <div className="mt-4">
                 <p className="lede">
                   Each check is an attack, not a rubber stamp. An idea dies on the first check where cited evidence goes against it. {outcomeSentence} Finding nothing is not the same as finding a green light; see how each check works on{' '}
@@ -1238,7 +1152,132 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                   <Icon name="arrowRight" size={14} />
                 </Link>
               </div>
-            </details>
+            </div>
+
+            {/*
+             * WHO RUNS IT -- moved ABOVE the two methodology disclosures.
+             *
+             * The order the page shipped was: deliverables, how we tried to kill it, how it
+             * scores, and only then who this is for. That is the order of OUR interests. The
+             * buyer's questions arrive as: what is it, could I do it, does it make money, is the
+             * research real. "Could I do it" was the third-from-last thing the page answered, two
+             * collapsed disclosures deep -- on the surface where the reader decides whether any
+             * of the rest applies to them at all.
+             *
+             * The heading changed with the position. "Is this for you?" is a shopping question
+             * about a document; "Could you run this?" is a question about the reader's own next
+             * six months, which is the thing actually being sold. Nothing below it changed -- the
+             * facts were always here, they were just filed under the wrong question, behind the
+             * methodology.
+             */}
+            {/* `whoPays` used to be a row in the list below as well. It moved up into the
+                opportunity block at the top of the page on 2026-08-16 and is not repeated here:
+                this page already has a rule against stating the same fact in two places, and it
+                is the rule that caught the check count disagreeing with itself. */}
+            {(pack.market || pack.timeToFirstRevenue) && (
+              <div className="mt-12">
+                <h2 className="sec">Could you run this?</h2>
+                <p className="mt-2 max-w-[60ch] lede">
+                  Behind the research is a business somebody has to actually operate. Here is the
+                  market it runs in, and how soon the first money arrives.
+                </p>
+                {/* The engine's own tags, in the buyer's words. Absent facets render nothing:
+                    "Effort to build" used to print the legacy `effortTag` string, which was never
+                    defined to mean how much of delivery is machine-doable (spec 2.3). */}
+                <FacetChips pack={pack} className="mt-4" />
+                {/*
+                 * ONE SPEC SHEET, NOT THREE CARDS.
+                 *
+                 * These were three bordered boxes in a `sm:grid-cols-3` where two carried
+                 * `sm:col-span-3`, so on any desktop width the grid was a lie: Market and Who pays
+                 * each sat alone in a 976px box holding a label and one line, and the third took a
+                 * third of a row on its own. Measured at 1440 on 2026-08-14, the block spent ~390px
+                 * of height and three borders to state three fields.
+                 *
+                 * They are three fields OF ONE THING -- the business behind the research -- so they
+                 * are a description list with the labels in their own column, which is the idiom
+                 * this page already uses for the economics table below. A reader scanning for
+                 * "who pays" now finds it down a rule of aligned labels instead of by reading three
+                 * card headers of different widths.
+                 */}
+                <dl className="mt-6 divide-y divide-border overflow-hidden rounded-md border border-border bg-surface">
+                  {pack.market && (
+                    <div className="grid gap-1 p-5 sm:grid-cols-[9.5rem_1fr] sm:gap-6">
+                      <dt className="text-caption font-medium text-subtle sm:pt-0.5">Market</dt>
+                      <dd className="min-w-0">
+                        <span className="text-meta font-semibold text-text">
+                          {marketLabel(pack.market)}
+                        </span>
+                        {/* State it plainly: the research is about this jurisdiction, and the
+                            pack is still sold in GBP. Leaving that implicit invites a refund. */}
+                        <span className="mt-1.5 block max-w-[62ch] text-caption leading-relaxed text-muted">
+                          The opportunity, its evidence and its economics are researched for this
+                          market. The pack itself is priced and sold in GBP.
+                        </span>
+                      </dd>
+                    </div>
+                  )}
+                  {pack.timeToFirstRevenue && (
+                    <div className="grid gap-1 p-5 sm:grid-cols-[9.5rem_1fr] sm:gap-6">
+                      <dt className="text-caption font-medium text-subtle sm:pt-0.5">Time to first revenue</dt>
+                      <dd className="min-w-0 text-meta font-semibold text-text">
+                        {pack.timeToFirstRevenue}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+              </div>
+            )}
+
+            {/* A look inside, real sourced lines lifted straight from the pack */}
+            {pack.sampleExtract && pack.sampleExtract.length > 0 && (
+              <div className="mt-12">
+                <h2 className="sec">A look inside</h2>
+                <p className="mt-2 max-w-[60ch] lede">
+                  Real, sourced lines taken straight from the pack. Every source below is a live
+                  link: open one and check the claim before you buy.
+                </p>
+                {/* Peek inside: a page you are looking at the top of. The fade is over the page
+                    itself, never over invented text, every line below is really in the pack, and
+                    nothing is blurred to imply content that does not exist. */}
+                <div className="relative mt-6 overflow-hidden rounded-md border border-border bg-surface">
+                  <div className="flex items-center gap-2 border-b border-border bg-surface2 px-5 py-3">
+                    <Icon name="briefcase" size={14} className="text-subtle" />
+          <span className="eyebrow">
+                      Extract · evidence record
+                    </span>
+                  </div>
+                  {/* The claim, then the sources it stands on. Until this shipped these lines
+                      printed "(source: https://...)" as plain text -- the page promised a
+                      clickable source behind every claim and rendered zero anchors. The parse
+                      happens at the render boundary (`lib/citations.ts`); the API contract for
+                      `sampleExtract` is unchanged, so an email or a PDF of the same string still
+                      reads correctly. */}
+                  <ul className="list-none space-y-5 p-6 pb-16">
+                    {pack.sampleExtract.map((line, i) => (
+                      <li key={i} className="border-l-2 border-l-success pl-4">
+                        <SourcedLine className="block text-meta leading-relaxed text-muted">
+                          {line}
+                        </SourcedLine>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white via-white/85 to-transparent" />
+                  <span className="absolute inset-x-0 bottom-4 text-center text-caption font-semibold text-muted">
+                    The rest of this section, and three more documents, are in the pack.
+                  </span>
+                </div>
+              </div>
+            )}
+            {/* Deliverables first: "what do I actually receive for £49" is the question that stalls a
+                digital purchase, and it has to be answered before the trust argument. */}
+            <div className="mt-12">
+              <PackContentsSection
+                heading="What’s inside your pack"
+                lead={`The moment you pay, you download the whole pack. ${PACK_DOCUMENTS.length} documents, no drip feed, no login.`}
+                sourceCount={pack.sourceCount}
+              />
+            </div>
 
             {/* US-4: the scored axes collapse behind a details disclosure. The
                 methodology is opt-in; the buyer who only cares about the
@@ -1355,46 +1394,6 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
               )}
             </div>
 
-            {/* A look inside, real sourced lines lifted straight from the pack */}
-            {pack.sampleExtract && pack.sampleExtract.length > 0 && (
-              <div className="mt-12">
-                <h2 className="sec">A look inside</h2>
-                <p className="mt-2 max-w-[60ch] lede">
-                  Real, sourced lines taken straight from the pack. Every source below is a live
-                  link: open one and check the claim before you buy.
-                </p>
-                {/* Peek inside: a page you are looking at the top of. The fade is over the page
-                    itself, never over invented text, every line below is really in the pack, and
-                    nothing is blurred to imply content that does not exist. */}
-                <div className="relative mt-6 overflow-hidden rounded-md border border-border bg-surface">
-                  <div className="flex items-center gap-2 border-b border-border bg-surface2 px-5 py-3">
-                    <Icon name="briefcase" size={14} className="text-subtle" />
-          <span className="eyebrow">
-                      Extract · evidence record
-                    </span>
-                  </div>
-                  {/* The claim, then the sources it stands on. Until this shipped these lines
-                      printed "(source: https://...)" as plain text -- the page promised a
-                      clickable source behind every claim and rendered zero anchors. The parse
-                      happens at the render boundary (`lib/citations.ts`); the API contract for
-                      `sampleExtract` is unchanged, so an email or a PDF of the same string still
-                      reads correctly. */}
-                  <ul className="list-none space-y-5 p-6 pb-16">
-                    {pack.sampleExtract.map((line, i) => (
-                      <li key={i} className="border-l-2 border-l-success pl-4">
-                        <SourcedLine className="block text-meta leading-relaxed text-muted">
-                          {line}
-                        </SourcedLine>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white via-white/85 to-transparent" />
-                  <span className="absolute inset-x-0 bottom-4 text-center text-caption font-semibold text-muted">
-                    The rest of this section, and three more documents, are in the pack.
-                  </span>
-                </div>
-              </div>
-            )}
 
             {/* THE EVIDENCE (email §4). The previous copy ended on "No hand waving, no vibes."
                 which tried too hard for a voice that wins by understatement. The new copy is the
@@ -1483,22 +1482,37 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 facts the button cannot say. Everything else the panel carries -- what is inside,
                 who wrote it, how the refund works -- has already been said at length above, and
                 repeating it here would be the duplication §7 is removing, moved down the page. */}
+            {/* THE DRAWING'S CLOSING BLOCK (`mockups/pack-detail.html:427`): a rule, a priced
+                heading, one honest sentence, the two buttons side by side, and the small print.
+                The price comes from the pack, never the drawing's hardcoded 49.99. */}
             {canCheckout && (
-              <div className="mt-16 flex flex-col gap-4 rounded-card border border-line bg-surface p-6 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-h3 font-semibold text-text">{priceLabel}</p>
-                  <p className="mt-1 text-caption leading-snug text-muted">
-                    One payment. Download straight away. 14 day refund.
-                  </p>
+              <div className="closing">
+                <h2 className="sec">
+                  <PriceText>{priceLabel}</PriceText>, once. Yours forever.
+                </h2>
+                <p>
+                  Secure checkout via Stripe. A pack is evidence-backed research, not a promise of
+                  business success.
+                </p>
+                <div className="ctarow">
+                  <PackBuyButton
+                    pack={pack}
+                    variant="detail"
+                    buy={handleBuy}
+                    checkingOut={checkingOut}
+                    canCheckout={canCheckout}
+                    currency={currency}
+                  />
+                  <Link href="/sample" className={buttonClasses({ variant: 'secondary', size: 'lg' })}>
+                    Read a full pack free
+                  </Link>
                 </div>
-                <PackBuyButton
-                  pack={pack}
-                  variant="detail"
-                  buy={handleBuy}
-                  checkingOut={checkingOut}
-                  canCheckout={canCheckout}
-                  currency={currency}
-                />
+                <p className="mono mt-[18px]">
+                  14 day money back · every claim sourced · one-time payment · see our{' '}
+                  <Link href="/refund" className={textLinkClass()}>
+                    refund policy
+                  </Link>
+                </p>
               </div>
             )}
           </div>

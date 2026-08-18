@@ -333,11 +333,11 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
               <div className="f-stats">
                 <div>
                   <span>Killed</span>
-                  <b className="num">{tightDecimal(RESEARCH_STATS.killed.toLocaleString('en-GB'))}</b>
+                  <b className="num whitespace-nowrap">{tightDecimal(RESEARCH_STATS.killed.toLocaleString('en-GB'))}</b>
                 </div>
                 <div>
                   <span>Researched</span>
-                  <b className="num">{tightDecimal(RESEARCH_STATS.researched.toLocaleString('en-GB'))}</b>
+                  <b className="num whitespace-nowrap">{tightDecimal(RESEARCH_STATS.researched.toLocaleString('en-GB'))}</b>
                 </div>
               </div>
             </div>

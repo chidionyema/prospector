@@ -217,11 +217,33 @@ describe('each rendered count names the right noun', () => {
     expect(copySource()).toContain('PACK_DOCUMENTS.length');
   });
 
-  it('never puts the word "files" beside the document count', () => {
-    const nearCount = Array.from(copySource().matchAll(/PACK_DOCUMENTS\.length\}([\s\S]{0,80})/g));
-    expect(nearCount.length, 'the count must actually be rendered somewhere').toBeGreaterThan(0);
-    const offenders = nearCount.map((m) => m[1]).filter((tail) => /\bfiles\b/i.test(tail));
-    expect(offenders.map((t) => t.replace(/\s+/g, ' ').trim())).toEqual([]);
+  /**
+   * THE TWO COUNTS RUN TOGETHER ON ONE LINE NOW, and that is the rule.
+   *
+   * This used to forbid the word "files" within eighty characters of the document count, and it
+   * was right about the defect it was written for: the card printed `14 documents` in its header
+   * and `arrives as 5 files` eighty pixels lower, so a buyer met two numbers in two places and
+   * concluded one of them was wrong about the product (founder, 2026-08-16: "counting bugs").
+   *
+   * The drawing settles it a third way. `mockups/index.html:564` prints one string,
+   * `14 documents · 6 files`, in the section head beside the heading. Two numbers separated by a
+   * middot on one line are read as ONE fact about one archive; the same two numbers in two places
+   * are read as a contradiction. The founder asked for the drawing's version on 2026-08-18.
+   *
+   * So the guard inverts rather than disappears: the counts must be adjacent, both derived, and
+   * each must keep its own noun. The false claim this file exists to catch -- calling documents
+   * "files" -- is still impossible, because the document count is still followed by the word
+   * "documents".
+   */
+  it('prints both counts on one line, each with its own noun, as the drawing does', () => {
+    const src = copySource().replace(/\s+/g, ' ');
+    expect(src).toContain('{PACK_DOCUMENTS.length} documents · {files.length} files');
+  });
+
+  it('derives the file count from the tuples rather than typing it', () => {
+    // `files` is the rendered array. If it stops being built from the two tuples, the "6" on the
+    // card stops being a fact about the bundle and becomes a number someone typed.
+    expect(copySource()).toContain('const files = [...PACK_CONTENTS, ...PACK_EXTRAS];');
   });
 
   /**
@@ -241,7 +263,12 @@ describe('each rendered count names the right noun', () => {
    * wrong noun. What replaces it is stricter, because it also forbids rendering the file count
    * correctly.
    */
-  it('renders no file count at all, so no second number can disagree with the first', () => {
+  it('renders the file count once, beside the document count and nowhere else', () => {
+    // One occurrence of `files.length` in the rendered output. A second one somewhere further
+    // down the card is the 2026-08-16 defect coming back: the same number in two places, which a
+    // buyer reads as two claims rather than one.
+    const rendered = copySource().match(/\{files\.length\}/g) ?? [];
+    expect(rendered.length).toBe(1);
     expect(copySource()).not.toContain('{PACK_CONTENTS.length}');
   });
 });

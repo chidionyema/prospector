@@ -41,6 +41,16 @@ export interface WaitlistFormProps {
    *  string in the column would read as "searched for nothing" rather than "never searched". */
   query?: string;
   submitLabel?: string;
+  /**
+   * The drawing's shape (`mockups/index.html:556`): the field and the button on ONE row, the
+   * consent under them as fine print. The default stacked form is kept for the narrow placements
+   * (the empty state, the sidebar) where a 470px row would wrap anyway.
+   *
+   * The consent checkbox is rendered in BOTH shapes. The drawing does not show one, but the box
+   * is unticked by default and the submit is refused without it here and in `WaitlistService`;
+   * a pre-ticked or absent box is not consent under UK GDPR. Layout does not get to decide that.
+   */
+  inline?: boolean;
 }
 
 /**
@@ -48,7 +58,7 @@ export interface WaitlistFormProps {
  * here and server-side in `WaitlistService`. A pre-ticked box is not consent under UK GDPR, and
  * the italic sentence under the form is the exact text the server hashes as evidence.
  */
-export function WaitlistForm({ source, query, submitLabel = 'Put it in the queue' }: WaitlistFormProps) {
+export function WaitlistForm({ source, query, submitLabel = 'Put it in the queue', inline }: WaitlistFormProps) {
   const [email, setEmail] = useState('');
   const [consent, setConsent] = useState(false);
   const [state, setState] = useState<SubmitState>('idle');
@@ -92,26 +102,50 @@ export function WaitlistForm({ source, query, submitLabel = 'Put it in the queue
     );
   }
 
+  const field = (
+    <Input
+      label="Email"
+      hideLabel={inline}
+      type="email"
+      required
+      value={email}
+      onChange={(event) => setEmail(event.target.value)}
+      placeholder="you@example.com"
+      error={error ?? undefined}
+    />
+  );
+  const box = (
+    <Checkbox
+      label="Email me if a pack survives"
+      checked={consent}
+      onChange={(event) => setConsent(event.target.checked)}
+    />
+  );
+  const send = (
+    <Button type="submit" variant="primary" disabled={state === 'sending'}>
+      {state === 'sending' ? 'Adding you…' : submitLabel}
+    </Button>
+  );
+
+  if (inline) {
+    return (
+      <>
+        <form onSubmit={submit} className="flex max-w-[470px] flex-wrap items-start gap-[10px]">
+          <div className="min-w-[210px] flex-1">{field}</div>
+          {send}
+        </form>
+        <div className="mt-3">{box}</div>
+        <p className="fine">{WAITLIST_CONSENT_TEXT}</p>
+      </>
+    );
+  }
+
   return (
     <>
       <form onSubmit={submit} className="flex max-w-md flex-col gap-3">
-        <Input
-          label="Email"
-          type="email"
-          required
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          placeholder="you@example.com"
-          error={error ?? undefined}
-        />
-        <Checkbox
-          label="Email me if a pack survives"
-          checked={consent}
-          onChange={(event) => setConsent(event.target.checked)}
-        />
-        <Button type="submit" variant="primary" disabled={state === 'sending'}>
-          {state === 'sending' ? 'Adding you…' : submitLabel}
-        </Button>
+        {field}
+        {box}
+        {send}
       </form>
 
       <p className="mt-3 text-caption italic text-muted">{WAITLIST_CONSENT_TEXT}</p>

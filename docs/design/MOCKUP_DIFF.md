@@ -10,80 +10,70 @@ is a real defect, so nothing here tries to be clever about pairing them up.
 
 `index.html` vs `/`
 
-Page height: drawing **8653px**, built **13694px** (+5041px, 1.58x).
+Page height: drawing **8653px**, built **12567px** (+3914px, 1.45x).
 
-Sections: drawing has **3**, built has **5**.
+Sections: drawing has **3**, built has **6**.
 
 | # | drawing | h | built | h | verdict |
 | - | ------- | - | ----- | - | ------- |
 | 0 | div "Business ideas with the research already done." | 1365 | section "Business ideas with the research and starter …" | 1275 | **heading differs** |
-| 1 | div .filterbar | 64 | section .bg-bg | 164 | **2.6x too tall** |
-| 2 | div "Abandoned-vendor alerts for UK software opera…" | 6679 | div "What survived" | 8400 | **heading differs** |
-| 3 | - | - | section "14 documents. Here is one page of one of them." | 2937 | **EXTRA in build** |
-| 4 | - | - | section "Every idea walks into a room built to destroy…" | 369 | **EXTRA in build** |
+| 1 | div .filterbar | 64 | section .bg-bg | 168 | **2.6x too tall** |
+| 2 | div "Abandoned-vendor alerts for UK software opera…" | 6679 | div "What survived" | 6954 | **heading differs** |
+| 3 | - | - | section "14 documents. Here is one page of one of them." | 2955 | **EXTRA in build** |
+| 4 | - | - | section "Nothing here rests on a number we cannot show…" | 228 | **EXTRA in build** |
+| 5 | - | - | section "Every idea walks into a room built to destroy…" | 369 | **EXTRA in build** |
 
-Headings: drawing has **22**, built has **52**.
+Headings: drawing has **22**, built has **41**.
 
 - 0: text, drawing "Business ideas with the research already done." / built "Business ideas with the research and starter packs re…"
 - 1: text, drawing "Newest on the shelf" / built "New this week"
 - 2: text, drawing "Narrow it down" / built "What survived"
 - 3: text, drawing "Abandoned-vendor alerts for UK software operations ma…" / built "Newest survivors"
-- 4: text, drawing "Training data provenance audit for AI startup sales" / built "R&D tax credit claim builder"
-- 5: text, drawing "Material price cover" / built "Noise report checks for acoustic consultancies"
-- 6: text, drawing "Scope-creep pricing desk" / built "Stripe chargeback defence packs"
-- 7: text, drawing "Unpaid-hours audits for NHS doctors and nurses" / built "Narrow it down"
-- 8: text, drawing "This is what a check looks like when it fails." / built "Show me packs I could actually run."
-- 9: text, drawing "More on the shelf" / built "More survivors, biggest opportunities first"
-- 10: text, drawing "HMRC £100 late-filing penalty appeals" / built "Clinical-coding checks for private hospitals"
-- 11: text, drawing "Blue Badge refusal appeals for carers of disabled rel…" / built "AI project risk packs"
-- 12: text, drawing "Retention chasing service for building subcontractors" / built "Training data provenance audit for AI startup sales"
-- 13: text, drawing "Freelance pay benchmarks" / built "Material price cover"
-- 14: text, drawing "Built for the US market" / built "Scope-creep pricing desk"
-- 15: text, drawing "Cal/OSHA citation contest tool for California employe…" / built "HMRC £100 late-filing penalty appeals"
-- 16: text, drawing "Long term care claim evidence service for family care…" / built "Unpaid-hours audits for NHS doctors and nurses"
-- 17: text, drawing "Built for the US · CA market" / built "Freelance pay benchmarks"
-- 18: text, drawing "Metrc schema tests for California cannabis software t…" / built "Built for the US market"
-- 19: text, drawing "The next survivor can come to you." / built "Cal/OSHA citation contest tool for California employe…"
-- 20: text, drawing "What you actually get" / built "Long term care claim evidence service for family care…"
-- 21: text, drawing "Every idea walks into a room built to destroy it." / built "Personalised social story books for autism parents"
-- 22: EXTRA heading in build, "Respite care grant applications for Texas family care…" (17px)
-- 23: EXTRA heading in build, "Stolen tool claim handling for California tradespeople" (17px)
-- 24: EXTRA heading in build, "Disability access fix kits for California shop owners" (17px)
-- 25: EXTRA heading in build, "Life insurance broker for elderly owners and caregive…" (17px)
-- 26: EXTRA heading in build, "Leave pay and pension calculator for California teach…" (17px)
-- 27: EXTRA heading in build, "Delivery car setup service for full-time drivers" (17px)
-- 28: EXTRA heading in build, "Small estate affidavit service for California heirs" (17px)
-- 29: EXTRA heading in build, "Illegal tow and storage fee refund service for drivers" (17px)
-- 30: EXTRA heading in build, "Built for the US · GA market" (16px)
-- 31: EXTRA heading in build, "Cold chain audit AI for Georgia poultry processors" (17px)
-- 32: EXTRA heading in build, "Map code theft evidence for Georgia founders" (17px)
-- 33: EXTRA heading in build, "AI safety audits for Georgia poultry line workers" (17px)
-- 34: EXTRA heading in build, "AI red-team dossiers for Georgia defense vendors" (17px)
-- 35: EXTRA heading in build, "GA film production compliance AI for indie producers" (17px)
-- 36: EXTRA heading in build, "Built for the US · FL market" (16px)
-- 37: EXTRA heading in build, "Condo due diligence packets for Florida real estate a…" (17px)
-- 38: EXTRA heading in build, "FL state-contract displacement feed for IT vendors" (17px)
-- 39: EXTRA heading in build, "Built for the US · CA market" (16px)
-- 40: EXTRA heading in build, "Metrc schema tests for California cannabis software t…" (17px)
-- 41: EXTRA heading in build, "Built for the US · TX market" (16px)
-- 42: EXTRA heading in build, "Requirements packages for software product managers" (17px)
-- 43: EXTRA heading in build, "The next survivor can come to you." (16px)
-- 44: EXTRA heading in build, "14 documents. Here is one page of one of them." (23px)
-- 45: EXTRA heading in build, "Can the payer actually pay?" (16px)
-- 46: EXTRA heading in build, "The strongest case against this idea" (16px)
-- 47: EXTRA heading in build, "The full contents" (23px)
-- 48: EXTRA heading in build, "Every idea walks into a room built to destroy it." (32px)
-- 49: EXTRA heading in build, "Store" (12px)
-- 50: EXTRA heading in build, "Legal" (12px)
-- 51: EXTRA heading in build, "Contact" (12px)
+- 4: text, drawing "Training data provenance audit for AI startup sales" / built "The check that kills most ideas is not the one people…"
+- 5: text, drawing "Material price cover" / built "Narrow it down"
+- 6: text, drawing "Scope-creep pricing desk" / built "Show me packs I could actually run."
+- 7: text, drawing "Unpaid-hours audits for NHS doctors and nurses" / built "More survivors, biggest opportunities first"
+- 8: text, drawing "This is what a check looks like when it fails." / built "Clinical-coding checks for private hospitals"
+- 9: text, drawing "More on the shelf" / built "AI project risk packs"
+- 10: text, drawing "HMRC £100 late-filing penalty appeals" / built "Training data provenance audit for AI startup sales"
+- 11: text, drawing "Blue Badge refusal appeals for carers of disabled rel…" / built "Material price cover"
+- 12: text, drawing "Retention chasing service for building subcontractors" / built "Scope-creep pricing desk"
+- 13: text, drawing "Freelance pay benchmarks" / built "HMRC £100 late-filing penalty appeals"
+- 14: text, drawing "Built for the US market" / built "Unpaid-hours audits for NHS doctors and nurses"
+- 15: text, drawing "Cal/OSHA citation contest tool for California employe…" / built "Freelance pay benchmarks"
+- 16: text, drawing "Long term care claim evidence service for family care…" / built "Built for the US market"
+- 17: text, drawing "Built for the US · CA market" / built "Cal/OSHA citation contest tool for California employe…"
+- 18: text, drawing "Metrc schema tests for California cannabis software t…" / built "Long term care claim evidence service for family care…"
+- 19: text, drawing "The next survivor can come to you." / built "Personalised social story books for autism parents"
+- 20: text, drawing "What you actually get" / built "Built for the US · GA market"
+- 21: text, drawing "Every idea walks into a room built to destroy it." / built "Cold chain audit AI for Georgia poultry processors"
+- 22: EXTRA heading in build, "Map code theft evidence for Georgia founders" (17px)
+- 23: EXTRA heading in build, "AI safety audits for Georgia poultry line workers" (17px)
+- 24: EXTRA heading in build, "Built for the US · FL market" (22px)
+- 25: EXTRA heading in build, "Condo due diligence packets for Florida real estate a…" (17px)
+- 26: EXTRA heading in build, "FL state-contract displacement feed for IT vendors" (17px)
+- 27: EXTRA heading in build, "Built for the US · CA market" (22px)
+- 28: EXTRA heading in build, "Metrc schema tests for California cannabis software t…" (17px)
+- 29: EXTRA heading in build, "Built for the US · TX market" (22px)
+- 30: EXTRA heading in build, "Requirements packages for software product managers" (17px)
+- 31: EXTRA heading in build, "The next survivor can come to you." (23px)
+- 32: EXTRA heading in build, "14 documents. Here is one page of one of them." (31px)
+- 33: EXTRA heading in build, "Can the payer actually pay?" (22px)
+- 34: EXTRA heading in build, "The strongest case against this idea" (22px)
+- 35: EXTRA heading in build, "The full contents" (31px)
+- 36: EXTRA heading in build, "Nothing here rests on a number we cannot show you" (23px)
+- 37: EXTRA heading in build, "Every idea walks into a room built to destroy it." (31px)
+- 38: EXTRA heading in build, "Store" (12px)
+- 39: EXTRA heading in build, "Legal" (12px)
+- 40: EXTRA heading in build, "Contact" (12px)
 
 ### Colours
 
 | role | drawing (colour × elements) | built | verdict |
 | ---- | --------------------------- | ----- | ------- |
-| text | #17191c×256 #565b62×108 #8b9096×78 #2447c9×26 #14706a×10 #ffffff×6 | #17191c×564 #8b9096×177 #565b62×152 #2447c9×44 #a1a1aa×15 #ffffff×7 | **not in drawing: #a1a1aa #6e5608 #5c5d32 oklab(0.999994 0.0000455677 0.0000200868 / 0.7) #4a4e52**<br>missing: #b9bdc2 #b4342b |
-| background | #deded7×1382 #14706a×91 #ffffff×32 #fafaf7×7 #17191c×7 #f2f8f7×4 | #14706a×67 #ffffff×43 #fafaf7×10 #17191c×9 #fafafa×5 #fcf8e8×3 | **top background differs**<br>**not in drawing: #fafafa #e7e7e1 #f4f4f5**<br>missing: #f2f8f7 #b4342b |
-| border | #e7e7e1×45 #17191c×28 #cfe3e0×4 #c9a227×1 #565b62×1 #d8d8d1×1 | #e7e7e1×83 #17191c×25 oklab(0.926292 -0.00224254 0.00770479 / 0.6)×19 #6e5608×3 #8e8e96×3 #d8d8d1×1 | **not in drawing: oklab(0.926292 -0.00224254 0.00770479 / 0.6) #6e5608 #8e8e96 #8b9096 #14706a**<br>missing: #cfe3e0 #c9a227 #565b62 |
+| text | #17191c×256 #565b62×108 #8b9096×78 #2447c9×26 #14706a×10 #ffffff×6 | #17191c×487 #8b9096×139 #565b62×137 #2447c9×33 #a1a1aa×15 #ffffff×7 | **not in drawing: #a1a1aa #6e5608 #5c5d32 oklab(0.999994 0.0000455677 0.0000200868 / 0.7) #4a4e52**<br>missing: #b9bdc2 |
+| background | #deded7×1382 #14706a×91 #ffffff×32 #fafaf7×7 #17191c×7 #f2f8f7×4 | #14706a×67 #ffffff×47 #fafaf7×12 #17191c×9 #deded7×6 #fafafa×5 | **top background differs**<br>**not in drawing: #fafafa #e7e7e1 #f4f4f5**<br>missing: #f2f8f7 |
+| border | #e7e7e1×45 #17191c×28 #cfe3e0×4 #c9a227×1 #565b62×1 #d8d8d1×1 | #e7e7e1×80 oklab(0.926292 -0.00224254 0.00770479 / 0.6)×19 #17191c×15 #6e5608×3 #8e8e96×3 #d8d8d1×1 | **not in drawing: oklab(0.926292 -0.00224254 0.00770479 / 0.6) #6e5608 #8e8e96 #8b9096 #14706a**<br>missing: #cfe3e0 #c9a227 #565b62 |
 
 ## pack-detail
 
@@ -93,15 +83,15 @@ No route captured: this page needs a live id. Set `PACK_ROUTE` and re-run.
 
 `collections.html` vs `/collections`
 
-Page height: drawing **3083px**, built **3875px** (+792px, 1.26x).
+Page height: drawing **3083px**, built **3882px** (+799px, 1.26x).
 
 Sections: drawing has **6**, built has **3**.
 
 | # | drawing | h | built | h | verdict |
 | - | ------- | - | ----- | - | ------- |
 | 0 | p .crumb | 41 | div .mx-auto | 66 | **1.6x too tall** |
-| 1 | div "Sixteen ways into the same shelf." | 229 | section "Business ideas, by category." | 327 | **heading differs** |
-| 2 | div .sigcard | 406 | section "All categories" | 2934 | **7.2x too tall** |
+| 1 | div "Sixteen ways into the same shelf." | 229 | section "Business ideas, by category." | 330 | **heading differs** |
+| 2 | div .sigcard | 406 | section "All categories" | 2939 | **7.2x too tall** |
 | 3 | div "Business ideas where most of the work is auto…" | 1509 | - | - | **MISSING in build** |
 | 4 | p .lede | 51 | - | - | **MISSING in build** |
 | 5 | div "Or see everything at once." | 185 | - | - | **MISSING in build** |
@@ -132,23 +122,23 @@ Headings: drawing has **2**, built has **11**.
 
 `how-it-works.html` vs `/how-it-works`
 
-Page height: drawing **5444px**, built **8525px** (+3081px, 1.57x).
+Page height: drawing **5444px**, built **8969px** (+3525px, 1.65x).
 
 Sections: drawing has **23**, built has **11**.
 
 | # | drawing | h | built | h | verdict |
 | - | ------- | - | ----- | - | ------- |
 | 0 | p .crumb | 41 | div .mx-auto | 66 | **1.6x too tall** |
-| 1 | div "Every idea faces checks built to kill it." | 229 | section "Every idea faces checks built to kill it." | 418 | **1.8x too tall** |
-| 2 | div .facts | 94 | section .bg-bg | 515 | **5.5x too tall** |
-| 3 | div .sigcard | 586 | section "Where the ideas went" | 1093 | **1.9x too tall** |
-| 4 | p .lede | 25 | section "One idea, all the way through" | 1914 | **76.6x too tall** |
-| 5 | h2 .sec | 35 | section "The checks, in order. One hard fail and it st…" | 2118 | **60.5x too tall** |
-| 6 | p .lede | 51 | section "Then a second wave of agents attacks the surv…" | 470 | **9.2x too tall** |
-| 7 | div "Retention chasing service for building subcon…" | 221 | section "Then a person reviews it." | 408 | **heading differs** |
-| 8 | div .card | 1247 | section "The kill log" | 395 | **3.2x too short** |
-| 9 | p .metastrip | 25 | section "The honest limits" | 321 | **12.8x too tall** |
-| 10 | p .lede | 51 | section "See what made it through." | 210 | **4.1x too tall** |
+| 1 | div "Every idea faces checks built to kill it." | 229 | section "Every idea faces checks built to kill it." | 439 | **1.9x too tall** |
+| 2 | div .facts | 94 | section .bg-bg | 533 | **5.7x too tall** |
+| 3 | div .sigcard | 586 | section "Where the ideas went" | 1099 | **1.9x too tall** |
+| 4 | p .lede | 25 | section "One idea, all the way through" | 2014 | **80.6x too tall** |
+| 5 | h2 .sec | 35 | section "The checks, in order. One hard fail and it st…" | 2314 | **66.1x too tall** |
+| 6 | p .lede | 51 | section "Then a second wave of agents attacks the surv…" | 502 | **9.8x too tall** |
+| 7 | div "Retention chasing service for building subcon…" | 221 | section "Then a person reviews it." | 461 | **heading differs** |
+| 8 | div .card | 1247 | section "The kill log" | 393 | **3.2x too short** |
+| 9 | p .metastrip | 25 | section "The honest limits" | 344 | **13.8x too tall** |
+| 10 | p .lede | 51 | section "See what made it through." | 209 | **4.1x too tall** |
 | 11 | h2 .sec | 35 | - | - | **MISSING in build** |
 | 12 | p .lede | 51 | - | - | **MISSING in build** |
 | 13 | div .card | 824 | - | - | **MISSING in build** |
@@ -164,7 +154,6 @@ Sections: drawing has **23**, built has **11**.
 
 Headings: drawing has **8**, built has **24**.
 
-- 0: size, "Every idea faces checks built to kill it." drawing 50px / built 32px
 - 1: text, drawing "One idea, all the way through" / built "Where the ideas went"
 - 2: text, drawing "Retention chasing service for building subcontractors" / built "One idea, all the way through"
 - 3: text, drawing "Six checks, in order. One hard fail and it stops." / built "Gig Deactivation Reversal Dossier"
@@ -172,19 +161,19 @@ Headings: drawing has **8**, built has **24**.
 - 5: text, drawing "Then a person reviews it." / built "Real pain"
 - 6: text, drawing "The honest limits" / built "Lasting value"
 - 7: text, drawing "See what made it through." / built "CHC Appeal Builder"
-- 8: EXTRA heading in build, "Room past the competition" (23px)
+- 8: EXTRA heading in build, "Room past the competition" (31px)
 - 9: EXTRA heading in build, "The Brief Winnow" (14px)
-- 10: EXTRA heading in build, "A payer who can pay" (23px)
+- 10: EXTRA heading in build, "A payer who can pay" (31px)
 - 11: EXTRA heading in build, "Sound Check Rounds, the monthly noise test that keeps…" (14px)
-- 12: EXTRA heading in build, "A route to the buyer" (23px)
+- 12: EXTRA heading in build, "A route to the buyer" (31px)
 - 13: EXTRA heading in build, "RateProof, shows freelance creatives what to actually…" (14px)
-- 14: EXTRA heading in build, "No legal landmine" (23px)
+- 14: EXTRA heading in build, "No legal landmine" (31px)
 - 15: EXTRA heading in build, "SwapShift, the platform where NHS and care staff sell…" (14px)
-- 16: EXTRA heading in build, "Then a second wave of agents attacks the survivor." (32px)
-- 17: EXTRA heading in build, "Then a person reviews it." (32px)
-- 18: EXTRA heading in build, "The kill log" (32px)
-- 19: EXTRA heading in build, "The honest limits" (32px)
-- 20: EXTRA heading in build, "See what made it through." (32px)
+- 16: EXTRA heading in build, "Then a second wave of agents attacks the survivor." (31px)
+- 17: EXTRA heading in build, "Then a person reviews it." (31px)
+- 18: EXTRA heading in build, "The kill log" (31px)
+- 19: EXTRA heading in build, "The honest limits" (31px)
+- 20: EXTRA heading in build, "See what made it through." (31px)
 - 21: EXTRA heading in build, "Store" (12px)
 - 22: EXTRA heading in build, "Legal" (12px)
 - 23: EXTRA heading in build, "Contact" (12px)
@@ -201,15 +190,15 @@ Headings: drawing has **8**, built has **24**.
 
 `kill-log.html` vs `/kill-log`
 
-Page height: drawing **5203px**, built **40338px** (+35135px, 7.75x).
+Page height: drawing **5203px**, built **7614px** (+2411px, 1.46x).
 
 Sections: drawing has **14**, built has **3**.
 
 | # | drawing | h | built | h | verdict |
 | - | ------- | - | ----- | - | ------- |
 | 0 | p .crumb | 41 | div .mx-auto | 66 | **1.6x too tall** |
-| 1 | div "1,364 ideas killed." | 176 | section "1,364 ideas killed." | 298 | **1.7x too tall** |
-| 2 | div .facts | 94 | section "How ideas die" | 39426 | **419.4x too tall** |
+| 1 | div "1,364 ideas killed." | 176 | section "1,364 ideas killed." | 336 | **1.9x too tall** |
+| 2 | div .facts | 94 | section "How ideas die" | 6665 | **70.9x too tall** |
 | 3 | p .lede | 101 | - | - | **MISSING in build** |
 | 4 | div .sigcard | 892 | - | - | **MISSING in build** |
 | 5 | h2 .sec | 35 | - | - | **MISSING in build** |
@@ -224,7 +213,6 @@ Sections: drawing has **14**, built has **3**.
 
 Headings: drawing has **4**, built has **7**.
 
-- 0: size, "1,364 ideas killed." drawing 50px / built 32px
 - 1: size, "How ideas die" drawing 31px / built 23px
 - 2: text, drawing "Nothing on the shelf for your space yet?" / built "Now read one that survived all of it."
 - 3: text, drawing "Now read one that survived all of it." / built "Nothing on the shelf for your space yet?"
@@ -236,45 +224,44 @@ Headings: drawing has **4**, built has **7**.
 
 | role | drawing (colour × elements) | built | verdict |
 | ---- | --------------------------- | ----- | ------- |
-| text | #17191c×129 #8b9096×46 #565b62×43 #b4342b×8 #ffffff×3 #2447c9×2 | #8b9096×1314 #17191c×1297 #565b62×462 #8f2822×400 #ffffff×4 #14706a×2 | **top text differs**<br>**not in drawing: #8f2822 #14706a #8a6d0b**<br>missing: #2447c9 |
-| background | #b4342b×637 #c2544c×204 #ce6a62×192 #d8837c×143 #e09c96×84 #14706a×81 | #ffffff×18 #17191c×14 #f4f4f5×12 #fafaf7×7 oklab(0.651123 -0.00311366 -0.010174 / 0.35)×5 #b4342b×1 | **top background differs**<br>**not in drawing: #17191c #f4f4f5 oklab(0.651123 -0.00311366 -0.010174 / 0.35)**<br>missing: #c2544c #ce6a62 #d8837c #e09c96 #c9a227 #d4b455 #b8bcc0 #8b9096 #a2a7ac #deded7 |
-| border | #17191c×19 #e7e7e1×17 #b4342b×8 | #e7e7e1×419 #17191c×4 #8e8e96×3 #14706a×1 | **top border differs**<br>**not in drawing: #8e8e96 #14706a**<br>missing: #b4342b |
+| text | #17191c×129 #8b9096×46 #565b62×43 #b4342b×8 #ffffff×3 #2447c9×2 | #17191c×219 #8b9096×171 #565b62×102 #8f2822×40 #ffffff×4 #14706a×2 | **not in drawing: #8f2822 #14706a #8a6d0b**<br>missing: #2447c9 |
+| background | #b4342b×637 #c2544c×204 #ce6a62×192 #d8837c×143 #e09c96×84 #14706a×81 | #ffffff×19 #17191c×14 #f4f4f5×12 #fafaf7×7 oklab(0.651123 -0.00311366 -0.010174 / 0.35)×5 #b4342b×1 | **top background differs**<br>**not in drawing: #17191c #f4f4f5 oklab(0.651123 -0.00311366 -0.010174 / 0.35)**<br>missing: #c2544c #ce6a62 #d8837c #e09c96 #c9a227 #d4b455 #b8bcc0 #8b9096 #a2a7ac #deded7 |
+| border | #17191c×19 #e7e7e1×17 #b4342b×8 | #e7e7e1×60 #17191c×4 #8e8e96×3 #14706a×1 | **top border differs**<br>**not in drawing: #8e8e96 #14706a**<br>missing: #b4342b |
 
 ## faq
 
 `faq.html` vs `/faq`
 
-Page height: drawing **2031px**, built **2566px** (+535px, 1.26x).
+Page height: drawing **2031px**, built **2715px** (+684px, 1.34x).
 
 Sections: drawing has **6**, built has **5**.
 
 | # | drawing | h | built | h | verdict |
 | - | ------- | - | ----- | - | ------- |
 | 0 | p .crumb | 41 | div .mx-auto | 66 | **1.6x too tall** |
-| 1 | div "Common questions." | 149 | section "Common questions." | 211 | ok |
-| 2 | div .chips | 32 | section "Why not just ask a chatbot?" | 1071 | **33.5x too tall** |
+| 1 | div "Common questions." | 149 | section "Common questions." | 228 | **1.5x too tall** |
+| 2 | div .chips | 32 | section "Why not just ask a chatbot?" | 1196 | **37.4x too tall** |
 | 3 | div .faq | 860 | section "A human reads every email" | 380 | **2.3x too short** |
-| 4 | div "A human reads every email" | 106 | section "Still deciding?" | 242 | **heading differs** |
+| 4 | div "A human reads every email" | 106 | section "Still deciding?" | 248 | **heading differs** |
 | 5 | div "Still deciding?" | 185 | - | - | **MISSING in build** |
 
 Headings: drawing has **3**, built has **19**.
 
-- 0: size, "Common questions." drawing 50px / built 32px
 - 1: text, drawing "A human reads every email" / built "Why not just ask a chatbot?"
 - 2: text, drawing "Still deciding?" / built "What am I actually buying?"
-- 3: EXTRA heading in build, "What makes a pack evidence-backed?" (16px)
-- 4: EXTRA heading in build, "If 500 people buy the same pack, aren’t 500 people co…" (16px)
-- 5: EXTRA heading in build, "Are the opportunities guaranteed to work?" (16px)
-- 6: EXTRA heading in build, "Can I get a refund?" (16px)
-- 7: EXTRA heading in build, "How do I get the pack after I pay?" (16px)
-- 8: EXTRA heading in build, "What format is it delivered in?" (16px)
-- 9: EXTRA heading in build, "What happens to ideas that don’t survive?" (16px)
-- 10: EXTRA heading in build, "Can I share or resell a pack?" (16px)
-- 11: EXTRA heading in build, "Is a pack financial or investment advice?" (16px)
-- 12: EXTRA heading in build, "Is the store live right now?" (16px)
-- 13: EXTRA heading in build, "Can I have my data removed?" (16px)
+- 3: EXTRA heading in build, "What makes a pack evidence-backed?" (23px)
+- 4: EXTRA heading in build, "If 500 people buy the same pack, aren’t 500 people co…" (23px)
+- 5: EXTRA heading in build, "Are the opportunities guaranteed to work?" (23px)
+- 6: EXTRA heading in build, "Can I get a refund?" (23px)
+- 7: EXTRA heading in build, "How do I get the pack after I pay?" (23px)
+- 8: EXTRA heading in build, "What format is it delivered in?" (23px)
+- 9: EXTRA heading in build, "What happens to ideas that don’t survive?" (23px)
+- 10: EXTRA heading in build, "Can I share or resell a pack?" (23px)
+- 11: EXTRA heading in build, "Is a pack financial or investment advice?" (23px)
+- 12: EXTRA heading in build, "Is the store live right now?" (23px)
+- 13: EXTRA heading in build, "Can I have my data removed?" (23px)
 - 14: EXTRA heading in build, "A human reads every email" (14px)
-- 15: EXTRA heading in build, "Still deciding?" (23px)
+- 15: EXTRA heading in build, "Still deciding?" (31px)
 - 16: EXTRA heading in build, "Store" (12px)
 - 17: EXTRA heading in build, "Legal" (12px)
 - 18: EXTRA heading in build, "Contact" (12px)
@@ -291,14 +278,14 @@ Headings: drawing has **3**, built has **19**.
 
 `pricing.html` vs `/pricing`
 
-Page height: drawing **4515px**, built **4373px** (-142px, 0.97x).
+Page height: drawing **4515px**, built **4436px** (-79px, 0.98x).
 
 Sections: drawing has **22**, built has **2**.
 
 | # | drawing | h | built | h | verdict |
 | - | ------- | - | ----- | - | ------- |
 | 0 | p .crumb | 41 | div .mx-auto | 66 | **1.6x too tall** |
-| 1 | div "From £19.99 a pack." | 232 | section "From £19.99 a pack." | 3759 | **16.2x too tall** |
+| 1 | div "From £19.99 a pack." | 232 | section "From £19.99 a pack." | 3822 | **16.5x too tall** |
 | 2 | h2 .sec | 35 | - | - | **MISSING in build** |
 | 3 | p .lede | 51 | - | - | **MISSING in build** |
 | 4 | div .ladder | 319 | - | - | **MISSING in build** |
@@ -322,15 +309,14 @@ Sections: drawing has **22**, built has **2**.
 
 Headings: drawing has **7**, built has **12**.
 
-- 0: size, "From £19.99 a pack." drawing 50px / built 32px
 - 1: text, drawing "What changes is the size of the opportunity. The pack…" / built "What this costs when you commission it"
 - 2: text, drawing "What this costs when you commission it" / built "What changes is the size of the opportunity. The pack…"
 - 3: text, drawing "Why once, not another subscription" / built "What you get, at every price"
 - 4: text, drawing "What you get, at every price" / built "What you do not get"
 - 5: text, drawing "What you do not get" / built "14 day money back"
 - 6: text, drawing "£19.99 to £99.99. Yours forever." / built "Every claim cited"
-- 7: EXTRA heading in build, "Why £49.99 once, not another subscription" (23px)
-- 8: EXTRA heading in build, "£19.99 to £99.99. Yours forever." (23px)
+- 7: EXTRA heading in build, "Why £49.99 once, not another subscription" (31px)
+- 8: EXTRA heading in build, "£19.99 to £99.99. Yours forever." (31px)
 - 9: EXTRA heading in build, "Store" (12px)
 - 10: EXTRA heading in build, "Legal" (12px)
 - 11: EXTRA heading in build, "Contact" (12px)
@@ -347,14 +333,14 @@ Headings: drawing has **7**, built has **12**.
 
 `about.html` vs `/about`
 
-Page height: drawing **2244px**, built **2187px** (-57px, 0.97x).
+Page height: drawing **2244px**, built **2268px** (+24px, 1.01x).
 
 Sections: drawing has **8**, built has **2**.
 
 | # | drawing | h | built | h | verdict |
 | - | ------- | - | ----- | - | ------- |
 | 0 | p .crumb | 41 | div .mx-auto | 66 | **1.6x too tall** |
-| 1 | div "So I built the part I kept losing to doubt." | 158 | section "So I built the part I kept losing to doubt." | 1573 | **10.0x too tall** |
+| 1 | div "So I built the part I kept losing to doubt." | 158 | section "So I built the part I kept losing to doubt." | 1654 | **10.5x too tall** |
 | 2 | div .essay | 609 | - | - | **MISSING in build** |
 | 3 | div .facts | 94 | - | - | **MISSING in build** |
 | 4 | h2 .sec | 35 | - | - | **MISSING in build** |
@@ -364,7 +350,6 @@ Sections: drawing has **8**, built has **2**.
 
 Headings: drawing has **3**, built has **6**.
 
-- 0: size, "So I built the part I kept losing to doubt." drawing 50px / built 32px
 - 3: EXTRA heading in build, "Store" (12px)
 - 4: EXTRA heading in build, "Legal" (12px)
 - 5: EXTRA heading in build, "Contact" (12px)
@@ -381,14 +366,14 @@ Headings: drawing has **3**, built has **6**.
 
 `account.html` vs `/account`
 
-Page height: drawing **1826px**, built **1270px** (-556px, 0.70x).
+Page height: drawing **1826px**, built **1288px** (-538px, 0.71x).
 
 Sections: drawing has **9**, built has **2**.
 
 | # | drawing | h | built | h | verdict |
 | - | ------- | - | ----- | - | ------- |
 | 0 | div "Your shelf" | 118 | div .mx-auto | 66 | **1.8x too short** |
-| 1 | div .facts | 94 | div "Sign in" | 656 | **7.0x too tall** |
+| 1 | div .facts | 94 | div "Sign in" | 674 | **7.2x too tall** |
 | 2 | h2 .sec | 35 | - | - | **MISSING in build** |
 | 3 | p .lede | 25 | - | - | **MISSING in build** |
 | 4 | div "Material price cover for UK self-employed tra…" | 235 | - | - | **MISSING in build** |
@@ -418,14 +403,14 @@ Headings: drawing has **6**, built has **4**.
 
 `refund.html` vs `/refund`
 
-Page height: drawing **1664px**, built **3703px** (+2039px, 2.23x).
+Page height: drawing **1664px**, built **3726px** (+2062px, 2.24x).
 
 Sections: drawing has **4**, built has **2**.
 
 | # | drawing | h | built | h | verdict |
 | - | ------- | - | ----- | - | ------- |
 | 0 | p .crumb | 41 | div .mx-auto | 66 | **1.6x too tall** |
-| 1 | div "Refund policy" | 150 | div "Refund Policy" | 3089 | **heading differs** |
+| 1 | div "Refund policy" | 150 | div "Refund Policy" | 3112 | **heading differs** |
 | 2 | div "The short version" | 666 | - | - | **MISSING in build** |
 | 3 | div "Read one free before you buy anything." | 185 | - | - | **MISSING in build** |
 
@@ -439,7 +424,7 @@ Headings: drawing has **2**, built has **12**.
 - 5: EXTRA heading in build, "5. Chargebacks and payment disputes" (16px)
 - 6: EXTRA heading in build, "6. Disclaimer on Pack content" (16px)
 - 7: EXTRA heading in build, "7. Contact" (16px)
-- 8: EXTRA heading in build, "Read one free before you buy anything." (23px)
+- 8: EXTRA heading in build, "Read one free before you buy anything." (31px)
 - 9: EXTRA heading in build, "Store" (12px)
 - 10: EXTRA heading in build, "Legal" (12px)
 - 11: EXTRA heading in build, "Contact" (12px)
@@ -456,15 +441,15 @@ Headings: drawing has **2**, built has **12**.
 
 `sample.html` vs `/sample`
 
-Page height: drawing **2168px**, built **6966px** (+4798px, 3.21x).
+Page height: drawing **2168px**, built **7077px** (+4909px, 3.26x).
 
 Sections: drawing has **4**, built has **3**.
 
 | # | drawing | h | built | h | verdict |
 | - | ------- | - | ----- | - | ------- |
 | 0 | p .crumb | 41 | div .mx-auto | 66 | **1.6x too tall** |
-| 1 | div "Gig Deactivation Reversal Dossier" | 300 | section "The opening of a real pack, in full." | 298 | **heading differs** |
-| 2 | div "Can the payer actually pay?" | 993 | section "2 questions the evidence would not settle" | 6054 | **heading differs** |
+| 1 | div "Gig Deactivation Reversal Dossier" | 300 | section "The opening of a real pack, in full." | 365 | **heading differs** |
+| 2 | div "Can the payer actually pay?" | 993 | section "2 questions the evidence would not settle" | 6098 | **heading differs** |
 | 3 | div "Now read one that survived all of it." | 210 | - | - | **MISSING in build** |
 
 Headings: drawing has **2**, built has **17**.
@@ -472,17 +457,17 @@ Headings: drawing has **2**, built has **17**.
 - 0: text, drawing "Gig Deactivation Reversal Dossier" / built "The opening of a real pack, in full."
 - 1: text, drawing "Now read one that survived all of it." / built "2 questions the evidence would not settle"
 - 2: EXTRA heading in build, "Gig Deactivation Reversal Dossier" (31px)
-- 3: EXTRA heading in build, "Where this starts" (23px)
-- 4: EXTRA heading in build, "What we found — 4 things that hold up" (23px)
-- 5: EXTRA heading in build, "What we could not settle" (23px)
-- 6: EXTRA heading in build, "What you would be selling" (23px)
-- 7: EXTRA heading in build, "The bet" (23px)
-- 8: EXTRA heading in build, "The shape of it" (23px)
-- 9: EXTRA heading in build, "The field: who is already there" (23px)
-- 10: EXTRA heading in build, "What we read, in their words" (23px)
-- 11: EXTRA heading in build, "You have read the reporting. The rest is the working …" (23px)
-- 12: EXTRA heading in build, "Every pack on the shelf opens like this." (31px)
-- 13: EXTRA heading in build, "Nothing on the shelf for your space yet?" (16px)
+- 3: EXTRA heading in build, "Where this starts" (31px)
+- 4: EXTRA heading in build, "What we found — 4 things that hold up" (22px)
+- 5: EXTRA heading in build, "What we could not settle" (22px)
+- 6: EXTRA heading in build, "What you would be selling" (31px)
+- 7: EXTRA heading in build, "The bet" (22px)
+- 8: EXTRA heading in build, "The shape of it" (22px)
+- 9: EXTRA heading in build, "The field: who is already there" (31px)
+- 10: EXTRA heading in build, "What we read, in their words" (22px)
+- 11: EXTRA heading in build, "You have read the reporting. The rest is the working …" (31px)
+- 12: EXTRA heading in build, "Now read one that survived all of it." (31px)
+- 13: EXTRA heading in build, "Nothing on the shelf for your space yet?" (22px)
 - 14: EXTRA heading in build, "Store" (12px)
 - 15: EXTRA heading in build, "Legal" (12px)
 - 16: EXTRA heading in build, "Contact" (12px)
@@ -497,4 +482,29 @@ Headings: drawing has **2**, built has **17**.
 
 ## 404
 
-Could not compare: drawing ok, built HTTP 404.
+`404.html` vs `/404`
+
+Page height: drawing **1179px**, built **911px** (-268px, 0.77x).
+
+Sections: drawing has **2**, built has **4**.
+
+| # | drawing | h | built | h | verdict |
+| - | ------- | - | ----- | - | ------- |
+| 0 | div "That page isn't here." | 362 | p .code | 20 | **18.1x too short** |
+| 1 | div "Abandoned-vendor alerts for UK software opera…" | 269 | h1 . | 53 | **5.1x too short** |
+| 2 | - | - | p .lede | 76 | **EXTRA in build** |
+| 3 | - | - | div .ctarow | 52 | **EXTRA in build** |
+
+Headings: drawing has **2**, built has **4**.
+
+- 1: text, drawing "Abandoned-vendor alerts for UK software operations ma…" / built "Store"
+- 2: EXTRA heading in build, "Legal" (12px)
+- 3: EXTRA heading in build, "Contact" (12px)
+
+### Colours
+
+| role | drawing (colour × elements) | built | verdict |
+| ---- | --------------------------- | ----- | ------- |
+| text | #17191c×40 #565b62×22 #8b9096×11 #000000×1 #ffffff×1 #2447c9×1 | #17191c×35 #565b62×20 #8b9096×10 #000000×1 #ffffff×1 | missing: #2447c9 |
+| background | #fafaf7×5 #ffffff×3 #17191c×2 | #fafaf7×6 #17191c×2 #ffffff×1 | ok |
+| border | #e7e7e1×4 #17191c×1 | #e7e7e1×3 #17191c×1 | ok |

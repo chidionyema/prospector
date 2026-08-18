@@ -38,11 +38,12 @@ const top = gates[0];
 export function KillGateBand() {
   const max = top[1];
   return (
-    <section className="band">
+    <div className="wrap">
+      <section className="band">
       <div className="band-in">
         <p className="fig dead num">{top[1].toLocaleString('en-GB')}</p>
         <div>
-          <h2 className="sub">The check that kills most ideas is not the one people expect</h2>
+          <h4>The check that kills most ideas is not the one people expect</h4>
           <p>
             Of {RESEARCH_STATS.killed.toLocaleString('en-GB')} kills, {top[1].toLocaleString('en-GB')}{' '}
             died on the same one: the idea cleared every hard gate and still did not score high
@@ -65,17 +66,19 @@ export function KillGateBand() {
         </div>
       </div>
     </section>
+    </div>
   );
 }
 
 export function SourcesBand({ sourcesTotal, packCount }: { sourcesTotal: number; packCount: number }) {
   if (!sourcesTotal || !packCount) return null;
   return (
-    <section className="band">
+    <div className="wrap">
+      <section className="band">
       <div className="band-in">
         <p className="fig num">{sourcesTotal.toLocaleString('en-GB')}</p>
         <div>
-          <h2 className="sub">Nothing here rests on a number we cannot show you</h2>
+          <h4>Nothing here rests on a number we cannot show you</h4>
           <p>
             Every figure in every pack links back to the page it came from: tribunal decisions, ONS
             tables, Companies House filings, council policy documents. Where a claim could not be
@@ -88,5 +91,6 @@ export function SourcesBand({ sourcesTotal, packCount }: { sourcesTotal: number;
         </div>
       </div>
     </section>
+    </div>
   );
 }

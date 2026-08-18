@@ -1521,7 +1521,13 @@ function CatalogBrowser({
                   difference in the heading, and one line underneath says what buying one of these
                   actually means. Each card in the group also carries the "For US rules" chip that
                   the on-market cards no longer waste space on. */}
-              {grouped.others.map((group) => (
+              {/* TWO GROUPS, NOT FIVE (2026-08-18). `mockups/index.html` section 13 draws exactly
+                  two market appendices. The page printed every group it had -- US, UK, US-FL,
+                  US-CA, US-TX -- five headed sections of three rows each below a shelf that had
+                  already capped itself, and that is most of the 3,900px this page runs over the
+                  drawing. The rest arrive with the same "show all" the shelf uses, so nothing is
+                  hidden, it is just not all printed before anyone asked. */}
+              {(showAll ? grouped.others : grouped.others.slice(0, 2)).map((group) => (
                 /* A REAL RULE, NOT A GAP (2026-08-14, founder review at 390px). The boundary
                    between the reader's own shelf and this appendix was `mt-16` and a
                    `text-meta` heading -- on a phone, after forty rows, that is whitespace
@@ -2346,9 +2352,13 @@ export default function Home({ packs, stats, flags, initialState, market, curren
             draft of this heading: the specimen shows a page of one of the nine, but the list below
             still lists all nine, so a heading that subtracted the one shown would have been an
             arithmetic claim its own list contradicts. */}
+        {/* THE DRAWING'S HEADING AND LEDE (`mockups/index.html:564`). This read "The full
+            contents" with no lede, which names the section by its position in the page rather
+            than by what it gives the reader. Founder, 2026-08-18: use the mockup's version. */}
         <PackContentsSection
           className="mt-16 border-t border-border pt-12"
-          heading="The full contents"
+          heading="What you actually get"
+          lead="The same fourteen documents sit inside every pack, whatever it costs."
         />
         {/*
           `MethodCostAnchor` and `ComparisonBlock` were REMOVED from the homepage (2026-08-06) and
