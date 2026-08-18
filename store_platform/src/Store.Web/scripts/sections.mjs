@@ -145,6 +145,16 @@ const EXCEPT = [
  */
 const STRUCT_EXCEPT = {
   killgrid: 'the 1,444-square field is one <svg> of rects, not 1,444 <i> elements',
+  // State the probe's fresh browser is never in. Each of these IS emitted by the build, on a
+  // visitor who has filtered or has already opened a pack; the drawing shows that visitor and the
+  // probe cannot be them. Verified by reading the source, not by assuming: `new` is PackRow.tsx and
+  // PackTileGrid's "Seen" badge, the rest are FilterBar.tsx and AppliedFilterChips.
+  new: 'the "Seen" badge, drawn only for a pack this browser has already opened',
+  on: 'a filter button, drawn only while that facet has a selection',
+  badge: 'the phone filter count, drawn only while a filter is on',
+  'active-row': 'the applied-filter row, drawn only while a filter is on',
+  pill: 'an applied-filter chip, drawn only while a filter is on',
+  clear: 'the clear-all link, drawn only while two or more filters are on',
 };
 
 async function styleParity(page, html, cssClasses) {

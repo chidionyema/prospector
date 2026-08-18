@@ -167,7 +167,10 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
     <div className="min-h-dvh bg-bg font-sans text-text antialiased">
       <a
         href="#main"
-        className="sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:left-4 focus-visible:top-4 focus-visible:z-50 focus-visible:rounded-md focus-visible:bg-primary focus-visible:px-4 focus-visible:py-2 focus-visible:text-on-primary"
+        /* The drawing's `.skip` (`mockups/index.html:264`): parked off-screen, and drawn as a
+           dark chip at the top left the moment it takes focus. Ten focus-visible utilities said
+           the same thing by hand. */
+        className="skip"
       >
         Skip to content
       </a>

@@ -1081,6 +1081,14 @@ function CatalogBrowser({
    */
   const barControls = (
     <div ref={shelfControlsRef} className="mb-8 pt-8">
+      {/* THE DRAWING'S SECTION 6 (`mockups/index.html`), which the bar had lost: the shelf's own
+          heading and the one line that says the filters combine. The note this replaces argued
+          that a control panel needing a caption is a broken control panel. That argument was about
+          FOUR stacked controls competing; one row of four is a different object, and the drawing
+          gives it this line. No dash in it (founder's standing rule on copy): the mockup's em dash
+          is a full stop here. */}
+      <h3 className="sub">Narrow it down</h3>
+      <p className="lede mb-4">Four filters. Use one, or all of them. They combine.</p>
       <FilterBar
         packs={packs}
         state={state}
@@ -1414,7 +1422,9 @@ function CatalogBrowser({
                       pins that string as the proof the breakdown is computed from live data rather
                       than typed. The total is appended as a further part rather than wrapped around
                       them, which satisfies both: the line still reads as one `·`-joined series. */}
-                  <p className="mono">
+                  {/* The drawing's `.spread` (`mockups/index.html:509`), the centred mono line
+                      under the shelf. */}
+                  <p className="spread num">
                     {[
                       `${gridPacks.length} ${marketLabel(market)} packs`,
                       ...grouped.others.map((group) => `${group.packs.length} ${group.label} packs`),
@@ -2338,7 +2348,8 @@ export default function Home({ packs, stats, flags, initialState, market, curren
         packCount={packs.filter((p) => (p.sourceCount ?? 0) > 0).length}
       />
 
-      <SectionBand bandId="home-stress-tested" bg="surface2" width="7xl" className="py-10 md:py-24">
+      {/* The drawing's section 16, `.close`: a 2px rule above it and the last word of the page. */}
+      <SectionBand bandId="home-stress-tested" bg="surface2" width="7xl" className="close py-10 md:py-24">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-16">
         <div className="max-w-[46rem]">
           {/*

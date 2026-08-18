@@ -184,27 +184,26 @@ export function AppliedFilterChips({
 
   if (chips.length === 0) return null;
 
+  /* THE DRAWING'S `.active-row` (`mockups/index.html` section 6, directly under the filter bar):
+     a row of `.pill` chips, each with its own remove button, then a `.clear` link. It was a row of
+     filled `chipClasses` buttons where the whole chip was the remove target, which is a different
+     object: a reader could not tell a chip that REMOVES a filter from a chip that SETS one, since
+     both were drawn the same way. */
   return (
-    <div className={cx('flex flex-wrap items-center gap-1.5', className)}>
+    <div className={cx('active-row', className)}>
       {chips.map((chip) => (
-        <button
-          key={chip.key}
-          type="button"
-          onClick={chip.remove}
-          aria-label={`Remove filter: ${chip.text}`}
-          className={chipClasses({ selected: true, removable: true, className: 'group/chip' })}
-        >
+        <span key={chip.key} className="pill">
           {chip.text}
-          <span className="flex h-4 w-4 items-center justify-center rounded-sm text-white/70 transition-colors group-hover/chip:text-white">
-            <Icon name="close" size={10} />
-          </span>
-        </button>
+          <button type="button" onClick={chip.remove} aria-label={`Remove filter: ${chip.text}`}>
+            <Icon name="close" size={11} />
+          </button>
+        </span>
       ))}
       {chips.length > 1 && (
         <button
           type="button"
+          className="clear"
           onClick={() => onChange({ ...state, q: '', advantage: [], sector: null, payer: null, effort: null, commitment: null, mechanism: null })}
-          className="ml-1 py-3 text-meta font-medium text-muted underline underline-offset-4 transition-colors hover:text-text"
         >
           Clear all
         </button>
