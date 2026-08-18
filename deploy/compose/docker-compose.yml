@@ -52,12 +52,17 @@ services:
     # carries no key. On Fly the same variables arrive via `fly secrets set`; the
     # container cannot tell the difference, which is the point.
     env_file:
-      # MUST EXIST, even empty. `touch .env` is step one of the escape hatch, and
-      # deploy/compose/README.md says so. Compose has a `required: false` form that would
-      # make this optional, but it landed in Compose v2.24 and this laptop runs v2.19.1
-      # (measured 2026-08-18), so using it would break one of the three targets this file
-      # exists to serve. Revisit when every box is past 2.24.
-      - ../../.env
+      # Optional on purpose. A fresh `git clone` on a rented box has no .env yet, and a
+      # stack that cannot even be PARSED before its secrets arrive is not an escape hatch.
+      # Measured 2026-08-18 with the plain string form and no .env present: exit 14,
+      # "Failed to load .env: no such file or directory" - the file failed in precisely the
+      # situation it exists for.
+      #
+      # NEEDS COMPOSE >= 2.24. The laptop was on 2.19.1 and was upgraded for this
+      # (`brew install docker-compose`, now 5.5.0). A box older than 2.24 rejects the
+      # mapping form with "env_file.0 must be a string".
+      - path: ../../.env
+        required: false
 
     environment:
       PROSPECTOR_STORE_DIR: /data/store
@@ -102,12 +107,17 @@ services:
     container_name: prospector-store-api
 
     env_file:
-      # MUST EXIST, even empty. `touch .env` is step one of the escape hatch, and
-      # deploy/compose/README.md says so. Compose has a `required: false` form that would
-      # make this optional, but it landed in Compose v2.24 and this laptop runs v2.19.1
-      # (measured 2026-08-18), so using it would break one of the three targets this file
-      # exists to serve. Revisit when every box is past 2.24.
-      - ../../.env
+      # Optional on purpose. A fresh `git clone` on a rented box has no .env yet, and a
+      # stack that cannot even be PARSED before its secrets arrive is not an escape hatch.
+      # Measured 2026-08-18 with the plain string form and no .env present: exit 14,
+      # "Failed to load .env: no such file or directory" - the file failed in precisely the
+      # situation it exists for.
+      #
+      # NEEDS COMPOSE >= 2.24. The laptop was on 2.19.1 and was upgraded for this
+      # (`brew install docker-compose`, now 5.5.0). A box older than 2.24 rejects the
+      # mapping form with "env_file.0 must be a string".
+      - path: ../../.env
+        required: false
 
     environment:
       ASPNETCORE_ENVIRONMENT: Production
