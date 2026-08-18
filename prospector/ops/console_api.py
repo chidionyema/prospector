@@ -2701,6 +2701,19 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     # on disk but unclassified until now. `run_ops_console.sh` and `build_sample_fixture.py`
     # are covered above; these two are the remainder.
     "scripts/ci_local.py": "replays a CI job's shell steps on this machine; a developer's loop",
+    "scripts/prune_branches.py": "retires merged git branches and dead worktrees; a developer's "
+                                 "housekeeping, not an estate action",
+    "scripts/warm_ci_uv_cache.sh": "prebuilds wheels into the runners' shared uv cache; CI "
+                                   "plumbing, run on the runner box",
+    "tools/_audit_baseline_tmp.py": "a one-off inventory of failure-swallowing call sites; the "
+                                    "audit it fed is done, it is kept as the baseline",
+    # the migration control plane. Both are reachable from the console already, as actions rather
+    # than as tool buttons, so listing them again would give the operator two ways to do one thing.
+    "scripts/engine_failover.py": "the engine failover control plane; the console drives it through "
+                                  "the engine.switch, engine.arm and engine.disarm actions and the "
+                                  "engine_location view, not as a tool button",
+    "scripts/store_migrate.py": "packs and verifies the engine store during a cutover; "
+                                "deploy/cutover.sh calls it, never an operator",
 }
 
 
