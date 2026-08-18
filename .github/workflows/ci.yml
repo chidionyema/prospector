@@ -79,9 +79,38 @@ on:
 # One shared group per ref, cancelling in progress, is what both defects want. The new run cancels
 # the one it superseded and takes its slot, so nothing is evicted while pending and nothing piles
 # up. main is still tested on every push -- the run that reports is the newest one.
+# Superseding is right on a branch and wrong on main.
+#
+# On a pull request, an older commit's result is worthless the moment a newer commit exists, so
+# cancelling it frees a runner for the answer somebody is actually waiting on.
+#
+# `github.ref` is `refs/heads/main` for EVERY push to main, so under `cancel-in-progress: true`
+# each merge cancelled main's own verification run. The python job takes about twenty minutes;
+# main's run only ever finished if no second merge landed inside that window. With several agents
+# merging, it almost never did.
+#
+# Measured 2026-08-18, main's own ci.yml runs, newest first:
+#
+#   07:01  501883f  running     <- cancelled two minutes later by the next merge
+#   07:00  93df868  cancelled
+#   04:30  bdc957d  cancelled
+#   04:28  2e6108e  cancelled
+#   03:43  18a6104  cancelled
+#   03:22  9951511  cancelled
+#   03:17  b2d30c2  cancelled
+#
+#   38 cancelled, 20 failed, 36 succeeded across main's last 94 runs.
+#
+# This is why a broken main was invisible. `4eba810` merged with its checks unfinished and deleted
+# 115 lines from scripts/live_checkout.py; main's verification run was cancelled by the next merge
+# before it could report the 23 failures, so nothing ever said main was broken. It surfaced hours
+# later as every open pull request failing for a defect none of them contained.
+#
+# Main is not a branch whose result can be superseded. Every commit on it is what production and
+# every pull request is graded against, so every commit on it gets graded.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   PYTHON_VERSION: "3.14"
