@@ -17,9 +17,9 @@
   ],
   "second_order": {
     "sweep_command": "rg -n 'def store_root|Path\\(__file__\\).*store' prospector/ scripts/ tools/",
-    "siblings_found": 1,
+    "siblings_found": 2,
     "siblings_fixed": 1,
-    "note": "One resolver beyond config.store_root(). The 2026-08-17 pass fixed four call sites but never swept for other RESOLVERS, which is the level the bug lived at."
+    "note": "One resolver beyond config.store_root(). The 2026-08-17 pass fixed four call sites but never swept for other RESOLVERS, which is the level the bug lived at. register_baseline.py:18 hardcodes pathlib.Path(\"/Users/chidionyema/Documents/code/prospector/store/dossiers\") instead of config.store_root(). Found 2026-08-18 by the doc-rot sweep, not by the store-resolver sweep, which is the point: it is report-only so it loses no data, but it reads the wrong store on any box that is not this laptop."
   },
   "third_order": {
     "tier": "test",

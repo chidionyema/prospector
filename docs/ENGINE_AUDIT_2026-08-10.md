@@ -1,5 +1,24 @@
 # Prospector Engine — Fact-Based Code Audit
 
+> **NOT CURRENT. Checked against `main` on 2026-08-18 and six of its concrete claims are now false.**
+> Read it as a dated record of what was fixed in August, not as a description of the engine.
+> Every row below is a command anyone can re-run.
+>
+> | The audit says | `main` on 2026-08-18 | Command |
+> |---|---|---|
+> | `prospector/publish.py` is a 0-byte stub (§1) | the file does not exist at all | `ls prospector/publish.py` |
+> | `MOAT_PRIMARY` is at `operator.py:1068` (§1) | there is no `MOAT_PRIMARY`. It is `MOAT_PRIMARY_DEFAULT` at `operator.py:1405`, and the live set is declared by `config.yaml moat_primary:` | `grep -n MOAT_PRIMARY prospector/operator.py` |
+> | `candidates_per_signal: 20` at `config.yaml:764`, `batch_size: 15` (§1) | `50` at `config.yaml:1154`; `batch_size: 50` at `config.yaml:2397` | `grep -n 'candidates_per_signal:\|batch_size:' config.yaml` |
+> | the moat is claude-led, with `standardcompute` in the chain (scope, finding 4) | `operator: [minimax, claude_cli]`, `moat_primary: [minimax, claude_cli]`, `noncritical_operator: [minimax, minimax_m27]`. MiniMax leads and rules finally since 2026-08-15 | `grep -n '^operator:\|^moat_primary:\|^noncritical_operator:' config.yaml` |
+> | nothing about where the engine runs | production runs from `prospector-live` on Fly, not this checkout, and every runtime path resolves through `config.store_root()` | `.venv/bin/python scripts/live_checkout.py` |
+> | (written against `434024e`) | **94 commits** have touched `prospector/` since | `git log --oneline --since=2026-08-10 -- prospector/ \| wc -l` |
+>
+> The status ledger in §0 is still accurate about what was FIXED. What rotted is everything
+> the audit said about how the engine is *shaped*. That is the shape of doc rot here: the
+> verdicts survive, the descriptions do not. See `INCIDENT_PROCESS.md` and
+> `incidents/INC-2026-08-18-doc-rot-ratchet.json`.
+
+
 **Scope:** the "prospector engine" as CLAUDE.md's own Architecture section defines it — `config.py`,
 `models.py`, `operator.py`, `errors.py`/`health.py`, `breaker.py`, `retrieval.py`, `prompts.py`,
 `generate.py`/`dedup.py`/`prescreen.py`, `verify.py`, `price_comparables.py`, `pricing.py`,

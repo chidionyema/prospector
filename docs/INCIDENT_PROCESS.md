@@ -116,3 +116,13 @@ a habit.
 .venv/bin/python scripts/incident.py ticket        # open issues for incidents with no live mechanism
 .venv/bin/python scripts/incident.py --json        # the whole thing, for the ops console
 ```
+
+## Where this connects
+
+| Read this | For |
+|---|---|
+| [`RUNBOOKS.md`](RUNBOOKS.md) | what to do while it is red. A runbook entry that keeps getting used is an incident nobody raised. |
+| [`WAYS_OF_WORKING.md`](WAYS_OF_WORKING.md) | the same loop for complaints, which arrive in words instead of as broken things. |
+| [`ESTATE_MAP.md`](ESTATE_MAP.md) | which component broke, where its state lives, and what sits next to it — the map you sweep with. |
+| [`ESTATE_QUIRKS.md`](ESTATE_QUIRKS.md) | platform behaviour that makes a healthy thing look broken. Read it before opening a record. |
+| [`incidents/`](incidents/) | the records themselves. |

@@ -45,3 +45,20 @@ capability does.
 4. It closes when a rail enforces it, or when the founder says the instruction is enough.
 
 A complaint that only ever produced an apology is still open, whatever the reply said.
+
+## How a failure becomes a mechanism
+
+The loop above is for complaints, which arrive in words. The loop for failures, which arrive as
+broken things, is [`INCIDENT_PROCESS.md`](INCIDENT_PROCESS.md). The two are the same shape and
+deliberately so: something goes wrong, it is written down where the next session will find it, it
+closes only when a machine refuses the repeat, and it is graded afterwards to prove the refusal
+worked.
+
+| | complaint | failure |
+|---|---|---|
+| written down by | `complaint_ledger.py` | `docs/incidents/*.json` |
+| checked by | `reflect.py`, every four hours | `scripts/incident.py check`, in CI |
+| closes when | a rail enforces it | the mechanism landed **and** the grade came back zero |
+
+The register in `LAUNCH_OPS_PROGRAM.md` §9 is where a complaint gets its WM number. An incident
+does not need one: its id is its filename.

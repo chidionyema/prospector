@@ -49,6 +49,9 @@ Two more, both estate-wide rather than engine-only:
   between the laptop, Fly, and any Docker host, with one adapter per target.
 - **[docs/LOGGING_AND_RETENTION.md](docs/LOGGING_AND_RETENTION.md)** — where every log line goes,
   how long it is kept, and what is alerted on.
+- **[docs/INCIDENT_PROCESS.md](docs/INCIDENT_PROCESS.md)** — how a failure becomes a mechanism that
+  retires its whole class, and how we know the mechanism worked. Records live in
+  [docs/incidents/](docs/incidents/); the gate is `.venv/bin/python scripts/incident.py check`.
 
 ---
 
@@ -595,6 +598,8 @@ Tracked programmes — read and append there, never in CLAUDE.md:
 - **[docs/LOGGING_AND_RETENTION.md](docs/LOGGING_AND_RETENTION.md)** — logging, retention and alerting.
 - **[deploy/PORTABILITY.md](deploy/PORTABILITY.md)** — moving the stack off any one provider.
 - **[docs/RUNBOOKS.md](docs/RUNBOOKS.md)** — what to do when a specific thing is broken.
+- **[docs/INCIDENT_PROCESS.md](docs/INCIDENT_PROCESS.md)** — what to do after it is fixed, so the
+  same class of thing does not break again.
 
 The engine is deterministic on config; the golden-set regression suite gates every
 change.
