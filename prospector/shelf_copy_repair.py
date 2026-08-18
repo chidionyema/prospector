@@ -15,13 +15,24 @@ repair moved upstream of the spend.
 One definition, two callers, so the sweep and the engine can never disagree about what a clean
 line is or what a rewrite is allowed to say.
 
-THE LENGTH IS THE GATE'S, NOT THE PROMPT'S. This used to ask for "under 200 characters" while
-`field_write.ONE_LINER_CUT_AT` — the only length the catalogue enforces — is 280. Together with
-"keep every fact", that made some lines unsatisfiable. On 2026-08-18 pack 83f2e75faa80bb60 sent
-a 318-character, fact-dense line into that ask: MiniMax M3 reasoned to its 65536-token ceiling
-and returned no answer, three times, for 23 minutes and $0.059. A 262-character rewrite passed
-the gate immediately. The prompt renders the constant now, so the ask and the grade cannot drift
-apart again.
+THE MACHINE COUNTS THE CHARACTERS, NOT THE MODEL.
+
+This prompt used to ask for "under 200 characters" while `field_write.ONE_LINER_CUT_AT` — the
+only length the catalogue enforces — is 280. On 2026-08-18 pack 83f2e75faa80bb60 sent a
+318-character, fact-dense line into that ask. MiniMax M3 reasoned to its 65536-token ceiling and
+returned nothing, three times: 23 minutes, $0.059, no answer.
+
+The obvious fix was to render 280 instead of 200. It was measured and it does not work. Same
+model, same line, same prompt, only the number changed:
+
+    limit=200   601s   no answer at all (streamed response hit the 600s deadline)
+    limit=280   254s   a 320-character line — over the gate anyway
+
+A number in the prompt does not control the length of the answer, because the model cannot count
+its own characters. So the number is no longer the model's problem. The machine measures what
+came back, and when it is too long it says by exactly how much — `rewrite_one` does that on its
+own retry, and `field_write.repair` does it across attempts through `feedback`. Both loops carry
+a figure only a machine can compute.
 """
 from __future__ import annotations
 
@@ -51,7 +62,8 @@ RULES
 - Do NOT name a customer group the line does not already name. If the line does not say who
   the customers are, describe what the business does and stop; inventing an audience is
   inventing a fact.
-- One sentence, under {limit} characters, plain words a stranger to the trade reads once.
+- One sentence, plain words a stranger to the trade reads once. Keep it as short as the facts
+  allow. Do not count characters; if it comes back too long you will be told by how much.
 
 Return JSON: {{"one_liner": "<the rewritten line>"}}"""
 
@@ -107,7 +119,8 @@ class RewriteUnavailable(RuntimeError):
     """
 
 
-def rewrite_one(op, title: str, line: str, attempts: int = 2) -> str | None:
+def rewrite_one(op, title: str, line: str, attempts: int = 2,
+                feedback: str = "") -> str | None:
     """Rewrite until it grades clean, or keep the original.
 
     The second attempt is told WHY the first was refused. Four of the founder's twenty rows
@@ -125,10 +138,10 @@ def rewrite_one(op, title: str, line: str, attempts: int = 2) -> str | None:
     can only do that if the two arrive differently. The sweep catches it per row, so one dead
     call still does not abort the other twenty-two.
     """
-    note = ""
+    note = f"\n\n{feedback.strip()}" if feedback and feedback.strip() else ""
     for attempt in range(max(1, attempts)):
         try:
-            prompt = USER.format(title=title, line=line, limit=ONE_LINER_CUT_AT)
+            prompt = USER.format(title=title, line=line)
             got = op.complete_json(SYSTEM, prompt + note)
         except Exception as exc:  # an outage is not a verdict on the copy
             raise RewriteUnavailable(f"rewrite call failed: {exc}") from exc
@@ -144,6 +157,12 @@ def rewrite_one(op, title: str, line: str, attempts: int = 2) -> str | None:
         elif (invented := _new_facts(f"{title} {line}", new)):
             why = (f"it introduced {', '.join(invented)}, which appear nowhere in the "
                    f"original — use only the words and facts already there")
+        elif len(new) > ONE_LINER_CUT_AT:
+            # The one figure only the machine can supply. Asking for a length up front does not
+            # work (measured: at 280 this model returned 320), so the ask is made after the fact
+            # and states the exact overage instead of a budget the model has to hold.
+            why = (f"it is {len(new)} characters and the shelf cuts at {ONE_LINER_CUT_AT}, so it "
+                   f"needs to lose {len(new) - ONE_LINER_CUT_AT} characters without losing a fact")
         if not why:
             return new
 
