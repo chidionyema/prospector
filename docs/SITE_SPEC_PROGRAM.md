@@ -1897,3 +1897,14 @@ defect: "How it works" advances 117px in both.
 cannot reach 2%, however correct the layout is. Whether to make the drawings render live copy, or
 to grade geometry instead of pixels (element boxes, which is what the table above does and what
 found every real defect in 11.8), is the founder's call. Nothing in the app changes either way.
+
+**The /about experiment settles it.** Defects 7 and 9 were applied specifically to make one page's
+head match the drawing box for box, and it worked. Measured at 1280 after the rebuild, drawing
+against built: `p.crumb` y=103 h=41 both; `div.pagetop` y=144 both; `p.eyebrow` y=158 h=18 both;
+`h1` y=188 h=168 fs=54px lh=56.16px mt=12px both. The predicted 24px + 14px correction landed
+exactly.
+
+The diff did not follow. `/about` at 1280 went 3.89% to 3.95% whole page and 3.92% to 3.95% over
+the fold. A page whose first 356 vertical pixels are now identical to the drawing measures very
+slightly WORSE than before. That is the clearest available evidence that the remaining number is
+copy, not geometry, and that more layout work will not move it.
