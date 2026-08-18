@@ -14,6 +14,7 @@ import CategoryGraph, { type CategoryNode } from '@/components/discovery/Categor
 import { resolveVariant } from '@/lib/getCopyVariant';
 import { VARIANTS, type VariantKey } from '@/lib/copyConfig';
 import { breadcrumbNode, graph, itemListNode } from '@/lib/seo/schema';
+import { SITE_COPY } from '@/lib/siteCopy';
 
 /**
  * One tile of the taxonomy map.
@@ -132,7 +133,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
 
   return (
     <MarketingLayout
-      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Collections' }]}
+      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Good for' }]}
       breadcrumbsWidth="7xl"
     >
       <Seo
@@ -171,8 +172,8 @@ export default function IdeasHub({ categories, total, variant }: Props) {
        */}
       <PageHero
         width="7xl"
-        eyebrow="Collections"
-        title="Business ideas, by category."
+        eyebrow="Good for"
+        title="Find one that suits how you work."
         /*
          * THE WORDS ARE THE FOUNDER'S AND THEY STAY (2026-08-15), and this is the promised fix.
          *
@@ -280,7 +281,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
             inside the p exactly as the drawing has it. */}
         {!search && (
           <div className="sigcard mb-10">
-            <p className="eyebrow">The shape of the shelf</p>
+            <p className="eyebrow">The shape of the catalogue</p>
             <CollectionMosaic
               tiles={filtered.map((cat) => ({
                 slug: cat.slug,
@@ -290,7 +291,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
               }))}
             />
             <p className="key">
-              <span>Tile size reflects pack count. Every tile filters the same shelf.</span>
+              <span>Tile size reflects pack count. Every tile filters the same catalogue.</span>
             </p>
           </div>
         )}
@@ -391,7 +392,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
         {/* The drawing's `.closing` owns the 2px rule, the 46px above it and the 34px below
             (`mockups/collections.html`), and `.closing p` owns the size, colour and measure. The
             utilities that used to hold those same numbers are removed rather than layered, since
-            mockup.css sits under the utility layer (globals.css:8). */}
+            mumchimp.css sits under the utility layer (globals.css:8). */}
         {/* THE DRAWING STACKS THIS BLOCK (`mockups/collections.html`, `.closing`): the sentence,
             then a `.ctarow` of two buttons. It was one flex row with the paragraph on the left and
             a single button on the right, so the ghost button the drawing puts beside it had
@@ -412,7 +413,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
               <Icon name="arrowRight" size={14} />
             </Link>
             <Link href="/sample" className="btn ghost">
-              Read a full pack free
+              {SITE_COPY.sampleLink}
             </Link>
           </div>
         </div>

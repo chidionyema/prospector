@@ -199,7 +199,7 @@ export function KillGrid({ packs, className }: KillGridProps) {
             nothing to offer inside <title>, which renders no markup. */}
         <title>{`${total.toLocaleString('en-GB')} ideas researched`}</title>
         <desc>
-          {`One square per idea, oldest first. ${RESEARCH_STATS.killed.toLocaleString('en-GB')} were killed on cited evidence. The teal squares are the packs on the shelf now, and each one links to its pack.`}
+          {`One square per idea, oldest first. ${RESEARCH_STATS.killed.toLocaleString('en-GB')} were killed on cited evidence. The teal squares are the packs available now, and each one links to its pack.`}
         </desc>
 
         {/* Presentational. A screen reader must get the FACT the picture states, from the
@@ -272,7 +272,7 @@ export function KillGrid({ packs, className }: KillGridProps) {
         </span>
         <span>
           <i aria-hidden className="sw alive" />
-          On the shelf now
+          Available now
         </span>
         {/* THE TOTAL IS NOT IN THIS ROW ANY MORE. It sat here hard right as `1,444 researched`,
             and at the hero column's width that pushed the legend onto two lines while the

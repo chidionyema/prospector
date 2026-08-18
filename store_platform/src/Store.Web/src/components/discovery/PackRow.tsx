@@ -11,9 +11,9 @@ import { useCurrency } from '@/lib/currency';
 import { cardHeading, cardLine, listHeading } from '@/lib/discovery';
 import { repairTruncation } from '@/lib/copy';
 import { formatPriceForMarket, type Currency } from '@/lib/fx';
-import { sourcesLabel } from '@/components/ui/ProofLine';
+import { CardProof } from '@/components/ui/ProofLine';
 import { packMarket } from '@/lib/market';
-import { packLeadStat, type PackLeadStat } from '@/lib/packStat';
+import { paybackMultiple, type PackLeadStat } from '@/lib/packStat';
 import { trackCardClick } from '@/lib/analytics';
 import { useCardImpressions } from '@/lib/useCardImpressions';
 
@@ -89,11 +89,11 @@ export function PackRow({
   const ambient = useCurrency();
   const cur = currency ?? ambient;
   const cat = categoryFor(pack);
-  const stat = packLeadStat(pack);
-  /* The evidence bar drops its numeral when the lead figure IS the source count: the bar exists
-     to make two rows comparable at a glance, and printing the same number twice on one line is
-     the duplication the cover removal was about. */
-  const evidenceLabel = stat?.kind !== 'sources';
+  /* `packLeadStat` is gone from the ROW. It returns a figure welded to a sentence sized for the
+     featured card's 44px `.stat`, and the row now renders `CardProof`, which takes the two raw
+     numbers and supplies the drawing's own nouns. The `evidenceLabel` flag went with it: it
+     existed to stop the row printing the source count twice, and there is now one place that
+     prints it. */
   const { heading, sub } = cardHeading(pack);
   // `repairTruncation` repairs the publish path's character-150 cut; `cardLine` then caps at a
   // word boundary so the row never shows a clause that stops mid-thought. See `cardLine`.
@@ -127,11 +127,16 @@ export function PackRow({
   // word budget lands just under that, so the clause-boundary backoff does the cutting at a comma
   // and `line-clamp-2` stays the safety net it was meant to be rather than the thing a reader
   // meets on every row.
-  const line = cardLine(repairTruncation(pack.oneLine) || sub, 26);
+  // NO WORD BUDGET (2026-08-18, fix prompt D3a). The 6-then-26 word cap argued above was a
+  // server-side cut, and the founder read its output on the live shelf: "the tool emits a",
+  // "turns every", "enabling UK deep-tech". `Infinity` keeps the first-sentence normalisation
+  // and drops the cap; `.row .d`'s `-webkit-line-clamp:2` is the only clamp, and it clamps at
+  // a rendered line rather than at a word count guessed from a column width.
+  const line = cardLine(repairTruncation(pack.oneLine) || sub, Infinity);
   const price = formatPriceForMarket(pack.price, cur);
 
   /* THE DRAWING'S ROW (`mockups/index.html`, `.rows > a.row`). It emits the drawing's own class
-     names, which `src/styles/mockup.css` styles: a two-column grid, the text in column one and
+     names, which `src/styles/mumchimp.css` styles: a two-column grid, the text in column one and
      the price stack in column two spanning all four rows. Every Tailwind class that used to
      re-state those numbers is gone, because the copied stylesheet already carries them. */
   return (
@@ -149,21 +154,23 @@ export function PackRow({
       )}
       <h3>{listHeading(heading)}</h3>
       <p className="d">{line}</p>
-      <p className="proof num">
-        {stat && <PackFigure stat={stat} weight="row" />}
-        {evidenceLabel && typeof pack.sourceCount === 'number' && pack.sourceCount > 0 && (
-          <span>{sourcesLabel(pack.sourceCount)}</span>
-        )}
+      {/* ONE PROOF LINE (2026-08-18, fix prompt D4). This emitted up to three formats on one
+          shelf -- "38 sources", "16 cited sources behind it", "2x the price back in month one,
+          modelled" -- because the figure came from `packLeadStat`, whose labels are written for
+          the 44px `.stat` device on the featured card, not for a 12.5px row. The longest of them
+          also carried `truncate` (nowrap), which is what pushed the line past the right edge of
+          the card at 390px. `CardProof` renders the drawing's own two forms and nothing else. */}
+      <CardProof sources={pack.sourceCount} payback={paybackMultiple(pack)}>
         {/* The market note stays. It is the one thing on the row that is about the READER rather
-            than the pack, and a buyer who misses it buys research written for another country. */}
+            than the pack, and a buyer who misses it buys research written for another country.
+            "US · CA", not "US · CA market": the word restated what the border already says
+            and was the widest token on the narrowest row (fix prompt D7). */}
         {pack.market && packMarket(pack) !== viewerMarket && (
-          <span className="market">{marketLabel(pack.market)} market</span>
+          <span className="market">{marketLabel(pack.market)}</span>
         )}
-      </p>
+      </CardProof>
       <span className="side">
-        <span className="price num">
-          <PriceText>{price}</PriceText>
-        </span>
+        <PriceText className="price num">{price}</PriceText>
         <span className="view">View &rarr;</span>
       </span>
     </Link>
@@ -221,11 +228,15 @@ export function PackFigure({
      the same baseline. It was two Tailwind spans re-stating those numbers; the copied stylesheet
      already carries them, and a hand-kept copy is how the featured card drifted from the drawing
      in the first place. */
+  /* A `div`, not a `span`: `mockups/index.html` section 7 writes `<div class="stat">`, and
+     `.stat` is `display:flex` (mumchimp.css:333). Structural parity compares tag names, because a
+     block element and an inline one lay their children out differently the moment a utility or a
+     browser default touches them. */
   return (
-    <span className="stat">
+    <div className="stat">
       <span className="big num">{stat.figure}</span>
       <span className="lbl">{stat.label}</span>
-    </span>
+    </div>
   );
 }
 
@@ -306,7 +317,6 @@ export function PackTileGrid({
     <div className={cx('three', className)}>
       {packs.map((pack, i) => {
         const cat = categoryFor(pack);
-        const stat = packLeadStat(pack);
         const { heading, sub } = cardHeading(pack);
         return (
           <Link
@@ -320,14 +330,12 @@ export function PackTileGrid({
               {viewedIds?.has(pack.id) && <span className="new">Seen</span>}
             </div>
             <h4>{listHeading(heading)}</h4>
-            <p>{cardLine(repairTruncation(pack.oneLine) || sub, 30)}</p>
+            <p>{cardLine(repairTruncation(pack.oneLine) || sub, Infinity)}</p>
             <span className="foot">
-              <span className="proof num">
-                {stat ? <PackFigure stat={stat} weight="row" /> : sourcesLabel(pack.sourceCount ?? 0)}
-              </span>
-              <span className="price num">
-                <PriceText>{formatPriceForMarket(pack.price, cur)}</PriceText>
-              </span>
+              {/* The same one proof line as the row (fix prompt D4), rendered as a `span`:
+                  `.foot` is a `<span>` here, and a `<p>` inside it is invalid nesting. */}
+              <CardProof as="span" sources={pack.sourceCount} payback={paybackMultiple(pack)} />
+              <PriceText className="price num">{formatPriceForMarket(pack.price, cur)}</PriceText>
             </span>
           </Link>
         );

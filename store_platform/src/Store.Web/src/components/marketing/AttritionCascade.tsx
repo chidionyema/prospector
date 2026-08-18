@@ -130,7 +130,7 @@ export function AttritionCascade({ distribution, className }: AttritionCascadePr
         })}
 
         <div className="step">
-          <dt className="lab">What is on the shelf</dt>
+          <dt className="lab">What is available now</dt>
           <dd className="track ml-0">
             <i className="bg-survive" style={{ width: `${pct(survived)}%` }} />
           </dd>
@@ -153,7 +153,7 @@ export function AttritionCascade({ distribution, className }: AttritionCascadePr
           <i className="sw9 border border-line bg-bg" aria-hidden /> gone
         </span>
         <span className="flex items-center gap-2">
-          <i className="sw9 bg-survive" aria-hidden /> on the shelf
+          <i className="sw9 bg-survive" aria-hidden /> available now
         </span>
       </p>
       <figcaption className="mt-3 max-w-[68ch] text-meta leading-relaxed text-muted">

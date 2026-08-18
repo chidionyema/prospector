@@ -60,7 +60,7 @@ export function MethodCostAnchor({ range }: { range: PriceRange | null }) {
           of `dt`/`dd`, and it cannot stay one: `.comp dt` is the drawing's rule for the small mono
           labels of the inner list, so a `dt` used as the cell's heading would take that rule and
           lose `.h`. The grid, border and padding utilities are removed rather than layered, since
-          mockup.css sits under the utility layer (globals.css:8). */}
+          mumchimp.css sits under the utility layer (globals.css:8). */}
       <div className="compare">
         <div className="card comp">
           <p className="h">

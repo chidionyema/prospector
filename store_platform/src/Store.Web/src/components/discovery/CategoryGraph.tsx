@@ -102,7 +102,7 @@ function CategoryRow({ node, href }: { node: CategoryNode; href: string }) {
        `1fr auto` grid, 16px/20px padding, a hairline under every row but the last, and a real
        `h4` + `p` in column one because that is what the drawing's selectors style. The grid,
        gap, padding and hover utilities that used to say the same thing here are REMOVED, not
-       layered: mockup.css is imported into `layer(components)` (globals.css:8) and Tailwind
+       layered: mumchimp.css is imported into `layer(components)` (globals.css:8) and Tailwind
        utilities outrank it, so leaving one in place makes the class inert.
        The last row's rule is dropped from the `li`, since `.catrow:last-child` cannot match an
        anchor that is the only child of its item. */
@@ -141,7 +141,16 @@ function CategoryRow({ node, href }: { node: CategoryNode; href: string }) {
 
               If this is reversed a third time, change the FACT, not the paint: what the run counts
               is stated in the link's own aria-label, not by its colour. */}
-          <span aria-hidden className="flex items-end gap-[1.5px]">
+          {/* THE RUN IS HIDDEN BELOW `sm`, and only the run. `.catrow` is a `1fr auto` grid and
+              `.catrow .n` is `white-space:nowrap`, so column two never shrinks: at 40 marks it
+              asks for ~120px, and with the count and a price RANGE beside it the column wanted
+              more than the whole 390px viewport. Measured live on 2026-08-18: the rows ran 98px
+              past the right edge and /ideas scrolled sideways on a phone.
+              The note above measured this row at ~110px of 326 on 2026-08-13, and that was a
+              price of "£19.99", not "£19.99 to £99.99". The run is the part that goes: it is
+              `aria-hidden` decoration whose count is printed next to it and stated in the link's
+              aria-label, so nothing a buyer reads is lost. The price stays at every width. */}
+          <span aria-hidden className="hidden items-end gap-[1.5px] sm:flex">
             {Array.from({ length: marks }, (_, i) => (
               <span key={i} className="block h-3 w-[1.5px] bg-survive" />
             ))}

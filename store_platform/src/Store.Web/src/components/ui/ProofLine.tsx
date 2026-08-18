@@ -43,6 +43,76 @@ export function verifiedLabel(verifiedAt: string): string {
   return `verified ${verifiedAt.slice(0, 10)}`;
 }
 
+/**
+ * THE CARD AND ROW PROOF LINE, and the only one (fix prompt D4, 2026-08-18).
+ *
+ * `mockups/index.html` draws exactly two forms of it inside `a.row`:
+ *
+ *     <p class="proof num"><b>41</b> sources</p>
+ *     <p class="proof num"><b>17×</b> payback · <b>28</b> sources</p>
+ *
+ * The shelf was emitting three, and the difference was wording rather than fact: "38 sources"
+ * from `sourcesLabel`, "16 cited sources behind it" and "2× the price back in month one,
+ * modelled" from `packLeadStat`. The last two are labels written for the featured card's 44px
+ * `.stat` device, where there is room for a sentence. On a 12.5px row there is not, and the
+ * nowrap `truncate` they carried is what ran the line off the right edge of the card at 390px.
+ *
+ * `<b>` on the figure and plain text on the noun, because `.proof b` is the only weight the
+ * drawing's stylesheet sets here. `children` is the slot for the row's market note, which is a
+ * fact about the READER rather than about the pack and so is not part of the proof.
+ */
+export function CardProof({
+  sources,
+  payback,
+  className,
+  children,
+  /* `span` for the three-up tile. Its `.foot` is a `<span>` in the drawing
+     (`mockups/index.html` section 5), and a `<p>` inside a `<span>` is invalid HTML: the parser
+     closes the span, so the price that follows ended up outside the foot it is laid out in. The
+     row's proof line stays a `<p>`, which is what the drawing writes there. */
+  as: Tag = 'p',
+}: {
+  sources?: number | null;
+  payback?: number | null;
+  className?: string;
+  children?: React.ReactNode;
+  as?: 'p' | 'span';
+}) {
+  const parts: React.ReactNode[] = [];
+  if (typeof payback === 'number' && payback > 0) {
+    // dash-free-ignore -- the multiplication sign is U+00D7, not a dash; named here so a reader
+    // checking the ban does not have to look it up.
+    parts.push(
+      <React.Fragment key="payback">
+        <b>{payback}×</b>{'\u00A0'}payback
+      </React.Fragment>,
+    );
+  }
+  if (typeof sources === 'number' && sources > 0) {
+    parts.push(
+      <React.Fragment key="sources">
+        {/* NO-BREAK SPACE between the figure and its noun (founder's polish layer, 3.1). "28"
+            and "sources" are one token to a reader; `.row .proof` wraps, so without this the
+            count can end a line and its unit start the next. */}
+        <b>{sources}</b>{'\u00A0'}{sources === 1 ? 'source' : 'sources'}
+      </React.Fragment>,
+    );
+  }
+  if (parts.length === 0 && !children) return null;
+
+  return (
+    <Tag className={cx('proof num', className)}>
+      {parts.map((part, i) => (
+        <React.Fragment key={i}>
+          {i > 0 && ' \u00B7 '}
+          {part}
+        </React.Fragment>
+      ))}
+      {children}
+    </Tag>
+  );
+}
+
 export function ProofLine({
   sources,
   checks,

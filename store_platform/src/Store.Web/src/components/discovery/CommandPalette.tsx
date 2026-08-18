@@ -133,7 +133,7 @@ export function SearchTrigger({
          border, a 9px gap and the magnifier). It was ten Tailwind utilities holding those same
          numbers by hand, which is how the search box could drift from the drawing with nothing
          reporting it. The utilities are GONE rather than layered on top: Tailwind sits in a higher
-         cascade layer than mockup.css, so any utility left here would beat the class it is
+         cascade layer than mumchimp.css, so any utility left here would beat the class it is
          supposed to be honouring. Only the width stays a utility, because the two call sites want
          different widths. */
       className={cx('fld w-full text-left transition-colors', className)}

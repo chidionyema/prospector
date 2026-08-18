@@ -92,14 +92,19 @@ export function CheckSequence({ className }: { className?: string }) {
                numeral, the heading, the rationale and the source line were all set by hand here
                instead of by the class the drawing styles. */
             <li key={check.key} className="checkrow">
-              <span className="i">{String(i + 1).padStart(2, '0')}</span>
+              {/* `num` too: the drawing sets the numeral in the mono face
+                  (`mockups/pack-detail.html:499`, `<span class="i num">05</span>`), and `.num` is
+                  what carries that. Without it the column was set in the body face. */}
+              <span className="i num">{String(i + 1).padStart(2, '0')}</span>
 
               <div className="min-w-0">
                 <h5>{check.name}</h5>
                 <p>{plainEnglish(check.rationale)}</p>
                 {domains.length > 0 && (
-                  /* `.checkrow .srcs` is the mono source line under the reading. */
-                  <div className="srcs flex flex-wrap items-center gap-x-3 gap-y-1">
+                  /* `.checkrow .srcs` is the mono source line under the reading. A `<p>`, as the
+                     drawing writes it (`mockups/pack-detail.html:499`): it is one line of prose
+                     with links in it, sitting under the paragraph above it, not a container. */
+                  <p className="srcs flex flex-wrap items-center gap-x-3 gap-y-1">
                     {domains.map((domain) => {
                       const source = check.sources.find((s) => domainOf(s) === domain);
                       return (
@@ -111,7 +116,7 @@ export function CheckSequence({ className }: { className?: string }) {
                         />
                       );
                     })}
-                  </div>
+                  </p>
                 )}
               </div>
 

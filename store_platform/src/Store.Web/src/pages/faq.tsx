@@ -9,6 +9,7 @@ import { LEGAL } from '@/lib/config';
 import { FAQS, isLink, plainAnswer, type FaqItem } from '@/lib/faqContent';
 import { track } from '@/lib/analytics';
 import { breadcrumbNode, faqPageNode, graph } from '@/lib/seo/schema';
+import { SITE_COPY } from '@/lib/siteCopy';
 
 /**
  * A stable key for one question, for the helpfulness beacon.
@@ -318,7 +319,7 @@ export default function Faq() {
           </p>
           <div className="ctarow">
             <Link href="/sample" className="btn">
-              Read a full pack free
+              {SITE_COPY.sampleLink}
               <Icon name="arrowRight" size={14} />
             </Link>
             <Link href="/how-it-works" className="btn ghost">

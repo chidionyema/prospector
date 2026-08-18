@@ -99,7 +99,7 @@ export function FunnelDiagram({ className }: { className?: string }) {
         viewBox="0 0 440 320"
         className="w-full"
         role="img"
-        aria-label={`${researched} ideas researched. ${killed} were killed on cited evidence. What is left is the shelf.`}
+        aria-label={`${researched} ideas researched. ${killed} were killed on cited evidence. What is left is what you can buy.`}
       >
         {/* Stroke matches the icon hand: 1.5 units at this scale is the same weight the 24px
             icons carry, which is the brief's "diagrams and icons must read as one hand". */}
@@ -200,7 +200,7 @@ export function FunnelDiagram({ className }: { className?: string }) {
           the one thing the shape cannot -- that the stub is countable, on a page the reader can
           open -- without putting a number on the diagram. */}
       <figcaption className="mt-3 max-w-[46ch] text-meta leading-relaxed text-muted">
-        The stub at the bottom is the shelf.{' '}
+        The stub at the bottom is what you can buy.{' '}
         <Link href="/collections" className={textLinkClass()}>
           Count it yourself
         </Link>

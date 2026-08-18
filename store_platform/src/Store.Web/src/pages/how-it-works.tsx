@@ -72,8 +72,8 @@ const EXAMPLE_TITLES: Record<string, string> = {
  */
 function findExample(check: Check, titleFragment: string): KillExample | undefined {
   const entries = killLog.entries as KillExample[];
-  const curated = entries.find((e) => e.title.toLowerCase().includes(titleFragment.toLowerCase()));
-  if (curated) return curated;
+  const match = entries.find((e) => e.title.toLowerCase().includes(titleFragment.toLowerCase()));
+  if (match) return match;
   const keys = idsFor(check);
   return entries.find((e) => keys.includes(e.gate));
 }
@@ -203,7 +203,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
             It is the drawing's `.facts` block now (`mockups/how-it-works.html:76-82`): three
             equal cells in one card, `.facts span` for the label and `.facts b` for the figure. The
             grid, border and padding utilities that used to hold those numbers are removed rather
-            than layered, since mockup.css is imported into `layer(components)` (globals.css:8) and
+            than layered, since mumchimp.css is imported into `layer(components)` (globals.css:8) and
             a utility left in place would beat the class.
             The label case comes from `.facts span` in the drawing's own stylesheet, not from our
             markup. `weightAndCasePolicy` and `monoIsTheDataVoice` read OUR source, so they neither
@@ -263,7 +263,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
         width="6xl"
         title="One idea, all the way through"
         rule
-        intro="Every pack on the shelf carries an evidence record like this. The one below is real, it is the free sample, and every source in it opens."
+        intro="Every pack in the catalogue carries an evidence record like this. The one below is real, it is the free sample, and every source in it opens."
       >
         <CheckSequence />
       </Section>
@@ -293,7 +293,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
         <p className="mb-10 max-w-3xl lede">
           AI agents run the checks below. Each may only rule on passages it fetched from the open
           web, and those sources are published with the verdict, so you can hold the reasoning
-          against them yourself. A person reads that record before a pack reaches the shelf.
+          against them yourself. A person reads that record before a pack goes on sale.
         </p>
         {/* THE DRAWING'S CHECK CARD (`mockups/how-it-works.html`, `.card.incard` of `.checkrow`).
 
@@ -305,7 +305,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
             page said "six separate things" where the drawing says "one list, read it down".
 
             Every utility that set what `.checkrow` sets is gone rather than layered over it:
-            `mockup.css` is imported into `layer(components)` (globals.css:8), so a utility on the
+            `mumchimp.css` is imported into `layer(components)` (globals.css:8), so a utility on the
             same element wins and the class would draw nothing. */}
         <div className="card incard">
           {COMMON_CHECKS.map((check, i) => {
@@ -418,8 +418,8 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
         <div className="max-w-3xl space-y-4">
           <p className="font-normal lede">
             Automating the finding, the checking and the sourcing is what lets every idea get the
-            same treatment, instead of the handful a person could read. But nothing reaches the
-            shelf on its own: a person reads the verdict, opens the sources, and checks the
+            same treatment, instead of the handful a person could read. But nothing goes on sale
+            on its own: a person reads the verdict, opens the sources, and checks the
             argument holds before a pack is published.
           </p>
           <p className="lede">

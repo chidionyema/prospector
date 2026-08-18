@@ -5,15 +5,15 @@
    Tailwind utility a component sets. In `components` it sits above Tailwind's base and below its
    utilities, which is the precedence we want: the drawing supplies the default look, a utility
    still overrides it where a component means to. */
-@import "./mockup.css" layer(components);
+@import "./mumchimp.css" layer(components);
 
 /* THE FOOTER COLUMN HEADINGS. The drawing writes them as <h6>; this app renders <h2>, because the
    footer follows every page's <h1> and an <h6> there skips four levels (axe `heading-order`).
    Same declarations as `.f-col h6` in the copied stylesheet, so the look is identical. */
 @layer components {
-  /* THE ONE REAL COLLISION IN THE COPIED STYLESHEET. Both drawings declare `.bars`: index.html
+  /* THE ONE REAL COLLISION, AND IT SURVIVES INTO THE SHIPPED STYLESHEET. Both drawings declare `.bars`: index.html
      draws a row of kill-gate columns, pack-detail.html draws a stack of score bars, and
-     pack-detail is concatenated second so it wins. Scoping index's version to the band it lives
+     pack-detail wins. mumchimp.css:103 ships `flex-direction:column` with mumchimp.css:356 `i{flex:1;max-width:26px}`, which is the merged pair. Scoping index's version to the band it lives
      in restores it without touching either drawing's rules. */
   .band .bars {
     display: flex;
@@ -34,6 +34,46 @@
     opacity: 0.85;
   }
 
+  /* ─────────────────────────────────────────────────────────────────────────────────────────
+     NO DESCRIPTION IS EVER CUT. Deliberate deviation from the copied drawing, 2026-08-18.
+
+     Founder, on the live site: "broken titles still coming thru ... with ....". Measured with
+     Playwright against https://mumchimp.com the same day, at 390px and 1280px: NO title is
+     clipped anywhere on / or /ideas. Every one of those ellipses is the DESCRIPTION. `.row .d`
+     is a 2-line box -- 44px tall -- and the text inside it measured 65px to 87px on 17 of 17
+     cards at 390px and 5 of 5 at 1280px. So `-webkit-line-clamp` was firing on 100% of the
+     shelf, and the ellipsis a clamp paints is the "...." the founder was reading.
+
+     The drawing is not wrong about the shape; it is drawn against copy that fits. Ours does not:
+     the live catalogue's `oneLine` runs 124 to 268 characters (median 169, measured from
+     /api/store/catalog, 74 packs), and two lines of 14.5px type in this column hold about 120.
+     Raising the clamp to 3 or 4 only moves the cut. Removing it is the only setting under which
+     the founder's own acceptance test -- "no rendered description ends mid-word" -- is true for
+     every pack rather than for most of them.
+
+     WHAT THIS DOES NOT FIX, stated rather than buried: the founder also asked for the
+     description to exist in "short and long form". The catalogue has no short description. It
+     has a short TITLE (`cardLine`, 34-60 chars, which `cardHeading` already consumes as the
+     heading) and one long description. A real short form is a publish-path change, tracked in
+     docs/SITE_SPEC_PROGRAM.md; until it lands, the honest render is the whole sentence.
+
+     `text-wrap: pretty` is from the founder's polish layer section 3.2 and belongs with this
+     change rather than after it: unclamped body copy is exactly where a one-word last line
+     shows. */
+  .row .d,
+  .htile p {
+    display: block;
+    -webkit-line-clamp: none;
+    overflow: visible;
+  }
+  .row .d,
+  .htile p,
+  .lede,
+  main p,
+  main li {
+    text-wrap: pretty;
+  }
+
   /* THE DRAWING WRITES SUB-HEADS AS <h3>. Pages that already spent their <h3> on a level below
      need the same look one level up, and heading order is not negotiable, so the drawing's
      `h3.sub` declarations are repeated for the other two levels. Same numbers, no new design. */
@@ -44,14 +84,10 @@
     font-weight: 655;
   }
 
-  .f-col h2 {
-    font-size: 12px;
-    font-weight: 650;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--ink-3);
-    margin-bottom: 14px;
-  }
+  /* `.f-col h2` WAS HERE and is deleted (2026-08-18). It restated `.f-col h6` because our footer
+     used an `<h2>` to keep heading order legal. The bundle ships `.f-col .colh`
+     (mumchimp.css:393) and its own footer writes `<p class="colh">`, so the copy is not needed
+     and the element is not a heading at all. */
 }
 
 html {
