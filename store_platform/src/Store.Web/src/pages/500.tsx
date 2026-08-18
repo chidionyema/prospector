@@ -25,19 +25,22 @@ export default function ServerError() {
   return (
     <MarketingLayout>
       <Seo title="Something went wrong" noindex />
-      <div className="flex min-h-[calc(100dvh-4rem)] items-center justify-center px-6 py-16">
-        <div className="max-w-md text-center">
-          <p className="text-body font-semibold text-muted">500</p>
-          <h1 className="mt-2 text-h1 font-semibold text-text">This page failed to load</h1>
-          <p className="mt-3 text-body text-muted">
-            The fault is on our server, so nothing you did caused it. Payments and downloads are
-            handled by Stripe and are not affected: if you were buying a pack, you have not been
-            charged twice.
-          </p>
-          <Link
-            href="/"
-            className={buttonClasses({ size: 'lg', className: 'mt-6' })}
-          >
+      {/* Same frame as `404.tsx`, taken from `mockups/404.html` `.err`. The two error pages are one
+          treatment: mono code, 20ch headline, lede, then a row of actions. */}
+      <div className="mx-auto max-w-[1080px] px-5 pt-16 pb-10 text-center">
+        {/* Set as a caption, not in mono: see the note on the same line in `404.tsx`. */}
+        <p className="mb-[18px] text-caption font-medium text-subtle">500</p>
+        <h1 className="mx-auto mb-3.5 max-w-[20ch] text-h1 font-semibold text-text">
+          This page failed to load.
+        </h1>
+        <p className="mx-auto mb-[26px] max-w-[62ch] text-body leading-relaxed text-muted">
+          The fault is on our server, so nothing you did caused it. Payments and downloads are
+          handled by Stripe and are not affected: if you were buying a pack, you have not been
+          charged twice.
+        </p>
+        {/* ONE action: see the note in `404.tsx`. */}
+        <div className="flex justify-center">
+          <Link href="/" className={buttonClasses({ size: 'lg' })}>
             Reload the catalogue
           </Link>
         </div>

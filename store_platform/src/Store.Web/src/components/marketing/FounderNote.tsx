@@ -37,7 +37,7 @@ export function FounderNote({
   return (
     <aside
       className={cx(
-        'flex flex-col gap-4 rounded-md border border-border bg-surface p-6 sm:flex-row sm:items-start sm:gap-5',
+        'flex flex-col gap-4 rounded-card border border-border bg-surface p-6 sm:flex-row sm:items-start sm:gap-5',
         full && 'md:p-8',
         className,
       )}

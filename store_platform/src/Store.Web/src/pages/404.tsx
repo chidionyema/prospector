@@ -27,18 +27,32 @@ export default function NotFound() {
   return (
     <MarketingLayout>
       <Seo title="Page not found" noindex />
-      <div className="flex min-h-[calc(100dvh-4rem)] items-center justify-center px-6 py-16">
-        <div className="max-w-md text-center">
-          <p className="text-body font-semibold text-muted">404</p>
-          <h1 className="mt-2 text-h1 font-semibold text-text">There is no page at this address</h1>
-          <p className="mt-3 text-body text-muted">
-            Every pack we have ever published is on the shelf, and it is searchable.
-          </p>
-          <Link
-            href="/"
-            className={buttonClasses({ size: 'lg', className: 'mt-6' })}
-          >
-            Search the catalogue
+      {/* THE DRAWING'S ERROR BLOCK (`mockups/404.html`, `.err{text-align:center;padding:64px 0 40px}`).
+          It was a full-viewport flex centring box at `px-6`, so the 404 was the one page whose
+          content sat on a different vertical rhythm and a different gutter to every other page.
+          The drawing puts it in the ordinary 1080px wrap, near the top, with the header still
+          reading as the top of the page. */}
+      <div className="mx-auto max-w-[1080px] px-5 pt-16 pb-10 text-center">
+        {/* The drawing sets this code in mono at .12em of tracking. Two guard tests refuse it:
+            `monoIsTheDataVoice` holds mono for figures, and `weightAndCasePolicy` forbids letter
+            spacing set in CSS. It keeps the drawing's position and size in the site's own caption
+            setting. */}
+        <p className="mb-[18px] text-caption font-medium text-subtle">404</p>
+        {/* `max-width:20ch` centred (`.err h1`). */}
+        <h1 className="mx-auto mb-3.5 max-w-[20ch] text-h1 font-semibold text-text">
+          That page is not here.
+        </h1>
+        <p className="mx-auto mb-[26px] max-w-[62ch] text-body leading-relaxed text-muted">
+          It may have been renamed, or the idea behind it was killed before it ever shipped. Every
+          pack we have published is on the shelf, and it is searchable.
+        </p>
+        {/* ONE action, not the drawing's two. `stepSevenSurfaces.test.ts` pins it: an error page
+            names what happened and offers the single route that fixes it. A second button asks a
+            lost reader to choose, which is the thing the rule exists to stop. The catalogue, not
+            the home page, because someone on a dead URL here was looking for a pack. */}
+        <div className="flex justify-center">
+          <Link href="/" className={buttonClasses({ size: 'lg' })}>
+            Browse the catalogue
           </Link>
         </div>
       </div>

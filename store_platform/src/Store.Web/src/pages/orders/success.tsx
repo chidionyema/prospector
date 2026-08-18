@@ -170,11 +170,13 @@ export default function OrderSuccess() {
     <main id="main" className="min-h-dvh bg-bg">
       <Seo title="Order confirmed, your pack is ready" />
 
-      <div className="mx-auto max-w-3xl px-6 pt-6 md:px-8 lg:px-10">
+      <div className="mx-auto max-w-[1080px] px-5 pt-3.5">
         <Breadcrumbs items={breadcrumbs} />
       </div>
 
-      <div className="mx-auto max-w-3xl px-6 py-12 md:py-16">
+      {/* One frame, as every other page (`.wrap`, 1080px at a 20px gutter). The receipt's own
+          reading measure is set on the blocks inside it, not by squeezing the page. */}
+      <div className="mx-auto max-w-[1080px] px-5 pb-16">
         {/* 1. Cover plate (16:9 hero). Use a colour-coded gradient as the placeholder until
             the canonical pack art (US-2) lands. The category colour is the same fallback
             the rest of the site uses for missing imagery. */}
@@ -212,7 +214,7 @@ export default function OrderSuccess() {
             {/* The full evidence is the second route back. Refunded orders (revoked) and
                 pending orders (unfulfilled) also live here, both end the welcome early. */}
             {firstItem.orderPath && (
-              <div className="mt-4 rounded-md border border-border bg-surface p-4 text-left">
+              <div className="mt-4 rounded-card border border-border bg-surface p-4 text-left">
                 <p className="text-meta font-semibold text-text">Save this link now</p>
                 <p className="mt-1 text-caption text-muted">
                   It is your permanent access link, it does not expire. Bookmark it or copy it
@@ -261,7 +263,7 @@ export default function OrderSuccess() {
                 <Link
                   key={p.id}
                   href={`/pack/${p.id}`}
-                  className="group flex flex-col gap-2 rounded-md border border-border bg-surface p-4 transition-colors hover:bg-bg"
+                  className="group flex flex-col gap-2 rounded-card border border-border bg-surface p-4 transition-colors hover:bg-bg"
                 >
                   <p className="text-meta font-semibold text-text group-hover:text-primary transition-colors line-clamp-2">
                     {p.cardLine || p.title}
@@ -351,7 +353,7 @@ export default function OrderSuccess() {
               'Run the build spec for day one, the first deliverable in your first week',
               'Pick your first customer, the persona dossier inside the pack',
             ].map((step, i) => (
-              <li key={i} className="flex items-start gap-3 rounded-md border border-border bg-surface p-4">
+              <li key={i} className="flex items-start gap-3 rounded-card border border-border bg-surface p-4">
                 <span className="flex h-6 w-6 flex-none items-center justify-center rounded-sm bg-text text-caption font-medium text-bg">
                   {i + 1}
                 </span>

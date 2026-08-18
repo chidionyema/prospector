@@ -44,7 +44,7 @@ export function DiscoveryNearMiss({
   );
 
   return (
-    <div className="rounded-md border border-border bg-surface p-6">
+    <div className="rounded-card border border-border bg-surface p-6">
       <h3 className="text-body font-semibold text-text">
         Nothing matches all of it. These come closest,
       </h3>
@@ -89,7 +89,7 @@ export function DiscoveryNearMiss({
  */
 export function DiscoveryWaitlist({ query, onReset }: { query: string; onReset?: () => void }) {
   return (
-    <div className="rounded-md border border-border bg-surface p-6">
+    <div className="rounded-card border border-border bg-surface p-6">
       <h3 className="text-body font-semibold text-text">
         No vetted pack for “{query.trim()}”, yet.
       </h3>

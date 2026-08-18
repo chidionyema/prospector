@@ -410,7 +410,19 @@ export function FeatureCard({
   );
 }
 
-/** Closing CTA band. Light, bordered, one primary action. */
+/**
+ * The closing block (`.closing` in every mockup): a 2px ink rule across the measure, a section
+ * heading, one sentence, then the actions.
+ *
+ * It was a filled `surface2` band running `py-24`, with the title at `text-h1`. Two things were
+ * wrong against the drawings. The fill made the last block on the page read as one more module
+ * rather than the end of it, and `text-h1` repeated the page's own headline size at the bottom of
+ * the page, so the closing ask competed with the thing it was closing. The drawing sets it at
+ * `h2.sec` on the page background with a rule above.
+ *
+ * Three pages use this: how-it-works, a collection page, and the guide layout. Every other page
+ * hand-rolls the same `mt-12 border-t-2 border-text pt-9` block inline.
+ */
 export function CtaBand({
   title,
   lead,
@@ -426,10 +438,11 @@ export function CtaBand({
   secondary?: { href: string; label: string };
 }) {
   return (
-    <SectionBand bg="surface2" width={width} className="scroll-mt-16 py-10 md:py-24">
-      <h2 className="max-w-[20ch] text-balance text-h1 font-semibold text-text">{title}</h2>
-      {lead && <p className="mt-3 max-w-[60ch] text-body text-muted">{lead}</p>}
-      <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+    <SectionBand bg="bg" width={width} className="scroll-mt-16 !pt-0 !pb-16">
+      <div className="mt-12 border-t-2 border-text pt-9">
+      <h2 className="max-w-[20ch] text-balance text-h2 font-semibold text-text">{title}</h2>
+      {lead && <p className="mt-3.5 max-w-[56ch] text-body leading-relaxed text-muted">{lead}</p>}
+      <div className="mt-[22px] flex flex-col items-start gap-3 sm:flex-row sm:items-center">
         <Link href={primary.href}>
           <Button variant="primary" size="lg">{primary.label}</Button>
         </Link>
@@ -438,6 +451,7 @@ export function CtaBand({
             <Button variant="secondary" size="lg">{secondary.label}</Button>
           </Link>
         )}
+      </div>
       </div>
     </SectionBand>
   );

@@ -1076,3 +1076,42 @@ first.
   work. `repairTruncation` in `lib/copy.ts` patches the symptom on the shelf.
 
 Both are recorded here rather than fixed because neither is a defect in the storefront code.
+
+### Mockup walk, 2026-08-18
+
+Twelve mockups in `docs/design/mumchimp-build-bundle/mockups/`. This pass walked the built pages
+against the drawings and fixed what did not match. Claims about commits, not about a browser.
+
+The page frame is `.wrap` — `max-width:1080px; padding:0 20px`. Every hand-rolled shell now uses
+it: pricing, about, the legal pages, `orders/success`, `auth/callback`, `TrustGuaranteesRow`, and
+the four pages whose breadcrumb trail was still on `max-w-3xl`. `CRUMB_WIDTH` in
+`MarketingLayout.tsx` resolves both `6xl` and `7xl` to `max-w-[1080px]`, so the trail sits on the
+same band as the content under it.
+
+The closing block is `.closing` — `border-top:2px solid var(--ink); margin-top:46px;
+padding:34px 0 0`. It replaced a filled `surface2` panel on kill-log, collections, the legal pages
+and `CtaBand` itself, which three pages use. The heading dropped from `text-h1` to `text-h2`,
+because the drawing sets it at `h2.sec` and the closing ask was competing with the page headline.
+
+Card corners: 28 bordered surfaces moved from `rounded-md` (6px) to `rounded-card` (12px), plus
+one more on how-it-works that the first scan missed because it is `bg-bg/40` rather than
+`bg-surface`.
+
+Pack detail: the two-column split is `1.55fr 1fr` at a 36px gap, which inside the 1080px frame is
+a 394px buy rail. Ours was `lg:w-80` at `gap-12`, so the rail was 74px narrower than drawn. Two
+tests located the rail by the literal string `lg:w-80`; both now stop at `lg:w-`, because the
+claim they make is that the desktop rail survives, not that it is 20rem.
+
+Three places where the drawing lost to a guard test, each recorded in a comment at the site:
+
+- The facts-row labels and the 404/500 codes are not mono, not uppercase and not letterspaced.
+  `monoIsTheDataVoice.test.ts` holds the mono face for figures and caps the site's mono budget at
+  90 usages; `weightAndCasePolicy.test.ts` bars case and tracking set in CSS.
+- The error pages offer one route onward, not the drawing's two. `stepSevenSurfaces.test.ts` pins
+  it.
+- The about page's facts row prints researched, killed and the kill rate. The drawing's third cell
+  is the survivor count, which `lib/stats.ts` does not export by founder directive of 2026-08-13.
+
+Kill-log did NOT get the drawing's `.facts` row. The page already prints those figures twice, in
+the chip row and in the caveat beside the hero, and its own docblocks record two earlier defects
+from printing one number twice.

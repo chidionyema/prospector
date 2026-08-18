@@ -323,7 +323,7 @@ export default function KillLogPage({
             The chart is the page's thesis in one object, and it is placed above the table because
             it is what makes the table legible: a reader who knows incumbency is the largest
             publishable cause reads 188 incumbency rows as a pattern rather than as repetition. */}
-        <section aria-labelledby="distribution-heading" className="rounded-md border border-border bg-surface p-6 md:p-7">
+        <section aria-labelledby="distribution-heading" className="rounded-card border border-border bg-surface p-6 md:p-7">
           <h2 id="distribution-heading" className="text-h2 font-semibold text-text">
             How ideas die
           </h2>
@@ -644,7 +644,11 @@ export default function KillLogPage({
           nothing here for you to read. Every kill above names the check it failed and why.
         </p>
 
-        <div className="mt-10 rounded-md border border-border bg-surface2 p-8 md:p-10">
+        {/* THE CLOSING BLOCK (`mockups/kill-log.html`, `.closing`): a 2px rule in ink across the
+            full measure, then the offer. It was a filled card with a border. The drawing uses the
+            rule everywhere a page ends, and a filled panel here reads as one more module rather
+            than the end of the page. */}
+        <div className="mt-12 border-t-2 border-text pt-9">
           <h2 className="max-w-[26ch] text-h2 font-semibold text-text">
             Now read one that survived all of it.
           </h2>

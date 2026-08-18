@@ -22,7 +22,10 @@ import { textLinkClass } from '@/components/ui';
  */
 export default function RefundPage() {
   return (
-    <LegalDoc title="Refund Policy">
+    <LegalDoc
+      title="Refund Policy"
+      lede="Fourteen days, no questions. Email us and we refund in full."
+    >
 
       <LegalText>
         This policy explains your rights and our approach to refunds when you purchase a Pack
