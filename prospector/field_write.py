@@ -49,6 +49,10 @@ ONE_LINER_CUT_AT = 280
 #: Two shots at a title. The first is warm, the second is given the refusal verbatim.
 MAX_TITLE_REPAIR_ATTEMPTS = 2
 
+#: Two shots at a one-liner, for the same reason. It was 1 until 2026-08-18, which meant the
+#: refusal — the only place the character count is ever stated — was assembled and then dropped.
+MAX_ONE_LINER_REPAIR_ATTEMPTS = 2
+
 
 # --------------------------------------------------------------------------------------------- #
 # graders — one definition of clean per field, asked on the way in AND on the way out
@@ -110,7 +114,11 @@ def _propose_one_liner(cand: Any, current: str, feedback: str, attempt: int,
     # the engine can never end up bound to different versions of it.
     from . import shelf_copy_repair
 
-    return shelf_copy_repair.rewrite_one(op, cand.title or "", current)
+    # `feedback` is `_reject_feedback`, which quotes the breach VERBATIM — including the
+    # character count. It used to be dropped on the floor here, so the loop computed the one
+    # number the model cannot work out for itself and then threw it away, and every attempt
+    # sent the identical prompt. The title has always passed it through; this is that.
+    return shelf_copy_repair.rewrite_one(op, cand.title or "", current, feedback=feedback)
 
 
 def _reject_feedback(still: list[str]) -> str:
@@ -163,7 +171,10 @@ FIELDS: dict[str, Field] = {
         write=lambda c, v: setattr(c, "one_liner", v),
         grade=grade_one_liner,
         propose=_propose_one_liner,
-        attempts=1,
+        # Two, like the title, and for the same reason: the second attempt is the one that gets
+        # told what was wrong. At one attempt `_reject_feedback` was computed on the way out of
+        # the loop and never sent, so the retry that names the character overage could not fire.
+        attempts=MAX_ONE_LINER_REPAIR_ATTEMPTS,
         skip_when_empty=True,
     ),
 }
