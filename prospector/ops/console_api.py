@@ -2790,6 +2790,11 @@ TOOLS: list[dict] = [
        "/audit"),
     _t("scripts/doc_lint.py", "Find docs that point at something no longer there", False,
        "/audit"),
+    # --- registered 2026-08-18 with the incident loop; docs/INCIDENT_PROCESS.md ---
+    _t("scripts/incident.py", "Incidents: what broke, what class it belongs to, was the fix graded",
+       False, "/audit", cmd=".venv/bin/python scripts/incident.py check"),
+    _t("scripts/incident.py", "What takes longest and what repeats, with recommendations", False,
+       "/audit", cmd=".venv/bin/python scripts/incident.py friction"),
     _t("scripts/copy_audit.sh", "Copy audit across the marketing and pack lanes", False, "/shelf",
        cmd="bash scripts/copy_audit.sh"),
     _t("scripts/backfill_packs_parallel.sh", "Backfill P5 pack artefacts into listed packs", True,

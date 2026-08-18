@@ -18,7 +18,7 @@ import { SEARCH_ENGINE_VERIFICATIONS } from "@/lib/seo/verification";
 // ASCII (apostrophes are fine); the assertion below is what stops that invariant rotting silently.
 const ORG_DESCRIPTION =
   "Mumchimp sells sourced business opportunity packs. Each is a vetted idea with a " +
-  "build spec, a GTM plan, operations and unit economics, and a sourced QA report.";
+  "build spec, a plan for your first customers, operations and the numbers, and a sourced QA report.";
 
 const siteGraph = graph(organizationNode(ORG_DESCRIPTION), webSiteNode());
 const serialized = siteGraph ? JSON.stringify(siteGraph) : null;

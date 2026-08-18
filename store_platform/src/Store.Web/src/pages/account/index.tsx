@@ -91,7 +91,7 @@ export default function AccountPage() {
           {status === 'authenticated' && account && (
             <p className="metastrip num !mt-0 mb-3">Signed in as {account.email}</p>
           )}
-          <h1>{status === 'authenticated' ? 'Your shelf' : 'Sign in'}</h1>
+          <h1>{status === 'authenticated' ? 'Your packs' : 'Sign in'}</h1>
           {status !== 'authenticated' && (
             <p className="lede big mt-4">
               Your purchases are tied to the email address you bought with, sign in with it to see

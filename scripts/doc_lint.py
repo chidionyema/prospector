@@ -182,15 +182,22 @@ def _tracked() -> frozenset[str]:
     return frozenset(paths)
 
 
-def _resolve(bare: str) -> Path | None:
-    """The repo path this claim names, or None if the repo does not have it."""
+def _resolve(bare: str, doc_dir: str = "") -> Path | None:
+    """The repo path this claim names, or None if the repo does not have it.
+
+    `doc_dir` is the directory of the doc making the claim, and it is tried FIRST, because
+    that is how a markdown link actually resolves: `docs/A.md` writing `[x](incidents/x.json)`
+    means `docs/incidents/x.json`, not `incidents/x.json` at the repo root. Without it every
+    doc that links a sibling file was reported as pointing at a missing path — a false finding
+    the baseline then froze, which is the whole doc-rot-ratchet failure in miniature.
+    """
     if bare.startswith(RUNTIME_ROOTS):
         # Runtime output. Not in the index anywhere, by design, so grading it against the index
         # only measures that fact over and over. Return the path so the empty-file check can
         # still run when the file happens to be here.
         return REPO_ROOT / bare
     tracked = _tracked()
-    for root in SEARCH_ROOTS:
+    for root in ((doc_dir,) + SEARCH_ROOTS if doc_dir else SEARCH_ROOTS):
         rel = f"{root}/{bare}" if root else bare
         rel = PurePosixPath(rel).as_posix()
         if tracked:
@@ -218,7 +225,7 @@ def lint(config_path: Path | None = None) -> list[dict]:
                 if not _is_path_claim(token):
                     continue
                 bare = _LINE_REF.sub("", token)
-                target = _resolve(bare)
+                target = _resolve(bare, PurePosixPath(rel).parent.as_posix().strip("."))
                 if target is None:
                     findings.append({"file": rel, "line": lineno, "kind": "missing_path",
                                      "detail": token,

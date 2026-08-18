@@ -127,7 +127,7 @@ export default function LegalDoc({ title, lede, version = TOS_VERSION, interim =
           reader and a keyboard both reach the contract before the index of it.
 
           The grid is the drawing's `.legal` class now, not utilities holding the same two columns
-          at different numbers. It had to be: `mockup.css` sits in `layer(components)` and Tailwind
+          at different numbers. It had to be: `mumchimp.css` sits in `layer(components)` and Tailwind
           utilities sit above it, so any utility that also sets `grid-template-columns` wins and the
           class is inert. Both collapse to one column at 860px, and `DocRail` now appears at 861px
           to match, so there is no width where the rail is hidden but its column is still reserved. */}
@@ -158,7 +158,7 @@ export default function LegalDoc({ title, lede, version = TOS_VERSION, interim =
               {interim && (
                 <div className="rounded-md border border-border bg-bg/50 px-6 py-5 text-meta leading-relaxed text-muted">
                   <strong className="text-text font-semibold">Interim beta terms.</strong> This document reflects how the
-                  platform actually works today and is pending final review by our legal counsel. We&apos;ll
+                  site actually works today and is pending final review by our legal counsel. We&apos;ll
                   post a new version here if anything material changes.
                 </div>
               )}

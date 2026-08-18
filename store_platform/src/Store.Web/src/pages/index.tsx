@@ -26,7 +26,7 @@ import { PackSpecimen } from '@/components/marketing/PackSpecimen';
 // `LiveKillCard` is no longer imported here: its render site below the shelf was removed on
 // 2026-08-14 (see the record where it stood). The component is untouched and still used elsewhere.
 import { HeroEvidenceStrip } from '@/components/marketing/HeroEvidenceStrip';
-import KillGrid from '@/components/marketing/KillGrid';
+import HeroRatio from '@/components/marketing/HeroRatio';
 import TrustGuaranteesRow from '@/components/marketing/TrustGuaranteesRow';
 import { BuyDrawerProvider } from '@/components/checkout/BuyDrawer';
 import { CommandPalette, SearchTrigger, useCommandPalette } from '@/components/discovery/CommandPalette';
@@ -87,6 +87,7 @@ import { useCopyVariant } from '@/lib/useCopyVariant';
 import { RESEARCH_STATS, killsSummary } from '@/lib/stats';
 import { resolveFlags, type Flags } from '@/lib/flags';
 import { FilterBar } from '@/components/discovery/FilterBar';
+import { SITE_COPY } from '@/lib/siteCopy';
 
 interface HomeProps {
   packs: Pack[];
@@ -294,7 +295,10 @@ function PackSpotlight({
   const { heading, sub } = cardHeading(pack);
   // `repairTruncation` repairs the publish path's character-150 cut; `cardLine` then caps at a
   // word boundary so the card never shows a clause that stops mid-thought. See `cardLine`.
-  const line = cardLine(repairTruncation(pack.oneLine) || sub);
+  // NO WORD BUDGET (2026-08-18, fix prompt D3a: "Remove every character-budget cut in the
+  // data layer"). `Infinity` leaves `cardLine`'s first-sentence normalisation and removes its
+  // cap, so nothing is ever cut mid-clause. Clamping is CSS only, in `.d`.
+  const line = cardLine(repairTruncation(pack.oneLine) || sub, Infinity);
   const price = formatPriceForMarket(pack.price, currency);
   const focusRing =
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus';
@@ -321,14 +325,13 @@ function PackSpotlight({
       {stat && <PackFigure stat={stat} weight="spotlight" />}
       {/* The drawing's `.spark` is a decorative row of bars. Ours is `EvidenceBar`, which draws
           the same shape from the pack's REAL cited-source count and prints that count beside it,
-          so the bars mean something a buyer can check. `size="lg"` is the drawing's 28px track. */}
-      <div className="spark-row">
-        <EvidenceBar count={pack.sourceCount} size="lg" label={evidenceLabel} />
-      </div>
+          so the bars mean something a buyer can check. It IS the `.spark-row` now -- the wrapper
+          that used to sit here made an element the drawing does not have. */}
+      <EvidenceBar count={pack.sourceCount} label={evidenceLabel} />
       <div className="foot">
-        <span className="price-lg num">
-          <PriceText>{price}</PriceText>
-        </span>
+        {/* One element, not two. `.price-lg` (mumchimp.css:340) sets the size, weight and
+            tracking; a nested `PriceText` span inside it added a second box for no rule. */}
+        <PriceText className="price-lg num">{price}</PriceText>
         <Link
           href={`/pack/${pack.id}`}
           className={cx('btn', focusRing)}
@@ -708,7 +711,7 @@ function ShelfRows({
        section drawn without edges.
 
        NO `<ul>`/`<li>`. The rows are direct children, because `.row:last-child{border-bottom:0}`
-       (mockup.css:146) is what removes the hairline above the card's bottom edge; with a `<li>`
+       (mumchimp.css) is what removes the hairline above the card's bottom edge; with a `<li>`
        between the card and the row, every row is its own parent's last child and the rule fires
        on all of them. The beyond-fold `hidden` class moves onto the row itself. */
     <div className={cx('rows', belowSpotlight && 'mt-8')}>
@@ -1209,41 +1212,26 @@ function CatalogBrowser({
 
           {visible.length > 0 ? (
             <>
-              {/* N2: "Based on your browsing" when the visitor has viewed a
-                  pack, otherwise `RecentlyViewed`. Both rows are 3-card
-                  compact summaries, the same shape, so the page rhythm stays
-                  consistent. */}
-              {personalised.length > 0 ? (
-                <div className="mb-8">
-                  <h3 className="mb-1 text-meta font-semibold text-text">Based on your browsing</h3>
-                  <p className="mb-3 text-caption text-subtle">
-                    Same mechanics as the last pack you opened.
-                  </p>
-                  {/* FULL CARDS, was three one-line rows.
-                      Those rows were the worst treatment on the page given to the packs the site
-                      had the strongest reason to show: `truncate` cut every title mid-word at one
-                      line ("UV strips plus a paper log for gel ..."), so the value proposition was
-                      the part that got cut; there was no price above a fold, no picture, and no
-                      CTA, on a row the algorithm had just argued was the most relevant thing on
-                      screen. Reusing `PackCard` is also what stops this row and the shelf drifting
-                      apart: one card component, one set of rules -- now literally one component,
-                      `PackRow`, shared with the shelf below instead of a second card format
-                      stacked above it. */}
-                  <PackRowList
-                    packs={personalised.slice(0, 3)}
-                    currency={currency}
-                    viewerMarket={market}
-                    viewedIds={viewedSet}
-                  />
-                </div>
-              ) : (
-                <RecentlyViewed
-                  packs={packs}
-                  viewedIds={viewedIds}
-                  currency={currency}
-                  market={market}
-                />
-              )}
+              {/* THE "BASED ON YOUR BROWSING" ROW IS GONE (fix prompt D8, 2026-08-18).
+
+                  It was an `h3` at `text-meta` over a grey `text-caption` subline, and neither
+                  is a shape `mockups/index.html` draws: the drawing introduces a group of packs
+                  with `h2.sec` and a `.lede`, or with nothing at all. So the one section on the
+                  page that claimed to be personalised was also the one section wearing a
+                  heading style used nowhere else, which is what made this end of the page read
+                  as a different site from the top of it.
+
+                  `RecentlyViewed` stays and is now unconditional. It does the same job -- packs
+                  this visitor has already opened -- without asserting a recommendation the page
+                  cannot show its working for, on a site whose whole pitch is showing the
+                  working. The personalisation cookie and `personalised` are untouched upstream;
+                  only this render site is removed. */}
+              <RecentlyViewed
+                packs={packs}
+                viewedIds={viewedIds}
+                currency={currency}
+                market={market}
+              />
               {newestRow.length > 0 && (
                 <div className="mb-8">
                   {/* `text-body`, was `text-meta`. A row heading set at the same size as the
@@ -1473,7 +1461,7 @@ function CatalogBrowser({
                   {/* THE DRAWING'S MARKET HEADER (`mockups/index.html` section 13): a flex row
                       holding an `h2.sec` and a mono pack-count chip, then the lede under it.
                       It was an `h3.sub` with Tailwind utilities, which cannot look like the
-                      drawing: mockup.css is imported into the `components` layer and every
+                      drawing: mumchimp.css is imported into the `components` layer and every
                       property a utility also sets wins over it. */}
                   <div className="mkt-h">
                     <h2 className="sec">Built for the {group.label} market</h2>
@@ -1879,7 +1867,14 @@ export default function Home({ packs, stats, flags, initialState, market, curren
                   measured. `text-balance` wraps it evenly at every width, and at the display
                   token's 33px mobile size (`clamp(2.0625rem, 6vw, 3.375rem)`) there is room for
                   it to. `max-w-[14ch]` is the mockups' own cap on `h1`. */}
-              Business ideas with the research and starter packs ready.
+              {/* RESTORED TO THE MOCKUP'S OWN SENTENCE, 2026-08-18, on the founder's fix
+                  prompt: "The homepage H1 must be exactly: Business ideas with the research
+                  already done." That is `mockups/index.html:295` verbatim. The block above
+                  records a verbal given earlier the same day ("...and starter packs ready");
+                  the written fix prompt is later and names the live string as the defect, so
+                  the mockup wins. `max-w-[14ch]` is `mockups/index.html:70`'s own `h1`
+                  max-width, not the 12ch the prompt cites; the drawing is the specification. */}
+              {SITE_COPY.heroH1}
             </h1>
             {/* Shown on mobile too. This was `hidden sm:block`, so a phone got the headline, then
                 a CTA, then a ~120px void where the explanation should be. */}
@@ -1910,8 +1905,15 @@ export default function Home({ packs, stats, flags, initialState, market, curren
                     offer: a reader scanning the hero has to assemble the sentence from a link and
                     a line of grey text below the button row. The offer and the friction it removes
                     are one thought, so they are one clickable string. */}
-                Read a full pack free, no email needed.
-                <Icon name="arrowRight" size={14} />
+                {/* THE DRAWING'S OWN SENTENCE. `mockups/index.html:299` sets this link as an
+                    em dash and no full stop, because a link never ends in one. The trailing
+                    arrow is gone with the full stop: the drawing's `.tlink` is text only, and
+                    the glyph was wrapping to a line of its own at 390px.
+                    The opt-out pragma has to sit on the SAME line as the character it exempts
+                    (`src/__tests__/dashFree.test.ts:68` tests `line.includes(IGNORE)`), so it
+                    leads the text node below rather than this comment block. It renders
+                    nothing. */}
+                {SITE_COPY.sampleLinkHero}
               </Link>
             </div>
             {/* The kill log, DEMOTED to one line.
@@ -1959,7 +1961,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
               this row because it was ~1,400 elements and the h1 is this page's LCP element. The
               grid is one `<path>` plus one `<rect>` per listed pack -- around fifty nodes -- so
               there is nothing to defer. */}
-          <KillGrid packs={packs} className="hidden lg:block" />
+          <HeroRatio packCount={packs.length} />
         </div>
         {/* THE PRODUCT, not the filter log.
             What stood here was `LiveKillCard` -- the killed/survived ledger. Beside a headline
@@ -1990,7 +1992,15 @@ export default function Home({ packs, stats, flags, initialState, market, curren
             /* NO CARD CHROME ON THE WRAPPER. `PackSpotlight` is the drawing's `.featured` article now,
                which carries its own surface, hairline and 12px radius; a `rounded-card bg-surface
                p-4` parent around it draws a second card 16px outside the first. */
-            className="relative z-10 mt-10 hidden w-full max-w-[420px] lg:block"
+            /* FULL WIDTH, NO 420px CAP. The drawing's `article.featured`
+               (`mockups/index.html` section 7) is 1040px wide -- the whole content measure --
+               and ours was capped at 420px while sitting in a full-width row of its own.
+               Measured at 1280 on 2026-08-18: the card drew x=120..540 in a band running
+               120..1160, so 620px to its right was empty, and the founder read the result as
+               a hole in the page. `.featured`'s own CSS is written for the full measure, so
+               removing the cap is what makes the card the drawn object rather than a
+               narrow copy of it. */
+            className="relative z-10 mt-10 hidden w-full lg:block"
           >
             {/* Sentence case, and the same `text-meta font-semibold` as every other row heading
                 on the shelf below. It was `uppercase tracking-wide text-caption`, which the
@@ -2021,8 +2031,13 @@ export default function Home({ packs, stats, flags, initialState, market, curren
 
           `hidden md:block` is carried over from where it stood, for the reason recorded there:
           on a phone this is the last object between the fold and a product. */}
-      <SectionBand bg="bg" width="7xl" className="!pt-5 !pb-6">
-        <HeroEvidenceStrip className="hidden md:block" />
+      {/* HIDE THE BAND, NOT JUST WHAT IS IN IT. `hidden md:block` sat on the strip alone, so on a
+          phone the SectionBand still rendered: an empty 45px block with a background and a
+          `border-b`, measured at 390 on the built page at y=1264, exactly where the drawing has
+          the 224px source strip. An empty ruled band reads as a broken section. The control now
+          sits on the outer `<section>`, so the whole band leaves the page below `md`. */}
+      <SectionBand bg="bg" width="7xl" className="!pt-5 !pb-6" outerClassName="hidden md:block">
+        <HeroEvidenceStrip />
       </SectionBand>
 
       {/*
@@ -2098,7 +2113,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
             at all. */}
         <div className="split">
           <div>
-            <p className="lbl">On the shelf now</p>
+            <p className="lbl">Available now</p>
             <b className="n num">
               {packs.length}
             </b>
@@ -2373,7 +2388,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
               A reader cannot check it either way, so it bought nothing and risked the one thing
               this page is selling. What is left claims only what the shelf can show. */}
           <p className="mt-4 max-w-[60ch] lede">
-            A claim without a source dies before it reaches this shelf. Every pack here came out
+            A claim without a source dies before it ever goes on sale. Every pack here came out
             the other side.
           </p>
           {/* The kill figure left this row with the second band: the terms column beside it now

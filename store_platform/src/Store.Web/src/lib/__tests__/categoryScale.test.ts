@@ -264,13 +264,19 @@ describe('the untagged pack renders no sector marker', () => {
     // every variant. This is the part an untagged pack relies on.
     // TWO variants now, in two files: the Spotlight here and the Row in `PackRow.tsx`. Was 3 --
     // the `mid` weight was deleted with the tile-grid format (2026-08-15 brief).
+    // ONE FIGURE MOUNT SINCE 2026-08-18 (founder's live-defect fix prompt, D4). Only the
+    // featured card draws the big `.stat` figure; the row and the three-up tile print the
+    // drawing's one-line mono proof instead (`<b>41</b> sources`). The guarantee an untagged
+    // pack leans on is unchanged -- every variant states a number of its own -- so both mounts
+    // are pinned here, not just the one that kept the old component.
     expect(
       ((cardCode + row).match(/<PackFigure\b/g) ?? []).length,
-      'every card variant must carry the pack figure',
-    // THREE card variants since 2026-08-18: the row, the card, and `PackTileGrid`, the drawing's
-    // three-up tile (`mockups/index.html` section 5). The rule is unchanged -- every variant
-    // carries the figure -- only the number of variants moved.
-    ).toBe(3);
+      'the spotlight must carry the pack figure',
+    ).toBe(1);
+    expect(
+      (row.match(/<CardProof\b/g) ?? []).length,
+      'the row and the tile must each state a number through the proof component',
+    ).toBe(2);
   });
 
   it('an untagged pack still leads with a figure of its own', () => {

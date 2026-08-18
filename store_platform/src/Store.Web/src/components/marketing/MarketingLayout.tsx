@@ -9,6 +9,7 @@ import { SEARCH_OPEN_EVENT } from '@/lib/searchEvent';
 import { RESEARCH_STATS } from '@/lib/stats';
 import { tightDecimal } from '@/components/ui/Money';
 import { useDisclosure } from '@/lib/useDisclosure';
+import { TodayRibbon } from '@/components/marketing/TodayRibbon';
 
 /**
  * High-fidelity shell for the Mumchimp marketing pages. Purely presentational.
@@ -35,7 +36,7 @@ export const MARKETING_NAV = [
   // instead of being reachable only from a sitemap and its siblings.
   // Label shortened from "Browse by category": at 14px the four-word item was wider than the
   // other three combined, so the nav read as one long phrase rather than four destinations.
-  { href: '/collections', label: 'Collections' },
+  { href: '/collections', label: 'Good for' },
   { href: '/how-it-works', label: 'How it works' },
   // Promoted out of the footer (2026-08-06). This shop's entire claim is that most ideas are
   // rejected; the log of what got rejected and why is the evidence for that claim, and it was
@@ -175,6 +176,10 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
         Skip to content
       </a>
 
+      {/* The drawing puts the dark strip ABOVE the header on all eleven pages, and it scrolls
+          away rather than sticking. See `TodayRibbon` for why the tag prints a date. */}
+      <TodayRibbon />
+
       {/*
         White chrome (brand v3, 2026-08-06). The near-black band is gone.
         A dark header on an otherwise white store is a second colour system: everything placed in
@@ -196,7 +201,7 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
       */}
       {/* THE DRAWING'S HEADER, copied from `mockups/*.html` <header class="hdr">.
 
-          It emits the drawing's own class names, which `src/styles/mockup.css` styles. That file
+          It emits the drawing's own class names, which `src/styles/mumchimp.css` styles. That file
           is the drawings' stylesheet copied byte-for-byte, so the header is the drawing rather
           than a translation of it: 58px tall, a 1080px wrap on a 20px gutter, the wordmark on the
           left with `margin-right:auto`, the nav and the account link hidden below 920px.
@@ -251,7 +256,11 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
           <button
             type="button"
             ref={menuButtonRef}
-            className="icon-btn"
+            /* `menu`, not decoration: mumchimp.css:431 is
+               `@media(min-width:921px){.icon-btn.menu{display:none}}`, so without this class the
+               hamburger renders beside the desktop nav at every width. Measured 2026-08-18 against
+               `mockups/index.html`, which carries `class="icon-btn menu"`. */
+            className="icon-btn menu"
             aria-label="Menu"
             aria-expanded={menuOpen}
             aria-controls="site-menu"
@@ -315,9 +324,12 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
       {/* THE DRAWING'S FOOTER, copied from `mockups/*.html` <footer>. Four columns at 1.4fr 1fr
           1fr 1fr, dropping to two at 860px and one at 520px, all of it from the copied stylesheet.
 
-          The column headings are <h2> where the drawing writes <h6>. The footer renders after
-          every page's <h1>, so an <h6> here skips four levels and trips axe's `heading-order`.
-          `.f-col h2` in globals.css gives it the drawing's exact look. */}
+          The column headings are `<p class="colh">`, copied from the bundle's own footer. The
+          older drawing wrote `<h6>` and we drew an `<h2>` instead, because the footer renders
+          after every page's `<h1>` and an `<h6>` there skips four levels and trips axe's
+          `heading-order`. The bundle settled it: `mumchimp.css:393` styles `.f-col .colh`, so the
+          heading look no longer needs a heading element, and the local `.f-col h2` copy in
+          globals.css is gone with it. */}
       <footer>
         <div className="wrap">
           <div className="f-top">
@@ -347,22 +359,22 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
               </div>
             </div>
             <div className="f-col">
-              <h2>Store</h2>
+              <p className="colh">Store</p>
               <Link href="/">Catalogue</Link>
-              <Link href="/collections">Collections</Link>
+              <Link href="/collections">Good for</Link>
               <Link href="/how-it-works">How it works</Link>
               <Link href="/kill-log">Kill log</Link>
               <Link href="/about">Who makes this</Link>
               <Link href="/faq">FAQ</Link>
             </div>
             <div className="f-col">
-              <h2>Legal</h2>
+              <p className="colh">Legal</p>
               <Link href="/terms">Terms of Service</Link>
               <Link href="/privacy">Privacy Policy</Link>
               <Link href="/refund">Refund Policy</Link>
             </div>
             <div className="f-col">
-              <h2>Contact</h2>
+              <p className="colh">Contact</p>
               <a href={`mailto:${LEGAL.supportEmail}`}>{LEGAL.supportEmail}</a>
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '14px' }}>
                 <Link className="btn sm" href="/">

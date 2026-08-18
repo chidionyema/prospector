@@ -16,6 +16,11 @@
 > every session is bound by, the portability target matrix and its drills, and the measured
 > automation audit. Read it before proposing anything structural.
 >
+> **When something breaks, the fix is half the job.** `docs/INCIDENT_PROCESS.md` is the other
+> half: sweep for the siblings, land a mechanism that refuses the whole class, and grade it
+> afterwards. Records: `docs/incidents/*.json`. Gate: `.venv/bin/python scripts/incident.py check`.
+> What takes longest and what repeats: `scripts/incident.py friction`.
+>
 > Four programmes have their own tracked specs — read and append there, never here:
 > `docs/COST_PROGRAM.md` (all cost work, all measurements),
 > `docs/GRAPHIFY_ENFORCEMENT_SPEC.md` (estate-wide graph freshness),

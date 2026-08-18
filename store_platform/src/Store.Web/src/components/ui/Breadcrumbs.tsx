@@ -6,7 +6,7 @@ export function Breadcrumbs({ items }: { items: { href: string; label: string }[
        above it, links in --link). It was `text-meta` on the list and `text-muted` on each link,
        which is the same line said in utilities, so no page on the site emitted the class the
        mockups style. The utilities that set colour and size are REMOVED rather than layered:
-       mockup.css is imported into `layer(components)` (globals.css:8) and Tailwind utilities sit
+       mumchimp.css is imported into `layer(components)` (globals.css:8) and Tailwind utilities sit
        above it, so a utility left in place beats the class and the change would be a no-op. */
     <nav aria-label="Breadcrumb" className="crumb">
       <ol className="flex flex-wrap items-center gap-x-1.5">
@@ -28,7 +28,13 @@ export function Breadcrumbs({ items }: { items: { href: string; label: string }[
                   {item.label}
                 </span>
               ) : (
-                <Link href={item.href} className="inline-block py-3">
+                /* `-my-3 py-3`: A 44px TAP TARGET THAT COSTS THE LINE NO HEIGHT. `py-3` alone
+                   made this link 43px tall, so the breadcrumb line was 43px where the drawing's
+                   is 19px -- measured on /about at 1280, the eyebrow below it sat 38px lower than
+                   the drawing's, and 24px of that was this. The trail is the first thing on every
+                   page, so the whole page below it was pushed down. The negative margin pulls the
+                   padding back out of the flex line while the link keeps the hit area. */
+                <Link href={item.href} className="-my-3 inline-block py-3">
                   {item.label}
                 </Link>
               )}

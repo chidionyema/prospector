@@ -175,7 +175,7 @@ export default function LiveKillCard({ className }: LiveKillCardProps) {
             the packs on the shelf are the ones that came through these checks. The `listed` prop
             went with the reconciliation, so this card needs no catalogue call. */}
         <span className="mono">
-          Every pack on the shelf came through this
+          Every pack in the catalogue came through this
         </span>
         <Link
           href="/kill-log"

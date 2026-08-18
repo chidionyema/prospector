@@ -3151,16 +3151,24 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
             else:
                 n_defer += 1
 
-            # PER-ROW ATTEMPT ACCOUNTING. Only a COMPLETED re-vet with a verdict counts, and only
+            # PER-ROW ATTEMPT ACCOUNTING. Only a COMPLETED re-vet with a verdict counts, only
             # if that verdict left the row in the backlog — a DEFER, or a ruling that is
-            # provisional again. The two outage paths never reach here (a blind moat returns before
-            # the pool is built; a ProviderExhaustedError is handled above), which is the point:
-            # the backlog exists because of outages, so an outage must not be able to spend a
-            # row's budget.
+            # provisional again — and only if the verdict was ruled on evidence.
+            #
+            # That last clause is `drain_state.infrastructure_defer`, and it is load-bearing. A
+            # blind moat returns before the pool is built and a ProviderExhaustedError is handled
+            # above, so those two outages never reach this line; a completed re-vet that DEFERred
+            # because a search failed, a verdict call raised, or the tick's clock ran out DOES
+            # reach it, and used to spend the row's budget. Every DEFER this pipeline emits is one
+            # of those (verify.py sets DEFER_GATE in two places, both infrastructure), so the
+            # counter was retiring rows for our own downtime. On the Fly engine 2026-08-18 that was
+            # 251 rows, and the drain had nothing left to work on.
             #
             # A resolved row is FORGOTTEN rather than left at its count, so if a later re-save puts
             # it back in the backlog it starts from a full budget instead of inheriting a spent one.
-            if max_att:
+            # An infrastructure DEFER is neither counted nor forgotten: the row keeps whatever
+            # budget it had, because nothing was learned about it either way.
+            if max_att and not drain_state.infrastructure_defer(d):
                 if d.decision == Decision.DEFER or bool(getattr(d, "provisional", False)):
                     n = drain_state.record_unresolved(store.root, cid)
                     if n >= max_att:

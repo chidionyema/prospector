@@ -83,6 +83,12 @@ OUT_NAMES = "store_platform/src/Store.Web/src/data/kill-log-names.json"
 # instrument. Pointing /how-it-works here therefore preserves its behaviour exactly, including
 # which example each check draws, while keeping the 452 KB full log out of that page's bundle.
 OUT_EXAMPLES = "store_platform/src/Store.Web/src/data/kill-log-examples.json"
+
+# The newest kill on its own, for the dark strip above the header (`TodayRibbon.tsx`). It is a
+# separate file rather than a read of OUT_EXAMPLES because that one is 75K and this element is
+# on every marketing page: importing the examples into the shared shell would put all sixty
+# entries into every page's client bundle to print one title.
+OUT_LATEST = "store_platform/src/Store.Web/src/data/latest-kill.json"
 PREVIEW_LIMIT = 60
 DOSSIERS = "store/dossiers"
 
@@ -287,11 +293,19 @@ def main() -> int:
         "totals": payload["totals"],
         "entries": payload["entries"][:PREVIEW_LIMIT],
     }
+    newest = payload["entries"][0] if payload["entries"] else {}
+    latest = {
+        "generatedAt": payload["generatedAt"],
+        "title": newest.get("title", ""),
+        "date": newest.get("date", ""),
+        "gateLabel": newest.get("gateLabel", ""),
+    }
     for path, data in (
         (OUT, payload),
         (OUT_TOTALS, payload["totals"]),
         (OUT_NAMES, names),
         (OUT_EXAMPLES, examples),
+        (OUT_LATEST, latest),
     ):
         with open(path, "w", encoding="utf-8") as handle:
             json.dump(data, handle, indent=2, ensure_ascii=False)

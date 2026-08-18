@@ -685,6 +685,16 @@ def main(argv: list[str] | None = None) -> int:
     # Deferred to here on purpose: both early returns above (unproven paths, nothing to
     # prove) are decisions the lane map makes on its own, and they are what the tests
     # exercise. Only signing the chain needs the agent, so only that path requires LUX.
+    #
+    # ROOT goes on sys.path first. `popdd_agent.py` sits at the REPO ROOT, and running this
+    # file as a script puts `scripts/` on sys.path, not the root -- so the import died with
+    # ModuleNotFoundError. Measured 2026-08-18 in the `wt-polish` worktree: the gate reached
+    # this line and crashed, which reads as "the gate is broken" rather than "the gate cannot
+    # find its own agent". Using THIS file's ROOT also keeps a worktree grading itself: the
+    # shared `.venv` resolves an editable path back to the MAIN checkout, so an ambient
+    # install would have loaded another tree's copy of the agent.
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
     from popdd_agent import PopddAgent
 
     agent = PopddAgent.at_path(ROOT)

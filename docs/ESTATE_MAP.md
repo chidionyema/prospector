@@ -320,6 +320,13 @@ Collapsing it into either colour is how a dead component gets reported healthy.
 
 ---
 
+## 10a. When one of them breaks
+
+Fixing it is [`RUNBOOKS.md`](RUNBOOKS.md). Making sure the same class of thing does not break in
+the next component along is [`INCIDENT_PROCESS.md`](INCIDENT_PROCESS.md), and the records are in
+[`incidents/`](incidents/). The store-resolver incident is why §6 of this file exists in the shape
+it does: the bug was never in one file, it was in four, and nobody swept for the fifth.
+
 ## 11. The working-tree trap (2026-08-18)
 
 `~/Documents` is iCloud-synced with Optimize Storage on. `~/Documents/code` and

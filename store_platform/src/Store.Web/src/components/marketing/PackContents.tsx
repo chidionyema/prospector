@@ -99,13 +99,13 @@ export const PACK_DOCUMENTS: {
     title: 'What you build',
     section: '01_Blueprint_BuildSpec.md',
     desc:
-      'What to build, in what order, on what stack. Includes the non-goals for v1 and what would kill this.',
+      'What to build, in what order, and what to build it with. Includes what to leave out at first and what would kill this.',
   },
   {
     title: 'How the first customers find you',
     section: '02_Marketing_Plan_GTM.md',
     desc:
-      'Where your first customers come from. Named channels, the beachhead to start in, and the signals that say stop.',
+      'Where your first customers come from. Named channels, the first group to sell to, and the signals that say stop.',
   },
   {
     title: 'How it runs once it works',
@@ -130,7 +130,7 @@ export const PACK_DOCUMENTS: {
     title: 'Copy you can paste',
     section: 'Marketing_Assets.md',
     desc:
-      'Launch copy you can send today: listing page, outreach, social. Claim-checked like the research.',
+      'Launch copy you can send today: listing page, outreach, social. Checked against the sources, like the research.',
   },
   // --- the kicker: what resolves it ---
   {
@@ -218,7 +218,7 @@ export const PACK_CONTENTS: { title: string; filename: string; desc: string }[] 
  */
 export const PACK_EXTRAS: { title: string; filename: string; desc: string }[] = [
   {
-    title: 'The machine-readable record',
+    title: 'A version other software can read',
     filename: 'manifest.jsonld',
     desc: 'What this pack is, in structured data, so a tool can read it as easily as you can.',
   },
@@ -255,8 +255,8 @@ export function PackContentsSection({
        * nockups".
        *
        * The drawing splits it in two and uses the width: `.docs` is a two-column grid of numbered
-       * `.docitem` rows (mockup.css:209-214), `.files` is a three-column grid of `.file` cards
-       * (mockup.css:215-220), and a `.files-note` row closes it with the format sentence and the
+       * `.docitem` rows (mumchimp.css), `.files` is a three-column grid of `.file` cards
+       * (mumchimp.css), and a `.files-note` row closes it with the format sentence and the
        * "Instant download" pill. Same content, same order, same words. Nothing was dropped: the
        * per-pack source count still rides on the QA document, and every filename is still printed
        * so a buyer can check it against their zip.

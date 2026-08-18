@@ -1,0 +1,38 @@
+{
+  "id": "INC-2026-08-18-warnings-as-blockers",
+  "opened": "2026-08-18",
+  "title": "I reported 93 of 93 packs blocked by four checks that cannot block anything",
+  "severity": "medium",
+  "detected_by": "founder",
+  "first_order": {
+    "what_broke": "I told the founder that house_quote, house_style, human_register and repetition were blocking all 93 finished packs off the shelf, and framed it as a generator-versus-linter spec mismatch. All four are deliberately un-armed and emit zero errors. I had counted warnings as failures.",
+    "receipt": "pack_linter.py:2137 sets ok = not any(p['severity'] == 'error' for p in problems). config.yaml:1636 lint_repetition_block false, config.yaml:1708 human_register_block false, house_style.py:344,348,352,357 hardcoded _warn. Real blockers across 74 packs: shelf_copy 42, placeholders 21, title 16, citation_urls 6, sections 3.",
+    "fixed_by": "PR #342"
+  },
+  "cause_chain": [
+    "ops/automations/stranded_packs.py collected every problem code from the lint receipts without reading the severity field.",
+    "The lint receipt carries severity per problem, so the data was right there and the reader dropped it.",
+    "A check that fails 100 percent of a population should have been read as a measurement fault, not a population fault. I reported the number instead of questioning it.",
+    "CLASS: an aggregate that ignores severity turns advisory output into a false blocker list, and it reads as a confident finding."
+  ],
+  "second_order": {
+    "sweep_command": "rg -n \"problems|findings\" ops/automations/ scripts/ --type py | rg -v severity",
+    "siblings_found": 1,
+    "siblings_fixed": 1,
+    "note": "docs/doc_lint_baseline.json is the same shape at a different layer and is tracked separately as INC-2026-08-18-doc-rot-ratchet."
+  },
+  "third_order": {
+    "tier": "refuse",
+    "mechanism": "stranded_packs.py now filters on severity == 'error' before counting. The stronger guard is still missing: nothing fails when a new aggregator reads a problems list without reading severity.",
+    "landed_on": "2026-08-18"
+  },
+  "grade": {
+    "signature": "an aggregate over lint problems with no severity filter",
+    "before": 1,
+    "after": null,
+    "window_days": 14,
+    "verdict": "unproven"
+  },
+  "issue": null,
+  "state": "open"
+}
