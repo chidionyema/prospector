@@ -13,6 +13,8 @@
  */
 import React from 'react';
 
+import { reportClientError } from '@/lib/report';
+
 type Props = { children: React.ReactNode };
 type State = { error: Error | null };
 
@@ -24,9 +26,11 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    // Goes to the browser console AND, in production on Fly, nowhere else. Kept because a
-    // developer with devtools open should not have to re-derive what the page already knows.
+    // Two destinations, because they answer different questions. The browser console is for
+    // someone with devtools already open. The POST is so the fault reaches `fly logs` and can
+    // be read from here — the whole reason the first report of this bug could not be diagnosed.
     console.error('ops console render failure', error, info.componentStack);
+    reportClientError('render', error, info.componentStack ?? undefined);
   }
 
   render() {
@@ -52,6 +56,12 @@ export class ErrorBoundary extends React.Component<Props, State> {
           >
             reload
           </button>
+          {/*
+            A plain anchor, not next/link, on purpose. The router has just failed inside this
+            tree; a client-side navigation would re-enter the same broken state and land the
+            operator back on this screen. A full document load is the point.
+          */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a
             className="tap rounded-sm border border-border-control px-3 font-mono text-[13px] leading-[2.4]"
             href="/"
