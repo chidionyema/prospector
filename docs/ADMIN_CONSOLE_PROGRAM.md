@@ -836,8 +836,17 @@ Resend is refused with 409 when the entitlement is revoked — refunded or dispu
 
 ### 13.3 What is still missing, and why
 
+Every item here is declared in code, not left as a blank panel. Reads go in
+`money.MISSING_READS`, writes in `money.MISSING_ACTIONS` (`prospector/ops/money.py`), and the Money
+screen renders both — the reads under "Not measured yet", the writes under "Cannot be done from
+here" (`store_platform/src/Ops.Console/src/pages/money.tsx`). A gap that exists only as a JSON field
+is not declared to anyone.
+
 - **Outbound refund.** `IPaymentProvider` has no refund method (`IPaymentProvider.cs:5-35`).
   The disputes read shows reversals Stripe already told us about; issuing one is its own change.
+  An operator refunds in the Stripe dashboard today, and our database only learns of it when the
+  webhook lands and calls `FulfilmentService.RevokeAsync`. Carried as the `issue-refund` entry in
+  `money.MISSING_ACTIONS`.
 - **Dispute clock.** `FulfilmentService.RevokeAsync:177` applies every reversal but never persists
   the `PaymentReversal` record, so no "disputed at" timestamp exists anywhere in the database.
   The read therefore dates rows by **sale** date and says so in the payload
