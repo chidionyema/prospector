@@ -54,6 +54,10 @@ public static class AnalyticsEndpoints
         // chunks to fit (chunkCardIds in Store.Web/src/lib/analytics.ts).
         "card_impression",
         "card_click",
+        // The FAQ helpfulness control (Store.Web/src/pages/faq.tsx). Meta is
+        // "<question-slug>:up" or "<question-slug>:down" — keyed by the question text, not its
+        // position, because the FAQ is ordered by purchase blocker and that order changes.
+        "faq_helpful",
     };
 
     /// <summary>

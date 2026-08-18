@@ -38,7 +38,11 @@ export type AnalyticsEventName =
   // rare trial. Adding these two here without adding them to AnalyticsEndpoints.cs would
   // make them 400 silently, and a dropped beacon looks exactly like a card nobody clicked.
   | 'card_impression'
-  | 'card_click';
+  | 'card_click'
+  // The FAQ helpfulness control. Meta is `<question-slug>:up|down`, so a reorder of the list
+  // cannot re-point historic votes at a different question. Adding this here without adding it
+  // to AnalyticsEndpoints.cs would 400 silently, which reads as "nobody voted".
+  | 'faq_helpful';
 
 /**
  * Fire-and-forget. Analytics must never break the page or delay navigation.

@@ -61,9 +61,23 @@ export default function AboutPage() {
         {/* `id` is the ownership anchor, not a styling hook: §5.3 gives the founder story exactly
             one page, and `factOwnership.test.ts` matches on this id. It was previously told twice,
             here and from `FOUNDER.bio`. */}
+        {/* THE ESSAY SETTING (MASTER-BRIEF section 3 type table, "About essay body", and section 7
+            `/about`): 18px, line-height 1.68, `--ink`, 56ch measure.
+
+            IT IS A READING SETTING, NOT A SEVENTH SCALE STEP. tokens.css carries six sizes and a
+            note recording that a seventh was deleted for being a seventh. This is not one: the UI
+            scale sizes labels, headings and controls, and this sizes one page of continuous prose,
+            which is the one thing on the site a reader reads rather than scans. It is written here,
+            on the only page that has an essay, rather than promoted to a token nothing else uses.
+
+            56ch, not 60ch, and `text-text`, not `text-muted`. The old setting was the site's
+            standard body paragraph: 16px of grey at the width of a marketing column. That is the
+            right treatment for a paragraph under a heading and the wrong one for eight hundred
+            words of first-person writing, which is why the one human page on the site read like a
+            product description. */}
         <div
           id="founder-story"
-          className="mt-8 max-w-[60ch] space-y-5 text-body leading-relaxed text-muted"
+          className="mt-8 max-w-[56ch] space-y-5 text-[1.125rem] leading-[1.68] text-text"
         >
           <p>
             Launching them was. After a few attempts that never quite got off the ground, a habit
@@ -83,15 +97,23 @@ export default function AboutPage() {
             So I built the part I kept losing to doubt, and made it check every idea harder than I
             ever did.
           </p>
-          <p>
+          {/* `.quiet` in the mockup: this paragraph steps out of the story and back to the
+              product, so it drops to the muted ink the rest of the site uses. */}
+          <p className="text-muted">
             That is the seed {BRAND.name} grew from. It runs on ideas that are not mine now, and it
             publishes its workings either way: the few it clears, and the many more it kills.
           </p>
         </div>
 
+        {/* THE SIGNATURE RULE. A hairline above the name, at the essay's own measure, which is what
+            closes a signed piece of writing and says the first person stops here. It was a 12px
+            caption sitting directly under the last paragraph, indistinguishable from the metadata
+            captions everywhere else on the site, so the one page written by a person did not read
+            as signed by one. */}
         {hasFounder() && (
-          <p className="mt-6 text-caption font-medium text-muted">
-            {FOUNDER.name}, who built {BRAND.name}
+          <p className="mt-7 max-w-[56ch] border-t border-border-strong pt-5 text-body text-muted">
+            <strong className="font-semibold text-text">{FOUNDER.name}</strong>, who built{' '}
+            {BRAND.name}
           </p>
         )}
 

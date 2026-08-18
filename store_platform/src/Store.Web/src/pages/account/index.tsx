@@ -5,6 +5,7 @@ import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { PageHeader, Skeleton } from '@/components/ui';
 import { AuthPanel } from '@/components/account/AuthPanel';
 import { AccountPanel } from '@/components/account/AccountPanel';
+import { ReturnBlocks } from '@/components/account/ReturnBlocks';
 import { useAuth } from '@/lib/auth/AuthContext';
 
 /**
@@ -113,6 +114,12 @@ export default function AccountPage() {
           )}
           {status === 'authenticated' && <AccountPanel />}
         </div>
+
+        {/* MASTER-BRIEF section 7 `/account`: owned packs with download links first (AccountPanel
+            above, whose Orders tab opens on the library), shortlist second, new since your last
+            visit third. Both of the last two are per-browser and render nothing when empty, so a
+            new customer sees exactly the page they see today. */}
+        {status === 'authenticated' && <ReturnBlocks />}
       </div>
     </MarketingLayout>
   );

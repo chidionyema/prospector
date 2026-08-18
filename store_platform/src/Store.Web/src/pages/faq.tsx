@@ -7,7 +7,19 @@ import { buttonClasses, chipClasses, Icon, SearchInput, textLinkClass } from '@/
 import { cx } from '@/components/ui/cx';
 import { LEGAL } from '@/lib/config';
 import { FAQS, isLink, plainAnswer, type FaqItem } from '@/lib/faqContent';
+import { track } from '@/lib/analytics';
 import { breadcrumbNode, faqPageNode, graph } from '@/lib/seo/schema';
+
+/**
+ * A stable key for one question, for the helpfulness beacon.
+ *
+ * The question TEXT, not its position. The list is ordered by purchase blocker and that order has
+ * already changed once; keyed by index, every vote recorded before a reorder would silently start
+ * describing whichever question moved into that slot.
+ */
+function questionSlug(question: string): string {
+  return question.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48);
+}
 
 /** One answer's segments as prose. */
 function Answer({ item }: { item: FaqItem }) {
@@ -82,11 +94,21 @@ function AccordionItem({
             Was this helpful? Two words, not two emoji.
             `pricing.tsx` already stated the rule when it stopped rendering the pack-contents
             emoji: each one is a different vendor's artwork per OS, and it is the loudest thing on
-            a page about a professional research product. A 👍 next to a paragraph explaining the
-            refund policy is exactly that, and it survived here because the rule was written in a
-            comment on one page instead of applied across the set (desktop-faq-fold.png,
-            2026-08-06). Words also give the control a visible label rather than an `aria-label`
-            that only a screen reader ever hears.
+            a page about a professional research product. A thumbs-up next to a paragraph about the
+            refund policy is exactly that. Words also give the control a visible label rather than
+            an `aria-label` that only a screen reader ever hears.
+
+            IT NOW REPORTS. Until 2026-08-18 the click set a piece of React state that nothing read
+            and nothing sent, so the page carried 26 buttons that collected a vote we then threw
+            away on the next navigation. The founder wants the control, so the fix is to make it
+            true rather than to remove it: each vote fires the first-party beacon under
+            `faq_helpful`, keyed by a SLUG of the question rather than its index, because step 7
+            reordered this list and an index would have re-pointed every historic vote at a
+            different question.
+
+            The beacon fires only when a vote is CAST. Clicking the same answer again clears the
+            choice, and an un-vote sends nothing: there is no "retract" event, and re-firing the
+            same name on the way out would count the vote twice.
           */}
           <div className="mt-4 flex items-center gap-2 border-t border-border pt-3">
             <span className="text-caption text-muted">Was this helpful?</span>
@@ -94,7 +116,11 @@ function AccordionItem({
               <button
                 key={choice}
                 type="button"
-                onClick={() => setFeedback(feedback === choice ? null : choice)}
+                onClick={() => {
+                  const next = feedback === choice ? null : choice;
+                  setFeedback(next);
+                  if (next) track('faq_helpful', `${questionSlug(item.question)}:${next}`);
+                }}
                 aria-pressed={feedback === choice}
                 className={chipClasses({ selected: feedback === choice })}
               >
