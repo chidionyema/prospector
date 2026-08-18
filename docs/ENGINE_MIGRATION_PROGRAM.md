@@ -827,3 +827,76 @@ folder name, not the deleted console.
 
 A checkout that still shows those files is behind `main`. This was written after grepping the shared
 developer checkout, which was, and reading its hits as current.
+
+## 13. Hermes — the split, drawn
+
+§12.6 said the split had to be drawn before the container was built. This is that split. It was
+made by reading the twelve launchd plists and the scripts they run, not by guessing from the job
+names.
+
+The rule is one line. **What watches the ESTATE moves. What watches THIS MAC stays.** A job that
+reads a process table, a launchd label or a local disk is measuring the laptop, and running it on
+Fly would make it report on the wrong machine — confidently and wrongly, which is worse than not
+running it at all.
+
+### 13.1 What moves
+
+| Job | What it is | Why it moves |
+|---|---|---|
+| `gateway` | the Telegram front door | outbound long polling only; needs no inbound hostname |
+| `coordinator` | the brain that dispatches work | reads the queue and the database, not the Mac |
+| `cockpit` | the Telegram cockpit UI | renders state it is given |
+| `otto-server` | the RSI loop | reads its own ledgers |
+| `progress` | hourly progress digest | reads the queue |
+| `rsi` | the daily self-improvement run | reads its own ledgers |
+| `submodule-backup` | off-machine snapshot of the agent code | reads git, pushes offsite |
+
+### 13.2 What stays, and what it becomes
+
+| Job | Why it cannot move |
+|---|---|
+| `keepawake` | it is `caffeinate -dims`. There is nothing to keep awake on a Fly machine. **Delete on cutover**, do not port. |
+| `runaway-reaper` | it kills runaway processes on this Mac. On Fly it would reap the wrong process table. |
+| `idle-engine` | it fires work when this Mac is idle. Idle is a property of a desk, not of a datacentre. |
+| `watchdog` | `estate_watchdog.py` does `os.kill(pid, 0)` on the gateway and coordinator pids and `launchctl kickstart -k` to revive them. Both are laptop-local by construction. |
+| `ngrok` | it exists to give the laptop an inbound URL. A Fly app can have a real hostname, so this job **disappears** rather than moving. |
+
+### 13.3 The watchdog is the hard one, and it splits in two
+
+`estate_watchdog.py` is the outer ring that keeps Telegram from being silently down. It cannot
+simply move, because its whole method is local pids and `launchctl kickstart`.
+
+It becomes two things:
+
+1. **On Fly**, supervisord already does the restarting. `[program:gateway]` with
+   `autorestart=true` is the same guarantee, written once, and it is the same mechanism the engine
+   has been running on since 03:09 today.
+2. **On the laptop**, a much smaller job stays behind and watches Fly from outside — the same
+   shape as `engine_failover.py check`. An outer ring that lives on the machine it is watching was
+   always the weaker half of this design; moving Hermes fixes that rather than costing anything.
+
+### 13.4 What is reused, not rebuilt
+
+- `deploy/cutover.sh` is unchanged. It does not know what it is moving; both ends are adapters.
+- `deploy/targets/fly.sh`, `laptop.sh` and `sshdocker.sh` are unchanged. Hermes gets the same
+  three targets and the same eleven verbs.
+- The receipt layer already works from Fly. §12.5 R6 closed today on exactly that evidence:
+  `capability_receipts.jsonl` now carries `"source": "fly"` rows for the engine.
+
+### 13.5 The one dependency that must go first
+
+Hermes shells out to Claude Code, and it is narrower than it first looked. Chat completions
+already go through a provider abstraction (`hermes-agent/hermes_cli/providers.py`), which is
+portable as it stands. The dependency is in one file: `scripts/coordinator.py` spawns a real
+`claude -p` agent as its tool-capable executor, with deny rules, a circuit breaker and a
+`claude --version` liveness probe (`coordinator.py:967`, `:982`, `:991`). Its own comment says
+why a chat completion will not do: "A raw chat completion can only NARRATE a fix; this runs a
+REAL agent (claude -p)".
+
+A Fly container has no `claude` binary and no interactive login, so that executor has to become
+optional the same way the engine's did in PR #303 — present when it can be, with a working path
+when it cannot. This is the first task of the phase, not a detail of it, and it is one file
+rather than a rewrite.
+
+This is the first task of the phase, not a detail of it.
+
