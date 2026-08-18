@@ -14,6 +14,7 @@ import { requireAuth } from '@/lib/auth';
 import { EXPECTED_CONTRACT, opsRead } from '@/lib/ops';
 
 export const VIEWS = [
+  'engine_location',
   'status',
   'queue',
   'providers',

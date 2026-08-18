@@ -287,7 +287,12 @@ def take_backup(client: Any, bucket: str, prefix: str, source: Source,
     """Fetch, verify, upload, prune. Returns the receipt."""
     with tempfile.TemporaryDirectory(prefix="offsite-") as scratch:
         dest = Path(scratch) / Path(source.key).name
-        command = [part.replace("{dest}", str(dest)) for part in source.fetch]
+        # `_expand` here as well as on the storage block: the money-database fetch carries
+        # `X-Internal-Key: ${STORE_INTERNAL_API_KEY}` and, unexpanded, curl would have sent the
+        # eighteen literal characters of the variable name. The API answers 401, `--fail` turns
+        # that into a non-zero exit, and the night reads as a fetch failure rather than as a
+        # missing secret. `_expand` raises when the variable is unset, which is the honest answer.
+        command = [_expand(part).replace("{dest}", str(dest)) for part in source.fetch]
         try:
             done = subprocess.run(
                 command, capture_output=True, text=True, timeout=timeout_s, cwd=scratch

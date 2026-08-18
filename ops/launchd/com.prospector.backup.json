@@ -12,7 +12,8 @@
     "com.prospector.backup",
     "--",
     "/Users/chidionyema/Documents/code/prospector-live/.venv/bin/python",
-    "/Users/chidionyema/Documents/code/prospector-live/scripts/backup_store.py"
+    "/Users/chidionyema/Documents/code/prospector-live/scripts/backup_store.py",
+    "--mirror-only"
   ],
   "StandardErrorPath": "/Users/chidionyema/Documents/code/prospector/store/backup.log",
   "StandardOutPath": "/Users/chidionyema/Documents/code/prospector/store/backup.log",
