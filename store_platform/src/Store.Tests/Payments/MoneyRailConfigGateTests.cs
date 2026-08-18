@@ -13,8 +13,20 @@ public sealed class MoneyRailConfigGateTests
 
     // Existing provider-secret tests run under Development so the internal-key guard
     // (P1-4) is skipped and they exercise only the provider-secret checks.
-    private static MoneyRailConfigGate NewGate(IConfiguration config, string env = "Development") =>
-        new(config, new FakeHostEnvironment(env), NullLogger<MoneyRailConfigGate>.Instance);
+    // The gate falls back to process environment variables when a key is absent from config, so
+    // a test that says "this key is missing" must control what the environment answers. Default:
+    // an environment with nothing in it. Without this the two "missing key" tests passed the
+    // guard on any machine that exports STORE_INTERNAL_API_KEY or PROSPECTOR_ENTITLEMENTS_API_KEY
+    // -- which is every machine that runs the engine, including the founder's.
+    private static MoneyRailConfigGate NewGate(
+        IConfiguration config,
+        string env = "Development",
+        Func<string, string?>? readEnvironmentVariable = null) =>
+        new(config,
+            new FakeHostEnvironment(env),
+            NullLogger<MoneyRailConfigGate>.Instance,
+            status: null,
+            readEnvironmentVariable: readEnvironmentVariable ?? (_ => null));
 
     private static IConfiguration StripeConfig(params (string Key, string Value)[] extra)
     {
@@ -53,6 +65,22 @@ public sealed class MoneyRailConfigGateTests
         var config = StripeConfig(); // no Store:InternalApiKey
         var gate = NewGate(config, "Production");
         return Assert.ThrowsAsync<InvalidOperationException>(() => gate.StartAsync(CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task StartAsync_ProductionReadsBothKeysFromTheEnvironmentWhenConfigHasNeither()
+    {
+        // The fallback the tests above suppress is real production behaviour: the deployments set
+        // these as environment variables, not config keys. Pin it, so making the guard tests
+        // machine-independent can never quietly delete the path production actually takes.
+        var env = new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["STORE_INTERNAL_API_KEY"] = "a-real-rotated-secret",
+            ["PROSPECTOR_ENTITLEMENTS_API_KEY"] = "a-real-rotated-entitlements-secret",
+        };
+        var gate = NewGate(StripeConfig(), "Production", k => env.GetValueOrDefault(k));
+        var exception = await Record.ExceptionAsync(() => gate.StartAsync(CancellationToken.None));
+        Assert.Null(exception);
     }
 
     [Fact]
