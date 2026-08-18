@@ -408,11 +408,92 @@ grep -rn 'Path(__file__)' --include='*.py' | grep store   # EDGE-4: must be empt
 
 ## 9. Open, needing you
 
-1. **§1 — which brain option?** A (OAuth token, needs the 20-minute proof + a ToS call),
-   B (metered API key, a real bill), or C (MiniMax-only, single-brain moat).
-2. **EDGE-17 — `artifact_operator:145` is the only line the brain choice actually exposes.**
-   MiniMax already leads and rules finally on the moat, so verdicts are covered. Pack prose is
-   not: claude_cli leads there. Flip it to `[minimax, claude_cli]`, or leave it and accept that
-   pack quality is the cost of an account event. Either is fine; leaving it undecided is not.
+1. **§1 — which brain option?** REDUCED 2026-08-18, and it is no longer a blocker.
+   Option C works today: the founder directive "we cant be depedint on claude code, it has to be
+   a option only" is implemented (PR #303), so no chain leads with `claude_cli` and the engine
+   runs on a container with no Claude auth at all. Option B also turns out to need no purchase —
+   `ANTHROPIC_API_KEY` is present and set in `.env` (108 chars), which contradicts the "no
+   ANTHROPIC_API_KEY in this estate" line in `CLAUDE.md`. **Unverified: whether that key has
+   any balance.** Option A stays the only one needing the 20-minute proof and a ToS call.
+2. ~~**EDGE-17 — `artifact_operator:145`**~~ **DECIDED AND SHIPPED 2026-08-18, PR #303.** It is
+   `[minimax, claude_cli]`. Claude stays second, reached as the shelf-copy escalation target.
+   Reordering it alone would have made that escalation inert — both prose chains then lead with
+   `minimax`, so the rewrite would have run on the brain that had just failed the publish bar —
+   so `run.py::_escalation_order` now drops the failed brain from the escalation chain.
 3. **EDGE-9 — private networking, or do the console auth work before P5?**
 4. **§3 — confirm Hermes is out of scope for this programme.**
+
+---
+
+## 10. Dependency map — what runs here, what it needs, where it goes
+
+Added 2026-08-18. §4 lists the ways the migration can bite; this is the inventory it bites.
+Measured, not recalled: `launchctl list`, `PlistBuddy` on each plist, `lsof -iTCP -sTCP:LISTEN`,
+and the `.env` key census. Re-run the commands in §8 before trusting any row.
+
+### 10.1 The eight prospector jobs
+
+Every one of them runs code from **`prospector-live`** and writes state into
+**`prospector/store`**. Two directories, one state. That split is deliberate (`CLAUDE.md`, "Where
+production runs") and it is the single most important fact for the cutover: moving the code does
+not move the store, and moving the store does not move the code.
+
+| launchd label | what it runs | needs | goes where |
+|---|---|---|---|
+| `com.prospector.scheduler` | `prospector.scheduler.run_scheduled --daemon --interval 7200` | store, MiniMax key, Exa key, outbound web | **Fly.** This is the engine. |
+| `com.prospector.consumer` | `prospector.run consume --publish` | store, `api.mumchimp.com`, `STORE_INTERNAL_API_KEY`, Stripe live key | **Fly**, same machine. It publishes, so it touches money. |
+| `com.prospector.watchdog` | `run_scheduled --watchdog` | store | **Fly.** Restarts a stalled tick; useless on a machine that is off. |
+| `com.prospector.backup` | `scripts/backup_store.py` | store, R2 keys | **Fly.** EDGE-10: must run from exactly one side. |
+| `com.prospector.offsite-backup` | `ops.automations.offsite_backup --fix` | store, R2 keys | **Fly**, same reason. |
+| `com.prospector.live-update` | `scripts/live_checkout.py --unattended` | git, the `prospector-live` checkout | **Dies at cutover.** It exists to roll a laptop checkout forward. On Fly, a deploy is the update. |
+| `com.prospector.control-center` | `streamlit … app.py` on **`100.93.240.113:8601`** | store on local disk | **Blocked — see 10.3.** Reads the store as a filesystem. |
+| `com.prospector.ops-console` | `next start -H 100.93.240.113 -p 8611` | store on local disk, `api.mumchimp.com` | **Blocked — see 10.3.** Same problem. |
+
+### 10.2 What else is on this box
+
+- **Four GitHub Actions runners** (`mumchimp-mac`, `-2`, `-3`, `-4`), all online and busy.
+  Covered by EDGE-12, and **already solved**: every workflow reads
+  `${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}`, and the repo variable `CI_RUNS_ON` is set to
+  `self-hosted`. `gh variable delete CI_RUNS_ON` moves all CI to GitHub's machines in one
+  command. No code change needed, tonight or ever.
+- **Eight Hermes jobs** (`ai.hermes.*`: coordinator, gateway, otto-server, rsi, watchdog,
+  keepawake, idle-engine, runaway-reaper). §3 recommends these stay put. They do not read the
+  prospector store.
+- **A local `dotnet` on `127.0.0.1:55664`** — a development Store.Api. Production is
+  `api.mumchimp.com` on Fly and is unaffected.
+
+### 10.3 The dependency that is NOT solved
+
+**The two admin dashboards read the store as a local directory, and both bind to a Tailscale
+address on this Mac.** `100.93.240.113:8601` (control center) and `100.93.240.113:8611` (ops
+console). If the engine's store moves to a Fly volume, both of them are looking at a store that
+has stopped changing, and they will keep rendering it without complaint — a stale dashboard that
+reads as a quiet business.
+
+This is P5 in the delivery plan and it is the reason P5 is two days rather than an afternoon.
+Options, in cost order: run both on the Fly machine and reach them over `fly proxy` (no public
+IP, matching the `fly.toml` comment); or give them a read path to the store over the API. Not
+decided. **Until it is, the cutover is not finished — it is an engine that runs with no
+window into it.**
+
+### 10.4 Secrets — 20 keys, and which the engine actually needs
+
+All 20 are present and non-empty in `.env`. Git does not carry it; on the laptop the live
+checkout symlinks back to this one, and on Fly each becomes a `fly secrets set`.
+
+**Needed by the engine on Fly:** `MINIMAX_API_KEY`, `EXA_API_KEY`, `STORE_INTERNAL_API_KEY`,
+`STORE_API_URL`, `STRIPE_LIVE_API_KEY`, `PROSPECTOR_ENTITLEMENTS_API_KEY`, and the four R2 keys
+(`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`) for the backup job.
+
+**Not needed:** `GEMINI_API_KEY` (no config selects Gemini), `STANDARDCOMPUTE_API_KEY` (adapter
+deleted 2026-08-15), `DEEPSEEK_API_KEY` and `OPENROUTER_API_KEY` (no chain in `config.yaml`
+names them). Carrying a dead key to a new host is how a dead tier gets quietly revived.
+
+**`ANTHROPIC_API_KEY` is set** — see §9 item 1. Balance unverified.
+
+### 10.5 Outbound — must be reachable from Fly, or the tick does nothing
+
+`api.minimax.io` (the brain), `html.duckduckgo.com` and the Exa API (grounding),
+`api.mumchimp.com` (publishing), Stripe, and the R2 endpoint
+(`<account>.r2.cloudflarestorage.com`). All public HTTPS, no allowlisting, nothing that depends
+on being on this network. **This is the part of the migration with no hidden dependency.**
