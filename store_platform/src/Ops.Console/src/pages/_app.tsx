@@ -1,9 +1,27 @@
 import type { AppProps } from 'next/app';
 import Head from 'next/head';
+import { useEffect } from 'react';
 
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { reportClientError } from '@/lib/report';
 import '@/styles/globals.css';
 
 export default function App({ Component, pageProps }: AppProps) {
+  // The boundary below only sees throws that happen while React is rendering. A crash in an
+  // event handler, a timer, or a rejected fetch goes straight past it and shows the operator
+  // nothing at all. Those are caught here and reported to the same place.
+  useEffect(() => {
+    const onError = (e: ErrorEvent) => reportClientError('window.error', e.error ?? e.message);
+    const onRejection = (e: PromiseRejectionEvent) =>
+      reportClientError('unhandledrejection', e.reason);
+    window.addEventListener('error', onError);
+    window.addEventListener('unhandledrejection', onRejection);
+    return () => {
+      window.removeEventListener('error', onError);
+      window.removeEventListener('unhandledrejection', onRejection);
+    };
+  }, []);
+
   return (
     <>
       <Head>
@@ -18,7 +36,9 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta name="color-scheme" content="light" />
         <title>prospector ops</title>
       </Head>
-      <Component {...pageProps} />
+      <ErrorBoundary>
+        <Component {...pageProps} />
+      </ErrorBoundary>
     </>
   );
 }

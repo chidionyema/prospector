@@ -210,8 +210,8 @@ function OrdersTab() {
             page read as one undifferentiated column of grey. The count keeps the mono, because a
             count IS a checkable quantity (tokens.css: "monospace means you can verify this"). */}
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h2 className="text-body font-semibold text-text">Your library</h2>
-          <p className="font-mono text-caption text-subtle">
+          <h2 className="sub">Your library</h2>
+          <p className="mono">
             {purchases.length} pack{purchases.length === 1 ? '' : 's'}
           </p>
         </div>
@@ -301,12 +301,12 @@ function OrdersTab() {
                       // end: it names a state without saying what happened to the money or what
                       // the buyer may do next, and it looks like a failed render.
                       <p className="text-caption text-muted">
-                        <span className="font-medium text-text">Refunded.</span> The download was
+                        <span>Refunded.</span> The download was
                         withdrawn when the payment went back. The receipt below is the record.
                       </p>
                     ) : (
                       <p className="text-caption text-muted">
-                        <span className="font-medium text-text">Download unavailable.</span> Email{' '}
+                        <span>Download unavailable.</span> Email{' '}
                         <a href="mailto:support@mumchimp.com" className={textLinkClass()}>
                           support@mumchimp.com
                         </a>{' '}
@@ -323,8 +323,8 @@ function OrdersTab() {
 
       <section>
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h2 className="text-body font-semibold text-text">Receipts</h2>
-          <p className="font-mono text-caption text-subtle">
+          <h2 className="sub">Receipts</h2>
+          <p className="mono">
             {orders.length} order{orders.length === 1 ? '' : 's'}
           </p>
         </div>
@@ -496,7 +496,7 @@ function SecurityTab() {
   return (
     <div className="space-y-6">
       <Card className="p-6">
-        <h2 className="text-body font-semibold text-text">Password</h2>
+        <h2 className="sub">Password</h2>
         <form onSubmit={onChangePassword} className="mt-4 space-y-4">
           {error && (
             <p className="rounded-md border border-danger bg-danger/5 px-4 py-3 text-body text-text" role="alert">
@@ -528,12 +528,12 @@ function SecurityTab() {
       </Card>
 
       <Card className="p-6">
-        <h2 className="text-body font-semibold text-text">Connected accounts</h2>
+        <h2 className="sub">Connected accounts</h2>
         {linked === null ? (
-          <p className="mt-3 text-body text-muted">Loading…</p>
+          <p className="mt-3 lede">Loading…</p>
         ) : linked.length === 0 ? (
           <>
-            <p className="mt-3 text-body text-muted">No providers connected.</p>
+            <p className="mt-3 lede">No providers connected.</p>
             <div className="mt-3">
               <Button variant="secondary" onClick={() => void onLink('Google')}>
                 Connect Google
@@ -555,12 +555,12 @@ function SecurityTab() {
       </Card>
 
       <Card className="p-6">
-        <h2 className="text-body font-semibold text-text">Where you are signed in</h2>
+        <h2 className="sub">Where you are signed in</h2>
         <p className="mt-1 text-caption text-muted">
           Signing out a session revokes it everywhere, immediately.
         </p>
         {sessions === null ? (
-          <p className="mt-3 text-body text-muted">Loading…</p>
+          <p className="mt-3 lede">Loading…</p>
         ) : (
           <ul className="mt-3 space-y-3">
             {sessions.map((s) => (

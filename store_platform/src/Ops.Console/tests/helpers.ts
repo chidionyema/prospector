@@ -42,6 +42,13 @@ export function makeRes(): { res: NextApiResponse; captured: Captured } {
       captured.body = body;
       return res;
     },
+    // A 204 has no body, so a route that ends instead of sending JSON needs this to be
+    // testable at all. Without it the call throws `res.end is not a function` and the test
+    // reads as a broken route.
+    end(body?: unknown) {
+      captured.body = body;
+      return res;
+    },
   } as unknown as NextApiResponse;
   return { res, captured };
 }

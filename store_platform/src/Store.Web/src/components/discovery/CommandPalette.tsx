@@ -400,7 +400,7 @@ function PaletteDialog({
 
           {rows.length === 0 && (
             <li className="px-4 py-6">
-              <p className="text-meta font-medium text-muted">
+              <p className="lede">
                 Nothing in the catalogue matches “{query.trim()}”.
               </p>
               {/* Not a dead end: the old copy said "close this and we'll show you what to do

@@ -43,8 +43,8 @@ export function MethodCostAnchor({ range }: { range: PriceRange | null }) {
           the tag disagreed with the type scale, and on /pricing that disagreement skipped a level
           and tripped axe's `heading-order`. The rule: the tag follows the ROLE, and the type scale
           follows the tag -- never the other way round. */}
-      <h2 className="text-h2 font-semibold text-text">What this costs when you commission it</h2>
-      <p className="mt-3 max-w-[60ch] text-body text-muted">
+      <h2 className="sec">What this costs when you commission it</h2>
+      <p className="mt-3 max-w-[60ch] lede">
         A pack is desk research: published sources, read until a claim either holds or dies. Firms
         sell that by the project, and publish what they charge for it.
       </p>
@@ -54,7 +54,7 @@ export function MethodCostAnchor({ range }: { range: PriceRange | null }) {
           steer rather than a comparison trying to inform. The numbers make the point unaided. */}
       <dl className="mt-6 grid gap-4 sm:grid-cols-2">
         <div className="rounded-card border border-border bg-surface2 p-6">
-          <dt className="text-caption font-medium text-subtle">
+          <dt className="eyebrow">
             {documentary.publisher},{' '}
             {new Date(documentary.publishedOn ?? documentary.checkedOn).getFullYear()} price list
           </dt>
@@ -64,7 +64,7 @@ export function MethodCostAnchor({ range }: { range: PriceRange | null }) {
           </dd>
         </div>
         <div className="rounded-card border border-border bg-surface2 p-6">
-          <dt className="text-caption font-medium text-subtle">A pack, already run</dt>
+          <dt className="eyebrow">A pack, already run</dt>
           <dd className="mt-2 text-meta text-text">
             <span className="font-mono font-semibold text-text">{range ? range.label : 'One payment'}</span>
             <span className="mt-1 block text-caption text-subtle">
@@ -100,10 +100,10 @@ export function ComparisonBlock({ range }: { range: PriceRange | null }) {
       {/* The number is the mode, not the floor: this heading is an argument about paying ONCE,
           and quoting the cheapest pack under it would make the comparison flattering rather than
           representative. */}
-      <h2 className="text-h2 font-semibold text-text">
+      <h2 className="sec">
         Why {range ? `${formatGbp(range.mode)} once` : 'one payment'}, not another subscription
       </h2>
-      <p className="mt-3 max-w-[60ch] text-body text-muted">
+      <p className="mt-3 max-w-[60ch] lede">
         Idea feeds and trend tools sell you the search. We sell you the answer to one.
       </p>
 
@@ -114,7 +114,7 @@ export function ComparisonBlock({ range }: { range: PriceRange | null }) {
             <Icon name="close" size={16} className="text-subtle" />
             <span className="text-body font-semibold text-text">Subscription idea feeds</span>
           </div>
-          <p className="mt-2 text-meta text-muted">
+          <p className="mt-2 lede">
             <SourcedFigure id="idea-feed-entry-plan" />
           </p>
           <p className="mt-1 text-caption leading-relaxed text-subtle">
@@ -123,7 +123,7 @@ export function ComparisonBlock({ range }: { range: PriceRange | null }) {
           <dl className="mt-6 space-y-4">
             {rows.map((r) => (
               <div key={r.label} className="flex flex-col gap-0.5">
-                <dt className="text-caption font-medium text-subtle">{r.label}</dt>
+                <dt className="eyebrow">{r.label}</dt>
                 <dd className="text-meta text-muted">{r.feed}</dd>
               </div>
             ))}
@@ -151,7 +151,7 @@ export function ComparisonBlock({ range }: { range: PriceRange | null }) {
           <dl className="mt-6 space-y-4">
             {rows.map((r) => (
               <div key={r.label} className="flex flex-col gap-0.5">
-                <dt className="text-caption font-medium text-subtle">{r.label}</dt>
+                <dt className="eyebrow">{r.label}</dt>
                 <dd className="text-meta text-text">{r.pack}</dd>
               </div>
             ))}

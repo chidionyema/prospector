@@ -132,7 +132,7 @@ export default function LegalDoc({ title, lede, version = TOS_VERSION, interim =
           <article className="space-y-10">
             <header className="space-y-6">
               <div className="space-y-2">
-                <h1 className="text-h1 font-semibold text-text">{title}</h1>
+                <h1>{title}</h1>
                 {/* Was "Version 2026-06-15", which is a build artefact as far as a buyer is
                     concerned: the one thing a reader wants from the head of a legal document is
                     whether it is current, and an ISO string beside the word "version" does not
@@ -150,7 +150,7 @@ export default function LegalDoc({ title, lede, version = TOS_VERSION, interim =
                 </p>
               </div>
               {/* `.lede.big` (17.5px, 62ch): the plain-language answer above the contract. */}
-              {lede && <p className="max-w-[62ch] text-body leading-relaxed text-muted">{lede}</p>}
+              {lede && <p className="max-w-[62ch] lede">{lede}</p>}
               {interim && (
                 <div className="rounded-md border border-border bg-bg/50 px-6 py-5 text-meta leading-relaxed text-muted">
                   <strong className="text-text font-semibold">Interim beta terms.</strong> This document reflects how the
@@ -166,10 +166,10 @@ export default function LegalDoc({ title, lede, version = TOS_VERSION, interim =
                 header, so the end of a legal document is worth spending on the two things a reader
                 who got this far actually wants: the free report and the FAQ. */}
             <div className="mt-12 border-t-2 border-text pt-9">
-              <h2 className="text-h2 font-semibold text-text">
+              <h2 className="sec">
                 Read one free before you buy anything.
               </h2>
-              <p className="mt-3.5 max-w-[56ch] text-body leading-relaxed text-muted">
+              <p className="mt-3.5 max-w-[56ch] lede">
                 A complete report, unredacted. No payment, no email, no account.
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
@@ -209,7 +209,7 @@ export function LegalText({ children }: { children: React.ReactNode }) {
   // `max-w-[68ch]` and `leading-[1.68]`: the drawing's `.legal p` (`mockups/refund.html`). The
   // measure lives on the paragraph now rather than on a `max-w-2xl` wrapper, so the clause rail
   // sits beside a document whose own text sets its width.
-  return <p className="max-w-[68ch] text-body leading-[1.68] text-muted">{children}</p>;
+  return <p className="max-w-[68ch] leading-[1.68] lede">{children}</p>;
 }
 
 /** Bulleted list inside a legal doc. */

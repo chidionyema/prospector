@@ -30,7 +30,7 @@ export function EmptyState({ title, description, icon, action, className }: Empt
     >
       {icon && <Icon name={icon} size={24} className="text-faint" />}
       <p className="text-body font-semibold text-text">{title}</p>
-      {description && <p className="max-w-sm text-meta text-muted">{description}</p>}
+      {description && <p className="max-w-sm lede">{description}</p>}
       {action && <div className="mt-2">{action}</div>}
     </div>
   );

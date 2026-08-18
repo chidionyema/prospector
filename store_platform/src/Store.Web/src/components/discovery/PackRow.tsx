@@ -109,137 +109,56 @@ export function PackRow({
   // realistic descriptions, the worst case is 2 lines at this column width; maxWords=7 already
   // overflows to 3 on the longest sample. 6 is the highest budget that keeps the clamp a safety
   // net that never fires, at the narrowest supported width.
-  const line = cardLine(repairTruncation(pack.oneLine) || sub, 6);
+  // RAISED FROM 6 TO 26, 2026-08-18. The reasoning above is sound for the column it was measured
+  // in and that column no longer exists: the description ran beside a fixed 176px sector label in
+  // a flex row, so six words was all that fitted on two lines. The row is the drawing's `.row`
+  // now -- the sector moved up to an eyebrow and the text column runs the full width at 56ch --
+  // and at six words the founder was reading truncated fragments on a wide screen: "AI turns
+  // sound-meter readings and site", "An AI tool that pulls Florida", "Works out what a flat
+  // owner". Those are not descriptions, they are the first half of one.
+  //
+  // 56ch over two lines is about 112 characters. At `cardLine`'s recorded 155-char median a 26
+  // word budget lands just under that, so the clause-boundary backoff does the cutting at a comma
+  // and `line-clamp-2` stays the safety net it was meant to be rather than the thing a reader
+  // meets on every row.
+  const line = cardLine(repairTruncation(pack.oneLine) || sub, 26);
   const price = formatPriceForMarket(pack.price, cur);
 
+  /* THE DRAWING'S ROW (`mockups/index.html`, `.rows > a.row`). It emits the drawing's own class
+     names, which `src/styles/mockup.css` styles: a two-column grid, the text in column one and
+     the price stack in column two spanning all four rows. Every Tailwind class that used to
+     re-state those numbers is gone, because the copied stylesheet already carries them. */
   return (
     <Link
       href={`/pack/${pack.id}`}
-      /* THE WHOLE ROW IS THE THING SEEN AND THE THING CLICKED, so both halves of the measurement
-         hang off this one element. `ref` counts the row as seen when half of it enters the
-         viewport; `onClick` counts the click. Rows past the fold on the home shelf are `hidden`
-         rather than unmounted, and a `display: none` element never intersects, so a card the
-         reader never revealed is correctly not counted as seen. */
       ref={observeRef}
       onClick={() => trackCardClick(pack.id, position)}
-      className={cx(
-        'group flex items-center gap-4 px-3 py-4 sm:gap-5 sm:px-4',
-        // Hover LIFTS to paper (`--surface`) rather than sinking to `--surface3`, which is now
-        // the shelf's own ground -- a hover state painted the same colour as the surface under
-        // it is not a hover state.
-        'transition-colors hover:bg-surface',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
-      )}
+      className="row"
     >
-      <span className="min-w-0 flex-1">
-        {/* TWO LINES ON A PHONE, ONE FROM `sm` UP. The reported defect was "cuts at ~50% of
-            available width while empty space remains", and the space is real but it is not the
-            title's to take: measured at 390px the text column runs L=80..R=259 and the price
-            group starts at L=275, so the column ALREADY fills everything up to the 16px gap.
-            The title needs 439px against 179px available -- 41% -- so a second line is the only
-            thing that actually buys the words back. `line-clamp-2` still ellipses, so a
-            pathological title cannot push the row open. */}
-        {/* THE TITLE OWNS THE WHOLE COLUMN. The `seen` badge used to sit beside it in a flex
-            wrapper, so a `flex-none` chip took its width off the top before the heading got a
-            character, and the heading wrapped early around a four-letter word. The badge now
-            rides in the meta row below, next to the category label, where it is still visible
-            and costs the title nothing (founder, 2026-08-16, item 4).
-
-            TWO LINES AT EVERY WIDTH (2026-08-15, brief item 3). The `sm:truncate` half of this
-            is gone: `truncate` is a MID-WORD cut, so the widest viewport was the one place a
-            title could still stop inside a word -- "Compliance evidence pack for gel man..." --
-            which is the defect the brief names, and it was hiding on desktop precisely because
-            it bites only the longest titles. `line-clamp-2` ellipses at a line box instead, so
-            a pathological title still cannot push the row open. */}
-        {/* RESERVED HEIGHT, not just a two-line cap (founder, 2026-08-16, item 2: "nothing sits
-            on a grid" -- row heights varied with content, so the price/category/multiple line
-            below landed at a different y on every row). `min-h` reserves the box for two lines
-            even when the heading is one line or the pack has no line at all, so every row is the
-            same height whether or not its content needs both lines. `text-body` is 1rem/1.55
-            (tokens.css), so two line boxes are 2 * 1 * 1.55 = 3.1rem. This is a floor, not a
-            fixed height: `line-clamp-2` still governs the ceiling, so a longer heading still
-            wraps and clips at two lines instead of pushing the row taller. */}
-        <span className="line-clamp-2 block min-h-[3.1rem] text-body font-semibold text-text">
-          {listHeading(heading)}
+      {cat.tagged && (
+        <span className="top">
+          <span className="eyebrow">{cat.label.toUpperCase()}</span>
+          {viewed && <span className="new">Seen</span>}
         </span>
-        {/* TWO LINES, not one (founder, 2026-08-16, item 3). `truncate` is a single line AND a
-            mid-word cut, which is the same defect the title was carrying: `cardLine` had already
-            capped the string at a word boundary, and then the one-line box cut it again inside a
-            word. `line-clamp-2` fills both lines and ellipses only at a line box.
-            RESERVED HEIGHT (item 2, same reasoning as the title above): `text-meta` is
-            0.875rem/1.4 (tokens.css), so two line boxes are 2 * 0.875 * 1.4 = 2.45rem. Rendered
-            unconditionally now (not gated on `line`) so a pack with no description still holds
-            its slot instead of collapsing the row shorter than its neighbours. */}
-        <span className="mt-0.5 line-clamp-2 block min-h-[2.45rem] text-meta text-muted">
-          {line}
+      )}
+      <h3>{listHeading(heading)}</h3>
+      <p className="d">{line}</p>
+      <p className="proof num">
+        {stat && <PackFigure stat={stat} weight="row" />}
+        {evidenceLabel && typeof pack.sourceCount === 'number' && pack.sourceCount > 0 && (
+          <span>{sourcesLabel(pack.sourceCount)}</span>
+        )}
+        {/* The market note stays. It is the one thing on the row that is about the READER rather
+            than the pack, and a buyer who misses it buys research written for another country. */}
+        {pack.market && packMarket(pack) !== viewerMarket && (
+          <span className="market">{marketLabel(pack.market)} market</span>
+        )}
+      </p>
+      <span className="side">
+        <span className="price num">
+          <PriceText>{price}</PriceText>
         </span>
-        {/* THE CONTAINER WRAPS, and all three of `flex-wrap`, `min-w-0` here and `min-w-0` on the
-            figure are load-bearing. Without them nothing on this line could yield, so the row
-            overflowed and its items collided -- one cause behind three separately reported
-            defects (overlapping meta items, the bar running past the padding, and the title
-            truncating early because the overflow stole its space). */}
-        <span className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-          {/* A FIXED COLUMN from `sm`, so the figure lands on the same x on every row. Sector
-              labels run from "Sector" to "Care and benefits claims", so at natural width the
-              figure started at a different x on nearly every row -- and on an untagged pack the
-              slot collapsed and the whole run jumped left. That ragged left edge is what makes a
-              column of rows read as unaligned even though every row is built identically. An
-              untagged pack leaves the column EMPTY instead of closing it. Below `sm` the line
-              wraps anyway, so a fixed column there would only steal width from a 390px row. */}
-          {cat.tagged ? (
-            <span className={cx('flex-none truncate text-caption sm:w-44', CATEGORY_LABEL, cat.ink)}>
-              {cat.label.toUpperCase()}
-            </span>
-          ) : (
-            <span className="hidden flex-none sm:block sm:w-44" aria-hidden />
-          )}
-          {/* The badge's new home. It reads as what it is here -- a note about the reader's own
-              history, sitting with the other row metadata -- instead of competing with the title
-              for the first line. */}
-          {viewed && <span className="flex-none font-mono text-caption text-subtle">seen</span>}
-          {stat && <PackFigure stat={stat} weight="row" />}
-          {/* A NUMBER, not a bar (founder, 2026-08-16, item 5: "the sparkline is decoration
-              wearing data's clothes"). The bar this replaced was `<EvidenceBar count=...
-              label={false} cap={14} />` -- 12px ticks with no numeral, so a reader could not
-              tell 6 sources from 14 without counting marks on a row. `evidenceLabel` only true
-              when `stat.kind !== 'sources'` (declared above), i.e. exactly the branch where the
-              row's lead figure is the price multiple, NOT the source count -- so this is the
-              only place on the row the count is shown as text; `PackFigure` shows the multiple,
-              not the count, in this branch. Confirmed by reading `packStat.ts` and `PackFigure`
-              before cutting the bar: the count does not survive elsewhere in this branch, so
-              cutting it silently would have dropped information rather than just decoration. */}
-          {evidenceLabel && typeof pack.sourceCount === 'number' && pack.sourceCount > 0 && (
-            <span className="flex-none font-mono text-caption text-subtle">
-              {sourcesLabel(pack.sourceCount)}
-            </span>
-          )}
-          {/* COMPARE LIKE WITH LIKE. `groupByMarket` buckets on `packMarket(pack)`, which
-              case-folds and applies the null-is-uk rule, so testing the RAW field here would flag
-              a correctly-placed pack as foreign on any casing variance. The guard on the raw
-              field stays: a pack carrying no market makes no claim about jurisdiction. */}
-          {pack.market && packMarket(pack) !== viewerMarket && (
-            <span className="flex-none font-mono text-caption text-warning">
-              {/* "market", not "rules" (founder, 2026-08-15). The flag warns that this pack is
-                  for somewhere else, and somewhere else is the whole market -- the buyers, the
-                  prices and the numbers -- not only its statute book. "US rules" also reads as a
-                  claim that the pack is a compliance document, which it is not. */}
-              {marketLabel(pack.market)} market
-            </span>
-          )}
-        </span>
-      </span>
-
-      <span className="flex flex-none items-center gap-3 sm:gap-4">
-        <PriceText className="text-body">{price}</PriceText>
-        {/* THE ARROW IS A HOVER AFFORDANCE, so it costs 32px on the one device that cannot hover.
-            Its whole job is `group-hover:translate-x-0.5`; on touch that never fires and the
-            entire row is already a link. Handing those 32px back to the text column is what takes
-            the two-line title from 358px of its 439px to 412px. */}
-        <Icon
-          name="arrowRight"
-          size={15}
-          className="hidden text-subtle transition-transform group-hover:translate-x-0.5 sm:block"
-        />
+        <span className="view">View &rarr;</span>
       </span>
     </Link>
   );
@@ -329,19 +248,82 @@ export function PackRowList({
   const { observe } = useCardImpressions();
   if (packs.length === 0) return null;
   return (
-    <ul className={cx('divide-y divide-border', className)}>
+    /* THE DRAWING'S `.rows`: the whole list is one card -- white surface, 1px hairline, 12px
+       radius, `overflow-hidden` so the first and last rows clip to the corners. It was a bare
+       `divide-y` on the page ground, so a run of rows had no edges and read as loose text rather
+       than as a shelf. */
+    /* NO <ul>/<li>. The drawing's `.row:last-child{border-bottom:0}` is what removes the hairline
+       above the card's bottom edge, and with a <li> between the container and the row every row
+       is its own parent's last child, so the rule fires on all of them and the list loses every
+       divider. The rows are links in a box; a list wrapper bought nothing else. */
+    <div className={cx('rows', className)}>
       {packs.map((pack, i) => (
-        <li key={pack.id}>
-          <PackRow
-            pack={pack}
-            currency={currency}
-            viewerMarket={viewerMarket}
-            viewed={viewedIds?.has(pack.id) ?? false}
-            observeRef={observe(pack.id)}
-            position={i + 1}
-          />
-        </li>
+        <PackRow
+          key={pack.id}
+          pack={pack}
+          currency={currency}
+          viewerMarket={viewerMarket}
+          viewed={viewedIds?.has(pack.id) ?? false}
+          observeRef={observe(pack.id)}
+          position={i + 1}
+        />
       ))}
-    </ul>
+    </div>
+  );
+}
+
+
+/*
+ * THE DRAWING'S THREE-UP TILES (`mockups/index.html` section 5, `.three > a.htile`).
+ *
+ * The landing page showed its newest packs as three more rows, so the page ran as one unbroken
+ * column of rows from the hero to the footer. The drawing breaks that column once, with three
+ * tiles, and the copied stylesheet already carries every number they need.
+ */
+export function PackTileGrid({
+  packs,
+  currency,
+  viewedIds,
+  className,
+}: {
+  packs: Pack[];
+  currency?: Currency;
+  viewedIds?: Set<string>;
+  className?: string;
+}) {
+  const ambient = useCurrency();
+  const cur = currency ?? ambient;
+  if (packs.length === 0) return null;
+  return (
+    <div className={cx('three', className)}>
+      {packs.map((pack, i) => {
+        const cat = categoryFor(pack);
+        const stat = packLeadStat(pack);
+        const { heading, sub } = cardHeading(pack);
+        return (
+          <Link
+            key={pack.id}
+            className="htile"
+            href={`/pack/${pack.id}`}
+            onClick={() => trackCardClick(pack.id, i + 1)}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
+              <span className="eyebrow">{cat.label}</span>
+              {viewedIds?.has(pack.id) && <span className="new">Seen</span>}
+            </div>
+            <h4>{listHeading(heading)}</h4>
+            <p>{cardLine(repairTruncation(pack.oneLine) || sub, 30)}</p>
+            <span className="foot">
+              <span className="proof num">
+                {stat ? <PackFigure stat={stat} weight="row" /> : sourcesLabel(pack.sourceCount ?? 0)}
+              </span>
+              <span className="price num">
+                <PriceText>{formatPriceForMarket(pack.price, cur)}</PriceText>
+              </span>
+            </span>
+          </Link>
+        );
+      })}
+    </div>
   );
 }

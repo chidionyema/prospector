@@ -381,7 +381,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
           and reaches their own answer. */}
       <p className="text-caption leading-relaxed text-subtle">
         Having this researched for you starts at{' '}
-        <span className="font-medium text-text">{RESEARCH_RATE_ANCHOR.dayRateLabel} a day</span>{' '}
+        <span>{RESEARCH_RATE_ANCHOR.dayRateLabel} a day</span>{' '}
         <a
           href={RESEARCH_RATE_ANCHOR.url}
           target="_blank"
@@ -758,7 +758,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 legally-strong IEP service request...` eight lines, and it was STILL cut off by the
                 sticky buy bar (mobile-pack-fold.png, 2026-08-06). The title is the longest string
                 on the page, not a slogan, so it is the one headline that has to step down. */}
-            <h1 className="text-h2 font-semibold text-text md:text-h1">{pack.title}</h1>
+            <h1 className="md:text-h1">{pack.title}</h1>
             {/* THE LEAD IS NEVER A CUT STRING.
                 `oneLine` is truncated at 150 characters by the publish path on 34 of the 63 live
                 packs (see `lib/copy.ts` for the measurement and `bridge.py` for the cause), and
@@ -795,7 +795,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 missing or comes through cut, which is the case the docblock above was written for.
                 Nothing is lost when it stands down: its audience framing is the `whoPays` row
                 below, and the full description is in the sections under that. */}
-            {lead && <p className="mt-4 max-w-[60ch] text-body text-muted">{lead}</p>}
+            {lead && <p className="mt-4 max-w-[60ch] lede">{lead}</p>}
 
             {/* THE OPPORTUNITY, ABOVE THE FOLD (2026-08-16, founder: "the title and description
                 say what it is and what it does, not the opportunity presented, market size,
@@ -822,19 +822,19 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
               <dl className="mt-6 max-w-[62ch] space-y-4 border-l-2 border-border pl-5">
                 {pack.theProblem && (
                   <div>
-                    <dt className="text-caption font-medium text-subtle">The problem</dt>
+                    <dt className="eyebrow">The problem</dt>
                     <dd className="mt-1 text-meta leading-relaxed text-text">{pack.theProblem}</dd>
                   </div>
                 )}
                 {pack.marketSize && (
                   <div>
-                    <dt className="text-caption font-medium text-subtle">How big it is</dt>
+                    <dt className="eyebrow">How big it is</dt>
                     <dd className="mt-1 text-meta leading-relaxed text-text">{pack.marketSize}</dd>
                   </div>
                 )}
                 {pack.whoPays && (
                   <div>
-                    <dt className="text-caption font-medium text-subtle">Who would buy it</dt>
+                    <dt className="eyebrow">Who would buy it</dt>
                     <dd className="mt-1 text-meta leading-relaxed text-text">{pack.whoPays}</dd>
                   </div>
                 )}
@@ -861,7 +861,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 is enforced here by hand. It also opened on a negation, which read as zero
                 content. Say what the buyer GETS, in the affirmative, naming only things that
                 literally appear in the sections below. */}
-            <p className="mt-4 max-w-[60ch] text-meta leading-relaxed text-muted">
+            <p className="mt-4 max-w-[60ch] lede">
               You get the checking already done: the evidence behind the idea, the sources it came
               from, and the objections it survived, all open below so you can judge them yourself.
             </p>
@@ -974,8 +974,8 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                   or fewer get through
                 </span>
               </p>
-              <p className="max-w-[52ch] text-meta leading-relaxed text-muted">
-                <span className="font-medium text-text">This is one of them.</span>{' '}
+              <p className="max-w-[52ch] lede">
+                <span>This is one of them.</span>{' '}
                 {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas went through the filter
                 and {RESEARCH_STATS.rejectRateLabel} of them died on cited evidence.{' '}
                 <Link
@@ -1051,14 +1051,107 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 already on screen; the reader who has not keeps reading and meets the closing bar
                 when the argument is finished. */}
 
-            {/* Deliverables first: "what do I actually receive for £49" is the question that stalls a
-                digital purchase, and it has to be answered before the trust argument. */}
+            {/* THE SIGNATURE (MASTER-BRIEF §7): a hundred dots, six of them teal, immediately above
+                the six gates. The page already states the rate in words further up; this is the
+                same fact in the form a reader takes in without doing arithmetic, sitting where it
+                answers the question the gates raise -- "how hard is this actually?" -- before the
+                gates are read rather than after. It renders nothing if the derived label ever stops
+                being a rate we can parse. */}
+            <SixInHundred className="mt-12" />
+
+            {/* US-4: the six-check methodology collapses behind a details disclosure.
+                On mobile (the primary surface), the buyer is not forced to read 200px
+                of methodology before the deliverables. They can tap to expand if
+                they care. The disclosure is open by default on lg+ where the page
+                has the room. */}
+            {/* OPEN, AND FIRST. `mockups/pack-detail.html:364` draws this as a plain section with
+                an `h2.sec` heading, ahead of the deliverables. It was a collapsed `<details>` here
+                and it sat third, so the page's strongest argument was the one thing a reader had
+                to click for. */}
             <div className="mt-12">
-              <PackContentsSection
-                heading="What’s inside your pack"
-                lead={`The moment you pay, you download the whole pack. ${PACK_DOCUMENTS.length} documents, no drip feed, no login.`}
-                sourceCount={pack.sourceCount}
-              />
+              <h2 className="sec">How we tried to kill it</h2>
+              <div className="mt-4">
+                <p className="lede">
+                  Each check is an attack, not a rubber stamp. An idea dies on the first check where cited evidence goes against it. {outcomeSentence} Finding nothing is not the same as finding a green light; see how each check works on{' '}
+                  <Link
+                    href="/how-it-works"
+                    className={textLinkClass('font-medium')}
+                  >
+                    /how-it-works
+                  </Link>
+                  .
+                </p>
+                {/* WAS "...so the scores below show where this pack's case is strong and where it is
+                    thin", directly above the six UNSCORED bullets that follow. The scored axes are
+                    real and this page does render them, but in a different, collapsed details
+                    further down, so the sentence pointed the reader at the one list on the page that
+                    carries no scores at all and read as a promise the page then broke.
+
+                    The scores are deliberately opt-in (US-4, see the disclosure below): the buyer
+                    who wants the result meets the buy button first. That decision stands; what
+                    changes is that the pointer now names where the scores actually are. */}
+                <p className="mt-3 lede">
+                  {/* THE COUNT A READER CAN SEE, RECONCILED WITH THE COUNT THE PAGE CLAIMS.
+                      NOT "the six fronts": the check count is lane-dependent (6/6, 8/8, 7/8, 9/9
+                      and 6/8 all occur live), which is why `fixedCheckCount.test.ts` exists and
+                      why it failed on this sentence the moment it was written.
+
+                      But the sentence then went to the opposite failure. The list below is
+                      `COMMON_CHECKS` -- the ones that run on every idea in every lane -- and the
+                      buy rail four inches away states this pack's OWN denominator. So the live
+                      page said "7 of 8 checks cleared" above a list a reader can count to six,
+                      and never closed the gap (verified on mumchimp.com/pack/08b22037fc2afc07,
+                      2026-08-08). On a storefront whose pitch is that it checks its arithmetic,
+                      an unexplained 6-vs-8 is the most expensive two digits on the page.
+
+                      What is still NOT said, because the page cannot source it: WHICH check this
+                      pack lost. `PackDetails` carries no per-check verdicts, so naming one would
+                      be invention. The honest available facts are how many there were and where
+                      the extra ones came from. */}
+                  The {CHECKS.length} below run on every idea, whatever it is.
+                  {panelChecks && panelChecks.total > CHECKS.length
+                    ? ` This one's lane ran ${panelChecks.total - CHECKS.length} more on top, for ${panelChecks.total} in all.`
+                    : ''}
+                  {/* THE POINTER ONLY EXISTS WHEN ITS TARGET DOES.
+                      "open How it scores further down" was unconditional, but that section is
+                      guarded on `axes.length > 0`, and a pack whose `financialSnapshot` carries
+                      no `N of 5` axes renders no such section. Verified against the live pack
+                      08b22037fc2afc07 on 2026-08-08: its snapshot holds only the three financial
+                      figures, so the page sent the reader down the page to a heading that was
+                      never emitted. This is the same defect class as the 6-vs-8 two paragraphs
+                      up -- the page asserting something about itself that it did not check. */}
+                  {axes.length > 0 && (
+                    <>
+                      {' '}
+                      For where this pack&rsquo;s case is strong and where it is thin, open{' '}
+                      <span>How it scores</span> further down,
+                      weak bars included.
+                    </>
+                  )}
+                </p>
+                <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {CHECKS.map((check, i) => (
+                    <li
+                      key={check}
+                      className="flex items-center gap-3 rounded-md border border-border bg-surface px-4 py-3"
+                    >
+                      {/* A numeral, not a tick: a green success mark on a static line reads as this
+                          pack's verdict on that check, which is exactly what this page cannot know. */}
+                      <span className="flex h-6 w-6 flex-none items-center justify-center rounded-sm border border-border bg-surface2 font-mono text-caption text-subtle">
+                        {i + 1}
+                      </span>
+                      <span className="text-meta font-medium text-text">{check}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href="/how-it-works"
+                  className="mt-5 inline-flex items-center gap-1.5 py-3 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
+                >
+                  See how each check works
+                  <Icon name="arrowRight" size={14} />
+                </Link>
+              </div>
             </div>
 
             {/*
@@ -1083,8 +1176,8 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 is the rule that caught the check count disagreeing with itself. */}
             {(pack.market || pack.timeToFirstRevenue) && (
               <div className="mt-12">
-                <h2 className="text-h2 font-semibold text-text">Could you run this?</h2>
-                <p className="mt-2 max-w-[60ch] text-meta text-muted">
+                <h2 className="sec">Could you run this?</h2>
+                <p className="mt-2 max-w-[60ch] lede">
                   Behind the research is a business somebody has to actually operate. Here is the
                   market it runs in, and how soon the first money arrives.
                 </p>
@@ -1136,109 +1229,55 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
               </div>
             )}
 
-            {/* THE SIGNATURE (MASTER-BRIEF §7): a hundred dots, six of them teal, immediately above
-                the six gates. The page already states the rate in words further up; this is the
-                same fact in the form a reader takes in without doing arithmetic, sitting where it
-                answers the question the gates raise -- "how hard is this actually?" -- before the
-                gates are read rather than after. It renders nothing if the derived label ever stops
-                being a rate we can parse. */}
-            <SixInHundred className="mt-12" />
-
-            {/* US-4: the six-check methodology collapses behind a details disclosure.
-                On mobile (the primary surface), the buyer is not forced to read 200px
-                of methodology before the deliverables. They can tap to expand if
-                they care. The disclosure is open by default on lg+ where the page
-                has the room. */}
-            <details className="mt-12 group" open={undefined}>
-              <summary className="cursor-pointer list-none text-h2 font-semibold text-text transition-colors hover:text-muted">
-                <span className="inline-flex items-center gap-2">
-                  <Icon name="arrowRight" size={16} className="transition-transform group-open:rotate-90" />
-                  How we tried to kill it
-                </span>
-              </summary>
-              <div className="mt-4">
-                <p className="text-meta text-muted">
-                  Each check is an attack, not a rubber stamp. An idea dies on the first check where cited evidence goes against it. {outcomeSentence} Finding nothing is not the same as finding a green light; see how each check works on{' '}
-                  <Link
-                    href="/how-it-works"
-                    className={textLinkClass('font-medium')}
-                  >
-                    /how-it-works
-                  </Link>
-                  .
+            {/* A look inside, real sourced lines lifted straight from the pack */}
+            {pack.sampleExtract && pack.sampleExtract.length > 0 && (
+              <div className="mt-12">
+                <h2 className="sec">A look inside</h2>
+                <p className="mt-2 max-w-[60ch] lede">
+                  Real, sourced lines taken straight from the pack. Every source below is a live
+                  link: open one and check the claim before you buy.
                 </p>
-                {/* WAS "...so the scores below show where this pack's case is strong and where it is
-                    thin", directly above the six UNSCORED bullets that follow. The scored axes are
-                    real and this page does render them, but in a different, collapsed details
-                    further down, so the sentence pointed the reader at the one list on the page that
-                    carries no scores at all and read as a promise the page then broke.
-
-                    The scores are deliberately opt-in (US-4, see the disclosure below): the buyer
-                    who wants the result meets the buy button first. That decision stands; what
-                    changes is that the pointer now names where the scores actually are. */}
-                <p className="mt-3 text-meta text-muted">
-                  {/* THE COUNT A READER CAN SEE, RECONCILED WITH THE COUNT THE PAGE CLAIMS.
-                      NOT "the six fronts": the check count is lane-dependent (6/6, 8/8, 7/8, 9/9
-                      and 6/8 all occur live), which is why `fixedCheckCount.test.ts` exists and
-                      why it failed on this sentence the moment it was written.
-
-                      But the sentence then went to the opposite failure. The list below is
-                      `COMMON_CHECKS` -- the ones that run on every idea in every lane -- and the
-                      buy rail four inches away states this pack's OWN denominator. So the live
-                      page said "7 of 8 checks cleared" above a list a reader can count to six,
-                      and never closed the gap (verified on mumchimp.com/pack/08b22037fc2afc07,
-                      2026-08-08). On a storefront whose pitch is that it checks its arithmetic,
-                      an unexplained 6-vs-8 is the most expensive two digits on the page.
-
-                      What is still NOT said, because the page cannot source it: WHICH check this
-                      pack lost. `PackDetails` carries no per-check verdicts, so naming one would
-                      be invention. The honest available facts are how many there were and where
-                      the extra ones came from. */}
-                  The {CHECKS.length} below run on every idea, whatever it is.
-                  {panelChecks && panelChecks.total > CHECKS.length
-                    ? ` This one's lane ran ${panelChecks.total - CHECKS.length} more on top, for ${panelChecks.total} in all.`
-                    : ''}
-                  {/* THE POINTER ONLY EXISTS WHEN ITS TARGET DOES.
-                      "open How it scores further down" was unconditional, but that section is
-                      guarded on `axes.length > 0`, and a pack whose `financialSnapshot` carries
-                      no `N of 5` axes renders no such section. Verified against the live pack
-                      08b22037fc2afc07 on 2026-08-08: its snapshot holds only the three financial
-                      figures, so the page sent the reader down the page to a heading that was
-                      never emitted. This is the same defect class as the 6-vs-8 two paragraphs
-                      up -- the page asserting something about itself that it did not check. */}
-                  {axes.length > 0 && (
-                    <>
-                      {' '}
-                      For where this pack&rsquo;s case is strong and where it is thin, open{' '}
-                      <span className="font-medium text-text">How it scores</span> further down,
-                      weak bars included.
-                    </>
-                  )}
-                </p>
-                <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {CHECKS.map((check, i) => (
-                    <li
-                      key={check}
-                      className="flex items-center gap-3 rounded-md border border-border bg-surface px-4 py-3"
-                    >
-                      {/* A numeral, not a tick: a green success mark on a static line reads as this
-                          pack's verdict on that check, which is exactly what this page cannot know. */}
-                      <span className="flex h-6 w-6 flex-none items-center justify-center rounded-sm border border-border bg-surface2 font-mono text-caption text-subtle">
-                        {i + 1}
-                      </span>
-                      <span className="text-meta font-medium text-text">{check}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href="/how-it-works"
-                  className="mt-5 inline-flex items-center gap-1.5 py-3 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
-                >
-                  See how each check works
-                  <Icon name="arrowRight" size={14} />
-                </Link>
+                {/* Peek inside: a page you are looking at the top of. The fade is over the page
+                    itself, never over invented text, every line below is really in the pack, and
+                    nothing is blurred to imply content that does not exist. */}
+                <div className="relative mt-6 overflow-hidden rounded-md border border-border bg-surface">
+                  <div className="flex items-center gap-2 border-b border-border bg-surface2 px-5 py-3">
+                    <Icon name="briefcase" size={14} className="text-subtle" />
+          <span className="eyebrow">
+                      Extract · evidence record
+                    </span>
+                  </div>
+                  {/* The claim, then the sources it stands on. Until this shipped these lines
+                      printed "(source: https://...)" as plain text -- the page promised a
+                      clickable source behind every claim and rendered zero anchors. The parse
+                      happens at the render boundary (`lib/citations.ts`); the API contract for
+                      `sampleExtract` is unchanged, so an email or a PDF of the same string still
+                      reads correctly. */}
+                  <ul className="list-none space-y-5 p-6 pb-16">
+                    {pack.sampleExtract.map((line, i) => (
+                      <li key={i} className="border-l-2 border-l-success pl-4">
+                        <SourcedLine className="block text-meta leading-relaxed text-muted">
+                          {line}
+                        </SourcedLine>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white via-white/85 to-transparent" />
+                  <span className="absolute inset-x-0 bottom-4 text-center text-caption font-semibold text-muted">
+                    The rest of this section, and three more documents, are in the pack.
+                  </span>
+                </div>
               </div>
-            </details>
+            )}
+            {/* Deliverables first: "what do I actually receive for £49" is the question that stalls a
+                digital purchase, and it has to be answered before the trust argument. */}
+            <div className="mt-12">
+              <PackContentsSection
+                heading="What’s inside your pack"
+                lead={`The moment you pay, you download the whole pack. ${PACK_DOCUMENTS.length} documents, no drip feed, no login.`}
+                sourceCount={pack.sourceCount}
+              />
+            </div>
 
             {/* US-4: the scored axes collapse behind a details disclosure. The
                 methodology is opt-in; the buyer who only cares about the
@@ -1270,7 +1309,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                   </span>
                 </summary>
                 <div className="mt-4">
-                  <p className="max-w-[60ch] text-meta text-muted">
+                  <p className="max-w-[60ch] lede">
                     {/* WAS "Six things we measure", hardcoded, above a `dl` whose length is
                         `axes.length` -- a count the page reads off the snapshot and does not
                         control. Same defect class as the 6-vs-8 above, one scroll further down. */}
@@ -1321,8 +1360,8 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
 
             {/* The per-pack table of contents. The generic four-asset breakdown is higher up the page. */}
             <div className="mt-12">
-              <h2 className="text-h2 font-semibold text-text">The table of contents</h2>
-              <p className="mt-2 max-w-[60ch] text-meta text-muted">
+              <h2 className="sec">The table of contents</h2>
+              <p className="mt-2 max-w-[60ch] lede">
                 Exactly what this pack covers, plus a blurred look at the document you receive.
               </p>
 
@@ -1355,46 +1394,6 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
               )}
             </div>
 
-            {/* A look inside, real sourced lines lifted straight from the pack */}
-            {pack.sampleExtract && pack.sampleExtract.length > 0 && (
-              <div className="mt-12">
-                <h2 className="text-h2 font-semibold text-text">A look inside</h2>
-                <p className="mt-2 max-w-[60ch] text-meta text-muted">
-                  Real, sourced lines taken straight from the pack. Every source below is a live
-                  link: open one and check the claim before you buy.
-                </p>
-                {/* Peek inside: a page you are looking at the top of. The fade is over the page
-                    itself, never over invented text, every line below is really in the pack, and
-                    nothing is blurred to imply content that does not exist. */}
-                <div className="relative mt-6 overflow-hidden rounded-md border border-border bg-surface">
-                  <div className="flex items-center gap-2 border-b border-border bg-surface2 px-5 py-3">
-                    <Icon name="briefcase" size={14} className="text-subtle" />
-          <span className="text-caption font-medium text-subtle">
-                      Extract · evidence record
-                    </span>
-                  </div>
-                  {/* The claim, then the sources it stands on. Until this shipped these lines
-                      printed "(source: https://...)" as plain text -- the page promised a
-                      clickable source behind every claim and rendered zero anchors. The parse
-                      happens at the render boundary (`lib/citations.ts`); the API contract for
-                      `sampleExtract` is unchanged, so an email or a PDF of the same string still
-                      reads correctly. */}
-                  <ul className="list-none space-y-5 p-6 pb-16">
-                    {pack.sampleExtract.map((line, i) => (
-                      <li key={i} className="border-l-2 border-l-success pl-4">
-                        <SourcedLine className="block text-meta leading-relaxed text-muted">
-                          {line}
-                        </SourcedLine>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white via-white/85 to-transparent" />
-                  <span className="absolute inset-x-0 bottom-4 text-center text-caption font-semibold text-muted">
-                    The rest of this section, and three more documents, are in the pack.
-                  </span>
-                </div>
-              </div>
-            )}
 
             {/* THE EVIDENCE (email §4). The previous copy ended on "No hand waving, no vibes."
                 which tried too hard for a voice that wins by understatement. The new copy is the
@@ -1407,7 +1406,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
             <div className="mt-12 rounded-card border border-border bg-surface p-6">
               <div className="mb-3 flex items-center gap-2.5">
                 <Glyph name="source" className="text-success" />
-                <span className="text-caption font-medium text-subtle">The evidence</span>
+                <span className="eyebrow">The evidence</span>
               </div>
               {/* The count is GUARDED, and the "open these" instruction belongs to the block below
                   that actually renders the list. Unguarded, a pack with no `sourceCount` rendered
@@ -1415,7 +1414,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                   `openSources.length > 0` test below, so a pack with nothing openable printed
                   "Open any of these 0 now." followed by nothing at all. The block below already
                   gives the instruction once, against a list that exists. */}
-              <p className="max-w-[60ch] text-meta leading-relaxed text-muted">
+              <p className="max-w-[60ch] lede">
                 {typeof pack.sourceCount === 'number' && pack.sourceCount > 0
                   ? `${pack.sourceCount} sources, each cited against the claim it supports.`
                   : 'Every claim in this pack is cited against the source it rests on.'}
@@ -1483,22 +1482,37 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 facts the button cannot say. Everything else the panel carries -- what is inside,
                 who wrote it, how the refund works -- has already been said at length above, and
                 repeating it here would be the duplication §7 is removing, moved down the page. */}
+            {/* THE DRAWING'S CLOSING BLOCK (`mockups/pack-detail.html:427`): a rule, a priced
+                heading, one honest sentence, the two buttons side by side, and the small print.
+                The price comes from the pack, never the drawing's hardcoded 49.99. */}
             {canCheckout && (
-              <div className="mt-16 flex flex-col gap-4 rounded-card border border-line bg-surface p-6 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-h3 font-semibold text-text">{priceLabel}</p>
-                  <p className="mt-1 text-caption leading-snug text-muted">
-                    One payment. Download straight away. 14 day refund.
-                  </p>
+              <div className="closing">
+                <h2 className="sec">
+                  <PriceText>{priceLabel}</PriceText>, once. Yours forever.
+                </h2>
+                <p>
+                  Secure checkout via Stripe. A pack is evidence-backed research, not a promise of
+                  business success.
+                </p>
+                <div className="ctarow">
+                  <PackBuyButton
+                    pack={pack}
+                    variant="detail"
+                    buy={handleBuy}
+                    checkingOut={checkingOut}
+                    canCheckout={canCheckout}
+                    currency={currency}
+                  />
+                  <Link href="/sample" className={buttonClasses({ variant: 'secondary', size: 'lg' })}>
+                    Read a full pack free
+                  </Link>
                 </div>
-                <PackBuyButton
-                  pack={pack}
-                  variant="detail"
-                  buy={handleBuy}
-                  checkingOut={checkingOut}
-                  canCheckout={canCheckout}
-                  currency={currency}
-                />
+                <p className="mono mt-[18px]">
+                  14 day money back · every claim sourced · one-time payment · see our{' '}
+                  <Link href="/refund" className={textLinkClass()}>
+                    refund policy
+                  </Link>
+                </p>
               </div>
             )}
           </div>
@@ -1645,7 +1659,7 @@ function PreviewDocument({ pack }: { pack: PackDetails }) {
             <p className="text-caption font-semibold leading-snug text-text">{pack.title}</p>
             {headings.slice(0, 2).map((h, i) => (
               <div key={`h-${i}`} className="space-y-1.5">
-                <p className="text-caption font-medium text-subtle">
+                <p className="eyebrow">
                   {String(i + 1).padStart(2, '0')} · {h}
                 </p>
                 {body.slice(i * 2, i * 2 + 2).map((line, j) => (
@@ -1662,7 +1676,7 @@ function PreviewDocument({ pack }: { pack: PackDetails }) {
               <div className="flex gap-3 pt-1">
                 {figures.slice(0, 3).map(({ label, value }) => (
                   <div key={label} className="flex-1 rounded-md bg-bg p-2.5">
-                    <p className="text-caption font-medium text-subtle">{label}</p>
+                    <p className="eyebrow">{label}</p>
                     <p className="mt-1 font-mono text-caption font-semibold text-text">{value}</p>
                   </div>
                 ))}

@@ -81,7 +81,7 @@ export function DocRail({
       className={cx('hidden lg:block', className)}
     >
       <div className="sticky top-24">
-        <p className="text-caption text-subtle">{eyebrow}</p>
+        <p className="mono">{eyebrow}</p>
         <ul className="mt-4 list-none border-l border-border p-0">
           {sections.map((section) => {
             const current = active === section.id;

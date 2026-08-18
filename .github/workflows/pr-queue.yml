@@ -20,8 +20,23 @@ name: Keep open PRs on top of main
 # auto-merge to wait on. So the queue is built here, out of one API call.
 #
 # What it does: when main moves, take the oldest open pull requests that are behind main and
-# merge main into them. That single call re-triggers their CI, and `pull_request` builds check
-# out the merge commit GitHub recomputes at run time, so the new run grades against today's main.
+# merge main into them. `pull_request` builds check out the merge commit GitHub recomputes at run
+# time, so the new run grades against today's main.
+#
+# THE SECOND DEFECT, measured 2026-08-18. This said the update-branch call re-triggers CI. It does
+# not. update-branch pushes as github-actions[bot] using GITHUB_TOKEN, and GitHub suppresses
+# workflow triggers on any push made with that token, to stop a workflow starting itself forever.
+# So the branch moved and no CI ran.
+#
+# The evidence: PR #314. The bot merged main into it at 04:53 producing d975aa36a; the run for
+# that sha had ZERO jobs and ended `action_required`, and `commits/<branch>/check-runs` came back
+# empty. A pull request in that state can never go green, because nothing is running. It reads as
+# a red or unknown verdict to every merge guard, and a person has to override to land it.
+#
+# The cure is to make the pull request emit an event GitHub does honour. Closing and reopening it
+# fires `pull_request: reopened`, which starts a full run against the new head. A dispatch is not
+# a substitute: `guard` is gated on `github.event_name == 'pull_request'` (ci.yml:190), so a
+# workflow_dispatch run would skip it and the pull request would still lack that check.
 
 on:
   push:
@@ -84,6 +99,28 @@ jobs:
                 ;;
               *) : ;;
             esac
+            # NEVER TOUCH A PULL REQUEST THAT IS CURRENTLY BUILDING. `ci.yml:113` sets
+            # `cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}`, so on a pull request
+            # branch a new run KILLS the run already in flight. The close/reopen below exists to
+            # start a new run. Put those two together and this workflow destroys the very builds
+            # it is waiting for: it fires on every push to main and hourly on cron, a build takes
+            # four to seventeen minutes, so any pull request unlucky enough to be mid-build when
+            # the queue reaches it loses that build and starts from zero.
+            #
+            # Nothing records this. The jobs read `cancelled` with an empty `runner_name`, which
+            # is indistinguishable from starvation, and the pull request simply never finishes.
+            # Measured 2026-08-18: builds of four to seventeen minutes, and six pull requests
+            # open for hours with no failure anywhere in them.
+            #
+            # A pull request that is building is already being graded. It does not need bringing
+            # forward this cycle; the next cycle will take it.
+            inflight=$(gh api "repos/$REPO/commits/$(gh api "repos/$REPO/pulls/$n" --jq '.head.sha')/check-runs?per_page=100" \
+                         --jq '[.check_runs[] | select(.status != "completed")] | length' 2>/dev/null || echo 0)
+            if [ "${inflight:-0}" -gt 0 ]; then
+              echo "#$n is building right now ($inflight check(s) in flight) -- leaving it alone"
+              continue
+            fi
+
             # Ask git, not the label: is this branch's tip an ancestor of main's tip?
             base=$(gh api "repos/$REPO/pulls/$n" --jq '.base.sha')
             head_main=$(gh api "repos/$REPO/commits/main" --jq '.sha')
@@ -93,6 +130,17 @@ jobs:
             fi
             if gh api -X PUT "repos/$REPO/pulls/$n/update-branch" >/dev/null 2>&1; then
               echo "#$n brought forward onto $head_main"
+              # The push above was made with GITHUB_TOKEN, so it triggered nothing. Close and
+              # reopen to emit `pull_request: reopened`, which GitHub does honour, and the run
+              # grades the new head. Never fail the job if this half does not take -- the branch
+              # is already current, and the scheduled sweep will come back to it.
+              sleep 3
+              if gh pr close "$n" -R "$REPO" >/dev/null 2>&1 \
+                 && sleep 3 && gh pr reopen "$n" -R "$REPO" >/dev/null 2>&1; then
+                echo "  re-opened #$n to start CI on the new head"
+              else
+                echo "  WARNING: #$n is current but no CI was started -- reopen refused"
+              fi
               picked=$((picked + 1))
             else
               # 422 here means the merge conflicts, which is a triage item and not a failure of
@@ -101,3 +149,100 @@ jobs:
             fi
           done
           echo "brought forward: $picked (width $WIDTH)"
+
+      # ────────────────────────────────────────────────────────────────
+      # THE HALF THAT WAS MISSING. Everything above brings pull requests FORWARD. Nothing took
+      # one OUT. A merge queue with no merge in it is a treadmill: it re-grades the same pull
+      # requests against each new main, forever, and the only thing that ever removed one was a
+      # person watching the queue and clicking Merge.
+      #
+      # Measured 2026-08-18: six pull requests open, every one reporting zero failed checks, and
+      # not one of them merged, because no code anywhere in this estate merges a green pull
+      # request. Hours of finished work sat open while somebody watched builds.
+      #
+      # The bar, and every clause of it is load-bearing:
+      #
+      #   * pending must be exactly 0. A merge taken while a check is queued or in_progress is
+      #     what broke main twice. "No checks at all" is pending, not green.
+      #   * MIN_CHECKS must have RUN. A new branch has zero checks and zero failures, which
+      #     satisfies "nothing failed" while proving nothing. The floor is what separates
+      #     verified from merely unaccused.
+      #   * skipped and neutral are real passes: the changes job skips lanes whose files the
+      #     diff never touches.
+      #   * A hold label stops it. That is the operator's off switch, one pull request at a time.
+      #
+      # ONE per run, then stop. Merging two means the second was graded against the main that
+      # existed before the first landed -- the exact defect the header of this file documents on
+      # #288. The merge pushes main, this workflow triggers again, the next pull request is
+      # brought forward onto the new main and re-graded, and only then is it eligible.
+      #
+      # REST, not `gh pr merge`. `gh pr merge` is GraphQL, and GITHUB_TOKEN gets 403 "Resource
+      # not accessible by integration" on GraphQL in this repository. The merge step of
+      # ci-unstick.yml failed silently for exactly that reason until 2026-08-18.
+      - name: Merge one pull request that is fully green
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          # Ops-driven. Raise it if the job count per pull request grows; never lower it to make
+          # an unverified branch look eligible.
+          MIN_CHECKS: ${{ vars.PR_MERGE_MIN_CHECKS || '5' }}
+          HOLD_LABELS: ${{ vars.PR_MERGE_HOLD_LABELS || 'hold do-not-merge wip blocked' }}
+        run: |
+          set -euo pipefail
+          for n in $(gh api "repos/$REPO/pulls?state=open&sort=created&direction=asc&per_page=100" \
+                       --jq '.[] | select(.draft == false) | .number'); do
+            pr=$(gh api "repos/$REPO/pulls/$n")
+            held=""
+            for lbl in $(echo "$pr" | jq -r '.labels[].name' | tr 'A-Z' 'a-z'); do
+              for h in $HOLD_LABELS; do
+                [ "$lbl" = "$h" ] && held="$lbl"
+              done
+            done
+            if [ -n "$held" ]; then
+              echo "#$n held by label '$held'"
+              continue
+            fi
+
+            sha=$(echo "$pr" | jq -r '.head.sha')
+            runs=$(gh api "repos/$REPO/commits/$sha/check-runs?per_page=100")
+            total=$(echo "$runs" | jq '.check_runs | length')
+            pending=$(echo "$runs" | jq '[.check_runs[] | select(.status != "completed")] | length')
+            failed=$(echo "$runs" | jq '[.check_runs[]
+                       | select(.status == "completed")
+                       | select(.conclusion != "success" and .conclusion != "skipped"
+                                and .conclusion != "neutral")] | length')
+
+            if [ "$pending" -ne 0 ]; then
+              echo "#$n: $pending of $total check(s) still running"
+              continue
+            fi
+            if [ "$failed" -ne 0 ]; then
+              echo "#$n: $failed of $total check(s) failed"
+              continue
+            fi
+            if [ "$total" -lt "$MIN_CHECKS" ]; then
+              echo "#$n: only $total check(s) ran, floor is $MIN_CHECKS -- unverified, not green"
+              continue
+            fi
+
+            state=$(echo "$pr" | jq -r '.mergeable_state // "unknown"')
+            case "$state" in
+              clean|unstable|has_hooks) : ;;
+              *) echo "#$n: all checks green but mergeable_state=$state"; continue ;;
+            esac
+
+            title=$(echo "$pr" | jq -r '.title')
+            ref=$(echo "$pr" | jq -r '.head.ref')
+            echo "#$n: $total checks, none failed, none pending -- merging"
+            if gh api -X PUT "repos/$REPO/pulls/$n/merge" \
+                 -f merge_method=squash -f "commit_title=$title (#$n)" >/dev/null; then
+              echo "  merged #$n"
+              gh api -X DELETE "repos/$REPO/git/refs/heads/$ref" >/dev/null 2>&1 \
+                && echo "  branch deleted" || echo "  branch left in place"
+              echo "one per run: main has moved, the rest are re-graded before any of them merges"
+              exit 0
+            else
+              echo "  merge refused by the API"
+            fi
+          done
+          echo "nothing was green enough to merge"

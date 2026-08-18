@@ -79,9 +79,38 @@ on:
 # One shared group per ref, cancelling in progress, is what both defects want. The new run cancels
 # the one it superseded and takes its slot, so nothing is evicted while pending and nothing piles
 # up. main is still tested on every push -- the run that reports is the newest one.
+# Superseding is right on a branch and wrong on main.
+#
+# On a pull request, an older commit's result is worthless the moment a newer commit exists, so
+# cancelling it frees a runner for the answer somebody is actually waiting on.
+#
+# `github.ref` is `refs/heads/main` for EVERY push to main, so under `cancel-in-progress: true`
+# each merge cancelled main's own verification run. The python job takes about twenty minutes;
+# main's run only ever finished if no second merge landed inside that window. With several agents
+# merging, it almost never did.
+#
+# Measured 2026-08-18, main's own ci.yml runs, newest first:
+#
+#   07:01  501883f  running     <- cancelled two minutes later by the next merge
+#   07:00  93df868  cancelled
+#   04:30  bdc957d  cancelled
+#   04:28  2e6108e  cancelled
+#   03:43  18a6104  cancelled
+#   03:22  9951511  cancelled
+#   03:17  b2d30c2  cancelled
+#
+#   38 cancelled, 20 failed, 36 succeeded across main's last 94 runs.
+#
+# This is why a broken main was invisible. `4eba810` merged with its checks unfinished and deleted
+# 115 lines from scripts/live_checkout.py; main's verification run was cancelled by the next merge
+# before it could report the 23 failures, so nothing ever said main was broken. It surfaced hours
+# later as every open pull request failing for a defect none of them contained.
+#
+# Main is not a branch whose result can be superseded. Every commit on it is what production and
+# every pull request is graded against, so every commit on it gets graded.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   PYTHON_VERSION: "3.14"
@@ -127,6 +156,32 @@ jobs:
       web: ${{ steps.filter.outputs.web }}
       console: ${{ steps.filter.outputs.console }}
     steps:
+      # WHY THE BOX IS SLOW, PRINTED BEFORE ANYTHING ELSE RUNS.
+      #
+      # On 2026-08-18 four CI jobs sat for an hour. `npm test` was at 0.0% CPU for 72 seconds,
+      # pytest at 0.0% for ten and a half minutes, and one worker had no child process at all for
+      # seventeen. Nothing was CPU-starved. The box had 7.7 GB of its 8 GB swap in use, so every
+      # job was blocked on the pager, and the three biggest consumers were a Docker VM at 3.7 GB,
+      # a `docker build` feeding it and a searxng container -- none of them CI.
+      #
+      # The jobs' own process trees measured 1123 MB, 577 MB and two at ~75 MB: under 2 GB of a
+      # 16 GB machine. So this is deliberately NOT a budget check, and it deliberately cannot fail
+      # the run. A static per-job RAM number would have been green all night while the box
+      # thrashed, and a red check for a machine condition is the "red X that means nothing"
+      # problem in another costume.
+      #
+      # It prints, in one second, the four numbers that took a whole night to find by hand.
+      - name: Box state before the run
+        continue-on-error: true
+        run: |
+          echo "load:  $(uptime | sed 's/.*load averages*: //')"
+          echo "swap:  $(sysctl -n vm.swapusage 2>/dev/null || echo 'n/a')"
+          echo "ram:   $(( $(sysctl -n hw.memsize 2>/dev/null || echo 0) / 1073741824 )) GB physical"
+          echo "top memory holders (RSS MB, elapsed, command):"
+          ps -eo rss,etime,comm -m 2>/dev/null | sed -n '2,7p' \
+            | awk '{printf "  %6.0f  %9s  %s\n", $1/1024, $2, $3}'
+          echo "runner workers live: $(pgrep -f Runner.Worker 2>/dev/null | wc -l | tr -d ' ')"
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -150,10 +205,34 @@ jobs:
 
           match() { printf '%s\n' "$files" | grep -qE "$1"; }
 
-          # A change to the pipeline itself must be tested by the whole pipeline,
-          # or a broken workflow gates itself out of the jobs that would catch it.
+          # A change to the pipeline itself used to run EVERY lane. The reasoning was that a
+          # broken workflow gates itself out of the jobs that would catch it, and that part is
+          # true. The cost was never measured. A pull request touching only ci.yml queued five
+          # heavy jobs, and heavy jobs run on three of the four runners: mumchimp-mac-4 carries
+          # `light` only. Measured 2026-08-18 with five runs queued and mac-4 idle, #321
+          # (ci.yml + doc_lint.py) and #318 (ci.yml only) each held five heavy slots for lanes
+          # with nothing to build, while main's own run waited behind them. Fixing CI was the
+          # most expensive thing CI could be asked to do, so CI fixes landed last.
+          #
+          # A lane now runs when the workflow diff NAMES it. That keeps what the old rule was
+          # protecting -- an edit to the dotnet job still runs dotnet -- and drops the lanes the
+          # edit does not touch. Python is unconditional, because `guard` and `ci-ok` are
+          # python-lane jobs and any workflow edit can move them.
           if match '^\.github/'; then
-            echo "workflow changed — running everything"; all; exit 0
+            echo "workflow changed — python always, other lanes only if the diff names them"
+            echo "python=true" >> "$GITHUB_OUTPUT"
+            wf=$(git diff "$base"...HEAD -- .github/ || true)
+            names() { printf '%s\n' "$wf" | grep -qE "$1"; }
+            if names 'dotnet|Store\.(Api|Catalog|Tests)|\.cs\b|csproj'; then
+              echo "dotnet=true" >> "$GITHUB_OUTPUT"
+            else echo "dotnet=false" >> "$GITHUB_OUTPUT"; fi
+            if names 'nextjs|Store\.Web'; then
+              echo "web=true" >> "$GITHUB_OUTPUT"
+            else echo "web=false" >> "$GITHUB_OUTPUT"; fi
+            if names 'ops-console|Ops\.Console'; then
+              echo "console=true" >> "$GITHUB_OUTPUT"
+            else echo "console=false" >> "$GITHUB_OUTPUT"; fi
+            exit 0
           fi
 
           # Python: engine sources, tests, deps, and the config/prompt files the engine reads.
@@ -537,7 +616,7 @@ jobs:
   nextjs:
     needs: changes
     if: needs.changes.outputs.web == 'true'
-    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 40
 
     defaults:
@@ -607,7 +686,7 @@ jobs:
   ops-console:
     needs: changes
     if: needs.changes.outputs.console == 'true'
-    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 40
 
     defaults:

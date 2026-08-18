@@ -346,7 +346,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
           />
         ) : search ? (
           <div className="py-12 text-center">
-            <p className="text-meta text-muted">No categories match &ldquo;{search}&rdquo;.</p>
+            <p className="lede">No categories match &ldquo;{search}&rdquo;.</p>
             <button
               type="button"
               onClick={() => setSearch('')}
@@ -357,7 +357,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
           </div>
         ) : (
           <div className="py-12 text-center">
-            <p className="text-meta text-muted">
+            <p className="lede">
               No categories are available right now. Check back shortly.
             </p>
           </div>
@@ -372,7 +372,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
          * list is a control on that sentence, not a second screen restating it.
          */}
         <div className="mt-12 flex flex-wrap items-center justify-between gap-x-10 gap-y-5 border-t-2 border-text pt-9">
-          <p className="max-w-[62ch] text-meta leading-relaxed text-muted">
+          <p className="max-w-[62ch] lede">
             Categories appear once enough packs have cleared the checks to fill them. Ideas that failed are in the{' '}
             <Link href="/kill-log" className={textLinkClass('font-medium')}>
               kill log

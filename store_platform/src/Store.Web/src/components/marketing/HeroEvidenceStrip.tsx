@@ -73,7 +73,7 @@ export function HeroEvidenceStrip({ className }: { className?: string }) {
        (`mockups/index.html:304`), a full-width row under the hero, and the caller sets the
        measure. */
     <div className={cx(className)}>
-      <p className="text-caption text-subtle">
+      <p className="mono">
         Every pack carries this. Here is the one in the free sample.
       </p>
 
