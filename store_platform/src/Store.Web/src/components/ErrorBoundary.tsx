@@ -38,8 +38,8 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       return (
         <div className="flex min-h-dvh items-center justify-center bg-bg px-6 font-sans text-text">
           <div className="max-w-md text-center">
-            <h1 className="text-h2 font-semibold text-text">Something went wrong</h1>
-            <p className="mt-3 text-body text-muted">
+            <h1>Something went wrong</h1>
+            <p className="mt-3 lede">
               This screen hit an unexpected error. Your account and any funded request are unaffected.
               Reloading usually clears it.
             </p>

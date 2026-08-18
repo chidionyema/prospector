@@ -153,10 +153,10 @@ function BuyDrawer({
       }
     >
       <div className="space-y-5">
-        {pack.oneLine && <p className="text-meta leading-relaxed text-muted">{pack.oneLine}</p>}
+        {pack.oneLine && <p className="lede">{pack.oneLine}</p>}
 
         <div>
-          <span className="text-caption font-medium text-subtle">What you get</span>
+          <span className="eyebrow">What you get</span>
           <ul className="mt-2 space-y-1.5">
             {PACK_DOCUMENTS.map((item) => (
               <li key={item.section} className="flex items-start gap-2 text-meta text-text">

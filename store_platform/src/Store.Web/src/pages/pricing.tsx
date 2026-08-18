@@ -56,10 +56,10 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
           `.wrap{max-width:1080px;padding:0 20px}` with `.pagetop{padding:14px 0 8px}`. */}
       <section className="mx-auto max-w-[1080px] px-5 pt-3.5 pb-16">
         <p className="mb-3 text-caption font-medium text-subtle">Pricing</p>
-        <h1 className="text-h1 font-semibold text-text">
+        <h1>
           {range ? range.headline : 'One payment per pack.'}
         </h1>
-        <p className="mt-4 max-w-[60ch] text-body text-muted">
+        <p className="mt-4 max-w-[60ch] lede">
           {/* Was "One price, every pack." The mode is stated alongside the spread on purpose:
               quoting only "from £29" when most packs are dearer is the airline-fare move. */}
           {/* "No seat fees, no drip-feed" is cut, along with "no upsell" in the fallback meta
@@ -88,7 +88,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
             The drawing separates the page's arguments with a 2px ink rule, not with whitespace.
             Without it every block reads as one more card in a stack of cards, which is what made
             this page scroll as an undifferentiated column. */}
-        <hr className="mt-11 border-0 border-t-2 border-text" />
+        <hr className="mt-11 break-major" />
         <div className="mt-8">
           <MethodCostAnchor range={range} />
         </div>
@@ -96,10 +96,10 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
         {/* WHY ONE PACK COSTS MORE THAN ANOTHER, stated as its own block. The rule above it is
             the drawing's `.rule2`; it cannot be a JSX comment inside the conditional below, which
             would make it a second child of the `&&` expression. */}
-        <hr className="mt-11 border-0 border-t-2 border-text" />
+        <hr className="mt-11 break-major" />
         {range && !range.uniform && (
           <div className="mt-8">
-            <h2 className="text-h2 font-semibold text-text md:text-h1">
+            <h2 className="sec">
               What changes is the size of the opportunity. The pack doesn’t.
             </h2>
             <PriceLadder rungs={ladder} className="mt-6" />
@@ -121,7 +121,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
               documents={PACK_DOCUMENTS.length}
               rungs={ladder.map((rung) => ({ price: formatGbp(rung.amount), count: rung.count }))}
             />
-            <p className="mt-8 max-w-[60ch] text-body text-muted">
+            <p className="mt-8 max-w-[60ch] lede">
               Two things set the rung, not a guess: how big the idea could realistically become,
               and which market it targets. US-market packs sit one price step higher, because the
               market they address is bigger. A weekend side business and a
@@ -134,10 +134,10 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
         )}
 
         {/* What's included */}
-        <hr className="mt-11 border-0 border-t-2 border-text" />
+        <hr className="mt-11 break-major" />
         <div className="mt-8">
-          <h2 className="text-h2 font-semibold text-text">What you get, at every price</h2>
-          <p className="mt-3 max-w-[60ch] text-body text-muted">
+          <h2 className="sec">What you get, at every price</h2>
+          <p className="mt-3 max-w-[60ch] lede">
             Every pack is the same shape: {PACK_DOCUMENTS.length} documents, sourced
             and cited. No tier, no add-on. The list below is
             identical for every pack on the shelf
@@ -182,7 +182,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
           <h2 id="what-you-do-not-get" className="scroll-mt-24 text-h2 font-semibold text-text">
             What you do not get
           </h2>
-          <p className="mt-3 max-w-[60ch] text-body text-muted">
+          <p className="mt-3 max-w-[60ch] lede">
             Honesty about the limits is part of the brand.
           </p>
           <ul className="mt-6 space-y-3">
@@ -202,12 +202,12 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
 
         {/* Trust + refund */}
         <div className="mt-12 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-card border border-border bg-surface p-6">
+          <div className="gridwrap">
             <div className="flex items-center gap-2">
               <Icon name="shield" size={16} className="text-success" />
               <h3 className="text-meta font-semibold text-text">14 day money back</h3>
             </div>
-            <p className="mt-2 text-meta leading-relaxed text-muted">
+            <p className="mt-2 lede">
               If the pack is not what the description said, email{' '}
               <a href={`mailto:${LEGAL.supportEmail}`} className={textLinkClass()}>
                 {LEGAL.supportEmail}
@@ -220,12 +220,12 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
               .
             </p>
           </div>
-          <div className="rounded-card border border-border bg-surface p-6">
+          <div className="gridwrap">
             <div className="flex items-center gap-2">
               <Icon name="verified" size={16} className="text-success" />
               <h3 className="text-meta font-semibold text-text">Every claim cited</h3>
             </div>
-            <p className="mt-2 text-meta leading-relaxed text-muted">
+            <p className="mt-2 lede">
               {/* Was "Every figure in every pack links to a retrievable source." Our own zero-LLM
                   probe falsifies that sentence: 15 of the 50 packs then on sale asserted at least
                   one figure that appears in NO passage the run retrieved (programme doc §33). The
@@ -265,13 +265,13 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
             on the page looked like one more component in the stack instead of the end of the
             argument. The drawing ends on a rule and lets the two actions sit on the canvas. */}
         <div className="mt-12 border-t-2 border-text pt-9">
-          <p className="text-caption font-medium text-subtle">{BRAND.name}</p>
-          <h2 className="mt-2 text-h2 font-semibold text-text">
+          <p className="eyebrow">{BRAND.name}</p>
+          <h2 className="mt-2 sec">
             {range && !range.uniform
               ? `${formatGbp(range.min)} to ${formatGbp(range.max)}. Yours forever.`
               : 'One payment. Yours forever.'}
           </h2>
-          <p className="mt-3 max-w-[60ch] text-body text-muted">
+          <p className="mt-3 max-w-[60ch] lede">
             One payment per pack, no subscription. Read a free sample first if you’d like to see
             the rigour before you buy.
           </p>

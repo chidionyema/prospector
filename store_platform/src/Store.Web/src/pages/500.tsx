@@ -30,10 +30,10 @@ export default function ServerError() {
       <div className="mx-auto max-w-[1080px] px-5 pt-16 pb-10 text-center">
         {/* Set as a caption, not in mono: see the note on the same line in `404.tsx`. */}
         <p className="mb-[18px] text-caption font-medium text-subtle">500</p>
-        <h1 className="mx-auto mb-3.5 max-w-[20ch] text-h1 font-semibold text-text">
+        <h1 className="mx-auto mb-3.5 max-w-[20ch]">
           This page failed to load.
         </h1>
-        <p className="mx-auto mb-[26px] max-w-[62ch] text-body leading-relaxed text-muted">
+        <p className="mx-auto mb-[26px] max-w-[62ch] lede">
           The fault is on our server, so nothing you did caused it. Payments and downloads are
           handled by Stripe and are not affected: if you were buying a pack, you have not been
           charged twice.

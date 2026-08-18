@@ -76,7 +76,7 @@ function AccordionItem({
         className="flex w-full items-start justify-between gap-4 py-4 text-left"
       >
         {/* mockups/faq.html:185 `.faq summary{font-size:16.5px;font-weight:620;letter-spacing:-.014em}` */}
-        <h2 className="text-body font-semibold tracking-[-0.014em] text-text leading-snug">{item.question}</h2>
+        <h2 className="tracking-[-0.014em] leading-snug sub">{item.question}</h2>
         {/* mockups/faq.html:187-188: the marker is a typographic + that becomes a minus when open,
             20px, weight 400, in --ink-3. It was a rotating arrow glyph, which is a different
             control. U+2212 MINUS SIGN, not an en dash: `__tests__/dashFree.test.ts` bans both
@@ -260,7 +260,7 @@ export default function Faq() {
 
           {filtered.length === 0 ? (
             <div className="py-12 text-center">
-              <p className="text-meta text-muted">No questions match &ldquo;{search}&rdquo;.</p>
+              <p className="lede">No questions match &ldquo;{search}&rdquo;.</p>
               <button
                 type="button"
                 onClick={() => { setSearch(''); setActiveCategory(null); }}
@@ -284,34 +284,22 @@ export default function Faq() {
           above, not because this content needs the room (the card inside is deliberately
           `mx-auto max-w-md`, a centred call-out, unaffected by the band width) but so the page
           doesn't reintroduce a second distinct container width of its own. */}
-      <SectionBand bg="bg" width="6xl" className="!py-12">
-        <div className="mx-auto max-w-md rounded-card border border-border bg-surface p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-success/10 text-success">
-              <Icon name="mail" size={14} />
-            </span>
-            {/* `h2`, not `h4`. This is the last top-level section of the page and its heading sits
-                at the same rank as the accordion questions above it; as an `h4` under an `h1` and a
-                run of `h2`s it made the page's outline jump 2 -> 4, which a screen reader announces
-                as two missing levels of structure that a sighted reader never sees. Measured on the
-                rendered page 2026-08-13. Its size is set by `text-meta`, so nothing on screen moves. */}
-            <h2 className="font-semibold text-meta text-text">A human reads every email</h2>
+      {/* THE DRAWING'S SUPPORT BAR (`mockups/faq.html:342`): one full-width card, the heading and
+          a mono line on the left, the button on the right. It was a 448px card floating in the
+          middle of a grey band, which on a 1440px screen read as an unfinished section. */}
+      <SectionBand bg="white" width="6xl" className="!pt-0 !pb-12">
+        <div className="card mt-[30px] flex flex-wrap items-center justify-between gap-5 px-[var(--pad)] py-[22px]">
+          <div>
+            <h2 className="sub">A human reads every email</h2>
+            <p className="mono mt-[7px]">
+              <a href={`mailto:${LEGAL.supportEmail}`} className={textLinkClass()}>
+                {LEGAL.supportEmail}
+              </a>{' '}
+              · replies in under 1 business day
+            </p>
           </div>
-          <div className="space-y-3 text-caption">
-            <div className="flex flex-col border-b border-border pb-3">
-              <span className="text-muted font-semibold tracking-tight mb-1">Email</span>
-              <a href={`mailto:${LEGAL.supportEmail}`} className="inline-block break-all py-[13px] font-medium text-accent transition-colors hover:text-accent-hover">{LEGAL.supportEmail}</a>
-            </div>
-            <div className="flex flex-col">
-              <span className="mb-1 text-caption font-medium text-subtle">Response time</span>
-              <span className="text-meta font-medium text-text">&lt; 1 business day</span>
-            </div>
-          </div>
-          <Link
-            href="/"
-            className={buttonClasses({ className: 'mt-5' })}
-          >
-            Browse the catalogue <Icon name="arrowRight" size={14} />
+          <Link href="/" className={buttonClasses({ variant: 'secondary' })}>
+            Browse the catalogue
           </Link>
         </div>
       </SectionBand>
@@ -321,8 +309,8 @@ export default function Faq() {
           do next. The drawing ends every page on a 2px ink rule, a question, and two routes. */}
       <SectionBand bg="white" width="6xl" className="!pt-0 !pb-16">
         <div className="mt-12 border-t-2 border-text pt-9">
-          <h2 className="text-h2 font-semibold text-text">Still deciding?</h2>
-          <p className="mt-3.5 mb-[22px] max-w-[56ch] text-body leading-relaxed text-muted">
+          <h2 className="sec">Still deciding?</h2>
+          <p className="mt-3.5 mb-[22px] max-w-[56ch] lede">
             Read a complete pack first. No payment, no email, no account.
           </p>
           <div className="flex flex-wrap gap-3">

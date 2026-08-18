@@ -120,7 +120,8 @@ describe('US-2 — Pack cards with pack art', () => {
       page.slice(cardStart, cardEnd === -1 ? undefined : cardEnd)
       + readSource('../components/discovery/PackRow.tsx');
     const figures = cardBody.match(/<PackFigure\b[^/]*\/>/g) ?? [];
-    expect(figures.length, 'every card variant must render the lead figure').toBe(2);
+    // Three variants now: row, card, and the drawing's three-up tile `PackTileGrid`.
+    expect(figures.length, 'every card variant must render the lead figure').toBe(3);
     ['row', 'spotlight'].forEach((weight) => {
       expect(
         figures.some((f) => f.includes(`weight="${weight}"`)),

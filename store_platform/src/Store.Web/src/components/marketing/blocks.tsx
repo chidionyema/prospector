@@ -246,7 +246,7 @@ export function PageHero({
         {eyebrow && (
           <p className="mb-3 text-caption font-medium text-subtle">{eyebrow}</p>
         )}
-        <h1 className="max-w-[20ch] text-balance text-h1 font-semibold text-text">{title}</h1>
+        <h1 className="max-w-[20ch]">{title}</h1>
         {lead && (
           <div className="mt-4 max-w-[60ch] text-body text-muted">
             {lead}
@@ -303,7 +303,7 @@ export function HeroList({
   const List = ordered ? 'ol' : 'ul';
   return (
     <div className="lg:pt-1">
-      <p className="text-caption font-medium text-subtle">{label}</p>
+      <p className="eyebrow">{label}</p>
       <List className="mt-4 space-y-2.5">
         {items.map((item, i) => (
           <li
@@ -354,7 +354,7 @@ export function Section({
     <SectionBand bg={bg} width={width} outerClassName={outerClassName} className={`py-10 md:py-24 scroll-mt-16 ${className ?? ''}`}>
       {(title || intro) && (
         <div className="mb-10">
-          {title && <h2 className="text-h2 font-semibold text-text md:text-h1">{title}</h2>}
+          {title && <h2 className="sec">{title}</h2>}
           {intro && <div className="mt-3 max-w-[60ch] text-body text-muted">{intro}</div>}
         </div>
       )}
@@ -382,8 +382,8 @@ export function Step({
         {n.toString().padStart(2, '0')}
       </div>
       <div className="space-y-1.5 pt-1">
-        <h3 className="text-body font-semibold leading-tight text-text">{title}</h3>
-        <p className="text-meta text-muted">{children}</p>
+        <h3 className="leading-tight sub">{title}</h3>
+        <p className="lede">{children}</p>
       </div>
     </li>
   );
@@ -404,8 +404,8 @@ export function FeatureCard({
       <div className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface2 text-subtle">
         <Icon name={icon} size={18} />
       </div>
-      <h3 className="text-body font-semibold leading-tight text-text">{title}</h3>
-      <p className="text-meta text-muted">{children}</p>
+      <h3 className="leading-tight sub">{title}</h3>
+      <p className="lede">{children}</p>
     </Card>
   );
 }
@@ -440,8 +440,8 @@ export function CtaBand({
   return (
     <SectionBand bg="bg" width={width} className="scroll-mt-16 !pt-0 !pb-16">
       <div className="mt-12 border-t-2 border-text pt-9">
-      <h2 className="max-w-[20ch] text-balance text-h2 font-semibold text-text">{title}</h2>
-      {lead && <p className="mt-3.5 max-w-[56ch] text-body leading-relaxed text-muted">{lead}</p>}
+      <h2 className="sec" style={{ maxWidth: '20ch' }}>{title}</h2>
+      {lead && <p className="mt-3.5 max-w-[56ch] lede">{lead}</p>}
       <div className="mt-[22px] flex flex-col items-start gap-3 sm:flex-row sm:items-center">
         <Link href={primary.href}>
           <Button variant="primary" size="lg">{primary.label}</Button>

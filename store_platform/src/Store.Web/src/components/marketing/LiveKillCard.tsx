@@ -174,7 +174,7 @@ export default function LiveKillCard({ className }: LiveKillCardProps) {
             card can promise without a number is the thing that matters to someone about to buy:
             the packs on the shelf are the ones that came through these checks. The `listed` prop
             went with the reconciliation, so this card needs no catalogue call. */}
-        <span className="font-mono text-caption text-subtle">
+        <span className="mono">
           Every pack on the shelf came through this
         </span>
         <Link

@@ -44,8 +44,8 @@ export function DiscoveryNearMiss({
   );
 
   return (
-    <div className="rounded-card border border-border bg-surface p-6">
-      <h3 className="text-body font-semibold text-text">
+    <div className="gridwrap">
+      <h3 className="sub">
         Nothing matches all of it. These come closest,
       </h3>
       <ul className="mt-3 flex flex-wrap gap-2">
@@ -89,11 +89,11 @@ export function DiscoveryNearMiss({
  */
 export function DiscoveryWaitlist({ query, onReset }: { query: string; onReset?: () => void }) {
   return (
-    <div className="rounded-card border border-border bg-surface p-6">
-      <h3 className="text-body font-semibold text-text">
+    <div className="gridwrap">
+      <h3 className="sub">
         No vetted pack for “{query.trim()}”, yet.
       </h3>
-      <p className="mt-2 max-w-2xl text-meta leading-relaxed text-muted">
+      <p className="mt-2 max-w-2xl lede">
         We only list an idea once it survives the checks with a clickable source behind every claim. Most
         ideas in a hot space die on the competition test. Tell us where to point the engine and we&apos;ll
         email you if one survives.

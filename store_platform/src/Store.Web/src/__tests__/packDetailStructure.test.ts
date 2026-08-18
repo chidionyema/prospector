@@ -43,8 +43,12 @@ describe('the pack page renders one buy box and one closing bar', () => {
   it('closes on the ask, not on the share row', () => {
     // §7 order ends "... related packs -> closing bar". A reader who has read the checks, the
     // documents and the sources reached a share row and nothing else.
+    // The closing block took the drawing's shape on 2026-08-18 (`mockups/pack-detail.html:427`):
+    // a priced heading, a sentence, two buttons, then the small print. The sentence this used to
+    // match went with it. What the test is actually about -- the page ends on the ask, not on the
+    // share row -- is unchanged, so it now matches the heading that carries the ask.
     expect(at('<ShareRow')).toBeGreaterThan(-1);
-    expect(at('One payment. Download straight away.')).toBeGreaterThan(at('<ShareRow'));
+    expect(at('once. Yours forever.')).toBeGreaterThan(at('<ShareRow'));
   });
 
   it('does not make the closing bar a third purchase panel', () => {

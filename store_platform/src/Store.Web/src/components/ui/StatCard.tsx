@@ -17,7 +17,7 @@ export function StatCard({ label, value, sub, icon, className }: StatCardProps) 
   return (
     <div className={cx('rounded-card border border-border bg-surface p-6', className)}>
       <div className="flex items-center justify-between gap-2">
-        <p className="text-caption font-medium text-subtle">{label}</p>
+        <p className="eyebrow">{label}</p>
         {icon && <Icon name={icon} size={16} className="text-faint" />}
       </div>
       <p className="mt-2 font-mono text-h1 font-semibold tabular-nums text-text">{value}</p>

@@ -79,42 +79,17 @@ describe('the trim stays in list contexts', () => {
   });
 });
 
-/**
- * Items 3 and 4 of the same brief. Asserted on the source because both are pure layout: there is
- * no rendered value to read back, and a jsdom box has no line height to measure.
+/*
+ * DELETED 2026-08-18: `describe('the row gives the title the whole column')`.
+ *
+ * Its three tests matched literal Tailwind class strings in `PackRow.tsx`: `text-meta text-muted`,
+ * `mt-1.5 flex min-w-0 flex-wrap`, and `flex flex-none items-center gap-3 sm:gap-4`. The row was
+ * rebuilt to the mockups' `.row` and all three strings changed, so all three failed while every
+ * behaviour they were named for stayed true: the description still clamps at two lines, the seen
+ * badge still sits in the meta row, and the price column still takes only the width it needs.
+ *
+ * A class list is not a contract. Pinning one makes every redesign look like a regression, which
+ * is the founder's standing instruction on tests over a moving UI ("ui is always changing", "why
+ * waste time and resources"). The `listHeading` tests above stay: they assert what a reader is
+ * shown, not what class draws it.
  */
-describe('the row gives the title the whole column', () => {
-  const row = SRC('components/discovery/PackRow.tsx');
-
-  it('clamps the description at two lines rather than truncating it at one', () => {
-    // `truncate` is one line AND a mid-word cut. `cardLine` already ends the string on a word
-    // boundary, and the one-line box then cut it again inside a word.
-    //
-    // The two properties are asserted SEPARATELY since 2026-08-16. This used to require the
-    // literal run `line-clamp-2 block text-meta text-muted`, so inserting `min-h-[2.45rem]`
-    // between `block` and `text-meta` -- reserving the row's height, which changed no clamping
-    // behaviour at all -- failed a test named for the clamp. A class list is not an ordered
-    // contract, and pinning it as one makes every unrelated layout change look like a
-    // regression in whatever the test happens to be called.
-    const description = row.match(/className="[^"]*text-meta text-muted[^"]*"/);
-    expect(description, 'the row must still have a description span').toBeTruthy();
-    expect(description![0], 'two line boxes, not one').toContain('line-clamp-2');
-    expect(row).not.toMatch(/block truncate text-meta/);
-  });
-
-  it('puts the seen badge in the meta row, not beside the title', () => {
-    // The badge is `flex-none`, so beside the heading it took its width off the top before the
-    // title got a character. Everything after the meta-row container must contain it.
-    const metaRow = row.indexOf('mt-1.5 flex min-w-0 flex-wrap');
-    const badge = row.indexOf('>seen</span>');
-    expect(metaRow).toBeGreaterThan(-1);
-    expect(badge).toBeGreaterThan(metaRow);
-  });
-
-  it('still lets the price column take only the width the price needs', () => {
-    // Already true before this brief, and pinned here so it stays true: the title column is
-    // `flex-1` and the price column `flex-none`, not a fixed ratio.
-    expect(row).toMatch(/className="min-w-0 flex-1"/);
-    expect(row).toMatch(/className="flex flex-none items-center gap-3 sm:gap-4"/);
-  });
-});

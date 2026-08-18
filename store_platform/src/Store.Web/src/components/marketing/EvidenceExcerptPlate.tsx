@@ -66,7 +66,7 @@ export default function EvidenceExcerptPlate({
             this plate identifies the RECORD the excerpt was lifted from (`dossierRef` is the
             API's own field name, and renaming a wire field is a different, breaking change). */}
         {reference && (
-          <span className="font-mono text-caption text-subtle">{reference}</span>
+          <span className="mono">{reference}</span>
         )}
       </figcaption>
 

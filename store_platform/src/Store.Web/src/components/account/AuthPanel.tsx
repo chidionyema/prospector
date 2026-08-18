@@ -179,7 +179,7 @@ export function AuthPanel({ initial, returnTo }: AuthPanelProps) {
   if (mode === 'verifying') {
     return (
       <Card className="p-8 text-center">
-        <p className="text-body text-muted">Confirming your email address…</p>
+        <p className="lede">Confirming your email address…</p>
       </Card>
     );
   }

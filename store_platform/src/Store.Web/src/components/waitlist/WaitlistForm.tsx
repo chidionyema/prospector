@@ -41,6 +41,16 @@ export interface WaitlistFormProps {
    *  string in the column would read as "searched for nothing" rather than "never searched". */
   query?: string;
   submitLabel?: string;
+  /**
+   * The drawing's shape (`mockups/index.html:556`): the field and the button on ONE row, the
+   * consent under them as fine print. The default stacked form is kept for the narrow placements
+   * (the empty state, the sidebar) where a 470px row would wrap anyway.
+   *
+   * The consent checkbox is rendered in BOTH shapes. The drawing does not show one, but the box
+   * is unticked by default and the submit is refused without it here and in `WaitlistService`;
+   * a pre-ticked or absent box is not consent under UK GDPR. Layout does not get to decide that.
+   */
+  inline?: boolean;
 }
 
 /**
@@ -48,7 +58,7 @@ export interface WaitlistFormProps {
  * here and server-side in `WaitlistService`. A pre-ticked box is not consent under UK GDPR, and
  * the italic sentence under the form is the exact text the server hashes as evidence.
  */
-export function WaitlistForm({ source, query, submitLabel = 'Put it in the queue' }: WaitlistFormProps) {
+export function WaitlistForm({ source, query, submitLabel = 'Put it in the queue', inline }: WaitlistFormProps) {
   const [email, setEmail] = useState('');
   const [consent, setConsent] = useState(false);
   const [state, setState] = useState<SubmitState>('idle');
@@ -85,33 +95,90 @@ export function WaitlistForm({ source, query, submitLabel = 'Put it in the queue
 
   if (state === 'queued') {
     return (
-      <p className="text-meta leading-relaxed text-muted">
+      <p className="lede">
         <span className="font-semibold text-text">You&apos;re in the queue.</span> We&apos;ll email you from
         support@mumchimp.com {query ? 'if a pack in this space survives the checks' : 'if a new pack survives the checks'}. Nothing else.
       </p>
     );
   }
 
-  return (
-    <>
-      <form onSubmit={submit} className="flex max-w-md flex-col gap-3">
-        <Input
-          label="Email"
+  const field = (
+    <Input
+      label="Email"
+      type="email"
+      required
+      value={email}
+      onChange={(event) => setEmail(event.target.value)}
+      placeholder="you@example.com"
+      error={error ?? undefined}
+    />
+  );
+  const box = (
+    <Checkbox
+      label="Email me if a pack survives"
+      checked={consent}
+      onChange={(event) => setConsent(event.target.checked)}
+    />
+  );
+  const send = (
+    <Button type="submit" variant="primary" disabled={state === 'sending'}>
+      {state === 'sending' ? 'Adding you…' : submitLabel}
+    </Button>
+  );
+
+  if (inline) {
+    /*
+     * THE DRAWING'S FORM (`mockups/index.html:556`): one row holding a bare input and a `.btn`,
+     * then the promise as fine print under it.
+     *
+     * It renders plain elements rather than `Input` and `Button` because the styled components
+     * could not be made to look like the drawing. Their utility classes sit in Tailwind's
+     * `utilities` layer; mockup.css is imported into `components`, which loses to it. So
+     * `.emailbox input` (height 46, paper ground, 15px type) was overruled on every declaration
+     * it made, and the box rendered as a Tailwind control inside a hand-drawn card. Plain
+     * elements hand the drawing's stylesheet back the control it is supposed to have.
+     *
+     * The consent box stays and it IS the fine line now, rather than a second control stacked
+     * above it. Its label is `WAITLIST_CONSENT_TEXT` itself, so what the reader ticks and what
+     * `WaitlistService` hashes are the same sentence, and the row still reads as one line of
+     * fine print the way the drawing does.
+     */
+    return (
+      <form onSubmit={submit}>
+        <input
           type="email"
+          aria-label="Email address"
+          placeholder="you@example.com"
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          placeholder="you@example.com"
-          error={error ?? undefined}
         />
-        <Checkbox
-          label="Email me if a pack survives"
-          checked={consent}
-          onChange={(event) => setConsent(event.target.checked)}
-        />
-        <Button type="submit" variant="primary" disabled={state === 'sending'}>
-          {state === 'sending' ? 'Adding you…' : submitLabel}
-        </Button>
+        <button className="btn" type="submit" disabled={state === 'sending'}>
+          {state === 'sending' ? 'Adding you\u2026' : submitLabel}
+        </button>
+        <label className="fine consent">
+          <input
+            type="checkbox"
+            checked={consent}
+            onChange={(event) => setConsent(event.target.checked)}
+          />
+          <span>{WAITLIST_CONSENT_TEXT}</span>
+        </label>
+        {error && (
+          <p className="fine err" role="alert">
+            {error}
+          </p>
+        )}
+      </form>
+    );
+  }
+
+  return (
+    <>
+      <form onSubmit={submit} className="flex max-w-md flex-col gap-3">
+        {field}
+        {box}
+        {send}
       </form>
 
       <p className="mt-3 text-caption italic text-muted">{WAITLIST_CONSENT_TEXT}</p>

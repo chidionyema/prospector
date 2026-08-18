@@ -84,7 +84,7 @@ export default function AuthCallbackPage() {
             needs a heading: with none, the route has no h1 and a screen reader has nothing to
             navigate to. */}
         <h1 className="sr-only">Signing in</h1>
-        <p className="text-body text-muted">
+        <p className="lede">
           {incomplete ? 'That sign-in link is incomplete. Please start again.' : 'Signing you in…'}
         </p>
       </div>

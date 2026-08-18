@@ -1,5 +1,4 @@
 import React from 'react';
-import { Icon } from '@/components/ui';
 
 /**
  * The single source of truth for "what is in the £49 download".
@@ -243,163 +242,70 @@ export function PackContentsSection({
   className?: string;
 }) {
   const hasCount = typeof sourceCount === 'number' && sourceCount > 0;
+  const files = [...PACK_CONTENTS, ...PACK_EXTRAS];
   return (
     <div className={className}>
-      <h2 className="text-h2 font-semibold text-text">{heading}</h2>
-      {lead && <p className="mt-2 max-w-[60ch] text-body text-muted">{lead}</p>}
-
       {/*
-       * THE MANIFEST AS A FILE TREE, not eight bordered cards.
+       * THE DRAWING'S SHAPE (`mockups/index.html:563`, section 15 "THE FULL CONTENTS").
        *
-       * The previous shape was a two-column grid of `rounded-md border border-border` cards, which
-       * is the same object the shelf uses for products: eight cards saying "here are eight things"
-       * read as eight things to choose between rather than as one archive with eight entries in
-       * it. The tree says the true thing structurally -- these arrive together, in this order, in
-       * one file -- and it says it before a word is read.
+       * This rendered as one bordered card holding twenty stacked rows: fourteen documents down a
+       * single column, then six files down the same column. On a 1440px screen that is roughly
+       * 2,000px of list where the drawing spends about 700px, and it was most of the reason the
+       * home page ran 4,000px longer than the drawing. Founder, 2026-08-18: "is different fron
+       * nockups".
        *
-       * The glyphs are literal box-drawing characters rather than borders or an SVG, because at
-       * `text-caption` in the mono face they align on the same grid the titles do. They are
-       * inside an `aria-hidden` span: a screen reader announcing "box drawings light up and right"
-       * before every line is noise, and the `<ul>`/`<li>` structure already carries "this is a
-       * list" losslessly.
-       *
-       * 2026-08-15: the filenames come OFF the document rows. They were kept there through two
-       * redesigns on a good argument -- a real zip entry a buyer can check against their download
-       * is falsifiable in a way another adjective is not -- but that argument only holds while the
-       * name IS an entry in the download. These are sections of the reader now, so printing
-       * `00_Executive_Summary.md` beside one would be the rarest kind of drift: a filename that is
-       * true of our source tree and false of the product. The falsifiable-listing argument is not
-       * abandoned, it MOVES: the second group below lists the five real entries, and those a buyer
-       * can still check one for one against the zip.
-       *
-       * The root is NOT a zip filename. `bridge.py:813` writes `prospector_pack_<id8>.zip` locally
-       * while the delivery key at `:632` is `packs/<id>/<content_hash>.zip`, so which of those a
-       * buyer's browser saves is not a fact this component can state. It states the fact it has.
+       * The drawing splits it in two and uses the width: `.docs` is a two-column grid of numbered
+       * `.docitem` rows (mockup.css:209-214), `.files` is a three-column grid of `.file` cards
+       * (mockup.css:215-220), and a `.files-note` row closes it with the format sentence and the
+       * "Instant download" pill. Same content, same order, same words. Nothing was dropped: the
+       * per-pack source count still rides on the QA document, and every filename is still printed
+       * so a buyer can check it against their zip.
        */}
-      <div className="mt-6 overflow-hidden rounded-md bg-surface">
-        <div className="flex items-center gap-2 border-b border-border bg-surface2 px-5 py-3">
-          <Icon name="download" size={14} className="flex-none text-subtle" />
-          {/* Sans, and words. This read `your pack/` in mono -- a directory name, drawn with
-              box-drawing glyphs below it, on a page selling finished documents to a non-developer.
-              The falsifiable half of that design (the real filenames, second group) is kept; the
-              costume around it is not. Founder, 2026-08-15: "the full contents styling and design
-              is poor". */}
-          <span className="text-caption font-medium text-text">Inside the pack</span>
-          {/* "documents", not "files", and the two are now DIFFERENT NUMBERS rather than the same
-              number under a careful noun: `PACK_DOCUMENTS.length` documents arrive as
-              `PACK_CONTENTS.length` files -- 14 and 5 as counted on 2026-08-15, and written as the
-              expressions rather than the digits because the last version of this note said "Nine
-              documents arrive as five files" while the code beside it rendered 14. A comment that
-              hardcodes what the line below derives goes stale silently and then misinforms the
-              next reader about which number is load-bearing. Until 2026-08-15
-              this count read `PACK_CONTENTS.length` and the noun had to do the work of hiding that
-              the archive held more entries than the list showed (measured 2026-08-08 across the 45
-              packs then live: 8 entries on 12 packs, 9 on 14, 10 on 19, against a stated eight).
-              Now each count is rendered next to the thing it counts and neither has to be careful:
-              this one counts what you read, the group below counts what you receive. */}
-          <span className="ml-auto font-mono text-caption text-subtle">
-            {PACK_DOCUMENTS.length} documents
-          </span>
-        </div>
-        <ul className="list-none p-0">
-          {PACK_DOCUMENTS.map((item, i) => (
-            <li key={item.section} className="border-b border-border/60 px-5 py-4">
-              <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-                <span className="min-w-0 text-meta font-semibold leading-snug text-text">
-                  {item.title}
-                </span>
+      <div className="sechead">
+        <h2 className="sec">{heading}</h2>
+        {/* Two counts, each next to the thing it counts, exactly as the drawing prints them.
+            Derived, never typed: the numbers move when the tuples move. */}
+        <span className="mono num">
+          {PACK_DOCUMENTS.length} documents · {files.length} files
+        </span>
+      </div>
+      {lead && <p className="lede">{lead}</p>}
+
+      <div className="docs">
+        {PACK_DOCUMENTS.map((item, i) => (
+          <div key={item.section} className="docitem">
+            <span className="i num">{String(i + 1).padStart(2, '0')}</span>
+            <div>
+              <h5>
+                {item.title}
                 {hasCount && item.showSourceCount && (
-                  <span className="flex-none font-mono text-caption text-success">
+                  <span className="ml-2 font-mono text-caption font-normal text-success">
                     {sourceCount} sources
                   </span>
                 )}
-              </div>
-              {/* Flush left. This was `pl-[3.25rem]`, hanging the prose off the tree glyph that no
-                  longer exists; with the glyph gone the indent was decoration measuring nothing. */}
-              <div className="mt-1">
-                <span className="block max-w-[70ch] text-meta leading-relaxed text-muted">
-                  {item.desc}
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
-
-        {/* The files, in the same card rather than a second box: they are one archive, and giving
-            them their own bordered card would say "a separate thing you may also get". The label is
-            what separates them, because the difference is real and a buyer is entitled to it --
-            above is what the pack SAYS, here is what lands in the folder. Every entry in the first
-            of these two groups is audited on every pack before it may be listed. */}
-        {/* NO COUNT HERE ANY MORE (founder, 2026-08-16: "counting bugs").
-            This read `arrives as 5 files` directly under `14 documents`, and the two numbers are
-            both true of different things -- what you read, what lands in the folder. A buyer does
-            not carry that distinction down the page; they see 14 and then 5 and conclude one of
-            them is wrong about the product they are being sold. The label now says which group
-            this is and the entries below still list every file by name, so the falsifiable half
-            (check these against your zip) is untouched. One number leads on this card, and it is
-            the documents count in the header above. */}
-        <div className="border-t border-border bg-surface2 px-5 py-2">
-          <span className="font-mono text-caption text-subtle">
-            what lands in your folder
-          </span>
-        </div>
-        <ul className="list-none p-0">
-          {[...PACK_CONTENTS, ...PACK_EXTRAS].map((item, i, all) => (
-            <li key={item.filename} className="border-b border-border/60 px-5 py-4 last:border-b-0">
-              <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-                <span className="min-w-0 text-meta font-semibold leading-snug text-text">
-                  {item.title}
-                </span>
-                <span className="min-w-0 break-all font-mono text-caption text-faint">
-                  {item.filename}
-                </span>
-              </div>
-              <div className="mt-1">
-                <span className="block max-w-[70ch] text-meta leading-relaxed text-muted">
-                  {item.desc}
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
+              </h5>
+              <p>{item.desc}</p>
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* Format ambiguity kills digital conversions, so the format still gets stated outright --
-          but it no longer LEADS. This box opened "Format: one zip of plain Markdown files", which
-          answers "what is the container?" before the reader has been told what is in it. Markdown
-          and zip are engineer words for a shopper, and putting them in the first three words made
-          the £49 purchase sound like a developer artefact rather than finished documents.
-
-          The Notion and Obsidian name-drops are GONE. They were two brands most readers do not
-          use, spent to make one point ("it opens anywhere") that "paste anywhere" makes without
-          asking anyone to recognise a product.
-
-          2026-08-14 took out "plain-text", when bridge.py started writing a typeset PDF and the
-          phrase stopped being true. 2026-08-15 takes out "Markdown you can edit" for the same
-          reason in the other direction: the Markdown no longer ships. What replaces it is not a
-          softer claim but a more specific one -- read, print, open in a spreadsheet, paste -- which
-          is what the founder was asking for when the objection was "we are not selling to
-          developers". The count beside the words counts DOCUMENTS, which is why the noun is
-          "documents"; the files are counted in the tree above, where they are listed. */}
-      <div className="mt-4 flex flex-col gap-3 rounded-card border border-border bg-surface2 p-6 sm:flex-row sm:items-center sm:justify-between">
-        {/* THE WORD COUNT IS GONE, and so is the second documents count (founder, 2026-08-16).
-            This line printed `14 documents, 5,000+ words` while the card header 80px above it
-            already printed `14 documents`. Two problems, one sentence. The count was the same
-            number twice, on a card whose other complaint is that it prints too many numbers. And
-            the pair invited a division nobody wants the answer to: 5,000 words across 14 documents
-            is 357 words each, which reads as fourteen thin pages rather than as a body of work.
-            The floor is real (the smallest live bundle measured 5,069 words, see the note at the
-            top of this file) -- it is just not an argument for buying when set beside a count.
-            What survives is the format answer, which is what this box exists for. */}
-        <p className="max-w-[62ch] text-meta text-muted">
-          <span className="font-medium text-text">A web page you can read, a PDF you can print and
-          a spreadsheet you can open.</span>{' '}
-          Yours to keep, edit, or paste anywhere. No login, no subscription.
+      <p className="eyebrow mt-[34px]">What lands in your folder</p>
+      <div className="files">
+        {files.map((item) => (
+          <div key={item.filename} className="file">
+            <p className="fn">{item.filename}</p>
+            <h5>{item.title}</h5>
+            <p>{item.desc}</p>
+          </div>
+        ))}
+      </div>
+      <div className="files-note">
+        <p>
+          A web page you can read, a PDF you can print and a spreadsheet you can open. Yours to
+          keep, edit, or paste anywhere. No login, no subscription.
         </p>
-        <span className="inline-flex flex-none items-center gap-2 text-meta font-medium text-text">
-          <Icon name="download" size={16} className="text-success" />
-          Instant download
-        </span>
+        <span className="pillx">Instant download</span>
       </div>
     </div>
   );

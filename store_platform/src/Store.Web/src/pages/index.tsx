@@ -38,7 +38,8 @@ import { PackCardHeader } from '@/components/ui/PackCardHeader';
    verbatim so the catalogue, the regional group, search results and `SimilarPacks` all render the
    SAME row instead of four near-copies. `PackSpotlight` below is the other and only other format.
    `PackFigure` moved with the row because both formats draw it. */
-import { PackRow, PackRowList, PackFigure } from '@/components/discovery/PackRow';
+import { PackRow, PackRowList, PackFigure, PackTileGrid } from '@/components/discovery/PackRow';
+import { KillGateBand, SourcesBand } from '@/components/marketing/EvidenceBands';
 import { EvidenceBar } from '@/components/ui/EvidenceBar';
 
 
@@ -1045,7 +1046,7 @@ function CatalogBrowser({
       {/* Named, because an unlabelled control panel sitting mid-shelf reads as debris. It says
           what it is FOR, which is the thing the old placement never had to say because it was
           simply in the way. */}
-      <h3 className="text-body font-semibold text-text">Narrow it down</h3>
+      <h3 className="sub">Narrow it down</h3>
 
       {/* THE THREE CONTROLS ARE ONE FILTER (founder review, 2026-08-15).
           A search field, a sector rail and a three-question router stack vertically in this block
@@ -1065,7 +1066,7 @@ function CatalogBrowser({
           first version described each of the three controls in turn, which the controls do
           themselves, immediately below. The only thing a reader cannot see by looking is whether
           using the second undoes the first, so that is the only thing left. */}
-      <p className="mb-4 max-w-prose text-meta text-muted">Use one or all three. They combine.</p>
+      <p className="mb-4 max-w-prose lede">Use one or all three. They combine.</p>
 
       {/* Toolbar: search, count, sort. */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1206,7 +1207,7 @@ function CatalogBrowser({
             ? "We can't reach the catalogue right now."
             : 'No packs are live right now.'}
         </p>
-        <p className="mx-auto mt-1 max-w-sm text-meta text-muted">
+        <p className="mx-auto mt-1 max-w-sm lede">
           {catalogUnavailable
             ? 'This is on our side, not yours. Nothing has sold out. Refresh in a moment.'
             : 'We publish an opportunity the moment it clears every check. Check back shortly.'}
@@ -1331,7 +1332,7 @@ function CatalogBrowser({
                       group of products" and "sentence about one product". This is the smallest
                       step that separates them and it stays sentence case, so the house policy in
                       `__tests__/weightAndCasePolicy.test.ts` is untouched. */}
-                  <h3 className="mb-3 hidden text-body font-semibold text-text sm:block">
+                  <h3 className="mb-3 hidden sm:block sub">
                     Newest survivors
                   </h3>
                   {/* Rows. The `lg:hidden` on the hero's featured pack went with the card grid:
@@ -1339,14 +1340,13 @@ function CatalogBrowser({
                       pack already spotlit in the hero, so the duplicate it guarded against no
                       longer costs a screen -- and the internal link stays in the server HTML at
                       every width, which is what that guard was protecting. */}
-                  <PackRowList
-                    packs={newestRow}
-                    currency={currency}
-                    viewerMarket={market}
-                    viewedIds={viewedSet}
-                  />
+                  {/* TILES, as drawn. `mockups/index.html` breaks its column of rows exactly
+                      once, here, with three tiles. */}
+                  <PackTileGrid packs={newestRow.slice(0, 3)} currency={currency} viewedIds={viewedSet} />
                 </div>
               )}
+
+              <KillGateBand />
 
               {/* PRODUCT FIRST, THEN THE MEANS TO NARROW IT. See the note on `shelfControls`.
                   When the visitor has already filtered, `editorial` is false, so `newestRow` is
@@ -1377,7 +1377,7 @@ function CatalogBrowser({
                    which was true of the uniform grid and is not true of this one -- and a heading
                    that misdescribes the list under it is the same class of error as an unsourced
                    number. */
-                <h3 className="mb-3 hidden text-body font-semibold text-text sm:block">
+                <h3 className="mb-3 hidden sm:block sub">
                   More survivors, biggest opportunities first
                 </h3>
               )}
@@ -1501,7 +1501,7 @@ function CatalogBrowser({
                       pins that string as the proof the breakdown is computed from live data rather
                       than typed. The total is appended as a further part rather than wrapped around
                       them, which satisfies both: the line still reads as one `·`-joined series. */}
-                  <p className="text-caption text-subtle">
+                  <p className="mono">
                     {[
                       `${gridPacks.length} ${marketLabel(market)} packs`,
                       ...grouped.others.map((group) => `${group.packs.length} ${group.label} packs`),
@@ -1521,7 +1521,13 @@ function CatalogBrowser({
                   difference in the heading, and one line underneath says what buying one of these
                   actually means. Each card in the group also carries the "For US rules" chip that
                   the on-market cards no longer waste space on. */}
-              {grouped.others.map((group) => (
+              {/* TWO GROUPS, NOT FIVE (2026-08-18). `mockups/index.html` section 13 draws exactly
+                  two market appendices. The page printed every group it had -- US, UK, US-FL,
+                  US-CA, US-TX -- five headed sections of three rows each below a shelf that had
+                  already capped itself, and that is most of the 3,900px this page runs over the
+                  drawing. The rest arrive with the same "show all" the shelf uses, so nothing is
+                  hidden, it is just not all printed before anyone asked. */}
+              {(showAll ? grouped.others : grouped.others.slice(0, 2)).map((group) => (
                 /* A REAL RULE, NOT A GAP (2026-08-14, founder review at 390px). The boundary
                    between the reader's own shelf and this appendix was `mt-16` and a
                    `text-meta` heading -- on a phone, after forty rows, that is whitespace
@@ -1541,7 +1547,7 @@ function CatalogBrowser({
                       steps" -- and only the last of those three is a rule, so the heading was
                       naming the smallest part of its own argument. Same change on the row chip
                       (`PackRow.tsx:144`), so the shelf says one thing. */}
-                  <h3 className="text-body font-semibold text-text">
+                  <h3 className="sub">
                     Built for the {group.label} market
                   </h3>
                   <p className="mt-1 max-w-[60ch] text-caption text-subtle">
@@ -1554,12 +1560,25 @@ function CatalogBrowser({
                       introducing it. Rows keep every pack fully present and linkable while
                       reading as an appendix, which is what it is. Each row still prints its
                       "<market> rules" flag, since `viewerMarket` is deliberately not passed. */}
+                  {/* CAPPED, like the shelf above it (2026-08-18). Every off-market group printed
+                      in full, so the landing page ran to 14,239px against the drawing's 8,653 --
+                      five market appendices, forty rows, below a shelf that had already capped
+                      itself at nine. `mockups/index.html` section 13 shows two market groups of a
+                      few rows each. Same `showAll` toggle as the main shelf, so one press opens
+                      the whole catalogue and there is still exactly one control for it. */}
                   <PackRowList
                     className="mt-6"
-                    packs={group.packs}
+                    packs={showAll ? group.packs : group.packs.slice(0, 3)}
                     currency={currency}
                     viewedIds={viewedSet}
                   />
+                  {!showAll && group.packs.length > 3 && (
+                    <div className="more-row">
+                      <button type="button" className="more" onClick={() => setShowAll(true)}>
+                        Show the other {group.packs.length - 3} {group.label} packs
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
 
@@ -1833,7 +1852,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
         {/* `1fr 380px` at a 48px gap, which is `mockups/index.html`'s `.hero` exactly. The right
             column was 420px, so the kill grid drew 40px wider than the drawing and the headline
             column 40px narrower. */}
-        <div className="relative z-10 flex flex-col gap-10 lg:grid lg:grid-cols-[1fr_380px] lg:items-start lg:gap-12">
+        <div className="hero relative z-10">
           <div className="w-full min-w-0">
             {/* Mono because both halves are quantities. This replaces an uppercase
                 `tracking-[0.2em]` eyebrow -- letterspaced small caps is the single most dated
@@ -1855,7 +1874,13 @@ export default function Home({ packs, stats, flags, initialState, market, curren
                 the population it counts is the whole fix: the toolbar states how many match, the
                 market line states how that splits, the show-more button states the remainder of one
                 market. Four numbers, four nouns, and the arithmetic between them now reads. */}
-            <p className="mb-3 text-meta font-medium text-muted">
+            {/* THE DRAWING'S `.kicker`: mono, 13px, `--ink-3` (`mockups/index.html`). It was
+                sans at 14px in `--ink-2`. The 2026-08-14 note below took mono OFF this line
+                because mono read as terminal output on the most commercial line of the page;
+                the founder's instruction of 2026-08-18 is that the page match the drawing, and
+                the drawing sets mono here. Both halves of the line are quantities -- a price and
+                a count -- which is the declared scope of `monoIsTheDataVoice.test.ts`. */}
+            <p className="kicker num">
               {range ? (range.uniform ? `${range.label} each` : `From ${formatGbp(range.min)}`) : 'One payment'}
               {` · ${packs.length} packs in the catalogue`}
             </p>
@@ -1900,7 +1925,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
                 from the scale token (`--text-display--font-weight`, 660) via the
                 `:is(h1,h2,h3).text-display` rule added alongside that fix. A class that does
                 nothing is worse than no class: it reads as the answer to "what weight is this?" */}
-            <h1 className="w-full min-w-0 max-w-full text-balance text-display text-text md:max-w-[14ch]">
+            <h1>
               {/* THE FOUNDER'S LINE, 2026-08-18, given verbatim: "Business ideas with the
                   research and starter packs ready." The founder gave it twice that day, the
                   second time trimming "already done" to "ready"; this is the second, final
@@ -1927,23 +1952,25 @@ export default function Home({ packs, stats, flags, initialState, market, curren
             </h1>
             {/* Shown on mobile too. This was `hidden sm:block`, so a phone got the headline, then
                 a CTA, then a ~120px void where the explanation should be. */}
-            <p className="mt-4 max-w-[56ch] text-body text-muted">
+            {/* `.hero .sub`: 17.5px at 1.55, capped at 44ch (`mockups/index.html`). It was
+                `text-body` (16px) at 56ch, so the line was smaller and ran 12 characters wider
+                than the drawing, which is why the hero read as a paragraph rather than a
+                standfirst. */}
+            <p className="sub">
               {variant.globalHookDescription}
             </p>
             {/* The hierarchy INVERTS here. The shelf was previously the thing you had to scroll
                 past an orange "Read a free report" slab to reach: the primary action on a shop is
                 the shop. The sample is the risk-reducer, so it is the quiet link beside it. */}
-            <div className="mt-6 flex flex-col items-start gap-3 sm:flex-row sm:items-center md:mt-8">
-              <Link href="#catalog">
-                <Button size="lg">
-                  Browse the packs
-                  <Icon name="arrowRight" size={16} />
-                </Button>
+            <div className="cta-row">
+              <Link className="btn" href="#catalog">
+                Browse the packs
+                <Icon name="arrowRight" size={16} />
               </Link>
               <Link
                 href="/sample"
                 onClick={() => track('sample_cta_clicked')}
-                className="inline-flex items-center gap-1.5 px-1 py-3 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
+                className="tlink"
               >
                 {/* ONE LINE, IN THE LINK. This was a link ("Read a free sample") over a caption
                     ("A whole report, free. No payment, no email."), which restated "free" twice
@@ -2135,34 +2162,34 @@ export default function Home({ packs, stats, flags, initialState, market, curren
             THE RESEARCH TOTAL IS STILL HERE, in the right cell's sentence. It has to be: on a
             phone `KillGrid` is not rendered and this strip is the only place the total appears
             at all. */}
-        <div className="grid grid-cols-1 overflow-hidden rounded-card border border-line bg-surface sm:grid-cols-2">
-          <div className="p-[22px]">
-            <p className="mb-3 text-caption text-subtle">On the shelf now</p>
-            <b className="mb-1.5 block text-h2 font-semibold leading-none tabular-nums text-text">
+        <div className="split">
+          <div>
+            <p className="lbl">On the shelf now</p>
+            <b className="n num">
               {packs.length}
             </b>
-            <p className="mb-3 max-w-[38ch] text-meta leading-relaxed text-muted">
+            <p>
               Passed every check we ran. Every claim sourced, every number traceable.
             </p>
             <Link
               href="#catalog"
-              className="inline-flex items-center gap-1.5 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
+              className="tlink"
             >
               Browse the catalogue
               <Icon name="arrowRight" size={14} />
             </Link>
           </div>
-          <div className="border-t border-line p-[22px] sm:border-t-0 sm:border-l">
-            <p className="mb-3 text-caption text-subtle">Researched, not listed</p>
-            <b className="mb-1.5 block text-h2 font-semibold leading-none tabular-nums text-text">
+          <div>
+            <p className="lbl">Researched, not listed</p>
+            <b className="n num">
               {RESEARCH_STATS.killed.toLocaleString('en-GB')}
             </b>
-            <p className="mb-3 max-w-[38ch] text-meta leading-relaxed text-muted">
+            <p>
               {`We have researched ${RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas. ${killsSummary()}, and the evidence behind it.`}
             </p>
             <Link
               href="/kill-log"
-              className="inline-flex items-center gap-1.5 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
+              className="tlink"
             >
               Read the kill log
               <Icon name="arrowRight" size={14} />
@@ -2209,7 +2236,11 @@ export default function Home({ packs, stats, flags, initialState, market, curren
               not download size), and where to read the longer version (/pricing). The kill-rate
               line is not here because the proof strip above the shelf already carries it -- this
               sentence is the SHOP intro, not the FILTER intro. */}
-          <h2 className="text-h2 font-semibold text-text">What survived</h2>
+          {/* `text-h1`, which is this site's 24-32px step and the drawing's `h2.sec`
+              (`font-size:clamp(24px,4.6vw,32px)`). It was `text-h2`, the 19-23px step, which is
+              the drawing's `h3.sub` -- so every section heading on this page sat one step below
+              the drawing and the page read flat. */}
+          <h2 className="sec">What survived</h2>
           {/* The pricing sentence that used to sit here is GONE, and its removal is the fix for a
               measured defect rather than a trim for length. It was `hidden sm:block`, so from
               640px up the page stated one fact twice, ~14px apart, under the same heading, with
@@ -2321,9 +2352,13 @@ export default function Home({ packs, stats, flags, initialState, market, curren
             draft of this heading: the specimen shows a page of one of the nine, but the list below
             still lists all nine, so a heading that subtracted the one shown would have been an
             arithmetic claim its own list contradicts. */}
+        {/* THE DRAWING'S HEADING AND LEDE (`mockups/index.html:564`). This read "The full
+            contents" with no lede, which names the section by its position in the page rather
+            than by what it gives the reader. Founder, 2026-08-18: use the mockup's version. */}
         <PackContentsSection
           className="mt-16 border-t border-border pt-12"
-          heading="The full contents"
+          heading="What you actually get"
+          lead="The same fourteen documents sit inside every pack, whatever it costs."
         />
         {/*
           `MethodCostAnchor` and `ComparisonBlock` were REMOVED from the homepage (2026-08-06) and
@@ -2369,6 +2404,13 @@ export default function Home({ packs, stats, flags, initialState, market, curren
           /collections and /collections/[slug], which is where `CtaBand` is still the right closing shape). */}
       {/* `band_view` (MASTER-BRIEF section 9). This is the closing band, below the whole shelf,
           so its count against the hero's says how many readers got to the end of the page. */}
+      {/* THE SOURCES BAND (mockups/index.html section 12), after the shelf as drawn. The figure is
+          summed from the packs on this page, not typed in. */}
+      <SourcesBand
+        sourcesTotal={packs.reduce((n, p) => n + (p.sourceCount ?? 0), 0)}
+        packCount={packs.filter((p) => (p.sourceCount ?? 0) > 0).length}
+      />
+
       <SectionBand bandId="home-stress-tested" bg="surface2" width="7xl" className="py-10 md:py-24">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-16">
         <div className="max-w-[46rem]">
@@ -2385,14 +2427,14 @@ export default function Home({ packs, stats, flags, initialState, market, curren
             carries it. Repeating the figure a third time on one scroll would put the
             "sceptic who counts our numbers" exactly back where they started.
           */}
-          <h2 className="text-h1 font-semibold text-text">
+          <h2 className="sec">
             Every idea walks into a room built to destroy it.
           </h2>
           {/* "everything that survived" was an ALL claim about a population, and it was false in
               the same way the survivor count was: 80 ideas cleared the gates, 50 are on the shelf.
               A reader cannot check it either way, so it bought nothing and risked the one thing
               this page is selling. What is left claims only what the shelf can show. */}
-          <p className="mt-4 max-w-[60ch] text-body text-muted">
+          <p className="mt-4 max-w-[60ch] lede">
             A claim without a source dies before it reaches this shelf. Every pack here came out
             the other side.
           </p>

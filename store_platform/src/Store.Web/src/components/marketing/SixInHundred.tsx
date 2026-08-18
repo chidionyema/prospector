@@ -91,7 +91,7 @@ export function SixInHundred({ className, label }: SixInHundredProps) {
         {dots}
       </svg>
       <figcaption className="mt-3 text-meta leading-relaxed text-muted">
-        <span className="font-medium text-text">
+        <span>
           Fewer than {RESEARCH_STATS.survivorBoundLabel} ideas get through.
         </span>{' '}
         This one did. Every check below was run against cited evidence, and the pack ships the
