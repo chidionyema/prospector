@@ -257,6 +257,100 @@ def test_a_provider_exhaustion_mid_pass_never_spends_a_budget(tmp_path, monkeypa
 
 
 # ---------------------------------------------------------------------------
+# The third outage path: a re-vet that COMPLETED, and deferred because we were broken
+# ---------------------------------------------------------------------------
+#
+# The two tests above cover the outages that stop the drain before a verdict. The one that cost
+# 251 rows on the Fly engine (2026-08-18) is the outage that produces a verdict: a completed
+# re-vet whose DEFER came from a failed search, a verdict call that raised, or the tick's clock
+# running out. `verify._run_checks` sets DEFER_GATE in exactly two places and both mark the
+# affected checks `retrieval_failed=True`, so EVERY DEFER this pipeline emits is one of these.
+# The branch meant to retire "rows this pipeline cannot rule on" was retiring rows our own
+# downtime had touched five times.
+
+
+def _defer_from_an_outage():
+    """The dossier shape `verify.py` actually returns when infrastructure deferred a row.
+
+    A real `CheckResult`, not a stand-in. The predicate reads one field on it, and a namespace
+    with a hand-typed attribute would pass whether or not that field still exists.
+    """
+    from prospector.models import CheckResult, Verdict
+    return {
+        "decision": Decision.DEFER,
+        "provisional": False,
+        "checks": [
+            CheckResult(check_name="pain_reality", verdict=Verdict.SUPPORTED, confidence=0.8,
+                        rationale="cited"),
+            CheckResult(check_name="payer_solvency", verdict=Verdict.UNVERIFIABLE,
+                        confidence=0.0, rationale="Verdict call failed; fail-safe.",
+                        degraded=True, retrieval_failed=True),
+        ],
+    }
+
+
+def test_a_defer_caused_by_our_own_outage_never_spends_a_rows_budget(tmp_path, monkeypatch):
+    store = _store_with(tmp_path, [("d", "defer", False, True)])
+    _run_drain(tmp_path, monkeypatch, store, {"d": _defer_from_an_outage()})
+    assert drain_state.attempts_for(tmp_path, "d") == 0, (
+        "a check that never got an answer is not evidence the row is unrulable")
+
+
+def test_five_outages_in_a_row_still_leave_the_row_in_the_backlog(tmp_path, monkeypatch):
+    """The failure exactly as production hit it. Five drain passes, every one of them deferred by
+    infrastructure, and the row must still be workable on the sixth. Before the fix the fifth pass
+    retired it, `drain_survey` dropped it, and the drain logged `No backlogged candidate the drain
+    can work on` once a minute with the catalogue still full."""
+    store = _store_with(tmp_path, [("d", "defer", False, True)])
+    for _ in range(5):
+        _run_drain(tmp_path, monkeypatch, store, {"d": _defer_from_an_outage()})
+    survey = run_mod.drain_survey(store, max_attempts=5, revet_provisional_kills=True)
+    assert not survey.stalled, f"retired by our own downtime: {survey.stalled}"
+    assert [r["candidate_id"] for r in survey.workable] == ["d"]
+
+
+def test_the_vet_time_budget_is_the_tick_s_clock_not_the_rows_fault(tmp_path, monkeypatch):
+    """`verify.py`'s budget check marks every unrun check `retrieval_failed` and DEFERs. That clock
+    belongs to the TICK. A row picked up late in five passes would otherwise be retired on the
+    strength of five stopwatches, without one real ruling against it."""
+    from prospector.models import CheckResult, Verdict
+    store = _store_with(tmp_path, [("late", "defer", False, True)])
+    _run_drain(tmp_path, monkeypatch, store, {"late": {
+        "decision": Decision.DEFER, "provisional": False,
+        "checks": [CheckResult(
+            check_name="distribution", verdict=Verdict.UNVERIFIABLE, confidence=0.0,
+            rationale="Vetting time budget spent before this check ran; deferred rather than "
+                      "ruled on evidence that was never fetched.",
+            degraded=True, retrieval_failed=True)],
+    }})
+    assert drain_state.attempts_for(tmp_path, "late") == 0
+
+
+def test_a_ruling_on_real_evidence_still_counts(tmp_path, monkeypatch):
+    """The other direction, and the reason this is a predicate rather than a deletion. A row that
+    keeps coming back provisional on checks that all retrieved fine IS a row the pipeline cannot
+    finish, and it must still exhaust its budget — otherwise the exclusion is gone entirely and
+    `backlog_cap` loses the self-release it was built for."""
+    from prospector.models import CheckResult, Verdict
+    store = _store_with(tmp_path, [("p", "defer", False, True)])
+    _run_drain(tmp_path, monkeypatch, store, {"p": {
+        "decision": Decision.PASS, "provisional": True,
+        "checks": [CheckResult(check_name="pain_reality", verdict=Verdict.SUPPORTED,
+                               confidence=0.8, rationale="cited")],
+    }})
+    assert drain_state.attempts_for(tmp_path, "p") == 1
+
+
+def test_the_predicate_answers_false_rather_than_raising_on_a_shape_it_does_not_know(tmp_path):
+    """Bookkeeping must never be able to stop a drain, so an unexpected dossier keeps the old
+    behaviour instead of taking the pass down with it."""
+    assert drain_state.infrastructure_defer(types.SimpleNamespace()) is False
+    assert drain_state.infrastructure_defer(types.SimpleNamespace(checks=None)) is False
+    assert drain_state.infrastructure_defer(types.SimpleNamespace(checks=object())) is False
+    assert drain_state.infrastructure_defer(types.SimpleNamespace(checks=[object()])) is False
+
+
+# ---------------------------------------------------------------------------
 # Visibility: an exclusion nobody can see is a silent cap
 # ---------------------------------------------------------------------------
 
