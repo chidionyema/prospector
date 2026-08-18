@@ -195,6 +195,35 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
           </div>
           <FunnelDiagram className="w-full md:w-[340px]" />
         </div>
+
+        {/* THE FACTS ROW (`mockups/how-it-works.html`, `.facts`). Three figures, one border, three
+            equal cells. It reads the same `RESEARCH_STATS` the paragraph above reads, so the two
+            cannot disagree.
+
+            The labels are not mono, not uppercase and not letterspaced, which the drawing sets and
+            three guard tests refuse: `monoIsTheDataVoice` holds the mono face for figures only, and
+            `weightAndCasePolicy` bars case and tracking set in CSS. The figures keep the mono the
+            drawing gives them, because a figure is exactly what that face is for. */}
+        <dl className="mt-8 grid grid-cols-1 overflow-hidden rounded-card border border-line bg-surface sm:grid-cols-3">
+          <div className="p-[17px] sm:border-r sm:border-line">
+            <dt className="mb-1.5 text-caption font-medium text-subtle">Ideas in</dt>
+            <dd className="text-h3 font-semibold tabular-nums text-text">
+              {RESEARCH_STATS.researched.toLocaleString('en-GB')}
+            </dd>
+          </div>
+          <div className="border-t border-line p-[17px] sm:border-t-0 sm:border-r sm:border-line">
+            <dt className="mb-1.5 text-caption font-medium text-subtle">Killed on cited evidence</dt>
+            <dd className="text-h3 font-semibold tabular-nums text-text">
+              {RESEARCH_STATS.killed.toLocaleString('en-GB')}
+            </dd>
+          </div>
+          <div className="border-t border-line p-[17px] sm:border-t-0">
+            <dt className="mb-1.5 text-caption font-medium text-subtle">Died at a gate</dt>
+            <dd className="text-h3 font-semibold tabular-nums text-text">
+              {RESEARCH_STATS.rejectRateLabel}
+            </dd>
+          </div>
+        </dl>
       </Section>
 
       {/*
@@ -317,7 +346,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
                       will meet again on /kill-log. */}
 
                   {example && (
-                    <div className="mt-5 rounded-md border border-border bg-bg/40 p-6">
+                    <div className="mt-5 rounded-card border border-border bg-bg/40 p-6">
            <p className="text-caption font-medium text-muted">
                         {example.gateLabel}
                       </p>

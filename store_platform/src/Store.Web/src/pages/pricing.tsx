@@ -41,7 +41,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
   return (
     <MarketingLayout
       breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Pricing' }]}
-      breadcrumbsWidth="3xl"
+      breadcrumbsWidth="6xl"
     >
       <Seo
         title={range ? `Pricing - ${range.label} per pack` : 'Pricing'}
@@ -52,7 +52,9 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
         }
       />
 
-      <section className="mx-auto max-w-3xl px-6 pt-10 pb-16 md:pt-14 md:py-24">
+      {/* The drawing's frame, not a 768px column at a 24px gutter: `mockups/pricing.html`
+          `.wrap{max-width:1080px;padding:0 20px}` with `.pagetop{padding:14px 0 8px}`. */}
+      <section className="mx-auto max-w-[1080px] px-5 pt-3.5 pb-16">
         <p className="mb-3 text-caption font-medium text-subtle">Pricing</p>
         <h1 className="text-h1 font-semibold text-text">
           {range ? range.headline : 'One payment per pack.'}
@@ -82,13 +84,21 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
           argument here that does not move with the catalogue: a research firm publishes a price
           and the price is the price.
         */}
-        <div className="mt-12">
+        {/* `.rule2{border-top:2px solid var(--ink);margin:44px 0 0}` (`mockups/pricing.html`).
+            The drawing separates the page's arguments with a 2px ink rule, not with whitespace.
+            Without it every block reads as one more card in a stack of cards, which is what made
+            this page scroll as an undifferentiated column. */}
+        <hr className="mt-11 border-0 border-t-2 border-text" />
+        <div className="mt-8">
           <MethodCostAnchor range={range} />
         </div>
 
-        {/* WHY ONE PACK COSTS MORE THAN ANOTHER, stated as its own block. */}
+        {/* WHY ONE PACK COSTS MORE THAN ANOTHER, stated as its own block. The rule above it is
+            the drawing's `.rule2`; it cannot be a JSX comment inside the conditional below, which
+            would make it a second child of the `&&` expression. */}
+        <hr className="mt-11 border-0 border-t-2 border-text" />
         {range && !range.uniform && (
-          <div className="mt-12">
+          <div className="mt-8">
             <h2 className="text-h2 font-semibold text-text md:text-h1">
               What changes is the size of the opportunity. The pack doesn’t.
             </h2>
@@ -124,7 +134,8 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
         )}
 
         {/* What's included */}
-        <div className="mt-12">
+        <hr className="mt-11 border-0 border-t-2 border-text" />
+        <div className="mt-8">
           <h2 className="text-h2 font-semibold text-text">What you get, at every price</h2>
           <p className="mt-3 max-w-[60ch] text-body text-muted">
             Every pack is the same shape: {PACK_DOCUMENTS.length} documents, sourced
@@ -150,7 +161,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
             {PACK_DOCUMENTS.map((item) => (
               <li
                 key={item.section}
-                className="flex items-start gap-3 rounded-md border border-border bg-surface p-4"
+                className="flex items-start gap-3 rounded-card border border-border bg-surface p-4"
               >
                 {/* The emoji is not rendered (brand v3): nine emoji stacked down a list is the
                     single loudest thing on a page about a professional research product, and each
@@ -181,7 +192,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
               'Personal coaching. The pack is the deliverable. If you want a person, that is a different product, sold elsewhere.',
               'A subscription, dashboard, or seat. The pack is a file you own.',
             ].map((line) => (
-              <li key={line} className="flex items-start gap-3 rounded-md border border-border bg-surface p-4">
+              <li key={line} className="flex items-start gap-3 rounded-card border border-border bg-surface p-4">
                 <span aria-hidden className="mt-0.5 text-meta text-subtle">×</span>
                 <span className="text-meta leading-relaxed text-muted">{line}</span>
               </li>
@@ -191,7 +202,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
 
         {/* Trust + refund */}
         <div className="mt-12 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-md border border-border bg-surface p-6">
+          <div className="rounded-card border border-border bg-surface p-6">
             <div className="flex items-center gap-2">
               <Icon name="shield" size={16} className="text-success" />
               <h3 className="text-meta font-semibold text-text">14 day money back</h3>
@@ -209,7 +220,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
               .
             </p>
           </div>
-          <div className="rounded-md border border-border bg-surface p-6">
+          <div className="rounded-card border border-border bg-surface p-6">
             <div className="flex items-center gap-2">
               <Icon name="verified" size={16} className="text-success" />
               <h3 className="text-meta font-semibold text-text">Every claim cited</h3>
@@ -249,7 +260,11 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
             moment a rung moves; a `range.min`/`range.max` headline moves with it). On a catalogue
             the page cannot read, the spread is omitted and the line falls back to a single
             statement that is true at any price. */}
-        <div className="mt-14 rounded-md border border-border bg-surface2 p-8">
+        {/* THE CLOSING BLOCK (`mockups/pricing.html`, `.closing{border-top:2px solid var(--ink);
+            margin-top:46px;padding:34px 0 0}`). It was a filled, bordered card, so the last thing
+            on the page looked like one more component in the stack instead of the end of the
+            argument. The drawing ends on a rule and lets the two actions sit on the canvas. */}
+        <div className="mt-12 border-t-2 border-text pt-9">
           <p className="text-caption font-medium text-subtle">{BRAND.name}</p>
           <h2 className="mt-2 text-h2 font-semibold text-text">
             {range && !range.uniform

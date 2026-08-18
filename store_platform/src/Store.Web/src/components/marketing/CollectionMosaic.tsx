@@ -65,7 +65,14 @@ const BAND_CLASS = [
   'sm:col-span-3 sm:row-span-2',
 ] as const;
 
-const BAND_TITLE = ['text-body', 'text-h3', 'text-h3'] as const;
+/* ONE TYPE SIZE FOR EVERY TILE, and this also kills a dead token.
+   `mockups/collections.html:270` sets `.mtile b{font-size:14.5px;font-weight:620;line-height:1.25}`
+   for all sixteen tiles: the mosaic states rank by AREA, not by type size, so a second signal
+   saying the same thing twice is what made the big tiles look like headings.
+   The value it replaces was `['text-body','text-h3','text-h3']`, and `--text-h3` was deleted from
+   the scale (tokens.css:875), so two of the three bands were wearing a class that emits no rule
+   and rendered at the inherited size. */
+const TILE_TITLE = 'text-meta';
 
 export function CollectionMosaic({ tiles, className }: CollectionMosaicProps) {
   const shown = tiles.filter((t) => t.count > 0);
@@ -78,8 +85,12 @@ export function CollectionMosaic({ tiles, className }: CollectionMosaicProps) {
 
   return (
     <ul
+      /* gap 6px and a 78px row, both from `mockups/collections.html:267-268`
+         (`.mosaic{gap:6px}`, `.mtile{min-height:78px}`). The tiles used to sit on a 7rem row with
+         a 0.75rem gutter, which is a card grid; the mockup's mosaic is a tight field where the
+         tiles read as one object. */
       className={cx(
-        'grid list-none grid-cols-1 gap-3 p-0 sm:auto-rows-[7rem] sm:grid-cols-6',
+        'grid list-none grid-cols-1 gap-1.5 p-0 sm:auto-rows-[4.875rem] sm:grid-cols-6',
         className,
       )}
     >
@@ -90,16 +101,20 @@ export function CollectionMosaic({ tiles, className }: CollectionMosaicProps) {
             <Link
               href={`/collections/${tile.slug}`}
               title={tile.longName}
-              className="flex h-full min-h-[5.5rem] flex-col justify-between rounded-card border border-line bg-surface p-4 transition-colors hover:bg-surface3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              /* `mockups/collections.html:268-269`: 8px radius (so `rounded-ctl`, not the 12px
+                 card radius), 12px/14px padding, 78px minimum height, and a hover that tints the
+                 tile brand rather than greying it. */
+              className="flex h-full min-h-[4.875rem] flex-col justify-between rounded-ctl border border-line bg-surface px-3.5 py-3 transition-colors hover:border-brand hover:bg-brand-tint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
               {/* The accessible name is the LONG one. A screen reader user hearing "Evenings, 12
                   packs" out of context has less than a sighted reader who can see the heading the
                   mosaic sits under, so the tile carries the full sentence for them. */}
-              <span className={cx('font-semibold leading-snug text-text', BAND_TITLE[band])}>
+              <span className={cx('font-semibold leading-snug text-text', TILE_TITLE)}>
                 <span aria-hidden>{tile.name}</span>
                 <span className="sr-only">{tile.longName}</span>
               </span>
-              <span className="mt-3 font-mono text-caption tabular-nums text-subtle">
+              {/* 8px above the count, mono, ink-3: `mockups/collections.html:271`. */}
+              <span className="mt-2 font-mono text-caption tabular-nums text-subtle">
                 {tile.count} {tile.count === 1 ? 'pack' : 'packs'}
               </span>
             </Link>

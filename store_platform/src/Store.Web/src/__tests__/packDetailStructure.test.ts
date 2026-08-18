@@ -56,7 +56,11 @@ describe('the pack page renders one buy box and one closing bar', () => {
     // main column it renders beside, so `{checkoutBody}` is legitimately down there. An unbounded
     // slice was asking a question about the whole rest of the page.
     const start = at('One payment. Download straight away.');
-    const rail = CODE.indexOf('hidden w-full shrink-0 lg:block lg:w-80', start);
+    // The locator stops at `lg:w-`, without the number. What this line needs to find is the
+    // desktop rail; its width is a design measure that moved from 320px to the drawing's
+    // 394px on 2026-08-18, and pinning the digits here made a layout change read as a
+    // structural regression in a test about duplication.
+    const rail = CODE.indexOf('hidden w-full shrink-0 lg:block lg:w-', start);
     expect(rail, 'the desktop rail must still follow the closing bar').toBeGreaterThan(start);
     expect(CODE.slice(start, rail)).not.toContain('{checkoutBody}');
   });

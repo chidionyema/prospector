@@ -686,7 +686,13 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
             desktop-pack-fold.png (2026-08-06) showed the money page opening on two rows of
             navigation before anything about the pack. One trail, one link per destination. */}
 
-        <div className="mt-6 flex flex-col gap-12 lg:flex-row">
+        {/* THE TWO-COLUMN SPLIT (`mockups/pack-detail.html`, `.two`): `1.55fr 1fr` at a 36px gap.
+            Inside the 1080px frame that is a 610px column of prose and a 394px rail. Ours was a
+            320px rail at a 48px gap, so the buy panel was 74px narrower than drawn and the price
+            line wrapped where the drawing keeps it on one line. Kept as flex rather than grid
+            because the rail is `hidden` below `lg` and a grid track would still reserve its
+            column. */}
+        <div className="mt-6 flex flex-col gap-9 lg:flex-row">
           {/* Left: Content */}
           <div className="flex-1">
             {/*
@@ -950,7 +956,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 as the share that came THROUGH. It is the share that was killed. The caption is not
                 decoration on a big number; it is the difference between a 94.5% pass rate and a
                 94.5% kill rate, and the second one is the argument. */}
-            <div className="mt-8 flex flex-col gap-x-6 gap-y-3 rounded-md border border-border bg-surface p-6 sm:flex-row sm:items-center">
+            <div className="mt-8 flex flex-col gap-x-6 gap-y-3 rounded-card border border-border bg-surface p-6 sm:flex-row sm:items-center">
               {/* FLIPPED TO THE SURVIVOR END (founder, 2026-08-16: the scarcity is never used).
                   The plate led with the kill rate and then spent its second paragraph turning it
                   round -- and the docblock above had already worked out why that was wrong: "94%
@@ -1337,7 +1343,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                   {pack.whatYouGet.map((item, i) => (
                     <li
                       key={i}
-                      className="flex items-start gap-3 rounded-md border border-border bg-surface p-6"
+                      className="flex items-start gap-3 rounded-card border border-border bg-surface p-6"
                     >
            <span className="mt-0.5 text-caption font-medium text-subtle">
                         {String(i + 1).padStart(2, '0')}
@@ -1398,7 +1404,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 The label was "The receipts" until 2026-08-16. The founder banned "receipt" outside
                 money: on a shop, a receipt is the thing you get after paying, so using it for
                 "our sources" makes the buyer look for an order they have not placed yet. */}
-            <div className="mt-12 rounded-md border border-border bg-surface p-6">
+            <div className="mt-12 rounded-card border border-border bg-surface p-6">
               <div className="mb-3 flex items-center gap-2.5">
                 <Glyph name="source" className="text-success" />
                 <span className="text-caption font-medium text-subtle">The evidence</span>
@@ -1511,10 +1517,10 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
               itself instead, which costs nothing: the buy button sits in the panel's top third,
               so what scrolls is the trailing prose. macOS overlay scrollbars mean no permanent
               gutter appears. */}
-          <div className="hidden w-full shrink-0 lg:block lg:w-80">
+          <div className="hidden w-full shrink-0 lg:block lg:w-[394px]">
             <div
               className={cx(
-                'sticky top-24 rounded-md border border-border bg-surface p-8',
+                'sticky top-24 rounded-card border border-border bg-surface p-8',
                 'max-h-[calc(100svh-7rem)] overflow-y-auto overscroll-contain [scrollbar-width:thin]',
               )}
             >

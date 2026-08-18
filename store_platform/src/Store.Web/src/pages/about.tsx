@@ -35,15 +35,21 @@ export default function AboutPage() {
   return (
     <MarketingLayout
       breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'About' }]}
-      breadcrumbsWidth="3xl"
+      breadcrumbsWidth="6xl"
     >
       <Seo
         title={`About ${BRAND.name} - who is behind this`}
         description={`Why ${BRAND.name} exists, in the words of the person who built it, and where the engine that kills most of the ideas came from.`}
       />
 
-      <section className="mx-auto max-w-3xl px-6 py-10 md:py-24">
-        <p className="mb-3 text-caption font-medium text-muted">
+      {/* THE SHELL, NOT A COLUMN OF ITS OWN. This was `max-w-3xl px-6 py-10 md:py-24`: a 768px
+          measure at a 24px gutter, so the About page's left edge missed the logo above it by 180px.
+          The drawing puts every page in one frame, `.wrap{max-width:1080px;padding:0 20px}`
+          (`mockups/about.html`), and gives the page head `.pagetop{padding:14px 0 8px}` under the
+          crumb. The ESSAY keeps its own 56ch measure inside this frame; that is a reading measure
+          and it is set on the prose itself, below. */}
+      <section className="mx-auto max-w-[1080px] px-5 pt-3.5 pb-16">
+        <p className="mb-2 text-caption font-medium text-muted">
           About
         </p>
         {/* The headline IS the thesis, quoted from the story below it rather than summarising it.
@@ -117,7 +123,55 @@ export default function AboutPage() {
           </p>
         )}
 
-        <div className="mt-14">
+        {/* THE FACTS ROW (`mockups/about.html`, `.facts{grid-template-columns:repeat(3,1fr);
+            border:1px solid var(--line);border-radius:var(--r-card)}`, cells at 17px of padding,
+            figures at 24px/680). It stacks to one column on small screens, which is the drawing's
+            own media rule.
+
+            THE THIRD CELL IS NOT THE DRAWING'S. The drawing's third cell reads "On the shelf 74".
+            That is the survivor count, and the founder barred it on 2026-08-13: `lib/stats.ts`
+            exports no such field, so no page can print it and tsc refuses any attempt. The kill
+            rate is the same fact from the side that is allowed, it comes from the same file, and a
+            reader can check it against the other two cells.
+
+            THE LABELS ARE NOT THE DRAWING'S EITHER. `.facts span` is mono, uppercase and letter
+            spaced. Two guard tests refuse all three: `monoIsTheDataVoice` ("an eyebrow is
+            language, not data") and `weightAndCasePolicy` ("sets nothing in all-caps via CSS",
+            "letterspaces nothing out into small caps"). Those rules are older founder decisions
+            with tests behind them, so the labels keep the site's caption setting and the drawing
+            loses this one. */}
+        <dl className="mt-6 grid grid-cols-1 overflow-hidden rounded-card border border-line bg-surface sm:grid-cols-3">
+          <div className="p-[17px] sm:border-r sm:border-line">
+            <dt className="mb-1.5 text-caption font-medium text-subtle">
+              Researched
+            </dt>
+            <dd className="text-h3 font-semibold tabular-nums text-text">
+              {totals.researched.toLocaleString('en-GB')}
+            </dd>
+          </div>
+          <div className="border-t border-line p-[17px] sm:border-l-0 sm:border-r sm:border-t-0">
+            <dt className="mb-1.5 text-caption font-medium text-subtle">
+              Killed, published
+            </dt>
+            <dd className="text-h3 font-semibold tabular-nums text-text">
+              {totals.killed.toLocaleString('en-GB')}
+            </dd>
+          </div>
+          <div className="border-t border-line p-[17px] sm:border-t-0">
+            <dt className="mb-1.5 text-caption font-medium text-subtle">
+              Kill rate
+            </dt>
+            <dd className="text-h3 font-semibold tabular-nums text-text">
+              {totals.rejectRateLabel}
+            </dd>
+          </div>
+        </dl>
+
+        {/* `.rule2{border-top:2px solid var(--ink);margin:44px 0 0}`. A 2px ink rule, not a
+            hairline: it separates the personal half of the page from the mechanical half. */}
+        <hr className="mt-11 border-0 border-t-2 border-text" />
+
+        <div className="mt-8">
           <h2 className="text-h2 font-semibold text-text md:text-h1">
             Where the engine came from
           </h2>
@@ -134,7 +188,7 @@ export default function AboutPage() {
         <div className="mt-10 grid gap-3 sm:grid-cols-2">
           <Link
             href="/how-it-works"
-            className="rounded-md border border-border bg-surface p-6 transition-colors hover:border-border-strong"
+            className="rounded-card border border-line bg-surface p-5 transition-colors hover:border-border-strong"
           >
             <p className="text-meta font-semibold text-text">How it works</p>
             <p className="mt-1 text-meta leading-relaxed text-muted">
@@ -153,7 +207,7 @@ export default function AboutPage() {
           */}
           <Link
             href="/kill-log"
-            className="rounded-md border border-border bg-surface p-6 transition-colors hover:border-border-strong"
+            className="rounded-card border border-line bg-surface p-5 transition-colors hover:border-border-strong"
           >
             <p className="text-meta font-semibold text-text">The kill log</p>
             <p className="mt-1 text-meta leading-relaxed text-muted">
@@ -166,7 +220,11 @@ export default function AboutPage() {
           </Link>
         </div>
 
-        <div className="mt-14 rounded-md border border-text bg-surface p-8">
+        {/* THE CLOSING BLOCK (`mockups/about.html`, `.closing{border-top:2px solid var(--ink);
+            margin-top:46px;padding:34px 0 0}`). It was a bordered card on a surface fill, which
+            made the last thing on the page look like one more component. The drawing ends the page
+            on a rule and lets the two actions sit on the canvas. */}
+        <div className="mt-12 border-t-2 border-text pt-9">
           <p className="text-caption font-medium text-muted">
             Read before you buy
           </p>
@@ -177,13 +235,14 @@ export default function AboutPage() {
             Read a full report, unredacted. Every check, every verdict, every source link. Judge
             the pack by it.
           </p>
-          <div className="mt-6">
-            <Link
-              href="/sample"
-              className={buttonClasses({ size: 'lg' })}
-            >
+          {/* `.ctarow`: the free report, then the shelf. Two actions, gap 12px. */}
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link href="/sample" className={buttonClasses({ size: 'lg' })}>
               Read the free report
               <Icon name="arrowRight" size={14} />
+            </Link>
+            <Link href="/" className={buttonClasses({ size: 'lg', variant: 'ghost' })}>
+              Browse the packs
             </Link>
           </div>
         </div>

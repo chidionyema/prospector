@@ -102,7 +102,7 @@ export default function TrustGuaranteesRow({
 
   return (
     <section aria-label="Trust and guarantees" className={cx(className)}>
-      <div className={stacked ? undefined : 'mx-auto max-w-6xl px-6 py-6 md:px-8'}>
+      <div className={stacked ? undefined : 'mx-auto max-w-[1080px] px-5 py-6'}>
         {/* No pills, no borders, no circles, left-aligned. These are three short factual lines;
             dressing each one in its own container implied three separate offers. */}
         <ul className={cx('flex flex-col gap-3', !stacked && 'sm:flex-row sm:flex-wrap sm:gap-8')}>
