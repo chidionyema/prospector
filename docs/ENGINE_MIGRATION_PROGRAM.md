@@ -698,6 +698,37 @@ can never show one and imply the other. `engine.switch` starts the real `deploy/
 returns immediately with a log path, because a console that waits six minutes for an HTTP
 response is a console that times out halfway through a migration.
 
+### 12.4a The watchdog has to be watched too
+
+Three launchd jobs on this laptop make failover real:
+
+| Label | Every | What it runs |
+|---|---|---|
+| `com.prospector-control.failover-watch` | 60s | `check` — one poll of the five conditions |
+| `com.prospector-control.standby-sync` | 900s | `sync` — pull Fly's ledger and database down |
+| `com.prospector-control.receipt-bridge` | 900s | `receipts` — carry the container's exit codes to Hermes |
+
+`deploy/install_failover_watch.sh` writes and loads all three. Three things about them are
+deliberate, and each is a defect this estate has already had.
+
+**The label prefix is `com.prospector-control.`, not `com.prospector.`** `laptop.sh` `t_stop` and
+`decommission.sh` both disable every label matching the latter. If the watchdog carried that
+prefix, stopping the laptop would switch off the job whose only purpose is to bring the laptop
+back.
+
+**The plist runs a frozen copy, not a path into a checkout.** The first version looked for a newer
+copy by globbing `~/Documents`. macOS protects that directory from a launchd agent, and it does
+not deny the read — it blocks. The job sat in bash's `glob_filename` with an empty log while
+`launchctl print` reported `state = running` and `last exit code = (never exited)`. A watchdog
+that hangs is worse than no watchdog, because `launchctl list` shows it alive. The launcher now
+runs `~/.prospector/bin/engine_failover.frozen.py` and never reads `~/Documents`. The installer
+refreshes that copy, and refuses to install if the script has grown an import outside the standard
+library, because the frozen copy runs under the system python.
+
+**PATH names `/usr/local/bin`.** launchd does not inherit a login shell's PATH and `fly` lives
+there. Without it every poll would report Fly unreachable, which under rule 3 alerts and does
+nothing — so the failure would be quiet.
+
 ### 12.5 Business risk register
 
 | # | Risk | State | What closes it |
@@ -707,7 +738,7 @@ response is a console that times out halfway through a migration.
 | R3 | Fly as a company, or this account, becomes unavailable | **OPEN, PLANNED** | `deploy/targets/sshdocker.sh` exists and implements the full eleven-verb contract, but it has never been run against a real host. One rehearsal cutover to a rented Linux box closes it. |
 | R4 | The money database is not backed up from Fly | **OPEN, BRIDGED** | The offsite backup fetches the money database with the `fly` CLI, which the engine container deliberately does not carry. It ran from the laptop at 02:30:57Z and exited 0, so there is a fresh copy. It closes when the fetch is a plain authenticated HTTPS call to the API app, which is portable and needs no platform CLI. |
 | R5 | The engine's own nightly backup silently failed on Fly | **CLOSED** | `backup_store.py` built its paths from `__file__`, so on Fly it looked beside the code instead of at the volume and exited 1 every night. It now uses `config.store_root()`. |
-| R6 | Monitoring grades the engine from launchd receipts that no longer exist | **OPEN** | Hermes reads `~/.hermes/state/capability_receipts.jsonl`, written by a launchd wrapper that only runs on the laptop. Three capabilities will read DARK. Closes when the watch job writes receipts from real evidence pulled off Fly. |
+| R6 | Monitoring grades the engine from launchd receipts that no longer exist | **CLOSED** | `deploy/engine/receipt.sh` wraps the two graded jobs in the container and writes each run's real exit code to a file on the volume. `engine_failover.py receipts`, on a fifteen-minute watch job, pulls those files down and appends them to the Hermes ledger, keyed by run so a stopped job cannot look alive. It invents nothing: no receipt on the container means no line written and the capability goes DARK, which is the true answer. |
 | R7 | Hermes itself still runs on the laptop | **OPEN, NEXT PHASE** | §12.6. |
 | R8 | CI runs on four Mac runners in this room | **OPEN, BLOCKED** | The Fly runner image is built and the fleet script is written. It needs a fine-grained `GITHUB_RUNNER_PAT`, which only the founder can mint. |
 | R9 | Secrets exist only on this laptop | **ACCEPTED** | `.env` is deliberately the source of truth, and it is encrypted inside the offsite backup. Any platform is filled from it with one `t_secrets` call. |
