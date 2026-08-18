@@ -36,7 +36,8 @@ python -m prospector.run discover --signals 10 --count 5
 
 **4. VERIFY** (kill-fast). Per check (`pain_reality`, `value_durability`, `incumbency`, `payer_solvency`, `distribution`, `legality`):
    - Generate disconfirming queries (query_gen.md)
-   - Fetch real pages (retrieval.py; Gemini grounding or fixture)
+   - Fetch real pages (retrieval.py; the grounding chain `config.yaml retrieval.provider`
+     declares, or a fixture offline)
    - Render verdict from passages only (verdict.md; source-or-die)
    - **Stop at first hard fail** (kill-fast short-circuit)
 
@@ -99,12 +100,14 @@ python -m prospector.run vet --title "Haulage HMRC fuel-duty PTO rebate" \
 python -m prospector.run vet --resume
 
 # Re-run the full pipeline for all signals that failed at generation time
-# (when the non-critical chain — DeepSeek/MiniMax/Gemini-flash — was all down).
+# (when every tier of the non-critical chain `config.yaml noncritical_operator:` declares
+# was down).
 # Safe to run when the generation chain has recovered.
 python -m prospector.run generate --resume
 ```
 
-**Run a batch of candidates from a signal (reads GEMINI_API_KEY):**
+**Run a batch of candidates from a signal** (reads whatever keys the operators in
+`config.yaml` need — naming one brand here is how the three lines above went stale):
 ```bash
 python -m prospector.run signal --file signals/example.txt --batch-size 5
 ```
