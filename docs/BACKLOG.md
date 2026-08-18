@@ -184,8 +184,7 @@ minutes. i suspect its something we did." Not yet measured.
 `popdd/` package **that does not exist here**. Only `scripts/popdd_verify.py` is live.
 **Story.** A clear answer to what problem this system solves, whether it solves it, and whether it
 should exist — against alternatives at code, process and infra level.
-**Done when.** `docs/PROOF_SYSTEM_AUDIT.md` states keep, replace or delete, with evidence. That
-file is the deliverable of this task, so it does not exist yet: doc-lint-ok
+**Done when.** `docs/PROOF_SYSTEM_AUDIT.md` states keep, replace or delete, with evidence. That file is this task's own deliverable, so it does not exist yet: doc-lint-ok
 **Costs.** M. **Tracked as** #47.
 
 ### B22. Catalogue every tool, script, skill and automation
