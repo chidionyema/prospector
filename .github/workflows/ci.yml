@@ -52,9 +52,17 @@ on:
 # never evict anything. Pull requests keep sharing a per-ref group, which is where the queue
 # pressure this block was written for actually comes from — pushing twice to a PR should still
 # cancel the run it superseded.
+# CORRECTED 2026-08-18. Per-sha groups stopped the eviction but replaced it with a flood: three
+# consecutive merges put three full main runs in the queue at once (32094965578, 32095221331,
+# 32096489333 -- fifteen heavy jobs on three heavy runners), and two pull requests waited behind
+# all of them. Only the newest main commit's answer is wanted; its tree contains the other two.
+#
+# One shared group per ref, cancelling in progress, is what both defects want. The new run cancels
+# the one it superseded and takes its slot, so nothing is evicted while pending and nothing piles
+# up. main is still tested on every push -- the run that reports is the newest one.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'push' && github.sha || 'shared' }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   PYTHON_VERSION: "3.14"
