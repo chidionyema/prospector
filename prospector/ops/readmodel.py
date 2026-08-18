@@ -115,9 +115,22 @@ def drain_events(cfg, *, since: Optional[float] = None) -> list[dict]:
         ts = _parse_ts(line.get("ts"))
         if ts is None or (since is not None and ts < since):
             continue
+        # THE OUTCOME, not only the effort. `resumed` counts rows the drain PICKED UP; it says
+        # nothing about whether any of them finished. Measured on production 2026-08-18: three
+        # consecutive passes each read `resumed: 24, passes: 0, kills: 0, defers: 24` with the
+        # backlog stuck at 169 — the drain was re-vetting the same rows into a DEFER every pass,
+        # and the console reported a healthy 37.8 rows/hour with an ETA of 21:30 the same day.
+        # A rate built from `resumed` alone cannot tell work from a treadmill.
         out.append({"ts": ts, "source": "consumer",
                     "attempted": int(line.get("attempted", 0) or 0),
-                    "resumed": int(line.get("resumed", 0) or 0)})
+                    "resumed": int(line.get("resumed", 0) or 0),
+                    "passes": int(line.get("passes", 0) or 0),
+                    "kills": int(line.get("kills", 0) or 0),
+                    "defers": int(line.get("defers", 0) or 0),
+                    "leased_skipped": int(line.get("leased_skipped", 0) or 0),
+                    "backlog": (int(line["backlog"]) if str(line.get("backlog", "")).lstrip("-").isdigit()
+                                else None),
+                    "metered_usd": float(line.get("metered_usd", 0) or 0)})
 
     ticks = _paths.scheduler_dir(cfg, create=False) / "ticks.jsonl"
     for row in _read_lines(ticks):
@@ -129,7 +142,13 @@ def drain_events(cfg, *, since: Optional[float] = None) -> list[dict]:
             continue
         out.append({"ts": ts, "source": "producer_tick",
                     "attempted": int(res.get("attempted", 0) or 0),
-                    "resumed": int(res.get("resumed", 0) or 0)})
+                    "resumed": int(res.get("resumed", 0) or 0),
+                    "passes": int(res.get("passes", 0) or 0),
+                    "kills": int(res.get("kills", 0) or 0),
+                    "defers": int(res.get("defers", 0) or 0),
+                    "leased_skipped": 0,
+                    "backlog": None,
+                    "metered_usd": 0.0})
     out.sort(key=lambda e: e["ts"])
     return out
 
@@ -156,6 +175,68 @@ def _read_lines(path: Path) -> Iterable[dict]:
         if isinstance(obj, dict):
             rows.append(obj)
     return rows
+
+
+def consumer_now(cfg, *, now: Optional[float] = None) -> dict:
+    """What the consumer is doing at this second, and whether it is still moving.
+
+    WHY THIS EXISTS. Founder, 2026-08-18: "the consumer is a mystery, not enough visibility into
+    its state and real time actions, if I asked what it is doing right now and how long left, I
+    don't know." Everything needed was already on disk — `consumer_heartbeat.json` carries the
+    phase, the pid and the cycle — and no panel read it. The queue page showed a rate and an ETA
+    and nothing about the process producing them.
+
+    `consumer_liveness` stays the ONE reader of the heartbeat format, so the alarm and this panel
+    can never disagree. This adds only what a panel needs on top of it: how long the current
+    phase has been running, in seconds, and a sentence a person can read.
+
+    A WEDGE IS THE INTERESTING CASE. Measured that afternoon: pid 678 alive and sleeping, phase
+    "draining", beat 61 minutes old, while the three previous passes took 1m41s, 8m20s and less.
+    Nothing anywhere said so. `phase_age_s` is what makes that visible without a shell.
+    """
+    now = time.time() if now is None else now
+    out = {"state": "unknown", "reason": "", "phase": None, "pid": None, "age_s": None,
+           "alive": False, "cycle": None, "batch": None, "resumed_total": None,
+           "phase_age_s": None, "says": ""}
+    try:
+        from prospector.consumer import consumer_liveness
+
+        live = consumer_liveness(cfg, now=now)
+    except Exception as exc:  # noqa: BLE001 — a panel may never be the thing that breaks
+        out["reason"] = f"could not read the consumer heartbeat: {exc}"
+        return out
+
+    beat = live.get("beat") or {}
+    out.update({k: live.get(k) for k in ("state", "reason", "phase", "pid", "age_s", "alive")})
+    for k in ("cycle", "batch", "resumed_total"):
+        v = beat.get(k)
+        out[k] = int(v) if isinstance(v, (int, float)) else None
+    # The beat is rewritten at every phase change, so its age IS the age of this phase.
+    out["phase_age_s"] = round(float(live["age_s"]), 1) if live.get("age_s") is not None else None
+
+    phase = out["phase"]
+    age = out["phase_age_s"]
+    mins = f"{age / 60:.0f} min" if age is not None else "an unknown time"
+    if out["state"] == "dead":
+        out["says"] = "The consumer is not running. Nothing is draining the queue."
+    elif out["state"] == "stopped":
+        out["says"] = "The consumer was stopped on purpose. Nothing is draining the queue."
+    elif out["state"] == "blocked":
+        out["says"] = f"A rail is holding the consumer back on purpose: {live.get('reason') or phase}"
+    elif out["state"] == "late":
+        out["says"] = (f"The consumer is alive but has been in '{phase}' for {mins} without a new "
+                       f"beat. That is longer than it promised, so it is probably stuck on one call.")
+    elif phase == "draining":
+        out["says"] = f"Re-vetting a batch of parked rows. This pass has been running {mins}."
+    elif phase == "idle":
+        out["says"] = "Nothing to re-vet. The consumer is waiting for work."
+    elif phase in ("skipped", "error"):
+        out["says"] = f"Last cycle ended '{phase}': {beat.get('error') or beat.get('skipped_reason') or ''}"
+    elif phase == "starting":
+        out["says"] = "The consumer just started and has not finished a pass yet."
+    else:
+        out["says"] = live.get("reason") or f"phase '{phase}'"
+    return out
 
 
 def queue_view(cfg, *, store=None, now: Optional[float] = None,
@@ -217,6 +298,37 @@ def queue_view(cfg, *, store=None, now: Optional[float] = None,
     # the consumer process on 2026-08-15; a rate carried entirely by `producer_tick` rows while a
     # consumer is alive describes a mechanism that is no longer the one doing the work. Rendering
     # that ETA without saying so is `a-probe-that-cannot-tell-periodic-from-daemon` in ETA form.
+    # DID THE BACKLOG ACTUALLY FALL. `resumed` counts rows picked up, so a drain that re-vets the
+    # same rows into a DEFER every pass reports a healthy rate forever. The consumer writes the
+    # backlog it saw on each pass; comparing the oldest recorded one to the count now is the only
+    # thing in this view that can tell work from a treadmill.
+    with_backlog = [e for e in events if e.get("backlog") is not None]
+    outcomes = {
+        "passes": sum(int(e.get("passes", 0) or 0) for e in events),
+        "kills": sum(int(e.get("kills", 0) or 0) for e in events),
+        "defers": sum(int(e.get("defers", 0) or 0) for e in events),
+        "leased_skipped": sum(int(e.get("leased_skipped", 0) or 0) for e in events),
+        "metered_usd": round(sum(float(e.get("metered_usd", 0) or 0) for e in events), 4),
+        "backlog_then": with_backlog[0]["backlog"] if with_backlog else None,
+        "backlog_now": len(workable),
+        "moved": ((with_backlog[0]["backlog"] - len(workable)) if with_backlog else None),
+    }
+    # A treadmill is: several passes, rows resumed, and the backlog no lower than when we started.
+    treadmill = bool(
+        len(with_backlog) >= 2
+        and resumed > 0
+        and outcomes["moved"] is not None
+        and outcomes["moved"] <= 0
+    )
+    if treadmill:
+        eta_h = None
+        eta_reason = (
+            f"{len(events)} pass(es) re-vetted {resumed} row(s) in the last {lookback_h:g}h and the "
+            f"backlog went from {outcomes['backlog_then']} to {outcomes['backlog_now']}. "
+            f"{outcomes['defers']} of them deferred again, {outcomes['passes']} finished. These "
+            f"rows are being re-read, not drained, so there is no honest ETA to give."
+        )
+
     caveat = ""
     if events and {e["source"] for e in events} == {"producer_tick"}:
         try:
@@ -239,7 +351,16 @@ def queue_view(cfg, *, store=None, now: Optional[float] = None,
             "oldest_created_at": oldest,
         },
         "leases": leases,
+        "consumer": consumer_now(cfg, now=now),
         "drain": {
+            "outcomes": outcomes,
+            "recent": [
+                {"ts": _iso(e["ts"]), "source": e["source"], "attempted": e.get("attempted"),
+                 "resumed": e.get("resumed"), "passes": e.get("passes"), "kills": e.get("kills"),
+                 "defers": e.get("defers"), "backlog": e.get("backlog"),
+                 "metered_usd": e.get("metered_usd")}
+                for e in events[-8:][::-1]
+            ],
             "events": len(events),
             "attempted": attempted,
             "resumed": resumed,

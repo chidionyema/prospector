@@ -621,6 +621,47 @@ def _read_intents(cfg, args: dict) -> dict:
             "unreadable_lines": unreadable, "rows": rows[:limit]}
 
 
+def _read_console_log(cfg, args: dict) -> dict:
+    """What the CONSOLE itself did when it went wrong, newest first.
+
+    WHY THIS EXISTS. On 2026-08-18 every tab in the portal rendered blank at once. The cause was
+    an expired session — the reads 401ed and the page bounced to /login — but nothing recorded
+    it, and `fly logs --no-tail` returns 100 lines, about four minutes on a generating daemon. By
+    the time it was reported the evidence had scrolled away, so it was reasoned about instead of
+    read. Founder: "we should log carefully next time this happens".
+
+    The rows are written by the Next.js routes (`src/lib/oplog.ts`), not by the engine, and they
+    only appear when something is worth a line: a refused read, a failed read, a slow read, a
+    page crash, or a sign-in. A quiet file is the healthy state, which is why the panel says so
+    in words rather than rendering an empty table.
+    """
+    path = _store_ops_dir(cfg) / "console_events.jsonl"
+    limit = int(args.get("limit") or 200)
+    rows: list[dict] = []
+    unreadable = 0
+    if path.exists():
+        for line in path.read_text(errors="replace").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except ValueError:
+                # A torn write leaves half a line. Count it and carry on: one bad line must not
+                # cost the operator the whole history.
+                unreadable += 1
+                continue
+            if isinstance(rec, dict):
+                rows.append(rec)
+    rows.reverse()
+    kinds: dict[str, int] = {}
+    for r in rows:
+        k = str(r.get("kind") or "unknown")
+        kinds[k] = kinds.get(k, 0) + 1
+    return {"path": str(path), "present": path.exists(), "total": len(rows),
+            "unreadable_lines": unreadable, "kinds": kinds, "rows": rows[:limit]}
+
+
 def _store_api() -> tuple[str, str]:
     """Where the live shelf is, and the key that opens its internal doors.
 
@@ -1257,6 +1298,7 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
     "candidate": _read_candidate,
     "config": _read_config,
     "intents": _read_intents,
+    "console_log": _read_console_log,
     "tools": _read_tools,
     "undo": _read_undo,
     "catalogue": _read_catalogue,

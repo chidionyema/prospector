@@ -12,6 +12,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { requireAuth } from '@/lib/auth';
 import { EXPECTED_CONTRACT, opsRead } from '@/lib/ops';
+import { logConsoleEvent } from '@/lib/oplog';
 
 export const VIEWS = [
   'engine_location',
@@ -41,6 +42,7 @@ export const VIEWS = [
   'sales',
   'deliveries',
   'disputes',
+  'console_log',
 ] as const;
 
 /** Arguments each view accepts. Anything else in the query string is dropped, not forwarded. */
@@ -60,7 +62,15 @@ const ALLOWED_ARGS: Record<string, string[]> = {
   sales: ['days'],
   deliveries: ['state', 'limit'],
   disputes: ['days'],
+  console_log: ['limit'],
 };
+
+/**
+ * A read slower than this earns a line even though it worked. Measured in the container on
+ * 2026-08-18, the slowest view was `data` at 2.32s and the rest were under 2s, so anything at
+ * five seconds is a change worth having a record of.
+ */
+const SLOW_MS = 5_000;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'no-store');
@@ -70,11 +80,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ ok: false, error: 'reads are GET' });
   }
 
-  const gate = requireAuth(req);
-  if (gate) return res.status(gate.status).json(gate.body);
-
   const view = String(req.query.view || '');
+
+  const gate = requireAuth(req);
+  if (gate) {
+    // THE BLANK-TAB SIGNATURE. When a session expires, every panel on the page 401s at the same
+    // moment and the page redirects to /login. That is what happened on 2026-08-18, and it left
+    // no trace at all, so the cause was argued about rather than read. One line per refused read
+    // makes the next one obvious: a burst of `unauthenticated` across many views, at one time.
+    logConsoleEvent({
+      kind: 'read_refused',
+      view,
+      status: gate.status,
+      error_kind: gate.status === 401 ? 'unauthenticated' : 'unconfigured',
+    });
+    return res.status(gate.status).json(gate.body);
+  }
+
   if (!(VIEWS as readonly string[]).includes(view)) {
+    logConsoleEvent({ kind: 'read_failed', view, status: 404, error_kind: 'UnknownView' });
     return res.status(404).json({
       ok: false,
       error: `unknown view ${view}`,
@@ -88,26 +112,53 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (typeof v === 'string' && v !== '') args[key] = v;
   }
 
+  const started = Date.now();
   try {
     const { envelope } = await opsRead(view, args);
+    const tookMs = Date.now() - started;
     if (envelope.contract !== EXPECTED_CONTRACT) {
       // Say it out loud rather than rendering blanks. A console silently talking to an engine
       // whose contract moved is how a panel comes to report zeroes with total confidence.
-      return res.status(500).json({
-        ok: false,
-        error:
-          `the engine gateway speaks contract ${envelope.contract}; this console was built ` +
-          `for ${EXPECTED_CONTRACT}. Restart the console after pulling.`,
+      const error =
+        `the engine gateway speaks contract ${envelope.contract}; this console was built ` +
+        `for ${EXPECTED_CONTRACT}. Restart the console after pulling.`;
+      logConsoleEvent({
+        kind: 'read_failed',
+        view,
+        status: 500,
+        took_ms: tookMs,
+        error_kind: 'ContractMismatch',
+        error,
       });
+      return res.status(500).json({ ok: false, error });
     }
     // The gateway's own failure is passed through with its reason intact, at 502 — it is the
     // engine that failed, not the request.
-    return res.status(envelope.ok ? 200 : 502).json(envelope);
+    if (!envelope.ok) {
+      logConsoleEvent({
+        kind: 'read_failed',
+        view,
+        status: 502,
+        took_ms: tookMs,
+        error_kind: String((envelope as { error_kind?: unknown }).error_kind ?? 'EngineFailed'),
+        error: String((envelope as { error?: unknown }).error ?? ''),
+      });
+      return res.status(502).json(envelope);
+    }
+    if (tookMs >= SLOW_MS) {
+      logConsoleEvent({ kind: 'read_slow', view, status: 200, took_ms: tookMs });
+    }
+    return res.status(200).json(envelope);
   } catch (err) {
-    return res.status(500).json({
-      ok: false,
-      error: err instanceof Error ? err.message : String(err),
+    const error = err instanceof Error ? err.message : String(err);
+    logConsoleEvent({
+      kind: 'read_failed',
+      view,
+      status: 500,
+      took_ms: Date.now() - started,
       error_kind: 'GatewayUnreachable',
+      error,
     });
+    return res.status(500).json({ ok: false, error, error_kind: 'GatewayUnreachable' });
   }
 }

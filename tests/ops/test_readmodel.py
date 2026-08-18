@@ -347,3 +347,111 @@ def test_the_provider_view_carries_the_history_not_just_the_snapshot(tmp_path, m
     assert all(t["state"] == "live" for t in view["tiers"]), (
         "the snapshot is right and says nothing: this is the case the events exist for"
     )
+
+
+# --------------------------------------------------------------------------- #
+# The consumer — what it is doing, and whether the work is going anywhere
+# --------------------------------------------------------------------------- #
+def test_re_vetting_the_same_rows_forever_is_not_an_eta(tmp_path):
+    """MEASURED ON PRODUCTION, 2026-08-18. Three consecutive consumer passes each recorded
+    `resumed: 24, passes: 0, kills: 0, defers: 24` with the backlog stuck at 169, and the console
+    reported 37.8 rows/hour and "empty by 21:30". `resumed` counts rows PICKED UP, so a drain
+    re-reading the same rows into a DEFER every pass looks identical to one making progress.
+
+    The ETA has to be able to say "this is a treadmill", because an operator planning around
+    21:30 is planning around nothing.
+    """
+    now = time.time()
+    store = _rows(tmp_path, [{"candidate_id": f"d{i}", "decision": "defer"} for i in range(24)])
+    _drain_log(
+        tmp_path,
+        {"ts": now - 3600, "attempted": 24, "resumed": 24, "passes": 0, "kills": 0,
+         "defers": 24, "backlog": 24, "metered_usd": 0.0},
+        {"ts": now - 1800, "attempted": 24, "resumed": 24, "passes": 0, "kills": 0,
+         "defers": 24, "backlog": 24, "metered_usd": 0.0},
+    )
+
+    drain = R.queue_view(_cfg(tmp_path), store=store, now=now)["drain"]
+
+    assert drain["rate_per_h"] is not None, "the rate is still measured; it is the ETA that lies"
+    assert drain["eta_h"] is None
+    assert drain["eta_at"] is None
+    assert "deferring again" in drain["eta_reason"] or "not drained" in drain["eta_reason"]
+    assert drain["outcomes"]["defers"] == 48
+    assert drain["outcomes"]["passes"] == 0
+    assert drain["outcomes"]["moved"] == 0, "the backlog did not move"
+
+
+def test_a_drain_that_is_actually_working_keeps_its_eta(tmp_path):
+    """The inverse, so the treadmill rule cannot quietly delete every ETA in the console."""
+    now = time.time()
+    store = _rows(tmp_path, [{"candidate_id": f"d{i}", "decision": "defer"} for i in range(10)])
+    _drain_log(
+        tmp_path,
+        {"ts": now - 7200, "attempted": 5, "resumed": 5, "passes": 3, "kills": 2,
+         "defers": 0, "backlog": 20, "metered_usd": 1.5},
+        {"ts": now - 3600, "attempted": 5, "resumed": 5, "passes": 2, "kills": 3,
+         "defers": 0, "backlog": 15, "metered_usd": 1.25},
+    )
+
+    drain = R.queue_view(_cfg(tmp_path), store=store, now=now)["drain"]
+
+    assert drain["eta_h"] is not None
+    assert drain["outcomes"]["moved"] == 10, "20 waiting then, 10 now"
+    assert drain["outcomes"]["metered_usd"] == pytest.approx(2.75)
+
+
+def test_the_last_passes_are_shown_newest_first(tmp_path):
+    """The operator is asking what just happened. Oldest-first makes them scroll to find out."""
+    now = time.time()
+    store = _rows(tmp_path, [{"candidate_id": "d", "decision": "defer"}])
+    _drain_log(
+        tmp_path,
+        {"ts": now - 7200, "attempted": 1, "resumed": 1, "backlog": 9},
+        {"ts": now - 60, "attempted": 2, "resumed": 2, "backlog": 7},
+    )
+
+    recent = R.queue_view(_cfg(tmp_path), store=store, now=now)["drain"]["recent"]
+    assert [r["backlog"] for r in recent] == [7, 9]
+
+
+def test_the_consumer_says_what_it_is_doing_in_words(tmp_path, monkeypatch):
+    """Founder, 2026-08-18: "if I asked what it is doing right now and how long left, I don't
+    know". Everything needed was already in `consumer_heartbeat.json`; no panel read it."""
+    from prospector import consumer as _consumer
+
+    monkeypatch.setattr(_consumer, "consumer_liveness", lambda cfg, now=None: {
+        "state": "running", "reason": "", "phase": "draining", "pid": 678, "age_s": 95.0,
+        "alive": True, "beat": {"cycle": 4, "batch": 24, "resumed_total": 72},
+    })
+
+    out = R.consumer_now(_cfg(tmp_path))
+    assert out["state"] == "running"
+    assert out["cycle"] == 4 and out["batch"] == 24 and out["resumed_total"] == 72
+    assert out["phase_age_s"] == 95.0
+    assert "Re-vetting" in out["says"] and "2 min" in out["says"]
+
+
+def test_a_wedged_consumer_reads_as_stuck_not_as_healthy(tmp_path, monkeypatch):
+    """MEASURED, same afternoon: pid 678 alive and sleeping, phase 'draining', beat 61 minutes
+    old, while the three passes before it took under nine minutes each. Nothing said so. Alive is
+    not the same as working, and a panel that only knows 'running' cannot tell them apart."""
+    from prospector import consumer as _consumer
+
+    monkeypatch.setattr(_consumer, "consumer_liveness", lambda cfg, now=None: {
+        "state": "late", "reason": "beat is 3660s old in phase 'draining'", "phase": "draining",
+        "pid": 678, "age_s": 3660.0, "alive": True, "beat": {"cycle": 4, "batch": 24},
+    })
+
+    out = R.consumer_now(_cfg(tmp_path))
+    assert out["state"] == "late"
+    assert "61 min" in out["says"]
+    assert "stuck" in out["says"]
+
+
+def test_an_unreadable_heartbeat_never_breaks_the_panel(tmp_path, monkeypatch):
+    """A monitor that raises is a monitor that is down exactly when it is needed. There is no
+    heartbeat file at all here, which is the state on a machine where the consumer never ran."""
+    out = R.consumer_now(_cfg(tmp_path))
+    assert out["state"] in ("unknown", "dead")
+    assert isinstance(out["says"], str)

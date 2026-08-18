@@ -69,6 +69,61 @@ fly ssh console -a prospector-engine -C "sh -lc 'wc -l /data/store/prospector.js
 downtime. Anything that still says otherwise is stale. The discriminator a process can check is
 `FLY_MACHINE_ID` — set inside a Fly machine, unset on the laptop.
 
+### When a candidate is parked: DEFER, and what unparks it
+
+A DEFER is not a verdict. It means the engine could not reach an answer — the brain was benched,
+the call raised, retrieval was down — so the row is put back rather than killed. `verify.py:365`
+sets `retrieval_failed=True` on any verdict call that raises, and the DEFER gate at `verify.py:693`
+fires on it. This exists because the honest verdict on a check that never ran is "come back to it",
+never "this idea is dead". Killing on an outage is a real defect this system has had:
+`store/dossiers/2102bacc6dd75cf9.kill.json` is a candidate killed by our own quota exhaustion, in a
+dossier that reads as fully reasoned.
+
+**Nothing unparks a row automatically at the moment a brain recovers.** There is no event, no
+webhook, no queue trigger. A separate process re-reads the parked rows on a timer:
+
+| Who | What it does | Where |
+| --- | --- | --- |
+| `com.prospector.consumer` | the drain. Wakes on its own cadence, takes a batch of parked rows, re-vets each one, writes the outcome | `prospector/consumer.py` |
+| `run.py::_cmd_resume` | the same work by hand: `python -m prospector.run vet --resume` | `prospector/run.py:2687` |
+| `run.drainable` | the ONE definition of what counts as parked-and-workable | `prospector/run.py:2547` |
+
+So the answer to "MiniMax is back, what happens to the deferred rows" is: the consumer picks them
+up a batch at a time on its next pass, and the backlog falls over hours, not at once.
+
+**The drain is trusted-only, on purpose.** `_cmd_resume` runs the health classifier at the default
+`trusted_only=True`. Re-vetting a `provisional` row on a provisional brain re-stamps it
+`provisional`: the row does not move and the money is spent. Generation may run into a provisional
+tail; the drain may not.
+
+**A drain that runs is not the same as a drain that works.** Measured on production 2026-08-18,
+three consecutive consumer passes each recorded:
+
+```
+attempted 24, resumed 24, passes 0, kills 0, defers 24, leased_skipped 8, backlog 169, metered_usd 0.0
+```
+
+Twenty-four rows picked up, twenty-four parked again, backlog flat, nothing spent. The console
+reported this as a healthy 37.8 rows an hour and "empty by 21:30", because the rate was built from
+`resumed` — rows PICKED UP — which says nothing about whether any of them finished. That number was
+a fiction. `readmodel.queue_view` now compares the backlog the consumer recorded on its oldest pass
+in the window against the count now, and when rows are being resumed while the backlog does not
+fall it refuses to give an ETA and says why. The Queue page shows the last few passes as a table,
+so a column of parked-again rows against a flat backlog is visible as a shape rather than as a
+claim.
+
+**Where to look, in order.** Queue page → "What the consumer is doing right now" (phase, how long
+it has been in it, pid), then "Is it moving?" (what came of the work, backlog then and now), then
+"The last few passes". Engine page → the brains, which is where a bench shows up. On disk:
+`store/scheduler/consumer_drains.jsonl` is one line per pass, `store/consumer_heartbeat.json` is
+the live phase, and `prospector/consumer.py:478` `consumer_liveness` is the only thing that reads
+that format — the alarm and the panel share it so they cannot disagree.
+
+**Alive is not working.** The same afternoon the consumer sat in phase `draining` for 61 minutes
+with pid 678 alive and sleeping, after passes that had taken 1m41s and 8m20s. Nothing anywhere
+said so. `consumer_liveness` calls that state `late`, and the Queue page now renders it amber with
+the sentence "it is alive but has been in 'draining' for 61 min without a new beat".
+
 ---
 
 ## 3. Selling: how money becomes a download
