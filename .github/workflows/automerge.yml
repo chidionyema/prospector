@@ -14,16 +14,21 @@
 # already on (allow_auto_merge: true); it is the rules that cannot exist. So the wait-for-green
 # lives here instead.
 #
+# WHY OCTOKIT AND NOT THE gh CLI. The first version of this file shelled out to `gh`. Our
+# self-hosted runners do not have it: run 32176571212 printed `gh: command not found`, and
+# because that first call ended in `|| true` the job swallowed it, reported "nothing to merge"
+# and finished GREEN having merged nothing. A workflow that silently does nothing is worse than
+# one that fails. actions/github-script runs on the node the runner already ships for JS
+# actions, so it needs no CLI, no jq, and no PATH assumptions -- and an API error throws and
+# fails the job where it can be seen.
+#
 # WHY THE MERGE ALONE IS NOT ENOUGH. A push made with the default GITHUB_TOKEN does not start
 # new workflow runs. So the merge commit this workflow creates would run no CI on main -- main's
 # green record would simply stop -- and would not run deploy-engine.yml, so production would
-# quietly stop receiving merged code.
-#
-# The fix needs no secret and no personal token. GitHub documents exactly two exceptions to that
-# rule: `workflow_dispatch` and `repository_dispatch` DO create a run when triggered with
-# GITHUB_TOKEN ("Triggering a workflow from a workflow", Actions docs). So after a merge lands,
-# this workflow dispatches main's CI, and dispatches the engine deploy when the merged files are
-# ones deploy-engine.yml itself watches. Same two runs a human merge would have produced.
+# quietly stop receiving merged code. GitHub documents exactly two exceptions:
+# `workflow_dispatch` and `repository_dispatch` DO create a run when triggered with
+# GITHUB_TOKEN. So after a merge lands this workflow dispatches main's CI, and dispatches the
+# engine deploy when the merged files are ones deploy-engine.yml itself watches.
 name: Auto-merge green PRs
 
 on:
@@ -50,82 +55,74 @@ jobs:
     runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     steps:
       - name: Merge every open PR this run proved green
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-          REPO: ${{ github.repository }}
-        run: |
-          set -euo pipefail
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const {owner, repo} = context.repo
+            const sha = context.payload.workflow_run.head_sha
 
-          # Find the PRs whose head is the exact commit CI just passed. Matching on the sha, not
-          # on a PR number carried through the event, is what keeps this honest: a PR that has
-          # been pushed to since the run started no longer matches, so a green verdict can never
-          # merge code that verdict did not cover.
-          prs=$(gh api "repos/$REPO/commits/$HEAD_SHA/pulls" \
-                  --jq '.[] | select(.state == "open") | .number' || true)
-          if [ -z "$prs" ]; then
-            echo "no open PR has $HEAD_SHA at its head - nothing to merge"
-            exit 0
-          fi
+            // The same paths deploy-engine.yml watches on push. Kept in step with that file:
+            // add a path there and not here and a merge that should deploy will not.
+            const DEPLOY = /^(prospector\/|scripts\/|deploy\/engine\/|store_platform\/src\/Ops\.Console\/|requirements\.txt$|config\.yaml$|\.github\/workflows\/deploy-engine\.yml$)/
+            const HOLD = new Set(['hold', 'do-not-merge', 'wip'])
 
-          merged=0
-          deploy=0
+            // The PRs whose HEAD is the exact commit CI just passed. Matching on the sha, not
+            // on a PR number carried through the event, is what keeps this honest: a PR pushed
+            // to since the run started no longer matches, so a green verdict can never merge
+            // code that verdict did not cover.
+            const {data: found} =
+              await github.rest.repos.listPullRequestsAssociatedWithCommit(
+                {owner, repo, commit_sha: sha})
+            const prs = found.filter(p => p.state === 'open')
+            if (prs.length === 0) {
+              core.info(`no open PR has ${sha} at its head - nothing to merge`)
+              return
+            }
 
-          for pr in $prs; do
-            info=$(gh pr view "$pr" --repo "$REPO" --json isDraft,baseRefName,labels)
-            draft=$(echo "$info" | jq -r '.isDraft')
-            base=$(echo "$info" | jq -r '.baseRefName')
-            labels=$(echo "$info" | jq -r '[.labels[].name] | join(",")')
-            echo "PR #$pr: draft=$draft base=$base labels=${labels:-none}"
+            let merged = false, deploy = false
+            for (const pr of prs) {
+              const labels = pr.labels.map(l => l.name)
+              core.info(`PR #${pr.number}: draft=${pr.draft} base=${pr.base.ref} ` +
+                        `labels=${labels.join(',') || 'none'}`)
+              if (pr.draft)                        { core.info('  skipping: still a draft'); continue }
+              if (pr.base.ref !== 'main')          { core.info(`  skipping: targets ${pr.base.ref}`); continue }
+              if (labels.some(n => HOLD.has(n)))   { core.info('  skipping: held by a label'); continue }
 
-            if [ "$draft" = "true" ]; then
-              echo "  skipping: still a draft"
-              continue
-            fi
-            if [ "$base" != "main" ]; then
-              echo "  skipping: targets $base, not main"
-              continue
-            fi
-            case ",${labels}," in
-              *,hold,*|*,do-not-merge,*|*,wip,*)
-                echo "  skipping: held by a label"
-                continue
-                ;;
-            esac
+              const files = await github.paginate(github.rest.pulls.listFiles,
+                                                  {owner, repo, pull_number: pr.number, per_page: 100})
+              try {
+                // `sha` here is GitHub's own head assertion, checked at the moment of the
+                // merge: if someone pushed after CI ran, this fails instead of landing a
+                // commit CI never saw.
+                await github.rest.pulls.merge(
+                  {owner, repo, pull_number: pr.number, merge_method: 'squash', sha})
+                core.info(`  merged #${pr.number}`)
+                merged = true
+                if (files.some(f => DEPLOY.test(f.filename))) deploy = true
+                try {
+                  await github.rest.git.deleteRef(
+                    {owner, repo, ref: `heads/${pr.head.ref}`})
+                } catch (e) {
+                  core.warning(`branch ${pr.head.ref} not deleted: ${e.message}`)
+                }
+              } catch (e) {
+                core.warning(`could not merge #${pr.number} (conflict, or it moved): ${e.message}`)
+              }
+            }
 
-            # Read the file list BEFORE merging: once the branch is deleted the PR still
-            # answers, but this ordering keeps the deploy decision independent of that.
-            files=$(gh api "repos/$REPO/pulls/$pr/files" --paginate --jq '.[].filename' || true)
+            if (!merged) return
 
-            # The head sha is asserted a second time, by GitHub, at the moment of the merge.
-            # Between the checks above and this line someone can push; --match-head-commit makes
-            # the merge fail rather than land a commit CI never ran on.
-            if gh pr merge "$pr" --repo "$REPO" --squash --delete-branch \
-                 --match-head-commit "$HEAD_SHA"; then
-              echo "  merged #$pr"
-              merged=1
-              # The same paths deploy-engine.yml watches on push. Kept in step with that file:
-              # if a path is added there and not here, a merge that should deploy will not.
-              if printf '%s\n' "$files" | grep -qE '^(prospector/|scripts/|deploy/engine/|store_platform/src/Ops\.Console/|requirements\.txt$|config\.yaml$|\.github/workflows/deploy-engine\.yml$)'; then
-                deploy=1
-              fi
-            else
-              echo "::warning::could not merge #$pr (conflict, or it moved). Left open."
-            fi
-          done
-
-          [ "$merged" = "1" ] || exit 0
-
-          # Start what the merge push could not (see the header). workflow_dispatch is the
-          # documented exception that works with GITHUB_TOKEN.
-          echo "dispatching CI on main"
-          gh workflow run ci.yml --repo "$REPO" --ref main \
-            || echo "::warning::could not dispatch CI on main"
-
-          if [ "$deploy" = "1" ]; then
-            echo "merged files touch the engine — dispatching the engine deploy"
-            gh workflow run deploy-engine.yml --repo "$REPO" --ref main -f dry_run=false \
-              || echo "::warning::could not dispatch deploy-engine"
-          else
-            echo "merged files touch nothing deploy-engine.yml watches — no deploy"
-          fi
+            // Start what the merge push could not (see the header). workflow_dispatch is the
+            // documented exception that works with GITHUB_TOKEN.
+            core.info('dispatching CI on main')
+            await github.rest.actions.createWorkflowDispatch(
+              {owner, repo, workflow_id: 'ci.yml', ref: 'main'})
+            if (deploy) {
+              core.info('merged files touch the engine — dispatching the engine deploy')
+              await github.rest.actions.createWorkflowDispatch(
+                {owner, repo, workflow_id: 'deploy-engine.yml', ref: 'main',
+                 inputs: {dry_run: 'false'}})
+            } else {
+              core.info('merged files touch nothing deploy-engine.yml watches — no deploy')
+            }
