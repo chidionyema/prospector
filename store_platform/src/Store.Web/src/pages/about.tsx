@@ -85,13 +85,13 @@ export default function AboutPage() {
           id="founder-story"
           className="essay mt-8 space-y-5"
         >
-          <p>
+          <p className="quiet">
             Launching them was. After a few attempts that never quite got off the ground, a habit
             set in: I would talk myself out of the next idea before it went anywhere. Not because I
             had checked it and found something wrong. Because I had not checked it at all, and
             doubt fills that space much faster than research does.
           </p>
-          <p>
+          <p className="quiet">
             {/* "the ideating" was the one word on this page a reader would not use themselves. */}
             What I enjoyed was having the ideas. What I kept losing was the bit in the middle,
             where you find out whether one holds up before you commit a year to it.
