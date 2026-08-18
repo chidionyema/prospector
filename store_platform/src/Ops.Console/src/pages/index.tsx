@@ -74,7 +74,10 @@ type Stuck = {
 type Status = {
   heartbeats: { producer: Heartbeat; consumer: Heartbeat };
   alerts: { active: unknown[]; count: number; banner: string | null; note: string | null };
-  stuck: Stuck;
+  // OPTIONAL, because the engine may not report it. The Fly engine's `status` view returns
+  // heartbeats, alerts, supervisor, pause, providers, queue, routing, spend -- and no `stuck`.
+  // Declaring it required told TypeScript a lie the browser then paid for; see the guard below.
+  stuck?: Stuck;
   pause: { scopes: PauseScope[]; any_armed: boolean };
   providers: { tiers: Tier[]; moat_blind: string; drain_blind: string; trusted_final: string[] };
   queue: {
@@ -115,7 +118,13 @@ export default function Now() {
       {error ? <Problem>{error}</Problem> : null}
       {loading && !data ? <Card>reading the engine…</Card> : null}
       {data ? <Verdict s={data} /> : null}
-      {data ? <StuckWork stuck={data.stuck} /> : null}
+      {/* Only when the engine reports it. Passing the missing key through made `StuckWork` read
+          `stuck.error` off undefined, which threw during the client render and left the whole
+          console showing "a client-side exception has occurred". It could not throw on the
+          server, because `useOps` fetches in the browser and the server render has no data --
+          which is why the page arrived, then went blank, and why probing the API only ever
+          returned ok:true. */}
+      {data?.stuck ? <StuckWork stuck={data.stuck} /> : null}
 
       {data ? (
         <Card
