@@ -2,7 +2,8 @@
 # Any Linux box with Docker and an SSH login. Hetzner, EC2, a Mac mini, a Pi in a cupboard.
 #
 # This is the escape hatch from Fly, and it is written NOW so that leaving Fly is a command we
-# have already run rather than a project we have to start. Same eight verbs as deploy/targets/fly.sh.
+# have already run rather than a project we have to start. Same eleven verbs as deploy/targets/fly.sh;
+# the contract is written out in deploy/PORTABILITY.md.
 #
 #   PROSPECTOR_SSH_HOST=engine@1.2.3.4 deploy/cutover.sh --from fly --to sshdocker
 
@@ -59,3 +60,32 @@ t_pack() {
 }
 
 t_logs() { _ssh "docker logs -f $NAME"; }
+
+# Is this box actually carrying the load right now? deploy/decommission.sh asks before it turns
+# the other platform off for good. A running container is not enough on its own: a container that
+# came up against an empty volume is running and serving nothing, so the ledger is checked too.
+t_health() {
+  local state
+  state="$(_ssh "docker inspect -f '{{.State.Running}}' $NAME 2>/dev/null" || echo false)"
+  [ "$state" = "true" ] || { echo "sshdocker:$HOST container $NAME is not running" >&2; return 1; }
+  _ssh "test -f $DATA/store/prospector.jsonl" \
+    || { echo "sshdocker:$HOST is up but has no ledger at $DATA/store/prospector.jsonl" >&2; return 1; }
+  echo "sshdocker:$HOST running, ledger present"
+}
+
+# Run a verb directly: `bash deploy/targets/<name>.sh t_release`.
+#
+# Without this, running the file instead of sourcing it defines every function, reaches the end
+# and exits 0 - a silent success that deploys nothing. Measured 2026-08-18: three consecutive
+# `bash fly.sh t_release` calls each exited 0 with no output while `fly releases` never moved off
+# v3. The guard means `source`ing it, which deploy/cutover.sh does, still runs nothing.
+if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+  verb="${1:?usage: $(basename "${BASH_SOURCE[0]}") <verb> [args...]}"
+  case "$verb" in
+    t_*) ;;
+    *) echo "unknown verb: $verb (verbs start with t_)" >&2; exit 2 ;;
+  esac
+  declare -F "$verb" >/dev/null || { echo "no such verb: $verb" >&2; exit 2; }
+  shift
+  "$verb" "$@"
+fi

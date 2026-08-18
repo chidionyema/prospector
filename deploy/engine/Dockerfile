@@ -111,7 +111,8 @@ ENV PATH=/root/.fly/bin:$PATH
 COPY deploy/engine/supervisord.conf /etc/supervisord.conf
 COPY deploy/engine/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY deploy/engine/periodic.sh /usr/local/bin/periodic.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/periodic.sh
+COPY deploy/engine/receipt.sh /usr/local/bin/receipt.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/periodic.sh /usr/local/bin/receipt.sh
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/entrypoint.sh"]
 CMD ["supervisor"]

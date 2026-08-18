@@ -124,16 +124,76 @@ def sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+class _HashingReader:
+    """A read-only file wrapper that hashes and counts newlines as `tarfile` copies the bytes.
+
+    `tarfile.addfile` reads exactly `limit` bytes, so this sees precisely what lands in the
+    archive. That is the point: a file that grows during the pack is truncated to its header
+    size in the tar, and the hash has to describe that same prefix or the tarball fails its own
+    verification. `read` deliberately never returns more than the remaining budget.
+    """
+
+    def __init__(self, fh, hasher, limit: int) -> None:
+        self._fh, self._h, self._left = fh, hasher, limit
+        self.lines = 0
+
+    def read(self, size: int = -1) -> bytes:
+        if self._left <= 0:
+            return b""
+        want = self._left if size is None or size < 0 else min(size, self._left)
+        block = self._fh.read(want)
+        if not block:
+            # Truncated under us. Pad, so the tar member still matches its header size and the
+            # hash still describes what the archive holds.
+            block = b"\0" * self._left
+        self._left -= len(block)
+        self._h.update(block)
+        self.lines += block.count(b"\n")
+        return block
+
+
+def _proc_table() -> list[str] | None:
+    """`pid command-line` for every process, read straight from /proc. None if there is no /proc.
+
+    This exists because the engine's own container has no `ps`. The image is a slim Debian with
+    Python and nothing else, so `ps -eo pid=,command=` raised FileNotFoundError and live_writers
+    returned its "cannot tell" sentinel - which is exactly the answer that stops a pack. It
+    printed `<could not read the process table>` during cutover attempt 7 on 2026-08-18. Reading
+    /proc needs no package, and it is the same information ps would have formatted.
+    """
+    proc = Path("/proc")
+    if not proc.is_dir():
+        return None
+    rows = []
+    for d in proc.iterdir():
+        if not d.name.isdigit():
+            continue
+        try:
+            raw = (d / "cmdline").read_bytes()
+        except OSError:
+            continue  # the process exited between listdir and read; not a writer any more
+        cmd = raw.replace(b"\0", b" ").decode("utf-8", "replace").strip()
+        if not cmd:
+            try:
+                cmd = "[" + (d / "comm").read_text().strip() + "]"
+            except OSError:
+                continue
+        rows.append(f"{d.name} {cmd}")
+    return rows
+
+
 def live_writers() -> list[str]:
     """Processes currently able to append to the store. Empty list means it is safe to copy."""
-    try:
-        ps = subprocess.run(["ps", "-eo", "pid=,command="], capture_output=True, text=True,
-                            timeout=20).stdout
-    except (OSError, subprocess.SubprocessError):
-        # Cannot tell, so do not claim it is safe. The caller sees this as a blocked copy.
-        return ["<could not read the process table>"]
+    lines = _proc_table()
+    if lines is None:
+        try:
+            lines = subprocess.run(["ps", "-eo", "pid=,command="], capture_output=True, text=True,
+                                   timeout=20).stdout.splitlines()
+        except (OSError, subprocess.SubprocessError):
+            # Cannot tell, so do not claim it is safe. The caller sees this as a blocked copy.
+            return ["<could not read the process table>"]
     found = []
-    for line in ps.splitlines():
+    for line in lines:
         if any(hint in line for hint in WRITER_HINTS) and "store_migrate" not in line:
             found.append(line.strip()[:120])
     return found
@@ -216,25 +276,55 @@ def cmd_pack(root: Path, out: Path, force: bool) -> int:
         return 2
 
     files = walk(root)
-    manifest = {
-        "source": str(root),
-        "census": census(root),
-        "files": {str(f.relative_to(root)): {"bytes": _size(f), "sha256": sha256(f)}
-                  for f in files},
-    }
 
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = Path(tempfile.mkdtemp(prefix="store_migrate_"))
     try:
-        mpath = tmp / MANIFEST_NAME
-        mpath.write_text(json.dumps(manifest, indent=2, sort_keys=True))
-        # `w:gz` and not `w:xz`: the payload is mostly JSON lines and gzip already takes the bulk
-        # of it, while xz on a 500 MB tree costs minutes for a fraction more. A cutover window is
-        # the wrong place to spend that.
+        # The manifest describes the BYTES THAT WENT INTO THE TAR, hashed as they are written,
+        # not a separate stat-and-hash pass beforehand. Those are different numbers whenever the
+        # tree changes during the pack, and a 0.5 GiB tree takes about four minutes to compress.
+        #
+        # Cutover attempt 5 at 02:44 on 2026-08-18 failed on exactly that: `verify` reported
+        # "3 wrong size" and "ledger_lines 906950 -> 906967" for prospector.jsonl,
+        # scheduler/audit/2026-08-18.jsonl and scheduler/launchd.err.log. The copy was fine. The
+        # manifest was describing a store seventeen ledger lines older than the one in the
+        # tarball, so a good copy failed its own proof, inside the downtime window.
+        #
+        # `live_writers()` above still refuses a pack while the engine is up, and that stays the
+        # first line of defence. This is the second: even if something slips past it, or a log is
+        # appended to by a process the writer check does not name, the tarball still proves
+        # itself. The tar header size wins - `tarfile` writes exactly `tarinfo.size` bytes - so
+        # hashing that same prefix is what makes the two agree by construction.
+        entries: dict[str, dict] = {}
+        ledger_lines = 0
         with tarfile.open(out, "w:gz") as tar:
-            tar.add(mpath, arcname=MANIFEST_NAME)
             for f in files:
-                tar.add(f, arcname=str(f.relative_to(root)))
+                rel = str(f.relative_to(root))
+                info = tar.gettarinfo(str(f), arcname=rel)
+                if not info.isreg():
+                    tar.addfile(info)
+                    continue
+                h = hashlib.sha256()
+                with open(f, "rb") as fh:
+                    reader = _HashingReader(fh, h, info.size)
+                    tar.addfile(info, reader)
+                if rel == "prospector.jsonl":
+                    ledger_lines = reader.lines
+                entries[rel] = {"bytes": info.size, "sha256": h.hexdigest()}
+
+            # The census is re-derived from what was archived, for the same reason the hashes
+            # are. Re-walking the source here would put a count of the CURRENT tree next to
+            # hashes of the tree as it was four minutes ago, and `verify` compares the two.
+            c = census(root)
+            c["files"] = len(entries)
+            c["bytes"] = sum(e["bytes"] for e in entries.values())
+            c["dossiers"] = sum(1 for r in entries if Path(r).parent.name == "dossiers")
+            c["listings"] = sum(1 for r in entries if Path(r).parent.name == "listings")
+            c["ledger_lines"] = ledger_lines
+            manifest = {"source": str(root), "census": c, "files": entries}
+            mpath = tmp / MANIFEST_NAME
+            mpath.write_text(json.dumps(manifest, indent=2, sort_keys=True))
+            tar.add(mpath, arcname=MANIFEST_NAME)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -244,7 +334,7 @@ def cmd_pack(root: Path, out: Path, force: bool) -> int:
           f"files={c['files']:,} dossiers={c['dossiers']:,} "
           f"ledger_lines={c['ledger_lines']:,} db_integrity={c['db_integrity']}")
     print(f"  unpack with: mkdir -p DEST && tar -xzf {out.name} -C DEST")
-    print(f"  then prove it with: store_migrate.py verify DEST")
+    print("  then prove it with: store_migrate.py verify DEST")
     return 0
 
 
@@ -315,14 +405,27 @@ def cmd_verify(dest: Path, sample: int) -> int:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
+    # --store is accepted on BOTH sides of the subcommand. As a global option only, `pack OUT
+    # --store DIR` failed with "unrecognized arguments: --store", which is a true message and a
+    # useless one: the option exists, it is simply in the wrong position. That killed the 02:33
+    # cutover in phase 5, after the engine had already been stopped. Declaring it in a parent
+    # parser makes both orders work, so no caller can get the position wrong again.
+    # SUPPRESS, not None. A subparser writes its own defaults into the SAME namespace, so a
+    # plain `default=None` here would silently overwrite a --store given before the subcommand
+    # with None. SUPPRESS means "if it was not typed, do not touch the attribute at all".
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument("--store", default=argparse.SUPPRESS,
+                        help="store root (default: PROSPECTOR_STORE_DIR)")
     ap.add_argument("--store", default=None, help="store root (default: PROSPECTOR_STORE_DIR)")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("plan", help="what would move, and whether it is safe to move it now")
-    p = sub.add_parser("pack", help="build the payload and its manifest")
+    sub.add_parser("plan", parents=[common],
+                   help="what would move, and whether it is safe to move it now")
+    p = sub.add_parser("pack", parents=[common], help="build the payload and its manifest")
     p.add_argument("out", help="output .tar.gz")
     p.add_argument("--force", action="store_true",
                    help="pack even though something is writing the store (drills only)")
-    v = sub.add_parser("verify", help="check an unpacked tree against its manifest")
+    v = sub.add_parser("verify", parents=[common],
+                       help="check an unpacked tree against its manifest")
     v.add_argument("dest", help="directory the payload was unpacked into")
     v.add_argument("--sample", type=int, default=200,
                    help="files to re-hash; 0 hashes every file (default 200)")

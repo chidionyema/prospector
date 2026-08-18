@@ -32,14 +32,26 @@ sources:
       bought what. It lives at /data/store.db on a single 1 GB Fly volume in lhr, and until
       this automation existed nothing in this repo ever pulled it off Fly.
     fetch:
-      - fly
-      - ssh
-      - sftp
-      - get
-      - /data/store.db
+      # An authenticated HTTPS GET, not `fly ssh sftp get`. The engine container carries no
+      # platform CLI on purpose, so the old command could not run from where this job actually
+      # lives and the money database was fetched by hand from the laptop instead. curl works
+      # on Fly, on a rented Linux box and on a laptop, unchanged.
+      #
+      # The endpoint runs VACUUM INTO before it answers, so what arrives is a consistent
+      # snapshot rather than a live file that can be torn mid-page. `--fail` matters: without
+      # it curl writes the error body to {dest} and exits 0, and a 401 page would be recorded
+      # as the night's backup.
+      - curl
+      - --fail
+      - --silent
+      - --show-error
+      - --max-time
+      - "300"
+      - --header
+      - "X-Internal-Key: ${STORE_INTERNAL_API_KEY}"
+      - --output
       - "{dest}"
-      - --app
-      - prospector-store-api
+      - https://api.mumchimp.com/internal/backup/database
     key: money-db/store.db
     # Opened with PRAGMA integrity_check before it is allowed to count. A live SQLite file
     # copied byte-for-byte can be torn; a torn copy fails this check and no backup is
@@ -54,12 +66,19 @@ sources:
       cannot be decrypted by a restored instance holding a fresh key. A restore of the
       database alone would look successful and hand every buyer a broken download link.
     fetch:
-      - sh
-      - -c
-      - >-
-        fly ssh console --app prospector-store-api
-        -C "tar -czf /tmp/keyring.tgz -C /data keys" >/dev/null &&
-        fly ssh sftp get /tmp/keyring.tgz "{dest}" --app prospector-store-api
+      # Same .tar.gz the old two-step `fly ssh` command produced, built by the API itself, so
+      # everything already in the bucket and the restore procedure stay one format.
+      - curl
+      - --fail
+      - --silent
+      - --show-error
+      - --max-time
+      - "120"
+      - --header
+      - "X-Internal-Key: ${STORE_INTERNAL_API_KEY}"
+      - --output
+      - "{dest}"
+      - https://api.mumchimp.com/internal/backup/keyring
     key: data-protection-keys/keyring.tgz
     verify: nonempty
     keep: 30

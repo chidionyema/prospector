@@ -1095,7 +1095,12 @@ def _escalation_order(cfg: Config) -> list[str]:
     only") put `minimax` at the head of both, and the two sentences stopped meaning the same
     thing.
     """
-    quality = list(cfg.artifact_operator or [])
+    # `getattr`, not `cfg.artifact_operator`, because `cfg` is optional on this path: several
+    # callers and every budget-rail test pass `cfg=None` to `_generate_pack_content`. A plain
+    # attribute read raised `AttributeError: 'NoneType' object has no attribute
+    # 'artifact_operator'` and took six tests in tests/unit/test_tick_budget_rails.py down with
+    # it. No config means no chain to escalate to, which is the empty list this already returns.
+    quality = list(getattr(cfg, "artifact_operator", None) or [])
     marketing = list(getattr(cfg, "marketing_operator", None) or quality)
     lead = marketing[0] if marketing else None
     return [kind for kind in quality if kind != lead]

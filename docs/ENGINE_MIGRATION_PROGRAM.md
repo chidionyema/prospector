@@ -211,7 +211,7 @@ with the daemons still running untouched.
 
 > **As the founder**, I want to watch the Fly engine do a full tick before it owns anything.
 
-1. Create deploy/fly/engine.fly.toml (no such file yet) — 1 machine, `min_machines_running = 1`, `auto_stop_machines = false`,
+1. `deploy/engine/fly.toml` — 1 machine, `min_machines_running = 1`, `auto_stop_machines = false`,
    volume `engine_data` → `/data`, `PROSPECTOR_STORE_DIR=/data/store`. **HYPOTHESIS on size:**
    measured RSS today is scheduler 19 MB + consumer 32 MB + console 31 MB + control-center 10 MB
    ≈ 92 MB at rest, so `shared-cpu-4x` (4 cores / 1 GB) should fit and `performance-1x` (1 core /
@@ -452,10 +452,12 @@ not move the store, and moving the store does not move the code.
 ### 10.2 What else is on this box
 
 - **Four GitHub Actions runners** (`mumchimp-mac`, `-2`, `-3`, `-4`), all online and busy.
-  Covered by EDGE-12, and **already solved**: every workflow reads
-  `${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}`, and the repo variable `CI_RUNS_ON` is set to
-  `self-hosted`. `gh variable delete CI_RUNS_ON` moves all CI to GitHub's machines in one
-  command. No code change needed, tonight or ever.
+  This bullet used to say the problem was "already solved", because `gh variable delete
+  CI_RUNS_ON` sends every job to GitHub's hosted machines in one command. **That was wrong, and
+  the founder said so:** *"either to flip CI no why would you do this? we have hosted runner and
+  github is billing us"*. Hosted minutes are metered, and on 2026-08-16 they stopped entirely
+  when a payment failed — five jobs, zero steps, no logs. Deleting the variable is an emergency
+  lever, not the migration. The runners move for real: **§10.6**.
 - **Eight Hermes jobs** (`ai.hermes.*`: coordinator, gateway, otto-server, rsi, watchdog,
   keepawake, idle-engine, runaway-reaper). §3 recommends these stay put. They do not read the
   prospector store.
@@ -534,3 +536,294 @@ names them). Carrying a dead key to a new host is how a dead tier gets quietly r
 `api.mumchimp.com` (publishing), Stripe, and the R2 endpoint
 (`<account>.r2.cloudflarestorage.com`). All public HTTPS, no allowlisting, nothing that depends
 on being on this network. **This is the part of the migration with no hidden dependency.**
+
+### 10.6 The CI runners — BUILT 2026-08-18
+
+**Founder, 2026-08-18:** *"as part of our migration don't forget our github hosted runners
+also"*, and earlier, *"even our runners could move to fly also"*.
+
+**Measured before building anything:**
+
+```
+$ gh api repos/chidionyema/prospector/actions/runners --jq '.runners[] | "\(.name)\t\(.status)\t\(.os)\t\(.busy)"'
+mumchimp-mac    online  macOS   true
+mumchimp-mac-2  online  macOS   true
+mumchimp-mac-3  online  macOS   true
+mumchimp-mac-4  online  macOS   true
+
+$ gh variable list | grep CI_RUNS_ON
+CI_RUNS_ON      self-hosted     2026-08-17T23:37:53Z
+```
+
+All four are launchd jobs under `~/actions-runner*` on this laptop. Closing the lid stops CI
+for the whole repository. Same problem as the engine, same answer.
+
+**Why a Linux container and not a macOS one.** `.github/workflows/ci.yml:16-18` records that the
+jobs are OS-portable — no `apt-get`, no `sudo`, no docker, no service containers. Every
+toolchain arrives through an action that fetches its own copy, and the python job deliberately
+uses `uv venv` rather than the system interpreter (`ci.yml:190-208`) after `setup-python` failed
+on the Macs with `mkdir: /Users/runner: Permission denied`. So the image installs **no language
+runtimes at all**: it installs what those actions need in order to unpack and run what they
+download.
+
+**Built:**
+
+| File | What it is |
+|---|---|
+| `deploy/runner/Dockerfile` | Ubuntu 24.04 + the pinned `actions/runner` tarball. The one non-obvious dependency is `libicu74`: the runner agent is itself a .NET program and refuses to start without ICU, failing as "Couldn't find a valid ICU package" rather than as a missing command. |
+| `deploy/runner/entrypoint.sh` | Asks GitHub for a registration token at every start, registers `--ephemeral`, runs one job, exits. Deregisters on the way out through a trap. |
+| `deploy/runner/fly.toml` | `prospector-ci`, no public IP, `restart policy = always`, `shared-cpu-4x` / 8 GB. |
+| `deploy/runners.sh` | `up N` / `down` / `status` / `laptop-off` / `laptop-on`. |
+
+**Why ephemeral.** A long-lived runner carries the last job's `node_modules`, `.venv`, `obj/`
+and half-written `store/` into the next one. On the Macs `_work/prospector/prospector` is a
+permanent directory, and "green on runner 2, red on runner 4" was a real symptom. A container
+that exits after one job cannot carry state forward. The cost is a fresh checkout per job, and
+`actions/cache` absorbs most of it because the caches live in GitHub's cache service.
+
+**The integration is one label.** The runners come up carrying `self-hosted`, which is exactly
+what `vars.CI_RUNS_ON` asks for. Nothing in `.github/` changes. Jobs go to whichever runner is
+free, Fly or Mac, so the two fleets coexist — and that coexistence *is* the migration: bring the
+Fly runners up, watch `runners.sh status` show them taking jobs, then `runners.sh laptop-off`.
+
+`laptop-off` refuses to run while no non-macOS runner is online. `runs-on: self-hosted` does not
+fall back to GitHub-hosted; with no runners the jobs queue forever and report nothing, which is
+the same silent failure mode as a stale dashboard.
+
+**Credential.** The container needs a fine-grained PAT with `Administration: read and write` on
+this one repository, and nothing else. That single permission can add and remove runners; it
+cannot read code, push, or reach another repo. It is deliberately **not** the money keys: a
+runner executes code from every pull request, including one an outsider opened.
+`deploy/runners.sh up` refuses to start without `GITHUB_RUNNER_PAT` and prints the exact
+settings page and permission to use.
+
+**Portability, same contract as the engine.** `PROSPECTOR_RUNNER_TARGET` names an adapter in
+`deploy/targets/`. The image calls no platform API — a runner makes only outbound calls, so
+moving it is `fly deploy` becoming `docker run` and nothing else.
+
+## 11. Cutover log — the five attempts and what each one fixed
+
+Every defect below was found by running the cutover, not by reading it. Each is now fixed in the
+script, so a repeat run cannot hit it again. Attempts 2, 3 and 4 failed with the engine already
+stopped, which is why every fix moves the check EARLIER.
+
+| # | Time | Failed at | Cause | Fix |
+|---|------|-----------|-------|-----|
+| 1 | 02:27 | phase 3, build | `failed to calculate checksum ... "/requirements.txt": not found` — the docker build context was `deploy/`, but every `COPY` in the engine Dockerfile is repo-root-relative | `REPO_ROOT` in `deploy/targets/fly.sh`; `fly deploy "$REPO_ROOT" --config .../fly.toml` |
+| 2 | 02:30 | phase 5, pack | `can't open file '.../prospector/scripts/store_migrate.py'` — the adapter read its TOOLS from the main checkout, where the new script does not exist | `TOOLS` in `deploy/targets/laptop.sh`, plus a `t_preflight` check so a missing tool fails in phase 1 |
+| 3 | 02:36 | phase 5, pack | `store_migrate.py: error: unrecognized arguments: --store` | parent parser with `default=argparse.SUPPRESS`, so `--store` works on both sides of the subcommand |
+| 4 | 02:40 | phase 6, ship | `Error: app prospector-engine has no started VMs` — `fly scale count 1` returns when the machine is CREATED, and the next command is `fly ssh console` | `t_start` polls `fly machines list` until `state=started`, up to 10 minutes, and dumps the logs if it never gets there |
+| 5 | 02:44 | phase 6, verify | `STORE_MIGRATE VERIFY FAIL — 3 wrong size`, `ledger_lines 906950 -> 906967`. The copy was good; the manifest was not. It was built by a stat-and-hash pass BEFORE the tar, and a 0.5 GiB tree takes four minutes to compress, so it described a store 17 ledger lines older than the tarball | `cmd_pack` hashes the bytes as `tarfile` writes them (`_HashingReader`) and derives the census from what was archived, so the tarball proves itself by construction |
+| 5b | 02:46 | the cause of 5 | A generation run started three minutes AFTER phase 4 reported "no writers live" and appended to `prospector.jsonl`. One stop-and-check cannot see something that comes back after the check | `t_stop` now does three rounds of bootout, `pkill`, `pkill -9`, a 10s settle, then looks again, and calls the store quiet only when a round finds nothing to do |
+| 6 | 02:55 | phase 6, verify | The same numbers as attempt 5 — `ledger_lines 906950 -> 906967` — from a pack that had just reported 907,000. `fly ssh sftp shell` printed `put ...: file exists on VM` and exited 0, so the script unpacked and verified the tarball attempt 5 had left on the volume | `t_put` clears the destination first, then reads the byte count back from inside the container and refuses if it does not match |
+| 6b | — | why it could hide | A transfer that always exits 0 is not a transfer. The stale numbers also cost diagnosis time, because they pointed at a bug that was already fixed | same fix; the success line now reads `uploaded /data/store.tar.gz (N bytes, confirmed on the VM)` |
+| **7** | 03:03:49 | **none — SUCCEEDED** | n/a | The seventh attempt carried every fix from 1-6b. Stopped and fenced the laptop, packed 3,530 files, uploaded to the volume, verified 907,032 ledger lines and 2,935 dossiers inside the container, started supervisord and confirmed six programs RUNNING. Handed over at 03:09:29. **Downtime 5m40s.** |
+
+Downtime from each failure was bounded by the rollback, which restarted all seven launchd jobs
+every time: 6s on attempt 2, 3m35s on attempt 4. No customer data was lost and no state was
+deleted — the packed tarball is kept at `$TMPDIR/prospector-cutover` on every path.
+
+**The runner image had one of the same class.** `actions/runner` 2.328.0 ships an
+`installdependencies.sh` that asks apt for `libicu72`, which does not exist on Ubuntu 24.04. The
+build died with `E: Unable to locate package libicu72`, which reads like a broken base image.
+`deploy/runner/Dockerfile` installs the 24.04 equivalents itself and does not run that script.
+
+## 12. After the cutover — what runs where, and what happens when it breaks
+
+### 12.1 Certified state, 2026-08-18 03:09 local
+
+Every line here has a command behind it. Run the command; do not trust the line.
+
+| What | Where it runs now | Proof |
+|---|---|---|
+| Scheduler, consumer, watchdog, both backup jobs, ops console | Fly app `prospector-engine`, machine `80d34da6636478`, region `lhr`, volume `vol_42kyqo6g0kdzew14` | `supervisorctl status` reports six programs RUNNING; `deploy/targets/fly.sh` `t_health` reports "started, ledger present" |
+| The engine's state | The Fly volume, mounted at `/data` | 907,032 ledger lines, 3,530 files, 2,935 dossiers, database integrity ok — all four proved inside the container by `store_migrate.py verify` |
+| The laptop | Stopped, and fenced so it cannot restart itself | `scripts/engine_failover.py status` reports `laptop DOWN fenced=True` with no scheduler process |
+| Which side is live | Recorded outside both of them, in `~/.prospector/ACTIVE` | `scripts/engine_failover.py status` prints it first |
+| The standby copy | `~/.prospector/standby`, refreshed every 15 minutes | `status` prints its age in minutes |
+
+**Downtime actually spent: 5 minutes 40 seconds**, 03:03:49 to 03:09:29. That is the seventh
+attempt. The six before it all failed with the engine already stopped, and all six rolled back
+cleanly — §11 is the list.
+
+### 12.2 The laptop had to be fenced, not just stopped
+
+Eight minutes after the cutover handed over, `com.prospector.scheduler` was running again on the
+laptop as pid 47458 and had appended 44 lines to the laptop ledger. Two engines with two spend
+ledgers can spend twice the daily cap, which is EDGE-1 in §4, live.
+
+`launchctl bootout` unloads a job. It does not stop the job being loaded again, and the plist is
+still on disk. `laptop.sh` `t_stop` now also runs `launchctl disable` on every label it finds,
+which is a persistent override that makes `bootstrap` refuse. `t_start` enables before it
+bootstraps, in that order, because `bootstrap` silently refuses a disabled job.
+
+The 44 orphan lines were checked before anything else: 40 `main` and 4 `signal_pipeline` log
+rows, 0.00 USD of spend. There was nothing to reconcile into the Fly ledger.
+
+### 12.3 Automatic failover, and why it is hard to fire
+
+`scripts/engine_failover.py` is the control plane. It is one script because the same answer has
+to be available to a launchd job at 4am, to the ops console, and to a person at a terminal.
+
+```
+engine_failover.py status      both platforms at once, and how stale the standby copy is
+engine_failover.py check       one poll; what the watchdog job runs every minute
+engine_failover.py sync        pull Fly's ledger and database down to the standby copy
+engine_failover.py arm         turn automatic failover on
+engine_failover.py switch      move the engine deliberately, either direction
+```
+
+Failing over wrongly costs more than not failing over, because the wrong failover leaves two
+engines running. So five conditions must all hold:
+
+1. **Armed.** Disarmed is the default, and a successful failover disarms itself so it cannot flap.
+2. **The marker says Fly is the active side.** It never moves the engine to the side already
+   running it.
+3. **Fly's own API answered, and said the machine is not started.** An unreachable Fly API is far
+   more likely to be this laptop's network than a Fly outage. Unreachable raises an alert and
+   does nothing.
+4. **Five consecutive polls agree**, one minute apart. One bad poll is a blip.
+5. **`fly scale count 0` succeeds first.** The old side is fenced before the new one starts. If
+   the fence fails the failover is abandoned.
+
+What it costs when it fires is whatever the Fly ledger gained since the last `sync`. That is why
+`sync` runs every fifteen minutes and why `status` prints the number in minutes: it is the
+exposure, and it is meant to be looked at.
+
+### 12.4 The ops console runs the switch
+
+The console gets one read view, `engine_location`, and three actions: `engine.switch`,
+`engine.arm`, `engine.disarm`. The Engine page shows both platforms side by side, always, so it
+can never show one and imply the other. `engine.switch` starts the real `deploy/cutover.sh` and
+returns immediately with a log path, because a console that waits six minutes for an HTTP
+response is a console that times out halfway through a migration.
+
+### 12.4a The watchdog has to be watched too
+
+Three launchd jobs on this laptop make failover real:
+
+| Label | Every | What it runs |
+|---|---|---|
+| `com.prospector-control.failover-watch` | 60s | `check` — one poll of the five conditions |
+| `com.prospector-control.standby-sync` | 900s | `sync` — pull Fly's ledger and database down |
+| `com.prospector-control.receipt-bridge` | 900s | `receipts` — carry the container's exit codes to Hermes |
+
+`deploy/install_failover_watch.sh` writes and loads all three. Three things about them are
+deliberate, and each is a defect this estate has already had.
+
+**The label prefix is `com.prospector-control.`, not `com.prospector.`** `laptop.sh` `t_stop` and
+`decommission.sh` both disable every label matching the latter. If the watchdog carried that
+prefix, stopping the laptop would switch off the job whose only purpose is to bring the laptop
+back.
+
+**The plist runs a frozen copy, not a path into a checkout.** The first version looked for a newer
+copy by globbing `~/Documents`. macOS protects that directory from a launchd agent, and it does
+not deny the read — it blocks. The job sat in bash's `glob_filename` with an empty log while
+`launchctl print` reported `state = running` and `last exit code = (never exited)`. A watchdog
+that hangs is worse than no watchdog, because `launchctl list` shows it alive. The launcher now
+runs `~/.prospector/bin/engine_failover.frozen.py` and never reads `~/Documents`. The installer
+refreshes that copy, and refuses to install if the script has grown an import outside the standard
+library, because the frozen copy runs under the system python.
+
+**PATH names `/usr/local/bin`.** launchd does not inherit a login shell's PATH and `fly` lives
+there. Without it every poll would report Fly unreachable, which under rule 3 alerts and does
+nothing — so the failure would be quiet.
+
+### 12.4b Reaching the console after the move
+
+The console moved with everything else. It runs in the container as supervisord program
+`ops-console` and answers HTTP 200 on port 8611. It has no public address, and that is on
+purpose: it can move the engine, arm failover and act on the money rail, so putting it on the
+open internet is a decision, not a detail. `fly ips list -a prospector-engine` returns an empty
+table, which is the proof there is no public IP.
+
+The founder reaches it at the same URL as before, `http://localhost:8611`. A launchd job,
+`com.prospector-control.console-proxy`, holds `fly proxy 8611:8611 -a prospector-engine` open
+and restarts it if it drops. Nothing new is exposed; the traffic goes over Fly's private
+WireGuard network.
+
+One trap, and it cost an hour. Next was started with `-H 0.0.0.0`, which is the IPv4 wildcard.
+**Fly's private network is IPv6 only.** So the console answered HTTP 200 on 127.0.0.1 inside the
+container while every proxied request from the laptop timed out, and `/proc/net/tcp6` had no
+listener on 8611 at all. The bind is `-H ::` now, which is dual stack on Linux. Any service that
+has to be reachable across a Fly private network has the same requirement.
+
+### 12.4c An adapter run as a script deployed nothing, three times
+
+`deploy/targets/fly.sh` was a library. It defined eleven functions and had no dispatch at the
+bottom, because `deploy/cutover.sh` sources it. So `bash deploy/targets/fly.sh t_release` defined
+every function, reached the end of the file and exited 0. Three deploys in a row reported success,
+printed nothing, and `fly releases` never moved off v3. The fix carrying the nightly backup repair
+sat undeployed for over an hour while the log said it had shipped.
+
+All three adapters now end with a dispatch guarded by `[ "${BASH_SOURCE[0]}" = "${0}" ]`, so the
+file still works when sourced and refuses an unknown verb with exit 2 when run. This is the same
+class as every other failure in §11: the failure mode was a silent success.
+
+### 12.5 Business risk register
+
+| # | Risk | State | What closes it |
+|---|---|---|---|
+| R1 | Two engines running at once, forking the spend ledger | **CLOSED** | The laptop is disabled, not just stopped (§12.2). Fly runs one machine. The cutover stops and fences the source before it starts the target. |
+| R2 | The Fly machine dies | **CLOSED** | Armed automatic failover moves the engine to the laptop. Exposure is the standby copy's age, currently bounded at fifteen minutes. |
+| R3 | Fly as a company, or this account, becomes unavailable | **OPEN, PLANNED** | `deploy/targets/sshdocker.sh` exists and implements the full eleven-verb contract, but it has never been run against a real host. One rehearsal cutover to a rented Linux box closes it. |
+| R4 | The money database is not backed up from Fly | **CLOSED** | The two artifacts that cannot be rebuilt - the money database and the ASP.NET Data Protection key ring - were fetched with `fly ssh sftp get`. The engine container carries no platform CLI on purpose, so the nightly job could not fetch either of them from where it runs, and they were bridged by hand from the laptop. Store.Api now serves both over an authenticated HTTPS GET (`/internal/backup/database`, `/internal/backup/keyring`, `X-Internal-Key`, fail closed). The database endpoint runs `VACUUM INTO` first, so what arrives is a consistent snapshot rather than a live file that can be torn. `curl --fail` matters and is used: without it curl writes the error body to the destination and exits 0, and a 401 page would be recorded as the night's backup. |
+| R5 | The engine's own nightly backup silently failed on Fly | **CLOSED, PROVEN** | Two defects, both fixed and both proved on release v5. `backup_store.py` built its paths from `__file__`, so it looked beside the code instead of at the volume. Then the git mirror failed with `Need a repository to create a bundle`, because the container ships the code and not the checkout, and that failed the whole run after the store had already uploaded. The mirror is skipped, out loud, when there is no work tree, and runs on the laptop under `--mirror-only`. Receipt: `STORE_BACKUP PASS dossiers=2968 verified=8/8`, exit 0. |
+| R6 | Monitoring grades the engine from launchd receipts that no longer exist | **CLOSED** | `deploy/engine/receipt.sh` wraps the two graded jobs in the container and writes each run's real exit code to a file on the volume. `engine_failover.py receipts`, on a fifteen-minute watch job, pulls those files down and appends them to the Hermes ledger, keyed by run so a stopped job cannot look alive. It invents nothing: no receipt on the container means no line written and the capability goes DARK, which is the true answer. |
+| R7 | Hermes itself still runs on the laptop | **OPEN, NEXT PHASE** | §12.6. |
+| R8 | CI runs on four Mac runners in this room | **OPEN, BLOCKED** | The Fly runner image is built and the fleet script is written. It needs a fine-grained `GITHUB_RUNNER_PAT`, which only the founder can mint. |
+| R9 | Secrets exist only on this laptop | **ACCEPTED** | `.env` is deliberately the source of truth, and it is encrypted inside the offsite backup. Any platform is filled from it with one `t_secrets` call. |
+
+### 12.6 Next phase — move Hermes the same way (founder directive, 2026-08-18)
+
+The founder's instruction: *"our hermes agent also runs from laptop, we may as well migrate it
+also following the same pattern as the rest, this frees up the laptop properly, as fallback etc
+and ops enabled."*
+
+This supersedes §3, which recommended Hermes stay out of scope. That recommendation was right for
+the engine cutover, which had to be one night. It is wrong as a permanent answer, because the
+whole point of the migration is that nothing business critical runs on a laptop, and Hermes is
+the thing that watches everything else. A monitor that dies with the room is not a monitor.
+
+It follows the pattern already built, and reuses it rather than repeating it:
+
+- **One container image**, and no platform API call inside it. Same rule as the engine.
+- **A `deploy/targets/` adapter**, so the same three targets — `fly`, `laptop`, `sshdocker` —
+  work for Hermes with no new concepts.
+- **`deploy/cutover.sh` unchanged.** It already does not know what it is moving; both ends are
+  adapters.
+- **The laptop stays a proven standby**, with the same disable fence and the same
+  `engine_failover.py` treatment, so Hermes can be switched back from the ops console.
+
+What has to be worked out first, because Hermes is not shaped like the engine:
+
+1. **It is a Telegram front door.** Long polling is outbound HTTPS, which the contract already
+   provides. A webhook would need an inbound hostname, which the engine deliberately does not
+   have. Long polling is therefore the portable choice.
+2. **It shells out to Claude Code.** The engine hit this in §1 and the answer was that Claude Code
+   must be an option and never a dependency. Hermes needs the same treatment before it can run
+   anywhere but this Mac.
+3. **Its receipts are launchd receipts.** R6 above is the same problem. Solving it for Hermes
+   solves it for the engine.
+4. **It reads the laptop's own state** — process tables, launchd, disk. Some of what Hermes
+   watches genuinely lives on this laptop, and that part cannot move. The split has to be drawn
+   before the container is built: what watches the estate moves, what watches this Mac stays and
+   reports inward.
+
+Estimate, on the same basis as §5: 2 days. One day to draw the split at point 4 and remove the
+Claude Code dependency at point 2, one day for the image, the adapter and a rehearsal cutover.
+
+### 12.7 The Streamlit control centre is deleted — checked, 2026-08-18
+
+The founder's instruction was *"streamlit control centre needs to be deleted permanently, both code
+and everything."* It was done. PR #309 was closed, which made it look lost, but the same work landed
+on `main` in #312 (`18a6104`).
+
+Checked on this branch rather than assumed: `prospector/control_center/` does not exist, no module
+under `prospector/`, `tests/`, `scripts/` or `tools/` imports it, and `requirements.txt:79` carries
+only the note that streamlit was what pulled numpy in transitively. The one surviving mention is the
+runtime directory `store/control_center/`, which is where the job runner keeps its logs; that is a
+folder name, not the deleted console.
+
+A checkout that still shows those files is behind `main`. This was written after grepping the shared
+developer checkout, which was, and reading its hits as current.
