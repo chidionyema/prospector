@@ -123,3 +123,54 @@ jobs:
       run: npm test
     - name: Build
       run: npm run build
+  dotnet-on-fly:
+    runs-on: fly
+    timeout-minutes: 30
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up .NET ${{ env.DOTNET_VERSION }}
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    - name: Cache NuGet packages
+      if: runner.environment != 'self-hosted'
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+        restore-keys: 'nuget-${{ runner.os }}-
+
+          '
+    - name: Restore dependencies
+      run: dotnet restore store_platform/src/Store.Tests/Store.Tests.csproj
+    - name: Build
+      run: dotnet build store_platform/src/Store.Tests/Store.Tests.csproj --no-restore -m:1
+    - name: Test
+      run: dotnet test store_platform/src/Store.Tests/Store.Tests.csproj --no-build --verbosity normal
+        -m:1
+  engine-on-fly:
+    runs-on: fly
+    timeout-minutes: 30
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        enable-cache: false
+    - name: Python ${{ env.PYTHON_VERSION }} in a shared venv
+      run: "set -euo pipefail\nROOT=\"${VENV_ROOT:-$PWD/.ci-venvs}\"\nmkdir -p \"$ROOT\"\nKEY=\"py${PYTHON_VERSION}-$(shasum\
+        \ -a 256 requirements.txt | cut -c1-16)\"\nVENV=\"$ROOT/$KEY\"\nif [ ! -x \"$VENV/bin/python\"\
+        \ ]; then\n  TMP=\"$ROOT/.building-$KEY-$$\"\n  rm -rf \"$TMP\"\n  uv venv --relocatable --python\
+        \ \"${PYTHON_VERSION}\" \"$TMP\"\n  VIRTUAL_ENV=\"$TMP\" uv pip install -r requirements.txt\n\
+        \  mv -n \"$TMP\" \"$VENV\" 2>/dev/null || true\n  rm -rf \"$TMP\"\n  echo \"built $VENV\"\nelse\n\
+        \  echo \"reused $VENV\"\nfi\n# Fail loudly rather than run the suite against a half-built tree.\n\
+        \"$VENV/bin/python\" -c 'import pytest' || { echo \"shared venv is incomplete\"; exit 1; }\necho\
+        \ \"$VENV/bin\" >> \"$GITHUB_PATH\"\necho \"VIRTUAL_ENV=$VENV\" >> \"$GITHUB_ENV\"\n\"$VENV/bin/python\"\
+        \ --version\n"
+    - name: Engine verification (import + lint + generation budget)
+      run: ./scripts/verify_engine_change.sh --no-tick
+    - name: The lane map still guards the engine
+      run: python -m pytest tests/unit/test_popdd_gate_lanes.py -q --tb=short -p no:warnings
+    env:
+      UV_CACHE_DIR: /home/runner/.cache/uv
+      VENV_ROOT: /home/runner/ci-venvs
