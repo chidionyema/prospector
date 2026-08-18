@@ -38,8 +38,8 @@ export function PageHeader({ eyebrow, title, description, action, className }: P
             token carries its own clamp, so this is still responsive without a breakpoint here.
             No `leading-tight`/`tracking-tight`: both tokens already carry their own line-height and
             letter-spacing, and stacking the utilities on top applied the correction twice. */}
-        <h1 className="text-h1 font-semibold text-text">{title}</h1>
-        {description && <p className="mt-2 max-w-[60ch] text-body text-muted">{description}</p>}
+        <h1>{title}</h1>
+        {description && <p className="mt-2 max-w-[60ch] lede">{description}</p>}
       </div>
       {action && <div className="shrink-0 sm:pb-0.5">{action}</div>}
     </header>

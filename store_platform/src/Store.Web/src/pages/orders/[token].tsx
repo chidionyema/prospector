@@ -49,7 +49,7 @@ export default function OrderPage() {
       >
         <div className="flex min-h-dvh items-center justify-center px-6">
           <div className="text-center">
-            <h1 className="text-h2 font-semibold text-text mb-2">Order not found</h1>
+            <h1 className="mb-2">Order not found</h1>
             <p className="text-muted">{error}</p>
           </div>
         </div>
@@ -78,7 +78,7 @@ export default function OrderPage() {
     >
       <div className="flex min-h-dvh items-center justify-center px-6 py-16">
         <div className="bg-surface rounded-md border border-border p-8 max-w-md w-full mx-4">
-          <h1 className="text-h2 font-semibold text-text mb-2">Thank you for your purchase</h1>
+          <h1 className="mb-2">Thank you for your purchase</h1>
           <p className="text-muted mb-6">
             Your order for <strong>{order?.packTitle}</strong> is ready.
           </p>

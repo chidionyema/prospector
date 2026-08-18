@@ -1,5 +1,35 @@
 @import "tailwindcss";
 @import "./tokens.css";
+/* THE DRAWINGS' OWN STYLESHEET, in the `components` layer on purpose.
+   Unlayered CSS beats every layered rule, so a plain @import here would let `.row` win over any
+   Tailwind utility a component sets. In `components` it sits above Tailwind's base and below its
+   utilities, which is the precedence we want: the drawing supplies the default look, a utility
+   still overrides it where a component means to. */
+@import "./mockup.css" layer(components);
+
+/* THE FOOTER COLUMN HEADINGS. The drawing writes them as <h6>; this app renders <h2>, because the
+   footer follows every page's <h1> and an <h6> there skips four levels (axe `heading-order`).
+   Same declarations as `.f-col h6` in the copied stylesheet, so the look is identical. */
+@layer components {
+  /* THE DRAWING WRITES SUB-HEADS AS <h3>. Pages that already spent their <h3> on a level below
+     need the same look one level up, and heading order is not negotiable, so the drawing's
+     `h3.sub` declarations are repeated for the other two levels. Same numbers, no new design. */
+  h2.sub,
+  h4.sub {
+    font-size: clamp(19px, 3.4vw, 23px);
+    letter-spacing: -0.02em;
+    font-weight: 655;
+  }
+
+  .f-col h2 {
+    font-size: 12px;
+    font-weight: 650;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 14px;
+  }
+}
 
 html {
   /* `light only`, not `light` (MASTER-BRIEF §9, 2026-08-17). Plain `light` states a preference

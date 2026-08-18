@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { Breadcrumbs, Button, Logo, Icon } from '@/components/ui';
+import { Breadcrumbs } from '@/components/ui';
 import { CartButton } from '@/components/cart/CartButton';
 import { LEGAL, BRAND } from '@/lib/config';
 import { SEARCH_OPEN_EVENT } from '@/lib/searchEvent';
@@ -190,272 +190,83 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
         Only the border COLOUR changes, never whether the border is there. Adding and removing the
         1px box would move the whole page by a pixel on the first scroll of every visit.
       */}
+      {/* THE DRAWING'S HEADER, copied from `mockups/*.html` <header class="hdr">.
+
+          It emits the drawing's own class names, which `src/styles/mockup.css` styles. That file
+          is the drawings' stylesheet copied byte-for-byte, so the header is the drawing rather
+          than a translation of it: 58px tall, a 1080px wrap on a 20px gutter, the wordmark on the
+          left with `margin-right:auto`, the nav and the account link hidden below 920px.
+
+          Two things the drawing cannot show, both kept: the cart button, which renders nothing
+          until there is something in it, and the hide-on-scroll transform below.  */}
       <header
-        /* OPAQUE, 2026-08-14 (founder, from a screenshot): "The header doesn't mask what scrolls
-           under it -- that's the single most visible bug on this screen." It was `bg-bg/90` with
-           `backdrop-blur-md`, i.e. 10% of whatever is passing underneath printed straight through
-           the nav, blurred. A blur does not hide text, it smears it: body copy sliding up behind
-           the wordmark reads as a rendering fault, and it is worst exactly where the page is
-           busiest. The blur goes with it -- it was the compensation for the transparency, and with
-           an opaque ground it is a per-frame compositing cost that buys nothing.
-
-           The hairline still only changes COLOUR on scroll (see the note above): with an opaque
-           header the border is no longer what separates header from content, so it is free to stay
-           invisible at rest and appear as scroll feedback. */
-        // `data-scrolled` is what globals.css reads with :has() to step --h-header from 5rem to
-        // 4rem. The filter bar's sticky offset and every anchor's scroll clearance measure from
-        // that token, so they contract with the header instead of having to be told about it.
-        data-scrolled={scrolled ? 'true' : 'false'}
-        className={`sticky top-0 z-30 w-full border-b bg-bg pt-[env(safe-area-inset-top)] transition-[color,background-color,border-color,transform] duration-200 md:!translate-y-0 ${
-          scrolled ? 'border-border' : 'border-transparent'
-        } ${headerHidden ? '-translate-y-full' : 'translate-y-0'}`}
+        className="hdr"
+        style={{
+          borderBottomColor: scrolled ? 'var(--line-2)' : 'var(--line)',
+          transform: headerHidden ? 'translateY(-100%)' : 'none',
+          transition: 'transform .2s ease',
+        }}
       >
-        {/* COMPACT ON SCROLL, MORE ROOM AT REST (bumped 2026-08-09, founder override -- header
-            was reading as sitting too close to the top edge and to the content below it).
-            `h-20` (80px) is now the resting height, was `h-16` (64px); past the same `scrolled`
-            threshold that turns the hairline on (4px, above), it steps to `h-16` (64px), was
-            `h-14` (56px) -- a 16px reclaim, twice the old 8px, so the compact state still reads
-            as a deliberate contraction rather than the new resting height with a rounding error.
-            The logo and nav sizes are untouched: shrinking the row instead of the content keeps
-            every tap target's own 44px floor intact rather than scaling toward it.
-            `transition-[height]` rides the same 200ms as the border so the two reads as one
-            event, not two. */}
-        <div
-          className={`${SHELL} flex items-center justify-between gap-4 transition-[height] duration-200 ${
-            scrolled ? 'h-16' : 'h-20'
-          }`}
-        >
-          {/* Left: Brand & Main Nav */}
-          {/* `h-full` here and on the `<nav>` below is load-bearing, not decoration: the active
-              nav item draws its "you are here" rule with `after:-bottom-px` on its OWN box, so
-              every box between that link and this 64/80px row has to carry the row's height or the
-              rule lands under the text instead of on the header's bottom border. Measured on /faq
-              at 1440 on 2026-08-13 before this fix: row 81px, link box 19.6px, rule drawn 31px
-              short. `items-center` is unchanged, so nothing moves vertically. */}
-          <div className="flex h-full items-center gap-10">
-            {/* `min-h-11` (44px, WCAG 2.5.8), same explicit floor the Search and Menu buttons
-                beside it already state. `<Logo className="text-h2" />` is a 24px text line, and
-                this link had no padding, so the one control that takes a visitor home measured
-                24px tall on a phone -- verified by DOM probe at 390px on 2026-08-13, the only
-                sub-40px target left in the header. The header row is 64-80px and the link is
-                centred in it, so growing the box to 44px moves nothing on the page. */}
-            <Link href="/" className="flex min-h-11 items-center transition-opacity hover:opacity-80" aria-label={`${BRAND.name} home`}>
-              {/* REVERTED 2026-08-10 (founder: the mobile header must never lose the brand
-                  name -- an icon-only mark with no wordmark next to it read as a missing
-                  logo, not a compact one). The prior state of this block swapped to
-                  `<Logo monogramOnly>` below `md`, which renders ONLY the strata tile SVG
-                  (see Logo.tsx) with no visible text at all -- correctly fixed the double
-                  render (two elements briefly painted at once, see the cascade-order
-                  writeup this replaced) but traded it for a header that shows no company
-                  name whatsoever on any phone-width viewport. One `<Logo>`, unconditional,
-                  no breakpoint split: it is the full wordmark (icon + "Mumchimp", one word
-                  -- see Logo.tsx's `${first}${second}` render) at every width, so there is
-                  exactly one element here and it can never double-render regardless of
-                  cascade order, and mobile keeps the brand name it never should have lost. */}
-              <Logo className="text-h2" />
-            </Link>
-
-            <nav className="hidden h-full items-center gap-7 md:flex">
-              {MARKETING_NAV.map((item) => {
-                const active = isActivePath(router.pathname, item.href);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    /* `aria-current="page"` is the state; the ink and the rule are how it is
-                       drawn. Weight is deliberately NOT the signal -- the items are already
-                       `font-medium` and bumping the active one to semibold reflows the whole nav
-                       by a pixel or two on every navigation. Full-strength text against muted,
-                       plus a 2px rule sitting on the header's own bottom border, changes nothing
-                       about the box. */
-                    aria-current={active ? 'page' : undefined}
-                    /* `h-full`, not a hardcoded `h-16`/`h-20`: the active-state underline is
-                       pinned to `-bottom-px` of THIS box, so it has to track the header row's
-                       real height rather than assume one -- the row steps between resting and
-                       `scrolled` heights (compact-on-scroll, above), and a fixed height here
-                       would overflow it and throw the underline off the header's own bottom edge.
-                       The underline itself is `bg-brand-mark` (teal), not `bg-text`, as of
-                       2026-08-09 -- founder override carrying the logo's accent into the header's
-                       one other stateful control, as asked. The text stays ink: only the mark of
-                       "you are here" takes the accent, same scoping rule Logo.tsx's BrandMark
-                       already uses (tile takes the colour, the letters next to it do not). */
-                    className={`relative flex h-full items-center text-meta font-medium transition-colors ${
-                      active
-                        ? 'text-text after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-brand-mark'
-                        : 'text-muted hover:text-text'
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
-
-          {/* Right: Actions */}
-          <div className="flex h-full items-center gap-2">
-            {/* At every width, including mobile -- see `openSearch` above for why it is a
-                dispatcher and not the palette. The word is hidden below lg because the header
-                also carries five nav items at that width; the magnifier alone is the one icon
-                that needs no label.
-
-                `min-h-11 min-w-11` (44px, the WCAG 2.5.8 floor): below `lg` this button is just
-                the 18px glyph plus `px-2 py-1.5`, which never adds up to 44px on either axis, so
-                the minimum has to be stated explicitly rather than left to padding. `justify-center`
-                keeps the glyph centred once the box is wider than its own content at the widths
-                where the "Search" label is hidden. */}
-            {/* SURFACE CHIP AT THE SYSTEM RADIUS, 2026-08-14. This keeps the BACKGROUND half of
-                the 2026-08-09 override (`bg-surface2`/`hover:bg-surface3`, so the two toggles read
-                as controls rather than as more nav text) and drops the RADIUS half
-                (`rounded-full` -> `rounded-md`, 2px).
-
-                Why the radius half could not stand: the 2026-08-09 override justified itself on
-                §3.4's standing carve-out that "a circle is not a pill", and described these as
-                "icon-driven toggle buttons". Neither button is a circle at the width it actually
-                renders. This one shows the word "Search" from `lg` up, and Menu (below) always
-                shows "Menu"/"Close" -- measured 2026-08-14 at 1440, Search is 100x44 with
-                `border-radius: 3.36e7px`, i.e. a 22px lozenge, which is the exact shape §3.4
-                bans, not the exception it claimed. Every other control on the row computes 0px or
-                2px, so the two chips were the only curved objects in the header, sitting beside a
-                brand mark deliberately re-cut to r=2 on 2026-08-09 to stop standing out against
-                that same system.
-
-                Rounding both to 2px rather than making one a true circle: below `md` this button
-                IS icon-only and could take the circle exception, but Menu beside it never can
-                (it is always labelled), and a circle next to a squared chip is precisely the
-                "one pill next to one square" the 2026-08-09 note wrote the override to avoid.
-                One radius for both is the only value that reads as one system at every width.
-
-                `min-h-11 min-w-11` unchanged: the 44px WCAG 2.5.8 floor still comes from the
-                explicit minimum, not from padding, same reasoning as before. */}
-            <button
-              type="button"
-              onClick={openSearch}
-              aria-label="Search the catalogue"
-              className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md bg-surface2 px-3 py-2 text-meta font-medium text-muted transition-colors hover:bg-surface3 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-            >
-              <Icon name="search" size={18} />
-              <span className="hidden lg:inline">Search</span>
-            </button>
-
-            {/* Renders nothing until there is something in it, see CartButton. */}
-            <CartButton />
-
-            {/* Deliberately a plain link with a fixed label, so the header keeps the
-                identity-blindness noted above: it fetches nothing, renders the same markup for
-                every visitor, and stays cacheable. A "Sign in / Your account" toggle would have
-                to wait for the session before it could choose, so every returning customer would
-                watch it flip after hydration, and every page in the site would depend on the
-                session resolving. /account itself decides which of the two it is.
-
-                A ghost link, not a bordered box: the header should offer exactly one thing that
-                looks clickable-as-a-control, and on a shop that is the cart. */}
-            <Link
-              href="/account"
-              className="hidden items-center gap-1.5 rounded-md px-2 py-1.5 text-meta font-medium text-muted transition-colors hover:text-text md:inline-flex"
-            >
-              <Icon name="account" size={18} />
-              Account
-            </Link>
-            <div className="flex h-full items-center md:hidden">
-              <button
-                ref={menuButtonRef}
-                type="button"
-                /* Matches the 44px WCAG 2.5.8 floor the search button states explicitly above --
-                   `p-2` (8px) + the default 20px glyph only reaches ~36px, under the same floor
-                   this header already enforces for its neighbour.
-
-                   VISIBLE "Menu"/"Close" LABEL, not icon-alone. This button only ever renders
-                   below `md`, next to four other header controls (search glyph, cart, account
-                   link) that either carry their own text or are unambiguous at a glance -- the
-                   hamburger glyph is the one shape on the row a first-time visitor cannot be
-                   assumed to already know. `aria-label` is gone rather than kept alongside the
-                   text: with the text always visible here (unlike the Search button's, which
-                   hides below `lg`), keeping both would give the control two different
-                   accessible names and fail WCAG 2.5.3 Label in Name. `Icon.tsx:128` always sets
-                   `aria-hidden="true"` on the glyph, so the accessible name here is just the
-                   word.
-
-                   SURFACE CHIP AT THE SYSTEM RADIUS, 2026-08-14: `rounded-md` (2px) +
-                   `bg-surface2`/`hover:bg-surface3`, matching the Search button -- see its comment
-                   for why the 2026-08-09 `rounded-full` half was reversed while the background
-                   half was kept. This button is the reason BOTH are squared rather than one being
-                   a true circle: it always carries the word "Menu"/"Close", so it can never take
-                   §3.4's "a circle is not a pill" exception. Applied to both together so the row
-                   reads as one system. */
-                className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md bg-surface2 px-3 py-2 text-meta font-medium text-muted transition-colors hover:bg-surface3 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-                aria-expanded={menuOpen}
-                aria-controls="marketing-menu"
-                /* THE WORD IS GONE, 2026-08-14 (founder, from a screenshot): "the hamburger and
-                   the word 'Menu' is redundant -- pick one". The glyph is the universal control
-                   and the word was the same instruction said twice.
-
-                   The accessible name does not regress. `Icon.tsx:128` sets `aria-hidden` on the
-                   glyph, so the name used to come from the visible word; it now comes from this
-                   `aria-label`, which is the same string. WCAG 2.5.3 Label in Name applies to a
-                   VISIBLE label -- with no visible text there is no name to mismatch, so the
-                   objection recorded above (two accessible names) cannot arise.
-
-                   It also settles the two-width complaint from the same review: this button and
-                   Search carry an identical className, so their widths only ever differed because
-                   this one padded out an extra word. Icon-only, both are the `min-w-11` square. */
-                aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-                onClick={() => setMenuOpen((o) => !o)}
+        <div className="hdr-in">
+          <Link className="logo" href="/" aria-label={`${BRAND.name} home`}>
+            <svg width="26" height="24" viewBox="0 0 26 24" fill="none" aria-hidden="true">
+              <path d="M1 2h24l-4.1 5H5.1L1 2Z" fill="#14706A" />
+              <path d="M6.2 9.5h13.6l-3.3 5H9.5l-3.3-5Z" fill="#14706A" />
+              <path d="M10.7 17h4.6L13 22.5 10.7 17Z" fill="#14706A" />
+            </svg>
+            <span className="wordmark">
+              <b>Mum</b>chimp
+            </span>
+          </Link>
+          <nav className="nav-d">
+            {MARKETING_NAV.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={isActivePath(router.pathname, item.href) ? 'page' : undefined}
               >
-                <Icon name={menuOpen ? 'close' : 'menu'} size={18} />
-              </button>
-            </div>
-          </div>
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+          <Link className="acct" href="/account">
+            Account
+          </Link>
+          {/* Renders nothing until there is something in it, see CartButton. */}
+          <CartButton />
+          <button type="button" className="icon-btn" aria-label="Search" onClick={openSearch}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <circle cx="9" cy="9" r="6.25" stroke="currentColor" strokeWidth="1.7" />
+              <path d="m13.8 13.8 4 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            ref={menuButtonRef}
+            className="icon-btn"
+            aria-label="Menu"
+            aria-expanded={menuOpen}
+            aria-controls="site-menu"
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M2.5 5.5h15M2.5 10h15M2.5 14.5h15" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+            </svg>
+          </button>
         </div>
-
+        {/* The drawings are static pages, so none of them draws the open menu. It reuses the
+            footer column's link styling, which is the same list at the same size. */}
         {menuOpen && (
-          <div id="marketing-menu" className="animate-rise border-t border-border bg-surface md:hidden">
-            <nav aria-label="Marketing" className="mx-auto flex flex-col divide-y divide-border px-4 sm:px-6">
-              <div className="py-2">
-                {/* Same state, drawn differently, because the drawer has no bottom border for a
-                    rule to sit on and every item in it is already full-strength text. A left rule
-                    is the equivalent mark on a stacked list -- in `border-l-brand-mark` (teal),
-                    not ink, as of 2026-08-09, matching the desktop underline above so "you are
-                    here" reads the same accent at both widths. */}
-                {MARKETING_NAV.map((item) => {
-                  const active = isActivePath(router.pathname, item.href);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setMenuOpen(false)}
-                      aria-current={active ? 'page' : undefined}
-                      className={`block py-3 text-body font-medium ${
-                        active ? 'border-l-2 border-l-brand-mark pl-3 text-text' : 'text-muted'
-                      }`}
-                    >
-                      {item.label}
-                    </Link>
-                  );
-                })}
-                {/* The desktop Account link is hidden below md, so the mobile menu carries it. */}
-                <Link
-                  href="/account"
-                  onClick={() => setMenuOpen(false)}
-                  className="block py-3 text-body font-medium text-text"
-                >
-                  Account
+          <div id="site-menu" className="wrap" style={{ borderTop: '1px solid var(--line)', padding: '14px 20px 18px' }}>
+            <nav aria-label="Marketing" className="f-col">
+              {MARKETING_NAV.map((item) => (
+                <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)}>
+                  {item.label}
                 </Link>
-              </div>
-              {/* Was a full-width "Browse the packs" button pointing at `/` -- the same destination
-                  as the "Catalogue" item that used to sit three rows above it, in a drawer whose
-                  whole job is to disambiguate destinations. The drawer's one emphasised action is
-                  the thing the drawer did not otherwise offer.
-
-                  That "Catalogue" row is itself gone as of 2026-08-14 (see `MARKETING_NAV`), which
-                  does not restore the case for a `/` button here: the wordmark in the header above
-                  this drawer still goes home. Search is still the action nothing else offers. */}
-              <div className="py-4">
-                <Button fullWidth size="lg" onClick={openSearch}>
-                  <Icon name="search" size={18} />
-                  Search the catalogue
-                </Button>
-              </div>
+              ))}
+              <Link href="/account" onClick={() => setMenuOpen(false)}>
+                Account
+              </Link>
             </nav>
           </div>
         )}
@@ -491,206 +302,81 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
         paragraph that says the packs are not financial advice, which is the one piece of copy on
         the site that has to be readable.
       */}
-      <footer className="border-t border-border bg-surface2 pt-16 pb-[calc(3rem+env(safe-area-inset-bottom))]">
-        <div className={SHELL}>
+      {/* THE DRAWING'S FOOTER, copied from `mockups/*.html` <footer>. Four columns at 1.4fr 1fr
+          1fr 1fr, dropping to two at 860px and one at 520px, all of it from the copied stylesheet.
 
-          {/* THE FOOTER SAYS SOMETHING NO OTHER FOOTER SAYS.
-              It was a logo, a one-line blurb, three columns of links and a copyright, which is the
-              same footer every storefront on the internet ships and carries no signal that this
-              particular shop is different from any of them. The tally fixes that for the price of
-              two numbers we already hold: a reader who has scrolled to the bottom of any page on
-              the site ends on the ratio the whole business is built on, in the kill colour and the
-              survive colour, in mono.
-
-              The kill figure is set larger than the survivor figure, deliberately and for the same
-              reason it is on /about: any shop can print how many products it has, and only this one
-              can print how many it threw away.
-
-              `RESEARCH_STATS`, not the raw JSON, and NOT the number of packs on the shelf. These
-              are historical totals over every dossier the engine ever wrote, so a build-time
-              snapshot is correct for them; `published` moves with no redeploy and is why
-              `lib/stats.ts` refuses to carry it. */}
-          <div className="mb-12 flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
-            <div className="max-w-md">
-              <Logo className="mb-3 text-h2" />
-              <p className="text-meta text-muted">
-                {/* "£49 each" removed: the footer renders on every page including ones with no
-                    catalogue loaded, and the shelf has not been one price since the segment
-                    ladder shipped. The live figures live on /pricing, which reads them. */}
-                Business ideas that survived the filter. Fully sourced, ready to build.
-              </p>
-            </div>
-            {/* THE WIDEST-REACHING COPY ON THE SITE, and it printed the survivor count: this
-                footer renders on every page, so "survived 80" sat under a shelf of 50 on all of
-                them, including the pack pages where someone is deciding whether to pay. Pairing
-                killed with RESEARCHED states a subset of a total, which is verifiable and needs no
-                caveat; pairing it with survivors stated a population we could not show. Founder
-                directive, 2026-08-13; the figure is not exported any more (lib/stats.ts). */}
-            <dl className="m-0 flex flex-none items-end gap-10">
-              <div>
-                <dt className="text-caption text-kill">killed</dt>
-                {/* `tightDecimal`, not the bare string. These are the two biggest numbers on the
-                    site and they render on every page: in the house mono face every glyph gets the
-                    same advance, so the thousands comma sat in a full cell and the footer read
-                    `1 , 364` -- measured in the served /terms HTML on 2026-08-13. See the note on
-                    the function in `ui/Money.tsx`; digit advances are untouched, so these two still
-                    align. */}
-                <dd className="m-0 mt-1 font-mono text-h1 font-semibold leading-none tracking-tight text-text">
-                  {tightDecimal(RESEARCH_STATS.killed.toLocaleString('en-GB'))}
-                </dd>
+          The column headings are <h2> where the drawing writes <h6>. The footer renders after
+          every page's <h1>, so an <h6> here skips four levels and trips axe's `heading-order`.
+          `.f-col h2` in globals.css gives it the drawing's exact look. */}
+      <footer>
+        <div className="wrap">
+          <div className="f-top">
+            <div className="f-brand">
+              <Link className="logo" href="/" aria-label={`${BRAND.name} home`}>
+            <svg width="26" height="24" viewBox="0 0 26 24" fill="none" aria-hidden="true">
+              <path d="M1 2h24l-4.1 5H5.1L1 2Z" fill="#14706A" />
+              <path d="M6.2 9.5h13.6l-3.3 5H9.5l-3.3-5Z" fill="#14706A" />
+              <path d="M10.7 17h4.6L13 22.5 10.7 17Z" fill="#14706A" />
+            </svg>
+                <span className="wordmark" style={{ fontSize: '19px' }}>
+                  <b>Mum</b>chimp
+                </span>
+              </Link>
+              <p>Business ideas that survived the filter. Fully sourced, ready to build.</p>
+              {/* `tightDecimal` on both figures: they are the two biggest numbers on the page and
+                  the decimal comma sets loose at this weight. */}
+              <div className="f-stats">
+                <div>
+                  <span>Killed</span>
+                  <b className="num">{tightDecimal(RESEARCH_STATS.killed.toLocaleString('en-GB'))}</b>
+                </div>
+                <div>
+                  <span>Researched</span>
+                  <b className="num">{tightDecimal(RESEARCH_STATS.researched.toLocaleString('en-GB'))}</b>
+                </div>
               </div>
-              <div>
-                <dt className="text-caption text-subtle">researched</dt>
-                <dd className="m-0 mt-1 font-mono text-h2 font-semibold leading-none tracking-tight text-text">
-                  {tightDecimal(RESEARCH_STATS.researched.toLocaleString('en-GB'))}
-                </dd>
+            </div>
+            <div className="f-col">
+              <h2>Store</h2>
+              <Link href="/">Catalogue</Link>
+              <Link href="/collections">Collections</Link>
+              <Link href="/how-it-works">How it works</Link>
+              <Link href="/kill-log">Kill log</Link>
+              <Link href="/about">Who makes this</Link>
+              <Link href="/faq">FAQ</Link>
+            </div>
+            <div className="f-col">
+              <h2>Legal</h2>
+              <Link href="/terms">Terms of Service</Link>
+              <Link href="/privacy">Privacy Policy</Link>
+              <Link href="/refund">Refund Policy</Link>
+            </div>
+            <div className="f-col">
+              <h2>Contact</h2>
+              <a href={`mailto:${LEGAL.supportEmail}`}>{LEGAL.supportEmail}</a>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '14px' }}>
+                <Link className="btn sm" href="/">
+                  Browse
+                </Link>
+                <Link className="tlink" href="/kill-log" style={{ alignSelf: 'center' }}>
+                  See what we killed
+                </Link>
               </div>
-            </dl>
-          </div>
-
-          <div className="grid grid-cols-2 gap-8 border-t border-border pt-10 md:grid-cols-3">
-
-            <div>
-              <h2 className="mb-4 text-caption font-medium text-subtle">Store</h2>
-              {/* TAP TARGETS, WCAG 2.5.8. Measured at 26x18 ("FAQ") up to 65x18 ("Catalogue") --
-                  these are nav-list items, not inline links in a sentence of prose, so the 44px
-                  minimum applies and padding alone (there was none) never got there. The fix is
-                  on the anchor, not the `li`: `inline-block py-[13px]` turns the 18px text line
-                  into a 44px box (18 + 13 top + 13 bottom = 44, the exact floor, not a rounder
-                  number chosen for its own sake). That 26px of new padding lands where the `ul`'s
-                  `gap-3` (12px) used to be the only spacing between items, so the gap is dropped
-                  to `gap-0` in trade: the padding boxes now touch, and the visible whitespace
-                  between rows grows from 12px to 26px rather than to 12+26=38px. It is not
-                  "unchanged", but it is the closest the rhythm gets without shipping a
-                  sub-44px target. */}
-              <ul className="flex flex-col gap-0">
-                <li><Link href="/" className="inline-block py-[13px] text-meta text-muted transition-colors hover:text-text">Catalogue</Link></li>
-                <li><Link href="/collections" className="inline-block py-[13px] text-meta text-muted transition-colors hover:text-text">Collections</Link></li>
-                <li><Link href="/how-it-works" className="inline-block py-[13px] text-meta text-muted transition-colors hover:text-text">How it works</Link></li>
-                <li><Link href="/kill-log" className="inline-block py-[13px] text-meta text-muted transition-colors hover:text-text">Kill log</Link></li>
-                {/* `/about` had ZERO inbound links from anywhere on the site (verified 2026-08-06:
-                    `href="/about"` matched no file under src/). The page has existed and been
-                    maintained the whole time -- it was simply unreachable except by typing the URL,
-                    which means a visitor asking the single most common question about an anonymous
-                    shop ("who is running this?") had no way to find the page that answers it. */}
-                <li><Link href="/about" className="inline-block py-[13px] text-meta text-muted transition-colors hover:text-text">Who makes this</Link></li>
-                <li><Link href="/faq" className="inline-block py-[13px] text-meta text-muted transition-colors hover:text-text">FAQ</Link></li>
-              </ul>
             </div>
-
-            {/* LEGAL IS SMALLER AND GREYER THAN STORE, deliberately.
-                Both columns were `text-meta text-muted`, so "Terms of Service" and "Kill log" had
-                identical weight, size and colour -- and on mobile the two columns sit side by
-                side, which made the boilerplate exactly as prominent as the evidence this shop
-                sells on. These links must be present and must be findable; they must not compete
-                with the ones a buyer came for. `text-subtle` is the same token the disclaimer
-                uses and clears 4.5:1 on --surface2 (`__tests__/categoryScale.test.ts` holds the
-                floor for the scale it belongs to). */}
-            <div>
-              <h2 className="mb-4 text-caption font-medium text-subtle">Legal</h2>
-              {/* Same tap-target fix as the Store column above (`inline-block py-[N]`, `gap-0`
-                  in trade for the padding), applied here because it was missed the first time:
-                  these anchors carried no padding at all, so the "Store" list-item fix left its
-                  sibling column right below it at the same sub-24px height it was supposedly
-                  fixing site-wide.
-
-                  `py-[14px]`, not the Store column's `py-[13px]`: these links are `text-caption`,
-                  whose line box is 16px rather than the 18px that column's arithmetic assumes, so
-                  the copied padding landed them at 42px -- 2px under the floor the comment above
-                  claims. 16 + 14 + 14 = 44. Measured by DOM probe at 390px on 2026-08-13. */}
-              <ul className="flex flex-col gap-0">
-                <li><Link href="/terms" className="inline-block py-[14px] text-caption text-subtle transition-colors hover:text-text">Terms of Service</Link></li>
-                <li><Link href="/privacy" className="inline-block py-[14px] text-caption text-subtle transition-colors hover:text-text">Privacy Policy</Link></li>
-                <li><Link href="/refund" className="inline-block py-[14px] text-caption text-subtle transition-colors hover:text-text">Refund Policy</Link></li>
-              </ul>
-            </div>
-
-            <div className="col-span-2 md:col-span-1">
-              <h2 className="mb-4 text-caption font-medium text-subtle">Contact</h2>
-              <ul className="flex flex-col gap-3">
-                {/* `break-all` broke the address INSIDE a word -- it rendered as
-                    "support@mumchimp." / "com", because at 2 columns on a 375px screen the
-                    column is ~160px and `break-all` will split at any character it reaches. An
-                    email address split mid-domain reads as a typo on the one string a nervous
-                    buyer uses to check the shop is real. `break-words` only breaks a word that
-                    cannot fit at all, and the column is full-width below md so it never has to.
-                    An explicit `<wbr/>` after the @ gives it a legal break point if a narrower
-                    device ever appears. */}
-                <li>
-                  <a
-                    href={`mailto:${LEGAL.supportEmail}`}
-                    className="inline-flex min-h-11 items-center break-words py-2 text-meta text-muted transition-colors hover:text-text"
-                  >
-                    {LEGAL.supportEmail}
-                  </a>
-                </li>
-              </ul>
-            </div>
-
           </div>
-
-          {/* THE SCROLL NO LONGER JUST ENDS.
-              A reader who reaches the bottom of the footer has read the whole page and not
-              bought; the last thing on screen was a copyright line. These are the two next steps
-              that are honest to offer at that point -- the shelf, and the log of what we
-              rejected -- and neither is a repeat of the hero's ask. */}
-          <div className="mt-10 flex flex-col gap-3 border-t border-border pt-8 sm:flex-row sm:items-center">
-            <Link href="/">
-              <Button size="md">
-                Browse the catalogue
-                <Icon name="arrowRight" size={15} />
-              </Button>
-            </Link>
-            <Link href="/kill-log">
-              <Button size="md" variant="secondary">See what we killed</Button>
-            </Link>
-          </div>
-
-          <div className="mt-10 border-t border-border pt-8">
-            <p className="text-caption text-subtle">
-              &copy; 2026 {BRAND.name}. All rights reserved.
+          <div className="f-bottom">
+            <p>
+              &copy; 2026 {BRAND.name}. All rights reserved. {BRAND.name} packs are sold for
+              information only, not financial, legal, or investment advice.
             </p>
-            {/*
-              THE DISCLAIMER, one sentence visible and the rest behind a disclosure.
-              It is four sentences of unstyled small print, and on a 375px screen it wrapped to
-              nine lines -- the tallest single block in the footer, at the bottom of a page that
-              already runs ~16,000px. Collapsing it is only defensible because of WHICH sentence
-              stays: the one that says these are not financial, legal or investment advice. That
-              is the sentence with legal weight and it is never behind a click. What folds away
-              is the description of the product and the payment processor, both of which are
-              stated at more length on /how-it-works and at the checkout.
-
-              `<details>` and not a React toggle: it is open-able with no JavaScript, it is
-              keyboard-operable and screen-reader-announced for free, and -- the reason that
-              matters here -- its contents stay in the DOM and in the server HTML whether or not
-              anyone opens it, so collapsing it does not remove the text from the page.
-            */}
-            <p className="mt-4 max-w-[80ch] text-caption leading-relaxed text-subtle">
-              Mumchimp packs are sold for information only, not financial, legal, or investment advice.
-            </p>
-            <details className="group mt-2 max-w-[80ch]">
-              {/* NOT `textLinkClass()`, and not an accent-coloured underline. This is a
-                  disclosure toggle, not a link into a sentence: it navigates nowhere, and the
-                  house inline-link treatment is reserved for things that do
-                  (`__tests__/storefrontDesignContract.test.ts`, "uses ONE inline-link
-                  treatment"). A caret that rotates on open is the affordance; the label stays in
-                  the same ink as the paragraph it belongs to. */}
-              <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 text-caption text-subtle transition-colors hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
-                {/* `plus`, rotated 45deg when open, so the mark itself becomes the close
-                    affordance. The icon set carries no chevron and this needs no new one. */}
-                <Icon
-                  name="plus"
-                  size={13}
-                  className="flex-none transition-transform group-open:rotate-45"
-                />
-                Read the full disclaimer
-              </summary>
-              <p className="mt-2 text-caption leading-relaxed text-subtle">
-                Each pack is an evidence-backed analysis with cited sources. We don&apos;t guarantee any business outcome. Payments are processed securely by Stripe.
+            <details>
+              <summary>Read the full disclaimer</summary>
+              <p style={{ marginTop: '8px' }}>
+                Each pack is an evidence-backed analysis with cited sources. We do not guarantee any
+                business outcome. Payments are processed securely by Stripe.
               </p>
             </details>
           </div>
-
         </div>
       </footer>
     </div>

@@ -189,7 +189,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
               was false about a number this page reads from the same JSON as the page that states it
               correctly: 400 of the 1,364, per /kill-log. The replacement claims no quantity at all,
               and `numbersReconcile.test.ts` scans every page for the absolute form. */}
-            <p className="mt-2 max-w-[60ch] text-meta leading-relaxed text-muted">
+            <p className="mt-2 max-w-[60ch] lede">
               {RESEARCH_STATS.rejectRateLabel} died on cited evidence. {killsSummary()}.
             </p>
           </div>
@@ -206,20 +206,20 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
             drawing gives them, because a figure is exactly what that face is for. */}
         <dl className="mt-8 grid grid-cols-1 overflow-hidden rounded-card border border-line bg-surface sm:grid-cols-3">
           <div className="p-[17px] sm:border-r sm:border-line">
-            <dt className="mb-1.5 text-caption font-medium text-subtle">Ideas in</dt>
-            <dd className="text-h3 font-semibold tabular-nums text-text">
+            <dt className="mb-1.5 eyebrow">Ideas in</dt>
+            <dd className="price-lg num">
               {RESEARCH_STATS.researched.toLocaleString('en-GB')}
             </dd>
           </div>
           <div className="border-t border-line p-[17px] sm:border-t-0 sm:border-r sm:border-line">
-            <dt className="mb-1.5 text-caption font-medium text-subtle">Killed on cited evidence</dt>
-            <dd className="text-h3 font-semibold tabular-nums text-text">
+            <dt className="mb-1.5 eyebrow">Killed on cited evidence</dt>
+            <dd className="price-lg num">
               {RESEARCH_STATS.killed.toLocaleString('en-GB')}
             </dd>
           </div>
           <div className="border-t border-line p-[17px] sm:border-t-0">
-            <dt className="mb-1.5 text-caption font-medium text-subtle">Died at a gate</dt>
-            <dd className="text-h3 font-semibold tabular-nums text-text">
+            <dt className="mb-1.5 eyebrow">Died at a gate</dt>
+            <dd className="price-lg num">
               {RESEARCH_STATS.rejectRateLabel}
             </dd>
           </div>
@@ -238,8 +238,8 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
        * funnel is the shape of the process, the cascade is the count at every step of it.
        */}
       <Section bg="surface">
-        <h2 className="text-h2 font-semibold text-text">Where the ideas went</h2>
-        <p className="mt-3 max-w-[62ch] text-body leading-relaxed text-muted">
+        <h2 className="sec">Where the ideas went</h2>
+        <p className="mt-3 max-w-[62ch] lede">
           Every check that killed something, in the order of how much it killed, with the number
           taken off the total each time.
         </p>
@@ -289,7 +289,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
             Before the first check, because a reader who learns this after reading six verdicts has
             been told late. The 52-word single sentence it started as was three claims sharing one
             spine; three short sentences say the same thing and can each be read on its own. */}
-        <p className="mb-10 max-w-3xl text-body leading-relaxed text-muted">
+        <p className="mb-10 max-w-3xl lede">
           AI agents run the checks below. Each may only rule on passages it fetched from the open
           web, and those sources are published with the verdict, so you can hold the reasoning
           against them yourself. A person reads that record before a pack reaches the shelf.
@@ -331,7 +331,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
                     paragraph explaining the gates and the evidence for each one
                     (desktop-how-it-works-fold.png, 2026-08-06). */}
                 <div className="max-w-3xl flex-1 pb-6">
-                  <h2 className="text-h2 font-semibold text-text leading-tight">
+                  <h2 className="leading-tight sec">
                     {check.name}
                   </h2>
                   {/* THE GATE ID IS GONE FROM THIS PAGE. It was a mono `<code>` chip reading
@@ -353,7 +353,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
                       <h3 className="mt-2 text-meta font-semibold text-text leading-snug">
                         {example.title}
                       </h3>
-                      <p className="mt-2 text-meta leading-relaxed text-muted">
+                      <p className="mt-2 lede">
                         {firstSentences(plainEnglish(example.reason), 160)}
                       </p>
                       <Link
@@ -388,12 +388,12 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
         title="Then a second wave of agents attacks the survivor."
       >
         <div className="max-w-3xl space-y-4">
-          <p className="text-body font-normal leading-relaxed text-muted">
+          <p className="font-normal lede">
             They hunt for contradictions, weak citations, and gaps the first pass missed. The
             evidence record survives only if every objection is answered by evidence already on file.
             No new research, no hand-waving.
           </p>
-          <p className="text-meta leading-relaxed text-muted">
+          <p className="lede">
             Silence in the record means <em>unverifiable</em>, never <em>false</em>. The agents only
             rule on pages they actually fetched.
           </p>
@@ -403,7 +403,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
               was a soft failure. It is not. This is the page that explains the process, and this
               paragraph is where the same idea already lives, so the definition goes here rather
               than in a fourth place. */}
-          <p className="text-meta leading-relaxed text-muted">
+          <p className="lede">
             A check that is <em>pushed back</em> is that silence with a name. The evidence would not
             settle the question either way, so the idea carried on and the doubt stayed on the
             record for you to read. It is drawn in amber, never red. Red means killed.
@@ -430,13 +430,13 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
         title="Then a person reviews it."
       >
         <div className="max-w-3xl space-y-4">
-          <p className="text-body font-normal leading-relaxed text-muted">
+          <p className="font-normal lede">
             Automating the finding, the checking and the sourcing is what lets every idea get the
             same treatment, instead of the handful a person could read. But nothing reaches the
             shelf on its own: a person reads the verdict, opens the sources, and checks the
             argument holds before a pack is published.
           </p>
-          <p className="text-meta leading-relaxed text-muted">
+          <p className="lede">
             The reviewer can send a pack back or kill it outright. What they cannot do is add
             evidence the record does not have. The verdict you read is the one the published
             sources support.
@@ -462,7 +462,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
               quantity is claimed here, and the button no longer names a count it cannot deliver.
               What is left describes what a published kill CONTAINS, which is what this section is
               for. */}
-          <p className="text-body leading-relaxed text-muted">
+          <p className="lede">
             Every published kill names the check it failed and the argument that killed it, with
             the sources behind that argument where there were any.
           </p>
@@ -487,7 +487,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
         title="The honest limits"
       >
         <div className="max-w-3xl">
-          <p className="text-body font-normal leading-relaxed text-muted">
+          <p className="font-normal lede">
             {`${PACK_DISCLAIMER} ${PACK_SCOPE} No analysis can promise a business outcome.`}
           </p>
         </div>

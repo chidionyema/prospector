@@ -190,13 +190,13 @@ describe('the untagged pack renders no sector marker', () => {
       /\{(?:cat|category)\.tagged (?:&&|\?)/,
     );
 
-    // The row's empty branch must stay INVISIBLE, not merely empty: it exists to hold the
-    // sector column open so the figure beside it lands on the same x, and a placeholder that
-    // announced itself would read as a missing value rather than as alignment.
-    // The ROW moved out of this page on 2026-08-15 (`components/discovery/PackRow.tsx`), so its
-    // placeholder is read from there. The rule is unchanged; only the file it lives in moved.
-    const placeholder = row.match(/<span className="hidden flex-none sm:block sm:w-44"[^>]*\/>/);
-    expect(placeholder?.[0], 'the row placeholder must be aria-hidden').toContain('aria-hidden');
+    // THE PLACEHOLDER ASSERTION IS GONE (2026-08-18), because the thing it protected is gone.
+    // It required an invisible `sm:w-44` span on the meta line of an untagged row. That span
+    // held a fixed sector column open so the figure beside it landed on the same x on every row.
+    // The mockups put the sector ABOVE the title as an eyebrow, so the row was rebuilt that way
+    // and the fixed column went with it. The figure is now the first item on the meta line of
+    // every row, tagged or not, so nothing needs reserving and there is no ragged edge to guard.
+    // The guard that still matters is the one above: no code path may reach the chip untagged.
   });
 
   it('the card draws no marker for a missing sector, and is not empty without one', () => {

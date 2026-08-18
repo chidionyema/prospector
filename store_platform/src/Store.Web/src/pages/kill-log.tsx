@@ -253,7 +253,7 @@ export default function KillLogPage({
             38 characters a line instead of 27. */}
         <div className="grid gap-10 lg:grid-cols-[minmax(0,40rem)_minmax(0,1fr)] lg:items-start lg:gap-12">
         <div className="max-w-3xl">
-          <p className="text-caption font-medium text-subtle">The kill log</p>
+          <p className="eyebrow">The kill log</p>
           {/* THE HERO: ONE COUNT. It read "1,364 killed. 80 survived.", and the second half was
               the figure the founder cut on 2026-08-13, because the shelf this page links to holds
               50. The live shelf count is not promoted into the headline to replace it: it is
@@ -262,10 +262,10 @@ export default function KillLogPage({
               count carries the page on its own, and the caveat four lines down is what qualifies
               it. Nothing here promises a reason for all 1,364: only 400 came with an argument, and
               that sentence is already in the caveat rather than contradicted by this headline. */}
-          <h1 className="mt-3 text-h1 font-semibold text-text">
+          <h1 className="mt-3">
             {killed.toLocaleString('en-GB')} ideas killed.
           </h1>
-          <p className="mt-5 max-w-[60ch] text-body text-muted">
+          <p className="mt-5 max-w-[60ch] lede">
             Most ideas do not survive. Here is what we rejected, the reason each one failed, and
             the sources, so you can check the reasoning yourself.
           </p>
@@ -307,8 +307,8 @@ export default function KillLogPage({
             `border-l` and `text-meta` are `HeroList`'s grammar, so the three heroes that gained a
             right-hand column on 2026-08-16 read as one treatment. */}
         <aside className="lg:pt-1">
-          <p className="text-caption font-medium text-subtle">What this page publishes</p>
-          <p className="mt-4 border-l border-border pl-4 text-meta leading-relaxed text-muted">
+          <p className="eyebrow">What this page publishes</p>
+          <p className="mt-4 border-l border-border pl-4 lede">
             This page publishes {publishedKills} of those kills, not all {killed.toLocaleString('en-GB')}.
             The rest were rejected on a low overall score, with no single finding behind it, so
             there would be nothing here for you to read. Every kill below names the check it
@@ -327,7 +327,7 @@ export default function KillLogPage({
           <h2 id="distribution-heading" className="text-h2 font-semibold text-text">
             How ideas die
           </h2>
-          <p className="mt-2 max-w-[68ch] text-meta text-muted">
+          <p className="mt-2 max-w-[68ch] lede">
             Every rejection across all {killed.toLocaleString('en-GB')} kills, by the check that
             fired first. The checks stop at the first hard failure, so each idea is counted once,
             against the cheapest gate that killed it.
@@ -339,8 +339,8 @@ export default function KillLogPage({
               comparing a finding with a tally, and nothing on the page marked the difference.
               `isStageLabel` keys on the LABEL for the reason given where it is defined: every
               surface on this page is keyed on label, and two engine keys can share one. */}
-          <p className="mt-2 max-w-[68ch] text-meta text-muted">
-            Causes marked <span className="font-mono text-caption text-subtle">stage</span> are
+          <p className="mt-2 max-w-[68ch] lede">
+            Causes marked <span className="mono">stage</span> are
             points in the run rather than findings about the idea: it scored too low overall, or
             the evidence never grounded well enough to rule on.
           </p>
@@ -576,7 +576,7 @@ export default function KillLogPage({
                         ) : (
                         <>
                         {detail.oneLiner && (
-                          <p className="max-w-[80ch] text-meta text-muted">{detail.oneLiner}</p>
+                          <p className="max-w-[80ch] lede">{detail.oneLiner}</p>
                         )}
                         {/* THE ENGINE'S OWN WORDS, TRANSLATED ON THE WAY OUT. This paragraph is
                             written by the verdict brain for an audit trail and rendered verbatim
@@ -626,7 +626,7 @@ export default function KillLogPage({
         </div>
 
         {shown.length === 0 && (
-          <p className="mt-8 text-meta text-muted">
+          <p className="mt-8 lede">
             Nothing matches that. Clear the search or pick a different cause of death.
           </p>
         )}
@@ -638,7 +638,7 @@ export default function KillLogPage({
           form is what the email asks for, and it sits between the last row and the closing
           CTA so a reader who reaches the end still meets it.
         */}
-        <p className="mt-10 max-w-[68ch] text-meta text-muted">
+        <p className="mt-10 max-w-[68ch] lede">
           This is a sample of the log, not all {killed.toLocaleString('en-GB')}. The rest were
           rejected on a low overall score, with no single finding behind it, so there would be
           nothing here for you to read. Every kill above names the check it failed and why.
@@ -649,10 +649,10 @@ export default function KillLogPage({
             rule everywhere a page ends, and a filled panel here reads as one more module rather
             than the end of the page. */}
         <div className="mt-12 border-t-2 border-text pt-9">
-          <h2 className="max-w-[26ch] text-h2 font-semibold text-text">
+          <h2 className="max-w-[26ch] sec">
             Now read one that survived all of it.
           </h2>
-          <p className="mt-3 max-w-[60ch] text-body text-muted">
+          <p className="mt-3 max-w-[60ch] lede">
             Same checks, same sourcing, opposite outcome. One full report is free to read, no card and
             no email.
           </p>

@@ -196,12 +196,12 @@ export function PackSpecimen({ className }: { className?: string }) {
               reader could transcribe: the check counter, the confidence figure and the caption
               rail's counts. (That test reads raw source lines, so naming those utilities together
               in a comment is itself an offence -- which is why this spells them out in words.) */}
-          <p className="text-caption font-medium text-subtle">A page from the free sample</p>
+          <p className="eyebrow">A page from the free sample</p>
 
           {/* The headline states the SCALE and then immediately stops asserting it, which is the
               whole argument of the section in one move: the number answers "is this a two-page
               Google Doc?", and the page beside it answers "prove it". */}
-          <h2 className="mt-2 text-h2 font-semibold text-text">
+          <h2 className="mt-2 sec">
             {PACK_DOCUMENTS.length} documents. Here is one page of one of them.
           </h2>
 
@@ -305,7 +305,7 @@ export function PackSpecimen({ className }: { className?: string }) {
                       reading as a list of disconnected fragments, which is exactly what the
                       founder saw. 1.5 below `sm`, 1.75 from `sm` up where the 62ch cap does bind
                       and the ratio it was chosen for is the ratio in effect. */}
-                  <p className="mt-6 max-w-[62ch] text-body leading-[1.5] text-muted sm:leading-[1.75]">
+                  <p className="mt-6 max-w-[62ch] leading-[1.5] sm:leading-[1.75] lede">
                     …{sentenceTail(plainEnglish(PRECEDING?.rationale ?? ''))}
                   </p>
 
@@ -316,7 +316,7 @@ export function PackSpecimen({ className }: { className?: string }) {
                     <span className="flex-none font-mono text-caption text-subtle">
                       {PAGE_NUMBER} of {CHECKS.length}
                     </span>
-                    <h3 className="min-w-0 flex-1 text-h3 font-semibold leading-snug text-text">
+                    <h3 className="min-w-0 flex-1 leading-snug sub">
                       {FAILED?.name}
                     </h3>
                   </div>
@@ -379,7 +379,7 @@ export function PackSpecimen({ className }: { className?: string }) {
                       arguing with itself. */}
                   {report.adversarial?.killCase && (
                     <div className="mt-9 border-t border-border pt-6">
-                      <h3 className="text-h3 font-semibold leading-snug text-text">
+                      <h3 className="leading-snug sub">
                         The strongest case against this idea
                       </h3>
                       <p className="mt-4 max-w-[62ch] text-body leading-[1.75] text-text">
@@ -412,7 +412,7 @@ export function PackSpecimen({ className }: { className?: string }) {
         <div className="min-w-0 lg:col-start-1 lg:row-start-2 lg:self-start">
           {report.premortem?.strongestAlternative && (
             <blockquote className="border-l-2 border-border pl-4">
-              <p className="text-body italic text-muted">{report.premortem.strongestAlternative}</p>
+              <p className="italic lede">{report.premortem.strongestAlternative}</p>
               <footer className="mt-2 text-caption text-subtle">
 What people pay for this problem today.
               </footer>
@@ -453,7 +453,7 @@ What people pay for this problem today.
               (`__tests__/sourceChipIsTheOnlyOne.test.ts`). */}
           {restSources.length > 0 && (
             <div className="mt-10 border-t border-border pt-6">
-              <p className="text-caption font-medium text-subtle">
+              <p className="eyebrow">
                 The other {restSources.length} sources behind this one check
               </p>
               <ul className="mt-4 space-y-3">

@@ -381,7 +381,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
           and reaches their own answer. */}
       <p className="text-caption leading-relaxed text-subtle">
         Having this researched for you starts at{' '}
-        <span className="font-medium text-text">{RESEARCH_RATE_ANCHOR.dayRateLabel} a day</span>{' '}
+        <span>{RESEARCH_RATE_ANCHOR.dayRateLabel} a day</span>{' '}
         <a
           href={RESEARCH_RATE_ANCHOR.url}
           target="_blank"
@@ -758,7 +758,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 legally-strong IEP service request...` eight lines, and it was STILL cut off by the
                 sticky buy bar (mobile-pack-fold.png, 2026-08-06). The title is the longest string
                 on the page, not a slogan, so it is the one headline that has to step down. */}
-            <h1 className="text-h2 font-semibold text-text md:text-h1">{pack.title}</h1>
+            <h1 className="md:text-h1">{pack.title}</h1>
             {/* THE LEAD IS NEVER A CUT STRING.
                 `oneLine` is truncated at 150 characters by the publish path on 34 of the 63 live
                 packs (see `lib/copy.ts` for the measurement and `bridge.py` for the cause), and
@@ -795,7 +795,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 missing or comes through cut, which is the case the docblock above was written for.
                 Nothing is lost when it stands down: its audience framing is the `whoPays` row
                 below, and the full description is in the sections under that. */}
-            {lead && <p className="mt-4 max-w-[60ch] text-body text-muted">{lead}</p>}
+            {lead && <p className="mt-4 max-w-[60ch] lede">{lead}</p>}
 
             {/* THE OPPORTUNITY, ABOVE THE FOLD (2026-08-16, founder: "the title and description
                 say what it is and what it does, not the opportunity presented, market size,
@@ -822,19 +822,19 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
               <dl className="mt-6 max-w-[62ch] space-y-4 border-l-2 border-border pl-5">
                 {pack.theProblem && (
                   <div>
-                    <dt className="text-caption font-medium text-subtle">The problem</dt>
+                    <dt className="eyebrow">The problem</dt>
                     <dd className="mt-1 text-meta leading-relaxed text-text">{pack.theProblem}</dd>
                   </div>
                 )}
                 {pack.marketSize && (
                   <div>
-                    <dt className="text-caption font-medium text-subtle">How big it is</dt>
+                    <dt className="eyebrow">How big it is</dt>
                     <dd className="mt-1 text-meta leading-relaxed text-text">{pack.marketSize}</dd>
                   </div>
                 )}
                 {pack.whoPays && (
                   <div>
-                    <dt className="text-caption font-medium text-subtle">Who would buy it</dt>
+                    <dt className="eyebrow">Who would buy it</dt>
                     <dd className="mt-1 text-meta leading-relaxed text-text">{pack.whoPays}</dd>
                   </div>
                 )}
@@ -861,7 +861,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 is enforced here by hand. It also opened on a negation, which read as zero
                 content. Say what the buyer GETS, in the affirmative, naming only things that
                 literally appear in the sections below. */}
-            <p className="mt-4 max-w-[60ch] text-meta leading-relaxed text-muted">
+            <p className="mt-4 max-w-[60ch] lede">
               You get the checking already done: the evidence behind the idea, the sources it came
               from, and the objections it survived, all open below so you can judge them yourself.
             </p>
@@ -974,8 +974,8 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                   or fewer get through
                 </span>
               </p>
-              <p className="max-w-[52ch] text-meta leading-relaxed text-muted">
-                <span className="font-medium text-text">This is one of them.</span>{' '}
+              <p className="max-w-[52ch] lede">
+                <span>This is one of them.</span>{' '}
                 {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas went through the filter
                 and {RESEARCH_STATS.rejectRateLabel} of them died on cited evidence.{' '}
                 <Link
@@ -1083,8 +1083,8 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 is the rule that caught the check count disagreeing with itself. */}
             {(pack.market || pack.timeToFirstRevenue) && (
               <div className="mt-12">
-                <h2 className="text-h2 font-semibold text-text">Could you run this?</h2>
-                <p className="mt-2 max-w-[60ch] text-meta text-muted">
+                <h2 className="sec">Could you run this?</h2>
+                <p className="mt-2 max-w-[60ch] lede">
                   Behind the research is a business somebody has to actually operate. Here is the
                   market it runs in, and how soon the first money arrives.
                 </p>
@@ -1157,7 +1157,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 </span>
               </summary>
               <div className="mt-4">
-                <p className="text-meta text-muted">
+                <p className="lede">
                   Each check is an attack, not a rubber stamp. An idea dies on the first check where cited evidence goes against it. {outcomeSentence} Finding nothing is not the same as finding a green light; see how each check works on{' '}
                   <Link
                     href="/how-it-works"
@@ -1176,7 +1176,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                     The scores are deliberately opt-in (US-4, see the disclosure below): the buyer
                     who wants the result meets the buy button first. That decision stands; what
                     changes is that the pointer now names where the scores actually are. */}
-                <p className="mt-3 text-meta text-muted">
+                <p className="mt-3 lede">
                   {/* THE COUNT A READER CAN SEE, RECONCILED WITH THE COUNT THE PAGE CLAIMS.
                       NOT "the six fronts": the check count is lane-dependent (6/6, 8/8, 7/8, 9/9
                       and 6/8 all occur live), which is why `fixedCheckCount.test.ts` exists and
@@ -1210,7 +1210,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                     <>
                       {' '}
                       For where this pack&rsquo;s case is strong and where it is thin, open{' '}
-                      <span className="font-medium text-text">How it scores</span> further down,
+                      <span>How it scores</span> further down,
                       weak bars included.
                     </>
                   )}
@@ -1270,7 +1270,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                   </span>
                 </summary>
                 <div className="mt-4">
-                  <p className="max-w-[60ch] text-meta text-muted">
+                  <p className="max-w-[60ch] lede">
                     {/* WAS "Six things we measure", hardcoded, above a `dl` whose length is
                         `axes.length` -- a count the page reads off the snapshot and does not
                         control. Same defect class as the 6-vs-8 above, one scroll further down. */}
@@ -1321,8 +1321,8 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
 
             {/* The per-pack table of contents. The generic four-asset breakdown is higher up the page. */}
             <div className="mt-12">
-              <h2 className="text-h2 font-semibold text-text">The table of contents</h2>
-              <p className="mt-2 max-w-[60ch] text-meta text-muted">
+              <h2 className="sec">The table of contents</h2>
+              <p className="mt-2 max-w-[60ch] lede">
                 Exactly what this pack covers, plus a blurred look at the document you receive.
               </p>
 
@@ -1358,8 +1358,8 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
             {/* A look inside, real sourced lines lifted straight from the pack */}
             {pack.sampleExtract && pack.sampleExtract.length > 0 && (
               <div className="mt-12">
-                <h2 className="text-h2 font-semibold text-text">A look inside</h2>
-                <p className="mt-2 max-w-[60ch] text-meta text-muted">
+                <h2 className="sec">A look inside</h2>
+                <p className="mt-2 max-w-[60ch] lede">
                   Real, sourced lines taken straight from the pack. Every source below is a live
                   link: open one and check the claim before you buy.
                 </p>
@@ -1369,7 +1369,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 <div className="relative mt-6 overflow-hidden rounded-md border border-border bg-surface">
                   <div className="flex items-center gap-2 border-b border-border bg-surface2 px-5 py-3">
                     <Icon name="briefcase" size={14} className="text-subtle" />
-          <span className="text-caption font-medium text-subtle">
+          <span className="eyebrow">
                       Extract · evidence record
                     </span>
                   </div>
@@ -1407,7 +1407,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
             <div className="mt-12 rounded-card border border-border bg-surface p-6">
               <div className="mb-3 flex items-center gap-2.5">
                 <Glyph name="source" className="text-success" />
-                <span className="text-caption font-medium text-subtle">The evidence</span>
+                <span className="eyebrow">The evidence</span>
               </div>
               {/* The count is GUARDED, and the "open these" instruction belongs to the block below
                   that actually renders the list. Unguarded, a pack with no `sourceCount` rendered
@@ -1415,7 +1415,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                   `openSources.length > 0` test below, so a pack with nothing openable printed
                   "Open any of these 0 now." followed by nothing at all. The block below already
                   gives the instruction once, against a list that exists. */}
-              <p className="max-w-[60ch] text-meta leading-relaxed text-muted">
+              <p className="max-w-[60ch] lede">
                 {typeof pack.sourceCount === 'number' && pack.sourceCount > 0
                   ? `${pack.sourceCount} sources, each cited against the claim it supports.`
                   : 'Every claim in this pack is cited against the source it rests on.'}
@@ -1645,7 +1645,7 @@ function PreviewDocument({ pack }: { pack: PackDetails }) {
             <p className="text-caption font-semibold leading-snug text-text">{pack.title}</p>
             {headings.slice(0, 2).map((h, i) => (
               <div key={`h-${i}`} className="space-y-1.5">
-                <p className="text-caption font-medium text-subtle">
+                <p className="eyebrow">
                   {String(i + 1).padStart(2, '0')} · {h}
                 </p>
                 {body.slice(i * 2, i * 2 + 2).map((line, j) => (
@@ -1662,7 +1662,7 @@ function PreviewDocument({ pack }: { pack: PackDetails }) {
               <div className="flex gap-3 pt-1">
                 {figures.slice(0, 3).map(({ label, value }) => (
                   <div key={label} className="flex-1 rounded-md bg-bg p-2.5">
-                    <p className="text-caption font-medium text-subtle">{label}</p>
+                    <p className="eyebrow">{label}</p>
                     <p className="mt-1 font-mono text-caption font-semibold text-text">{value}</p>
                   </div>
                 ))}

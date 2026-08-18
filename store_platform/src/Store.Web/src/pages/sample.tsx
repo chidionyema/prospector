@@ -131,13 +131,13 @@ function BlockView({ block }: { block: Block }) {
       // mockup's sub-heading step is `h3.sub{clamp(18px,3.2vw,22px);-.02em;655}`
       // (mockups/sample.html:31), which is what `text-h2` carries here: clamp(19px,3.4vw,23px).
       return (
-        <h3 className="mt-9 text-h2 font-semibold text-text">
+        <h3 className="mt-9 sub">
           <Rich nodes={block.nodes} />
         </h3>
       );
     case 'h3':
       return (
-        <h4 className="mt-7 text-body font-semibold text-text">
+        <h4 className="mt-7 sub">
           <Rich nodes={block.nodes} />
         </h4>
       );
@@ -210,14 +210,14 @@ function SourcePassage({ block }: { block: SourceBlock }) {
           &ldquo;{block.quote}&rdquo;
         </blockquote>
       ) : (
-        <p className="max-w-[64ch] text-body leading-relaxed text-muted">
+        <p className="max-w-[64ch] lede">
           Read, but nothing in it was quotable as a clean passage.
         </p>
       )}
       <figcaption className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
         <SourceChipRow sources={[{ url: block.url, host: block.host, label: block.label }]} />
         {block.year && (
-          <span className="font-mono text-caption text-subtle">{block.year}</span>
+          <span className="mono">{block.year}</span>
         )}
       </figcaption>
     </figure>
@@ -274,10 +274,10 @@ export default function SamplePage() {
             {/* States what the thing IS and where it ends, in one line. The reader decides what
                 it proves; the headline does not tell them to be suspicious of us first, and it
                 does not promise a whole pack the page then withholds. */}
-            <h1 className="max-w-[24ch] text-balance text-h1 font-semibold text-text">
+            <h1 className="max-w-[24ch]">
               The opening of a real pack, in full.
             </h1>
-            <p className="mt-6 max-w-[64ch] text-body leading-relaxed text-muted">
+            <p className="mt-6 max-w-[64ch] lede">
               Not a mock-up and not a summary. These are the first three sections of a pack that
               is on the shelf right now, exactly as they were published: the situation somebody is
               already dealing with, what you would actually be selling, and who is already in the
@@ -356,8 +356,8 @@ export default function SamplePage() {
 
             <div className="rounded-card border border-border bg-surface p-8 md:p-9">
               <span className="text-caption font-medium text-muted">The pack</span>
-              <h2 className="mt-2 text-h2 font-semibold text-text md:text-h1">{report.title}</h2>
-              <p className="mt-4 max-w-[68ch] text-body leading-relaxed text-muted">
+              <h2 className="sec">{report.title}</h2>
+              <p className="mt-4 max-w-[68ch] lede">
                 {report.oneLiner}
               </p>
             </div>
@@ -372,7 +372,7 @@ export default function SamplePage() {
                   <span className="font-mono text-caption font-medium text-muted">
                     {String(i + 1).padStart(2, '0')}
                   </span>
-                  <h2 className="text-h2 font-semibold text-text">{section.title}</h2>
+                  <h2 className="sec">{section.title}</h2>
                 </div>
                 <div className="mt-5">
                   {section.blocks.map((block, j) => (
@@ -394,10 +394,10 @@ export default function SamplePage() {
                   This is where the sample stops
                 </span>
               </div>
-              <h2 className="mt-3 max-w-[28ch] text-balance text-h2 font-semibold text-text">
+              <h2 className="mt-3 max-w-[28ch] sec">
                 You have read the reporting. The rest is the working half.
               </h2>
-              <p className="mt-4 max-w-[68ch] text-body leading-relaxed text-muted">
+              <p className="mt-4 max-w-[68ch] lede">
                 Three sections of {report.sectionsTotal}. What you have just read is what we found
                 out; the {WITHHELD.length} below are what you would do about it: what it costs,
                 what would sink it, what to build first, and how to know inside a month whether you
@@ -416,7 +416,7 @@ export default function SamplePage() {
                   fortnight plan -- because the document was written to be read whole. Leaving
                   those references intact and explaining them is more honest than editing the
                   excerpt to hide that it is one. */}
-              <p className="mt-7 max-w-[68ch] border-t border-warning/30 pt-5 text-meta leading-relaxed text-muted">
+              <p className="mt-7 max-w-[68ch] border-t border-warning/30 pt-5 lede">
                 The excerpt refers to two of these by name. That is the pack talking to its own
                 reader, not a tease, and we did not rewrite it to pretend the sample is the whole
                 document.
@@ -427,10 +427,10 @@ export default function SamplePage() {
               id="buy"
               className="mt-12 scroll-mt-24 rounded-card border border-border bg-surface p-8 text-center md:p-10"
             >
-              <h2 className="mx-auto max-w-[26ch] text-balance text-h2 font-semibold text-text md:text-h1">
+              <h2 className="sec" style={{ maxWidth: '26ch' }}>
                 Every pack on the shelf opens like this.
               </h2>
-              <p className="mx-auto mt-3 max-w-[56ch] text-body leading-relaxed text-muted">
+              <p className="mx-auto mt-3 max-w-[56ch] lede">
                 You can now go and read the shelf with these answers in mind. One payment, yours to
                 keep, no account to make.
               </p>

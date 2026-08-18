@@ -48,10 +48,10 @@ export function ShelfEndCapture({ className }: { className?: string }) {
                 version bump deployed on both sides, not an edit here. Adding the shorter sentence
                 on top of it would restore exactly the duplicate-promise defect this block was
                 rewritten to remove. */}
-            <h2 className="text-body font-semibold text-text">
+            <h2 className="sub">
               The next survivor can come to you.
             </h2>
-            <p className="mt-1 text-meta leading-relaxed text-muted">
+            <p className="mt-1 lede">
               Most ideas die in the filter. When one survives, you get one email. That’s the whole
               list.
             </p>

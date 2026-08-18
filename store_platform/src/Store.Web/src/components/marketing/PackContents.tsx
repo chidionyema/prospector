@@ -245,8 +245,8 @@ export function PackContentsSection({
   const hasCount = typeof sourceCount === 'number' && sourceCount > 0;
   return (
     <div className={className}>
-      <h2 className="text-h2 font-semibold text-text">{heading}</h2>
-      {lead && <p className="mt-2 max-w-[60ch] text-body text-muted">{lead}</p>}
+      <h2 className="sec">{heading}</h2>
+      {lead && <p className="mt-2 max-w-[60ch] lede">{lead}</p>}
 
       {/*
        * THE MANIFEST AS A FILE TREE, not eight bordered cards.
@@ -339,7 +339,7 @@ export function PackContentsSection({
             (check these against your zip) is untouched. One number leads on this card, and it is
             the documents count in the header above. */}
         <div className="border-t border-border bg-surface2 px-5 py-2">
-          <span className="font-mono text-caption text-subtle">
+          <span className="mono">
             what lands in your folder
           </span>
         </div>
@@ -391,8 +391,8 @@ export function PackContentsSection({
             The floor is real (the smallest live bundle measured 5,069 words, see the note at the
             top of this file) -- it is just not an argument for buying when set beside a count.
             What survives is the format answer, which is what this box exists for. */}
-        <p className="max-w-[62ch] text-meta text-muted">
-          <span className="font-medium text-text">A web page you can read, a PDF you can print and
+        <p className="max-w-[62ch] lede">
+          <span>A web page you can read, a PDF you can print and
           a spreadsheet you can open.</span>{' '}
           Yours to keep, edit, or paste anywhere. No login, no subscription.
         </p>

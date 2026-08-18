@@ -28,7 +28,7 @@ export function ErrorState({ title = 'Something went wrong', message, onRetry, c
       )}
     >
       <TitleTag className="text-h2 font-semibold text-danger">{title}</TitleTag>
-      <p className="max-w-sm text-body text-muted">{message}</p>
+      <p className="max-w-sm lede">{message}</p>
       {onRetry && (
         <Button variant="secondary" onClick={onRetry} className="mt-2">
           Try again
