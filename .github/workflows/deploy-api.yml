@@ -58,7 +58,7 @@ jobs:
   # gate the suite here rather than discover a regression against live buyers. This is the money
   # rail: fulfilment, checkout and the content pointer all live in this app.
   test:
-    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -74,7 +74,7 @@ jobs:
   deploy:
     needs: test
     if: ${{ !inputs.dry_run }}
-    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master

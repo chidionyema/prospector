@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -141,6 +142,19 @@ def main() -> int:
         if job not in jobs_and_pools(text):
             bad.append(f"{CONTRACT.name} declares job {job!r} in the {pool} pool, "
                        f"but ci.yml has no such job")
+
+    # 1b. What the repository variable actually resolves to, when the workflow passes it in.
+    # Checks 1 and 2 compare ci.yml against this file, and --live counts runner labels. None of
+    # them reads the variable's VALUE, so the pools can be moved without a word of this changing.
+    # On 2026-08-18 CI_LIGHT_RUNS_ON went from `light` to `self-hosted` to unstall the queue, and
+    # this script went on reporting `light pool: 1 registered` while light jobs were being
+    # dispatched to all four instances. Absent from the environment the check is skipped, so the
+    # offline guard lane and a local run are unaffected.
+    for name, p in sorted(pools.items()):
+        value = os.environ.get(p["variable"], "").strip()
+        if value and value != p["label"]:
+            bad.append(f"repository variable {p['variable']}={value!r}, but the {name} pool "
+                       f"declares label {p['label']!r} -- change one of them so they agree")
 
     # 2. The arithmetic. At most `heavy.runners` heavy jobs run at once, so the worst case is the
     #    widest that many. The widths are read back out of ci.yml so the yaml cannot drift.

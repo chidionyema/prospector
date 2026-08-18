@@ -71,9 +71,17 @@ on:
 # never evict anything. Pull requests keep sharing a per-ref group, which is where the queue
 # pressure this block was written for actually comes from — pushing twice to a PR should still
 # cancel the run it superseded.
+# CORRECTED 2026-08-18. Per-sha groups stopped the eviction but replaced it with a flood: three
+# consecutive merges put three full main runs in the queue at once (32094965578, 32095221331,
+# 32096489333 -- fifteen heavy jobs on three heavy runners), and two pull requests waited behind
+# all of them. Only the newest main commit's answer is wanted; its tree contains the other two.
+#
+# One shared group per ref, cancelling in progress, is what both defects want. The new run cancels
+# the one it superseded and takes its slot, so nothing is evicted while pending and nothing piles
+# up. main is still tested on every push -- the run that reports is the newest one.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'push' && github.sha || 'shared' }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   PYTHON_VERSION: "3.14"
@@ -207,6 +215,12 @@ jobs:
       # stops matching that. Offline, no virtualenv, no GitHub token. `--live` also checks the
       # registered runners and is an operator command, not a CI step.
       - name: CI still fits on the machine it runs on
+        # The variables are passed in so the check can compare what they RESOLVE to against the
+        # label each pool declares. Without them it only ever compared ci.yml against the contract
+        # file, and CI_LIGHT_RUNS_ON was changed from `light` to `self-hosted` without a word.
+        env:
+          CI_HEAVY_RUNS_ON: ${{ vars.CI_HEAVY_RUNS_ON }}
+          CI_LIGHT_RUNS_ON: ${{ vars.CI_LIGHT_RUNS_ON }}
         run: python3 scripts/ci_capacity.py
 
   # ──────────────────────────────────────────────────────────────────
@@ -479,7 +493,11 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      # Skipped on our own runners. Their disk persists between jobs, so ~/.nuget/packages is
+      # already there and actions/cache spends 454s (measured, run 32091486436) restoring a
+      # directory nothing deleted. Kept for hosted runners, whose disk really is destroyed.
       - name: Cache NuGet packages
+        if: runner.environment != 'self-hosted'
         uses: actions/cache@v4
         with:
           path: ~/.nuget/packages
@@ -529,7 +547,10 @@ jobs:
           node-version: "22"
           # npm ci re-downloaded every package on every run. setup-node's own cache keys off
           # the lockfile, so a PR that does not change dependencies skips the download.
-          cache: npm
+          # Empty on our own runners: setup-node's cache uploads and downloads node_modules
+          # through GitHub's cache service, and the box already has it. 239s measured on
+          # run 32091486436. Hosted runners still get the cache.
+          cache: ${{ runner.environment == 'self-hosted' && '' || 'npm' }}
           cache-dependency-path: store_platform/src/Store.Web/package-lock.json
 
       - name: Cache Next.js build
@@ -592,7 +613,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
+          cache: ${{ runner.environment == 'self-hosted' && '' || 'npm' }}
           cache-dependency-path: store_platform/src/Ops.Console/package-lock.json
 
       - name: Cache Next.js build

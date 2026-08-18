@@ -41,12 +41,22 @@ pools:
     variable: CI_HEAVY_RUNS_ON
     label: heavy
     jobs: [python, engine, dotnet, nextjs, ops-console]
-  # Jobs that are a shell loop over already-computed results. They hold a slot for seconds, so
-  # one runner clears any queue they can make, and they must never wait behind a suite: `ci-ok`
-  # queueing behind a 24-minute python job is what left runs reading `queued` after every job in
-  # them had finished.
+  # Short jobs: a checkout, a doc lint, a shell loop over already-computed results. They must
+  # never wait behind a suite -- `ci-ok` queueing behind a 24-minute python job is what left runs
+  # reading `queued` after every job in them had finished.
+  #
+  # This said one runner, on the reasoning that a light job holds a slot for seconds. It does not.
+  # `changes` checks the repository out and `guard` runs two linters, so each is closer to a
+  # minute, and every run needs three of them. Measured 2026-08-18 04:22 UTC with five runs queued
+  # (32095268259, 32096489333, 32097323948, 32097903595, 32098911603): #314's `guard` and
+  # `changes` had waited 25 minutes with no runner assigned, because one instance was serving
+  # about twenty light jobs.
+  #
+  # The pool is every self-hosted instance now. The reservation the split was for still holds from
+  # the other side: heavy jobs ask for `heavy`, and mumchimp-mac-4 does not carry that label, so a
+  # suite can never take the instance a finalising job needs.
   light:
-    runners: 1
+    runners: 4
     variable: CI_LIGHT_RUNS_ON
-    label: light
+    label: self-hosted
     jobs: [changes, guard, ci-ok]
