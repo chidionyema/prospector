@@ -10,19 +10,16 @@
 # /Users/chidionyema. A Linux container cannot create those, so the trial uses paths under
 # the runner's own home. Making ci.yml portable is a separate change on this branch.
 name: fly-trial
-
-on:
-  workflow_dispatch:
+'on':
+  workflow_dispatch: null
   push:
-    branches: [feat/ci-runners-on-fly]
-
+    branches:
+    - feat/ci-runners-on-fly
 concurrency:
   group: fly-trial-${{ github.ref }}
   cancel-in-progress: true
-
 env:
-  PYTHON_VERSION: "3.14"
-
+  PYTHON_VERSION: '3.14'
 jobs:
   python-on-fly:
     runs-on: fly
@@ -31,48 +28,98 @@ jobs:
       UV_CACHE_DIR: /home/runner/.cache/uv
       VENV_ROOT: /home/runner/ci-venvs
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        enable-cache: false
+    - name: Python ${{ env.PYTHON_VERSION }} in a shared venv
+      run: "set -euo pipefail\nROOT=\"${VENV_ROOT:-$PWD/.ci-venvs}\"\nmkdir -p \"$ROOT\"\nKEY=\"py${PYTHON_VERSION}-$(shasum\
+        \ -a 256 requirements.txt | cut -c1-16)\"\nVENV=\"$ROOT/$KEY\"\nif [ ! -x \"$VENV/bin/python\"\
+        \ ]; then\n  TMP=\"$ROOT/.building-$KEY-$$\"\n  rm -rf \"$TMP\"\n  uv venv --relocatable --python\
+        \ \"${PYTHON_VERSION}\" \"$TMP\"\n  VIRTUAL_ENV=\"$TMP\" uv pip install -r requirements.txt\n\
+        \  mv -n \"$TMP\" \"$VENV\" 2>/dev/null || true\n  rm -rf \"$TMP\"\n  echo \"built $VENV\"\nelse\n\
+        \  echo \"reused $VENV\"\nfi\n\"$VENV/bin/python\" -c 'import pytest' || { echo \"shared venv\
+        \ is incomplete\"; exit 1; }\necho \"$VENV/bin\" >> \"$GITHUB_PATH\"\necho \"VIRTUAL_ENV=$VENV\"\
+        \ >> \"$GITHUB_ENV\"\n\"$VENV/bin/python\" --version\n"
+    - name: Test suite
+      run: "set -eu\nfiles=$(git ls-files 'tests' \\\n        | grep -E '(^|/)test_[^/]+\\.py$' \\\n \
+        \       | grep -v -e 'tests/test_ui_theme\\.py$' -e 'tests/test_golden_set\\.py$')\ncount=$(printf\
+        \ '%s\\n' \"$files\" | grep -c . || true)\necho \"$count test files\"\nif [ \"$count\" -eq 0 ];\
+        \ then\n  echo \"::error::collected no test files \u2014 the pattern is wrong\"; exit 1\nfi\n\
+        python -m pytest -q $files -n 6 --tb=short -p no:warnings\n"
+    - name: Golden-set regression gate
+      run: python -m pytest tests/test_golden_set.py -v --tb=short
+  nextjs-on-fly:
+    runs-on: fly
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: store_platform/src/Store.Web/
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: ${{ runner.environment == 'self-hosted' && '' || 'npm' }}
+        cache-dependency-path: store_platform/src/Store.Web/package-lock.json
+    - name: Cache Next.js build
+      uses: actions/cache@v4
+      with:
+        path: store_platform/src/Store.Web/.next/cache
+        key: next-${{ runner.os }}-${{ hashFiles('store_platform/src/Store.Web/package-lock.json') }}-${{
+          github.sha }}
+        restore-keys: 'next-${{ runner.os }}-${{ hashFiles(''store_platform/src/Store.Web/package-lock.json'')
+          }}-
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
-        with:
-          enable-cache: false
+          next-${{ runner.os }}-
 
-      - name: Python ${{ env.PYTHON_VERSION }} in a shared venv
-        run: |
-          set -euo pipefail
-          ROOT="${VENV_ROOT:-$PWD/.ci-venvs}"
-          mkdir -p "$ROOT"
-          KEY="py${PYTHON_VERSION}-$(shasum -a 256 requirements.txt | cut -c1-16)"
-          VENV="$ROOT/$KEY"
-          if [ ! -x "$VENV/bin/python" ]; then
-            TMP="$ROOT/.building-$KEY-$$"
-            rm -rf "$TMP"
-            uv venv --relocatable --python "${PYTHON_VERSION}" "$TMP"
-            VIRTUAL_ENV="$TMP" uv pip install -r requirements.txt
-            mv -n "$TMP" "$VENV" 2>/dev/null || true
-            rm -rf "$TMP"
-            echo "built $VENV"
-          else
-            echo "reused $VENV"
-          fi
-          "$VENV/bin/python" -c 'import pytest' || { echo "shared venv is incomplete"; exit 1; }
-          echo "$VENV/bin" >> "$GITHUB_PATH"
-          echo "VIRTUAL_ENV=$VENV" >> "$GITHUB_ENV"
-          "$VENV/bin/python" --version
+          '
+    - name: Install dependencies
+      run: npm ci --prefer-offline --no-audit --no-fund
+    - name: Typecheck
+      run: npm run typecheck
+    - name: Unit tests (vitest)
+      run: npm test
+    - name: Build
+      run: npm run build
+      env:
+        NEXT_PUBLIC_API_URL: https://api.example.com
+        NEXT_PUBLIC_SITE_URL: https://www.example.com
+  ops-console-on-fly:
+    runs-on: fly
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: store_platform/src/Ops.Console/
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: ${{ runner.environment == 'self-hosted' && '' || 'npm' }}
+        cache-dependency-path: store_platform/src/Ops.Console/package-lock.json
+    - name: Cache Next.js build
+      uses: actions/cache@v4
+      with:
+        path: store_platform/src/Ops.Console/.next/cache
+        key: ops-next-${{ runner.os }}-${{ hashFiles('store_platform/src/Ops.Console/package-lock.json')
+          }}-${{ github.sha }}
+        restore-keys: 'ops-next-${{ runner.os }}-${{ hashFiles(''store_platform/src/Ops.Console/package-lock.json'')
+          }}-
 
-      - name: Test suite
-        run: |
-          set -eu
-          files=$(git ls-files 'tests' \
-                  | grep -E '(^|/)test_[^/]+\.py$' \
-                  | grep -v -e 'tests/test_ui_theme\.py$' -e 'tests/test_golden_set\.py$')
-          count=$(printf '%s\n' "$files" | grep -c . || true)
-          echo "$count test files"
-          if [ "$count" -eq 0 ]; then
-            echo "::error::collected no test files — the pattern is wrong"; exit 1
-          fi
-          python -m pytest -q $files -n 6 --tb=short -p no:warnings
+          ops-next-${{ runner.os }}-
 
-      - name: Golden-set regression gate
-        run: python -m pytest tests/test_golden_set.py -v --tb=short
+          '
+    - name: Install dependencies
+      run: npm ci --prefer-offline --no-audit --no-fund
+    - name: Typecheck
+      run: npm run typecheck
+    - name: Lint
+      run: npm run lint
+    - name: Unit tests (vitest)
+      run: npm test
+    - name: Build
+      run: npm run build
