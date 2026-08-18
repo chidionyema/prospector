@@ -1035,3 +1035,44 @@ is trying to remove. **Remove the black media block until there is real imagery 
 **Status: NOT STARTED.** No code changed for v5 in this session. Do not mark any row ✅ without a
 computed-value proof in a real browser — §3's ledger row is the precedent (Playwright over five
 routes, `getComputedStyle`, not a grep of the stylesheet). Memory `never-judge-design-by-grepping-html`.
+
+---
+
+## 9. MASTER-BRIEF build bundle — status, 2026-08-18
+
+The brief lives at `docs/design/mumchimp-build-bundle/MASTER-BRIEF.md`, checked in on 2026-08-17.
+It supersedes nothing above; it is a second, later specification with its own build order in §8,
+and this section is its ledger. Everything below is a claim about commits, not about a browser.
+No row here means "verified with eyes" — §3's precedent stands, and the v5 critique above is still
+NOT STARTED.
+
+### Build order (§8)
+
+| Step | What it is | Commit | Where it landed |
+| --- | --- | --- | --- |
+| 2 | The shared design layer | `56dc12f` | PR #301 |
+| 3 | Kill grid in the hero, one filter bar | `1e55b97`, `0d224c7` | PR #301 |
+| 4 | Pack page: one buy box, hundred-dot field | `06019c6` | PR #301 |
+| 5 | Kill log: cause grid, argument on every row | `43feb31` | PR #301 |
+| 6 | `/ideas` → `/collections`, four signature graphics | `e157be8` | PR #301 |
+| 7 | About, FAQ, account, legal, error pages | `e9da6af` | PR #306 |
+| 9 | The cross-cutting sweep | `35fff8d` | PR #306 |
+
+PR #293 carried steps 2 to 7 and was closed as superseded by #301. #301 did NOT pick up step 7,
+because it was pushed after the branch was taken. #306 carries step 7 and the §9 sweep, based on
+#301's head. If #306 is merged and step 7 is still missing from `main`, check that #301 landed
+first.
+
+### §10 audit boxes still open
+
+- **Box 6 — colours outside the §1 token set.** `--cat-*`, `--action`, `--ins-*`,
+  `--border-control` and `--faint` are all declared in `tokens.css` and used deliberately; the
+  brief's §1 list is shorter than what the site actually needs. The raw hexes in
+  `pages/og/pack/[id].tsx` are a separate case and cannot be tokens: the OG image is rendered by
+  Satori, which does not resolve CSS custom properties. This box needs a decision about the
+  brief's list, not a code change.
+- **Box 12 — pack descriptions ending in an ellipsis rather than a full stop.** The cut happens
+  upstream in `bridge.py` when the listing row is written, so it is engine work, not storefront
+  work. `repairTruncation` in `lib/copy.ts` patches the symptom on the shelf.
+
+Both are recorded here rather than fixed because neither is a defect in the storefront code.
