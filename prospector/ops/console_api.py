@@ -2643,7 +2643,7 @@ TOOLS: list[dict] = [
     _t("prospector/run.py", "System diagnostics", False, "/tools",
        cmd=".venv/bin/python -m prospector.run diagnose"),
     _t("prospector/run.py", "Operator state and quotas", False, "/engine",
-       cmd=".venv/bin/python -m prospector.run operator"),
+       cmd=".venv/bin/python -m prospector.run operators"),
     _t("prospector/run.py", "Manage ambition lanes", True, "/tools",
        cmd=".venv/bin/python -m prospector.run lanes show"),
     _t("prospector/run.py", "Manage markets", True, "/tools",
