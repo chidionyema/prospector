@@ -2834,6 +2834,15 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     "scripts/seed_action_cache.sh": "fills the self-hosted runners' action cache; CI plumbing, "
                                     "run once on the runner box, not from an ops page",
     "scripts/setup_worktree.sh": "makes a git worktree usable; a developer's machine, not ops",
+    "scripts/session_check.py": "asks whether an agent session left work behind — uncommitted, "
+                               "unpushed, a branch with no PR; a session's own hygiene, and there "
+                               "is no session to check from an ops page",
+    "scripts/worktree_gc.py": "reports and removes merged git worktrees; a developer's disk, and "
+                              "it refuses to touch another session's tree, so it has no meaning "
+                              "off the machine that made them",
+    "scripts/estate_census.py": "counts tracked files that nothing else refers to; a repo-health "
+                                "reading for whoever is deleting dead code, not an action on the "
+                                "running platform",
     "scripts/test_impacted.py": "picks the tests a local edit can affect; a developer's loop",
     "scripts/verify_engine_change.sh": "the pre-commit proof that an engine change is safe",
     "tools/commit_mine.sh": "commits exactly the named paths; a developer's git helper",

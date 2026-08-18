@@ -506,8 +506,10 @@ hand written in the web app.
   for Store.Web**. `npm run lint` appears once in the whole workflow file, at
   `.github/workflows/ci.yml:728`, inside the separate `ops-console` job.
 - `ops/config/retired_terms.yaml` is the banned name list. It is 85 lines long and declares
-  **exactly one term**: `paddle`, at `ops/config/retired_terms.yaml:12`, with a reason and an
-  allow list of paths where the string may legitimately still appear. Everything else in the
+  **exactly one term**, declared at `ops/config/retired_terms.yaml:12` with a reason and an
+  allow list of paths where the string may legitimately still appear. This brief does not repeat
+  the term itself: the scanner reads every tracked file, so writing it here would report this
+  sentence as a breach of the rule it is describing. Everything else in the
   file is explanation. `ops/automations/retired_terms.py` is a generic scanner over all git
   tracked files, so Store.Web is in scope by accident of being tracked rather than by design.
   It is invoked by hand or from an ops console button. No workflow calls it.
