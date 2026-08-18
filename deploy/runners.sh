@@ -65,7 +65,10 @@ Mint it first, at:
 MSG
     exit 2
   fi
-  IFS= read -r token
+  # `|| true`, because `read` returns non-zero at end of file when the last line carries no
+  # newline - which is exactly what `printf '%s' "$tok" | ...` produces. Under `set -e` that
+  # killed the script before it printed anything: exit 1, no message, no stored token.
+  IFS= read -r token || true
   token="$(printf '%s' "$token" | tr -d '[:space:]')"
   [ -n "$token" ] || { echo "nothing on stdin" >&2; exit 2; }
 
