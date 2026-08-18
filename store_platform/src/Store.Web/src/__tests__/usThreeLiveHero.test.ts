@@ -178,7 +178,11 @@ describe('US-3 - Hero with a demonstration of the moat', () => {
     // SHELF's deleted `mid` band, so this assertion passed for four months on an element three
     // screens below the one it names. The hero's grid is `lg:grid-cols-[1fr_420px]`: copy left,
     // live card right, at a fixed card width.
-    const hasTwoColumns = /lg:grid-cols-\[1fr_420px\]/.test(page);
+    // Width-agnostic on purpose. The claim on this line is that the hero is two columns at
+    // `lg`, not that the right one is 420px. That measure is a design number and it moved to
+    // the drawing's 380px on 2026-08-18; pinning the digits here made a layout change read as
+    // a structural regression in a test about the hero's shape.
+    const hasTwoColumns = /lg:grid-cols-\[1fr_\d+px\]/.test(page);
     expect(
       hasTwoColumns,
       'index.tsx hero must use a 2-column grid (lg:grid-cols-2)',

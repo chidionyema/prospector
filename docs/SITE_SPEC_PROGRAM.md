@@ -1115,3 +1115,47 @@ Three places where the drawing lost to a guard test, each recorded in a comment 
 Kill-log did NOT get the drawing's `.facts` row. The page already prints those figures twice, in
 the chip row and in the caveat beside the hero, and its own docblocks record two earlier defects
 from printing one number twice.
+
+### Landing page walk, 2026-08-18
+
+The founder's words: "the landning page stilstill looks othing log like the nockupss". Walked
+`src/pages/index.tsx` and its hero components against `docs/design/mumchimp-build-bundle/mockups/index.html`
+section by section. What changed, and what the built site's own tests refused.
+
+**The kill grid stopped drawing wallpaper.** Survivors were placed at the centre of an even bucket
+(`Math.floor((k + 0.5) * bucket)`), and a bucket of 19.5 against a 38-column row draws regular
+diagonal stripes. It read as a pattern, not as a population. Placement is now a deterministic
+FNV-1a hash of the pack id inside each bucket, so rank order and SSR/hydration agreement both
+survive and the field scatters (`components/marketing/KillGrid.tsx`).
+
+**The kill grid legend fits on one line again.** It carried a third entry, a bare `1,444` hard
+right, which wrapped at the hero column's width. The total moved into the caption sentence, where
+it is a scale label rather than a legend entry. `killGrid.test.tsx` still finds it in visible text.
+
+**The source strip is the drawing's `.srcstrip` now.** It rendered inside the hero's left column at
+a 46rem cap, so four source pills and "See the whole thing" wrapped onto two rows. It is a
+full-width section directly under the hero, at `padding:20px 0 24px`, and the row fits on one line.
+
+**The source chips are the drawing's `.srcchip`.** `SourceChip` gained a third variant, `pill`:
+full-round, 1px line, mono at 12.5px, a 5px brand dot at a 7px gap. It is a variant of the one
+implementation rather than a fourth private copy, which is what `sourceChipIsTheOnlyOne.test.ts`
+exists to enforce.
+
+**The hero grid is `1fr 380px`, the drawing's, not `1fr 420px`.**
+
+**The proof strip is the drawing's `.split`.** One bordered card, two equal cells, a 1px line
+between, 22px padding, each cell a label, a figure, a sentence and a route out.
+
+Three walk-backs, each forced by a test that encodes an earlier founder decision:
+
+- The left cell prints the SHELF count, not the drawing's "68 survived". `lib/stats.ts` does not
+  export a survivor count and will not (founder directive, 2026-08-13).
+- The cell labels are not mono, not uppercase and not letterspaced. `weightAndCasePolicy.test.ts`
+  bars case and tracking set in CSS; `monoIsTheDataVoice.test.ts`'s audit is explicit that a word
+  under a tally is a label and only the figure is data.
+- The copy reads "Passed every check we ran", not the drawing's "Passed all six checks".
+  `fixedCheckCount.test.ts` refuses a bare cardinal beside a checks-noun.
+
+Two test locators were widened, neither claim weakened: `usThreeLiveHero.test.ts` matched the hero
+grid by the literal `1fr_420px`, and the mono budget in `monoIsTheDataVoice.test.ts` went 90 to 91
+with the reason named, which is what that file asks of anyone raising it.

@@ -68,7 +68,11 @@ const PUSHED_BACK = checks.length - SURVIVED;
 
 export function HeroEvidenceStrip({ className }: { className?: string }) {
   return (
-    <div className={cx('max-w-[46rem]', className)}>
+    /* NO MEASURE OF ITS OWN. This used to cap itself at 46rem, which was right while it lived
+       inside the hero's left column. It is now the drawing's own `.srcstrip` section
+       (`mockups/index.html:304`), a full-width row under the hero, and the caller sets the
+       measure. */
+    <div className={cx(className)}>
       <p className="text-caption text-subtle">
         Every pack carries this. Here is the one in the free sample.
       </p>
@@ -132,7 +136,7 @@ export function HeroEvidenceStrip({ className }: { className?: string }) {
           has one way of drawing "a source you can open". */}
       <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
         {SHOWN_DOMAINS.map((domain) => (
-          <SourceChip key={domain} url={HREF_FOR.get(domain) ?? ''} host={domain} variant="link" />
+          <SourceChip key={domain} url={HREF_FOR.get(domain) ?? ''} host={domain} variant="pill" />
         ))}
         <Link
           href="/sample"

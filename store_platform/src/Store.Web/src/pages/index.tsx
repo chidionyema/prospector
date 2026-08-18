@@ -1830,7 +1830,10 @@ export default function Home({ packs, stats, flags, initialState, market, curren
             replaced it and the measurement that condemned it -- and the stacking context is kept only
             because the featured card's opaque fill still relies on it. */}
         <div className="relative">
-        <div className="relative z-10 flex flex-col gap-10 lg:grid lg:grid-cols-[1fr_420px] lg:items-start lg:gap-12">
+        {/* `1fr 380px` at a 48px gap, which is `mockups/index.html`'s `.hero` exactly. The right
+            column was 420px, so the kill grid drew 40px wider than the drawing and the headline
+            column 40px narrower. */}
+        <div className="relative z-10 flex flex-col gap-10 lg:grid lg:grid-cols-[1fr_380px] lg:items-start lg:gap-12">
           <div className="w-full min-w-0">
             {/* Mono because both halves are quantities. This replaces an uppercase
                 `tracking-[0.2em]` eyebrow -- letterspaced small caps is the single most dated
@@ -1983,7 +1986,6 @@ export default function Home({ packs, stats, flags, initialState, market, curren
 
                 `hidden md:block` is kept from the line it replaces, for the same reason: on a
                 phone this is the last object between the fold and a product. */}
-            <HeroEvidenceStrip className="mt-5 hidden md:mt-6 md:block" />
           </div>
           {/* THE SIGNATURE DEVICE (MASTER-BRIEF §7, `mockups/index.html`). Every idea the
               engine has researched, one square each, with the shelf in teal and every teal square
@@ -2048,6 +2050,20 @@ export default function Home({ packs, stats, flags, initialState, market, curren
         </div>
       </SectionBand>
 
+      {/* THE SOURCE STRIP (`mockups/index.html:304`, `.srcstrip`).
+
+          It used to render INSIDE the hero's left column, capped at 46rem. At that measure four
+          source pills and the "See the whole thing" link did not fit on one line, so the row
+          wrapped and read as two rows of chips. The drawing puts this on its own full-width
+          section directly under the hero, at `padding:20px 0 24px`, which is why its four chips
+          and its link sit on one line.
+
+          `hidden md:block` is carried over from where it stood, for the reason recorded there:
+          on a phone this is the last object between the fold and a product. */}
+      <SectionBand bg="bg" width="7xl" className="!pt-5 !pb-6">
+        <HeroEvidenceStrip className="hidden md:block" />
+      </SectionBand>
+
       {/*
         PROOF STRIP, POSITION 2.
 
@@ -2092,38 +2108,66 @@ export default function Home({ packs, stats, flags, initialState, market, curren
           `e2e/discovery.spec.ts` only runs at 1280x720 and physically cannot see it. */}
       <div className="flex flex-col">
       <Section bg="bg" width="7xl" outerClassName="order-1 sm:order-none" className="!py-10 md:!py-12">
-        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-          <div className="max-w-3xl">
-            {/* TWO COUNTS, BOTH ABOUT KILLING, AND NO SURVIVOR FIGURE. This strip has been wrong
-                three ways in one week, and every version failed for the same reason: it printed
-                the survivor count, which is 80, next to a shelf holding 50. First it printed
-                "80 survived. That's a 6% pass rate" (6% of 1,444 is 87). Then it explained the
-                gap. Then it explained the whole partition. The founder cut the figure instead:
-                the strip now states what we researched and what we killed, and the shelf states
-                its own live count where the copy is about the shelf. Nothing left to reconcile. */}
-            <p className="text-body font-semibold text-text">
-              {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas researched.{' '}
-              {RESEARCH_STATS.killed.toLocaleString('en-GB')} killed on cited evidence.
+        {/* THE SPLIT (`mockups/index.html:322`, `.split`): one bordered card, two equal cells,
+            a 1px line between them, `padding:22px`. What stood here was a single prose line and
+            a link, floated apart on one row. The drawing gives each number its own cell, its own
+            label and its own route out, which is why a reader can take in both counts without
+            reading a sentence.
+
+            THE COPY SAYS "every check we ran", NOT the drawing's "all six checks".
+            `fixedCheckCount.test.ts` refuses a bare cardinal next to a checks-noun: the number of
+            checks a pack ran is not fixed, and this page has already paid for printing one as if
+            it were.
+
+            THE LEFT FIGURE IS THE SHELF COUNT, NOT THE SURVIVOR COUNT. The drawing prints "68
+            survived" there; `lib/stats.ts` does not export that number and will not
+            (founder directive, 2026-08-13), and this page has already been wrong three ways
+            printing it. `packs.length` is what is listed today, it is the number the hero prints
+            two rows above, and it is the only one of the two a buyer can act on.
+
+            THE LABELS ARE NOT MONO, NOT UPPERCASE AND NOT LETTERSPACED, all three of which the
+            drawing sets. Case and tracking are refused by `weightAndCasePolicy.test.ts`: CSS caps
+            leave the accessible name in sentence case while a screen reader may spell the
+            rendered form out. Mono is refused by `monoIsTheDataVoice.test.ts`, whose audit is
+            explicit that a WORD under a tally is a label and only the FIGURE is data. The
+            figures above them keep their tabular numerals.
+
+            THE RESEARCH TOTAL IS STILL HERE, in the right cell's sentence. It has to be: on a
+            phone `KillGrid` is not rendered and this strip is the only place the total appears
+            at all. */}
+        <div className="grid grid-cols-1 overflow-hidden rounded-card border border-line bg-surface sm:grid-cols-2">
+          <div className="p-[22px]">
+            <p className="mb-3 text-caption text-subtle">On the shelf now</p>
+            <b className="mb-1.5 block text-h2 font-semibold leading-none tabular-nums text-text">
+              {packs.length}
+            </b>
+            <p className="mb-3 max-w-[38ch] text-meta leading-relaxed text-muted">
+              Passed every check we ran. Every claim sourced, every number traceable.
             </p>
-            {/* THIS LINE NAMES NO NUMBER, and every number it used to name was wrong or unasked
-                for. What shipped read "80 survived the checks; 50 are packaged and listed so far.
-                The other 1,364 are published, each with the evidence that killed it." -- a
-                partition of 1,414 printed under a total of 1,444, with "published" attached to
-                1,364 when 400 kills are published. The first repair stated all three denominators
-                inline; the founder cut it on 2026-08-13 as a headache the buyer never asked for.
-                So the only figures on this strip are the three in the line above, all from
-                `RESEARCH_STATS`, which no longer exports a survivor count at all, so no page can
-                reprint it. The receipts live on /kill-log, which the link beside this strip
-                opens. */}
-            <p className="mt-2 max-w-[64ch] text-meta text-muted">{killsSummary()}.</p>
+            <Link
+              href="#catalog"
+              className="inline-flex items-center gap-1.5 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
+            >
+              Browse the catalogue
+              <Icon name="arrowRight" size={14} />
+            </Link>
           </div>
-          <Link
-            href="/kill-log"
-            className="inline-flex flex-none items-center gap-1.5 py-3 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
-          >
-            Read the kill log
-            <Icon name="arrowRight" size={14} />
-          </Link>
+          <div className="border-t border-line p-[22px] sm:border-t-0 sm:border-l">
+            <p className="mb-3 text-caption text-subtle">Researched, not listed</p>
+            <b className="mb-1.5 block text-h2 font-semibold leading-none tabular-nums text-text">
+              {RESEARCH_STATS.killed.toLocaleString('en-GB')}
+            </b>
+            <p className="mb-3 max-w-[38ch] text-meta leading-relaxed text-muted">
+              {`We have researched ${RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas. ${killsSummary()}, and the evidence behind it.`}
+            </p>
+            <Link
+              href="/kill-log"
+              className="inline-flex items-center gap-1.5 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
+            >
+              Read the kill log
+              <Icon name="arrowRight" size={14} />
+            </Link>
+          </div>
         </div>
       </Section>
 

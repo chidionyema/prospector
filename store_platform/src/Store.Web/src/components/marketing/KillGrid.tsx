@@ -94,6 +94,25 @@ export interface KillGridProps {
   className?: string;
 }
 
+/**
+ * A stable fraction in [0.06, 0.94) from a pack id, used to place a survivor inside its bucket.
+ *
+ * FNV-1a, eight lines, no dependency. It has to be a pure function of data the server and the
+ * browser both hold, because the field is rendered once on the server and hydrated in the browser
+ * and the two must agree mark for mark.
+ *
+ * The range is inset rather than [0, 1) so a survivor never lands hard against a bucket edge,
+ * which is where two adjacent survivors would draw as a pair and reintroduce a texture.
+ */
+function offset01(id: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < id.length; i += 1) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return 0.06 + (h / 0x100000000) * 0.88;
+}
+
 export function KillGrid({ packs, className }: KillGridProps) {
   const total = RESEARCH_STATS.researched;
 
@@ -116,11 +135,27 @@ export function KillGrid({ packs, className }: KillGridProps) {
     (a.verifiedAt ?? UNDATED_SORTS_LAST).localeCompare(b.verifiedAt ?? UNDATED_SORTS_LAST),
   );
 
-  // Rank k of n sits in bucket k of the field. See the note above on what position means.
+  /*
+   * Rank k of n sits in bucket k of the field. See the note above on what position means.
+   *
+   * THE OFFSET INSIDE THE BUCKET IS DERIVED FROM THE PACK ID, and it is not decoration. Before
+   * 2026-08-18 every survivor sat dead centre of its bucket, at `(k + 0.5) * bucket`. With 74
+   * survivors in 1,444 cells the bucket is 19.5 and the row is 38, so consecutive survivors landed
+   * 19.5 cells apart -- a hair over half a row -- and the half-cell drifted one column further
+   * every pair. The field drew clean diagonal stripes across the whole hero. Compared side by side
+   * with `mockups/index.html`, whose survivors are scattered, ours read as wallpaper: a regular
+   * pattern is the one thing a picture of real outcomes must not look like, because a reader who
+   * sees a repeat stops believing the marks are data.
+   *
+   * The offset is a hash of the pack id, so it is stable: the same catalogue draws the same field
+   * on the server and in the browser, which `Math.random` could not do without breaking hydration,
+   * and it changes only when the catalogue does. It stays strictly inside bucket k, so rank order
+   * left to right and top to bottom is exactly as it was and the caption is still true.
+   */
   const bucket = total / ordered.length;
   const placed = ordered.map((pack, k) => ({
     pack,
-    index: Math.min(total - 1, Math.floor((k + 0.5) * bucket)),
+    index: Math.min(total - 1, Math.floor((k + offset01(pack.id)) * bucket)),
   }));
   const live = new Set(placed.map((p) => p.index));
 
@@ -230,12 +265,21 @@ export function KillGrid({ packs, className }: KillGridProps) {
           <span aria-hidden className="inline-block size-[9px] rounded-sm bg-survive" />
           On the shelf now
         </span>
-        <span className="ml-auto tabular-nums text-muted">{totalLabel}</span>
+        {/* THE TOTAL IS NOT IN THIS ROW ANY MORE. It sat here hard right as `1,444 researched`,
+            and at the hero column's width that pushed the legend onto two lines while the
+            drawing keeps it on one (`mockups/index.html:295-297`, two entries, one row). The
+            figure moved into the caption below, where it is a scale label in a sentence rather
+            than a third legend entry competing with two swatches.
+
+            The drawing's second entry, "68 survived", is still not printable: the founder's
+            directive of 2026-08-13 and `lib/stats.ts` between them make the survivor count
+            unavailable, so the shelf entry carries a name and no number.
+            `killGrid.test.tsx` pins that the total stays visible somewhere a reader sees. */}
       </div>
 
       <figcaption className="mt-3 border-t border-line pt-3 text-meta leading-relaxed text-muted">
-        Every idea we have ever researched, one square each, oldest first. The teal ones are what
-        you can buy.
+        Every idea we have ever researched, {totalLabel} of them, one square each, oldest first.
+        The teal ones are what you can buy.
       </figcaption>
     </figure>
   );
