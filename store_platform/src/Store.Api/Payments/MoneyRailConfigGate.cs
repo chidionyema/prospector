@@ -6,8 +6,24 @@ public sealed class MoneyRailConfigGate(
     IConfiguration config,
     IHostEnvironment environment,
     ILogger<MoneyRailConfigGate> logger,
-    MoneyRailStatus? status = null) : IHostedService
+    MoneyRailStatus? status = null,
+    Func<string, string?>? readEnvironmentVariable = null) : IHostedService
 {
+    // The two key guards below fall back to a process environment variable when the config key
+    // is absent. That fallback is production behaviour and stays. It also meant the guard tests
+    // could not express "this key is missing": on any machine with STORE_INTERNAL_API_KEY or
+    // PROSPECTOR_ENTITLEMENTS_API_KEY exported -- the founder's box, and every box that runs the
+    // engine -- the fallback supplied a key and the tests asserting a throw quietly passed the
+    // guard instead. Measured 2026-08-18: both env vars set locally, both tests failed with
+    // "No exception was thrown".
+    //
+    // So the reader is injectable. It is null in the app, where this resolves to
+    // Environment.GetEnvironmentVariable and nothing changes. Tests pass a reader they control,
+    // which is race-free -- unlike clearing a process-global variable while other test
+    // collections run in parallel.
+    private readonly Func<string, string?> readEnv =
+        readEnvironmentVariable ?? Environment.GetEnvironmentVariable;
+
     // PAY-1 — `status` is optional so the existing gate tests keep constructing this with three
     // arguments. In the app it is always resolved from DI (Program.cs registers the singleton
     // next to this hosted service), so the endpoint always has a real decision to report.
@@ -275,7 +291,7 @@ public sealed class MoneyRailConfigGate(
         }
 
         var key = config["Store:InternalApiKey"]
-            ?? Environment.GetEnvironmentVariable("STORE_INTERNAL_API_KEY");
+            ?? readEnv("STORE_INTERNAL_API_KEY");
 
         if (string.IsNullOrEmpty(key)
             || string.Equals(key, DevPlaceholderInternalKey, StringComparison.Ordinal))
@@ -298,7 +314,7 @@ public sealed class MoneyRailConfigGate(
         }
 
         var key = config["Store:EntitlementsApiKey"]
-            ?? Environment.GetEnvironmentVariable("PROSPECTOR_ENTITLEMENTS_API_KEY");
+            ?? readEnv("PROSPECTOR_ENTITLEMENTS_API_KEY");
 
         if (string.IsNullOrEmpty(key)
             || string.Equals(key, DevPlaceholderEntitlementsKey, StringComparison.Ordinal))
