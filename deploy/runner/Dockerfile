@@ -53,7 +53,9 @@ RUN useradd -m -s /bin/bash runner && echo 'runner ALL=(ALL) NOPASSWD:ALL' > /et
 # Pinned. An unpinned runner tarball means a CI fleet that silently changes version between
 # two machines started an hour apart, and the resulting "works on runner 3, fails on runner 1"
 # is the most expensive kind of flake to chase.
-ARG RUNNER_VERSION=2.328.0
+# 2.336.0 because that is what GitHub hands this repository. 2.328.0 registered fine and was
+# then force-updated in place on first contact, which is the failure below.
+ARG RUNNER_VERSION=2.336.0
 ARG RUNNER_ARCH=x64
 
 WORKDIR /home/runner/actions-runner

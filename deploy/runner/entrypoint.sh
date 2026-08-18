@@ -73,9 +73,17 @@ echo "[runner] registering as ${RUNNER_NAME} with labels ${RUNNER_LABELS}"
   --runnergroup "$RUNNER_GROUP" \
   --work /home/runner/_work \
   --ephemeral \
+  --disableupdate \
   --unattended \
   --replace
 
+# --disableupdate because the runner's in-place self-update does not survive here. GitHub told
+# 2.328.0 to update to 2.336.0 on first contact; the update rewrote bin/ and the relaunch died
+# with "/home/runner/actions-runner/bin/Runner.Listener: No such file or directory", exit 127.
+# The machine then rebooted, registered the same old version, and was told to update again. Three
+# runners drained to one in four minutes that way, with five jobs queued. In an ephemeral
+# container the IMAGE is the update mechanism: bump ARG RUNNER_VERSION and redeploy.
+#
 # run.sh returns when the single job finishes. The platform restarts the container, which
 # comes back here and registers again. That loop IS the fleet: N machines means N concurrent
 # jobs, and `deploy/runners.sh up N` is how N changes.
