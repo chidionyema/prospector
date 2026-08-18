@@ -161,6 +161,19 @@ jobs:
           git fetch origin "${{ github.base_ref }}" --depth=50
           python3 scripts/guard_protected_deletions.py "origin/${{ github.base_ref }}"
 
+      # P5.2. `scripts/doc_lint.py` fails on a doc naming a provider no config selects, a script
+      # path that does not exist, or a 0-byte target -- ENG-6 was exactly that, a doc telling an
+      # operator to run a provider that had not been configured for weeks.
+      #
+      # IT RUNS HERE AND NOT IN THE PYTHON LANE. `tests/unit/test_doc_lint_never_increases.py`
+      # already holds the same ratchet, but that lane is path-filtered on `.py`, `tests/`,
+      # `scripts/` and a few config files -- so a pull request that changes ONLY documentation
+      # skips it entirely, which is the one change that can break a doc. This job has no path
+      # filter, needs no virtualenv (doc_lint imports nothing outside the standard library) and
+      # asks for no extra runner slot.
+      - name: Docs may get more accurate, never less
+        run: python3 scripts/doc_lint.py --check
+
   # ──────────────────────────────────────────────────────────────────
   # Python — full test suite + golden-set hard gate
   # ──────────────────────────────────────────────────────────────────
