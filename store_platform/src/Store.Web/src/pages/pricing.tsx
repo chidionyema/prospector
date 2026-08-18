@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { Button, Icon, textLinkClass } from '@/components/ui';
+import { Icon, textLinkClass } from '@/components/ui';
 import { PACK_DOCUMENTS } from '@/components/marketing/PackContents';
 import { BRAND, LEGAL } from '@/lib/config';
 import { GetStaticProps } from 'next';
@@ -264,28 +264,24 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
             margin-top:46px;padding:34px 0 0}`). It was a filled, bordered card, so the last thing
             on the page looked like one more component in the stack instead of the end of the
             argument. The drawing ends on a rule and lets the two actions sit on the canvas. */}
-        <div className="mt-12 border-t-2 border-text pt-9">
+        <div className="closing">
           <p className="eyebrow">{BRAND.name}</p>
           <h2 className="mt-2 sec">
             {range && !range.uniform
               ? `${formatGbp(range.min)} to ${formatGbp(range.max)}. Yours forever.`
               : 'One payment. Yours forever.'}
           </h2>
-          <p className="mt-3 max-w-[60ch] lede">
+          <p>
             One payment per pack, no subscription. Read a free sample first if you’d like to see
             the rigour before you buy.
           </p>
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Link href="/#catalog">
-              <Button size="lg" fullWidth className="sm:w-auto">
-                Browse the packs
-                <Icon name="arrowRight" size={16} />
-              </Button>
+          <div className="ctarow">
+            <Link href="/#catalog" className="btn">
+              Browse the packs
+              <Icon name="arrowRight" size={16} />
             </Link>
-            <Link href="/sample">
-              <Button variant="secondary" size="lg" fullWidth className="sm:w-auto">
-                Read a free sample first
-              </Button>
+            <Link href="/sample" className="btn ghost">
+              Read a free sample first
             </Link>
           </div>
         </div>

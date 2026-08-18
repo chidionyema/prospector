@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { Icon, buttonClasses, textLinkClass } from '@/components/ui';
+import { Icon, textLinkClass } from '@/components/ui';
 import { BRAND, FOUNDER, hasFounder } from '@/lib/config';
 import { RESEARCH_STATS } from '@/lib/stats';
 
@@ -224,24 +224,22 @@ export default function AboutPage() {
             margin-top:46px;padding:34px 0 0}`). It was a bordered card on a surface fill, which
             made the last thing on the page look like one more component. The drawing ends the page
             on a rule and lets the two actions sit on the canvas. */}
-        <div className="mt-12 border-t-2 border-text pt-9">
-          <p className="text-caption font-medium text-muted">
-            Read before you buy
-          </p>
+        <div className="closing">
+          <p className="eyebrow">Read before you buy</p>
           <h2 className="sec">
             See the work first.
           </h2>
-          <p className="mt-2 max-w-[60ch] lede">
+          <p>
             Read a full report, unredacted. Every check, every verdict, every source link. Judge
             the pack by it.
           </p>
           {/* `.ctarow`: the free report, then the shelf. Two actions, gap 12px. */}
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link href="/sample" className={buttonClasses({ size: 'lg' })}>
+          <div className="ctarow">
+            <Link href="/sample" className="btn">
               Read the free report
               <Icon name="arrowRight" size={14} />
             </Link>
-            <Link href="/" className={buttonClasses({ size: 'lg', variant: 'ghost' })}>
+            <Link href="/" className="btn ghost">
               Browse the packs
             </Link>
           </div>

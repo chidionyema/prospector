@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
-import { buttonClasses, chipClasses, Glyph, SearchInput, SourceChip, VerdictChip, textLinkClass } from '@/components/ui';
+import { Glyph, SearchInput, SourceChip, VerdictChip, textLinkClass } from '@/components/ui';
 import { Section, SectionBand } from '@/components/marketing/blocks';
 import { CauseGrid } from '@/components/marketing/CauseGrid';
 import { WaitlistCallout } from '@/components/waitlist/WaitlistCallout';
@@ -436,12 +436,15 @@ export default function KillLogPage({
             placeholder="Search kills by title, description, or reason…"
             className="mb-4"
           />
-          <div className="flex flex-wrap items-center gap-2">
+          {/* THE DRAWING'S `.chips` RAIL (`mockups/kill-log.html`, `.chips{display:flex;gap:8px;
+              flex-wrap:wrap;margin:18px 0}` and `.chip[aria-pressed=true]` for the selected one).
+              The gap and the selected state were Tailwind utilities holding the same numbers. */}
+          <div className="chips">
             <button
               type="button"
               onClick={() => setActive(null)}
               aria-pressed={active === null}
-              className={chipClasses({ selected: active === null })}
+              className="chip"
             >
               {/* "All 400" directly under a headline saying 1,330 read as a contradiction. It is
                   all of what is PUBLISHED, and the chip now says which. */}
@@ -453,7 +456,7 @@ export default function KillLogPage({
                 type="button"
                 onClick={() => setActive(label === active ? null : label)}
                 aria-pressed={label === active}
-                className={chipClasses({ selected: label === active })}
+                className="chip"
               >
                 {label} {gateCounts[label]}
               </button>
@@ -469,7 +472,7 @@ export default function KillLogPage({
                   type="button"
                   onClick={() => setSort(s.key)}
                   aria-pressed={sort === s.key}
-                  className={chipClasses({ selected: sort === s.key })}
+                  className="chip"
                 >
                   {s.label}
                 </button>
@@ -669,11 +672,11 @@ export default function KillLogPage({
             full measure, then the offer. It was a filled card with a border. The drawing uses the
             rule everywhere a page ends, and a filled panel here reads as one more module rather
             than the end of the page. */}
-        <div className="mt-12 border-t-2 border-text pt-9">
+        <div className="closing">
           <h2 className="max-w-[26ch] sec">
             Now read one that survived all of it.
           </h2>
-          <p className="mt-3 max-w-[60ch] lede">
+          <p>
             Same checks, same sourcing, opposite outcome. One full report is free to read, no card and
             no email.
           </p>
@@ -692,10 +695,10 @@ export default function KillLogPage({
               visitor later bought. `analytics.ts` deliberately stores nothing on the device (PECR
               reg 6(1)), so there is no per-visitor join, only page-level rates. Read it as "does
               the kill log route people to the shelf", never as "kill-log readers convert at X%". */}
-          <div className="mt-6 flex flex-wrap items-center gap-3">
+          <div className="ctarow">
             <Link
               href="/sample"
-              className={buttonClasses({ size: 'lg' })}
+              className="btn"
               onClick={() => track('sample_cta_clicked')}
             >
               Read a full report free
@@ -706,7 +709,7 @@ export default function KillLogPage({
                 asserting a stale one. */}
             <Link
               href="/#catalog"
-              className={buttonClasses({ variant: 'secondary', size: 'lg' })}
+              className="btn ghost"
               onClick={() => track('catalog_cta_clicked')}
             >
               {listed ? `Browse the ${listed} on the shelf` : 'Browse the packs on the shelf'}
