@@ -136,9 +136,13 @@ to agents, to commit messages and to this document.
 
 Founder, 2026-08-18: *"ensure all agents across all sessions bear tenets in mind"*.
 
-These bind every agent in every session, in this repo and outside it. They live here in full; the
-short form is carried in `~/.claude/CLAUDE.md` so that a session in any project loads them at
-start. Where a tenet and a convenience disagree, the tenet wins.
+These bind every agent in every session, in this repo and outside it. The short form is carried
+in `~/.claude/CLAUDE.md` so a session in any project loads them at start. Where a tenet and a
+convenience disagree, the tenet wins.
+
+**The long form is [`docs/WAYS_OF_WORKING.md`](WAYS_OF_WORKING.md)**: 25 rules, each one a named
+failure the founder has watched recur "dozens of times a day if not hundreds". Read that one when
+you want the detail, and `scripts/session_check.py` before you stop working.
 
 ### T1. Never make the same mistake twice
 

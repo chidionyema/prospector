@@ -109,6 +109,10 @@ Each of these has its own spec and its own status ledger. Append results there, 
 
 - [`docs/PLATFORM_MANIFESTO.md`](PLATFORM_MANIFESTO.md) — the constitution: ten laws, the agent
   tenets, portability targets and drills, the automation audit. Read this one first
+- [`docs/ARCHITECTURE_SECURITY_BASELINE.md`](ARCHITECTURE_SECURITY_BASELINE.md) — the measured
+  baseline: architecture, critical path tests, security posture, mud
+- [`docs/WAYS_OF_WORKING.md`](WAYS_OF_WORKING.md) — the 25 working rules and which of them a
+  machine actually enforces
 - [`docs/COST_PROGRAM.md`](COST_PROGRAM.md) — every cost lever, every measurement, every retired number
 - [`docs/GRAPHIFY_ENFORCEMENT_SPEC.md`](GRAPHIFY_ENFORCEMENT_SPEC.md) — keeping the knowledge graph fresh across the estate
 - [`docs/SITE_SPEC_PROGRAM.md`](SITE_SPEC_PROGRAM.md) — the storefront design, UX and copy spec
