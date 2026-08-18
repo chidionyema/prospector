@@ -67,10 +67,28 @@ def dirty(path: Path) -> list[str]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--fix", action="store_true", help="remove the worktrees marked safe")
+    ap.add_argument("--all-sessions", action="store_true",
+                    help="also consider worktrees owned by another agent session")
     args = ap.parse_args()
 
     git(["worktree", "prune"])
     here = Path.cwd().resolve()
+    # A scratchpad path carries the owning session id: /private/tmp/claude-*/<slug>/<session>/...
+    # Another session's tree may be clean and merged and still be in active use, and pulling the
+    # ground out from under a running session is exactly the "another session's work" exception in
+    # docs/WAYS_OF_WORKING.md W14. Skip those unless asked, rather than trusting a judgement call.
+    mine = ""
+    for part in here.parts:
+        if len(part) == 36 and part.count("-") == 4:
+            mine = part
+            break
+
+    def other_session(path: Path) -> str:
+        for part in path.parts:
+            if len(part) == 36 and part.count("-") == 4 and part != mine:
+                return part
+        return ""
+
     main_tree = worktrees()[0].get("worktree") if worktrees() else None
 
     safe, keep = [], []
@@ -83,6 +101,11 @@ def main() -> int:
             continue
         if here == path.resolve() or here.is_relative_to(path.resolve()):
             keep.append((path, branch, head, "you are standing in it"))
+            continue
+        owner = other_session(path)
+        if owner and not args.all_sessions:
+            keep.append((path, branch, head,
+                         f"owned by session {owner[:8]}; --all-sessions to include"))
             continue
         if not path.exists():
             keep.append((path, branch, head, "path is gone; run git worktree prune"))
