@@ -4,6 +4,10 @@
 > (`reference-project-claude-md-full-2026-08-06.md` is the verbatim pre-compression text).
 > This file carries the RULE; the memory files carry the incident that produced it.
 >
+> `docs/PLATFORM_MANIFESTO.md` is the constitution: the ten platform laws, the agent tenets
+> every session is bound by, the portability target matrix and its drills, and the measured
+> automation audit. Read it before proposing anything structural.
+>
 > Four programmes have their own tracked specs — read and append there, never here:
 > `docs/COST_PROGRAM.md` (all cost work, all measurements),
 > `docs/GRAPHIFY_ENFORCEMENT_SPEC.md` (estate-wide graph freshness),

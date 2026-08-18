@@ -571,6 +571,11 @@ See **[store_platform/README.md](store_platform/README.md)** for the full launch
 
 ## Key docs
 
+**Start with the constitution.**
+[docs/PLATFORM_MANIFESTO.md](docs/PLATFORM_MANIFESTO.md) holds the ten laws the platform is held
+to, the tenets every agent works under, which platforms we can move to and how that is drilled,
+and an honest measured audit of the automation.
+
 **The estate, not just the engine.** Start at
 [docs/ESTATE_MAP.md](docs/ESTATE_MAP.md) and [docs/personas/](docs/personas/README.md) — see
 [Start here](#start-here) for which seat to read.
