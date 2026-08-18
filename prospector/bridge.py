@@ -916,6 +916,18 @@ class EngineBridge:
                            (prose_pass(x) for x in plain_lines(listing.get("what_you_get")))
                            if x][:5],
             "proofPoint": _card_field(listing.get("proof_point")),
+            # THE OPPORTUNITY, not the mechanism (founder, 2026-08-16: the title and the
+            # description say what a pack is and what it does, never the problem, the size of
+            # it, or who would buy). `whoPays` was already here; these two were not, so the
+            # storefront had no field to print the pain or the market from and the whole
+            # opportunity was reachable only by reading the dossier.
+            #
+            # Both are `""` on every pack published before this change and on any pack whose
+            # dossier states no size. That is the designed state, not a gap to fill in later:
+            # `prompts/content_gen.md` forbids inventing a market figure, so a pack with no
+            # cited size has no size, and the storefront prints nothing there.
+            "theProblem": _card_field(listing.get("the_problem")),
+            "marketSize": _card_field(listing.get("market_size")),
             "whoPays": _card_field(listing.get("who_pays")),
             "effortTag": (listing.get("effort_tag") or "").strip(),
             "timeToFirstRevenue": _card_field(listing.get("time_to_first_revenue")),
@@ -1116,6 +1128,14 @@ class EngineBridge:
                 "headline": (catalog_meta.get("headline", ""),
                              nodash(to_plain_text(listing.get("headline"), collapse=True))),
                 "subhead": (catalog_meta.get("subhead", ""), subhead),
+                # The two opportunity fields are prose a buyer reads above the buy button, so
+                # they enter the lint on the same terms as the rest of the shelf copy. A
+                # market-size sentence cut mid-clause is the worst case in the whole payload:
+                # it can drop the unit off a number and still read as a complete claim.
+                "theProblem": (catalog_meta.get("theProblem", ""),
+                               nodash(to_plain_text(listing.get("the_problem"), collapse=True))),
+                "marketSize": (catalog_meta.get("marketSize", ""),
+                               nodash(to_plain_text(listing.get("market_size"), collapse=True))),
             },
             truncation_caps={"headline": 140, "subhead": 280},
             market=getattr(candidate, "market", "") or "",

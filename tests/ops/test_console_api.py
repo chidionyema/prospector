@@ -316,3 +316,99 @@ def test_no_tool_is_runnable_from_the_web_at_all():
     doc, code = api.dispatch(["actions"])
     assert code == 0
     assert not [a for a in doc["data"]["available"] if a.startswith("tool.")]
+
+
+# --------------------------------------------------------------------------- #
+# The stranded shelf
+# --------------------------------------------------------------------------- #
+class _FakeSurvey:
+    """Stands in for `tools/verify_pass_shelf_coverage.py`."""
+
+    def __init__(self, shelf=("live",), passes=(), why=None):
+        # Deliberately not `self._passes` — that name would shadow the `_passes` METHOD the
+        # gateway calls, and the failure reads as "'list' object is not callable" in production
+        # code that is fine.
+        self._shelf, self._rows, self._why_map = set(shelf), list(passes), why or {}
+
+    def _shelf_ids(self):
+        return self._shelf
+
+    def _passes(self, _root):
+        return self._rows
+
+    def _why(self, _root, cid):
+        return self._why_map.get(cid, "never published (no lint record)")
+
+
+def test_an_unreachable_shelf_is_unknown_never_zero_stranded(monkeypatch):
+    """Reporting 0 stranded because the network failed is the same defect as an empty default
+    reading as 'clean'. The revenue gap must never be understated by an outage."""
+    class _Dead(_FakeSurvey):
+        def _shelf_ids(self):
+            raise TimeoutError("the catalogue did not answer")
+
+    monkeypatch.setattr(api, "_shelf_survey_module", lambda: _Dead())
+    out = api._read_shelf(None, {})
+    assert out["reachable"] is False
+    assert out["stranded"] is None, "unknown must not render as a confident zero"
+    assert "did not answer" in out["reason"]
+
+
+def test_the_blocking_checks_are_the_named_lint_checks_only(monkeypatch):
+    """A loose word match read 'error(s)' and '(no lint record)' as check names and reported a
+    check called 's'. The checks come from the one place the tool prints them."""
+    survey = _FakeSurvey(
+        shelf={"onshelf"},
+        passes=[("a1", "2026-08-14T00:00:00"), ("onshelf", "2026-08-14T00:00:00")],
+        why={"a1": "lint blocked (2 error(s): shelf_copy, title_claim)"},
+    )
+    monkeypatch.setattr(api, "_shelf_survey_module", lambda: survey)
+    out = api._read_shelf(None, {})
+    assert out["stranded"] == 1, "a pack already on the shelf is not stranded"
+    assert out["rows"][0]["checks"] == ["shelf_copy", "title_claim"]
+    assert "s" not in out["rows"][0]["checks"]
+
+
+def test_every_stranded_pack_names_the_repair_that_fixes_it(monkeypatch):
+    survey = _FakeSurvey(
+        shelf=set(),
+        passes=[("a1", "d"), ("a2", "d"), ("a3", "d")],
+        why={"a1": "lint blocked (1 error(s): shelf_copy)",
+             "a2": "never published (no lint record)",
+             "a3": "lint blocked (1 error(s): citation_urls)"},
+    )
+    monkeypatch.setattr(api, "_shelf_survey_module", lambda: survey)
+    rows = {r["id"]: r["repair"] for r in api._read_shelf(None, {})["rows"]}
+    assert rows["a1"] == "shelf.repair_copy"
+    assert rows["a2"] == "shelf.publish_pending"
+    # Named `manual` rather than silently folded into a repairable class: offering a button that
+    # cannot fix it is worse than saying no tool fixes it.
+    assert rows["a3"] == "manual"
+    for action in ("shelf.repair_copy", "shelf.publish_pending"):
+        assert action in api.ACTIONS
+
+
+def test_a_shelf_repair_cannot_be_run_in_one_step():
+    """The repairs call a model and rewrite live copy. They go through the same preview-then-
+    confirm gate as every other write; there is no one-step path."""
+    for action in ("shelf.repair_copy", "shelf.publish_pending"):
+        doc, code = api.dispatch([
+            "act", action, "--payload", json.dumps({"reason": "unblock the shelf"}),
+        ])
+        assert code == 4, f"{action} was applied without a confirmation"
+        assert doc["error_kind"] == "ConfirmationRequired"
+
+
+def test_a_shelf_repair_preview_runs_nothing(monkeypatch):
+    """A preview that actually ran the repair would rewrite live copy for someone who only
+    wanted to look."""
+    def _boom(*a, **k):
+        raise AssertionError("a preview must not spawn the repair tool")
+
+    monkeypatch.setattr(api.subprocess, "run", _boom)
+    for action in ("shelf.repair_copy", "shelf.publish_pending"):
+        doc, code = api.dispatch([
+            "act", action, "--payload", json.dumps({"reason": "looking"}),
+        ])
+        assert code == 4
+        assert doc["data"]["moat_affecting"] is False

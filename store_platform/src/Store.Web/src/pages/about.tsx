@@ -136,7 +136,7 @@ export default function AboutPage() {
             <p className="text-meta font-semibold text-text">The kill log</p>
             <p className="mt-1 text-meta leading-relaxed text-muted">
               Most ideas die. Every kill is public, with the argument that made it. The log is
-              the receipt behind the catalogue; the catalogue is what’s left.
+              the evidence behind the catalogue; the catalogue is what’s left.
             </p>
             <span className={textLinkClass('mt-3 inline-flex items-center gap-1 text-meta font-medium')}>
               Read it <Icon name="arrowRight" size={12} />

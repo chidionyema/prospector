@@ -99,6 +99,8 @@ parentheses.
   "card_line": "<AT MOST 60 CHARACTERS. What the business DOES, in plain words>",
   "headline": "<10-15 words, the concrete outcome the buyer walks away with>",
   "subhead": "<1 sentence: who this is for and what they get>",
+  "the_problem": "<1 sentence: the pain this exists to fix, and who is living with it today. Quote a figure from a verified claim if one states the size or frequency of that pain; otherwise state the pain with no number>",
+  "market_size": "<A SIZE FIGURE ONLY IF A VERIFIED CLAIM STATES ONE. Quote the number and unit as the claim states them, say what is being counted, and name the source. Otherwise \"\">",
   "what_you_get": ["<specific deliverable>", "<deliverable>", "<deliverable>"],
   "proof_point": "<the single strongest verified claim, quoting its figure and naming the source>",
   "who_pays": "<one line naming the specific buyer and how they are reached>",
@@ -131,6 +133,31 @@ through it.
 - No dashes, no colons, no brand name, no trailing period.
 - If you cannot describe it truthfully in 60 characters, output "" and the storefront falls
   back to the title. An empty card_line is a correct answer; an invented one is not.
+
+OPPORTUNITY RULES — `the_problem` and `market_size` exist because the storefront was
+describing every pack by what it is and what it does, and never by the opportunity it
+represents. A buyer deciding whether to spend a year on an idea needs the pain, the size of
+it, and who would pay, before they need the mechanism.
+
+- `the_problem` is the PAIN, not the product. Name who is living with it and what it costs
+  them. Do not describe the solution here at all; `card_line`, `headline` and `what_you_get`
+  already carry that, and they stay exactly as they are.
+  Good: "Gig drivers under 27 pay a £1,200 insurance excess they cannot claim back, and 41%
+  of claims in the cited FCA data are abandoned for that reason."
+  Bad: "There is no good tool for this" (names no one and costs nothing).
+- `market_size` is the ONE field on this object most likely to be invented, so it is the one
+  held hardest. Output it ONLY when a verified claim in the dossier states a size. Quote the
+  claim's own number and unit, say plainly what is being counted (people, businesses, spend a
+  year, claims a year), and name the source it came from.
+  Good: "About 1.6 million UK private-hire drivers were licensed in 2024, per the Department
+  for Transport taxi and PHV statistics."
+  Bad: "A large and growing market" (no number), "£4bn TAM" (a number nothing in the dossier
+  states, and no source).
+- An empty `market_size` is a CORRECT answer and is common. The storefront prints nothing
+  where there is no figure. Never estimate, never extrapolate from one company's revenue to a
+  whole market, and never convert a count into a spend figure by multiplying by a price. Every
+  one of those produces a number no source states, which is the one thing this system does not
+  ship.
 
 FACET RULES — these route a real buyer to a real purchase, so they are held to the same bar
 as every other claim in this system.

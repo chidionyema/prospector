@@ -90,11 +90,7 @@ DOSSIERS = "store/dossiers"
 # Matches the voice tools/make_sample_report.py already uses for the free report.
 GATE_LABELS = {
     "adversarial_decisive": "It did not survive the adversarial pass",
-    # "Incumbents" is banned in reader-facing copy (founder, 2026-08-16). It is the word a
-    # consultant uses for "the companies already selling this", and the reader has to translate it
-    # before they can judge the kill. This label is printed 190 times on /kill-log, so the ban
-    # has to hold here rather than at the render site.
-    "incumbency": "The space is already taken",
+    "incumbency": "Incumbents already own the space",
     "value_durability": "The value would not last",
     "moat_ungrounded": "The defensibility claim was not grounded",
     "payer_solvency": "The payer cannot actually pay",

@@ -142,6 +142,19 @@ const RULES: readonly Rule[] = [
   { pattern: /\bDossier\b/g, replace: 'Evidence record', why: 'sentence-initial form' },
 
   /**
+   * UPDATED 2026-08-16: the replacement itself is now banned. "Incumbent" is a consultant's word
+   * for "the companies already selling this", and the founder banned it in reader-facing copy, so
+   * a substitution that produced "incumbent competition" was translating one piece of jargon into
+   * another. `incumbency` now becomes `existing competition`, which fills the same noun slot.
+   *
+   * The plural noun is substituted too, because model prose writes it directly and no guard over
+   * our own source can reach that. The BARE SINGULAR is deliberately mapped to a noun phrase and
+   * not to an adjective: "incumbent" appears in both slots and one replacement cannot serve both.
+   * The one adjectival use on the site ("the incumbent tooling is old") was hand-written copy in
+   * `lib/seo/landings.ts` and was edited directly rather than left to this table.
+   *
+   * The historical note below is kept because it records what was measured against the corpus.
+   *
    * `incumbency` -> `incumbent competition`. Three cased forms rather than an `i` flag, because
    * the corpus writes all three ("Incumbency queries", "(2) INCUMBENCY,") and a case-insensitive
    * replace would print lowercase mid-heading.
@@ -159,9 +172,13 @@ const RULES: readonly Rule[] = [
    * forms, so a regeneration that introduces the plural fails the build naming it rather than
    * being silently half-translated.
    */
-  { pattern: /\bincumbency\b/g, replace: 'incumbent competition', why: 'the gate word, not English' },
-  { pattern: /\bIncumbency\b/g, replace: 'Incumbent competition', why: 'sentence-initial form' },
-  { pattern: /\bINCUMBENCY\b/g, replace: 'INCUMBENT COMPETITION', why: 'the corpus shouts headings' },
+  { pattern: /\bincumbency\b/g, replace: 'existing competition', why: 'the gate word, not English' },
+  { pattern: /\bIncumbency\b/g, replace: 'Existing competition', why: 'sentence-initial form' },
+  { pattern: /\bINCUMBENCY\b/g, replace: 'EXISTING COMPETITION', why: 'the corpus shouts headings' },
+  { pattern: /\bincumbents\b/g, replace: 'established competitors', why: 'banned word, plural noun' },
+  { pattern: /\bIncumbents\b/g, replace: 'Established competitors', why: 'sentence-initial form' },
+  { pattern: /\bincumbent\b/g, replace: 'established competitor', why: 'banned word, singular noun' },
+  { pattern: /\bIncumbent\b/g, replace: 'Established competitor', why: 'sentence-initial form' },
 
   {
     pattern: /\bhard gates?\b/gi,
