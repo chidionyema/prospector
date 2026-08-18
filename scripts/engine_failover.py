@@ -405,6 +405,78 @@ def cmd_switch(args) -> int:
     return p.returncode
 
 
+# --------------------------------------------------------------------------- #
+# Hermes receipts
+# --------------------------------------------------------------------------- #
+
+STORE_LEAF = LAPTOP_STORE.name
+
+HERMES_RECEIPTS = Path.home() / ".hermes" / "state" / "capability_receipts.jsonl"
+
+# The container writes one receipt file per job onto the volume. These are the two Hermes grades
+# from them today; the key on the left is the file name, and it must equal `observable.script` in
+# ~/.hermes/capabilities.json or the audit will not join them up.
+CONTAINER_RECEIPTS = ("backup_store.py", "prospector.scheduler.run_scheduled")
+
+
+def cmd_receipts(args) -> int:
+    """Pull the container's job receipts down and sign them into the Hermes ledger.
+
+    Hermes decides what is broken from ~/.hermes/state/capability_receipts.jsonl. Those receipts
+    used to be written by a launchd wrapper on this laptop. The jobs run on Fly now, so without
+    this the capabilities grade DARK while the jobs work perfectly.
+
+    Nothing here invents a receipt. Every line written is a file the container wrote when the job
+    actually ended, carrying that run's real exit code. If the container has no receipt for a job,
+    this writes nothing and the capability goes DARK - which is the correct answer, because we do
+    not know that it ran.
+    """
+    written = 0
+    seen = set()
+    if HERMES_RECEIPTS.exists():
+        # `ended_at` is the run's identity. Re-signing the same run every 15 minutes would make a
+        # stopped job look alive forever, which is the exact failure this is meant to catch.
+        try:
+            with HERMES_RECEIPTS.open(encoding="utf-8", errors="replace") as fh:
+                for line in fh:
+                    if '"fly:prospector-engine"' not in line:
+                        continue
+                    try:
+                        r = json.loads(line)
+                    except ValueError:
+                        continue
+                    seen.add((r.get("script"), r.get("ended_at")))
+        except OSError as exc:
+            print(f"could not read the Hermes ledger: {exc}", file=sys.stderr)
+            return 1
+
+    for key in CONTAINER_RECEIPTS:
+        rc, so, se = sh(["fly", "ssh", "console", "-a", FLY_APP, "-C",
+                         f"cat /data/{STORE_LEAF}/ops/receipts/{key}.json"], timeout=120)
+        if rc != 0:
+            print(f"no receipt for {key} on the container: {(se or so).strip()[:160]}",
+                  file=sys.stderr)
+            continue
+        body = so[so.find("{"):so.rfind("}") + 1]     # strip flyctl's connection banner
+        try:
+            rec = json.loads(body)
+        except ValueError:
+            print(f"receipt for {key} is not readable JSON", file=sys.stderr)
+            continue
+        if (rec.get("script"), rec.get("ended_at")) in seen:
+            continue
+        HERMES_RECEIPTS.parent.mkdir(parents=True, exist_ok=True)
+        with HERMES_RECEIPTS.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(rec) + "\n")
+        written += 1
+        age = round((time.time() - float(rec.get("ended_at", 0))) / 60, 1)
+        print(f"signed {key}: exit {rec.get('exit_code')}, ran {age} min ago")
+
+    if not written:
+        print("no new container receipts")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -419,6 +491,9 @@ def main() -> int:
 
     s = sub.add_parser("sync", help="pull Fly's money files to the standby copy")
     s.set_defaults(fn=cmd_sync)
+
+    s = sub.add_parser("receipts", help="sign the container's job receipts into Hermes")
+    s.set_defaults(fn=cmd_receipts)
 
     s = sub.add_parser("arm", help="turn automatic failover on")
     s.set_defaults(fn=cmd_arm)
