@@ -408,7 +408,30 @@ export default function KillLogPage({
               of a rejection is the one thing this chart cannot do: the label IS the finding. The
               utilities below `sm` turn the wrap back on, and they win over the class because
               mumchimp.css is imported into `layer(components)` and utilities sit above it. */}
-          <ul className="bars">
+          {/* `h-auto items-stretch` OVERRIDES THE SHIPPED STYLESHEET, AND THE STYLESHEET IS
+              WRONG HERE. `mumchimp.css:103` reads
+              `.bars{display:flex;flex-direction:column;align-items:flex-end;height:44px}`.
+              That rule is written for a DIFFERENT component: the 44px sparkline of vertical
+              bars on the home page (`mockups/index.html:629`, styled by `.bars i` at
+              `mumchimp.css:356`). `mockups/kill-log.html:475` reuses the same class name for
+              this ranked horizontal chart, so one name carries two components and the
+              sparkline's rule lands on the chart.
+
+              THE DRAWING BREAKS ON ITSELF, measured 2026-08-18 at 1280: its twelve rows run
+              y=1638..1932, 294px of content in a box declared 44px tall, and every row is
+              shrink-wrapped and pushed right (x=866, 823, 728, 753, ...) so no two labels or
+              counts share a baseline. Ours did the same with thirteen rows, and they rendered
+              on top of the search box and the chip rail below (founder, 2026-08-18: "layout
+              badly broken").
+
+              `h-auto` gives the list the height of its rows. `items-stretch` makes each row
+              span the full width, which is what `.barline{grid-template-columns:1fr 48px}`
+              was written for: labels on one left baseline, counts on one right baseline, and
+              bars that are comparable because they start in the same place. Utilities win over
+              `mumchimp.css` because it is imported into `layer(components)` (globals.css:8),
+              so no `!important` is needed and the stylesheet stays shipped verbatim.
+              `killLogBars.test.ts` pins both overrides. */}
+          <ul className="bars h-auto items-stretch">
             {distribution.map((d) => (
               <li key={d.gate} className="barline">
                 <span className="t max-sm:flex-col max-sm:items-start max-sm:gap-2">
@@ -432,7 +455,16 @@ export default function KillLogPage({
                          word read the ranking backwards. Ink weight now carries "listed below"
                          and red goes back to meaning exactly one thing. The drawing paints
                          `.barline .bar i` in `--kill`; this overrides it for that reason. */
-                      className={d.published ? 'bg-text' : 'bg-subtle/35'}
+                      /* `max-w-none` UNDOES THE SPARKLINE CAP. `mumchimp.css:356` is
+                         `.bars i{flex:1;max-width:26px;...}` -- the home page sparkline again,
+                         selecting by descendant, so it also matches the fill inside
+                         `.barline .bar i` here. Measured 2026-08-18 at 1280 before this line:
+                         the 624 bar computed `width:100%` on a 665px track and RENDERED 26px,
+                         and so did 203, 191, 142, 83 and 26. Every cause above about 4% drew
+                         the same 26px stub, so the chart showed a ranking it did not have.
+                         The class is written out twice rather than composed, because Tailwind
+                         v4 only generates a rule for text it can find in this file. */
+                      className={d.published ? 'max-w-none bg-text' : 'max-w-none bg-subtle/35'}
                       style={{ width: `${Math.max((d.count / distributionMax) * 100, 0.6)}%` }}
                     />
                   </span>

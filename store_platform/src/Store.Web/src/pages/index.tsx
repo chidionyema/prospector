@@ -1992,7 +1992,15 @@ export default function Home({ packs, stats, flags, initialState, market, curren
             /* NO CARD CHROME ON THE WRAPPER. `PackSpotlight` is the drawing's `.featured` article now,
                which carries its own surface, hairline and 12px radius; a `rounded-card bg-surface
                p-4` parent around it draws a second card 16px outside the first. */
-            className="relative z-10 mt-10 hidden w-full max-w-[420px] lg:block"
+            /* FULL WIDTH, NO 420px CAP. The drawing's `article.featured`
+               (`mockups/index.html` section 7) is 1040px wide -- the whole content measure --
+               and ours was capped at 420px while sitting in a full-width row of its own.
+               Measured at 1280 on 2026-08-18: the card drew x=120..540 in a band running
+               120..1160, so 620px to its right was empty, and the founder read the result as
+               a hole in the page. `.featured`'s own CSS is written for the full measure, so
+               removing the cap is what makes the card the drawn object rather than a
+               narrow copy of it. */
+            className="relative z-10 mt-10 hidden w-full lg:block"
           >
             {/* Sentence case, and the same `text-meta font-semibold` as every other row heading
                 on the shelf below. It was `uppercase tracking-wide text-caption`, which the

@@ -215,6 +215,10 @@ const COMPONENTS = [
       { token: 'a.tlink', why: 'the day-rate anchor cites its source (source-or-die); the drawing states the figure bare' },
     ],
   },
+  /* Component 02 in the bundle's components.html, the ribbon variant. Graded because it was
+     MISSING from the app entirely until 2026-08-18, and it sits above the header on all eleven
+     drawings, so its absence moved every page 44px up against its drawing. */
+  { name: 'today ribbon', mock: ['index.html', '.strip.ribbon'], app: ['/', '.strip.ribbon'] },
   { name: 'header', mock: ['index.html', 'header.hdr'], app: ['/', 'header.hdr'] },
   /* SCOPED TO THE TILE ON BOTH SIDES. Unscoped, `.foot` picked the drawing's three-up tile and the
      app's mobile sticky buy bar, which are two different objects, and reported 88.9%. */

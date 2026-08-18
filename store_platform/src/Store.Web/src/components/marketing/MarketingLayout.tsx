@@ -9,6 +9,7 @@ import { SEARCH_OPEN_EVENT } from '@/lib/searchEvent';
 import { RESEARCH_STATS } from '@/lib/stats';
 import { tightDecimal } from '@/components/ui/Money';
 import { useDisclosure } from '@/lib/useDisclosure';
+import { TodayRibbon } from '@/components/marketing/TodayRibbon';
 
 /**
  * High-fidelity shell for the Mumchimp marketing pages. Purely presentational.
@@ -174,6 +175,10 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
       >
         Skip to content
       </a>
+
+      {/* The drawing puts the dark strip ABOVE the header on all eleven pages, and it scrolls
+          away rather than sticking. See `TodayRibbon` for why the tag prints a date. */}
+      <TodayRibbon />
 
       {/*
         White chrome (brand v3, 2026-08-06). The near-black band is gone.

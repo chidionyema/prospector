@@ -1556,7 +1556,7 @@ Founder: *"also broken titles still coming thru after all the work we have done,
 | Card descriptions no longer clipped | DONE | the `globals.css` deviation above |
 | Short AND long description | **BLOCKED** | the catalogue has no short description field. It has a short TITLE (`cardLine`, 34–60 chars) and one long `oneLine` (124–268). A real short form is a publish-path change: engine → `bridge.py` → catalogue row → API. **Founder's call on whether to spend that.** |
 
-### 11.5 Stream: UI design — the parity mechanism — STEPS 1, 2, 3 AND 5 DONE; STEP 4 OPEN
+### 11.5 Stream: UI design — the parity mechanism — STEPS 1, 2, 3 AND 5 DONE; STEP 4 MEASURED, NOT PASSED
 
 Founder's diagnosis, verbatim: *"The gap you're seeing has one cause: the agent is writing its own
 CSS from a description. No amount of prose will fix that, because prose is interpretable and CSS is
@@ -1567,7 +1567,7 @@ not."*
 | 1 | Ship the stylesheet, write no CSS | DONE — §11.1. `mumchimp.css` is byte-identical to the bundle's copy, pinned by `src/__tests__/stylesheetIsShippedVerbatim.test.ts` |
 | 2 | Templates copy markup, they do not reinterpret it | DONE — all nine graded components report `ALL COMPONENTS MATCH`, `parity_exit=0` |
 | 3 | A structural diff test over eight components | DONE — `scripts/parity.mjs`, nine components graded |
-| 4 | Visual regression at 390 and 1280, `diff < 0.02` | NOT STARTED |
+| 4 | Visual regression at 390 and 1280, `diff < 0.02` | HARNESS DONE, PAGES NOT YET UNDER THE BAR - see §11.8 |
 | 5 | One data source, one copy source | DONE — `src/lib/siteCopy.ts` |
 
 **Step 3, how it grades.** `scripts/parity.mjs` fetches the built page from the running server and
@@ -1665,3 +1665,119 @@ is a `dash-free-ignore` comment on the same line, which the D6 hero link uses. T
 sharpens this: `mumchimp.css` and `components.html` are full of real em dashes in copy strings.
 Adopting §3.3 broadly means either pragma-marking every line or narrowing that test to the prose it
 should still guard.
+### 11.8 Stream: UI design - parity step 4, the pixel half - HARNESS DONE, PAGES NOT UNDER THE BAR
+
+Founder's bar, verbatim: *"Report the diff percentage per page. Do not report done while any page
+exceeds 2%."*
+
+**The harness.** `store_platform/src/Store.Web/scripts/visual_regression.mjs`. For each of ten
+drawings, at 390 and at 1280, it screenshots the drawing and the built page full length, pads both
+to the same height with white, and counts differing pixels with `pixelmatch`. The number is
+`differing pixels / total pixels of the taller image`. Animations and the caret are frozen before
+the shot, because a transition mid-flight is a false diff. It writes `docs/design/VISUAL_REGRESSION.md`
+and a diff PNG per page and width under `docs/design/visual/`, and exits non-zero if any page is over
+the threshold.
+
+Padding rather than cropping is the one judgement call in it. A built page that runs longer than its
+drawing pays for the extra region; cropping to the shorter of the two would hide exactly the defect
+the founder complained about, a page whose rhythm is too tall.
+
+**What the number can never reach zero on.** The drawings carry sample copy and the app carries the
+live catalogue, so text pixels differ wherever the words do. Read the diff PNG before believing any
+number: a solid band is a layout defect, speckle inside a paragraph is copy.
+
+**Run it:**
+
+```bash
+cd store_platform/src/Store.Web
+python3 -m http.server 3002 --bind 127.0.0.1 -d ../../../docs/design/mumchimp-build-bundle/mockups &
+NEXT_PUBLIC_API_URL=https://api.mumchimp.com npm run build && npx next start -p 3000 &
+node scripts/visual_regression.mjs
+```
+
+`next start` serves the BUILD, so a number taken without a rebuild and a restart is stale.
+
+**The measurement, 2026-08-18, after all five defects below were fixed.** Two numbers per cell:
+the whole page, then the first 2400px (`FOLD_PX`). Threshold is 2%. No page is under it yet.
+
+| Page | 390 page / fold | 1280 page / fold |
+|---|---|---|
+| index | 5.83 / 10.89 | 3.06 / 5.88 |
+| ideas | 3.44 / 3.60 | 1.61 / 2.40 |
+| how-it-works | 10.28 / 16.13 | 6.15 / 13.53 |
+| kill-log | 5.04 / 15.92 | 7.95 / 33.09 |
+| faq | 7.02 / 8.14 | 3.51 / 3.77 |
+| pricing | 6.18 / 9.74 | 4.38 / 7.26 |
+| about | 6.71 / 7.46 | 3.89 / 3.92 |
+| account | 5.56 / 6.05 | 3.48 / 3.48 |
+| refund | 5.99 / 8.22 | 3.05 / 3.76 |
+| sample | 5.86 / 8.29 | 3.19 / 5.00 |
+
+**`kill-log` got WORSE and that is the correct direction.** Its 1280 fold went 25.06% to 33.09%
+because the ranked chart was fixed on our side and the drawing still renders the bug. Screenshots
+taken 2026-08-18 at 1280: on `mockups/kill-log.html` the twelve rows are right-ragged with truncated
+labels, and the chip rail and the search box paint ON TOP of them; on the built page the thirteen
+rows sit on one left baseline with proportional bars and nothing overlaps. Falling further from a
+broken reference is the harness working. Two ways out, and it is the founder's call which:
+either fix `mockups/kill-log.html` so the drawing shows the chart it was designed to show, or accept
+that this page's number is measured against a defect and exclude it from the 2% bar. Nothing in the
+code should change to close this gap.
+
+
+**THE FOLD NUMBER IS THE HARSHER ONE, and an earlier note in this session said the opposite.**
+A built page that runs longer than its drawing gets padded with white, and white matches white, so
+the extra length DILUTES the whole-page figure. Every page above is worse over its first 2400px
+than over its whole height. Work the fold number down; treat the page number as the diluted one.
+
+**Five defects the harness found that no unit test could have.** All five are the same shape: the
+markup passed structural parity, the types checked, the build was clean, and the page was wrong.
+
+1. **The dark strip above the header did not exist in the app at all.** It is component 02 in the
+   bundle and it sits above the header on all eleven drawings, so every built page rendered 44px
+   high against its drawing and every glyph on it missed its counterpart. `/about` matched its
+   drawing on total height to within 17px and still differed on 5.96% of pixels at 1280, which is
+   what a pure vertical offset looks like in this measurement. Ported as
+   `components/marketing/TodayRibbon.tsx`, graded by `scripts/parity.mjs` at 0.0%.
+
+2. **The cause grid on `/kill-log` painted one cause out of nine.** `CauseGrid` held its colour ramp
+   as `fill-kill/85` and turned it into `bg-kill/85` with `String.replace` on the way to the DOM.
+   Tailwind v4 generates a rule only for text it finds in source, so `bg-kill/85` had no rule.
+   Measured on the built page at 1280: 624 cells drew `rgb(180, 52, 43)`, 80 drew
+   `rgb(20, 112, 106)`, and **740 computed to `rgba(0, 0, 0, 0)`** -- the signature device on the
+   page whose subject is how ideas die was showing the largest cause and a blank field. The ramp is
+   now written in the form the DOM receives it, and `__tests__/causeGridRamp.test.ts` fails on any
+   `fill-`/`bg-` swap or template-built utility name.
+
+3. **The home page's featured card was capped at 420px in a full-width row.** The drawing's
+   `article.featured` is 1040px, the whole content measure. At 1280 ours drew x=120..540 in a band
+   running 120..1160, leaving 620px of empty page beside it (founder, 2026-08-18: "on desktop below
+   her on right why the gap?"). The cap is removed; `.featured`'s own CSS is written for the full
+   measure.
+
+4. **The ranked bar chart on `/kill-log` rendered thirteen rows inside a 44px box.**
+   `mumchimp.css:103` is `.bars{display:flex;flex-direction:column;align-items:flex-end;height:44px}`.
+   That rule is written for the home page's sparkline (`mockups/index.html:629`), and
+   `mockups/kill-log.html:475` reuses the same class name for the ranked chart. The fixed height and
+   the right alignment therefore land on a list of thirteen rows: the rows spilled over the search
+   box and the chip rail below, and every row shrink-wrapped and pushed right, so no two labels or
+   counts shared a baseline. **The drawing breaks on itself here** -- measured at 1280,
+   `kill-log.html`'s twelve rows run y=1638..1932, 294px of content in a 44px box, all right-ragged.
+   Copying the bundle faithfully reproduced the bug. Fixed with `h-auto items-stretch` on the one
+   `<ul>`; after it the list measures 294px tall with every row on one left baseline and every row
+   inside its section. Whether to fix the bundle itself is the founder's call; step 1 says the
+   stylesheet ships verbatim, so this is an override at the call site.
+
+5. **Every bar in that chart was capped at 26 pixels.** Same collision, second rule:
+   `mumchimp.css:356` is `.bars i{flex:1;max-width:26px}`, the sparkline cell, matched by descendant,
+   so it also caught the fill inside `.barline .bar`. Measured at 1280 before the fix: the 624 bar
+   computed `width:100%` on a 665px track and RENDERED 26px, and so did 203, 191, 142, 83 and 26.
+   Every cause above roughly 4% drew the same stub, so a chart whose only job is ranking showed no
+   ranking. Fixed with `max-w-none` on the fill, written out on both branches of the class rather
+   than composed, because Tailwind only generates a rule for text it can find in the file.
+   `__tests__/killLogBars.test.ts` pins all three overrides and pins the bundle rule unedited.
+
+**The lesson for the programme.** Structural parity graded all five of these as passing, because it
+compares tag-and-class trees, and these are absence, colour, width, height and a name collision. Steps 3 and 4 are not two
+measurements of one thing. Step 3 proves the markup is the drawing's; step 4 is the only step that
+looks at the page.
+
