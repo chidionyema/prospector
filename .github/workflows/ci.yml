@@ -215,6 +215,12 @@ jobs:
       # stops matching that. Offline, no virtualenv, no GitHub token. `--live` also checks the
       # registered runners and is an operator command, not a CI step.
       - name: CI still fits on the machine it runs on
+        # The variables are passed in so the check can compare what they RESOLVE to against the
+        # label each pool declares. Without them it only ever compared ci.yml against the contract
+        # file, and CI_LIGHT_RUNS_ON was changed from `light` to `self-hosted` without a word.
+        env:
+          CI_HEAVY_RUNS_ON: ${{ vars.CI_HEAVY_RUNS_ON }}
+          CI_LIGHT_RUNS_ON: ${{ vars.CI_LIGHT_RUNS_ON }}
         run: python3 scripts/ci_capacity.py
 
   # ──────────────────────────────────────────────────────────────────
