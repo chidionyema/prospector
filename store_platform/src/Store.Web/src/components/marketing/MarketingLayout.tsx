@@ -110,9 +110,40 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
   }, [router]);
 
   const [scrolled, setScrolled] = useState(false);
+  // MASTER-BRIEF section 9: on mobile the header hides on scroll-down and comes back on scroll-up.
+  // A phone screen is short and the header is 80px of it. A reader scrolling into the page gets
+  // that height back; one scrolling up gets the navigation without first reaching the top.
+  const [headerHidden, setHeaderHidden] = useState(false);
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 4);
-    onScroll();
+    // One listener, not two. `lastY` is a closure variable rather than state because a re-render
+    // per scroll event is the cost this is trying to avoid.
+    let lastY = window.scrollY;
+    let queued = false;
+    // The header sliding away is motion the page plays at the reader, which is what the setting
+    // is about, so under prefers-reduced-motion the header simply stays put.
+    const reduced =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const read = () => {
+      queued = false;
+      const y = window.scrollY;
+      setScrolled(y > 4);
+      // 64px of travel before a direction change counts. Without it, the rubber-band at the top of
+      // iOS Safari and one pixel of trackpad jitter both read as a reversal and the header flickers.
+      if (!reduced && Math.abs(y - lastY) > 64) {
+        setHeaderHidden(y > lastY && y > 160);
+        lastY = y;
+      }
+    };
+    const onScroll = () => {
+      // Coalesce to one read per frame. `window.scrollY` forces layout, and the raw event fires
+      // far more often than the screen refreshes.
+      if (queued) return;
+      queued = true;
+      window.requestAnimationFrame(read);
+    };
+    read();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
@@ -163,9 +194,13 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
            The hairline still only changes COLOUR on scroll (see the note above): with an opaque
            header the border is no longer what separates header from content, so it is free to stay
            invisible at rest and appear as scroll feedback. */
-        className={`sticky top-0 z-30 w-full border-b bg-bg pt-[env(safe-area-inset-top)] transition-colors duration-200 ${
+        // `data-scrolled` is what globals.css reads with :has() to step --h-header from 5rem to
+        // 4rem. The filter bar's sticky offset and every anchor's scroll clearance measure from
+        // that token, so they contract with the header instead of having to be told about it.
+        data-scrolled={scrolled ? 'true' : 'false'}
+        className={`sticky top-0 z-30 w-full border-b bg-bg pt-[env(safe-area-inset-top)] transition-[color,background-color,border-color,transform] duration-200 md:!translate-y-0 ${
           scrolled ? 'border-border' : 'border-transparent'
-        }`}
+        } ${headerHidden ? '-translate-y-full' : 'translate-y-0'}`}
       >
         {/* COMPACT ON SCROLL, MORE ROOM AT REST (bumped 2026-08-09, founder override -- header
             was reading as sitting too close to the top edge and to the content below it).

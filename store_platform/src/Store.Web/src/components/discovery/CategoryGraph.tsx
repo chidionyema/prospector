@@ -100,7 +100,7 @@ function CategoryRow({ node, href }: { node: CategoryNode; href: string }) {
           'group -mx-3 grid gap-x-8 gap-y-3 rounded-md px-3 py-4',
           'border-t border-border',
           'transition-colors duration-[140ms] ease-[cubic-bezier(0.2,0,0,1)] hover:bg-surface2',
-          'focus:outline-none focus-visible:ring-2 focus-visible:ring-focus',
+          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
           'md:grid-cols-[minmax(0,1fr)_auto] md:items-baseline',
         )}
       >

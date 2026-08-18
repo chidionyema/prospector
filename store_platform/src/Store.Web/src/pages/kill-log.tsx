@@ -11,7 +11,13 @@ import { RESEARCH_STATS } from '@/lib/stats';
 // Types only in the client bundle; `buildKillIndex` is referenced solely inside `getStaticProps`,
 // which Next removes from the page's client JS along with everything only it imports. That is what
 // keeps `data/kill-log.json` (456 KB) out of the browser -- see `lib/killLog.server.ts`.
-import { buildKillIndex, type KillDetail, type KillIndex, type KillSummary } from '@/lib/killLog.server';
+import {
+  buildKillIndex,
+  isStageLabel,
+  type KillDetail,
+  type KillIndex,
+  type KillSummary,
+} from '@/lib/killLog.server';
 import { fetchCatalogStats, fetchKillLogDetail } from '@/lib/api/client';
 import { track } from '@/lib/analytics';
 import type { GetStaticProps } from 'next';
@@ -184,13 +190,29 @@ export default function KillLogPage({
   // is a sliver and the chart shows nothing.
   const distributionMax = Math.max(...distribution.map((d) => d.count), 1);
 
-  const toggle = (slug: string) =>
+  /**
+   * Open or close one record, and count the opens (MASTER-BRIEF section 9, `kill_row_click`).
+   *
+   * The beacon fires on open only. A close is the same click on the same row, so counting both
+   * would double every reader who finished reading and tidied up after themselves.
+   *
+   * The cause travels with the slug because the whole question this event answers is which
+   * causes readers choose to open. Joining a slug back to its cause afterwards would need the
+   * kill log at the time of the click, which we do not keep.
+   *
+   * The beacon is sent here rather than inside the `setOpen` updater. React calls an updater
+   * twice in development StrictMode, so a side effect in there is a double count that only
+   * shows up in the data, never on screen.
+   */
+  const toggle = (slug: string, cause: string) => {
+    if (!open.has(slug)) track('kill_row_click', `${slug}:${cause}`);
     setOpen((prev) => {
       const next = new Set(prev);
       if (next.has(slug)) next.delete(slug);
       else next.add(slug);
       return next;
     });
+  };
 
   return (
     <MarketingLayout
@@ -304,6 +326,18 @@ export default function KillLogPage({
             fired first. The checks stop at the first hard failure, so each idea is counted once,
             against the cheapest gate that killed it.
           </p>
+          {/* A STAGE IS NOT A CHECK, and until now the page drew them identically. Three of these
+              causes are stages of the run rather than findings about the idea: the idea scored too
+              low across all six checks, the evidence never grounded, or adversarial review was not
+              decisive. A reader comparing "no durable advantage" with "scored too low" was
+              comparing a finding with a tally, and nothing on the page marked the difference.
+              `isStageLabel` keys on the LABEL for the reason given where it is defined: every
+              surface on this page is keyed on label, and two engine keys can share one. */}
+          <p className="mt-2 max-w-[68ch] text-meta text-muted">
+            Causes marked <span className="font-mono text-caption text-subtle">stage</span> are
+            points in the run rather than findings about the idea: it scored too low overall, or
+            the evidence never grounded well enough to rule on.
+          </p>
           {/* ── THE SIGNATURE (MASTER-BRIEF §7) ────────────────────────────────────────────────
               The grid FIRST, the bars second, and they are the same numbers twice on purpose.
 
@@ -337,6 +371,7 @@ export default function KillLogPage({
                   title={d.label}
                 >
                   {d.label}
+                  {d.isStage && <span className="ml-1.5 text-subtle"> stage</span>}
                 </span>
                 {/* The bar is drawn against the LARGEST cause, not against the total. Against the
                     total every bar but one is a sliver and the chart shows nothing; against the
@@ -468,7 +503,7 @@ export default function KillLogPage({
                 <tbody key={entry.slug} id={entry.slug} className="scroll-mt-24 border-b border-border align-baseline">
                   <tr
                     className="cursor-pointer transition-colors hover:bg-surface3"
-                    onClick={() => toggle(entry.slug)}
+                    onClick={() => toggle(entry.slug, entry.gateLabel)}
                   >
                     <td className="py-2.5 pr-4">
                       <button
@@ -479,7 +514,7 @@ export default function KillLogPage({
                         // propagation keeps a click on the button from toggling twice.
                         onClick={(e) => {
                           e.stopPropagation();
-                          toggle(entry.slug);
+                          toggle(entry.slug, entry.gateLabel);
                         }}
                         className="text-left font-mono text-caption leading-snug text-muted line-through decoration-kill/60 hover:text-text"
                       >
@@ -505,6 +540,9 @@ export default function KillLogPage({
                     </td>
                     <td className="py-2.5 pr-4 font-mono text-caption text-kill-strong">
                       {entry.gateLabel}
+                      {isStageLabel(entry.gateLabel) && (
+                        <span className="ml-1.5 text-subtle"> stage</span>
+                      )}
                     </td>
                     <td className="py-2.5 pr-4 text-right font-mono text-caption tabular-nums text-subtle">
                       {/* A literal 0, not a blank or a placeholder glyph. This column is

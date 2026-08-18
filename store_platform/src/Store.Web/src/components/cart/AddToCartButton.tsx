@@ -72,7 +72,7 @@ export function AddToCartButton({ line, size = 'full', className }: AddToCartBut
           'inline-flex items-center gap-1.5 rounded-sm text-caption font-medium text-muted',
           'underline decoration-border underline-offset-4 transition-colors',
           'hover:text-primary hover:decoration-primary',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
+          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
           className,
         )}
       >
@@ -90,8 +90,8 @@ export function AddToCartButton({ line, size = 'full', className }: AddToCartBut
         aria-label={inCart ? `Remove ${line.title} from basket` : `Add ${line.title} to basket`}
         aria-pressed={inCart}
         className={cx(
-          'inline-flex h-8 w-8 flex-none items-center justify-center rounded-sm border transition-all',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
+          'inline-flex h-11 w-11 flex-none items-center justify-center rounded-sm border transition-all sm:h-8 sm:w-8',
+          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
           inCart
             ? 'border-primary bg-primary text-on-primary'
             : 'border-border bg-surface text-muted hover:border-primary hover:text-primary',

@@ -1,6 +1,7 @@
 import { RESEARCH_STATS } from '@/lib/stats';
 import type { Pack } from '@/lib/api/client';
 import { cx } from '@/components/ui/cx';
+import { track } from '@/lib/analytics';
 import { tightDecimal } from '@/components/ui/Money';
 
 /**
@@ -155,7 +156,15 @@ export function KillGrid({ packs, className }: KillGridProps) {
             hero. It is accepted because what a keyboard user tabs through is the shelf in research
             order, each announced by its own title -- a list, not decoration. */}
         {placed.map(({ pack, index }) => (
-          <a key={pack.id} href={`/pack/${pack.id}`}>
+          <a
+            key={pack.id}
+            href={`/pack/${pack.id}`}
+            /* The href does the navigating, so this graphic still works with no JavaScript; the
+               handler only records that the click came from the grid. `card_click` and not a
+               name of its own, because the question is which surface sends readers to a pack and
+               a separate name would sit outside every existing click-through report. */
+            onClick={() => track('card_click', `grid:${pack.id}`)}
+          >
             <title>{pack.title}</title>
             <rect
               x={(index % side) + (1 - LIVE_SIDE) / 2}

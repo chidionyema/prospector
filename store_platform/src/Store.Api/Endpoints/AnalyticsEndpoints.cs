@@ -58,6 +58,36 @@ public static class AnalyticsEndpoints
         // "<question-slug>:up" or "<question-slug>:down" — keyed by the question text, not its
         // position, because the FAQ is ordered by purchase blocker and that order changes.
         "faq_helpful",
+        // MASTER-BRIEF section 9, the storefront signals nothing else covered.
+        //
+        // Four other names in that brief were NOT added, because an event already here serves
+        // them: landing_view is page_view, grid_survivor_click and pack_row_click are both
+        // card_click, and sample_cta_click is sample_cta_clicked. Renaming those would have
+        // 400d every beacon until this file deployed, and would have left the existing rows
+        // under the old name, which reads as a feature nobody uses. The mapping is written out
+        // in the docblock of Store.Web/src/lib/analytics.ts.
+        //
+        // Discovery. filter_change carries "dimension:value:resultCount". The search box
+        // reports "set" or "cleared" rather than the text, because free text a visitor typed is
+        // the one filter value we must not store. filter_zero_results carries the names of the
+        // constrained dimensions only, never their values.
+        "filter_change",
+        "filter_zero_results",
+        // The shelf shows nine rows and a button for the rest. This counts the press.
+        "catalogue_page_more",
+        // A marketing band scrolled into view. Meta is the band id.
+        "band_view",
+        // The waitlist form was submitted. No meta: WaitlistService already records the
+        // placement as the signup's source, and a second copy here would be free to disagree.
+        "email_submit",
+        // How far down the page the reader got. Meta is "25", "50", "75" or "100".
+        "scroll_depth",
+        // A kill-log row was opened. Meta is "<slug>:<cause>".
+        "kill_row_click",
+        // The hero's featured product was clicked. Deliberately not card_click: the hero is a
+        // different card format, and CardCtrAsync below would otherwise mix a poster and a row
+        // into one rate, which measures the format rather than the title.
+        "featured_click",
     };
 
     /// <summary>

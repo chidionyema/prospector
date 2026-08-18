@@ -90,7 +90,7 @@ export function CollectionMosaic({ tiles, className }: CollectionMosaicProps) {
             <Link
               href={`/collections/${tile.slug}`}
               title={tile.longName}
-              className="flex h-full min-h-[5.5rem] flex-col justify-between rounded-card border border-line bg-surface p-4 transition-colors hover:bg-surface3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-link focus-visible:ring-offset-2"
+              className="flex h-full min-h-[5.5rem] flex-col justify-between rounded-card border border-line bg-surface p-4 transition-colors hover:bg-surface3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
               {/* The accessible name is the LONG one. A screen reader user hearing "Evenings, 12
                   packs" out of context has less than a sighted reader who can see the heading the

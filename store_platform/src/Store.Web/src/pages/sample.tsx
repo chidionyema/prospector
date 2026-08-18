@@ -4,6 +4,7 @@ import MarketingLayout from '@/components/marketing/MarketingLayout';
 import { Seo } from '@/components/Seo';
 import { buttonClasses, Glyph, Icon, SourceChipRow, textLinkClass } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
+import { sourcesLabel } from '@/components/ui/ProofLine';
 import { Section, SectionBand } from '@/components/marketing/blocks';
 import { WaitlistCallout } from '@/components/waitlist/WaitlistCallout';
 import DocRail, { type DocSectionRef } from '@/components/marketing/DocRail';
@@ -275,7 +276,7 @@ export default function SamplePage() {
                   section the rail also lists. */}
               <a href={`#${EXCERPT[2]?.id ?? 'boundary'}`} className={textLinkClass('inline-flex items-center gap-2')}>
                 <Glyph name="source" className="text-success" />
-                {report.sourceCount} cited sources, six of them quoted below
+                {`${sourcesLabel(report.sourceCount)} cited, six of them quoted below`}
               </a>
               {freshnessLabel(report.verifiedAt) && (
                 <span className="inline-flex items-center gap-2">
