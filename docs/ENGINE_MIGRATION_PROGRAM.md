@@ -812,3 +812,37 @@ What has to be worked out first, because Hermes is not shaped like the engine:
 
 Estimate, on the same basis as §5: 2 days. One day to draw the split at point 4 and remove the
 Claude Code dependency at point 2, one day for the image, the adapter and a rehearsal cutover.
+
+### 12.7 Delete the Streamlit control centre (founder directive, 2026-08-18)
+
+The founder's instruction: *"streamlit control centre needs to be deleted permanently, both code
+and everything."* It was done once as PR #309 and that PR is now CLOSED, so the work is lost. This
+section exists so it is not lost a second time.
+
+It is not a `git rm -r prospector/control_center`. Three modules in that package are not Streamlit
+and the Next.js console imports them today:
+
+| Module | Who imports it |
+|---|---|
+| `control_center/config_editor.py` | `ops/console_api.py:476,1431,1570`, `ops/routing.py:187` |
+| `control_center/yaml_surgery.py` | `ops/console_api.py:560,1432` |
+| `control_center/readers.py` | `ops/metrics.py:185`, `golden.py:389`, and four test files |
+
+The order, and why:
+
+1. **Move those three into `prospector/ops/`** and fix the imports. They are the read model and the
+   config writer; they belong with the console that still uses them.
+2. **Then delete the Streamlit half**: `app.py`, `pages/`, `components/`, `theme.py`, `auth.py`,
+   `state.py`, `scripts/run_control_center.sh`, `scripts/install_control_center_agent.sh`,
+   `ops/launchd/com.prospector.control-center.json`, `tests/control_center/`, and the
+   Streamlit-only assertions in `tests/test_ui_theme.py`, `tests/ops/test_runs.py`,
+   `tests/ops/test_spend.py` and `tests/ops/test_one_read_model.py`.
+3. **Drop `streamlit>=1.40` from `requirements.txt`.** Read the comment at `requirements.txt:81`
+   first: streamlit is what pulls numpy in transitively, and something under `tools/` imports numpy
+   directly without declaring it. Removing streamlit without declaring numpy breaks that import.
+4. **Remove the two `NOT_AN_OPS_TOOL` entries** at `ops/console_api.py:2401-2402`, which name the
+   two scripts step 2 deletes. The drift test fails on an excuse for a file that is gone, so this
+   is forced rather than forgotten.
+
+Blocked until this branch merges: steps 1 and 4 rewrite `ops/console_api.py`, which this branch
+already changes heavily.
