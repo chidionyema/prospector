@@ -827,3 +827,97 @@ folder name, not the deleted console.
 
 A checkout that still shows those files is behind `main`. This was written after grepping the shared
 developer checkout, which was, and reading its hits as current.
+
+## 13. Hermes — the split, drawn
+
+§12.6 said the split had to be drawn before the container was built. This is that split. It was
+made by reading the twelve launchd plists and the scripts they run, not by guessing from the job
+names.
+
+The rule is one line. **What watches the ESTATE moves. What watches THIS MAC stays.** A job that
+reads a process table, a launchd label or a local disk is measuring the laptop, and running it on
+Fly would make it report on the wrong machine — confidently and wrongly, which is worse than not
+running it at all.
+
+### 13.1 What moves
+
+| Job | What it is | Why it moves |
+|---|---|---|
+| `gateway` | the Telegram front door | outbound long polling only; needs no inbound hostname |
+| `coordinator` | the brain that dispatches work | reads the queue and the database, not the Mac |
+| `cockpit` | the Telegram cockpit UI | renders state it is given |
+| `otto-server` | the RSI loop | reads its own ledgers |
+| `progress` | hourly progress digest | reads the queue |
+| `rsi` | the daily self-improvement run | reads its own ledgers |
+| `submodule-backup` | off-machine snapshot of the agent code | reads git, pushes offsite |
+
+### 13.2 What stays, and what it becomes
+
+| Job | Why it cannot move |
+|---|---|
+| `keepawake` | it is `caffeinate -dims`. There is nothing to keep awake on a Fly machine. **Delete on cutover**, do not port. |
+| `runaway-reaper` | it kills runaway processes on this Mac. On Fly it would reap the wrong process table. |
+| `idle-engine` | it fires work when this Mac is idle. Idle is a property of a desk, not of a datacentre. |
+| `watchdog` | `estate_watchdog.py` does `os.kill(pid, 0)` on the gateway and coordinator pids and `launchctl kickstart -k` to revive them. Both are laptop-local by construction. |
+| `ngrok` | it exists to give the laptop an inbound URL. A Fly app can have a real hostname, so this job **disappears** rather than moving. |
+
+### 13.3 The watchdog is the hard one, and it splits in two
+
+`estate_watchdog.py` is the outer ring that keeps Telegram from being silently down. It cannot
+simply move, because its whole method is local pids and `launchctl kickstart`.
+
+It becomes two things:
+
+1. **On Fly**, supervisord already does the restarting. `[program:gateway]` with
+   `autorestart=true` is the same guarantee, written once, and it is the same mechanism the engine
+   has been running on since 03:09 today.
+2. **On the laptop**, a much smaller job stays behind and watches Fly from outside — the same
+   shape as `engine_failover.py check`. An outer ring that lives on the machine it is watching was
+   always the weaker half of this design; moving Hermes fixes that rather than costing anything.
+
+### 13.4 What is reused, not rebuilt
+
+- `deploy/cutover.sh` is unchanged. It does not know what it is moving; both ends are adapters.
+- `deploy/targets/fly.sh`, `laptop.sh` and `sshdocker.sh` are unchanged. Hermes gets the same
+  three targets and the same eleven verbs.
+- The receipt layer already works from Fly. §12.5 R6 closed today on exactly that evidence:
+  `capability_receipts.jsonl` now carries `"source": "fly"` rows for the engine.
+
+### 13.5 The Claude Code dependency is smaller than it looked
+
+Measured, not assumed. Chat completions already go through a provider abstraction
+(`~/.hermes/hermes-agent/hermes_cli/providers.py`, in the Hermes checkout), which is
+portable as it stands.
+
+The tool-capable executor in `~/.hermes/scripts/coordinator.py` is already tiered, and the tiers are
+already written down at `coordinator.py:1209`:
+
+```
+Tier 1: claude -p (Claude Code CLI, full tool-capable agent)
+Tier 2: route.route("executor", prompt) - pure LLM via route.py, no tools
+Tier 3: hard-coded minimal narrative - final floor if route.py itself is unavailable
+```
+
+`agentic_execute` is documented as never-raising (`coordinator.py:1421`), and the whole Tier 1
+block sits inside a `try` behind a circuit breaker (`coordinator.py:1299`). A container with no
+`claude` binary raises `FileNotFoundError` inside that `try` and falls to Tier 2. **So Hermes
+already starts and runs without Claude Code.** It does not need PR #303's treatment to boot.
+
+What it loses is the thing that matters. Tier 1 is the only tier that can Read, Edit, Write and
+Bash — the only one that can actually PERFORM a fix. Tier 2 writes a reasoned account of what
+should be done. The file says so itself at `coordinator.py:967`: "A raw chat completion can only
+NARRATE a fix; this runs a REAL agent (claude -p) that can Read/Edit/Write/Bash to actually
+perform it."
+
+Hermes on Fly with no Tier 1 would therefore look healthy, answer every task, and quietly stop
+doing any work — a capability loss that reports as success, which is the exact failure class §12.5
+R6 exists to catch.
+
+**The replacement already exists.** `~/.claude/mcp/pi_bridge.py` is a headless executor that
+shells out to `pi -p -ne` from a self-contained plan and returns a summary plus a diffstat. It
+needs no interactive login and no Anthropic subscription, so it runs in a container. Wiring it in
+as a Tier 1 alternative is the first task of this phase.
+
+The task is therefore: **give the executor a second tool-capable tier**, not "remove the Claude
+dependency". The removal is already done and was done by somebody else, earlier, for a different
+reason.

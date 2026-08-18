@@ -8,10 +8,13 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import { clearFailures, clientKey, isLocked, recordFailure } from '@/lib/ratelimit';
+
 import {
   COOKIE_NAME,
   clearSessionCookie,
   isConfigured,
+  isSecureRequest,
   mintSession,
   passwordMatches,
   readCookie,
@@ -52,13 +55,25 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     });
   }
 
+  // Checked BEFORE the password is compared, so a locked address cannot use this route as an
+  // oracle at all - not even for timing.
+  const who = clientKey(req.headers);
+  if (isLocked(who)) {
+    return res.status(429).json({
+      ok: false,
+      error: 'Too many wrong passwords from this address. Wait fifteen minutes.',
+    });
+  }
+
   const password = String((req.body as { password?: unknown } | undefined)?.password ?? '');
   if (!passwordMatches(password)) {
+    recordFailure(who);
     // One message for a wrong password and for an empty one. Distinguishing them tells an
     // attacker which half they got right.
     return res.status(401).json({ ok: false, error: 'That password did not work.' });
   }
 
-  setSessionCookie(res, mintSession());
+  clearFailures(who);
+  setSessionCookie(res, mintSession(), isSecureRequest(req));
   return res.status(200).json({ ok: true, signed_in: true });
 }
