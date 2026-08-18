@@ -3,7 +3,7 @@ import type { FacetKind } from '@/lib/facets';
 import { VARIANTS, type VariantKey } from '@/lib/copyConfig';
 
 /**
- * Topical landing pages at `/ideas/<slug>`, one per facet value.
+ * Topical landing pages at `/collections/<slug>`, one per facet value.
  *
  * THE PROBLEM THEY SOLVE. The catalogue is one page with a client-side filter bar. That is a good
  * shopping experience and a poor discovery one: someone searching "business ideas I can run in the
@@ -19,7 +19,7 @@ import { VARIANTS, type VariantKey } from '@/lib/copyConfig';
  *     about that slice, what the category means and who it suits. None is a template with a noun
  *     swapped in. If you add a landing, write real copy for it; do not paraphrase a neighbour.
  *  2. A landing only renders when the live catalogue holds at least `MIN_PACKS_FOR_LANDING` packs
- *     for it, and 404s otherwise (`pages/ideas/[slug].tsx`). A page listing two packs is thin
+ *     for it, and 404s otherwise (`pages/collections/[slug].tsx`). A page listing two packs is thin
  *     content, and thin content is the actual mechanism by which pages like these get demoted.
  *  3. The list is derived from the facet vocabulary the engine already emits, it cannot invent a
  *     category the catalogue does not contain.
@@ -41,12 +41,25 @@ import { VARIANTS, type VariantKey } from '@/lib/copyConfig';
 export const MIN_PACKS_FOR_LANDING = 5;
 
 export interface Landing {
-  /** URL segment under `/ideas/`. Written the way people search, not the way the code names it. */
+  /** URL segment under `/collections/`. Written the way people search, not the way the code names it. */
   slug: string;
   kind: FacetKind;
   value: string;
   /** The page's visible `<h1>`. */
   h1: string;
+  /**
+   * The name to use where there is no room for the `h1`: mosaic tiles, chips, breadcrumbs.
+   *
+   * IT EXISTS SO NOTHING HAS TO TRUNCATE. The old collections tiles cut the `h1` by character
+   * budget and rendered "Busin...", which names nothing and reads as a rendering fault.
+   * MASTER-BRIEF section 9 bans truncating text by character budget anywhere on the site, and the
+   * only way to honour that is to write a short name, not compute one.
+   *
+   * Nothing is lost: the long name is still the tile's `title` and is still read out to a screen
+   * reader. Keep these under about 24 characters and make each one stand on its own. "Evenings"
+   * is a category; "Business ideas y" is a bug.
+   */
+  shortName: string;
   /** `<title>`, minus the site suffix `Seo` appends. */
   metaTitle: string;
   metaDescription: string;
@@ -68,6 +81,7 @@ export const LANDINGS: Landing[] = [
     kind: 'payer',
     value: 'b2b',
     h1: 'Business ideas that sell to businesses',
+    shortName: 'Sells to businesses',
     metaTitle: 'B2B business ideas, researched and sourced',
     metaDescription:
       'Vetted B2B business ideas where the customer is a company with a budget. Each pack names the buyer, the price they pay, and the evidence behind both.',
@@ -79,6 +93,7 @@ export const LANDINGS: Landing[] = [
     kind: 'payer',
     value: 'b2c',
     h1: 'Business ideas that sell to consumers',
+    shortName: 'Sells to consumers',
     metaTitle: 'B2C business ideas, researched and sourced',
     metaDescription:
       'Vetted consumer business ideas with the buyer, the price and the route to reach them all sourced. One payment per researched pack.',
@@ -92,6 +107,7 @@ export const LANDINGS: Landing[] = [
     kind: 'commitment',
     value: 'evenings',
     h1: 'Business ideas you can start in the evenings',
+    shortName: 'Evenings',
     metaTitle: 'Evening side business ideas that survived a kill-first filter',
     metaDescription:
       'Researched business ideas that fit around a full-time job, evenings and weekends. Each pack cites a source for every claim.',
@@ -103,6 +119,7 @@ export const LANDINGS: Landing[] = [
     kind: 'commitment',
     value: 'part_time',
     h1: 'Part-time business ideas',
+    shortName: 'Part time',
     metaTitle: 'Part-time business ideas, researched and sourced',
     metaDescription:
       'Business ideas sized for part-time hours rather than a full-time leap. Every claim cited, one payment per pack.',
@@ -116,6 +133,7 @@ export const LANDINGS: Landing[] = [
     kind: 'effort',
     value: 'automatable',
     h1: 'Business ideas where most of the work is automatable',
+    shortName: 'Mostly automated',
     metaTitle: 'Automatable business ideas, researched and sourced',
     metaDescription:
       'Business ideas where software does most of the delivery. Each pack sets out what can be automated and what still needs a person.',
@@ -127,6 +145,7 @@ export const LANDINGS: Landing[] = [
     kind: 'effort',
     value: 'part_automatable',
     h1: 'Business ideas that are part automated',
+    shortName: 'Part automated',
     metaTitle: 'Part-automated business ideas, researched and sourced',
     metaDescription:
       'Ideas that mix software with judgement. Each pack names which half is which, with sources.',
@@ -140,6 +159,7 @@ export const LANDINGS: Landing[] = [
     kind: 'advantage',
     value: 'code',
     h1: 'Business ideas for people who can build',
+    shortName: 'If you can build',
     metaTitle: 'Business ideas for developers and technical founders',
     metaDescription:
       'Researched business ideas where being able to build software is the unfair advantage. Every claim sourced, one payment per pack.',
@@ -151,6 +171,7 @@ export const LANDINGS: Landing[] = [
     kind: 'advantage',
     value: 'ops',
     h1: 'Business ideas for people who are good at operations',
+    shortName: 'If you run things well',
     metaTitle: 'Business ideas for operators and organisers',
     metaDescription:
       'Researched business ideas where running a tight process is the advantage. Every claim sourced, one payment per pack.',
@@ -162,6 +183,7 @@ export const LANDINGS: Landing[] = [
     kind: 'advantage',
     value: 'sales',
     h1: 'Business ideas for people who can sell',
+    shortName: 'If you can sell',
     metaTitle: 'Business ideas for salespeople and closers',
     metaDescription:
       'Researched business ideas where the bottleneck is distribution, not building. Every claim sourced, one payment per pack.',
@@ -175,6 +197,7 @@ export const LANDINGS: Landing[] = [
     kind: 'mechanism',
     value: 'productized_service',
     h1: 'Productised service ideas',
+    shortName: 'Productised services',
     metaTitle: 'Productised service business ideas, researched and sourced',
     metaDescription:
       'Fixed scope, fixed price, repeatable delivery. Researched productised service ideas at one payment per pack.',
@@ -186,6 +209,7 @@ export const LANDINGS: Landing[] = [
     kind: 'mechanism',
     value: 'vertical_tool',
     h1: 'Vertical software ideas',
+    shortName: 'Software for one sector',
     metaTitle: 'Vertical SaaS and niche software business ideas',
     metaDescription:
       'Software ideas aimed at one trade or profession rather than everyone. Every claim cited, one payment per researched pack.',
@@ -197,6 +221,7 @@ export const LANDINGS: Landing[] = [
     kind: 'mechanism',
     value: 'transaction_broker',
     h1: 'Marketplace and broker ideas',
+    shortName: 'Marketplaces and brokers',
     metaTitle: 'Marketplace and transaction broker business ideas',
     metaDescription:
       'Ideas that earn by connecting two sides of a transaction. One payment per researched pack, with the cold-start problem addressed.',
@@ -210,6 +235,7 @@ export const LANDINGS: Landing[] = [
     kind: 'sector',
     value: 'licensing_admin',
     h1: 'Business ideas in licensing and red tape',
+    shortName: 'Licensing and red tape',
     metaTitle: 'Licensing, permits and compliance business ideas',
     metaDescription:
       'Researched business ideas built on permits, licences and mandatory admin, deadlines someone has to meet. One payment per pack.',
@@ -221,6 +247,7 @@ export const LANDINGS: Landing[] = [
     kind: 'sector',
     value: 'employment_pay',
     h1: 'Business ideas in pay and worker rights',
+    shortName: 'Pay and worker rights',
     metaTitle: 'Employment, pay and worker rights business ideas',
     metaDescription:
       'Researched business ideas around wages, entitlements and employment admin, with the legality check applied. One payment per pack.',
@@ -232,6 +259,7 @@ export const LANDINGS: Landing[] = [
     kind: 'sector',
     value: 'care_benefits',
     h1: 'Business ideas in care and benefits',
+    shortName: 'Care and benefits',
     metaTitle: 'Care and benefits claim business ideas, researched',
     metaDescription:
       'Researched business ideas around care arrangements and benefits entitlement, each with a sourced payer and legality check. One payment per pack.',
@@ -243,6 +271,7 @@ export const LANDINGS: Landing[] = [
     kind: 'sector',
     value: 'trades_construction',
     h1: 'Business ideas in trades and site work',
+    shortName: 'Trades and site work',
     metaTitle: 'Trades and construction business ideas, researched',
     metaDescription:
       'Researched business ideas serving builders, trades and site operations. Every claim sourced, one payment per pack.',
@@ -274,7 +303,7 @@ export function packMatchesLanding(pack: Pack, landing: Landing): boolean {
 }
 
 /** The landings the live catalogue can actually fill, in declaration order. Used by the sitemap and
- *  by the cross-links on the catalogue, so both agree with what `/ideas/<slug>` will really serve. */
+ *  by the cross-links on the catalogue, so both agree with what `/collections/<slug>` will really serve. */
 export function eligibleLandings(packs: Pack[]): { landing: Landing; count: number }[] {
   return LANDINGS.map((landing) => ({
     landing,

@@ -26,6 +26,22 @@ import { readStylesheet } from './helpers/stylesheet';
  * lozenge. Radius has to scale with the box, so `--radius-sm` (4px) is reinstated with a rule
  * stated by SIZE rather than by taste: 8px card-sized and up, 4px for controls under ~28px.
  *
+ * WHAT CHANGED ON 2026-08-17, AND WHY THE COUNT WENT FROM THREE TO FIVE
+ *
+ * MASTER-BRIEF §4 declares "Radius 12px cards, 8px controls". That is a founder instruction and it
+ * contradicts the size rule above, which had one 8px rectangle radius for everything card-sized and
+ * up. The brief wins, but in a bounded way: TWO NEW TOKENS, `--radius-card` (12px) and
+ * `--radius-ctl` (8px), adopted at the components that draw a card or a control.
+ *
+ * Retuning `--radius-md` to 12px was the smaller edit and it is the wrong one. That token sits on
+ * 139 call sites of every size, so moving it would put a card's corner on a 20px checkbox and a
+ * 26px segmented control -- the exact lozenge the paragraph above exists to prevent, arrived at
+ * from the other direction.
+ *
+ * SO THE VOCABULARY IS STILL BOUNDED, AND THAT IS THE WHOLE POINT OF THIS FILE. Five names, each
+ * with a stated job, is a vocabulary. Ten names picked from memory is what the defect count at the
+ * top of this file was measuring. A sixth radius still fails here.
+ *
  * v2's `shadow-hard` -- a 3px ink offset with no blur, canonised as "the brand device" -- is
  * deleted. On screen it is a sticker drop-shadow, and it is a large part of why the storefront was
  * rejected as unprofessional. The two legal shadows are now both real depth:
@@ -63,8 +79,10 @@ const CSS = readStylesheet(join(SRC, 'styles', 'globals.css')).replace(/\/\*[\s\
 /** Every radius utility, including the bare `rounded` and arbitrary `rounded-[5px]`. */
 const RADIUS = /\brounded(?:-(?:[trbl]{1,2}-)?[a-z0-9[\]#%.]+)?\b/g;
 const ALLOWED_RADII = new Set([
-  'rounded-sm',
-  'rounded-md',
+  'rounded-sm',    // 2px. Controls under ~28px: checkbox, chip, small badge.
+  'rounded-md',    // 2px. The general rectangle, on 139 call sites.
+  'rounded-card',  // 12px. MASTER-BRIEF §4. Card, StatCard, and anything that IS a card.
+  'rounded-ctl',   // 8px.  MASTER-BRIEF §4. Button and Input -- a control you press or type in.
   'rounded-full',
   'rounded-none',
   'rounded-r-md',
@@ -74,7 +92,7 @@ const ALLOWED_RADII = new Set([
 const SHADOW = /\bshadow-(?:\[[^\]]*\]|[a-z0-9-]+)/g;
 const ALLOWED_SHADOWS = new Set(['shadow-1', 'shadow-2', 'shadow-none']);
 
-describe('three radii, two shadows', () => {
+describe('a bounded radius vocabulary, two shadows', () => {
   it('finds radii at all, so a rename cannot make this suite vacuous', () => {
     const n = TSX.reduce((a, f) => a + (f.src.match(RADIUS)?.length ?? 0), 0);
     expect(n, 'zero radius utilities means the pattern stopped matching').toBeGreaterThan(50);
@@ -91,7 +109,9 @@ describe('three radii, two shadows', () => {
     }
     expect(
       offenders,
-      `only rounded-sm, rounded-md and rounded-full:\n${offenders.join('\n')}`,
+      `Radius vocabulary is bounded to ${[...ALLOWED_RADII].join(', ')}. ` +
+        `A card takes rounded-card, a control takes rounded-ctl, a small control takes ` +
+        `rounded-sm. Offenders:\n${offenders.join('\n')}`,
     ).toEqual([]);
   });
 
@@ -119,5 +139,10 @@ describe('three radii, two shadows', () => {
     expect(CSS).toContain('--shadow-2:');
     expect(CSS).toContain('--radius-sm:');
     expect(CSS).toContain('--radius-md:');
+    // Declared, and declared at the brief's sizes. A `rounded-card` whose token is missing from
+    // @theme emits NO rule at all in Tailwind v4 -- the corner is simply square and nothing fails,
+    // which is how a half-finished repaint ships looking merely plain. So pin the values.
+    expect(CSS, 'MASTER-BRIEF §4: 12px cards').toMatch(/--radius-card:\s*12px/);
+    expect(CSS, 'MASTER-BRIEF §4: 8px controls').toMatch(/--radius-ctl:\s*8px/);
   });
 });

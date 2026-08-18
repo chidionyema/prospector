@@ -55,6 +55,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
 
+from prospector import content_contract
+
 #: Bumped when the JSON contract changes shape. The web app asserts on it at boot, so a console
 #: talking to an older engine says so instead of rendering blanks.
 CONTRACT_VERSION = 1
@@ -857,16 +859,61 @@ def _shelf_survey_module():
     return mod
 
 
-#: Which repair each blocking reason needs. The console's job is to turn a reason into a button,
-#: so the mapping lives next to the reader rather than in an operator's head. `manual` means no
-#: tool repairs it today and the operator has to look at the pack.
-_SHELF_REPAIR = {
-    "shelf_copy": "shelf.repair_copy",
-    "title": "shelf.repair_copy",
-    "title_claim": "shelf.repair_copy",
-    "never published": "shelf.publish_pending",
-    "READY": "shelf.publish_pending",
+#: Reasons a pack is stranded that are NOT lint checks. A pack can be blocked because it was
+#: never published at all, which no rule in the content contract grades — that is a lifecycle
+#: state, so it keeps its own small map here.
+_SHELF_LIFECYCLE_REPAIR = {
+    "never published": content_contract.PUBLISH_PENDING,
+    "READY": content_contract.PUBLISH_PENDING,
 }
+
+#: Check names the stranded survey still prints under an older spelling than the linter emits
+#: today. Kept so an archived receipt does not lose its button.
+#: Check names the registry does not declare, mapped to the rule that covers them. Empty as of
+#: 2026-08-17: `title_claim` was in here as a supposed alias of `title_new_word`, and it is not
+#: an alias — `pack_linter.check_title_claims` is a live check with its own emission site. It is
+#: declared in its own right now. `test_every_check_the_linters_emit_is_declared` is what keeps
+#: this empty; an entry here means a real check went undeclared.
+_LEGACY_CHECK_ALIASES: dict[str, str] = {}
+
+#: Longest name first, so `title_new_word` cannot be shadowed by a bare `title` match.
+_SUBSTRING_FALLBACK = tuple(sorted(
+    ((r.check, content_contract.console_repair_for_check(r.check))
+     for r in content_contract.RULES
+     if content_contract.console_repair_for_check(r.check) != content_contract.MANUAL),
+    key=lambda kv: -len(kv[0]),
+))
+
+
+def _shelf_repair_for(why: str, checks: list[str]) -> str:
+    """The console action that repairs this stranded pack, or `manual`.
+
+    The check-to-repair knowledge is read from `prospector.content_contract`, the same
+    declaration the publish gate and the repair path read. Until 2026-08-17 this file held a
+    private copy, so a new rule reached the console correct and the engine unaware — and the
+    console could name a repair the engine had never heard of without anything failing.
+
+    Checks are consulted before lifecycle phrases because a pack that is both unpublished and
+    breaching a rule needs the rule fixed first: publishing it would only strand it again.
+    """
+    for check in checks:
+        action = content_contract.console_repair_for_check(
+            _LEGACY_CHECK_ALIASES.get(check, check)
+        )
+        if action != content_contract.MANUAL:
+            return action
+    for phrase, action in _SHELF_LIFECYCLE_REPAIR.items():
+        if phrase in why:
+            return action
+    # Last resort, and only when nothing parsed. The previous version of this function matched
+    # check names as substrings of the whole reason string; keeping that as a fallback means a
+    # row whose `error(s): ...` line the survey did not print the usual way still gets its
+    # button, instead of silently degrading to manual.
+    if not checks:
+        for name, action in _SUBSTRING_FALLBACK:
+            if name in why:
+                return action
+    return content_contract.MANUAL
 
 
 def _read_shelf(cfg, args: dict) -> dict:
@@ -896,7 +943,7 @@ def _read_shelf(cfg, args: dict) -> dict:
         # word match reads "error(s)" and "(no lint record)" as check names and reports "s".
         checks = sorted({c.strip() for m in re.findall(r"error\(s\): ([^)]+)\)", why)
                          for c in m.split(",") if c.strip()})
-        fix = next((a for k, a in _SHELF_REPAIR.items() if k in why), "manual")
+        fix = _shelf_repair_for(why, checks)
         rows.append({"id": cid, "created": str(created)[:10], "why": why,
                      "checks": checks, "repair": fix})
         for c in checks or ["other"]:
@@ -1078,11 +1125,26 @@ def _act_engine_switch(cfg, payload: dict, preview: bool) -> dict:
             "started": True, "log": str(log),
             "note": "Poll the engine_location view; `active` flips when the cutover finishes."}
 
+def _read_content_rules(cfg, args: dict) -> dict:
+    """C2 of `docs/CONTENT_CONTRACT_PROGRAM.md`: how often each content rule is breached.
+
+    `shelf` answers "which packs are stuck and what fixes them". This answers the question
+    underneath it: which RULES are producing the breaches, how often, and which of them are
+    already grading with nobody acting on the result.
+
+    It reads the lint receipts the publish gate already writes. No new recorder, because a
+    second count of one fact is how a dashboard ends up with two numbers for it.
+    """
+    from prospector.ops import content_breaches
+
+    return content_breaches.breach_report(cfg)
+
 
 READS: dict[str, Callable[[Any, dict], Any]] = {
     "engine_location": _read_engine_location,
     "method": _read_method,
     "shelf": _read_shelf,
+    "content_rules": _read_content_rules,
     "status": _read_status,
     "queue": _read_queue,
     "providers": _read_providers,
@@ -1108,8 +1170,12 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
 # --------------------------------------------------------------------------- #
 #: Groups are named for what the knob DOES, not for its YAML path. An operator looking for "how
 #: many ideas per batch" should not have to know it is called `batch_size` under `schedule`.
-GROUP_ORDER = ["work", "evidence", "brains", "speed", "money"]
+GROUP_ORDER = ["work", "evidence", "brains", "speed", "money", "content"]
 GROUP_BLURBS = {
+    "content": ("Which content rules may REFUSE a pack. Every rule grades either way; these "
+                "switches decide whether a breach blocks the sale or only lands on the receipt. "
+                "Read `views content_rules` first — a rule breaching most packs will strand most "
+                "of the catalogue the moment it is promoted."),
     "work": "How much the engine takes on, and when it stops taking on more.",
     "evidence": "Where the engine looks for proof, and what counts as relevant.",
     "brains": "Which model rules a verdict. The highest blast radius in the portal.",
@@ -1121,9 +1187,10 @@ GROUP_BLURBS = {
 #: several keys whose meaning is load-bearing in ways a form cannot express; a console that could
 #: set any path would eventually set one of those from a phone at 2am.
 #:
-#: `high_blast` marks the three keys that decide which brain rules a verdict. They get a second,
-#: explicit acknowledgement on top of the confirmation token — a casual dropdown is exactly what
-#: they must not be.
+#: `high_blast` marks the keys that can stop the engine producing anything sellable: the three
+#: that decide which brain rules a verdict, and `producer_mode`, which decides whether this daemon
+#: vets at all. They get a second, explicit acknowledgement on top of the confirmation token — a
+#: casual dropdown is exactly what they must not be.
 KNOBS: list[dict] = [
     # ---- work ----
     {"path": ["generation", "candidates_per_signal"], "group": "work",
@@ -1132,8 +1199,34 @@ KNOBS: list[dict] = [
              "pay for, so this and the wave size together set the cost of a tick."},
     {"path": ["schedule", "batch_size"], "group": "work",
      "label": "Wave size — ideas per batch", "kind": "int", "min": 1, "max": 200,
-     "help": "How many candidates one producer tick mints. Bigger waves risk the 3-hour tick "
+     "help": "How many candidates one producer tick mints. Bigger waves risk the tick "
              "deadline; scripts/gen_budget_guard.py is the check."},
+    {"path": ["schedule", "interval_s"], "group": "work",
+     "label": "How often a wave starts (seconds)", "kind": "int", "min": 60, "max": 604800,
+     "help": "The production cadence. With the wave size above, this is the whole answer to how "
+             "much the engine invents and how often — 3600 is hourly, 300 is near-continuous. It "
+             "lived in a launchd plist argument until 2026-08-17, which is why it read as fixed. "
+             "Floored at 60s: the daemon takes no cross-cycle lock, so a shorter cadence starts a "
+             "second batch beside the first."},
+    {"path": ["schedule", "queue_target_depth"], "group": "work",
+     "label": "Hold the queue at N rows (0 = off)", "kind": "int", "min": 0, "max": 100000,
+     "help": "OPTIONAL and off by default. On, a tick mints only the shortfall below N and skips "
+             "generation entirely when the queue is full. Off, the wave size above is exactly what "
+             "gets minted every cadence. Off is the default on purpose: following the queue makes "
+             "the production rate a consequence of how fast the consumer happens to be draining, "
+             "instead of a number you set."},
+    {"path": ["schedule", "tick_deadline_s"], "group": "work",
+     "label": "Hard deadline for one tick (seconds)", "kind": "int", "min": 60, "max": 86400,
+     "help": "A tick running longer than this force-exits the daemon and launchd relaunches it. "
+             "Every time budget below is a fraction of this number. Sized for the old world where "
+             "one tick generated, vetted and published; a producer tick only generates. "
+             "PROSPECTOR_TICK_DEADLINE_S still overrides it for one manual run."},
+    {"path": ["schedule", "producer_mode"], "group": "work", "high_blast": True,
+     "label": "Producer/consumer split", "kind": "bool",
+     "help": "On, this daemon only invents and parks rows; a separate consumer vets and publishes. "
+             "Off, one tick does all of it inside the deadline. Turning it ON without a running "
+             "consumer fills the queue and nothing drains it, and that failure is QUIET by design "
+             "— a producer tick is all-DEFER, so the usual alert is suppressed."},
     {"path": ["schedule", "lease_ttl_s"], "group": "work",
      "label": "How long a worker may hold a row (seconds)", "kind": "int",
      "min": 60, "max": 86400,
@@ -1191,6 +1284,28 @@ KNOBS: list[dict] = [
      "label": "Claude CLI calls at once", "kind": "int", "min": 1, "max": 16,
      "help": "Bounds the failover brain only, since MiniMax leads. At 2, a saturated queue once "
              "accounted for 1514s of a 1731s run."},
+    # The four fractions below divide ONE tick deadline between its phases. They are fractions,
+    # not seconds, so changing the deadline rescales all of them together rather than silently
+    # leaving a phase budgeted for a tick length that no longer exists.
+    {"path": ["schedule", "gen_budget_frac"], "group": "speed",
+     "label": "Share of a tick for inventing", "kind": "float", "min": 0.0, "max": 1.0,
+     "help": "Fraction of the tick deadline generation may spend before it stops and hands the "
+             "rest of the tick on. 0 removes the bound."},
+    {"path": ["schedule", "vet_budget_frac"], "group": "speed",
+     "label": "Share of a tick for vetting", "kind": "float", "min": 0.0, "max": 1.0,
+     "help": "Fraction of the tick deadline the vetting phase may spend. Only bites when the "
+             "producer/consumer split is OFF — a producer tick does not vet."},
+    {"path": ["schedule", "drain_budget_frac"], "group": "speed",
+     "label": "Share of a tick for draining", "kind": "float", "min": 0.0, "max": 1.0,
+     "help": "Fraction of the tick deadline for re-vetting parked rows. Also inert under the "
+             "split, where a separate consumer owns the drain."},
+    {"path": ["schedule", "artifact_budget_frac"], "group": "speed",
+     "label": "Share of a tick for writing packs", "kind": "float", "min": 0.0, "max": 1.0,
+     "help": "Fraction of the tick deadline for building the buyer-facing pack of a PASS."},
+    {"path": ["schedule", "artifact_budget_floor_s"], "group": "speed",
+     "label": "Minimum pack-writing time (seconds)", "kind": "int", "min": 0, "max": 86400,
+     "help": "A floor under the fraction above, so a short deadline cannot leave a PASS with too "
+             "little time to render the artifact a buyer actually reads."},
     # ---- money ----
     {"path": ["spend", "daily_cap_usd"], "group": "money",
      "label": "Daily spend ceiling (USD)", "kind": "float", "min": 0.0, "max": 1000.0,
@@ -1200,6 +1315,52 @@ KNOBS: list[dict] = [
      "label": "Warn at (USD)", "kind": "float", "min": 0.0, "max": 1000.0,
      "help": "Where the alert rail fires, below the ceiling."},
 ]
+
+
+def _content_rule_knobs() -> list[dict]:
+    """P5's actuator: the switch that promotes a content rule from shadow to blocking.
+
+    GENERATED from `content_contract.RULES`, not typed out. There are 24 rules and a third of
+    them share an actuator, so hand-writing the entries is how the console ends up offering a
+    switch the gate no longer reads, or missing one it does. The registry is already the single
+    declaration of which config key drives which check; this reads it.
+
+    One entry per CONFIG KEY, not per rule, because `title`, `title_new_word` and `title_claim`
+    are three rules on one switch. The label names every rule the switch moves, so an operator
+    turning it on can see it is promoting three checks at once rather than the one they came for.
+    """
+    from prospector import content_contract
+
+    by_key: dict[str, list] = {}
+    for rule in content_contract.RULES:
+        if rule.config_key:
+            by_key.setdefault(rule.config_key, []).append(rule)
+
+    out: list[dict] = []
+    for key in sorted(by_key):
+        rules = by_key[key]
+        checks = ", ".join(sorted(r.check for r in rules))
+        default_on = any(r.enforced_by_default for r in rules)
+        out.append({
+            "path": ["listing", key], "group": "content", "kind": "bool",
+            "label": f"Enforce: {checks}",
+            "help": (
+                f"When on, the publish gate REFUSES a pack breaching {checks}. When off the "
+                f"finding is still recorded on the pack's lint receipt, so the breach rate "
+                f"accrues while the switch is down — that history is what `views content_rules` "
+                f"reports, and what makes promoting this an evidence-based decision instead of a "
+                f"guess. Check the rate before switching it on: on 2026-08-17 two shadow rules "
+                f"were breaching 98% of packs, so promoting either would have stranded almost "
+                f"the whole catalogue. "
+                f"{'On by default.' if default_on else 'Off by default (shadow).'}"
+            ),
+        })
+    return out
+
+
+# Appended rather than written inline so the generation stays one obvious block. `extend`, not a
+# second list, because `KNOBS_BY_KEY` below and every consumer of `KNOBS` must see one list.
+KNOBS.extend(_content_rule_knobs())
 
 KNOBS_BY_KEY: dict[str, dict] = {".".join(k["path"]): k for k in KNOBS}
 
@@ -1999,7 +2160,7 @@ def _pending_publish_paths(cfg) -> list[str]:
     NAMED EXPLICITLY, never `--all`. `--all` walks every PASS in the store, including the 63
     already selling, and re-publishing a live pack re-runs the money rail on a row a buyer can
     already buy. The shelf reader already decides which rows need this repair
-    (`_SHELF_REPAIR`), so the action publishes exactly those and nothing else.
+    (`_shelf_repair_for`), so the action publishes exactly those and nothing else.
     """
     shelf = _read_shelf(cfg, {})
     if not shelf.get("reachable"):
@@ -2336,6 +2497,13 @@ TOOLS: list[dict] = [
        cmd="python3 scripts/launchd_plists.py --snapshot",
        danger="overwrites the tracked copies with whatever is live, so run --check first "
               "or an unwanted change becomes the new baseline"),
+    # --- registered 2026-08-18 ---
+    # An operator button, not a developer's script, because the number it reports is a business
+    # number: work that is finished and not shipped. On 2026-08-17 the repo held 61 local
+    # branches and 49 worktrees, and nobody could say how much of that was unlanded work without
+    # running three probes by hand and getting three different answers.
+    _t("scripts/branch_backlog.py", "How much finished work is sitting unmerged on a branch?",
+       False, "/audit"),
 ]
 
 

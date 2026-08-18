@@ -98,6 +98,20 @@ class TestTheConsoleIsPartOfTheDeploy:
     def test_the_console_job_is_restarted_with_the_daemons(self, lc):
         assert lc.CONSOLE_JOB in lc.JOBS
 
+    def test_a_job_running_in_a_subdirectory_of_the_live_checkout_is_not_a_problem(
+        self, lc, monkeypatch, capsys
+    ):
+        """`next start` runs from store_platform/src/Ops.Console, not the checkout root.
+
+        Measured 2026-08-17: an exact cwd match reported the correctly deployed console as
+        "NOT the live checkout", in the same list as a real finding about the wrong checkout.
+        """
+        monkeypatch.setattr(lc, "job_cwd", lambda job: ("1234", str(lc.LIVE / "sub" / "dir")))
+        monkeypatch.setattr(lc, "plist_store_dir", lambda job: str(lc.STORE))
+        monkeypatch.setattr(lc, "run", lambda *a, **k: (128, ""))
+        lc.report()
+        assert "NOT the live checkout" not in capsys.readouterr().out
+
 
 class TestConsoleBuildStaleness:
     """`next start` serves a directory. Current code is not the same as a current build."""

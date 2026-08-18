@@ -9,6 +9,7 @@ import { GetStaticProps } from 'next';
 import { fetchCatalog } from '@/lib/api/client';
 import { priceRange, priceLadder, priceSentence, formatGbp, type PriceRange, type LadderRung } from '@/lib/priceRange';
 import PriceLadder from '@/components/marketing/PriceLadder';
+import { IdenticalContentsMatrix } from '@/components/marketing/IdenticalContentsMatrix';
 import { ComparisonBlock, MethodCostAnchor } from '@/components/marketing/PriceArgument';
 import killTotals from '@/data/kill-log-totals.json';
 import { PACK_DISCLAIMER } from '@/lib/disclaimer';
@@ -92,6 +93,24 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
               What changes is the size of the opportunity. The pack doesn’t.
             </h2>
             <PriceLadder rungs={ladder} className="mt-6" />
+            {/*
+              * THE IDENTICAL-CONTENTS MATRIX (MASTER-BRIEF section 7), and it is the argument this
+              * heading makes, drawn.
+              *
+              * The heading above says the pack does not change with the price. That is the one
+              * claim on this page a buyer has real reason to doubt, because every other price
+              * ladder they have seen means a smaller box at the bottom. A sentence restating it is
+              * the assertion they already distrust. The same fourteen marks on every rung is a
+              * proof they can check by looking, and it costs one row of small squares per rung.
+              *
+              * The rungs are the SAME `ladder` the drawing above uses, computed from the live
+              * catalogue. No second copy of the price list on the page that quotes prices.
+              */}
+            <IdenticalContentsMatrix
+              className="mt-10"
+              documents={PACK_DOCUMENTS.length}
+              rungs={ladder.map((rung) => ({ price: formatGbp(rung.amount), count: rung.count }))}
+            />
             <p className="mt-8 max-w-[60ch] text-body text-muted">
               Two things set the rung, not a guess: how big the idea could realistically become,
               and which market it targets. US-market packs sit one price step higher, because the

@@ -106,7 +106,16 @@ def rewrite_one(op, title: str, line: str, attempts: int = 2) -> str | None:
     the stolen-tool claim and the Cal/OSHA citation — and a refusal we could name in one
     clause was thrown away instead of being handed back. A retry that repeats the same
     prompt is a coin flip; a retry that quotes the rejection is the cheapest correction
-    available, at one extra call on failures only."""
+    available, at one extra call on failures only.
+
+    An outage raises `RewriteUnavailable` out of here. It used to be caught and turned into
+    `None`, which is the same
+    answer this function gives when the brain refuses the line — so a quota failure read as "no
+    rewrite is possible", and that is what parks a candidate for good. The engine's choke point
+    (`field_write.repair`) records a raise as an outage and an empty answer as a refusal, and it
+    can only do that if the two arrive differently. The sweep catches it per row, so one dead
+    call still does not abort the other twenty-two.
+    """
     note = ""
     for attempt in range(max(1, attempts)):
         try:

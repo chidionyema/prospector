@@ -81,6 +81,17 @@ export type { IconName } from './Icon';
 export { Glyph, KillCauseGlyph, KILL_CAUSE_CODES } from './Glyph';
 export type { GlyphName, KillCause } from './Glyph';
 
+// The verdict as a whole object -- glyph, word and colour together. The brief's rule is that this
+// is the ONLY place `--kill` may appear, so anything drawing a ruling composes this rather than
+// picking a colour. VerdictChip.tsx lists the three sites that proved hand-picking does not hold.
+export { VerdictChip } from './VerdictChip';
+export type { VerdictChipProps, VerdictKind } from './VerdictChip';
+
+// A claim and the page behind it, as one object. The generic counterpart to the pack page's
+// `EvidenceExcerptPlate`, which can only ever take a pack.
+export { EvidenceCard } from './EvidenceCard';
+export type { EvidenceCardProps } from './EvidenceCard';
+
 export { ToastProvider, useToast } from './Toast';
 
 export { CitationChip, CitationList, SourcedLine } from './Citation';

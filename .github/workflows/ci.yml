@@ -98,6 +98,7 @@ jobs:
       python: ${{ steps.filter.outputs.python }}
       dotnet: ${{ steps.filter.outputs.dotnet }}
       web: ${{ steps.filter.outputs.web }}
+      console: ${{ steps.filter.outputs.console }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -107,7 +108,7 @@ jobs:
         name: Which areas did this change touch
         run: |
           set -u
-          all() { for k in python dotnet web; do echo "$k=true" >> "$GITHUB_OUTPUT"; done; }
+          all() { for k in python dotnet web console; do echo "$k=true" >> "$GITHUB_OUTPUT"; done; }
 
           if [ "${{ github.event_name }}" != "pull_request" ]; then
             echo "not a pull request — running everything"; all; exit 0
@@ -138,11 +139,19 @@ jobs:
           if match '^store_platform/src/Store\.Web/'; then
             echo "web=true" >> "$GITHUB_OUTPUT"; else echo "web=false" >> "$GITHUB_OUTPUT"; fi
 
+          # The Ops Console is a SECOND Next app, and until 2026-08-17 no job built it. The
+          # `web` filter above matches `Store.Web` only, so a pull request that changed the
+          # console reported `nextjs skipping` and shipped with nothing typechecked. PR #289
+          # changed `Ops.Console/src/pages/shelf.tsx` and CI produced no console result at all.
+          if match '^store_platform/src/Ops\.Console/'; then
+            echo "console=true" >> "$GITHUB_OUTPUT"; else echo "console=false" >> "$GITHUB_OUTPUT"; fi
+
       - name: What will run
         run: |
           echo "python=${{ steps.filter.outputs.python }}"
           echo "dotnet=${{ steps.filter.outputs.dotnet }}"
           echo "web=${{ steps.filter.outputs.web }}"
+          echo "console=${{ steps.filter.outputs.console }}"
 
   # ──────────────────────────────────────────────────────────────────
   # Guard — protected files (money rail, moat, identity) cannot be
@@ -517,6 +526,64 @@ jobs:
           NEXT_PUBLIC_SITE_URL: https://www.example.com
 
   # ──────────────────────────────────────────────────────────────────
+  # The Ops Console — the operator's admin surface, and a separate Next app from the
+  # storefront above. It had NO lane at all: no job in any of the four workflow files
+  # mentioned `Ops.Console`, so nothing typechecked it, linted it, ran its vitest suite or
+  # built it. A console page could go red and reach main with every check green, which is
+  # the same "built and unreachable" shape the console itself exists to surface.
+  #
+  # Deliberately mirrors the `nextjs` job rather than sharing a matrix with it: the two apps
+  # have separate lockfiles, separate caches and different build env, and one matrix over
+  # both would make a storefront-only change pay the console's install.
+  # ──────────────────────────────────────────────────────────────────
+  ops-console:
+    needs: changes
+    if: needs.changes.outputs.console == 'true'
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 40
+
+    defaults:
+      run:
+        working-directory: store_platform/src/Ops.Console/
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: store_platform/src/Ops.Console/package-lock.json
+
+      - name: Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: store_platform/src/Ops.Console/.next/cache
+          key: ops-next-${{ runner.os }}-${{ hashFiles('store_platform/src/Ops.Console/package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            ops-next-${{ runner.os }}-${{ hashFiles('store_platform/src/Ops.Console/package-lock.json') }}-
+            ops-next-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests (vitest)
+        run: npm test
+
+      # No NEXT_PUBLIC_* here on purpose. The console talks to the local Python gateway
+      # through `PROSPECTOR_PYTHON`, resolved at RUN time by the `start` script, so nothing
+      # about the deployment is inlined into the build.
+      - name: Build
+        run: npm run build
+
+  # ──────────────────────────────────────────────────────────────────
   # The single check branch protection requires.
   #
   # Path gating and required status checks do not mix directly. Once `python`,
@@ -532,7 +599,7 @@ jobs:
   # not touched" means.
   # ──────────────────────────────────────────────────────────────────
   ci-ok:
-    needs: [changes, guard, python, engine, dotnet, nextjs]
+    needs: [changes, guard, python, engine, dotnet, nextjs, ops-console]
     if: always()
     runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 5

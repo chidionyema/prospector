@@ -153,6 +153,29 @@ The backlog stops being finished unsellable stock and becomes cheap parked candi
 reason attached. Same information, a fraction of the cost, and re-enterable the moment the rule
 or the repair improves. §1.3's log line becomes an action.
 
+#### P4 as built, 2026-08-17
+
+**It ships measure-first, and the default is a decision.** `run._unrepaired_shelf_breaches` grades
+the title and one-liner one last time after `_repair_shelf_lines`, on the gate's own checkers, and
+logs every breach at ERROR with `shelf_unrepaired: True`. It only skips the pack when
+`listing.park_unrepairable_shelf_lines` is on, and that key defaults to **False**
+(`config.LISTING_DEFAULTS`). The reason is that parking is not free in the way it first looks:
+buying a pack the gate refuses wastes the deliverable chain, but parking turns a PASS into a pack
+that does not exist. Which is cheaper is a count, and the log is what produces the count before
+anyone pays for the answer. A test pins the log OUT of the `if _park:` branch, because a log that
+only fires once the switch is on can never justify the switch.
+
+**The grader asks the gate, it does not restate it.** The title goes through
+`pack_linter.check_title(title, max_chars=TITLE_MAX_CHARS)` filtered to `severity == "error"`; the
+one-liner through `shelf_copy_repair.voice_breaches` plus the `_ONE_LINER_CUT_AT` length.
+`test_the_grader_agrees_with_the_publish_gates_own_title_check` asserts the two produce the
+identical list for the same title, so a cap moving in the linter cannot leave the park behind.
+
+**A parked candidate is stamped, never silently empty.** `cand.tags["shelf_parked"]` carries the
+breaches. An empty artifacts dict with no reason is a failure shape this repo has already had
+(memory `learning-empty-artifacts-root-cause.md`); the tag is what lets the stranded-pack scan and
+the ops console tell a deliberate park from a breakage.
+
 ### P5 — Rules ratchet on, with the console as the actuator
 
 A new rule runs in shadow automatically. Its breach rate is recorded per batch. When the rate has
@@ -202,17 +225,17 @@ Append here. Each entry: what shipped, the receipt, and the stranded count befor
 
 | # | Part | Status | Receipt |
 |---|------|--------|---------|
-| 0 | Upstream title/one-liner repair (§1.3) | in PR #285; CI was red on three failures, two fixed by #282's merge, one real | `run.py:697,802,950` |
-| P1 | Registry of field contracts | not started | — |
-| P2 | Enforcement at the field write | not started | — |
-| P3 | Generator reads the registry | not started | — |
-| P4 | Park instead of buy | not started | — |
-| P5 | Ratchet + console promotion | not started | — |
-| P6 | Breach recording | not started | — |
+| 0 | Upstream title/one-liner repair (§1.3) | **MERGED** — PR #285 is on `main` and running in production | `run.py:697,802,977` |
+| P1 | Registry of field contracts | **shipped** | `prospector/content_contract.py`; 34 tests in `tests/unit/test_the_content_contract_covers_every_gate_knob.py`; `console_api._shelf_repair_for` now reads it |
+| P2 | Enforcement at the field write | **shipped** — one loop, one grader per field; `run.py`'s two hand-written repair loops are now three-line declarations | `prospector/field_write.py`; 19 tests in `tests/unit/test_one_choke_point_grades_every_buyer_facing_field.py`; the 34 behaviour tests in `test_a_breached_title_is_repaired_before_the_pack.py` pass unchanged |
+| P3 | Generator reads the registry | **shipped** | `generate._shelf_line_directive`; 5 tests in `tests/unit/test_the_generator_is_told_the_shelf_rules.py` |
+| P4 | Park instead of buy | **shipped, measure-first** — logs always, parks only when `listing.park_unrepairable_shelf_lines` is on (default off) | `run._unrepaired_shelf_breaches`; 15 tests in `tests/unit/test_the_engine_does_not_buy_a_pack_the_gate_will_refuse.py` |
+| P5 | Ratchet + console promotion | **promotion shipped** — 10 generated console switches; the automatic ratchet is still manual | `console_api._content_rule_knobs`, group `content` |
+| P6 | Breach recording | **shipped as a READER** — nothing new is written; the counts were already in the 123 `*.lint.json` receipts | `prospector/ops/content_breaches.py`; 22 tests in `tests/unit/test_content_breach_rates_come_from_the_receipts.py` |
 | P7 | Shipping fence | not started | — |
 | C1 | Console: stranded by rule | **ALREADY EXISTS** — do not rebuild | `console_api.py:823` `_read_shelf` returns `by_reason`, `by_repair`, `stale_verdicts`; rendered on `shelf.tsx` |
-| C2 | Console: breach rate per rule | not started — blocked on P6 | — |
-| C3 | Console: rules ready to promote | not started — blocked on P5 | — |
+| C2 | Console: breach rate per rule | **shipped** — served on both doors AND rendered on the Stranded page | `console_api._read_content_rules` in `READS`; `'content_rules'` in `VIEWS` (`pages/api/ops/read/[view].ts`); the panel in `shelf.tsx`, pinned by `test_a_page_actually_fetches_it` |
+| C3 | Console: rules ready to promote | **shipped** — `ready_to_promote`, `never_observed` and `undeclared` all rendered | `content_breaches.breach_report`; second card in `shelf.tsx` |
 | C4 | Console: shipping gap | partly in flight in PR #286 (console build age) | `scripts/live_checkout.py` |
 
 Two things the console already does that this programme must build on rather than beside:
@@ -229,9 +252,165 @@ stored lint verdict outlives the rules that produced it, so a pack can read as b
 its rule stopped blocking. P5 and P6 must not reintroduce that. Any recorded breach carries the
 ruleset version that produced it.
 
+### P1 as built, 2026-08-17
+
+`prospector/content_contract.py` declares 21 rules. Each names the checks' fields, the repair,
+the `lint_pack` keyword that switches it on and the `listing.*` config key wired to that keyword.
+It imports nothing from the engine, so the gate, the generator, the repair path and the console
+can all read it without a cycle.
+
+Three things worth writing down, because each was a defect caught while building it:
+
+1. **The config key and the gate keyword are different words for a third of the rules.**
+   `lint_grammar` actuates `grammar_enabled`; `house_spec_block_register` actuates
+   `register_block`. The first draft carried a single `actuator` field, which is a defect that
+   reads as working: every lookup still returns something and the something is wrong. They are
+   now `config_key` and `gate_param`, and
+   `test_every_declared_config_key_is_the_one_the_gate_is_wired_to` reads the actual keywords out
+   of the `lint_pack(...)` call in `bridge.py` as a syntax tree and fails on a mismatch. Proven to
+   fail on both real conflations before it was kept.
+
+2. **The registry is checked against the gate, never trusted over it.** The guard reads
+   `inspect.signature(pack_linter.lint_pack)`, finds the ten actuator-shaped keywords, and fails
+   if one is undeclared. Proven by deleting the `repetition` rule and watching it name
+   `repetition_block`. This is what stops the registry becoming a fourth list to forget, which
+   is the §1.4 failure repeated one level up.
+
+3. **What repairs a rule and what the console can do about it are different questions.** Only two
+   console actions exist, `shelf.repair_copy` and `shelf.publish_pending`.
+   `engine.regenerate_artifacts` is the true repair for nine rules and is not built. The registry
+   states the true repair, because P4 and P5 need it; `console_repair_for_check` degrades to
+   `manual` for anything unwired, because that is what the operator can act on. Answering the
+   second question with the first produces a button that does nothing.
+
+`_SHELF_REPAIR`, the console's private reason-to-repair map, is gone.
+`console_api._shelf_repair_for` routes on the parsed check names through the registry, falls back
+to lifecycle phrases for a pack that was never published, and keeps the old substring match as a
+last resort so no row loses its button. A pack that is both unpublished and breaching a rule
+routes to the rule fix first: publishing it while it breaches only strands it again.
+
 ### Baseline, 2026-08-17
 
 Stranded PASS packs: **34**. By rule: title 20, shelf_copy 15, citation_urls 4, empty artifacts 2,
 placeholders 1, never gated 1. A pack can fail more than one. All 34 made within three days of
 the measurement. Source: the project state probe and
 `.venv/bin/python tools/verify_pass_shelf_coverage.py`.
+
+
+### P6 as built, 2026-08-17
+
+**It writes nothing.** The counts were already on disk. The publish gate leaves a
+`store/dossiers/<id>.lint.json` per pack it grades, each carrying `problems`, each problem naming
+its check. 123 receipts, 10,704 findings. `prospector/ops/content_breaches.py` reads them. A second
+recorder beside a receipt that already exists is how a dashboard gets two numbers for one fact, and
+the older one is usually the one people trust.
+
+**A rule that never ran looks exactly like a rule with a clean record.** Both are zero, and P5
+promotes on zero. That is the defect that would have made this module worse than useless, because
+promoting an unobserved rule puts a gate nobody has seen fire onto the money path. `breach_report`
+splits them: `ready_to_promote` requires evidence the rule has fired at least once in history AND a
+clean streak across every graded day; everything else with no findings goes to `never_observed`,
+which is a question for a human. `RuleBreaches.rate()` returns `None` rather than `0.0` when
+nothing was graded, for the same reason.
+
+**Blocking vs shadow is not in the receipt.** The same `house_quote` finding refuses a pack when
+`house_spec_block_quotes` is on and is a note in a file when it is off, so the split comes from
+`content_contract.blocking_checks(listing_cfg)` at read time. The module never restates a switch.
+
+**What it says about the live store right now** (2026-08-17, 123 graded packs, 3 grading days):
+
+| check | enforced | packs | rate | findings |
+|---|---|---|---|---|
+| `house_style` | shadow | 120 | 98% | 4,633 |
+| `house_quote` | shadow | 120 | 98% | 2,803 |
+| `human_register` | shadow | 120 | 98% | 300 |
+| `register` | shadow | 112 | 91% | 425 |
+| `grammar` | **blocking** | 111 | 90% | 111 |
+| `repetition` | shadow | 106 | 86% | 1,600 |
+| `citation_urls` | **blocking** | 85 | 69% | 254 |
+| `register_repeat` | shadow | 72 | 59% | 286 |
+| `shelf_copy` | shadow | 61 | 50% | 110 |
+| `title_new_word` | **blocking** | 51 | 41% | 51 |
+| `title` | **blocking** | 21 | 17% | 27 |
+
+Two things to read off it. The shadow rules are not idle — `house_style` and `house_quote` fire on
+98% of packs, so promoting either today would strand almost the whole catalogue, which is the
+measurement P5's ratchet exists to respect. And `ready_to_promote` is empty: nothing has both a
+history of firing and a clean recent streak. Three grading days is not enough evidence yet, and the
+module says so rather than offering a promotion it cannot justify.
+
+**Coverage, stated on the panel.** One receipt per pack GRADED, not per pack generated — a
+candidate that never reached the gate is not in the denominator. `by_day` is keyed on when a pack
+was linted, so a re-lint backfill lands on one day.
+
+
+### P5 as built, 2026-08-17 — promotion, not yet the ratchet
+
+**The switches are generated from the registry, not typed out.** `console_api._content_rule_knobs`
+reads `content_contract.RULES` and emits one console knob per CONFIG KEY, giving 10 switches in a
+new `content` group. Typing 24 near-identical entries by hand is how a console ends up offering a
+switch the gate no longer reads, or missing one it does.
+
+**One knob per switch, not per rule, and the label says so.** `title_block_on_breach` moves
+`title` AND `title_claim`; `house_spec_block_register` moves `register` AND `register_repeat`. The
+label names every rule the switch promotes, so an operator turning one on can see they are
+promoting two checks rather than the one they came for. A test pins that.
+
+**What is NOT built: the automatic ratchet.** P5 as specified also promotes a rule automatically
+once its breach rate has held at zero for a declared number of batches. That is deliberately not
+shipped. `ready_to_promote` is computed and empty, and it is empty for a good reason — three
+grading days of receipts is not enough evidence to auto-arm a gate on the money path. The
+threshold belongs in config once there is enough history to choose it, and choosing it now would
+be picking a number to make a table look finished. The operator promotes from the console today,
+with the rate in front of them.
+
+**`title_new_word` has no switch, and that is correct.** It carries no `config_key` because
+nothing in `lint_pack` gates it — it is enforced unconditionally. It shows as blocking at 41% in
+the table above. A knob for it would be a control that does nothing.
+
+## P2 as built, 2026-08-17 — one loop, one grader per field
+
+**The defect was a rule typed out twice, not a missing repair.** The engine already repaired its
+shelf lines. What it did not have was one place that said what clean meant. Measured before the
+change:
+
+- `run.py:827` and `run.py:882` both carried the one-liner length bar, as the same sentence
+  written twice, twelve lines apart. One copy was in the repair, the other in the park check P4
+  added.
+- `_repair_title` and `_repair_one_liner` were two hand-written copies of the same four-step
+  loop. They differed only in which checker and which rewriter they called.
+
+Two copies of a rule do not raise when they drift. They start disagreeing, and the disagreement
+shows up as a pack the engine graded clean and the publish gate refused, after the pack was paid
+for. That is the same failure P4 exists to prevent, arriving through a different door.
+
+**What shipped.** `prospector/field_write.py` holds the loop once — grade, repair, re-grade,
+record — and each field is a declaration:
+
+```python
+"one_liner": Field(name="one_liner", noun="one-liner",
+                   read=..., write=..., grade=grade_one_liner,
+                   propose=_propose_one_liner, attempts=1, skip_when_empty=True)
+```
+
+`run._repair_title` and `run._repair_one_liner` are now three lines each. They stay as named
+functions because `_generate_pack_content` and its tests reach them by module attribute.
+`run._unrepaired_shelf_breaches` is one line: `field_write.breaches(cand, "title", "one_liner")`.
+The park check and the repair now ask the *same object*, not a matching one.
+
+**One behaviour change, and it is a tightening.** A one-liner rewrite used to be re-graded on
+length only, because `rewrite_one` already re-graded voice. It is now re-graded on the full
+grader. A rewrite that fixes the voice and blows the length was previously accepted; it is now
+refused. Pinned by `test_the_rewrite_is_regraded_on_every_bar_not_just_the_one_that_failed`.
+
+**How we know nothing was lost.** The 34 behaviour tests in
+`tests/unit/test_a_breached_title_is_repaired_before_the_pack.py` were not touched and pass
+against the refactor. The new tests are about identity, not behaviour: same grader object on both
+doors, the length bar appearing exactly once in the tree, and no field repair growing its own
+attempt loop again.
+
+**What P2 does NOT do.** `tools/retitle_catalogue.py:408` still writes a live catalogue title
+through its own path. That is the live-shelf repair tool, not the engine, and moving it is a
+separate change with its own blast radius — it writes rows that are already published. The engine
+side is closed.
+

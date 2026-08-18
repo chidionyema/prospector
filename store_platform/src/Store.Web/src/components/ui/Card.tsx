@@ -15,7 +15,9 @@ export function Card({ interactive = false, className, children, ...rest }: Card
     <div
       {...rest}
       className={cx(
-        'rounded-md border border-border bg-surface p-6 card-transition shadow-none',
+        // 12px, MASTER-BRIEF §4 ("Radius 12px cards"). See the note beside --radius-card in
+        // tokens.css for why this is a per-component adoption and not a retune of --radius-md.
+        'rounded-card border border-border bg-surface p-6 card-transition shadow-none',
         interactive &&
           'transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-primary/40',
         className,

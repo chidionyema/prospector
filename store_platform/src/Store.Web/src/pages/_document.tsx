@@ -47,10 +47,23 @@ export default function Document() {
             for a home-screen tile at all, so the declaration here was inert at best and, being
             first in tree order, a coin-flip at worst. One declaration, in Seo.tsx, pointing at a
             real PNG. */}
-        {/* Brand v3 ink (`--text: #171717`). #0A0A0A was the v2 value and outlived the ramp.
+        {/* theme-color must be the PAGE GROUND, not the ink (MASTER-BRIEF §9, corrected
+            2026-08-17). It was `#171717`, the text colour, which painted a near-black browser bar
+            above a paper-white page: on a phone the chrome and the page read as two different
+            sites, and in an in-app browser the seam is the first thing a buyer sees. The value is
+            `--paper`. Raw hex is required here because a <meta> content attribute is not a CSS
+            context and cannot resolve var().
             This declaration is the one browsers use: _document's <Head> renders before the page's,
             and the first theme-color wins -- so editing only components/Seo.tsx changes nothing. */}
-        <meta name="theme-color" content="#171717" />
+        <meta name="theme-color" content="#FAFAF7" />
+        {/* The other half of the same requirement (MASTER-BRIEF §9: "declares `color-scheme: light
+            only` in <meta> AND CSS"). globals.css carries the CSS half. Both, because they are
+            read at different moments: the meta tag is in the document head before any stylesheet
+            has loaded, which is the window an in-app browser or Android auto-dark uses to decide
+            it may invert the page. `only` rather than `light` is the load-bearing word -- plain
+            `light` still leaves forced-dark permitted, and a forced-dark render turns the teal
+            muddy on exactly the surface the brand is identified by. */}
+        <meta name="color-scheme" content="light only" />
         {/* Search-console ownership tokens. Empty until the operator sets the env vars, which is
             why they are data-driven rather than pasted here: a token is per-property, and a wrong
             one silently fails verification. See `lib/seo/verification.ts`. */}

@@ -116,7 +116,7 @@ export function webSiteNode(): Record<string, unknown> | undefined {
 
 export interface Crumb {
   name: string;
-  /** Site-root-relative path, e.g. `/ideas/b2b`. */
+  /** Site-root-relative path, e.g. `/collections/b2b`. */
   path: string;
 }
 
