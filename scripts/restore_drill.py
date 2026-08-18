@@ -64,7 +64,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_STORE = REPO_ROOT / "store"
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+from prospector.config import store_root  # noqa: E402
+
+# `store_root()`, never `REPO_ROOT / "store"`. A store path derived from `__file__` follows the
+# CODE, not the store. On Fly the code is /app and the volume is /data/store, so this default
+# drilled a directory the engine has never written to — an empty store restores perfectly and
+# proves nothing. `PROSPECTOR_STORE_DIR` is the one answer; `--store` still overrides it.
+DEFAULT_STORE = store_root()
 
 #: Where the run leaves proof it happened, relative to the store being drilled. The Data console
 #: screen reads exactly this file, and reports "never" when it is absent — which is the honest

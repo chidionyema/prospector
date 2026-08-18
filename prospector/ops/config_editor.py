@@ -319,7 +319,10 @@ def validate_config(cfg: dict[str, Any]) -> tuple[bool, list[str]]:
     # The engine fails LOUDLY on it at startup (`_build_operator` raises), which means the
     # damage lands on the daemon's next re-exec rather than on the person who clicked Save.
     from prospector.operator import BUILDABLE_TIERS
-    for field in ("operator", "noncritical_operator", "artifact_operator", "moat_primary"):
+    # `marketing_operator` was missing from this loop until 2026-08-18: it is a real chain, read by
+    # `run.py`, and an unbuildable name in it raised at run time instead of at save time.
+    for field in ("operator", "noncritical_operator", "artifact_operator",
+                  "marketing_operator", "moat_primary"):
         if field not in cfg:
             continue
         raw = cfg[field]

@@ -46,10 +46,15 @@ def test_receipt_lands_where_the_data_screen_reads_it(tmp_path):
 
     # The Data view reads exactly this path under the store root. If one of the two moves, the
     # screen silently reports "never run" forever, so the two are pinned to each other.
+    #
+    # STORE-relative, not repo-relative. `DRILL_RECEIPT` used to start with `store/` and was
+    # joined onto a `__file__`-derived repo root, which on Fly is /app — a directory the engine
+    # has never written to, so the screen read "never run" while the drill wrote to /data/store.
+    # `write_receipt` has always taken the store root, so the two now agree.
     from prospector.ops.data import DRILL_RECEIPT
 
     assert path == tmp_path / "ops" / "restore_drill.json"
-    assert DRILL_RECEIPT == Path("store") / "ops" / "restore_drill.json"
+    assert DRILL_RECEIPT == Path("ops") / "restore_drill.json"
 
     rec = json.loads(path.read_text())
     assert rec["ok"] is True
