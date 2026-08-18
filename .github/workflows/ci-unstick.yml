@@ -155,36 +155,18 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
-          set -uo pipefail
-          # NOT `set -e`. A janitor that cannot land a pull request must not paint main red.
-          # It did, every fifteen minutes from 05:03 on 2026-08-18, and a red main blocks every
-          # landing through the rule-guard fence -- so the sweep that exists to unstick the queue
-          # was itself the thing holding six pull requests shut. Its own failure is now a printed
-          # line, and only a genuine crash in this script can fail the job.
-          #
-          # REST, not `gh pr list` / `gh pr view`. Those go through GraphQL, and GraphQL is what
-          # answered `Resource not accessible by integration (HTTP 403)` on the very first call.
-          # The step logged no line at all before dying, which is how we know it was the list and
-          # not the landing. The two steps above this one use `gh api` with the same GITHUB_TOKEN
-          # and the same permissions block, and both succeed on every run, so REST is the access
-          # path this token demonstrably has.
-          prs=$(gh api "repos/$REPO/pulls?state=open&per_page=100" \
-                  --jq '.[] | select([.labels[].name] | index("automerge")) | .number') || {
-            echo "cannot list pull requests -- skipping the landing sweep"; exit 0; }
+          set -euo pipefail
+          prs=$(gh pr list -R "$REPO" --state open --label automerge --json number --jq '.[].number')
           [ -n "$prs" ] || { echo "no pull request carries the automerge label"; exit 0; }
           for pr in $prs; do
-            info=$(gh api "repos/$REPO/pulls/$pr" --jq '"\(.mergeable) \(.mergeable_state) \(.head.sha)"') || {
-              echo "#$pr: cannot read -- skipping"; continue; }
-            read -r mrg st sha <<<"$info"
-            # REST `mergeable` is a BOOLEAN, and it is null while GitHub is still computing the
-            # candidate commit. Null means ask again in fifteen minutes, never go ahead.
-            if [ "$mrg" != "true" ]; then
+            read -r mrg st <<<"$(gh pr view "$pr" -R "$REPO" \
+              --json mergeable,mergeStateStatus --jq '"\(.mergeable) \(.mergeStateStatus)"')"
+            if [ "$mrg" != "MERGEABLE" ]; then
               echo "#$pr mergeable=$mrg state=$st -- not ready"
               continue
             fi
-            checks=$(gh api "repos/$REPO/commits/$sha/check-runs?per_page=100" \
-              --jq '[.check_runs[] | {s: .status, c: (.conclusion // "")}]') || {
-              echo "#$pr: cannot read checks -- skipping"; continue; }
+            checks=$(gh api "repos/$REPO/commits/$(gh pr view "$pr" -R "$REPO" --json headRefOid --jq .headRefOid)/check-runs?per_page=100" \
+              --jq '[.check_runs[] | {s: .status, c: (.conclusion // "")}]')
             pending=$(echo "$checks" | jq '[.[] | select(.s != "completed")] | length')
             failed=$(echo "$checks"  | jq '[.[] | select(.c == "failure" or .c == "timed_out" or .c == "cancelled")] | length')
             total=$(echo "$checks"   | jq 'length')
@@ -193,10 +175,9 @@ jobs:
               continue
             fi
             if [ "$failed" -gt 0 ]; then
-              echo "#$pr: $failed failing check(s) -- not landing"
+              echo "#$pr: $failed failing check(s) -- not merging"
               continue
             fi
-            echo "#$pr: $total check(s), all green -- landing"
-            gh api -X PUT "repos/$REPO/pulls/$pr/merge" -f merge_method=squash >/dev/null \
-              && echo "  landed #$pr" || echo "  refused"
+            echo "#$pr: $total check(s), all green -- merging"
+            gh pr merge "$pr" -R "$REPO" --squash && echo "  merged #$pr" || echo "  merge refused"
           done
