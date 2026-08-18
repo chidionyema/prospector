@@ -24,7 +24,12 @@ AGENTS="$HOME/Library/LaunchAgents"
 TOOLS="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # Discovered, never hardcoded: a hardcoded list silently misses a job someone added.
-_labels() { launchctl list 2>/dev/null | awk '$3 ~ /^com\.prospector\./ {print $3}'; }
+# Two sources on purpose. _labels is what is LOADED right now, and it goes empty the moment
+# bootout succeeds. _plist_labels is what EXISTS on disk, which is what has to be disabled and
+# re-enabled - a job that has been booted out still has a plist, and that plist is how it comes
+# back.
+_labels()        { launchctl list 2>/dev/null | awk '$3 ~ /^com\.prospector\./ {print $3}'; }
+_plist_labels()  { for f in "$AGENTS"/com.prospector.*.plist; do [ -e "$f" ] && basename "$f" .plist; done; }
 
 t_name() { echo "laptop"; }
 
@@ -48,13 +53,16 @@ t_start() {
   # Paired with the assertion in t_stop. Starting the laptop means the laptop is the platform
   # again, so its roll-forward follower belongs back on.
   rm -f "$STORE/scheduler/NO_AUTO_UPDATE"
-  for l in $(_labels); do :; done
   for f in "$AGENTS"/com.prospector.*.plist; do
     [ -e "$f" ] || continue
-    launchctl bootstrap "gui/$(id -u)" "$f" 2>/dev/null || launchctl enable "gui/$(id -u)/$(basename "$f" .plist)" 2>/dev/null || true
+    # enable BEFORE bootstrap, and in that order. t_stop leaves a persistent `disable` override
+    # on every label, and bootstrap silently refuses a disabled job - it exits non-zero with no
+    # useful message, so the old `bootstrap || enable` read as success and started nothing.
+    launchctl enable "gui/$(id -u)/$(basename "$f" .plist)" 2>/dev/null || true
+    launchctl bootstrap "gui/$(id -u)" "$f" 2>/dev/null || true
     n=$((n+1))
   done
-  echo "laptop: bootstrapped $n launchd jobs"
+  echo "laptop: enabled and bootstrapped $n launchd jobs"
 }
 
 WRITERS='prospector.scheduler.run_scheduled|prospector\.run|prospector\.ops\.'
@@ -95,6 +103,18 @@ t_stop() {
       sleep 5
     done
     pkill -9 -f "$WRITERS" 2>/dev/null || true
+
+    # `bootout` unloads a job. It does NOT stop the job being loaded again, and something loads
+    # it again: eight minutes after cutover attempt 7 reported "no writers live" and handed over
+    # to Fly, com.prospector.scheduler was back with pid 47458 and had appended 44 lines to the
+    # laptop ledger. Two engines, two ledgers, twice the $100 daily cap - EDGE-1, live.
+    # `launchctl disable` writes a persistent per-user override that makes `bootstrap` refuse, so
+    # the job cannot come back from a login, a watchdog, or a plist that is still on disk. It is
+    # reversible, and t_start re-enables, which is what keeps rolling back to the laptop a single
+    # command.
+    for l in $(_plist_labels); do
+      launchctl disable "gui/$(id -u)/$l" 2>/dev/null || true
+    done
 
     sleep 10   # the settle window: long enough for anything that restarts things to do it
     if ! pgrep -f "$WRITERS" >/dev/null && [ "$n" = 0 ]; then

@@ -30,6 +30,12 @@ export const ACTIONS = [
   'daemon.restart',
   'tools.run',
   'tools.undo',
+  // Which platform the engine runs on. `engine.switch` starts a real cutover, which takes
+  // minutes and opens a downtime window, so it returns as soon as the run is started and the
+  // page follows the engine_location view to see it land.
+  'engine.switch',
+  'engine.arm',
+  'engine.disarm',
 ] as const;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

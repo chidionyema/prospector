@@ -152,16 +152,48 @@ class _HashingReader:
         return block
 
 
+def _proc_table() -> list[str] | None:
+    """`pid command-line` for every process, read straight from /proc. None if there is no /proc.
+
+    This exists because the engine's own container has no `ps`. The image is a slim Debian with
+    Python and nothing else, so `ps -eo pid=,command=` raised FileNotFoundError and live_writers
+    returned its "cannot tell" sentinel - which is exactly the answer that stops a pack. It
+    printed `<could not read the process table>` during cutover attempt 7 on 2026-08-18. Reading
+    /proc needs no package, and it is the same information ps would have formatted.
+    """
+    proc = Path("/proc")
+    if not proc.is_dir():
+        return None
+    rows = []
+    for d in proc.iterdir():
+        if not d.name.isdigit():
+            continue
+        try:
+            raw = (d / "cmdline").read_bytes()
+        except OSError:
+            continue  # the process exited between listdir and read; not a writer any more
+        cmd = raw.replace(b"\0", b" ").decode("utf-8", "replace").strip()
+        if not cmd:
+            try:
+                cmd = "[" + (d / "comm").read_text().strip() + "]"
+            except OSError:
+                continue
+        rows.append(f"{d.name} {cmd}")
+    return rows
+
+
 def live_writers() -> list[str]:
     """Processes currently able to append to the store. Empty list means it is safe to copy."""
-    try:
-        ps = subprocess.run(["ps", "-eo", "pid=,command="], capture_output=True, text=True,
-                            timeout=20).stdout
-    except (OSError, subprocess.SubprocessError):
-        # Cannot tell, so do not claim it is safe. The caller sees this as a blocked copy.
-        return ["<could not read the process table>"]
+    lines = _proc_table()
+    if lines is None:
+        try:
+            lines = subprocess.run(["ps", "-eo", "pid=,command="], capture_output=True, text=True,
+                                   timeout=20).stdout.splitlines()
+        except (OSError, subprocess.SubprocessError):
+            # Cannot tell, so do not claim it is safe. The caller sees this as a blocked copy.
+            return ["<could not read the process table>"]
     found = []
-    for line in ps.splitlines():
+    for line in lines:
         if any(hint in line for hint in WRITER_HINTS) and "store_migrate" not in line:
             found.append(line.strip()[:120])
     return found

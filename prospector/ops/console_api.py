@@ -970,7 +970,117 @@ def _read_method(cfg: Any, args: dict) -> dict:
     }
 
 
+# --------------------------------------------------------------------------- #
+# Where the engine is running, and whether the other side could take over
+# --------------------------------------------------------------------------- #
+
+_FAILOVER_SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "engine_failover.py"
+
+
+def _failover(*argv: str, timeout: int = 120) -> str:
+    """Run scripts/engine_failover.py and hand back its stdout.
+
+    The console asks a script rather than reimplementing the probes, because the same answer has
+    to be available to a launchd job at 4am with no browser open. One implementation, three
+    callers: this console, the failover watchdog, and an operator at a terminal.
+    """
+    proc = subprocess.run([sys.executable, str(_FAILOVER_SCRIPT), *argv],
+                          capture_output=True, text=True, timeout=timeout)
+    if proc.returncode not in (0, 1):   # 1 only means "the active side is unhealthy"
+        raise RuntimeError((proc.stderr or proc.stdout).strip()[:400] or
+                           f"engine_failover.py {' '.join(argv)} exited {proc.returncode}")
+    return proc.stdout
+
+
+def _read_engine_location(cfg, args: dict) -> dict:
+    """Both platforms at once, so the console can never show one side and imply the other.
+
+    `deep` also reads each side's ledger, which costs an SSH round trip to Fly. The page polls
+    without it and asks for it on demand.
+    """
+    argv = ["status", "--json"]
+    if str(args.get("deep") or "").lower() in ("1", "true", "yes"):
+        argv.append("--deep")
+    return json.loads(_failover(*argv, timeout=180))
+
+
+def _act_engine_arm(cfg, payload: dict, preview: bool) -> dict:
+    if preview:
+        st = json.loads(_failover("status", "--json"))
+        return {
+            "action": "engine.arm",
+            "effect": "Automatic failover will move the engine from fly to laptop, unattended.",
+            "fires_when": ("Fly's own API answers that the machine is not started, on 5 "
+                           "consecutive one-minute polls. An unreachable Fly API does NOT fire "
+                           "it — that is far more likely to be this machine's network, and "
+                           "acting on it would leave two engines running."),
+            "standby_staleness_min": st["standby"].get("staleness_min"),
+            "would_lose": "whatever the Fly ledger gained since the last sync, in minutes above",
+            "already_armed": st["autofailover"] == "armed",
+        }
+    _failover("arm")
+    return json.loads(_failover("status", "--json"))
+
+
+def _act_engine_disarm(cfg, payload: dict, preview: bool) -> dict:
+    if preview:
+        st = json.loads(_failover("status", "--json"))
+        return {"action": "engine.disarm", "already_disarmed": st["autofailover"] != "armed",
+                "effect": "Nothing will move the engine on its own. Switching stays manual."}
+    _failover("disarm")
+    return json.loads(_failover("status", "--json"))
+
+
+def _act_engine_switch(cfg, payload: dict, preview: bool) -> dict:
+    """Move the engine deliberately, from the dashboard.
+
+    The cutover takes minutes and opens a downtime window, so this does NOT block the request.
+    It starts the real `deploy/cutover.sh` detached, writes its log where the console can read it
+    back, and returns the path. A console that waits six minutes for an HTTP response is a
+    console that times out halfway through a migration and leaves nobody able to say what state
+    the engine is in.
+    """
+    to = str(payload.get("to") or "").strip()
+    if to not in ("fly", "laptop", "sshdocker"):
+        raise ValueError(f"unknown side {to!r}; expected fly, laptop or sshdocker")
+    reason = str(payload.get("reason") or "").strip()
+    if not reason:
+        raise ValueError("a reason is required — an unexplained engine move reads as an outage")
+
+    st = json.loads(_failover("status", "--json"))
+    frm = st["active"]
+    if frm == to:
+        raise ValueError(f"the engine is already on {to}")
+
+    if preview:
+        return {
+            "action": "engine.switch", "from": frm, "to": to, "reason": reason,
+            "downtime": ("Yes. The engine stops on the source before its state is packed, and "
+                         "starts on the target only after the copy is proved. The last measured "
+                         "window was 5 minutes 40 seconds."),
+            "target_state": st["sides"].get(to, {}),
+            "source_state": st["sides"].get(frm, {}),
+            "single_writer": ("The source is stopped and fenced before the target starts. Two "
+                              "engines would keep two spend ledgers and could spend twice the "
+                              "daily cap."),
+            "effect": f"runs deploy/cutover.sh --from {frm} --to {to}",
+        }
+
+    root = _FAILOVER_SCRIPT.parent.parent
+    log = root / "store" / "ops" / f"engine-switch-{time.strftime('%Y%m%dT%H%M%S')}.log"
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with open(log, "wb") as fh:
+        subprocess.Popen(
+            [sys.executable, str(_FAILOVER_SCRIPT), "switch", "--to", to],
+            stdout=fh, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+            cwd=str(root), start_new_session=True)
+    return {"action": "engine.switch", "from": frm, "to": to, "reason": reason,
+            "started": True, "log": str(log),
+            "note": "Poll the engine_location view; `active` flips when the cutover finishes."}
+
+
 READS: dict[str, Callable[[Any, dict], Any]] = {
+    "engine_location": _read_engine_location,
     "method": _read_method,
     "shelf": _read_shelf,
     "status": _read_status,
@@ -1992,6 +2102,9 @@ ACTIONS: dict[str, Callable[[Any, dict, bool], dict]] = {
     "catalogue.set_listing": _act_catalogue_listing,
     "tools.run": _act_tools_run,
     "tools.undo": _act_tools_undo,
+    "engine.switch": _act_engine_switch,
+    "engine.arm": _act_engine_arm,
+    "engine.disarm": _act_engine_disarm,
 }
 
 #: Actions the console refuses by name rather than by absence, so the error says WHY.
