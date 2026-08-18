@@ -579,6 +579,15 @@ def _snapshot_ledger(out: Path) -> int:
     return written - len(tail)
 
 
+def _is_git_worktree(path: Path) -> bool:
+    """Is `path` inside a git work tree? Used to decide whether a repo mirror is possible."""
+    r = subprocess.run(
+        ["git", "rev-parse", "--is-inside-work-tree"],
+        cwd=path, capture_output=True, text=True, check=False,
+    )
+    return r.returncode == 0 and r.stdout.strip() == "true"
+
+
 def mirror_repo(s3, bucket: str, *, keep: int = DEFAULT_BUNDLE_KEEP) -> tuple[str, int, str]:
     """Bundle every ref in REPO_ROOT and upload it to R2, pruning to the newest `keep`.
 
@@ -774,6 +783,9 @@ def main() -> int:
                              f"(default {DEFAULT_DB_KEEP})")
     parser.add_argument("--skip-mirror", action="store_true",
                         help="do not push the git mirror")
+    parser.add_argument("--mirror-only", action="store_true",
+                        help="push the git mirror and nothing else; for a checkout whose store "
+                             "lives on another machine")
     parser.add_argument("--bundle-keep", type=int, default=DEFAULT_BUNDLE_KEEP,
                         help=f"dated git bundles to retain, 0 = keep every one "
                              f"(default {DEFAULT_BUNDLE_KEEP})")
@@ -786,6 +798,17 @@ def main() -> int:
         print(f"STORE_BACKUP RESTORE PASS files={count} dest={args.restore}")
         return 0
 
+    if args.mirror_only:
+        # The engine moved to a container that has no checkout, so the repo mirror has to run
+        # where the refs are. It is source-code disaster recovery, not a runtime service: the
+        # store, the ledger and the money database all back up from the container.
+        if not _is_git_worktree(REPO_ROOT):
+            print(f"STORE_BACKUP FAIL {REPO_ROOT} is not a git work tree", file=sys.stderr)
+            return 1
+        key, size, _ = _retry_on_skew(mirror_repo, s3, bucket, keep=args.bundle_keep)
+        print(f"STORE_BACKUP PASS mirror={key} bytes={size}")
+        return 0
+
     uploaded = skipped = 0
     ledger_key = db_key = mirror_key = ""
     mirror_bytes = 0
@@ -793,7 +816,20 @@ def main() -> int:
         uploaded, skipped, ledger_key, db_key = _retry_on_skew(
             sync, s3, bucket, db_keep=args.db_keep
         )
-        if not args.skip_mirror:
+        if args.skip_mirror:
+            pass
+        elif not _is_git_worktree(REPO_ROOT):
+            # The engine container ships the code, not the checkout, so there are no refs to
+            # bundle. Before this check the whole backup exited 1 on `git bundle create failed
+            # (rc=128): Need a repository to create a bundle` - the store and the database had
+            # already uploaded fine, and the run still reported total failure.
+            #
+            # Skipping is stated, never silent. The repo mirror is the only copy of the source
+            # outside GitHub, so a run that quietly stopped making it would look identical to a
+            # run that made it.
+            print(f"  repo mirror SKIPPED: {REPO_ROOT} is not a git work tree "
+                  f"(run --mirror-only where the checkout lives)")
+        else:
             mirror_key, mirror_bytes, _ = _retry_on_skew(
                 mirror_repo, s3, bucket, keep=args.bundle_keep
             )
