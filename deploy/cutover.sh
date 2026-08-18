@@ -16,7 +16,21 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/.." && pwd)"
-FROM=""; TO=""; DRY=0; START_AT=1; ENV_FILE="${PROSPECTOR_ENV_FILE:-$REPO/.env}"
+FROM=""; TO=""; DRY=0; START_AT=1
+
+# The secrets live in the MAIN checkout, and this script is usually run from a worktree, which
+# never has a `.env` of its own. Falling straight through to "no env file" would make the
+# cutover need a flag that only ever has one correct value. So: this tree if it has one,
+# otherwise the main checkout, found through git rather than guessed.
+_default_env() {
+  [ -f "$REPO/.env" ] && { echo "$REPO/.env"; return; }
+  local common main
+  common="$(cd "$(git -C "$REPO" rev-parse --git-common-dir 2>/dev/null || echo .)" && pwd -P)"
+  main="$(dirname "$common")"
+  [ -f "$main/.env" ] && { echo "$main/.env"; return; }
+  echo "$REPO/.env"
+}
+ENV_FILE="${PROSPECTOR_ENV_FILE:-$(_default_env)}"
 WORK="${PROSPECTOR_CUTOVER_WORK:-${TMPDIR:-/tmp}/prospector-cutover}"
 
 while [ $# -gt 0 ]; do
@@ -50,6 +64,12 @@ rollback() {
   local rc=$?
   [ "$rc" = 0 ] && return 0
   say "FAILED (exit $rc) — rolling back"
+  # A dry run has changed nothing, so it must undo nothing. Calling t_stop here would make
+  # --dry-run stop a real machine, which is the one thing the flag promises it will not do.
+  if [ "$DRY" = 1 ]; then
+    echo "  dry run — nothing was changed, so nothing is being rolled back"
+    exit "$rc"
+  fi
   call "$TO" t_stop 2>/dev/null || true
   if [ "$SOURCE_STOPPED" = 1 ]; then
     echo "  restarting the engine on $FROM"
@@ -83,7 +103,7 @@ if phase 2 "provision the target and push its secrets"; then
   # the moment the source stops, which is phase 4.
   echo 'ENGINE_BACKUPS_ENABLED=true' >> "$WORK/engine.env"
   grep -q '^CONTROL_CENTER_PASSWORD=' "$WORK/engine.env" \
-    || echo "  WARNING: no CONTROL_CENTER_PASSWORD — the control centre will be unauthenticated" >&2
+    || echo "  WARNING: no CONTROL_CENTER_PASSWORD — the ops console will be unauthenticated" >&2
   grep -q '^FLY_API_TOKEN=' "$WORK/engine.env" \
     || echo "  WARNING: no FLY_API_TOKEN — the MONEY DATABASE backup will not run from the target" >&2
   echo "  carrying $(wc -l < "$WORK/engine.env" | tr -d ' ') secrets"
@@ -121,7 +141,7 @@ if phase 7 "release the brake and watch one tick"; then
   run call "$TO" t_exec "python /app/scripts/store_migrate.py plan --store /data/store"
   echo "  engine live on $(call "$TO" t_name). Downtime window closed."
   echo "  watch it:      deploy/cutover.sh --from $FROM --to $TO --from-phase 99  # no-op, use t_logs"
-  echo "  dashboards:    fly proxy 8601:8601 8611:8611 -a prospector-engine   (fly target)"
+  echo "  dashboard:     fly proxy 8611:8611 -a prospector-engine   (fly target)"
 fi
 
 if phase 8 "leave $FROM as a cold backup, stopped but intact"; then
