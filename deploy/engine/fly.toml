@@ -2,11 +2,23 @@
 # the property that makes this repeatable to a third provider. Moving hosts means writing
 # the equivalent 40 lines for the new provider, not porting the engine.
 #
-# Deliberately absent: `[http_service]`. Omitting it means Fly allocates NO public IP, so
-# this app has no internet-facing surface at all. The engine needs none — it makes
-# outbound calls and writes a volume. The ops console, which CAN restart the daemon,
-# change config and publish to the shelf behind one shared password, is reached over
-# `fly proxy` (a WireGuard tunnel to the private 6PN address), never over the internet.
+# `[http_service]` publishes ONE port: 8611, the ops console. Nothing else in this image
+# listens on a public port. The scheduler, consumer, watchdog and both backups only make
+# outbound calls and write a volume.
+#
+# It was deliberately absent until 2026-08-18, and the console was reached over
+# `fly proxy` from the founder's laptop instead. Founder, 2026-08-18: "relying on a tunnel
+# on this macbook to run operations is not smart". That is right, and the old arrangement
+# contradicted the point of the migration: a dashboard whose only door runs on the laptop
+# goes dark the moment the laptop does. The engine had moved and the ability to SEE it had
+# not.
+#
+# What stands between the internet and a console that can restart the daemon and publish to
+# the shelf: TLS terminated by Fly with force_https; one shared password compared
+# timing-safely on the server; an HttpOnly, SameSite=Strict, Secure session cookie signed
+# with that password as the HMAC key; and a five-strikes-per-address limiter on the sign-in
+# route (Ops.Console/src/lib/ratelimit.ts). With no password set the console refuses
+# everything — it fails closed, never open.
 
 app = "prospector-engine"
 primary_region = "lhr"
@@ -26,6 +38,22 @@ primary_region = "lhr"
   # (prospector/bridge.py:610), which in a container resolves to the container itself and
   # would fail every publish with a connection refused that reads like an API outage.
   STORE_API_URL = "https://api.mumchimp.com"
+
+# The ops console, and nothing else.
+[http_service]
+  internal_port = 8611
+  force_https = true
+  # The engine is a cadence, not a request-driven service. A stopped machine does not
+  # generate, so whether anyone is looking at the console must never decide whether the
+  # engine runs. Both autoscaling switches are off and one machine always stays up.
+  auto_stop_machines = false
+  auto_start_machines = false
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 50
+    soft_limit = 25
 
 [mounts]
   source = "prospector_store"

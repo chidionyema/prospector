@@ -31,9 +31,33 @@ t_preflight() {
 t_provision() {
   fly apps list 2>/dev/null | awk '{print $1}' | grep -qx "$APP" \
     || fly apps create "$APP" --org personal
-  # No public IP on purpose. The dashboards are reached over `fly proxy`, never the internet.
-  fly ips list -a "$APP" 2>/dev/null | grep -q . && {
-    echo "NOTE: $APP has a public IP. Remove it with: fly ips release <addr> -a $APP" >&2; }
+  # The ops console needs a public address, and this is where it gets one — not in a command
+  # someone has to remember. Founder, 2026-08-18: "remember everything has to be automated",
+  # right after "relying on a tunnel on this macbook to run operations is not smart".
+  #
+  # Until 2026-08-18 this block did the opposite: it printed a NOTE if the app had an IP,
+  # because the console was reached over `fly proxy` from the laptop. That left the laptop as
+  # the only door to the dashboard of an engine that had already moved off it.
+  #
+  # Both address families, because either alone is a gap. v6 is what Fly hands out at no cost
+  # and what most networks now have; a shared v4 is what a network without v6 needs. Shared
+  # rather than dedicated, because a dedicated v4 is billed and nothing here needs its own
+  # address. Both lines are idempotent: allocate only when that family is absent.
+  if [ "${PROSPECTOR_FLY_PUBLIC:-1}" = "1" ]; then
+    local ips
+    ips="$(fly ips list -a "$APP" 2>/dev/null || true)"
+    echo "$ips" | grep -q 'v6' || fly ips allocate-v6 -a "$APP" >/dev/null
+    echo "$ips" | grep -q 'v4' || fly ips allocate-v4 --shared -a "$APP" >/dev/null
+
+    # A custom hostname is optional. With none set the app answers on <app>.fly.dev, which Fly
+    # already holds a certificate for, so the console is reachable either way and a DNS record
+    # is the only step that can ever be left outstanding.
+    if [ -n "${PROSPECTOR_OPS_HOSTNAME:-}" ]; then
+      fly certs list -a "$APP" 2>/dev/null | grep -q "$PROSPECTOR_OPS_HOSTNAME" \
+        || fly certs add "$PROSPECTOR_OPS_HOSTNAME" -a "$APP" >/dev/null
+    fi
+  fi
+
   fly volumes list -a "$APP" --json 2>/dev/null | grep -q "\"$VOLUME\"" \
     || fly volumes create "$VOLUME" -a "$APP" -r "$REGION" -s "$VOLUME_GB" --yes
 }

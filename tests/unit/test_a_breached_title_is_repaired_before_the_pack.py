@@ -210,8 +210,14 @@ class TestItRunsBeforeThePackIsBuilt(unittest.TestCase):
              mock.patch("prospector.artifacts.generate_marketing_content", return_value=[]), \
              mock.patch("prospector.pack_validation.validate_pack", return_value=(True, [])), \
              mock.patch.object(rn, "_shelf_copy_breaches", return_value=[]):
+            # The escalation chain is read off cfg (`_escalation_order`, run.py:1103) and
+            # `list()`ed. A bare Mock answers that attribute with another Mock, which is
+            # truthy and not iterable, so this raised TypeError before it reached the thing
+            # the test is about. Empty chains: this test is about ORDER, not escalation.
             rn._generate_pack_content(mock.Mock(), cand, [], query_op=mock.Mock(),
-                                      quality_op=mock.Mock(), cfg=mock.Mock(), score=None)
+                                      quality_op=mock.Mock(),
+                                      cfg=mock.Mock(artifact_operator=[], marketing_operator=[]),
+                                      score=None)
 
         self.assertEqual(seen, [f"repair:{CLEAN}", f"artifacts:{CLEAN}"])
 
