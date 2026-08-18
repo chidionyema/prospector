@@ -72,7 +72,15 @@ RUN curl -fsSL -o runner.tar.gz \
 # right here with "Couldn't find a valid ICU package" instead of at registration time on Fly.
 # It is Runner.Listener and not `config.sh --version`, because the wrapper scripts refuse to run
 # as root and exit 1 before reaching any .NET code - a check that proves nothing about ICU.
-RUN ./bin/Runner.Listener --version
+# The version probe above runs as root, and the only thing it creates is _diag/, owned by root.
+# The chown two RUNs up has already happened by then, so `USER runner` gets a runner directory it
+# cannot write its own log into. The container then crash-loops with
+# "Access to the path '/home/runner/actions-runner/_diag/Runner_*.log' is denied" at config time,
+# which reads like a bad PAT and is not. _diag is build junk here, so delete it and re-assert
+# ownership rather than leaving a root-owned directory in the image.
+RUN ./bin/Runner.Listener --version \
+    && rm -rf /home/runner/actions-runner/_diag \
+    && chown -R runner:runner /home/runner
 
 COPY deploy/runner/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
