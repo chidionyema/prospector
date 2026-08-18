@@ -1,0 +1,20 @@
+# NO PUBLIC IP. There is no [http_service] and no [[services]] block on purpose: this app is
+# reachable only at http://prospector-searxng.internal:8080 over Fly's private 6PN network,
+# from prospector-engine. A metasearch box on the open internet is an open proxy, and
+# settings.yml turns the rate limiter off.
+app = "prospector-searxng"
+primary_region = "lhr"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  SEARXNG_BASE_URL = "http://prospector-searxng.internal:8080/"
+  # SearXNG binds 0.0.0.0:8080 via settings.yml; this is what its own uwsgi reads.
+  BIND_ADDRESS = "0.0.0.0:8080"
+
+# One small machine. It answers a few queries a minute from one caller, and it holds no state,
+# so it can be recreated from this file at any time.
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
