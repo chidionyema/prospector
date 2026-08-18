@@ -34,7 +34,14 @@ type ShelfMoney = {
   source?: string;
 };
 type Gap = { id: string; what: string; needs: string; why: string };
-type MoneyView = { rail: Rail; shelf: ShelfMoney; missing: Gap[]; warnings: string[] };
+type MoneyView = {
+  rail: Rail;
+  shelf: ShelfMoney;
+  missing: Gap[];
+  /** Writes the console cannot do. Optional so an older gateway payload still renders. */
+  missing_actions?: Gap[];
+  warnings: string[];
+};
 
 const RAIL_TONE: Record<Rail['state'], 'ok' | 'warn' | 'bad'> = {
   live: 'ok',
@@ -116,6 +123,28 @@ export default function Money() {
               ))}
             </div>
           </Card>
+
+          {(data.missing_actions ?? []).length ? (
+            <Card title="Cannot be done from here" tone="warn">
+              <p className="text-[13px] text-muted">
+                A money screen with no refund button reads as &ldquo;refunds happen
+                elsewhere&rdquo;, and nobody can tell whether that is true. Named here, each is a
+                gap with an owner.
+              </p>
+              <div className="mt-2 flex flex-col gap-3">
+                {(data.missing_actions ?? []).map((gap) => (
+                  <div key={gap.id} className="border-t border-border pt-2">
+                    <div className="flex items-baseline gap-2">
+                      <Pill tone="warn">{gap.id}</Pill>
+                      <span className="text-[13px] font-[520]">{gap.what}</span>
+                    </div>
+                    <p className="wrap-any mt-1 font-mono text-[11px] text-subtle">{gap.needs}</p>
+                    <p className="wrap-any mt-1 text-[12px] text-muted">{gap.why}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : null}
         </>
       ) : (
         <Card>asking the rail…</Card>
