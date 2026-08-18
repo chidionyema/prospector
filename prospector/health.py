@@ -72,6 +72,20 @@ _PROBE_AFTER_S = 120.0
 _PROBE_BACKOFF_MULT = 2.0
 _MAX_STRIKES = 6  # 120s -> 2h of probe spacing; the dead_until window still caps skipping
 
+# CEILING ON THE GAP BETWEEN PROBES. The geometric backoff is right for a spent account and
+# wrong for a window that reopens, and the classifier cannot always tell them apart from the
+# error text. Measured 2026-08-18: MiniMax refused with HTTP 429 and "Token Plan usage limit
+# reached ... (2056)", which `classify_exhaustion` grades PERMANENT on "usage limit" -- correct
+# for a spend cap, and this one reopened 38 minutes later. Without a ceiling the spacing runs
+# 120 -> 240 -> 480 -> 960 -> 1920, so the fifth probe lands at ~62 minutes and the engine idles
+# for 24 minutes after the provider is already answering. With the ceiling it runs
+# 120 -> 240 -> 480 -> 600 -> 600, so the reopening is found within 10 minutes.
+#
+# The cost of the ceiling is the thing the backoff was protecting: extra probes against a brain
+# that really is spent. That is 6 failed calls an hour instead of 1. A refusal comes back in
+# seconds and is not billed, so the trade is 5 cheap calls against 24 minutes of a dead engine.
+_MAX_PROBE_GAP_S = 600.0
+
 
 class ProviderHealth:
     """Reads/writes per-provider 'dead until <epoch>' marks to a JSON file.
@@ -219,7 +233,7 @@ class ProviderHealth:
             strikes = (int(prev.get("strikes", 0) or 0) + 1) if repeat else 1
             # The first re-probe is deliberately much sooner than the window: the window is a
             # guess parsed from (or defaulted for) an error string; the probe is a measurement.
-            probe_in = min(self._probe_spacing(strikes), dead_for_s)
+            probe_in = min(self._probe_spacing(strikes), dead_for_s, _MAX_PROBE_GAP_S)
             data[name] = {"dead_until": now + dead_for_s, "marked_at": now,
                           "dead_for_s": round(dead_for_s, 1), "strikes": strikes,
                           "probe_at": now + probe_in,

@@ -12,6 +12,7 @@ output with repair-retries (Part 9) — a bad parse never crashes a run. Adapter
 """
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import re
@@ -514,8 +515,12 @@ def _http_error_with_body(e: "urllib.error.HTTPError") -> RuntimeError:
         if isinstance(raw, bytes):
             raw = raw.decode("utf-8", "replace")
         body = " ".join(str(raw).split())[:_ERROR_BODY_CHARS]
-    except Exception:  # noqa: BLE001 — a body we cannot read must not replace the status line
-        body = ""
+    except (OSError, ValueError, http.client.HTTPException) as read_err:
+        # Narrow on purpose, and NOT the empty string. A body that is empty and a body we
+        # could not read are different facts, and this message is the only place either one is
+        # ever seen. `tools/audit_swallow_sites.py` grades a broad, silent except that returns
+        # the success path's own value as tier 1 — "the caller cannot tell" — and it is right.
+        body = f"<error body unreadable: {type(read_err).__name__}>"
     # The status line stays FIRST and verbatim: `\b429\b` word-boundary matching in the retry
     # loop and in `errors` keys off it, and a body that happened to contain another number must
     # not be able to move it.
