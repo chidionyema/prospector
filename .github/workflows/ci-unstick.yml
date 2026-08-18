@@ -148,24 +148,45 @@ jobs:
       # substitute, and it is deliberately OPT-IN: only a pull request carrying the `automerge`
       # label is considered. Nothing lands because a sweep decided it should.
       #
-      # It merges only on mergeable=MERGEABLE, zero failing checks and zero pending checks, so a
+      # It merges only on mergeable=true, zero failing checks and zero pending checks, so a
       # pull request whose CI has not finished is never touched.
+      #
+      # EVERY CALL HERE IS REST, AND THAT IS THE FIX, not a style choice.
+      #
+      # Measured 2026-08-18: this step failed on `gh pr list -R $REPO --label automerge` with
+      # `gh: Resource not accessible by integration (HTTP 403)`, 3.2 seconds into the step, before
+      # printing anything else. `gh pr list/view/checks/merge` go to GraphQL; `gh api` goes to
+      # REST. In the SAME run, on the SAME GITHUB_TOKEN, the eleven REST calls in the two steps
+      # above all succeeded -- they read runs, jobs and open pull requests without complaint. The
+      # only commands that 403 in this file are the only GraphQL commands in this file.
+      #
+      # The cost of that was not one red check. `set -euo pipefail` made the 403 fail the job, the
+      # job is the whole workflow, and the workflow runs on `main` every fifteen minutes. So main
+      # carried a red X around the clock -- five failures in its last six runs -- while main's own
+      # code was fine. A permanent false alarm on main is worse than no alarm: it is the reason a
+      # real breakage cannot be seen. And because the step dies before the merge loop, no pull
+      # request labelled `automerge` has ever been merged by it.
       - name: Merge pull requests labelled automerge once every check is green
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          prs=$(gh pr list -R "$REPO" --state open --label automerge --json number --jq '.[].number')
+          prs=$(gh api "repos/$REPO/pulls?state=open&per_page=100" \
+                  --jq '.[] | select([.labels[].name] | index("automerge")) | .number')
           [ -n "$prs" ] || { echo "no pull request carries the automerge label"; exit 0; }
           for pr in $prs; do
-            read -r mrg st <<<"$(gh pr view "$pr" -R "$REPO" \
-              --json mergeable,mergeStateStatus --jq '"\(.mergeable) \(.mergeStateStatus)"')"
-            if [ "$mrg" != "MERGEABLE" ]; then
+            # One read of the pull request, three fields out of it. `mergeable` is REST's boolean
+            # spelling of GraphQL's MERGEABLE, and it is null while GitHub is still computing the
+            # merge -- null is not true, so a pull request in that state waits for the next sweep
+            # rather than being merged on an unknown answer.
+            read -r mrg st sha <<<"$(gh api "repos/$REPO/pulls/$pr" \
+              --jq '"\(.mergeable) \(.mergeable_state // "unknown") \(.head.sha)"')"
+            if [ "$mrg" != "true" ]; then
               echo "#$pr mergeable=$mrg state=$st -- not ready"
               continue
             fi
-            checks=$(gh api "repos/$REPO/commits/$(gh pr view "$pr" -R "$REPO" --json headRefOid --jq .headRefOid)/check-runs?per_page=100" \
+            checks=$(gh api "repos/$REPO/commits/$sha/check-runs?per_page=100" \
               --jq '[.check_runs[] | {s: .status, c: (.conclusion // "")}]')
             pending=$(echo "$checks" | jq '[.[] | select(.s != "completed")] | length')
             failed=$(echo "$checks"  | jq '[.[] | select(.c == "failure" or .c == "timed_out" or .c == "cancelled")] | length')
@@ -179,5 +200,14 @@ jobs:
               continue
             fi
             echo "#$pr: $total check(s), all green -- merging"
-            gh pr merge "$pr" -R "$REPO" --squash && echo "  merged #$pr" || echo "  merge refused"
+            # REST, for the reason at the top of this step. `sha` pins the merge to the exact
+            # commit these checks graded: if anything pushes to the branch between the check read
+            # and this call, GitHub answers 409 and the merge does not happen, which is the
+            # correct outcome -- the new commit has not been graded by anything.
+            if gh api -X PUT "repos/$REPO/pulls/$pr/merge" \
+                 -f merge_method=squash -f sha="$sha" >/dev/null 2>&1; then
+              echo "  merged #$pr"
+            else
+              echo "  merge refused (branch moved, or the merge is not permitted)"
+            fi
           done
