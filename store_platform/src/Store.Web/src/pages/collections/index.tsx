@@ -271,24 +271,28 @@ export default function IdeasHub({ categories, total, variant }: Props) {
             nothing saying what the sizes mean, so a reader could take the biggest tile for the
             most important collection rather than the largest one. The drawing's own count is
             dropped: the survivor total is never printed (2026-08-13). */}
+        {/* THE DRAWING PUTS ALL THREE IN ONE `.sigcard` (`mockups/collections.html`): the eyebrow,
+            the mosaic and the key line sit on a single bordered surface panel, and the key is a
+            `.key` line divided from the tiles by its own hairline. They were three loose siblings
+            on the page canvas, so the caption read as a stray note under a field of tiles rather
+            than as the legend of the drawing directly above it. `.sigcard .key` is what the
+            stylesheet selects, and `.sigcard .key span` sets the row, so the sentence is a span
+            inside the p exactly as the drawing has it. */}
         {!search && (
-          <p className="eyebrow mb-2">The shape of the shelf</p>
-        )}
-        {!search && (
-          <CollectionMosaic
-            className="mb-3"
-            tiles={filtered.map((cat) => ({
-              slug: cat.slug,
-              name: cat.shortName,
-              longName: VARIANTS[variant].categoryH1[cat.slug] ?? cat.h1,
-              count: cat.count,
-            }))}
-          />
-        )}
-        {!search && (
-          <p className="mb-10 text-meta text-muted">
-            Tile size reflects pack count. Every tile filters the same shelf.
-          </p>
+          <div className="sigcard mb-10">
+            <p className="eyebrow">The shape of the shelf</p>
+            <CollectionMosaic
+              tiles={filtered.map((cat) => ({
+                slug: cat.slug,
+                name: cat.shortName,
+                longName: VARIANTS[variant].categoryH1[cat.slug] ?? cat.h1,
+                count: cat.count,
+              }))}
+            />
+            <p className="key">
+              <span>Tile size reflects pack count. Every tile filters the same shelf.</span>
+            </p>
+          </div>
         )}
 
         {filtered.length > 0 && (
