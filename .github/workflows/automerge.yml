@@ -58,10 +58,24 @@ concurrency:
   group: automerge
   cancel-in-progress: false
 
+# HOW MANY STRANDED PRs ONE MERGE MAY RESCUE. Each rescue dispatches a CI run, and a CI run fans
+# out to as many as seven jobs across a nine-machine Fly fleet. A sweep bigger than this starves
+# main's own post-merge run, which is the one run the estate cannot afford to leave queued.
+# Raise it when the fleet grows; it is here rather than inline so changing it is a config edit.
+env:
+  SWEEP_MAX: '3'
+
 jobs:
   merge:
+    # A FAILED RUN MUST REACH THIS JOB TOO, AND ONLY FOR THE UPDATE PATH. Until 2026-08-19 this
+    # read `conclusion == 'success'`, which made the rescue unreachable for exactly the pull
+    # requests that needed it. A PR behind main inherits main's failures, so its run concludes
+    # FAILURE, so this job never ran, so the branch was never updated, so it stayed red. Thirteen
+    # open PRs sat in that loop on 2026-08-19 while main was red on a single test none of them
+    # wrote. The merge is still gated on green below, on `proved`, and nothing red can land.
     if: >-
-      github.event.workflow_run.conclusion == 'success' &&
+      (github.event.workflow_run.conclusion == 'success' ||
+       github.event.workflow_run.conclusion == 'failure') &&
       (github.event.workflow_run.event == 'pull_request' ||
        (github.event.workflow_run.event == 'workflow_dispatch' &&
         github.event.workflow_run.triggering_actor.login == 'github-actions[bot]'))
@@ -74,6 +88,10 @@ jobs:
           script: |
             const {owner, repo} = context.repo
             const sha = context.payload.workflow_run.head_sha
+            // The ONLY thing that may authorise a merge. A failed run still gets to update a
+            // branch that sits behind main, because that update IS the repair. It never gets to
+            // land code.
+            const proved = context.payload.workflow_run.conclusion === 'success'
 
             // The same paths each deploy workflow watches on push. Kept in step with those files:
             // add a path there and not here and a merge that should deploy will not.
@@ -158,6 +176,14 @@ jobs:
                 continue
               }
 
+              // Up to date with main and still red. The update path above could not help it, and
+              // green is the only thing that may merge, so this is where a red PR stops. Said out
+              // loud, because a job that returns silently is how a stuck PR becomes invisible.
+              if (!proved) {
+                core.info(`  up to date with main and its CI run failed - not merging #${pr.number}`)
+                continue
+              }
+
               const files = await github.paginate(github.rest.pulls.listFiles,
                                                   {owner, repo, pull_number: pr.number, per_page: 100})
               try {
@@ -218,6 +244,72 @@ jobs:
             }
 
             if (!merged) return
+
+            // AFTER A MERGE, EVERY OTHER GREEN PR IS NOW BEHIND MAIN AND NOTHING WILL NOTICE.
+            // This job fires only when a CI run completes, and it looks only at the PRs whose
+            // head is that run's sha. A PR that went green BEFORE this merge now sits behind
+            // main with no future run to rescue it. Automerge never fires for it again, so it
+            // stays open, green and stuck, and no check anywhere turns red. Measured
+            // 2026-08-19: #388 #405 #424 #431 #442 were all MERGEABLE/CLEAN with every check
+            // SUCCESS, behind main by two, untouched for hours -- while 28 PRs stood open and
+            // nothing was merging. The queue starves itself: every merge strands every PR it
+            // did not merge, and only a human pushing again can undo that.
+            //
+            // So do here what this job would have done for those PRs had it ever looked at
+            // them. Updating the branch is the same remedy as the behind-main path above, and
+            // the run it produces comes back through this same job and merges the next one.
+            // The queue then drains with nobody in it.
+            //
+            // ONLY GREEN AND BEHIND. That set is provably stuck and one update away from
+            // landing. A red PR is not stuck on us, and updating it would spend a CI run to
+            // re-prove a failure its author already has to fix.
+            const sweepMax = Number(process.env.SWEEP_MAX || '3')
+            let swept = 0
+            const open = await github.paginate(github.rest.pulls.list,
+                                               {owner, repo, state: 'open', per_page: 100})
+            for (const pr of open) {
+              if (swept >= sweepMax) {
+                core.info(`sweep cap ${sweepMax} reached - the rest wait for the next merge`)
+                break
+              }
+              if (pr.draft || pr.base.ref !== 'main') continue
+              if (pr.labels.map(l => l.name).some(n => HOLD.has(n))) continue
+              if (prs.some(p => p.number === pr.number)) continue
+
+              const {data: cmp} = await github.rest.repos.compareCommits(
+                {owner, repo, base: 'main', head: pr.head.sha})
+              if (cmp.behind_by === 0) continue
+
+              // "Green" is read from the check runs on the head sha, never from
+              // mergeable_state: GitHub computes that lazily and answers `unknown` on a first
+              // read, which would make the sweep skip the very PRs it exists to rescue.
+              const {data: checks} = await github.rest.checks.listForRef(
+                {owner, repo, ref: pr.head.sha, per_page: 100})
+              const runs = checks.check_runs
+              if (runs.length === 0) continue
+              const green = runs.every(
+                c => c.status === 'completed' &&
+                     ['success', 'skipped', 'neutral'].includes(c.conclusion))
+              if (!green) continue
+
+              try {
+                await github.rest.pulls.updateBranch(
+                  {owner, repo, pull_number: pr.number, expected_head_sha: pr.head.sha})
+                // The update was pushed with GITHUB_TOKEN, so it started no run of its own.
+                // Without this dispatch the rescue is silent and the PR stays stuck -- the
+                // same trap the behind-main path above documents.
+                await github.rest.actions.createWorkflowDispatch(
+                  {owner, repo, workflow_id: 'ci.yml', ref: pr.head.ref})
+                swept++
+                core.info(
+                  `swept #${pr.number}: green but ${cmp.behind_by} behind - ` +
+                  `branch updated, CI dispatched`)
+              } catch (e) {
+                // A rescue that fails is not a merge that fails: the PR is exactly as stuck as
+                // it was, and the next merge tries again. Warn, do not fail the job.
+                core.warning(`could not sweep #${pr.number}: ${e.message}`)
+              }
+            }
 
             // Start what the merge push could not (see the header). workflow_dispatch is the
             // documented exception that works with GITHUB_TOKEN.

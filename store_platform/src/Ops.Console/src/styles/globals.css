@@ -48,7 +48,12 @@
 
   --text: #171717;
   --muted: #52525b;
-  --subtle: #71717a;
+  /* #6d6d76, not the #71717a this was until 2026-08-19. On --bad-bg #fef2f2 the old
+     value measured 4.41:1 at 12px, 0.09 under the AA floor, and the a11y suite carried
+     it as a dated exception rather than fixing it. #6d6d76 measures 4.68:1 there and
+     5.12:1 on white, so the exception is gone rather than deferred. There is one
+     definition of this token and no dark theme, so nothing else moves. */
+  --subtle: #6d6d76;
   --faint: #a1a1aa;
 
   --action: #2d3436;
@@ -147,10 +152,12 @@ body {
   max-width: 100%;
 }
 
-/* Long ids, URLs and YAML paths break rather than widening the page. */
+/* Long ids, URLs and YAML paths break rather than widening the page.
+   `word-break: break-word` used to sit here too. It is deprecated, and it was doing nothing: it
+   is defined as `overflow-wrap: anywhere` plus `word-break: normal`, and the line above already
+   says that. Found by stylelint on its first run. */
 .wrap-any {
   overflow-wrap: anywhere;
-  word-break: break-word;
 }
 
 /* Tap targets. 44px is the iOS minimum; a control below it is a mis-tap on a moving train. */

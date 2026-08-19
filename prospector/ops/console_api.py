@@ -255,7 +255,7 @@ def _heartbeats(cfg) -> dict:
             rec["ts"] = ts
             age = _age_s(ts, now)
             rec["age_s"] = age
-            every = float(body.get("beat_every_s") or default_every)
+            every = _hb_secs(body.get("beat_every_s"), default_every)
             # Three missed beats, floored at 5 minutes: below that a single slow cycle reads as a
             # dead role, which is the false alarm that trains an operator to ignore the panel.
             rec["stale_after_s"] = max(every * 3.0, 300.0)
@@ -287,8 +287,76 @@ def _heartbeats(cfg) -> dict:
             rec.update({"age_s": None, "stale": True, "alive": False,
                         "why": "no heartbeat file — the role has never run, or store/ is not the "
                                "one the daemon writes to"})
+        # EVERY record carries a `why`, whatever branch built it.
+        #
+        # Only two of the four branches above set one. A stale beat that HAD a `next_check`
+        # promise, or a phase outside `_WORKING_PHASES`, fell through with no `why` at all -- so
+        # the field was simply absent from the JSON, the console's `Heartbeat.why: string` read
+        # `undefined`, and the incident headline on the front page rendered the literal word:
+        # "Producer: generating -- ... Consumer: undefined". The operator meets that sentence at
+        # the exact moment the sentence is the thing they need.
+        #
+        # This is filled here, after the branches, rather than in each one, because the class of
+        # failure is "a new branch forgets it". A default set at the end cannot be forgotten.
+        if not rec.get("why"):
+            rec["why"] = _hb_why(rec)
         out[role] = rec
     return out
+
+
+def _hb_secs(value: Any, default: float) -> float:
+    """A cadence out of the heartbeat file, coerced, never trusted.
+
+    `float(body.get("beat_every_s") or default)` raised ValueError on any non-numeric string, and
+    nothing caught it: one malformed heartbeat 500\'d /api/ops/read/status, so the operator got a
+    blank incident page instead of a wrong number. That is the same class as the `undefined` this
+    file was just fixed for -- the panel fails at the exact moment it is the thing being read.
+    A heartbeat is written by another process, so its contents are input, not a promise.
+    """
+    try:
+        secs = float(value)
+    except (TypeError, ValueError):
+        return float(default)
+    return secs if secs > 0 else float(default)
+
+
+def _hb_why(rec: dict) -> str:
+    """The fallback sentence for a heartbeat whose branch did not write one.
+
+    It is built from the numbers already in the record, so it says something true and specific
+    rather than a generic placeholder. Order matters: the most decisive fact first.
+    """
+    if rec.get("read_error"):
+        return f"the heartbeat file could not be read: {rec['read_error']}"
+    age = rec.get("age_s")
+    late = rec.get("late_s")
+    if rec.get("stale"):
+        if isinstance(late, (int, float)) and late > 0:
+            return (f"{_hb_dur(late)} past the wake time it promised itself, which is over the "
+                    f"{_hb_dur(rec.get('stale_after_s'))} allowed")
+        if isinstance(age, (int, float)):
+            return (f"last beat {_hb_dur(age)} ago, over the "
+                    f"{_hb_dur(rec.get('stale_after_s'))} this role allows itself")
+        return "the heartbeat carries no timestamp, so its age cannot be measured"
+    if not rec.get("pid"):
+        return "the beat is fresh but names no pid, so there is no process to check"
+    if not _pid_alive(rec.get("pid")):
+        return f"the beat is fresh but pid {rec.get('pid')} is gone — the role died mid-cycle"
+    return f"beating: last beat {_hb_dur(age)} ago"
+
+
+def _hb_dur(seconds: Any) -> str:
+    """Seconds as something an operator reads at a glance. `None` never prints as "None"."""
+    if not isinstance(seconds, (int, float)):
+        return "an unknown time"
+    s = int(seconds)
+    if s < 90:
+        return f"{s}s"
+    if s < 5400:
+        return f"{s // 60}m"
+    if s < 172800:
+        return f"{s // 3600}h"
+    return f"{s // 86400}d"
 
 
 def _pid_alive(pid: Any) -> bool:
@@ -464,6 +532,23 @@ def _read_docs(cfg, args: dict) -> dict:
     return docs_index(_repo_root())
 
 
+def _read_automations(cfg, args: dict) -> dict:
+    """Every automation on this estate, each one run for real, right now.
+
+    Registered 2026-08-19. `automations_view.py` had existed for weeks with no caller: it was
+    written, tested, and reachable from nothing — not READS, not the browser allow-list, not a
+    page. That is the defect this repo keeps hitting, and the reason log rotation could be
+    scheduled, running and freeing a gigabyte a week while the console showed no sign of it.
+
+    The view discovers its own subjects, so a new automation is two files and no console edit.
+    `tests/unit/test_a_view_module_with_no_caller_is_unreachable.py` fails if the next one is
+    written and left unwired.
+    """
+    from .automations_view import read_automations
+
+    return read_automations(cfg, args)
+
+
 def _read_incidents(cfg, args: dict) -> dict:
     """What broke, what stops it repeating, and what is still unguarded.
 
@@ -475,6 +560,45 @@ def _read_incidents(cfg, args: dict) -> dict:
     from .incidents_view import incidents_view
 
     return incidents_view(_repo_root())
+
+
+def _read_shares(cfg, args: dict) -> dict:
+    """Every share link, live and dead, plus what this repo is willing to serve.
+
+    Registered 2026-08-19. Founder: "not deep linnk but every file sheeable", "needs to be
+    seanles". The listing NEVER carries a token — `share._public` strips it — so this view is
+    safe to render, log and screenshot.
+    """
+    from . import share as _share
+
+    root = _repo_root()
+    out = _share.list_shares(_store_ops_dir(cfg))
+    out["allow_list_source"] = _share.allow_list_source(root)
+    out["shareable_count"] = len(_share.shareable_files(root))
+    out["scopes"] = list(_share.SCOPES)
+    out["max_days"] = _share.MAX_DAYS
+    out["default_days"] = _share.DEFAULT_DAYS
+    if args.get("files"):
+        out["files"] = _share.shareable_files(root)
+    return out
+
+
+def _read_share_open(cfg, args: dict) -> dict:
+    """THE ONE VIEW THAT ANSWERS WITHOUT A CONSOLE SESSION.
+
+    It is a read like any other so the public route can spawn the same process the console does,
+    but it is deliberately NOT in the console's `VIEWS` allow-list on the Next side — the public
+    route names this view and only this view, so a bug in the public handler cannot reach `money`
+    or `spend`. The token is the entire credential; everything the caller may see is decided
+    inside `share.open_share`, not here.
+    """
+    from . import share as _share
+
+    return _share.open_share(
+        _store_ops_dir(cfg), _repo_root(),
+        str(args.get("token") or ""), str(args.get("name") or ""),
+        viewer=str(args.get("viewer") or "anonymous"),
+    )
 
 
 def _read_metrics(cfg, args: dict) -> dict:
@@ -1296,6 +1420,7 @@ def _read_method(cfg: Any, args: dict) -> dict:
 _FAILOVER_SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "engine_failover.py"
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _AUDIT_SCRIPT = _REPO_ROOT / "scripts" / "process_audit.py"
+_DEPLOY_SCRIPT = _REPO_ROOT / "scripts" / "deploy_status.py"
 
 
 def _failover(*argv: str, timeout: int = 120) -> str:
@@ -1487,8 +1612,28 @@ def _read_processes(cfg, args: dict) -> dict:
     return json.loads(proc.stdout)
 
 
+def _read_deploys(cfg, args: dict) -> dict:
+    """When each deployable last shipped, and whether anything is stuck on the way out.
+
+    The console had no answer to "is the live site running what is on main". On 2026-08-19 a
+    merge sat undeployed for twelve hours behind a queued run, and the only way to see it was
+    to compare a Fly release to origin/main by hand.
+
+    The exit code is deliberately ignored. `deploy_status.py` exits 1 when something is STALLED
+    and 2 when it could not measure something; both of those are the ANSWER, and treating them
+    as a failed read would blank the panel at the only moment it matters.
+    """
+    proc = subprocess.run(
+        [sys.executable, str(_DEPLOY_SCRIPT), "--json"],
+        cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=300)
+    if not proc.stdout.strip():
+        raise RuntimeError(f"deploy_status.py produced nothing: {proc.stderr[-400:]}")
+    return json.loads(proc.stdout)
+
+
 READS: dict[str, Callable[[Any, dict], Any]] = {
     "processes": _read_processes,
+    "deploys": _read_deploys,
     "engine_location": _read_engine_location,
     "method": _read_method,
     "shelf": _read_shelf,
@@ -1504,6 +1649,9 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
     "metrics": _read_metrics,
     "docs": _read_docs,
     "incidents": _read_incidents,
+    "shares": _read_shares,
+    "share_open": _read_share_open,
+    "automations": _read_automations,
     "runs": _read_runs,
     "run": _read_run,
     "candidate": _read_candidate,
@@ -2826,6 +2974,62 @@ def _act_daemon_restart(cfg, payload: dict, preview: bool) -> dict:
     return restart(cfg, label, actor=str(payload.get("actor") or "console"))
 
 
+def _act_share_create(cfg, payload: dict, preview: bool) -> dict:
+    """Mint a link. The token comes back ONCE, in the confirmed response, and never again.
+
+    The preview is not decoration. It is where the operator sees, before anything is minted, how
+    many files the link would expose and which fence answered — a `repo` share of 1,900 files and
+    a `file` share of one look identical in a form and could not be less alike.
+    """
+    from . import share as _share
+
+    scope = str(payload.get("scope") or "file").strip()
+    target = str(payload.get("target") or "").strip()
+    days = payload.get("days", _share.DEFAULT_DAYS)
+    note = str(payload.get("note") or "").strip()
+    root = _repo_root()
+
+    if scope not in _share.SCOPES:
+        raise ValueError(f"scope must be one of {', '.join(_share.SCOPES)}")
+    if preview:
+        if scope == "file":
+            covered = [target] if target and not _share.is_denied(target) else []
+        else:
+            covered = [f for f in _share.shareable_files(root)
+                       if scope == "repo" or f == target.strip("/")
+                       or f.startswith(target.strip("/") + "/")]
+        return {
+            "action": "share.create", "scope": scope, "target": target, "days": days,
+            "covers": len(covered), "sample": covered[:20],
+            "allow_list_source": _share.allow_list_source(root),
+            "note": "Anyone holding the link can read every file listed above, with no login, "
+                    "until it expires or you revoke it. Nothing outside that list is reachable "
+                    "through it.",
+        }
+    return _share.mint(_store_ops_dir(cfg), root, scope=scope, target=target,
+                       days=days, note=note, actor="console")
+
+
+def _act_share_revoke(cfg, payload: dict, preview: bool) -> dict:
+    """Kill a link now. Revoking something already revoked is a no-op, not an error."""
+    from . import share as _share
+
+    share_id = str(payload.get("id") or "").strip()
+    if not share_id:
+        raise ValueError("which share? pass its id")
+    if preview:
+        rows = [r for r in _share.list_shares(_store_ops_dir(cfg))["shares"]
+                if r["id"] == share_id]
+        if not rows:
+            raise ValueError(f"no share {share_id!r}")
+        row = rows[0]
+        return {"action": "share.revoke", "id": share_id, "scope": row["scope"],
+                "target": row["target"], "status": row["status"], "reads": row["reads"],
+                "note": "The link stops working immediately. This cannot be undone; mint a new "
+                        "one if you need to share again."}
+    return _share.revoke(_store_ops_dir(cfg), share_id, actor="console")
+
+
 ACTIONS: dict[str, Callable[[Any, dict, bool], dict]] = {
     "shelf.repair_copy": _act_shelf_repair_copy,
     "shelf.publish_pending": _act_shelf_publish_pending,
@@ -2839,6 +3043,8 @@ ACTIONS: dict[str, Callable[[Any, dict, bool], dict]] = {
     "config.restore": _act_config_restore,
     "catalogue.set_listing": _act_catalogue_listing,
     "deliveries.resend": _act_delivery_resend,
+    "share.create": _act_share_create,
+    "share.revoke": _act_share_revoke,
     "tools.run": _act_tools_run,
     "tools.undo": _act_tools_undo,
     "engine.switch": _act_engine_switch,
@@ -2931,6 +3137,14 @@ TOOLS: list[dict] = [
        cmd=".venv/bin/python -m prospector.run diagnose"),
     _t("scripts/process_audit.py", "Grade every automated job on this estate", False,
        "/processes", cmd=".venv/bin/python scripts/process_audit.py"),
+    _t("scripts/checkout_currency.py", "Is the shared checkout on main (stale rules brief every session)",
+       False, "/processes", cmd=".venv/bin/python scripts/checkout_currency.py"),
+    _t("scripts/rework_metrics.py", "Rework rate: the guard beside the cost scoreboard",
+       False, "/method", cmd=".venv/bin/python scripts/rework_metrics.py"),
+    _t("scripts/workflow_health.py", "Are any CI workflows dead or disabled?", False,
+       "/processes", cmd=".venv/bin/python scripts/workflow_health.py"),
+    _t("scripts/main_red.py", "Why is main red, and what fixes it?", False,
+       "/processes", cmd=".venv/bin/python scripts/main_red.py"),
     _t("prospector/run.py", "Operator state and quotas", False, "/engine",
        cmd=".venv/bin/python -m prospector.run operators"),
     _t("prospector/run.py", "Manage ambition lanes", True, "/tools",
@@ -2962,6 +3176,10 @@ TOOLS: list[dict] = [
     _t("scripts/estate_map.py", "The whole estate, probed live: Fly apps, customer URLs, laptop "
        "jobs, volumes, secret names", False, "/engine", run=True,
        cmd=".venv/bin/python scripts/estate_map.py"),
+    _t("scripts/fly_estate_probe.py", "Which Fly apps does no committed file describe?", False,
+       "/engine", run=True, cmd=".venv/bin/python scripts/fly_estate_probe.py"),
+    _t("prospector/listing_ledger.py", "Why is each pack on or off the shelf?", False,
+       "/catalogue", run=True, cmd=".venv/bin/python -m prospector.listing_ledger"),
     _t("tools/spend_today.py", "Today's spend against the cap", False, "/spend"),
     # --- publish / republish ---
     _t("publish/publish.py", "The single publish entry point", True, "/catalogue",
@@ -3044,10 +3262,36 @@ TOOLS: list[dict] = [
        danger="MONEY RAIL — bulk Stripe writes. Undo cannot take them back"),
     _t("tools/depth_reprice_preview.py", "Before/after for the depth ladder", False, "/tools"),
     _t("tools/price_history.py", "Who moved a price and why", False, "/catalogue"),
+    # --- retention and the other declared automations ---
+    # Each of these reads by default and takes `--fix` as a second, explicit run, so the row
+    # below writes nothing and the fix row is separate. `/processes` lists them all with their
+    # live status; these entries are what lets an operator ACT on one without a terminal.
+    _t("ops/automations/log_rotation.py", "What is over its size or age budget", False,
+       "/processes", cmd=".venv/bin/python -m ops.automations.log_rotation"),
+    _t("ops/automations/log_rotation.py", "Rotate and prune to the declared policy", True,
+       "/processes", cmd=".venv/bin/python -m ops.automations.log_rotation --fix",
+       danger="DELETES files past their declared age. It refuses anything git tracks and stops "
+              "at each target's max_delete; run it read-only first and read the counts"),
+    _t("ops/automations/offsite_backup.py", "Is there a fresh copy off this machine", False,
+       "/data", cmd=".venv/bin/python -m ops.automations.offsite_backup"),
+    _t("ops/automations/offsite_backup.py", "Ship a backup to R2 and prune old ones", True,
+       "/data", risk="external",
+       cmd=".venv/bin/python -m ops.automations.offsite_backup --fix",
+       danger="writes to R2 and deletes objects past the declared keep count. Undo covers the "
+              "local store only"),
+    _t("ops/automations/stranded_packs.py", "PASSes that cannot be bought", False, "/shelf",
+       cmd=".venv/bin/python -m ops.automations.stranded_packs"),
+    _t("ops/automations/retired_terms.py", "Retired wording still in the tree", False,
+       "/processes", cmd=".venv/bin/python -m ops.automations.retired_terms"),
+    _t("ops/automations/human_register.py", "Figures a human still has to verify", False,
+       "/processes", cmd=".venv/bin/python -m ops.automations.human_register"),
     # --- integrity / probes ---
     _t("scripts/backup_store.py", "Back up dossiers and ledger to R2", True, "/tools",
        risk="external"),
     _t("scripts/restore_drill.py", "Prove the backup restores", False, "/tools"),
+    _t("scripts/dns_zone.py", "Has DNS drifted from the committed zone", False,
+       "/tools", cmd=".venv/bin/python scripts/dns_zone.py --check "
+                     "--zone mumchimp.com"),
     _t("scripts/store_audit.py", "Audit the operator's store", False, "/tools"),
     _t("scripts/blocker_probe.py", "Which programme items are blocked", False, "/tools"),
     _t("scripts/load_gate.py", "Is the machine fit to trust a test result", False, "/tools"),
@@ -3116,6 +3360,20 @@ TOOLS: list[dict] = [
     # itself: the workflow can only see the workflow.
     _t("scripts/ci_capacity.py", "Does CI still fit on this machine alongside the daemons?",
        False, "/engine", cmd="python3 scripts/ci_capacity.py --live", risk="external"),
+    # --- registered 2026-08-19, after a merge sat undeployed for twelve hours ---
+    _t("scripts/deploy_status.py", "Is the live stack running what is on main?", False,
+       "/deploys", cmd=".venv/bin/python scripts/deploy_status.py", risk="external"),
+    # `external` because it starts Fly machines, which costs money and no local undo covers it.
+    _t("scripts/deploy_status.py", "Start stopped CI runners when deploys are queued behind them",
+       True, "/deploys", cmd=".venv/bin/python scripts/deploy_status.py --fix", risk="external",
+       danger="starts Fly machines on prospector-ci; only acts when runs are actually queued"),
+    # Registered 2026-08-19. `ci_capacity.py` answers whether CI FITS; this answers whether it
+    # can RUN AT ALL. The two are separate questions and the estate has been wrong about the
+    # second one twice in a day: a fleet scaled up whose machines were left stopped, and an
+    # autoscale workflow that failed on every one of its five runs while nothing said so.
+    _t("scripts/ci_fleet_probe.py",
+       "Can CI actually run? Machines against runners, for every fleet", False, "/engine",
+       cmd=".venv/bin/python scripts/ci_fleet_probe.py", risk="external"),
     _t("scripts/launchd_plists.py", "Record the current job definitions", True, "/engine",
        cmd="python3 scripts/launchd_plists.py --snapshot",
        danger="overwrites the tracked copies with whatever is live, so run --check first "
@@ -3140,9 +3398,18 @@ TOOLS: list[dict] = [
 NOT_AN_OPS_TOOL: dict[str, str] = {
     # developer and CI tooling — it runs in a terminal or in GitHub Actions, never from an ops page
     "scripts/ci-gate.sh": "the POPDD CI gate; GitHub Actions runs it, not an operator",
+    "scripts/ci_runner_tools.py": "checks that the runner image carries the binaries our "
+                                  "workflows call; it grades the PATH of whatever machine "
+                                  "runs it, so on the operator's Mac it would grade the Mac. "
+                                  "The console's view of the same question is the CI fleet "
+                                  "probe, which asks it from outside",
     "scripts/seed_action_cache.sh": "fills the self-hosted runners' action cache; CI plumbing, "
                                     "run once on the runner box, not from an ops page",
     "scripts/setup_worktree.sh": "makes a git worktree usable; a developer's machine, not ops",
+    "scripts/guard_main_push.py": "the pre-push fence that refuses a direct push to main; "
+                                  "git runs it and feeds it the push on stdin, so it has "
+                                  "no meaning without that input and nothing to show an "
+                                  "operator",
     "scripts/prove_test_fails.py": "edits source files to prove a test goes red, then puts them "
                                   "back; it belongs to whoever is writing the test, and "
                                   "pointing it at a running estate would mutate live code",
@@ -3156,6 +3423,10 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
                                   "same developer's disk as worktree_gc.py. Production runs from "
                                   "a detached mirror of main with no worktrees at all, so this "
                                   "button would always answer nothing",
+    "scripts/worktree_snapshot.py": "copies uncommitted work out of the git worktrees on this "
+                                    "developer laptop. Production is a detached mirror of main "
+                                    "with no worktrees, so there is nothing here for it to "
+                                    "snapshot",
     "scripts/guard_dead_branch_push.py": "a git pre-push hook; git fires it, and it acts on the "
                                          "push happening in that terminal. There is no push to "
                                          "guard from an ops page",
@@ -3163,11 +3434,11 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
                                 "reading for whoever is deleting dead code, not an action on the "
                                 "running platform",
     "scripts/test_impacted.py": "picks the tests a local edit can affect; a developer's loop",
-    "scripts/rework_metrics.py": "grades the agents, not the estate: it reads git history for the share of commits that are fixes or reverts, as a guard on the /method cost scoreboard. Nothing it reports is an action on the running platform, and nothing on the platform changes when it runs",
     "scripts/verify_engine_change.sh": "the pre-commit proof that an engine change is safe",
     "tools/commit_mine.sh": "commits exactly the named paths; a developer's git helper",
     "tools/backfill_human_register.py": "a one-off repair that back-filled the human register after a schema change; kept for the record, not for re-running",
     "tools/register_repair_probe.py": "reports rows the human register cannot resolve; a developer's diagnostic, and it names local paths an operator has no access to",
+    "scripts/claudeignore_sync.py": "compiles .claudeignore into the Read() deny rules in ~/.claude/settings.json; it configures an agent on a developer's machine, and the engine has no ~/.claude to write to",
     # Claude Code hooks — the harness fires these, they have no operator-facing run
     "scripts/graphify_query_hook.py": "a UserPromptSubmit hook; the harness fires it",
     "scripts/graphify_session_hook.py": "a SessionStart hook; the harness fires it",

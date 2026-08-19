@@ -15,7 +15,13 @@ export type Group = { label: string; screens: Screen[] };
 export const GROUPS: Group[] = [
   {
     label: 'Now',
-    screens: [{ href: '/', label: 'Now', what: 'what needs attention right now' }],
+    // Deploys sits beside Now because "is the thing I merged actually live?" is a
+    // right-now question. It was invisible for twelve hours on 2026-08-19 while every
+    // other screen read green.
+    screens: [
+      { href: '/', label: 'Now', what: 'what needs attention right now' },
+      { href: '/deploys', label: 'Deploys', what: 'what each deployable is running, and how far behind main' },
+    ],
   },
   {
     label: 'Engine',
@@ -23,7 +29,7 @@ export const GROUPS: Group[] = [
       { href: '/engine', label: 'Engine', what: 'is the daemon running and what is it doing' },
       { href: '/queue', label: 'Queue', what: 'work waiting, and what is blocking it' },
       { href: '/runs', label: 'Runs', what: 'what each run produced' },
-      { href: '/metrics', label: 'Yield', what: 'how much of what it generates survives' },
+      { href: '/method', label: 'Method', what: 'how the agents work, and if it is improving' },
     ],
   },
   {
@@ -31,6 +37,7 @@ export const GROUPS: Group[] = [
     screens: [
       { href: '/catalogue', label: 'Catalogue', what: 'what is on offer' },
       { href: '/shelf', label: 'Stranded', what: 'passed every gate and cannot be bought' },
+      { href: '/metrics', label: 'Yield', what: 'how much of what it generates survives' },
     ],
   },
   {
@@ -66,7 +73,7 @@ export const GROUPS: Group[] = [
     screens: [
       { href: '/config', label: 'Settings', what: 'the knobs, and their history' },
       { href: '/tools', label: 'Tools', what: 'run a tool, and undo it' },
-      { href: '/method', label: 'Method', what: 'how the agents work, and if it is improving' },
+      { href: '/share', label: 'Share', what: 'give someone outside a link to a file or the repo' },
       { href: '/processes', label: 'Processes', what: 'every automated job, and what is failing' },
     ],
   },

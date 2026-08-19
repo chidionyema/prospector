@@ -23,6 +23,30 @@ Founder directive, 2026-08-18/19:
 > *"and autonated drills"* · *"full ops visibility and adni"* ·
 > *"and platforn independence as headline"* · *"to guide architecture of this project"*
 
+**The acceptance bar, set 2026-08-19, verbatim.** This is what "done" means for the whole
+programme, and no part of it is currently met:
+
+> *"if i have 30 ninutes to nigrate the wwhole stack, donain, third party deps/ donain , everything
+> running in this nachine because i also have a new laptop, so engine, hernes, jobs, and evertything
+> on fly to another onpren or cloud provider, i should not epericne ny downtine and get this
+> seanlessly done fron ops dashboard and prove and see realtine progress. this is the bar, even
+> things like logs, etc nothing beig used can be nissed out, and this has to be resuable for any
+> project not just prospector etc, should be able to probe and audit any systen and get this done."*
+
+Eight requirements come out of that sentence — 30 minutes; domain and third-party dependencies move
+too; everything on the laptop moves; everything on Fly moves; zero downtime; driven from the ops
+dashboard with real-time provable progress; nothing in use is missed, logs included; reusable for
+any project, able to probe and audit any system. The scoreboard against each of the eight is in
+[`docs/PLATFORM_DIRECTIVES.md`](PLATFORM_DIRECTIVES.md) §1, along with the three measured physical
+blockers: a 3600-second DNS TTL on `www.` and `api.` (an hour of cache, so a 30-minute cutover
+cannot work today), a money datastore that is a SQLite file copy, and secrets with no restore path.
+
+**A second directive, said twice and now binding on how this document is read.** The laptop is an
+emergency backup, not stack infrastructure, and developer workflow is separate from stack
+infrastructure. Only the second column of that split — the things a customer or a scheduled job
+notices when they stop — is in scope here. Editors, worktrees, local test runs and the session
+guards are re-created on a new machine, never migrated.
+
 **Scope is everything, and the founder said so plainly.** DNS, logs, databases, object storage,
 payments, CI, secrets, certificates, the laptop's jobs and the Fly apps. Not the engine, not "the
 important bits". If losing it would cost money or time, it is in this programme.
@@ -39,6 +63,195 @@ engine's own move, step by step. [`docs/ESTATE_MAP.md`](ESTATE_MAP.md) — what 
 [`docs/RUNBOOKS.md`](RUNBOOKS.md) — the manual procedures this programme has to automate away.
 [`docs/PLATFORM_MANIFESTO.md`](PLATFORM_MANIFESTO.md) — the portability targets and the drill
 principle. [`docs/BACKLOG.md`](BACKLOG.md) — the ranked P0 list this programme sits beside.
+[`docs/STACK_AUDIT.md`](STACK_AUDIT.md) — **the estate measured and the free/OSS verdict per
+cluster.** It answers §5 below; read it before proposing any tool.
+[`docs/PLATFORM_DIRECTIVES.md`](PLATFORM_DIRECTIVES.md) — **what the founder has already
+decided, verbatim, with dates.** Read it before planning; it is where the 30-minute bar lives.
+
+---
+
+## 0. The eight core requirements, and what they are worth in a real failure
+
+Founder, 2026-08-19, verbatim: *"if i have 30 ninutes to nigrate the wwhole stack, donain, third
+party deps/ donain , everything running in this nachine because i also have a new laptop, so engine,
+hernes, jobs, and evertything on fly to another onpren or cloud provider, i should not epericne ny
+downtine and get this seanlessly done fron ops dashboard and prove and see realtine progress. this
+is the bar, even things like logs, etc nothing beig used can be nissed out, and this has to be
+resuable for any project not just prospector etc, should be able to probe and audit any systen and
+get this done."*
+
+Eight requirements are named in that one sentence. They are the bar, restated so each one can be
+graded:
+
+| # | Requirement | His words | Status |
+|---|---|---|---|
+| **B1** | **Completeness** — nothing in use is missed: domain, third-party deps, logs, secrets, data, jobs | "nothing beig used can be nissed out" | **not met** — three inventories that never meet (M1) |
+| **B2** | **Thirty minutes**, end to end | "if i have 30 ninutes" | **unproven** — nothing has ever been timed |
+| **B3** | **Zero downtime** for the customer | "i should not epericne ny downtine" | **unproven** — no cutover has been run |
+| **B4** | **Driven from the ops dashboard**, not a terminal | "fron ops dashboard" | **not met** — no Continuity panel (M5) |
+| **B5** | **Provable, real-time progress** | "prove and see realtine progress" | **not met** |
+| **B6** | **Destination-agnostic** — any on-prem or cloud provider | "to another onpren or cloud provider" | **partly** — engine has 3 adapters, money path has none (M3) |
+| **B7** | **Reusable for any project**, not prospector-shaped | "not just prospector etc" | **not met** — every artefact is prospector-shaped |
+| **B8** | **Probe and audit any system** — discover the estate, don't hand-write it | "should be able to probe and audit any systen" | **not met** |
+
+### 0.1 The precondition nobody wrote down: B0
+
+The eight requirements are all about *moving* the estate. Every one of them assumes the estate still
+exists to be moved. That assumption is the requirement, and it is not in the list:
+
+> **B0 — the data survives the machine.** A migration plan is a way of *rebuilding* from a copy. If
+> the copy is stale or absent, none of B1–B8 can be attempted at any speed.
+
+**B0 is currently failing.** Measured 2026-08-19:
+
+```
+store/backup.log      last STORE_BACKUP PASS = ledger/prospector-2026-08-17.jsonl.gz
+                      file mtime 2026-08-17 09:38          -> 2 days, no backup
+launchctl list        com.prospector.backup  last_exit=78  (EX_CONFIG, dead at spawn)
+store/prospector.jsonl  258 MB, mtime 2026-08-18 18:51     -> newer than any backup of it
+prospector-live       HEAD debfe1c, 44 commits behind origin/main
+                      scripts/process_audit.py MISSING -> com.prospector.process-audit exit 2
+fly logs prospector-engine | grep STORE_BACKUP  -> no lines in the retained buffer
+```
+
+The last two lines matter together. `deploy/engine/supervisord.conf` on `origin/main` runs
+`[program:backup]` and `[program:offsite-backup]` on Fly, so the intent is that Fly covers this. The
+Fly log buffer shows nothing, which is a **lead, not proof** — the buffer is short.
+
+**MEASURED 2026-08-19 16:55 UTC, and it reverses the grade above.** Fly HAS taken over. The receipts
+are on the volume, written by `receipt.sh`, and they are the data the log buffer had already lost:
+
+```
+fly ssh console -a prospector-engine -C 'supervisorctl status'
+  backup          RUNNING   uptime 2:57:28
+  offsite-backup  RUNNING   uptime 2:57:28
+  restore-drill   RUNNING   uptime 2:57:28
+
+/data/store/ops/receipts/backup_store.py.json
+  started_at 1787147677  ended_at 1787147740  duration_s 63  exit_code 0   # 13:55:40 UTC today
+/data/store/ops/receipts/restore_drill.py.json
+  started_at 1787147677  ended_at 1787147695  duration_s 18  exit_code 0   # 13:54:55 UTC today
+
+/data/store/prospector.jsonl   350 MB  mtime Aug 19 16:51   <- canonical, on Fly
+store/prospector.jsonl (laptop) 258 MB  mtime Aug 18 18:51   <- a stale COPY
+```
+
+**Corrected grade.** B0 is not failing. The backup ran today and exited 0, and the restore drill ran
+today and exited 0. My earlier reading — "if the laptop broke today we lose two days of ledger" —
+was wrong, and it was wrong because I graded the estate from the laptop's files while the canonical
+store had already moved to the Fly volume. The laptop's dead `com.prospector.backup` (exit 78)
+guards a stale copy of a store nothing writes to any more, so **task #92 is not P0**; it is a dead
+job to unload (task #19), not a data-loss risk.
+
+What is still UNPROVEN under B0, and what M4/M11 must still close:
+
+- **Completeness.** One backup exiting 0 proves the ledger and the dossiers were written to R2. It
+  does not name every datastore. Store.Api's SQLite money DB has no line in any receipt. That is
+  M11, and it is still the head of the queue.
+- **The restore drill's scope.** `restore_drill.py` exits 0 in 18 seconds. Eighteen seconds is not
+  a 350 MB ledger restore, so what it actually proves needs reading before it is counted as B0
+  evidence. Graded UNPROVEN, not SOUND.
+- **The verifier's verdict is worthless, in the loud direction.** `backup_store.py --verify-only`
+  on the engine prints `STORE_BACKUP FAIL ... verified=7/8` because it samples the CURRENT local
+  dossier set against R2, so any dossier written since the last run reads as missing
+  (`d359676bde96b6b5.defer.json`, mtime 16:13, against a backup that ran at 13:55). **A healthy
+  three-hour-old backup and a genuinely broken one print the identical FAIL.** That is L11 test 2
+  again: an alarm that is always on is an alarm nobody reads. Tracked as task #109. `backup_store`
+  is already touched by open PR #420, so the fix waits on that PR rather than racing it.
+
+### 0.2 How the priority reorders if we lost Fly and the laptop today
+
+The build order and the disaster order are different lists, and the difference is the finding. Under
+"Fly is gone and the laptop is dead this morning", six of the eight requirements are about doing the
+migration *well*. Only two decide whether it can be done at all.
+
+| Rank | What | Why it sits here |
+|---|---|---|
+| **1** | **B0 — data survives** | Nothing else is attemptable. Restores the ledger, the store DB, the dossiers, the Stripe reconciliation trail. If this fails the business is gone, not delayed. |
+| **2** | **B1 — completeness** | You can only restore what something wrote down. The gap that bites is never the database; it is the DNS record, the webhook secret, the API key with no restore path (M2/T10: the SOPS age private key has no documented recovery). |
+| **3** | **B6 — destination-agnostic** | You need somewhere to go. The engine can move (3 adapters). **The money path cannot** — it is SQLite on Fly with no adapter (M3), so the shop stops taking money regardless of how fast the engine moves. |
+| **4** | **RTO, not B3** | B3 is *zero* downtime. In a real double failure the downtime already happened. The live question becomes "how many hours until a buyer can buy again", which is a different and more honest target than "seamless". |
+| **5** | **B2 — thirty minutes** | Becomes a measurement, not a bar. A number nobody has ever clocked cannot be a constraint. |
+| **6** | **B5 — provable progress** | Matters once the restore is running, so you know whether to wait or intervene. Not before. |
+| **7** | **B4 — from the ops dashboard** | The dashboard is on the dead laptop or the dead platform. In the real incident you are in a terminal. B4 is a requirement for the *routine* migration, not the emergency one. |
+| **8** | **B7 / B8 — reusable, auditable** | These pay off on the *next* project. They cost nothing during the incident and save nothing during it. |
+
+**What that reordering changes about what to build next.** The current M-series sequence leads with
+M1 (inventory) and M2 (bootstrap). The disaster ordering says the true head of the queue is
+**M11 + M4 — name every datastore and prove one restore** — because they are B0, and B0 is failing
+today. Nothing above rank 3 is a tooling decision; all of it is proving that a copy exists and comes
+back.
+
+**Second and third order effects of accepting this ordering.** Second order: M2's bootstrap work
+(mise, uv, SOPS) drops behind restore drills, which delays "new laptop" readiness — acceptable,
+because a new laptop with no data to put on it is not readiness. Third order: the ops console
+Continuity panel (M5, B4) slips furthest, so for some weeks the migration remains a terminal
+procedure. That must be said out loud rather than discovered later, because B4 is one of the
+founder's eight and deferring it is a decision, not an oversight.
+
+### 0.3 The immediate consequence
+
+`P0 — com.prospector.backup fails at spawn (launchd exit 78)` is already tracked, and §0.1 shows it
+is **not** P0: it guards a store that is no longer canonical. It gets unloaded (task #19), not fixed.
+
+The consequence that survives the correction is about *grading*, not about that job. Both readings
+of B0 today came from a status surface rather than from the data behind it — first the laptop's
+`backup.log`, which is a stale file the live job no longer writes; then `fly logs`, whose buffer had
+already rotated past the successful run. Both said "nothing is happening". The receipts on the
+volume said the opposite, and they are the only durable record either job leaves.
+
+**So the programme gains a rule, and M4 gains a deliverable.** Every scheduled job's verdict must be
+readable from a durable artefact with a timestamp and an exit code, not from a log tail. `receipt.sh`
+already does this and is already installed; nothing surfaces it. M5's Continuity panel reads receipts
+or it is decoration. Until then, the command that answers "did the backup run?" is:
+
+```
+fly ssh console -a prospector-engine -C 'cat /data/store/ops/receipts/backup_store.py.json'
+```
+
+### 0.4 The twelve gaps graded against the eight requirements
+
+The M-series was written before the bar was stated, so it was never checked against it. Doing that
+check is the point of this section, and it finds that **two of the eight requirements have no M at
+all**, which no amount of progress on M1–M12 would ever close.
+
+| Req | What it demands | M-series coverage | Grade |
+|---|---|---|---|
+| **B1** | Everything moves — engine, Hermes, jobs, Fly apps, domain, third-party deps, logs | M1 inventory, M9 DNS, M10 logs, M11 datastores | **PARTIAL.** Third-party accounts are not a class in any M: Stripe, Cloudflare R2, GoDaddy, Telegram, GitHub and the model providers each hold credentials, webhooks and state that no inventory names. |
+| **B2** | Thirty minutes | none | **NOT COVERED.** No M starts a clock. M6's drills are the only place one could run, and none of them times the whole cutover. A bar nobody has ever measured against is a wish. |
+| **B3** | No downtime | M3 money adapter, M12 redundancy | **PARTIAL.** Both are about *being able* to run elsewhere. Neither covers the cutover itself — draining in flight work, running both sides at once, and the DNS TTL that decides how long the old address keeps taking traffic (M9 records two 3600s TTLs, so today the floor is an hour). |
+| **B4** | Driven from the ops dashboard | M5 Continuity panel | **COVERED as scope.** Unbuilt, and §0.2 ranks it last for the emergency and first for the routine migration. Both are true; the doc must not pick one and drop the other. |
+| **B5** | Prove it, and see progress live | M5 (partly) | **PARTIAL.** M5 shows progress. Nothing defines the proof: what artefact says a step *succeeded*. §0.3 answers it for jobs — a receipt with a timestamp and an exit code — and that answer should be the migration's too. |
+| **B6** | Any destination, on-prem or cloud | M3, plus the engine's three existing adapters | **PARTIAL.** The engine can move. The money path cannot, and the managed-container shape has no adapter at all (task #34). |
+| **B7** | Reusable on any project, not just prospector | none | **NOT COVERED.** Every one of M1–M12 is written against this estate's paths, app names and jobs. Nothing in the series produces anything a second project could run. |
+| **B8** | Probe and audit any system | none | **NOT COVERED.** M1 is a hand-assembled inventory of what we already know we have. B8 asks for a tool that walks an unfamiliar system and reports what it found — the opposite direction, and the harder one. |
+
+**The finding, stated plainly.** M1–M12 is a good plan for moving *prospector*. The founder asked
+for something that moves *any* estate and can audit one it has never seen. B7 and B8 are not
+refinements of the existing twelve; they are a different deliverable, and pretending otherwise is
+how a programme reports 80% complete against a bar it cannot reach.
+
+**What follows from that, and what does not.** It does not follow that we should stop and build a
+generic tool first — B0 is still the head of the queue, and a portable framework with no proven
+restore behind it protects nothing. What follows is a constraint on *how* M1–M12 get built: every
+one of them lands as a script that takes the estate as input rather than hard-coding it, and reads
+its target names from a declared file rather than from the code. That is close to free while
+writing, and expensive to retrofit afterwards. **M13 and M14 are therefore added below** rather
+than pushed to a later phase, and they are graded honestly as UNSTARTED.
+
+- **M13 — the estate is data, not code.** One declared file names every app, host, datastore, DNS
+  zone, third-party account and scheduled job. M1's inventory becomes a *reader* of that file, and
+  every other M takes its targets from it. Closes B7. **P1, M.**
+- **M14 — a prober that can be pointed at an estate it has never seen.** Walks what it is given —
+  a Fly org, a host, a repo, a domain — and emits the same shape M13 declares, so an unknown
+  system can be audited and then migrated by the same machinery. Closes B8. **P2, L.**
+
+**Second and third order effects.** Second order: making every M script take its targets as input
+costs a little on each one and delays none of them materially. Third order: it forces the estate's
+own names out of the code and into a file, which is the same change M2's bootstrap and M9's DNS
+work already need — so the three converge rather than compete. The risk to state out loud is that
+M14 is genuinely large and unproven, and it is the requirement most likely to be quietly dropped;
+it is ranked P2 for exactly that reason, not because it is optional.
 
 ---
 
@@ -363,7 +576,7 @@ backed up at all. Declared or measured today: `prospector-store-api` SQLite (`/d
 backed up, **never restored**; the engine store (SQLite catalogue plus append-only JSONL, 0.49 GiB,
 2,935 dossiers, 906,341 ledger lines) — backed up, **never restored**; R2 — the files buyers download,
 somebody else's durability but ours to enumerate; Stripe — an independent ledger of every payment
-we have never exported; Hermes' state on the laptop — **no backup at all**; and the provider-health,
+we have never exported; Hermes' state, now on a Fly volume rather than the laptop — **no backup at all**; and the provider-health,
 retrieval-cache and scheduler files under the store, recoverable only if a restore includes them.
 
 **Story.** *"everything fron dns, logs, everything, db"* · *"this si critial , busines dpeendent
@@ -375,6 +588,50 @@ proven restore is blank, or older than its drill cadence, reads red on the conso
 is written as a rebuild script — that is what turns R1 from fatal into slow.
 
 **Costs.** M. Most of it is wiring what already runs into one honest table.
+
+#### M11 census — measured 2026-08-19, read-only
+
+Every volume on every Fly app, opened and listed. This is the table M11 asks for, at the coverage
+it has today. "Last proven restore" is a date only where a drill actually ran and exited 0.
+
+| Datastore | Where | Size | Backed up | Verified how | Last proven restore |
+|---|---|---|---|---|---|
+| Engine store `/data/store` | `prospector-engine`, vol `prospector_store` 20GB lhr | 701M — `prospector.jsonl` 351MB, `prospector.db` 3.1MB, `run_metrics.db`, `self_modifications.db`, ~15 JSONL logs | `backup_store.py`, daily, R2 `prospector-backup` | drill script | **2026-08-19 13:54 UTC, exit 0** |
+| Claude state `/data/state/claude` | same volume | 257M | **NO** — outside every prefix in `backup_store.py` | — | never |
+| Money DB `/data/store.db` | `prospector-store-api`, vol `store_data` 1GB lhr | 4,354,048 bytes, mtime Aug 19 17:22 | `offsite_backup` source `money-db`, daily, R2 | `PRAGMA integrity_check` | **never** |
+| Data-protection key ring `/data/keys` | same volume | 1000 bytes, one XML key | `offsite_backup` source `data-protection-keys` | non-empty only | **never** |
+| Hermes state `/data` | `prospector-hermes`, vol `hermes_state` 3GB lhr | 29M used — `/data/state` 27M, `/data/db` 1.9M (`coordinator.db` + WAL, `kanban.db`, `state.db` + WAL) | **NO** — named in no backup source | — | never |
+| Pack files | R2 `prospector-packs` | not enumerated | third party, no export | — | never |
+| Payments ledger | Stripe | not enumerated | third party, no export | — | never |
+
+`prospector-store-web`, `prospector-searxng`, `prospector-ci` and `hermes-ci` hold no volumes and
+are stateless. The `tie-*` apps are excluded on the founder's instruction.
+
+**What this proves, against the earlier belief.** The money path IS copied off Fly, and that was
+not certain before. Run on the engine, `python -m ops.automations.offsite_backup` reports
+`OK money-db: 0.0h old` and `OK data-protection-keys: 0.0h old`, and the engine has both
+`FLYCTL=/root/.fly/bin/fly` and a token set. The 20GB engine volume holds 701M, so nothing is
+close to full.
+
+**Three gaps the census found. One is fixed in this commit.**
+
+1. **The offsite backup wrote no receipt.** `deploy/engine/supervisord.conf` wrapped `backup` and
+   `restore-drill` in `receipt.sh` and left `offsite-backup` bare, so the one job that protects the
+   money DB reported its verdict only into `fly logs`, which rotate. That is exactly what §0.3
+   forbids. **Fixed here:** it now runs under `receipt.sh offsite_backup`, so the verdict lands in
+   `/data/store/ops/receipts/offsite_backup.json` with a timestamp and an exit code.
+2. **Hermes state has no backup at all.** 29M, so the cost is trivial; what is missing is a fetch
+   command that does not tear a live SQLite file. `/data/db` holds three databases with active WAL
+   files, so a plain `tar` copies a torn page set. It needs `sqlite3 .backup` or the Python backup
+   API run on the machine before the tarball, and that is M4's torn-snapshot work, not a one-line
+   config addition. **Not fixed here, deliberately** — a backup that silently restores corrupt is
+   worse than a gap you can see.
+3. **Every backup lands in one R2 account.** `prospector-backup` holds the money DB, the key ring
+   and the engine store. Losing that one account loses every copy of everything. That is L11's first
+   flakiness test, a mechanism that depends on a single thing, and it is unaddressed.
+
+**Still true after the census:** no datastore except the engine store has ever been restored. Two
+of the seven rows above have a backup nobody has ever read back.
 
 ---
 
@@ -454,17 +711,111 @@ gaps outright.
 | Redundancy | `fly scale count`, and the equivalent adapter verb elsewhere | none needed |
 | Scheduling drills | GitHub Actions on the self-hosted runners, like `escape-hatch-drill.yml` | none needed |
 
-**HYPOTHESIS, and the exact check.** The founder asked me to *"think and reseach toling on the web"*.
-I could not: `WebSearch` is refused by the context guard in this session. So the right-hand column
-above is written from knowledge, not from a fetched source, and every entry in it is a **candidate,
-not a decision**. The check that confirms or kills each one, to be run at the top of a fresh session:
-for each candidate, confirm the licence is OSI-approved, confirm it runs on Linux **and** macOS
-without a hosted control plane, and confirm it is maintained — a commit in the last six months. The
-left-hand column needs no such check; it is code in this repo.
+**The check has now been run. It is [`docs/STACK_AUDIT.md`](STACK_AUDIT.md), merged as PR #392.**
+This section used to carry a HYPOTHESIS marker saying `WebSearch` was refused by the context guard,
+so the right-hand column was knowledge rather than a fetched source. That is no longer true, and the
+audit's verdicts outrank the table above wherever the two differ. What it changed:
+
+- **Five of the twelve gaps stop being things we build** — M1, M2, M4, M6 and M10 all have an
+  existing tool that does the job.
+- **Inventory (M1): use Steampipe, do not write one.** The table above says "none needed"; that was
+  wrong once the bar became *"probe and audit any systen"* rather than probe this one.
+- **Scheduling: Dagu**, replacing all 31 launchd jobs (task #95). Temporal, Windmill and Cronicle
+  were considered and rejected, with reasons, in the audit.
+- **Liveness: Healthchecks plus Gatus** (task #95), replacing nine bespoke "what's running" scripts.
+  The audit's finding on this estate: *many bespoke observers, no dead-man's switch.*
+- **Backup: Litestream plus restic** (task #94). Litestream moves from "if RPO 1h is not enough" to
+  required, because the 30-minute bar demands zero downtime and copying a live SQLite file is
+  downtime by definition.
+- **Declarative infra: OpenTofu, not Terraform.** Terraform has been BUSL since August 2023, so
+  choosing it to escape lock-in is a contradiction. Also **not Kamal and not Nomad** — the
+  eleven-verb adapter contract in `deploy/PORTABILITY.md` already works, and Nomad is BUSL too.
+- **Toolchain: mise plus a uv lock.** The audit measured four different Python interpreters in this
+  estate and no version pin anywhere.
+- **Secrets: SOPS + age. DNS: octoDNS. Logs: Vector into Loki or OpenObserve. Chaos: Pumba and
+  Toxiproxy. Supervision: s6-overlay** instead of supervisord.
+
+The licence, portability and maintenance check the old marker described was applied to each of
+those. The left-hand column still needs no check; it is code in this repo.
 
 **What I will not propose.** A hosted control plane of any kind (Terraform Cloud, a SaaS chaos
 platform, a managed backup service). Each one re-introduces exactly the dependency this programme
 removes, and each is a monthly bill.
+
+---
+
+### 5.1 What the research changed, 2026-08-19 — and the one thing that shipped
+
+Founder, this morning: *"the goal of this audit is not to repeat the same mistakes, we need to
+improve the state of play also and research better tooling always as we audit"*. Fair. §5 above
+picked eleven tools and **not one of them has landed**. A decision on paper is not an improvement.
+
+So: four questions researched today, what each one CHANGED, and the fix that shipped with it.
+
+**1. Litestream is usable now, and it was not before.** Version 0.5.0 (late 2025) replaced the old
+WAL-polling design with LTX. The old design made replicating many databases from one process
+impractical, which is why the earlier note here read *"if RPO 1 h is not enough"*. It now replicates
+hundreds of databases from one process, and its S3-compatible targets explicitly include Cloudflare
+R2 — the bucket this estate already pays nothing for.
+*Changes:* task #94 moves from speculative to buildable with **no new provider, no new bill and no
+new credential**. It reuses `ops/config/offsite_backup.yaml`'s bucket.
+*Risk:* a replication stream is not a backup — it faithfully replicates a `DELETE FROM`. It must sit
+BESIDE the daily snapshot, never replace it.
+*Security:* it needs write access to the backup bucket from the engine container, which already
+holds those keys. No new blast radius.
+*Compliance:* order and entitlement rows are personal data. Continuous replication means the same
+personal data in the same bucket, more often — it does not widen the retention window, which is
+still governed by `keep: 30`.
+Source: [Litestream](https://litestream.io/).
+
+**2. Borg is disqualified on a fact, not a preference.** Borg requires exclusive access to a
+repository, so a laptop, a Fly machine and a future second machine cannot back up into one repo.
+That is the whole shape of this estate. Kopia is the faster of the remaining two — community
+benchmarks in early 2026 put large restores 20–40% ahead of restic — and it has a web UI and more
+backends. **restic wins anyway**, and the justification is today's bug: the failure this estate keeps
+having is a verifier that grades a file instead of opening it. restic's `check --read-data`
+is part of the core tool, and it supports concurrent backups from several hosts into one repository.
+A tool that restores 30% faster is worth less than a tool that tells the truth about whether it can
+restore at all.
+*Risk:* a repository password. Lose it and every backup is unreadable — this is the same class as
+losing the ASP.NET key ring, and it goes wherever that goes (M2, task #82).
+*Security:* end-to-end encryption in all three, so the backup provider never sees plaintext orders.
+*Compliance:* client-side encryption is what makes an offsite copy of buyer records defensible.
+Sources: [restic](https://restic.net/), [Kopia](https://kopia.io/), [BorgBackup](https://www.borgbackup.org/).
+
+**3. The torn-snapshot rule, stated exactly.** `.backup` uses the SQLite Backup API and produces a
+byte-faithful copy including free pages. `VACUUM INTO` writes a compacted copy and rewrites every
+page. **Both are safe against a live database in WAL mode; a plain file copy is not**, because
+recent commits live in the `-wal` file and copying the main file alone loses them silently.
+*Changes:* nothing for the money database — `/internal/backup/database` already runs `VACUUM INTO`
+before it answers. It names the remaining tear precisely: **Hermes state is fetched by `tar`**, and
+`coordinator.db-wal` was 1,388,472 bytes when measured. That is why M4 (task #80) is still open, and
+the fix is one endpoint on the Hermes side, not a new tool.
+Sources: [SQLite forum: hot backup in WAL mode](https://sqlite.org/forum/forumpost/2ea989bbe9),
+[backing up SQLite](https://oneuptime.com/blog/post/2026-03-02-how-to-back-up-sqlite-databases-on-ubuntu/view).
+
+**4. The scheduler is not the thing to land first.** Dagu, Cronicle and supercronic were compared
+again, and the finding that matters is negative: **none of the three has native dead-man's-switch
+integration**. All of them ping Healthchecks by HTTP from inside the job. So the monitored-job
+wrapper is scheduler-independent — which means the estate can get the alerting benefit of task #95
+*before* migrating any scheduler, and keep it *after*.
+*Changes the order of work.* `deploy/engine/supervisord.conf` already wraps four jobs in
+`receipt.sh`. Teaching that one script to ping a check URL converts four unwatched jobs into
+monitored ones without adopting Dagu, and survives the Dagu migration unchanged. Task #97 still
+stands: the checker must not run on the machine it watches.
+Sources: [Dagu](https://github.com/dagucloud/dagu),
+[Healthchecks docs](https://healthchecks.io/docs/), [Cronicle](https://deployable.sh/apps/cronicle/).
+
+**And the improvement that actually shipped today, because research on its own is another probe.**
+The ASP.NET Data Protection key ring — the thing whose loss makes every grant token and cookie
+undecryptable — was graded `verify: nonempty`. A byte count cannot tell a whole key ring from a
+download that stopped halfway, and the half-download is the copy you find out about during a
+restore. `verify_copy` now has a `tgz` kind that opens the archive and reads its index
+(`ops/automations/offsite_backup.py`), the declaration uses it (`ops/config/offsite_backup.yaml`),
+and four tests hold it there, including one that grades the declaration so nobody quietly puts
+`nonempty` back (`tests/unit/test_offsite_backup.py`). This is the same class as task #109, where
+`backup_store --verify-only` fails on a healthy backup: **a verifier that grades the wrong property
+is worse than no verifier, because it is believed.**
 
 ---
 
@@ -528,3 +879,5 @@ Append here. One line per shipped item, with the receipt.
 | 2026-08-19 | M1 (part) | `scripts/fly_estate_probe.py` — Fly apps with no committed config | PR #390 **open, not merged**; `exit=1`, `prospector-hermes` named |  <!-- doc-lint-ok: lands with PR #390 -->
 | 2026-08-19 | M3 (fence) | `deploy/targets/fly.sh` flyctl shim; D3 was red with `fly: command not found` | PR #388; 2 failed → 3 passed |
 | 2026-08-19 | — | `docs/ESTATE_MAP.md` Hermes section corrected from asserted to measured | PR #390 |
+| 2026-08-19 | M4 (part) | key-ring backup graded by opening the archive, not by its size — new `tgz` verify kind | PR #441; `26 passed` |
+| 2026-08-19 | M4 (part) | `verify:` has no default — a source that states no kind, or an unknown kind, is refused when the declaration is read | `29 passed`; mutation-proved (`2 failed` with the default restored) |

@@ -130,6 +130,59 @@ A `file:line`, command output, or a runnable test, in the same breath as the cla
 claim is labelled HYPOTHESIS with the exact check that would settle it. This applies to humans,
 to agents, to commit messages and to this document.
 
+### L11. No flaky solutions
+
+Founder, 2026-08-19: *"dont want flaky solutions ... never go for flaky solutions"*. He said it
+after reading five of our own proposals back to us, and he was right about all five.
+
+A solution is FLAKY if any one of these is true. They are the test, and every proposal is graded
+against them before it is accepted, not after it is built.
+
+1. **It depends on the thing it protects.** A watcher on the machine it watches dies with it. A
+   backup in the same account as the data. A gate that runs inside the process it gates.
+2. **It can fail silently.** If the failure looks like success, or like noise, or like somebody
+   else's bug, nobody acts on it. Every mechanism must answer: what fails, loudly, and who is told?
+3. **Nothing measures it.** A number in a plan is a claim. A target with no clock, a rail with no
+   drill, a budget with no meter: those are wishes, and a wish is flaky by construction.
+4. **It moves the single point of failure instead of removing it.** Off the laptop and onto one
+   Fly machine is progress. It is not redundancy, and it must never be written down as if it were.
+
+**Grade honestly and say so.** SOUND, FLAKY or UNPROVEN, with the evidence. UNPROVEN is an allowed
+answer and usually the true one. SOUND without a receipt is not.
+
+**A flaky solution is worse than no solution**, because it also spends the attention that would
+have found the real one. The autoscaler is the worked example: written, reviewed, merged, and it
+had never once run. See [`docs/STACK_FLAKINESS_AUDIT.md`](STACK_FLAKINESS_AUDIT.md).
+
+**Justification before decision** (same directive, same day: *"i need justifications alo outputted
+before final decsion"*). The argument is written out and shown FIRST. The decision line comes after
+it and refers to it. A decision presented without its argument cannot be challenged, so it gets
+re-litigated every time somebody new reads it.
+
+### L12. Emitting is not observing
+
+Founder, 2026-08-19: *"we log but no cetral place to view"*. And two months earlier, in
+`specs/observability-gap-search.md`: *"we cannot be guessing; we must log and observe thoroughly;
+we must prevent this from ever happening again."*
+
+**A signal with no consumer is not evidence.** It is the appearance of evidence, which is worse
+than nothing, because it stops anyone looking further.
+
+Three instances in this estate, all the same defect:
+
+1. `web_calls=0` — a metric shipped that no provider ever incremented. We then used it to decide
+   whether search was working. It was working.
+2. launchd jobs exiting non-zero for days. Nothing reads the second column of `launchctl list`, so
+   `com.prospector.backup` has been failing with exit 78 unnoticed.
+3. Backups graded by the writer's exit code, which proves the job ran and not that bytes landed.
+
+**So when anything emits a signal, name its consumer in the same change.** Who or what reads this,
+where does it surface, and what happens when it goes bad? If the answer is "somebody would notice",
+there is no consumer and the signal is decoration.
+
+**And prove the consumer by breaking it.** A red that has never been seen red is not known to work
+— the negative-fixture standard the test suite already holds itself to, applied to operations.
+
 ---
 
 ## Part 2. Agent tenets

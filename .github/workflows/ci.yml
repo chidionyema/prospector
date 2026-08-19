@@ -108,9 +108,21 @@ on:
 #
 # Main is not a branch whose result can be superseded. Every commit on it is what production and
 # every pull request is graded against, so every commit on it gets graded.
+#
+# A pull request's run is not superseded either, and that is the change here. This used to read
+# `cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}`, so any push to a PR branch killed
+# that branch's in-flight run. `automerge.yml` merges a PR the moment its CI run CONCLUDES green,
+# and a cancelled run concludes nothing, so a branch pushed more often than the ~25 minute python
+# job takes could never merge. Measured 2026-08-19 over the last 60 runs: 7 success, 16 failure,
+# 16 CANCELLED, with 22 pull requests open and nothing landing. Several agents share this repo and
+# cannot see each other, so each found "CI is red", pushed a fix, and cancelled the run that was
+# about to merge someone else's fix.
+#
+# The cost of keeping runs alive is runner capacity, not money: the runners are self-hosted on
+# Fly and their minutes are free, and `ci-autoscale.yml` adds machines when the queue grows.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: false
 
 env:
   PYTHON_VERSION: "3.14"
@@ -156,6 +168,164 @@ jobs:
       web: ${{ steps.filter.outputs.web }}
       console: ${{ steps.filter.outputs.console }}
     steps:
+      # ─── MAIN COMES FIRST: NO PR BUILD WHILE MAIN IS RED OR MID-RUN ───────────────
+      #
+      # Founder directives 2026-08-19: "i dont see hwy any pr should run when nain is red",
+      # "this nust be visibke so it can be fied as priority", and, after watching a PR job take
+      # a runner out from under a queued main run, "nain should be priority over feaature
+      # branches ... this should never happen".
+      #
+      # WHAT IT DOES. On a pull_request event it refuses to build for either of two reasons:
+      #   1. A CI run on main is queued or in progress. Main gets the machines first. A feature
+      #      branch never competes with the branch it merges into.
+      #   2. Main's last completed CI run did not succeed. A PR cannot be greener than main.
+      # Check 1 comes first, because an in-flight main run is the more urgent fact and it is
+      # what a stale green from an hour ago hides.
+      #
+      # WHY IT IS THE FIRST STEP OF `changes` RATHER THAN ITS OWN JOB. A separate job would
+      # need its own runner slot, which is the resource the gate exists to protect. `changes`
+      # already runs first and everything else declares `needs: changes`, so failing here stops
+      # the whole run for the price of a few seconds on the light pool.
+      #
+      # THE COST IT PREVENTS, measured 2026-08-19. Main was red on one test. Twenty-one PR runs
+      # were queued ahead of main own fix run, so main — the only run whose colour every other
+      # run inherits — could not get a machine. Every one of those PR runs was doomed to fail on
+      # main defect and spent ~26 minutes of a heavy runner proving it. Worse, the starvation
+      # was self-sustaining: as each PR job finished, the next queued PR job took the freed
+      # runner, so main crawled through its five heavy jobs one gap at a time.
+      #
+      # THE ESCAPE HATCH, and it is deliberate. The PR that FIXES main must be able to build
+      # while main is red, or the estate deadlocks. Label that PR `fixes-main` and this step
+      # stands aside. `workflow_dispatch` is a second hatch: this only gates `pull_request`.
+      #
+      # A WEDGED MAIN RUN MUST NOT BECOME A TOTAL OUTAGE. Check 1 only counts main runs younger
+      # than STALE_MINUTES. A run stuck queued for hours is not in flight, it is broken, and
+      # blocking every PR in the repo behind it would turn one bad run into an estate-wide stop.
+      #
+      # IT FAILS OPEN. An API error, or a main with no completed CI run at all, warns and
+      # passes. A gate that guesses must guess towards letting work through, because a gate
+      # that blocks the whole repo on its own bug is worse than the problem it polices.
+      - name: Main must be green before any PR builds
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const STALE_MINUTES = 90;
+
+            // ── THE ESCAPE HATCH, READ LIVE. ──────────────────────────────────────────
+            // `github.event.pull_request.labels` is a snapshot frozen when the run STARTED.
+            // Label a PR `fixes-main` after its run began and that payload never sees it, so
+            // the hatch is shut at the exact moment it exists for. Measured 2026-08-19: this
+            // gate refused PR #443, the PR that carries this gate and fixes main, because the
+            // label arrived ninety seconds after the run did. Founder: "this should obviosly
+            // eclude nain, basi edge case". Ask the API for the labels the PR has NOW, so
+            // labelling and re-running is enough.
+            let labels = [];
+            try {
+              const res = await github.rest.issues.listLabelsOnIssue({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+              });
+              labels = res.data.map((l) => l.name);
+            } catch (e) {
+              core.warning(`Could not read this PR's labels (${e.message}) — gate fails open.`);
+              return;
+            }
+
+            if (labels.includes('fixes-main')) {
+              core.info("PR is labelled `fixes-main` — it repairs main, so it is not gated.");
+              return;
+            }
+
+            const refuse = async (heading, lines) => {
+              const msg = lines.join('\n');
+              await core.summary
+                .addHeading(heading, 2)
+                .addRaw(msg.replace(/\n/g, '<br>'))
+                .write();
+              core.setFailed(msg);
+            };
+
+            // ── CHECK 1: main gets the machines first. ────────────────────────────────
+            let active = [];
+            try {
+              for (const status of ['in_progress', 'queued']) {
+                const res = await github.rest.actions.listWorkflowRuns({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  workflow_id: 'ci.yml',
+                  branch: 'main',
+                  status,
+                  per_page: 20,
+                });
+                active = active.concat(res.data.workflow_runs);
+              }
+            } catch (e) {
+              core.warning(`Could not read main's live runs (${e.message}) — gate fails open.`);
+              active = [];
+            }
+
+            const now = Date.now();
+            const live = active.filter((r) => {
+              const age = now - new Date(r.run_started_at).getTime();
+              return age < STALE_MINUTES * 60 * 1000;
+            });
+
+            if (live.length) {
+              const r = live[0];
+              return await refuse('main is building — feature branches wait', [
+                `main's CI is ${r.status.toUpperCase()} at ${r.head_sha.slice(0, 8)}.`,
+                `This PR was not built, because main gets the machines before any feature branch.`,
+                ``,
+                `Main is the branch every PR inherits its colour from, so it is never made to`,
+                `queue behind the branches that merge into it.`,
+                ``,
+                `  ${r.html_url}`,
+                ``,
+                `Re-run this PR once main has finished. If THIS PR is the one that fixes main,`,
+                `label it \`fixes-main\` and it will not be gated.`,
+              ]);
+            }
+
+            // ── CHECK 2: main must be green. ──────────────────────────────────────────
+            let latest;
+            try {
+              const res = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'ci.yml',
+                branch: 'main',
+                status: 'completed',
+                per_page: 1,
+              });
+              latest = res.data.workflow_runs[0];
+            } catch (e) {
+              core.warning(`Could not read main's CI history (${e.message}) — gate fails open.`);
+              return;
+            }
+
+            if (!latest) {
+              core.warning("main has no completed CI run — gate fails open.");
+              return;
+            }
+
+            const sha = latest.head_sha.slice(0, 8);
+            if (latest.conclusion === 'success') {
+              core.info(`main is green at ${sha} (run ${latest.id}) and not mid-run — carrying on.`);
+              return;
+            }
+
+            return await refuse('main is red — fix main first', [
+              `main is ${latest.conclusion.toUpperCase()} at ${sha}.`,
+              `This PR was not built, because a PR cannot be greener than the branch it merges into.`,
+              ``,
+              `FIX MAIN FIRST. That is the whole queue's top priority:`,
+              `  ${latest.html_url}`,
+              ``,
+              `If THIS PR is the one that fixes main, label it \`fixes-main\` and re-run.`,
+            ]);
+
       # WHY THE BOX IS SLOW, PRINTED BEFORE ANYTHING ELSE RUNS.
       #
       # On 2026-08-18 four CI jobs sat for an hour. `npm test` was at 0.0% CPU for 72 seconds,
@@ -317,6 +487,49 @@ jobs:
           CI_HEAVY_RUNS_ON: ${{ vars.CI_HEAVY_RUNS_ON }}
           CI_LIGHT_RUNS_ON: ${{ vars.CI_LIGHT_RUNS_ON }}
         run: python3 scripts/ci_capacity.py
+
+      # Our runners are a container we build, not GitHub's ubuntu-latest, and it installs
+      # seventeen packages on purpose. A step written against GitHub's image therefore fails
+      # here as a MISSING COMMAND -- exit 127, and usually with no message, because the step
+      # that needed it had already redirected stderr. It has happened twice: `python3` after a
+      # successful web deploy, and `openssh-client` on 2026-08-19, which killed the whole
+      # hermes-config gate in seventeen milliseconds with no output at all.
+      #
+      # RUNNER_ENVIRONMENT is passed through so the check knows whose PATH it is grading. On a
+      # GitHub-hosted runner it grades the Dockerfile only and says so; passing on ubuntu-latest
+      # would prove nothing about the image we ship.
+      - name: The runner carries the tools our workflows run
+        run: python3 scripts/ci_runner_tools.py
+      # A workflow GitHub cannot START fails with ZERO jobs, no log, no annotation and no red
+      # check anywhere. It can therefore be dead for its entire life and nothing reports it.
+      # Measured 2026-08-19: `.github/workflows/ci-autoscale.yml` had 30 runs, 30 failures and
+      # `total_count: 0` jobs on every single one, because `workflow_job` is a WEBHOOK event and
+      # not a workflow trigger. The CI runner pool had never once been scaled automatically, and
+      # the only tell was a machine stopped in the middle of PR #425's test suite.
+      #
+      # actionlint names that defect in one line:
+      #   ci-autoscale.yml:15:3: unknown Webhook event "workflow_job"  [events]
+      #
+      # IT RUNS HERE for the same reasons the doc-lint step above does: no path filter (a pull
+      # request that changes only a workflow must still be graded), no virtualenv, and no extra
+      # runner slot. Shellcheck is switched off -- ci.yml and deploy-web.yml carry info-level
+      # SC2086 that is not worth walling every open pull request over. The version is pinned and
+      # the download is checksummed, so a bad or moved release fails loudly instead of silently
+      # skipping the gate.
+      - name: Workflows GitHub can actually start
+        run: |
+          set -euo pipefail
+          ver=1.7.12
+          case "$(uname -m)" in
+            x86_64|amd64) arch=amd64; sum=8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8 ;;
+            aarch64|arm64) arch=arm64; sum=325e971b6ba9bfa504672e29be93c24981eeb1c07576d730e9f7c8805afff0c6 ;;
+            *) echo "unsupported arch $(uname -m)"; exit 1 ;;
+          esac
+          tgz="actionlint_${ver}_linux_${arch}.tar.gz"
+          curl -sSfL -o "$tgz" "https://github.com/rhysd/actionlint/releases/download/v${ver}/${tgz}"
+          echo "${sum}  ${tgz}" | sha256sum -c -
+          tar xzf "$tgz" actionlint
+          ./actionlint -shellcheck= -color
 
   # ──────────────────────────────────────────────────────────────────
   # Python — full test suite + golden-set hard gate
@@ -485,6 +698,10 @@ jobs:
           if [ "$count" -eq 0 ]; then
             echo "::error::collected no test files — the pattern is wrong"; exit 1
           fi
+          # `$files` is a newline-separated list and MUST split into separate arguments
+          # here. Quoting it hands pytest one path containing newlines, which collects
+          # nothing. The `count` check three lines up is what makes the split safe.
+          # shellcheck disable=SC2086
           python -m pytest -q $files -n 4 --tb=short -p no:warnings
 
       # ── Hard gate ──────────────────────────────────────────────
@@ -910,12 +1127,31 @@ jobs:
       # checks. Measured 2026-08-19 in both web projects: "found 0 vulnerabilities", so this
       # goes in green.
       #
-      # --audit-level=high, not low. npm reports transitive advisories in build-only tooling
-      # that no request ever reaches, and a gate that fires on those gets switched off within a
-      # week. High and critical are the ones worth stopping a merge for.
+      # --audit-level=high, not low, and --omit=dev, not the whole tree. This comment used to
+      # promise the second half and the command did not do it, so the gate fired on exactly the
+      # build-only tooling it said it would ignore. Measured 2026-08-19: 10 high advisories, all
+      # of them under @lhci/cli or @storybook/nextjs-vite, none reachable by any request --
+      # 0 high advisories in the production tree. It had turned main red with no code change and
+      # was blocking every merge in the repository, including the fix for main's other red.
+      # A gate whose verdict comes from an outside advisory feed must only cover code we SHIP.
       - name: Dependency advisory scan
         working-directory: store_platform/src/Store.Web
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=high --omit=dev
+
+      # The same tree WITHOUT --omit=dev, reported and never enforced. Dropping the dev tree
+      # from the gate must not drop it from view: a build tool with a known hole is still worth
+      # knowing about, it is just not worth blocking every merge in the repository over.
+      - name: Dependency advisories in build tooling (report only)
+        working-directory: store_platform/src/Store.Web
+        continue-on-error: true
+        run: |
+          npm audit --audit-level=high > "$RUNNER_TEMP/audit-dev.txt" 2>&1 || true
+          {
+            echo "### Build-tooling advisories (not a gate)"
+            echo '```'
+            tail -20 "$RUNNER_TEMP/audit-dev.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build
         run: npm run build
@@ -1007,6 +1243,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Lint CSS
+        run: npm run lint:css
+
       - name: Unit tests (vitest)
         run: npm test
 
@@ -1018,15 +1257,58 @@ jobs:
       # checks. Measured 2026-08-19 in both web projects: "found 0 vulnerabilities", so this
       # goes in green.
       #
-      # --audit-level=high, not low. npm reports transitive advisories in build-only tooling
-      # that no request ever reaches, and a gate that fires on those gets switched off within a
-      # week. High and critical are the ones worth stopping a merge for.
+      # --audit-level=high, not low, and --omit=dev, not the whole tree. This comment used to
+      # promise the second half and the command did not do it, so the gate fired on exactly the
+      # build-only tooling it said it would ignore. Measured 2026-08-19: 10 high advisories, all
+      # of them under @lhci/cli or @storybook/nextjs-vite, none reachable by any request --
+      # 0 high advisories in the production tree. It had turned main red with no code change and
+      # was blocking every merge in the repository, including the fix for main's other red.
+      # A gate whose verdict comes from an outside advisory feed must only cover code we SHIP.
       - name: Dependency advisory scan
         working-directory: store_platform/src/Ops.Console
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=high --omit=dev
+
+      # The same tree WITHOUT --omit=dev, reported and never enforced. Dropping the dev tree
+      # from the gate must not drop it from view: a build tool with a known hole is still worth
+      # knowing about, it is just not worth blocking every merge in the repository over.
+      - name: Dependency advisories in build tooling (report only)
+        working-directory: store_platform/src/Ops.Console
+        continue-on-error: true
+        run: |
+          npm audit --audit-level=high > "$RUNNER_TEMP/audit-dev.txt" 2>&1 || true
+          {
+            echo "### Build-tooling advisories (not a gate)"
+            echo '```'
+            tail -20 "$RUNNER_TEMP/audit-dev.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build
         run: npm run build
+
+      # axe-core against the console's own screens. It runs WITHOUT the Python gateway here, so
+      # most panels render their stated-problem branch rather than data. That is deliberate: an
+      # operator meets those states during an outage, which is the worst moment for an unreadable
+      # one. On its first run this found three serious defects -- no `lang` on <html>, a stat
+      # placeholder at 2.56:1, and scroll containers a keyboard could not enter.
+      #
+      # AFTER the build, always: the Playwright webServer runs `next start`, which serves the
+      # build directory. Before it, the server never comes up and every test errors in setup.
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Accessibility (axe-core)
+        run: npm run test:a11y
+        env:
+          CI: "true"
+
+      # The console is operated from a phone. This is the spec that caught /config
+      # scrolling 7px sideways on one unbreakable JSON value, and until now it ran
+      # on laptops only -- a gate nothing schedules is a gate that stops running.
+      - name: Phone widths (390 and 320)
+        run: npm run test:e2e
+        env:
+          CI: "true"
 
   # ──────────────────────────────────────────────────────────────────
   # The single check branch protection requires.

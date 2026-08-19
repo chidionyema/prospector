@@ -39,6 +39,8 @@ export const VIEWS = [
   'method',
   'docs',
   'incidents',
+  'shares',
+  'automations',
   'content_rules',
   'orders',
   'order',
@@ -47,6 +49,7 @@ export const VIEWS = [
   'disputes',
   'console_log',
   'processes',
+  'deploys',
 ] as const;
 
 /** Arguments each view accepts. Anything else in the query string is dropped, not forwarded. */
@@ -68,6 +71,7 @@ const ALLOWED_ARGS: Record<string, string[]> = {
   deliveries: ['state', 'limit'],
   disputes: ['days'],
   docs: ['name'],
+  shares: ['files'],
   console_log: ['limit'],
 };
 

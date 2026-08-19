@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { Breadcrumbs } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { CartButton } from '@/components/cart/CartButton';
-import { LEGAL, BRAND } from '@/lib/config';
+import { LEGAL, BRAND, traderIdentity } from '@/lib/config';
 import { SEARCH_OPEN_EVENT } from '@/lib/searchEvent';
 import { RESEARCH_STATS } from '@/lib/stats';
 import { tightDecimal } from '@/components/ui/Money';
@@ -399,6 +399,14 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
             <p>
               &copy; 2026 {BRAND.name}. All rights reserved. {BRAND.name} packs are sold for
               information only, not financial, legal, or investment advice.
+            </p>
+            <p>
+              {/* The trader, named on the shop front rather than three clicks into the legal
+                  pages. reg 6 of the E-Commerce Regulations 2002 says "easily, directly and
+                  permanently accessible", and a footer is the only surface on this site that is
+                  all three. Baymard's abandonment list puts "didn't trust the site" at 19% of
+                  abandoners, and an anonymous seller asking for 99.99 is that finding. */}
+              Operated by {traderIdentity()}.
             </p>
             <details>
               <summary>Read the full disclaimer</summary>
