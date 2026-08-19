@@ -465,6 +465,31 @@ Three things, and none of them is a new build.
 
 ---
 
+## 10b. Correction — the autoscaler fix was already open, twice
+
+This audit fixed `ci-autoscale.yml` and wrote `tests/unit/test_workflow_triggers_are_real_events.py`
+to close the class. **Both were duplicates and both have been removed from this branch.** Measured
+2026-08-19:
+
+- **PR #417**, `fix/ci-autoscale-trigger` — fixes the same file and ships
+  `tests/unit/test_workflow_triggers_are_real.py`, the same guard under an almost identical name.
+- **PR #434**, `fix/ci-visibility` — fixes the same file and runs **`actionlint`** in `ci.yml`'s
+  `guard` job. That is the stronger guard: it grades every workflow rule, not only the trigger key,
+  and it names this exact defect in one line:
+  `ci-autoscale.yml:15:3: unknown Webhook event "workflow_job" [events]`.
+
+So the right action is to land #434, not to open a third PR against the same file.
+
+**This is the failure LAW 0 names, committed by the author of this audit.** I found a real defect
+and fixed it without first asking whether it was already fixed. `~/.claude/scripts/dupe-work-fence.py`
+refuses an unclaimed or duplicate `gh pr create`, and it would have caught this — but only at the
+`gh pr create` step, which is after the work is done. **The check belongs before the first edit, not
+before the pull request.** Filed as a task.
+
+The finding in section 1 stands unchanged: the autoscaler has never run. Only the fix was redundant.
+
+---
+
 ## 11. Ledger
 
 | Date | What | Evidence |
