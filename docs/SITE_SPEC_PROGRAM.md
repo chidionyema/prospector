@@ -1953,19 +1953,35 @@ instance is styled grey, not because the token differs. Changing our link colour
 break every other link on the site. The harness says WHERE to look; the drawing says what it should
 be.
 
-**The next step for the harness: grade only what the stylesheet declares about a component.** Right
-now it compares every property in its list against whatever element matched, and for a selector that
-is a bare utility rather than a component that is meaningless. `mumchimp.css:9` is
-`.num{font-variant-numeric:tabular-nums}` and nothing else, so `.num` sits on a dozen unrelated
-elements. Its 48 hard findings contradict each other in both directions -- `letterSpacing` reads
-"drawing normal / built -0.38" on one page and "drawing -0.38 / built normal" on another, and
-`fontWeight` reads 670 against 400. `.tlink` (76 findings) declares only `color` and `font-weight`
-and has the same problem.
+**Only a selector that matches ONE element in BOTH documents may gate.** This is the root cause
+under the three largest noise piles in the first report, and it is now fixed in the harness rather
+than described in this document.
 
-Grading each selector on the properties its own rule declares would cut that noise without losing
-anything the gate has caught: defect 10 was found on `h2.sec`, and `mumchimp.css:14` declares
-`font-weight` there explicitly. Not done in this pass -- it is a second redesign of the comparator
-and wants its own before-and-after measurement.
+The harness pairs the FIRST match of each selector. The drawings are hand-written HTML and the pages
+are ours, written independently, so nothing tells the harness that the drawing's third `.btn` is the
+same button as ours. When a selector is used many times per page, first-match pairing compares two
+unrelated elements. The tell is findings that contradict each other. `.num` reported "drawing
+`normal` / built `-0.38`" on one page and "drawing `-0.38` / built `normal`" on another, and
+`mumchimp.css:9` declares nothing on `.num` but `font-variant-numeric`. `.tlink` (76 findings) and
+`.btn` (48) had the same shape.
+
+Those selectors are still probed and still printed, now as `MULTI` lines with the match count on each
+side. They say where to look. They no longer count towards `hard`, because a number nobody can act on
+is not a gate. Singleton components -- `.hero`, `h2.sec`, `.logo`, `.rule2` -- still gate, and
+defect 10 was found on one of those.
+
+**A colour on a border that is not drawn is not a colour.** 94 of the 724 hard findings were
+`borderTopColor` or `borderBottomColor`. `mumchimp.css:33` is
+`.rule2{border:0;border-top:2px solid var(--ink);margin:44px 0 0}`, so the bottom border is 0px wide
+on both sides of the comparison, and the gate still reported "drawing `rgb(128,128,128)` / built
+`rgb(23,25,28)`" on it eight times. The probe now records `no-border` for a side whose width computes
+to 0. Whether a border is drawn at all is still graded: `borderTopWidth` and `borderBottomWidth` are
+compared as lengths and both feed `boxTop` and `boxBottom`.
+
+**`.rule2`'s remaining margin finding is a deliberate override, not a defect.** The gate read
+"boxTop drawing `46px` / built `2px`". That is `kill-log.tsx:352`, `<hr className="rule2 !mt-0 mb-7" />`,
+with the reason in a comment above it. First-match pairing put the one overridden rule on that page
+first. It is the same class of artifact, on a selector that happens to be a singleton per page.
 
 **Why it is not a CI job.** The built page in CI is built against `https://api.example.com`, so it
 has no catalogue: the shelf, the kill log and the hero counts all render empty. The comparison only
