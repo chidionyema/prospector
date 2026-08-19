@@ -3075,6 +3075,8 @@ TOOLS: list[dict] = [
        False, "/method", cmd=".venv/bin/python scripts/rework_metrics.py"),
     _t("scripts/rework_metrics.py", "Rework rate: the guard beside the cost scoreboard",
        False, "/method", cmd=".venv/bin/python scripts/rework_metrics.py"),
+    _t("scripts/rework_metrics.py", "Rework rate: the guard beside the cost scoreboard",
+       False, "/method", cmd=".venv/bin/python scripts/rework_metrics.py"),
     _t("scripts/workflow_health.py", "Are any CI workflows dead or disabled?", False,
        "/processes", cmd=".venv/bin/python scripts/workflow_health.py"),
     _t("scripts/main_red.py", "Why is main red, and what fixes it?", False,
@@ -3112,6 +3114,8 @@ TOOLS: list[dict] = [
        cmd=".venv/bin/python scripts/estate_map.py"),
     _t("scripts/fly_estate_probe.py", "Which Fly apps does no committed file describe?", False,
        "/engine", run=True, cmd=".venv/bin/python scripts/fly_estate_probe.py"),
+    _t("prospector/listing_ledger.py", "Why is each pack on or off the shelf?", False,
+       "/catalogue", run=True, cmd=".venv/bin/python -m prospector.listing_ledger"),
     _t("tools/spend_today.py", "Today's spend against the cap", False, "/spend"),
     # --- publish / republish ---
     _t("publish/publish.py", "The single publish entry point", True, "/catalogue",
