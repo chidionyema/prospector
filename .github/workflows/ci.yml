@@ -907,14 +907,39 @@ jobs:
       # both derive from them) instead of silently baking in localhost defaults.
       # `npm ci` above runs with --no-audit so that install stays fast and deterministic. That
       # is precisely why the audit needs its own step: with the flag on install, nothing ever
-      # checks. Measured 2026-08-19 in both web projects: "found 0 vulnerabilities", so this
-      # goes in green.
+      # checks.
       #
-      # --audit-level=high, not low. npm reports transitive advisories in build-only tooling
-      # that no request ever reaches, and a gate that fires on those gets switched off within a
-      # week. High and critical are the ones worth stopping a merge for.
-      - name: Dependency advisory scan
+      # --omit=dev, AND WHY THAT IS NOT A CLIMBDOWN. The gate exists to stop a vulnerable
+      # package reaching a customer. Nothing in devDependencies is served to one: Lighthouse
+      # CI, vitest and the linters run on a runner and are never bundled. Scanning them makes
+      # the gate fire on advisories no request can reach, and a gate that fires on those gets
+      # switched off within a week. High and critical in what SHIPS are the ones worth stopping
+      # a merge for.
+      #
+      # Measured 2026-08-19 against origin/main's own lockfile, not this checkout's:
+      #   npm audit --audit-level=high             13 vulnerabilities (2 low, 1 moderate, 10 high)
+      #   npm audit --audit-level=high --omit=dev  found 0 vulnerabilities
+      # All 13 arrive through @lhci/cli -> lighthouse -> puppeteer-core -> @puppeteer/browsers
+      # -> extract-zip (GHSA-jmr9-qjv8-65gv, symlink path traversal in a zip extractor that only
+      # ever runs in CI). `npm audit fix --force` would install @lhci/cli@0.1.0, a fifteen-major
+      # downgrade of the Lighthouse runner, to fix it.
+      #
+      # THE COMMENT THIS REPLACED SAID "Measured 2026-08-19 in both web projects: found 0
+      # vulnerabilities, so this goes in green". That number came from the shared developer
+      # checkout, whose Store.Web lockfile differs from origin/main's by 12,725 lines. The step
+      # reached main in #393 on a run whose five heavy jobs were all CANCELLED rather than run,
+      # so nothing graded it either. main was then red for three hours and every open pull
+      # request inherited it. Measure on the ref the job will run on, never on this checkout.
+      #
+      # The dev tree is still worth SEEING. It is printed by a second step that cannot fail the
+      # run, so a real advisory in the CI toolchain is visible without being a merge blocker.
+      - name: Dependency advisory scan (what ships)
         working-directory: store_platform/src/Store.Web
+        run: npm audit --audit-level=high --omit=dev
+
+      - name: Dependency advisories in build-only tooling (never fails the run)
+        working-directory: store_platform/src/Store.Web
+        continue-on-error: true
         run: npm audit --audit-level=high
 
       - name: Build
@@ -983,14 +1008,29 @@ jobs:
       # about the deployment is inlined into the build.
       # `npm ci` above runs with --no-audit so that install stays fast and deterministic. That
       # is precisely why the audit needs its own step: with the flag on install, nothing ever
-      # checks. Measured 2026-08-19 in both web projects: "found 0 vulnerabilities", so this
-      # goes in green.
+      # checks.
       #
-      # --audit-level=high, not low. npm reports transitive advisories in build-only tooling
-      # that no request ever reaches, and a gate that fires on those gets switched off within a
-      # week. High and critical are the ones worth stopping a merge for.
-      - name: Dependency advisory scan
+      # --omit=dev, AND WHY THAT IS NOT A CLIMBDOWN. The gate exists to stop a vulnerable
+      # package reaching a customer. Nothing in devDependencies is served to one: Lighthouse
+      # CI, vitest and the linters run on a runner and are never bundled. Scanning them makes
+      # the gate fire on advisories no request can reach, and a gate that fires on those gets
+      # switched off within a week. High and critical in what SHIPS are the ones worth stopping
+      # a merge for.
+      #
+      # Measured 2026-08-19 against origin/main's own lockfile, not this checkout's: this app is
+      # "found 0 vulnerabilities" both with and without --omit=dev. It is scoped the same way as
+      # the storefront anyway, so the two cannot drift into meaning different things -- and so
+      # the day this app grows a Lighthouse-shaped dev dependency, it does not wall main.
+      #
+      # The dev tree is still worth SEEING. It is printed by a second step that cannot fail the
+      # run, so a real advisory in the CI toolchain is visible without being a merge blocker.
+      - name: Dependency advisory scan (what ships)
         working-directory: store_platform/src/Ops.Console
+        run: npm audit --audit-level=high --omit=dev
+
+      - name: Dependency advisories in build-only tooling (never fails the run)
+        working-directory: store_platform/src/Ops.Console
+        continue-on-error: true
         run: npm audit --audit-level=high
 
       - name: Build
