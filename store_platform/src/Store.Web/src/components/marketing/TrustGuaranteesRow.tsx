@@ -137,7 +137,7 @@ export default function TrustGuaranteesRow({
               No dash in the sentence (founder standing rule on copy): the clause it would have
               joined is a relative clause instead. */}
           The{' '}
-          <Link href="/kill-log" className={textLinkClass()}>kill log</Link>
+          <Link href="/kill-log" prefetch={false} className={textLinkClass()}>kill log</Link>
           {' '}publishes the ideas that failed these checks, each with the sourced reason why.
         </p>
       </div>

@@ -128,7 +128,10 @@ const EXTRA_LABELS: Record<string, string> = {
   // engine key with its underscores swapped for spaces -- "adversarial decisive". That is the
   // fourth largest cause of death on the site (142 kills), so the machine's own identifier was
   // being rendered to buyers on the biggest chart the page draws.
-  adversarial_decisive: 'It did not survive the second round of checks',
+  // SHORT ENOUGH TO BE A CHIP. "It did not survive the second round of checks" measured 374px
+  // wide in the dark filter strip on a 390px phone, which put the chip past the right edge of
+  // the viewport. Shortened rather than clipped or scrolled (A4).
+  adversarial_decisive: 'It failed the second round of checks',
 };
 
 /*
@@ -211,7 +214,7 @@ export function buildKillIndex(): KillIndex {
   const summaries: KillSummary[] = entries.map((entry, i) => ({
     slug: slugList[i],
     title: entry.title,
-    gateLabel: entry.gateLabel,
+    gateLabel: EXTRA_LABELS[entry.gate] ?? entry.gateLabel,
     date: entry.date,
     sources: entry.citations.length,
     // `plainEnglish` FIRST, then cut. The other way round, a translation that lengthens a phrase
@@ -254,7 +257,7 @@ export function buildKillIndex(): KillIndex {
   const byGate = (killLog.totals as { byGate: Record<string, number> }).byGate;
   const labelFor: Record<string, string> = { ...EXTRA_LABELS };
   entries.forEach((r) => {
-    labelFor[r.gate] = r.gateLabel;
+    labelFor[r.gate] = EXTRA_LABELS[r.gate] ?? r.gateLabel;
   });
   const published = new Set(entries.map((r) => r.gate));
   // Grouped by label, same reason as `gateCounts`: built straight from `Object.entries(byGate)`

@@ -43,7 +43,34 @@
 set -euo pipefail
 
 : "${GITHUB_REPO:?set GITHUB_REPO=owner/repo}"
-: "${GITHUB_RUNNER_PAT:?set GITHUB_RUNNER_PAT - a PAT with Administration: read+write on the repo}"
+# TWO WAYS TO HOLD A CREDENTIAL, and the second one is why this is not a single :? check.
+#
+# GITHUB_RUNNER_PAT is a fine-grained PAT with Administration: read+write. It lets the container
+# mint a fresh registration token before every job, which is what --ephemeral requires: an
+# ephemeral registration is single-use, so the next pass has to register again.
+#
+# RUNNER_TOKEN is a REGISTRATION token. It expires in an hour, and anything that can already
+# administer the repo can mint one, including `gh`. A container holding only this registers ONCE,
+# keeps its .credentials, and long-polls with them for the life of the machine.
+#
+# The second mode exists because GitHub has no API that CREATES a fine-grained PAT - only a
+# signed-in human at the web form can. Standing a fleet up for a NEW repository therefore either
+# waits for a person, or uses the credential that can be minted without one. It is also the
+# SMALLER credential: the container ends up able to be one runner on one repository, and unable
+# to add or remove runners at all. What it gives up is the per-job re-registration; the workspace
+# wipe at the bottom of the loop, which is what actually stops one job inheriting another, still
+# runs on every pass.
+if [ -z "${GITHUB_RUNNER_PAT:-}" ] && [ -z "${RUNNER_TOKEN:-}" ]; then
+  echo "set GITHUB_RUNNER_PAT (Administration: read+write) or RUNNER_TOKEN (a registration token)" >&2
+  exit 1
+fi
+if [ -n "${GITHUB_RUNNER_PAT:-}" ]; then
+  EPHEMERAL=1; EPHEMERAL_ARG="--ephemeral"; RUN_ARG=""
+else
+  # --once, so run.sh returns after one job and the loop can wipe the workspace. Without it a
+  # persistent runner never leaves run.sh and the wipe never happens.
+  EPHEMERAL=0; EPHEMERAL_ARG=""; RUN_ARG="--once"
+fi
 
 # The name has to be unique across the fleet and stable across restarts of the SAME machine,
 # so a crashed runner reclaims its own registration instead of leaving a dead one behind.
@@ -70,6 +97,9 @@ REG_REMOVED=0
 cleanup() {
   [ "$REG_REMOVED" = 1 ] && return 0
   REG_REMOVED=1
+  # A token-only runner holds no credential that can ask for a remove-token, and must not try:
+  # its registration is meant to outlive this process, not be tidied away after one job.
+  [ "$EPHEMERAL" = 1 ] || return 0
   local rm_token
   rm_token="$(api POST remove-token | jq -r .token 2>/dev/null || true)"
   [ -n "$rm_token" ] && [ "$rm_token" != null ] \
@@ -80,25 +110,54 @@ trap cleanup EXIT INT TERM
 while true; do
   REG_REMOVED=0
 
-  echo "[runner] asking ${GITHUB_REPO} for a registration token"
-  REG_TOKEN="$(api POST registration-token | jq -r .token)"
-  [ -n "$REG_TOKEN" ] && [ "$REG_TOKEN" != null ] || {
-    echo "[runner] no registration token - is GITHUB_RUNNER_PAT scoped to Administration: read+write on ${GITHUB_REPO}?" >&2
-    exit 1
-  }
+  if [ "$EPHEMERAL" = 1 ]; then
+    echo "[runner] asking ${GITHUB_REPO} for a registration token"
+    REG_TOKEN="$(api POST registration-token | jq -r .token)"
+    if [ -z "$REG_TOKEN" ] || [ "$REG_TOKEN" = null ]; then
+      # A PAT EXPIRES, AND CI GOES DARK QUIETLY. This used to `exit 1`: the container restarted,
+      # failed the same call, restarted again, and every job in both repositories queued forever
+      # with nothing on any screen saying why. A fine-grained PAT's maximum life is a year and
+      # the fleet's is 90 days, so this is a scheduled outage, not a hypothetical.
+      #
+      # If this runner has registered before, .runner and .credentials are still on disk. Carry
+      # on with that registration, non-ephemerally, and say so loudly. The wipe below is what
+      # actually isolates one job from the next, and it still runs.
+      #
+      # HOW FAR THIS GETS YOU, honestly: an --ephemeral registration is single-use, so if this
+      # container has already run a job its registration is gone GitHub-side and run.sh will not
+      # connect. The container then idles and retries rather than exiting, which is the same
+      # outcome as before but visible. A fleet that must survive PAT expiry outright should run
+      # the RUNNER_TOKEN mode above, where the registration is not consumed by a job at all.
+      if [ -f .runner ]; then
+        echo "[runner] WARNING: ${GITHUB_REPO} refused a registration token - the PAT is expired or unscoped." >&2
+        echo "[runner] WARNING: running on the EXISTING registration instead. Renew GITHUB_RUNNER_PAT." >&2
+        EPHEMERAL=0; EPHEMERAL_ARG=""; RUN_ARG="--once"
+        REG_TOKEN=""
+      else
+        echo "[runner] no registration token and no prior registration - is GITHUB_RUNNER_PAT scoped to Administration: read+write on ${GITHUB_REPO}?" >&2
+        exit 1
+      fi
+    fi
+  else
+    REG_TOKEN="$RUNNER_TOKEN"
+  fi
 
-  echo "[runner] registering as ${RUNNER_NAME} with labels ${RUNNER_LABELS}"
-  ./config.sh \
-    --url "https://github.com/${GITHUB_REPO}" \
-    --token "$REG_TOKEN" \
-    --name "$RUNNER_NAME" \
-    --labels "$RUNNER_LABELS" \
-    --runnergroup "$RUNNER_GROUP" \
-    --work /home/runner/_work \
-    --ephemeral \
-    --disableupdate \
-    --unattended \
-    --replace
+  # config.sh writes .runner. A token-only runner registers on its first pass and finds that file
+  # on every pass after it, so RUNNER_TOKEN - which expired an hour in - is never used twice.
+  if [ "$EPHEMERAL" = 1 ] || [ ! -f .runner ]; then
+    echo "[runner] registering as ${RUNNER_NAME} with labels ${RUNNER_LABELS}"
+    ./config.sh \
+      --url "https://github.com/${GITHUB_REPO}" \
+      --token "$REG_TOKEN" \
+      --name "$RUNNER_NAME" \
+      --labels "$RUNNER_LABELS" \
+      --runnergroup "$RUNNER_GROUP" \
+      --work /home/runner/_work \
+      ${EPHEMERAL_ARG} \
+      --disableupdate \
+      --unattended \
+      --replace
+  fi
 
 # --disableupdate because the runner's in-place self-update does not survive here. GitHub told
 # 2.328.0 to update to 2.336.0 on first contact; the update rewrote bin/ and the relaunch died
@@ -120,7 +179,7 @@ while true; do
   # `|| true` because an --ephemeral runner returns non-zero on some job outcomes and `set -e`
   # would end the fleet over one failed build. A failed JOB is CI's business; only a failure to
   # register is this script's business, and that still exits above.
-  ./run.sh || true
+  ./run.sh ${RUN_ARG} || true
 
   # The isolation the ephemeral design bought, kept without a reboot. A job leaves node_modules,
   # a .venv, dotnet obj/ and a half-written store/ behind, and "green on runner 2, red on runner

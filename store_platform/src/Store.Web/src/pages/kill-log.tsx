@@ -8,7 +8,7 @@ import { CauseGrid } from '@/components/marketing/CauseGrid';
 import { WaitlistCallout } from '@/components/waitlist/WaitlistCallout';
 import { tightDecimal } from '@/components/ui/Money';
 import { RESEARCH_STATS } from '@/lib/stats';
-// Types only in the client bundle; `buildKillIndex` is referenced solely inside `getStaticProps`,
+// Types only in the client bundle; `buildKillIndex` is referenced solely inside `getServerSideProps`,
 // which Next removes from the page's client JS along with everything only it imports. That is what
 // keeps `data/kill-log.json` (456 KB) out of the browser -- see `lib/killLog.server.ts`.
 import {
@@ -20,7 +20,7 @@ import {
 } from '@/lib/killLog.server';
 import { fetchCatalogStats, fetchKillLogDetail } from '@/lib/api/client';
 import { track } from '@/lib/analytics';
-import type { GetStaticProps } from 'next';
+import type { GetServerSideProps } from 'next';
 
 /*
   The rejects, published, AS AN INSTRUMENT.
@@ -240,7 +240,7 @@ export default function KillLogPage({
           centred 62ch paragraph over a centred stat row gives the reader three different left
           edges to find in the first screen of a page that is otherwise a table. */}
       {/* TWO COLUMNS ON DESKTOP (2026-08-16, founder: "right first row/ish empty no content, looks
-          odd on desktop"). Same diagnosis as /collections and /how-it-works -- a 3xl measure inside a 6xl
+          odd on desktop"). Same diagnosis as /ideas and /how-it-works -- a 3xl measure inside a 6xl
           band leaves about 24rem of nothing to the right of the headline, and only above `lg`,
           which is why the report was desktop-only. This page does not use `PageHero`, so it takes
           the same grid by hand rather than adopting the component: the hero here is four blocks in
@@ -499,31 +499,36 @@ export default function KillLogPage({
             placeholder="Search kills by title, description, or reason…"
             className="mb-4"
           />
-          {/* THE DRAWING'S `.chips` RAIL (`mockups/kill-log.html`, `.chips{display:flex;gap:8px;
-              flex-wrap:wrap;margin:18px 0}` and `.chip[aria-pressed=true]` for the selected one).
-              The gap and the selected state were Tailwind utilities holding the same numbers. */}
-          <div className="chips">
-            <button
-              type="button"
-              onClick={() => setActive(null)}
-              aria-pressed={active === null}
-              className="chip"
-            >
-              {/* "All 400" directly under a headline saying 1,330 read as a contradiction. It is
-                  all of what is PUBLISHED, and the chip now says which. */}
-              All {publishedKills} published
-            </button>
-            {gates.map((label) => (
+          {/* THE DARK FILTER STRIP (`mumchimp.css:252-258`). These were pale `.chip` pills on
+              paper, which read as the same control as the Sort row below them and disappeared
+              into the page on a phone. The strip is `.strip.filterstrip > .strip-in`, it sticks
+              to the top of the viewport while the table scrolls, and its own `overflow-x:auto`
+              is what lets a long gate list scroll instead of widening the page. The count is a
+              `.n` inside the chip, not part of its label. */}
+          <div className="strip filterstrip">
+            <div className="strip-in flex-wrap">
               <button
-                key={label}
                 type="button"
-                onClick={() => setActive(label === active ? null : label)}
-                aria-pressed={label === active}
-                className="chip"
+                onClick={() => setActive(null)}
+                aria-pressed={active === null}
+                className="dchip"
               >
-                {label} {gateCounts[label]}
+                {/* "All 400" directly under a headline saying 1,330 read as a contradiction. It is
+                    all of what is PUBLISHED, and the chip now says which. */}
+                All published <span className="n num">{publishedKills}</span>
               </button>
-            ))}
+              {gates.map((label) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => setActive(label === active ? null : label)}
+                  aria-pressed={label === active}
+                  className="dchip"
+                >
+                  {label} <span className="n num">{gateCounts[label]}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -595,7 +600,7 @@ export default function KillLogPage({
                   className="klrow scroll-mt-24 cursor-pointer"
                   onClick={() => toggle(entry.slug, entry.gateLabel)}
                 >
-                    <h4>
+                    <h3>
                       <button
                         type="button"
                         aria-expanded={isOpen}
@@ -609,13 +614,15 @@ export default function KillLogPage({
                         /* `.klrow h4` owns the size, weight and leading. The mono/caption/muted
                            utilities that used to set them here are removed rather than layered:
                            mumchimp.css sits in `layer(components)` (globals.css:8), under the
-                           utilities, so leaving one in place makes the class inert. The
-                           strike-through stays -- it is what says "this one is dead". */
-                        className="text-left line-through decoration-kill/60"
+                           utilities, so leaving one in place makes the class inert. NO
+                           STRIKE-THROUGH: it is not in the drawing, it reads as a price
+                           correction rather than a verdict, and the row already says the idea
+                           was killed and on which gate. */
+                        className="text-left"
                       >
                         {entry.title}
                       </button>
-                    </h4>
+                    </h3>
                       {/* THE ARGUMENT IS THE ROW (MASTER-BRIEF §7). Before this, a row carried a
                           title and a cause label, and the reasoning was behind a click. That makes
                           400 rows of assertion: the reader is told an idea failed on incumbency and
@@ -799,24 +806,29 @@ export default function KillLogPage({
  * again. This page previously printed the survivor count as if it were the shelf, which is the
  * same class of error with a bigger gap. Reading the catalogue is what the homepage already does.
  *
- * ISR, not `getServerSideProps` (measured 2026-08-14): this function has no per-request input at
- * all -- no `context` param, nothing from cookies/query/headers -- so every visitor was paying a
- * live round trip to the API for a single integer no visitor-specific fact depends on. 300s
- * revalidate means the count is at most 5 minutes stale after a publish, which is a fair trade
- * for turning every hit but one per window into a cache read. `fetchCatalogStats` (GET
- * /catalog/stats) replaces `fetchCatalog` for the same reason `pages/index.tsx` does not use it
- * here: this page only ever needed the COUNT, never the 59 packs' worth of fields the full
- * catalogue carries.
+ * REQUEST TIME, NOT ISR. The 2026-08-14 note that stood here argued the opposite: no `context`
+ * param, nothing from cookies or headers, so a 300s window was a fair trade for a single integer.
+ * It read the first paragraph above and then broke it. "At most 5 minutes stale" IS drift, and
+ * this page prints that integer twice, at line 322 and in the closing call to action.
  *
- * Best-effort by design: a catalogue outage must not fail the build/revalidate for the page whose
- * subject is our own honesty. On failure `listed` is null and every surface that would name a
- * number omits it.
+ * Measured 2026-08-19: `/pricing` carried the identical ISR rationale and `verify.mjs` C1 caught
+ * it saying 75 packs while `/` and `/ideas` read 76 from the same catalogue, minutes after a
+ * clean build. C1 did not catch this page only because its wording puts no "packs" immediately
+ * after the number, so the check's regex missed a defect that was there.
+ *
+ * `fetchCatalogStats` (GET /catalog/stats) is still the right call rather than `fetchCatalog`:
+ * this page needs the COUNT, never the packs' worth of fields the full catalogue carries. That
+ * part of the old note holds, and it is what keeps the per-request cost to one small round trip.
+ *
+ * Best-effort by design: a catalogue outage must not fail the render for the page whose subject
+ * is our own honesty. On failure `listed` is null and every surface that would name a number
+ * omits it.
  */
-export const getStaticProps: GetStaticProps<Props> = async () => {
+export const getServerSideProps: GetServerSideProps<Props> = async () => {
   const stats = await fetchCatalogStats();
   // The corpus is read HERE and nowhere a component can see, which is what keeps 456 KB of JSON
   // out of the browser. What crosses is the summary of each kill (~50 KB, and all 400 rows stay in
   // the HTML because each one is a deep-link anchor); the arguments are fetched on demand from
   // /api/kill-log-detail.
-  return { props: { listed: stats?.listed ?? null, ...buildKillIndex() }, revalidate: 300 };
+  return { props: { listed: stats?.listed ?? null, ...buildKillIndex() } };
 };

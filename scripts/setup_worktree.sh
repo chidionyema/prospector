@@ -157,7 +157,32 @@ for REL in store/dossiers store/listings store/runs store/golden_runs; do
   fi
 done
 
-# ------------------------------------------------------------------- 6. the warnings
+# ------------------------------------------------------------------- 5b. the push fences
+# One hooks directory serves every worktree (it lives in the common git dir), so this installs
+# once and covers all of them. The shim resolves the CALLING tree's own .githooks/pre-push, so a
+# new tree never runs an old tree's fences.
+#
+# It is a file in .git/hooks rather than `core.hooksPath=.githooks`, deliberately: hooksPath
+# replaces the directory outright, which would make the graphify post-commit and post-checkout
+# hooks inert without a word.
+hooks_dir="$(git rev-parse --path-format=absolute --git-path hooks)"
+mkdir -p "$hooks_dir"
+cat > "$hooks_dir/pre-push" <<'HOOK'
+#!/usr/bin/env bash
+set -euo pipefail
+top="$(git rev-parse --show-toplevel)"
+hook="$top/.githooks/pre-push"
+if [ ! -x "$hook" ]; then
+  echo "pre-push: $hook missing or not executable; refusing rather than skipping."
+  [ "${ALLOW_BRANCH_RECREATE:-}" = "1" ] || exit 1
+  exit 0
+fi
+exec "$hook" "$@"
+HOOK
+chmod +x "$hooks_dir/pre-push"
+echo "[hooks] pre-push installed at $hooks_dir/pre-push (per-tree, shared by every worktree)"
+
+---------------------------------------------------------------- 6. the warnings
 cat <<'NOTE'
 
 [note] Things this script deliberately does NOT do, because they are not fixable here:

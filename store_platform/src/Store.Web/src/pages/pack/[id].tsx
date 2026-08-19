@@ -694,7 +694,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
           // "Mumchimp › Business ideas › <pack>" instead of a 16-hex-character id.
           breadcrumbNode([
             { name: 'Mumchimp', path: '/' },
-            { name: 'Business ideas', path: '/collections' },
+            { name: 'Business ideas', path: '/ideas' },
             { name: pack.title, path: `/pack/${pack.id}` },
           ]),
         )}
@@ -719,7 +719,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                not consciously register the spelling -- they register that the site was assembled
                by more than one hand, on the page where they are about to enter a card number. */
             { href: '/', label: 'Catalogue' },
-            { href: '/collections', label: 'Browse by category' },
+            { href: '/ideas', label: 'Browse by category' },
             // Was `{ href: '#', label: pack.title }`. The title was rendered three times inside
             // the fold (breadcrumb, cover caption, h1) on a page where titles run past 100
             // characters, so the trail was competing with the headline instead of locating it.
@@ -1038,7 +1038,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                 {RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas went through the filter
                 and {RESEARCH_STATS.rejectRateLabel} of them died on cited evidence.{' '}
                 <Link
-                  href="/kill-log"
+                  href="/kill-log" prefetch={false}
                   className={textLinkClass()}
                 >
                   Read what killed them
@@ -1191,7 +1191,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                     <div key={check} className="checkrow">
                       <span className="i num">{String(i + 1).padStart(2, '0')}</span>
                       <div className="min-w-0">
-                        <h5>{check}</h5>
+                        <h3>{check}</h3>
                       </div>
                     </div>
                   ))}
@@ -1438,7 +1438,7 @@ function PackPageContent({ pack, similar, currency }: { pack: PackDetails; simil
                     <div key={i} className="docitem">
                       <span className="i num">{String(i + 1).padStart(2, '0')}</span>
                       <div className="min-w-0">
-                        <h5>{item}</h5>
+                        <h3>{item}</h3>
                       </div>
                     </div>
                   ))}

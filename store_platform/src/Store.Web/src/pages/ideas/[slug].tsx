@@ -63,14 +63,14 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
   } catch (error) {
     // MEASURED, 2026-08-01: `res.statusCode = 503` together with `return { notFound: true }` does
     // NOT serve a 503, Next overrides it and the response is a 404. The server log showed
-    // "/collections/b2b-business-ideas: catalog fetch failed" on a request curl recorded as 404.
+    // "/ideas/b2b-business-ideas: catalog fetch failed" on a request curl recorded as 404.
     //
     // That is the difference between "come back later" and "this page is gone", and Google acts
     // on the difference: a 404 on a live landing page is grounds for dropping it from the index,
     // so a two-second API blip would cost the page its ranking. Serve a real 503 with a holding
     // body instead. `noindex` on top, because a crawler that ignores the status must not record
     // an empty category page either.
-    console.error(`/collections/${landing.slug}: catalog fetch failed:`, error);
+    console.error(`/ideas/${landing.slug}: catalog fetch failed:`, error);
     res.statusCode = 503;
     res.setHeader('Retry-After', '120');
     return { props: { landing, packs: [], siblings: [], unavailable: true, variant } };
@@ -98,7 +98,7 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
       <MarketingLayout
         breadcrumbs={[
           { href: '/', label: 'Catalogue' },
-          { href: '/collections', label: 'Categories' },
+          { href: '/ideas', label: 'Categories' },
           { href: '#', label: landing.h1 },
         ]}
         breadcrumbsWidth="7xl"
@@ -116,7 +116,7 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
               Browse every pack
             </Link>{' '}
             or{' '}
-            <Link href="/collections" className={textLinkClass('font-medium')}>
+            <Link href="/ideas" className={textLinkClass('font-medium')}>
               see the other categories
             </Link>
             .
@@ -130,7 +130,7 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
     <MarketingLayout
       breadcrumbs={[
         { href: '/', label: 'Catalogue' },
-        { href: '/collections', label: 'Categories' },
+        { href: '/ideas', label: 'Categories' },
         { href: '#', label: landingH1(landing.slug, variant) },
       ]}
       breadcrumbsWidth="7xl"
@@ -145,8 +145,8 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
           ),
           breadcrumbNode([
             { name: 'Mumchimp', path: '/' },
-            { name: 'Business ideas', path: '/collections' },
-            { name: landing.h1, path: `/collections/${landing.slug}` },
+            { name: 'Business ideas', path: '/ideas' },
+            { name: landing.h1, path: `/ideas/${landing.slug}` },
           ]),
         )}
       />
@@ -173,7 +173,7 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
             How the checks work
           </Link>
           , and the{' '}
-          <Link href="/kill-log" className={textLinkClass('font-medium')}>
+          <Link href="/kill-log" prefetch={false} className={textLinkClass('font-medium')}>
             kill log
           </Link>{' '}
           lists what it killed.
@@ -188,7 +188,7 @@ export default function IdeasLanding({ landing, packs, siblings, unavailable, va
               {siblings.map((sibling) => (
                 <li key={sibling.slug}>
                   <Link
-                    href={`/collections/${sibling.slug}`}
+                    href={`/ideas/${sibling.slug}`}
                     className="inline-flex items-center gap-2 rounded-sm border border-border px-4 py-3 text-meta font-semibold text-text transition-colors hover:border-text/30 hover:bg-bg"
                   >
                     {sibling.h1}

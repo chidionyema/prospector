@@ -105,7 +105,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
       },
     };
   } catch (error) {
-    console.error('/collections: catalog fetch failed:', error);
+    console.error('/ideas: catalog fetch failed:', error);
     return { props: { total: 0, categories: [], variant } };
   }
 };
@@ -133,7 +133,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
 
   return (
     <MarketingLayout
-      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Good for' }]}
+      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Categories' }]}
       breadcrumbsWidth="7xl"
     >
       <Seo
@@ -141,12 +141,12 @@ export default function IdeasHub({ categories, total, variant }: Props) {
         description="Browse researched business ideas by industry. Every pack cites a source for every claim."
         jsonLd={graph(
           itemListNode(
-            categories.map((c) => ({ name: c.h1, path: `/collections/${c.slug}` })),
+            categories.map((c) => ({ name: c.h1, path: `/ideas/${c.slug}` })),
             'Business idea categories',
           ),
           breadcrumbNode([
             { name: 'Mumchimp', path: '/' },
-            { name: 'Business ideas', path: '/collections' },
+            { name: 'Business ideas', path: '/ideas' },
           ]),
         )}
       />
@@ -160,9 +160,9 @@ export default function IdeasHub({ categories, total, variant }: Props) {
        * heading described one sixth of what was under it.
        *
        * It also left the site calling this one destination three things at once: the nav item says
-       * "Categories", the pack breadcrumb says "Browse by category", the URL says `/collections`, and the
-       * h1 said "ideas by industry". The URL is the one that cannot move cheaply -- `/collections` and
-       * all fourteen `/collections/<slug>` pages are emitted into the sitemap (`sitemap.xml.tsx:26,110`)
+       * "Categories", the pack breadcrumb says "Browse by category", the URL says `/ideas`, and the
+       * h1 said "ideas by industry". The URL is the one that cannot move cheaply -- `/ideas` and
+       * all fourteen `/ideas/<slug>` pages are emitted into the sitemap (`sitemap.xml.tsx:26,110`)
        * and are built to rank for "business ideas" -- so the fix is the words, and the h1 now
        * carries BOTH nouns: the search phrase the URL targets, and the one the chrome uses.
        *
@@ -172,7 +172,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
        */}
       <PageHero
         width="7xl"
-        eyebrow="Good for"
+        eyebrow="Categories"
         title="Find one that suits how you work."
         /*
          * THE WORDS ARE THE FOUNDER'S AND THEY STAY (2026-08-15), and this is the promised fix.
@@ -192,7 +192,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
          */
         lead={
           total > 0
-            ? `${total} researched packs, sorted six ways.`
+            ? `${total} packs, researched and sorted six ways.`
             : 'Researched packs, sorted six ways.'
         }
         aside={
@@ -236,16 +236,19 @@ export default function IdeasHub({ categories, total, variant }: Props) {
          * description and price range that used to force a second list. What US-7 asked for is
          * all still here -- see the component's own note -- and the duplicate is gone.
          */}
-        {/* "All categories", VISIBLE ONLY WHILE SEARCHING (2026-08-14).
-            Unsearched, this rendered the words "All categories" directly under a page titled
-            "Business ideas, by category." and directly above a caption reading "Who pays for it" --
-            a heading that told a visitor nothing the two lines either side of it had not already
-            said, in the last 40px before the fold. Under a query it earns its place, because
-            `12 matching categories` is a count that changes and cannot be got anywhere else.
+        {/* "All categories" -- VISIBLE AGAIN IN BOTH STATES (2026-08-19).
+            On 2026-08-14 this heading was hidden unless a search was typed, because unsearched it
+            said nothing the page title above it and the caption below it had not already said.
+            Hiding it meant rendering `<h2 aria-label="All categories" />`, an element with no text.
+            Two checks refuse that, and neither may be weakened: `jsx-a11y/heading-has-content`
+            fails the build on an empty heading, and the browser suite's C5 fails on `sr-only`,
+            which parks a 104px-wide word inside a 1px box (`H2.sr-only: 104>1`).
 
-            It stays in the accessibility tree either way. The list's groups are `h3`s, so dropping
-            the element outright would leave the page jumping h1 to h3, and a screen-reader user
-            navigating by heading would meet "Who pays for it" with nothing saying what it groups. */}
+            The element cannot be dropped either. The list's groups are `h3`s, so the page would
+            jump h1 to h3, and a screen-reader user navigating by heading would meet "Who pays for
+            it" with nothing saying what it groups. Visible in both states is the only version that
+            passes lint, C3 and C5 at once. Under a query it still prints the count, because
+            `12 matching categories` is the one number that changes. */}
         {/*
          * THE MOSAIC IS BACK, AND IT IS NOT THE ONE THAT WAS REMOVED (MASTER-BRIEF section 7).
          *
@@ -297,9 +300,13 @@ export default function IdeasHub({ categories, total, variant }: Props) {
         )}
 
         {filtered.length > 0 && (
-          <h2 className={search ? 'mb-4 text-meta font-semibold text-text' : 'sr-only'}>
-            {search ? `${filtered.length} matching categor${filtered.length === 1 ? 'y' : 'ies'}` : 'All categories'}
-          </h2>
+          search ? (
+            <h2 className="mb-4 text-meta font-semibold text-text">
+              {`${filtered.length} matching categor${filtered.length === 1 ? 'y' : 'ies'}`}
+            </h2>
+          ) : (
+            <h2 className="mb-4 text-meta font-semibold text-text">All categories</h2>
+          )
         )}
 
         {/*
@@ -333,7 +340,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
         {filtered.length > 0 ? (
           <CategoryGraph
             grouped={!search}
-            filterPath={(slug) => `/collections/${slug}`}
+            filterPath={(slug) => `/ideas/${slug}`}
             categories={
               filtered.map((cat) => ({
                 kind: cat.slug,
@@ -402,7 +409,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
         <div className="closing">
           <p>
             Categories appear once enough packs have cleared the checks to fill them. Ideas that failed are in the{' '}
-            <Link href="/kill-log" className={textLinkClass('font-medium')}>
+            <Link href="/kill-log" prefetch={false} className={textLinkClass('font-medium')}>
               kill log
             </Link>{' '}
             with the sourced reason why.

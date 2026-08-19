@@ -5,7 +5,7 @@ import { type Pack } from '@/lib/api/client';
 import { PackRowList } from './PackRow';
 
 /**
- * The pack list on the `/collections/*` landing pages.
+ * The pack list on the `/ideas/*` landing pages.
  *
  * ONE FORMAT SITEWIDE (2026-08-15, founder's mobile brief). This was a `minmax(300px, 1fr)` grid
  * of `DossierCard`s, a card format that existed only here and on the pack page. Its own docblock

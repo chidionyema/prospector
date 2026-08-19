@@ -7,20 +7,8 @@ import { buttonClasses, chipClasses, Icon, SearchInput, textLinkClass } from '@/
 import { cx } from '@/components/ui/cx';
 import { LEGAL } from '@/lib/config';
 import { FAQS, isLink, plainAnswer, type FaqItem } from '@/lib/faqContent';
-import { track } from '@/lib/analytics';
 import { breadcrumbNode, faqPageNode, graph } from '@/lib/seo/schema';
 import { SITE_COPY } from '@/lib/siteCopy';
-
-/**
- * A stable key for one question, for the helpfulness beacon.
- *
- * The question TEXT, not its position. The list is ordered by purchase blocker and that order has
- * already changed once; keyed by index, every vote recorded before a reorder would silently start
- * describing whichever question moved into that slot.
- */
-function questionSlug(question: string): string {
-  return question.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48);
-}
 
 /** One answer's segments as prose. */
 function Answer({ item }: { item: FaqItem }) {
@@ -57,7 +45,6 @@ function AccordionItem({
   defaultOpen: boolean;
 }) {
   const [open, setOpen] = React.useState(defaultOpen);
-  const [feedback, setFeedback] = React.useState<'up' | 'down' | null>(null);
 
   return (
     /* The row draws only its own bottom rule; the LIST draws the box. Both used to: every item
@@ -103,44 +90,6 @@ function AccordionItem({
           <div className="max-w-[66ch] text-body leading-relaxed text-muted">
             <Answer item={item} />
           </div>
-          {/*
-            Was this helpful? Two words, not two emoji.
-            `pricing.tsx` already stated the rule when it stopped rendering the pack-contents
-            emoji: each one is a different vendor's artwork per OS, and it is the loudest thing on
-            a page about a professional research product. A thumbs-up next to a paragraph about the
-            refund policy is exactly that. Words also give the control a visible label rather than
-            an `aria-label` that only a screen reader ever hears.
-
-            IT NOW REPORTS. Until 2026-08-18 the click set a piece of React state that nothing read
-            and nothing sent, so the page carried 26 buttons that collected a vote we then threw
-            away on the next navigation. The founder wants the control, so the fix is to make it
-            true rather than to remove it: each vote fires the first-party beacon under
-            `faq_helpful`, keyed by a SLUG of the question rather than its index, because step 7
-            reordered this list and an index would have re-pointed every historic vote at a
-            different question.
-
-            The beacon fires only when a vote is CAST. Clicking the same answer again clears the
-            choice, and an un-vote sends nothing: there is no "retract" event, and re-firing the
-            same name on the way out would count the vote twice.
-          */}
-          <div className="mt-4 flex items-center gap-2 border-t border-border pt-3">
-            <span className="text-caption text-muted">Was this helpful?</span>
-            {(['up', 'down'] as const).map((choice) => (
-              <button
-                key={choice}
-                type="button"
-                onClick={() => {
-                  const next = feedback === choice ? null : choice;
-                  setFeedback(next);
-                  if (next) track('faq_helpful', `${questionSlug(item.question)}:${next}`);
-                }}
-                aria-pressed={feedback === choice}
-                className={chipClasses({ selected: feedback === choice })}
-              >
-                {choice === 'up' ? 'Yes' : 'No'}
-              </button>
-            ))}
-          </div>
         </div>
     </div>
   );
@@ -182,7 +131,7 @@ export default function Faq() {
       />
 
       {/* `width="6xl"`, not the default 4xl. FAQ was the only content page on the site left on
-          the 896px column: how-it-works/kill-log/pack-detail run 1152px (6xl), home/sample/collections
+          the 896px column: how-it-works/kill-log/pack-detail run 1152px (6xl), home/sample/ideas
           run 1280px (7xl). At any desktop width the 896px column sits centred with a visibly
           wide empty gutter on both sides while every other page's wider column reads as starting
           near the true left edge -- that gap, not a text-align rule, is what read as "FAQ is

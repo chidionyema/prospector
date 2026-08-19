@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { LANDINGS } from '@/lib/seo/landings';
 
 /**
- * `/ideas` BECAME `/collections`, AND THE OLD URLS STILL WORK (MASTER-BRIEF §7).
+ * `/collections` IS BACK TO `/ideas`, AND THE OLD URLS STILL WORK.
  *
  * A rename done with a find-and-replace is right up until it is not, and the two ways it goes
  * wrong are both silent. An internal link left on the old path 404s a reader who is already on the
@@ -51,9 +51,9 @@ describe('the collections rename', () => {
   });
 
   it('moved the pages', () => {
-    expect(existsSync(join(SRC, 'pages', 'collections', 'index.tsx'))).toBe(true);
-    expect(existsSync(join(SRC, 'pages', 'collections', '[slug].tsx'))).toBe(true);
-    expect(existsSync(join(SRC, 'pages', 'ideas'))).toBe(false);
+    expect(existsSync(join(SRC, 'pages', 'ideas', 'index.tsx'))).toBe(true);
+    expect(existsSync(join(SRC, 'pages', 'ideas', '[slug].tsx'))).toBe(true);
+    expect(existsSync(join(SRC, 'pages', 'collections'))).toBe(false);
   });
 
   it('leaves no live link on the old path', () => {
@@ -65,35 +65,31 @@ describe('the collections rename', () => {
       '__tests__/collectionsRename.test.ts',
     ]);
     const offenders = FILES.filter(({ rel }) => !NAMES_IT_ON_PURPOSE.has(rel))
-      .filter(({ src }) => /['"`(]\/ideas\b/.test(codeOnly(src)))
+      .filter(({ src }) => /['"`(]\/collections\b/.test(codeOnly(src)))
       .map(({ rel }) => rel);
-    expect(offenders, 'these still point at /ideas').toEqual([]);
+    expect(offenders, 'these still point at /collections').toEqual([]);
   });
 
   it('redirects both old URLs permanently, slug rule first', () => {
-    const slug = NEXT_CONFIG.indexOf('source: "/ideas/:slug"');
-    const index = NEXT_CONFIG.indexOf('source: "/ideas"');
-    expect(slug, 'the /ideas/:slug redirect is missing').toBeGreaterThan(-1);
-    expect(index, 'the /ideas redirect is missing').toBeGreaterThan(-1);
-    // Next.js takes the FIRST match. Reversed, `/ideas/evenings` would be tested against the
-    // index rule before the slug rule and land on `/collections` with the slug thrown away.
+    const slug = NEXT_CONFIG.indexOf('source: "/collections/:slug"');
+    const index = NEXT_CONFIG.indexOf('source: "/collections"');
+    expect(slug, 'the /collections/:slug redirect is missing').toBeGreaterThan(-1);
+    expect(index, 'the /collections redirect is missing').toBeGreaterThan(-1);
+    // Next.js takes the FIRST match. Reversed, `/collections/evenings` would be tested against
+    // the index rule before the slug rule and land on `/collections` with the slug thrown away.
     expect(slug, 'the slug rule must come first or every landing loses its slug').toBeLessThan(index);
     expect(NEXT_CONFIG.slice(slug, slug + 140)).toContain('permanent: true');
     expect(NEXT_CONFIG.slice(index, index + 120)).toContain('permanent: true');
   });
 
-  it('calls the destination "Good for" in the chrome', () => {
-    // THE LABEL MOVED AGAIN, AND THE WORD IS THE FOUNDER'S (2026-08-18, Plain English sweep).
-    // "Collections" was on the founder's own ban list -- a word introduced by us that no reader
-    // would say to a friend. The nav now reads "Good for" and the page heading reads
-    // "Find one that suits how you work." The ROUTE is unchanged: renaming a path costs
-    // redirects and a sitemap entry, and the label is what a reader sees.
-    // The subject taxonomy keeps "Categories" on the individual landing pages, also the
-    // founder's call, so this only fences the top-level chrome.
+  it('calls the destination "Categories" in the chrome', () => {
+    // REVERTED TO "Categories" -> /ideas (founder, 2026-08-18, fix list A12). "Good for" was live
+    // in the menu and is named there as a defect. The route reverts with the label, so the
+    // redirects above now run `/collections` -> `/ideas` rather than the other way.
     const layout = readFileSync(join(SRC, 'components/marketing/MarketingLayout.tsx'), 'utf8');
-    expect(codeOnly(layout)).not.toContain("label: 'Categories'");
+    expect(codeOnly(layout)).not.toContain("label: 'Good for'");
     expect(codeOnly(layout)).not.toContain("label: 'Collections'");
-    expect(layout).toContain("{ href: '/collections', label: 'Good for' }");
+    expect(layout).toContain("{ href: '/ideas', label: 'Categories' }");
   });
 });
 
@@ -133,8 +129,8 @@ describe('every collection has a written short name', () => {
 describe('the four signature graphics are on their pages', () => {
   const page = (rel: string) => readFileSync(join(SRC, 'pages', rel), 'utf8');
 
-  it('collections renders the mosaic, above the detailed list', () => {
-    const src = codeOnly(page('collections/index.tsx'));
+  it('ideas renders the mosaic, above the detailed list', () => {
+    const src = codeOnly(page('ideas/index.tsx'));
     expect(src).toContain('<CollectionMosaic');
     expect(src).toContain('name: cat.shortName');
     expect(src.indexOf('<CollectionMosaic')).toBeLessThan(src.indexOf('<CategoryGraph'));

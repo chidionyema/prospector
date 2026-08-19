@@ -41,7 +41,7 @@ export function TodayRibbon() {
   return (
     <div className="strip ribbon">
       <div className="strip-in">
-        <Link href="/kill-log">
+        <Link href="/kill-log" prefetch={false}>
           <span className="tag">{killTagLabel(latestKill.date)}</span>
           <span className="txt">{title}</span>
           <span className="go">Read the verdict {String.fromCharCode(8594)}</span>

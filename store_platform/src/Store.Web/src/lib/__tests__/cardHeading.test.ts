@@ -49,7 +49,7 @@ describe('cardHeading', () => {
   it('does not print the same string twice', () => {
     // A card line identical to the brand name must not render as both eyebrow and heading.
     // No `id`: `cardHeading` takes `CardHeadingInput` (title/headline/cardLine) rather than a
-    // whole `FacetedPack`, so the plain catalogue `Pack` on /collections cards can use it too.
+    // whole `FacetedPack`, so the plain catalogue `Pack` on /ideas cards can use it too.
     const same = cardHeading({ title: 'SailCert', cardLine: 'SailCert' });
     expect(same.heading).toBe('SailCert');
     expect(same.eyebrow).toBeNull();
