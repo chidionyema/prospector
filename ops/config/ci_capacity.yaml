@@ -85,7 +85,15 @@ pools:
     runners: 2
     ephemeral: 1
     variable: CI_HEAVY_RUNS_ON
-    label: heavy
+    # LABEL `fly`, NOT `heavy` OR `self-hosted`, SINCE 2026-08-19. mumchimp-mac-4 was online
+    # carrying `self-hosted`, the same label the Linux fleet carries, so GitHub scheduled
+    # Linux jobs onto macOS at random and they died in actions/setup-python. The error names
+    # the action, not the routing. `fly` is carried only by the prospector-ci machines
+    # (deploy/runner/fly.toml RUNNER_LABELS), so it names the fleet and nothing else. The
+    # repository variables CI_HEAVY_RUNS_ON, CI_LIGHT_RUNS_ON and CI_RUNS_ON were set to
+    # `fly` at 12:01 on 2026-08-19; this file has to agree or scripts/ci_capacity.py fails
+    # the guard job on every branch.
+    label: fly
     jobs: [python, engine, dotnet]
   # Short jobs: a checkout, a doc lint, a shell loop over already-computed results. They must
   # never wait behind a suite -- `ci-ok` queueing behind a 24-minute python job is what left runs
@@ -111,5 +119,6 @@ pools:
     runners: 2
     ephemeral: 1
     variable: CI_LIGHT_RUNS_ON
-    label: self-hosted
+    # Same fleet, same label, same reason as heavy above.
+    label: fly
     jobs: [changes, guard, ci-ok, nextjs, ops-console]
