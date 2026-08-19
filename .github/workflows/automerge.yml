@@ -62,9 +62,20 @@ jobs:
             const {owner, repo} = context.repo
             const sha = context.payload.workflow_run.head_sha
 
-            // The same paths deploy-engine.yml watches on push. Kept in step with that file:
+            // The same paths each deploy workflow watches on push. Kept in step with those files:
             // add a path there and not here and a merge that should deploy will not.
-            const DEPLOY = /^(prospector\/|scripts\/|deploy\/engine\/|store_platform\/src\/Ops\.Console\/|requirements\.txt$|config\.yaml$|\.github\/workflows\/deploy-engine\.yml$)/
+            //
+            // ALL THREE DEPLOYS BELONG HERE, NOT JUST THE ENGINE. Until 2026-08-19 only the engine
+            // was dispatched, so every web and API change this workflow merged reached main and
+            // stopped there. Measured that morning: PR #363 merged at 06:58 touching
+            // store_platform/src/Store.Web/**, and no deploy-web run existed for it. deploy-web had
+            // last run on a push at 2026-08-18T13:33. The storefront in production was a day behind
+            // main and nothing said so, because the merge was green and CI on main was green.
+            const DEPLOY = {
+              'deploy-engine.yml': /^(prospector\/|scripts\/|deploy\/engine\/|store_platform\/src\/Ops\.Console\/|requirements\.txt$|config\.yaml$|\.github\/workflows\/deploy-engine\.yml$)/,
+              'deploy-web.yml': /^(store_platform\/src\/Store\.Web\/|store_platform\/deploy\/fly\/web\.fly\.toml$|store_platform\/scripts\/deploy_web\.sh$|store_platform\/scripts\/predeploy_guard\.sh$|\.github\/workflows\/deploy-web\.yml$)/,
+              'deploy-api.yml': /^(store_platform\/src\/Store\.Api\/|store_platform\/src\/Store\.Catalog\/|store_platform\/deploy\/fly\/api\.fly\.toml$|\.github\/workflows\/deploy-api\.yml$)/,
+            }
             const HOLD = new Set(['hold', 'do-not-merge', 'wip'])
 
             // The PRs whose HEAD is the exact commit CI just passed. Matching on the sha, not
@@ -80,7 +91,8 @@ jobs:
               return
             }
 
-            let merged = false, deploy = false
+            let merged = false
+            const toDeploy = new Set()
             for (const pr of prs) {
               const labels = pr.labels.map(l => l.name)
               core.info(`PR #${pr.number}: draft=${pr.draft} base=${pr.base.ref} ` +
@@ -99,7 +111,9 @@ jobs:
                   {owner, repo, pull_number: pr.number, merge_method: 'squash', sha})
                 core.info(`  merged #${pr.number}`)
                 merged = true
-                if (files.some(f => DEPLOY.test(f.filename))) deploy = true
+                for (const [wf, re] of Object.entries(DEPLOY)) {
+                  if (files.some(f => re.test(f.filename))) toDeploy.add(wf)
+                }
                 try {
                   await github.rest.git.deleteRef(
                     {owner, repo, ref: `heads/${pr.head.ref}`})
@@ -118,11 +132,20 @@ jobs:
             core.info('dispatching CI on main')
             await github.rest.actions.createWorkflowDispatch(
               {owner, repo, workflow_id: 'ci.yml', ref: 'main'})
-            if (deploy) {
-              core.info('merged files touch the engine — dispatching the engine deploy')
+            if (toDeploy.size === 0) {
+              core.info('merged files touch nothing any deploy workflow watches — no deploy')
+              return
+            }
+            // deploy-web.yml takes a target as well as dry_run. Its own default is prod, but a
+            // dispatch that omits an input gets the workflow default, and relying on a default in
+            // another file is how a production deploy quietly becomes a test one. Pass it.
+            const INPUTS = {
+              'deploy-engine.yml': {dry_run: 'false'},
+              'deploy-web.yml': {target: 'prod', dry_run: 'false'},
+              'deploy-api.yml': {dry_run: 'false'},
+            }
+            for (const wf of toDeploy) {
+              core.info(`merged files touch what ${wf} watches — dispatching it`)
               await github.rest.actions.createWorkflowDispatch(
-                {owner, repo, workflow_id: 'deploy-engine.yml', ref: 'main',
-                 inputs: {dry_run: 'false'}})
-            } else {
-              core.info('merged files touch nothing deploy-engine.yml watches — no deploy')
+                {owner, repo, workflow_id: wf, ref: 'main', inputs: INPUTS[wf]})
             }
