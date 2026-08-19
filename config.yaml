@@ -139,6 +139,13 @@ model_fast: ""                   # cheap model for query-gen/prescreen; blank = 
                                  # own fast default (model_defaults.fast). Was deepseek-v4-flash.
 model_version_tag: ""            # filled at runtime for audit
 
+# MODEL PIN FOR THE CLAUDE FALLBACK. Founder directive 2026-08-19: both estates must fall back
+# to the CHEAPEST Claude, enforced and documented. Blank => prospector.claude_cli
+# CHEAPEST_CLAUDE_MODEL (claude-haiku-4-5-20251001). Never leave the claude CLI unpinned: it
+# then uses the machine's own Claude Code default, measured as `opus[1m]` on 2026-08-19.
+# `tests/test_claude_cli_model_pin.py` fails if either claude_cli construction site drops it.
+claude_cli_model: ""
+
 # Quality chain for the customer-facing £49 deliverable (build_spec / gtm_plan / ops_plan
 # and the storefront listing_page).
 # Falls back to the moat operator if none are available.
