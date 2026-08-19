@@ -108,3 +108,19 @@ def test_the_job_accepts_the_runs_it_dispatches_itself(source):
     `pull_request` alone would drop the very run this workflow started."""
     assert "workflow_run.event == 'workflow_dispatch'" in source, (
         "CI dispatched on an updated branch never comes back here, so nothing merges it")
+
+
+def test_only_this_workflows_own_dispatch_can_merge(source):
+    """Accepting `workflow_dispatch` widens the trigger: without an actor check, anyone typing
+    `gh workflow run ci.yml --ref my-branch` would merge their own PR as a side effect of asking
+    for a test run. Only the run this workflow started may come back and merge."""
+    assert "triggering_actor.login == 'github-actions[bot]'" in source, (
+        "a hand-dispatched CI run on a PR branch would merge that PR")
+
+
+def test_the_branch_update_asserts_the_head_it_measured(source):
+    """The staleness check reads pr.head.sha. If someone pushes between that read and the
+    update, the update must fail rather than land on a head this run never saw -- the same
+    guarantee `sha` gives the merge call."""
+    code = _strip_comments(source)
+    assert "expected_head_sha" in code, "updateBranch is called without a head assertion"

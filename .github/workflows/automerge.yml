@@ -63,7 +63,8 @@ jobs:
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       (github.event.workflow_run.event == 'pull_request' ||
-       github.event.workflow_run.event == 'workflow_dispatch')
+       (github.event.workflow_run.event == 'workflow_dispatch' &&
+        github.event.workflow_run.triggering_actor.login == 'github-actions[bot]'))
     runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     steps:
       - name: Merge every open PR this run proved green
@@ -122,9 +123,20 @@ jobs:
               const {data: cmp} = await github.rest.repos.compareCommits(
                 {owner, repo, base: 'main', head: pr.head.sha})
               if (cmp.behind_by > 0) {
+                // MERGE, NOT REBASE, AND NOT BY CHOICE. PUT .../pulls/{n}/update-branch takes
+                // exactly one body parameter, `expected_head_sha`, and "updates the pull request
+                // branch with the latest upstream changes by MERGING HEAD from the base branch"
+                // (GitHub REST docs, checked 2026-08-19). "Update with rebase" is a web-UI
+                // button with no REST equivalent. A rebase would also rewrite a branch another
+                // session may have checked out, so the merge is the safer of the two anyway --
+                // and main never sees it, because the merge below squashes.
                 core.info(`  behind main by ${cmp.behind_by} - updating the branch, not merging`)
                 try {
-                  await github.rest.pulls.updateBranch({owner, repo, pull_number: pr.number})
+                  // expected_head_sha for the same reason the merge below passes `sha`: if
+                  // someone pushed while this job was deciding, the update must fail rather
+                  // than land on a head this run never saw.
+                  await github.rest.pulls.updateBranch(
+                    {owner, repo, pull_number: pr.number, expected_head_sha: pr.head.sha})
                 } catch (e) {
                   // 422 is the conflict case: git cannot do it, a person must.
                   core.error(`could not update #${pr.number}: ${e.message}`)
