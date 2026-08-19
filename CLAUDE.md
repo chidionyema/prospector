@@ -37,6 +37,46 @@
 > touching a `pack_*.py` renderer, the pack linter, or `tools/backfill_bundle_html.py` — the
 > diagnosis is the top half, the implementation ledger is the bottom half).
 
+## One rules file per scope (2026-08-19)
+
+`~/.claude/CLAUDE.md` is **how to work, in any repo**: the three laws, the tenets, the reply
+format, context and budget discipline. It is resident in every session on this machine, including
+six repos that have no `CLAUDE.md` of their own (lux, popdd-py, popdd-ts, sentinel-loop,
+signalengine, vault-201).
+
+**This file is what PROSPECTOR is** — its architecture, its constraints, its production topology,
+its gates. Nothing about how to work in general belongs here, and nothing about this project
+belongs there.
+
+Measured 2026-08-19: the global file had grown to 28,885 chars and carried a `graphify` section,
+a tracked-programmes list and prospector paths inside its tenets — billed into the window of every
+session in every repo, useful to one. It was cut to 19,036 chars (−2,462 tokens per request) and
+the pre-slim text is preserved verbatim in memory as
+`reference-global-claude-md-full-2026-08-19.md`. The boundary is now a refusal, not a paragraph:
+`~/.claude/scripts/scope-guard.py` is a PreToolUse hook on `Bash|Write|Edit` that blocks writing a
+project name, a project path or a project doc into the global file, and names this file instead.
+Escape marker `SCOPE-LEAK-OK` when the content genuinely is generic.
+
+## graphify — ask the graph before grepping
+
+`~/.claude/skills/graphify/SKILL.md` turns any input into a knowledge graph. `/graphify` invokes
+the skill. Query it with `graphify query "<question>" --budget 2000` — a local BFS over
+`graphify-out/graph.json`, zero tokens of inference.
+
+Treat every node it returns as a **lead to verify at a `file:line`**, never as proof.
+
+Freshness is automatic: four triggers (post-commit, SessionStart, UserPromptSubmit, launchd/30m)
+keep every repo's graph current, and graph evidence is injected for you on codebase-shaped
+prompts. "Is enforcement on?" is a command, never a doc:
+
+```bash
+python3 scripts/graphify_sweep.py --check-hooks   # exit 0 = wired
+python3 scripts/graphify_sweep.py                 # estate-wide scoreboard
+```
+
+Operating manual: `docs/GRAPHIFY_ENFORCEMENT_SPEC.md` §7.
+
+
 **Source-or-die:** every factual claim and quantitative figure must cite a retrievable source or be marked `unverifiable`. No unsourced numbers ship, ever.
 
 **Verdict-from-retrieval-only:** the model rules solely from passages it actually fetched via web search or fixture. No prior knowledge. Silence (no matching passage) → `unverifiable`, never `supported`.
