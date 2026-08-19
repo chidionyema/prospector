@@ -28,6 +28,9 @@
 > Four programmes have their own tracked specs — read and append there, never here:
 > `docs/COST_PROGRAM.md` (all cost work, all measurements),
 > `docs/GRAPHIFY_ENFORCEMENT_SPEC.md` (estate-wide graph freshness),
+> `docs/AGENT_PRACTICE_PROGRAM.md` (how Claude sessions work here: what an agent is told at
+> the start, what stops it doing the wrong thing, and the command that proves each of those
+> is still live — read it before changing a hook, the state probe or the process audit),
 > `docs/SITE_SPEC_PROGRAM.md` (the mumchimp.com design/UX/copy spec + its live status ledger —
 > it lived only in a chat transcript until 2026-08-07, which is why its status kept evaporating
 > between sessions; read it before touching the storefront) and
