@@ -1,0 +1,52 @@
+# Size the Fly CI runner pool to the queue, one event at a time.
+#
+# WHY THIS EXISTS. The pool was a constant. Measured 2026-08-19 10:50Z: 13 runs queued against
+# three machines, and those three bill CPU and RAM around the clock whether or not anything is
+# building -- about $145/month for capacity that is idle most of the day. A stopped Fly machine
+# bills neither, so the pool can be both bigger when it matters and cheaper the rest of the time.
+#
+# WHY `ubuntu-latest` AND NOT A SELF-HOSTED RUNNER. This job starts the runners. Running it on
+# one of them deadlocks the moment the pool is scaled to zero: the scaler waits for a runner and
+# the runner waits for the scaler. GitHub-hosted minutes are the price of not having that
+# failure mode, and the job is a few seconds long.
+name: CI autoscale
+
+on:
+  workflow_job:
+    types: [queued, completed]
+
+# The newest reading of the queue is the only one worth acting on, so a superseded scaler run is
+# cancelled rather than queued behind. Scaling is idempotent, so losing an intermediate run
+# cannot leave the pool in a wrong state.
+concurrency:
+  group: ci-autoscale
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  scale:
+    # Never react to this workflow's own jobs. Without this the scaler answers its own
+    # workflow_job events forever.
+    if: github.event.workflow_job.workflow_name != 'CI autoscale'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Match started machines to the queue
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_ENGINE }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # `superfly/flyctl-actions/setup-flyctl` installs `flyctl` only, and the adapter calls
+          # `fly`. Same shim as deploy/targets/fly.sh, same reason.
+          if ! command -v fly >/dev/null 2>&1 && command -v flyctl >/dev/null 2>&1; then
+            fly() { command flyctl "$@"; }
+            export -f fly
+          fi
+          bash deploy/runners.sh autoscale

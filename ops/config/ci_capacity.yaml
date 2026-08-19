@@ -82,10 +82,27 @@ pools:
     # machine, and it is needed: these runners are `--ephemeral`, so each one deregisters when a
     # job ends and re-registers when Fly restarts it about two seconds later. A blink is normal;
     # two machines down at once is not.
+    # AUTOSCALE SETS THIS RANGE NOW, not a hand-counted fleet (founder chose max 6 on
+    # 2026-08-19). `runners` is autoscale_min -- the machines kept started at all times, and the floor that
+    # turns a dark runner into a failing row -- and
+    # `ephemeral` is the headroom up to autoscale_max. scripts/ci_capacity.py --live checks
+    # between the two, which is exactly the band autoscale is allowed to move in.
+    #
+    # A stopped machine bills no CPU and no RAM, so the headroom costs pennies and is only paid
+    # for while it is running jobs. box.heavy_slots, not this number, is what bounds the CPU
+    # arithmetic, so widening the band does not oversubscribe anything.
     runners: 2
-    ephemeral: 1
+    ephemeral: 10
     variable: CI_HEAVY_RUNS_ON
-    label: heavy
+    # LABEL `fly`, NOT `heavy` OR `self-hosted`, SINCE 2026-08-19. mumchimp-mac-4 was online
+    # carrying `self-hosted`, the same label the Linux fleet carries, so GitHub scheduled
+    # Linux jobs onto macOS at random and they died in actions/setup-python. The error names
+    # the action, not the routing. `fly` is carried only by the prospector-ci machines
+    # (deploy/runner/fly.toml RUNNER_LABELS), so it names the fleet and nothing else. The
+    # repository variables CI_HEAVY_RUNS_ON, CI_LIGHT_RUNS_ON and CI_RUNS_ON were set to
+    # `fly` at 12:01 on 2026-08-19; this file has to agree or scripts/ci_capacity.py fails
+    # the guard job on every branch.
+    label: fly
     jobs: [python, engine, dotnet]
   # Short jobs: a checkout, a doc lint, a shell loop over already-computed results. They must
   # never wait behind a suite -- `ci-ok` queueing behind a 24-minute python job is what left runs
@@ -108,8 +125,38 @@ pools:
     # not a separate fleet any more -- the reservation the split existed for came from the Macs,
     # where mumchimp-mac-4 deliberately lacked `heavy`. Keep the split declared: it costs
     # nothing, and it is how a light job gets its own capacity again the moment one is added.
+    # Same band, same fleet: these machines carry both labels.
     runners: 2
-    ephemeral: 1
+    ephemeral: 10
     variable: CI_LIGHT_RUNS_ON
-    label: self-hosted
+    # Same fleet, same label, same reason as heavy above.
+    label: fly
     jobs: [changes, guard, ci-ok, nextjs, ops-console]
+
+# HOW MANY MACHINES MAY BE RUNNING AT ONCE, AND HOW FEW.
+#
+# Priced 2026-08-19 from https://fly.io/docs/about/pricing/. A `shared-cpu-4x` machine is
+# $8.08/month of CPU; extra RAM is about $5/GB/month, so the 8 GB in deploy/runner/fly.toml is
+# roughly $40 more. Call it ~$48/month per machine left started around the clock, ~$145/month
+# for the fleet of three. A STOPPED machine bills no CPU and no RAM -- only rootfs storage at
+# $0.15 per GB per 30 days.
+#
+# That price shape is why `deploy/runners.sh autoscale` starts and stops machines instead of
+# creating and destroying them, and why the ceiling can be raised without raising the bill: an
+# idle machine in the pool costs pennies, so capacity for a busy afternoon is nearly free and is
+# only paid for while it is actually running jobs.
+#
+# autoscale_min  machines kept started at all times. 2, not 0: a cold start costs a job about a
+#                minute, and the first job of the morning should not pay it. Set 0 to pay
+#                nothing overnight and accept that delay.
+# autoscale_max  the ceiling, 12 since 2026-08-19. Raising it does not raise the bill: Fly
+#                charges per second a machine is RUNNING and the job count is fixed, so twelve
+#                runners burn the same machine-seconds as six and finish in half the wall
+#                clock. Idle machines are stopped and bill only rootfs storage. The queue that
+#                forced this was ten branches deep across several concurrent sessions, against
+#                six runners. Never higher than the
+#                machines the pool actually holds --
+#                `deploy/runners.sh up <n>` is what creates them; autoscale only starts and
+#                stops what is already there, and says so when it wants more than exists.
+autoscale_min: 2
+autoscale_max: 12
