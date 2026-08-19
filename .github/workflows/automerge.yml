@@ -60,8 +60,15 @@ concurrency:
 
 jobs:
   merge:
+    # A FAILED RUN MUST REACH THIS JOB TOO, AND ONLY FOR THE UPDATE PATH. Until 2026-08-19 this
+    # read `conclusion == 'success'`, which made the rescue unreachable for exactly the pull
+    # requests that needed it. A PR behind main inherits main's failures, so its run concludes
+    # FAILURE, so this job never ran, so the branch was never updated, so it stayed red. Thirteen
+    # open PRs sat in that loop on 2026-08-19 while main was red on a single test none of them
+    # wrote. The merge is still gated on green below, on `proved`, and nothing red can land.
     if: >-
-      github.event.workflow_run.conclusion == 'success' &&
+      (github.event.workflow_run.conclusion == 'success' ||
+       github.event.workflow_run.conclusion == 'failure') &&
       (github.event.workflow_run.event == 'pull_request' ||
        (github.event.workflow_run.event == 'workflow_dispatch' &&
         github.event.workflow_run.triggering_actor.login == 'github-actions[bot]'))
@@ -74,6 +81,10 @@ jobs:
           script: |
             const {owner, repo} = context.repo
             const sha = context.payload.workflow_run.head_sha
+            // The ONLY thing that may authorise a merge. A failed run still gets to update a
+            // branch that sits behind main, because that update IS the repair. It never gets to
+            // land code.
+            const proved = context.payload.workflow_run.conclusion === 'success'
 
             // The same paths each deploy workflow watches on push. Kept in step with those files:
             // add a path there and not here and a merge that should deploy will not.
@@ -155,6 +166,14 @@ jobs:
                 await github.rest.actions.createWorkflowDispatch(
                   {owner, repo, workflow_id: 'ci.yml', ref: pr.head.ref})
                 core.info(`  dispatched CI on ${pr.head.ref}; the green run merges it`)
+                continue
+              }
+
+              // Up to date with main and still red. The update path above could not help it, and
+              // green is the only thing that may merge, so this is where a red PR stops. Said out
+              // loud, because a job that returns silently is how a stuck PR becomes invisible.
+              if (!proved) {
+                core.info(`  up to date with main and its CI run failed - not merging #${pr.number}`)
                 continue
               }
 
