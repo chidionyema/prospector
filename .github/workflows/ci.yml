@@ -825,6 +825,14 @@ jobs:
         env:
           CI: "true"
 
+      # The console is operated from a phone. This is the spec that caught /config
+      # scrolling 7px sideways on one unbreakable JSON value, and until now it ran
+      # on laptops only -- a gate nothing schedules is a gate that stops running.
+      - name: Phone widths (390 and 320)
+        run: npm run test:e2e
+        env:
+          CI: "true"
+
   # ──────────────────────────────────────────────────────────────────
   # The single check branch protection requires.
   #
