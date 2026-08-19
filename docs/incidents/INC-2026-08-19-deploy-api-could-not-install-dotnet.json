@@ -1,0 +1,40 @@
+{
+  "id": "INC-2026-08-19-deploy-api-could-not-install-dotnet",
+  "opened": "2026-08-19",
+  "title": "The API deploy could not run at all for a day, and nothing noticed because it never ran",
+  "severity": "high",
+  "detected_by": "claude",
+  "first_order": {
+    "what_broke": "deploy-api.yml's test job died in the first real step, Run actions/setup-dotnet@v4, with mkdir: cannot create directory '/usr/share/dotnet': Permission denied. The deploy job was skipped. The money rail app - checkout, fulfilment and the content pointer - could not be shipped by any route the pipeline offers.",
+    "receipt": "Dispatched run 32223984416 on 2026-08-19: test failure, deploy skipped, log line 'mkdir: cannot create directory /usr/share/dotnet: Permission denied'. gh api /repos/chidionyema/prospector/actions/runners shows two of the six runners carrying the `heavy` label are Linux containers (runner-83d1d69bd119e8, runner-8ee06eb7701628) whose user cannot write /usr/share. deploy-api.yml:61 resolves runs-on through vars.CI_HEAVY_RUNS_ON, which is `heavy` (set 2026-08-18T14:07:28Z). The workflow's last success was run 32101317196 at 2026-08-18T05:01:55Z, before that variable existed.",
+    "fixed_by": "deploy-api.yml's test job now exports DOTNET_INSTALL_DIR=$HOME/.dotnet into GITHUB_ENV before actions/setup-dotnet runs, which is the same three lines ci.yml's dotnet job already carried at ci.yml:613-615."
+  },
+  "cause_chain": [
+    "actions/setup-dotnet installs to /usr/share/dotnet on Linux, which needs root, and our Linux runners are containers with a non-root user.",
+    "ci.yml hit this on 2026-08-18 (run 32149741450) and was fixed the same day by pointing DOTNET_INSTALL_DIR at $HOME. deploy-api.yml uses the same action for the same reason and was not touched.",
+    "The fix was applied to the file that was failing rather than to every file that could fail. Nothing enumerated the callers of the action, so the second caller was never looked at.",
+    "deploy-api.yml is gated on on.push.paths, so it does not run until a change touches Store.Api. Between the runner switch and 2026-08-19 nothing dispatched it, and a workflow that never runs cannot go red. Its breakage and its idleness produced identical evidence: no runs.",
+    "The one thing that would have dispatched it - automerge.yml - was itself only dispatching deploy-engine.yml (INC-2026-08-19-automerge-shipped-only-the-engine), so the two defects hid each other. Fixing the dispatch is what surfaced this one.",
+    "CLASS: an environment fix applied to the file that failed, rather than to every caller of the same mechanism, leaves the untriggered callers broken, and a workflow gated on path filters proves nothing about its own health until the day it is needed."
+  ],
+  "second_order": {
+    "sweep_command": "rg -n 'uses: actions/setup-' .github/workflows/*.yml && rg -n 'INSTALL_DIR|RUNNER_TOOL_CACHE|AGENT_TOOLSDIRECTORY' .github/workflows/*.yml",
+    "siblings_found": 0,
+    "siblings_fixed": 0,
+    "note": "actions/setup-dotnet appears in exactly two places: ci.yml:618 and deploy-api.yml:64. Both now set DOTNET_INSTALL_DIR. The other installers in the estate are actions/setup-node (e2e-live-smoke.yml:56, deploy-web.yml:80, deploy-engine.yml:66, ci.yml:669 and :765) and actions/setup-python (escape-hatch-drill.yml:42). Neither writes to a system directory: setup-node and setup-python resolve into RUNNER_TOOL_CACHE, which the runner owns, and all of those jobs have run green on the same runners since the switch. So the class has no third instance today - but the test added below grades the shape, not the count, so a new setup-dotnet job cannot arrive without it."
+  },
+  "third_order": {
+    "tier": "test",
+    "mechanism": "tests/unit/test_dotnet_installs_where_it_can_write.py parses every .github/workflows/*.yml, finds every job that uses actions/setup-dotnet, and fails unless DOTNET_INSTALL_DIR is set BEFORE that step and points at a root a self-hosted runner is guaranteed to own ($HOME, github.workspace or RUNNER_TEMP). It also fails if the variable is only set after the action, which reads as present to a grep and does nothing, and it refuses to pass vacuously with fewer than two dotnet jobs to grade. Mutation-checked: removing the three lines from deploy-api.yml turns it red.",
+    "landed_on": "2026-08-19",
+    "why_not_higher": "Self-healing would mean the workflow detecting its own permission failure and retrying elsewhere, which is a retry loop around a config error rather than a fix. A refusal would have to run inside GitHub Actions before the job starts, and there is no such hook. The repository suite gates the merge that would introduce the drift, so a test is the earliest point a machine can refuse it."
+  },
+  "grade": {
+    "signature": "a deploy workflow whose first run after an infrastructure change fails in a setup step rather than in its own code",
+    "before": 2,
+    "after": null,
+    "window_days": 30,
+    "verdict": "unproven"
+  },
+  "state": "open"
+}

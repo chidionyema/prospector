@@ -61,6 +61,25 @@ jobs:
     runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
+
+      # WHERE .NET INSTALLS. This is the same three lines as ci.yml's dotnet job, and it is here
+      # because it was NOT here on 2026-08-19 and this workflow could not run at all.
+      #
+      # actions/setup-dotnet installs to /usr/share/dotnet on Linux, which needs root. Two of the
+      # six runners carrying the `heavy` label are Linux containers that do not have it
+      # (`runner-83d1d69bd119e8`, `runner-8ee06eb7701628`), so the job died in "Run
+      # actions/setup-dotnet@v4" with `mkdir: cannot create directory '/usr/share/dotnet':
+      # Permission denied` (run 32223984416). ci.yml got this fix the day before; this file did
+      # not, and nobody saw it, because a path-filtered workflow that never runs never reveals
+      # that it is broken. `tests/unit/test_dotnet_installs_where_it_can_write.py` now fails if any
+      # job anywhere uses setup-dotnet without it.
+      #
+      # $HOME is writable on every runner we use, hosted or not, and it PERSISTS on the
+      # self-hosted ones, so the SDK is downloaded once rather than per job. setup-dotnet puts
+      # DOTNET_INSTALL_DIR on PATH and sets DOTNET_ROOT itself, so nothing downstream changes.
+      - name: Install .NET under the runner's own HOME
+        run: echo "DOTNET_INSTALL_DIR=$HOME/.dotnet" >> "$GITHUB_ENV"
+
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}

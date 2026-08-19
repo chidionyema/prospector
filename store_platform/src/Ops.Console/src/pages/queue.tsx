@@ -13,6 +13,7 @@
  * an ETA with nothing about the thing producing them, so a consumer wedged mid-pass for an hour
  * and a consumer working normally rendered identically.
  */
+import Confirm from '@/components/Confirm';
 import Shell from '@/components/Shell';
 import { AsOf, Card, Note, Pill, Problem, Row, Scroll, Stat } from '@/components/ui';
 import { ABSENT, ago, clock, duration } from '@/lib/time';
@@ -76,6 +77,29 @@ type QueueView = {
   };
 };
 
+/**
+ * The give-up ledger, read from the box the engine is actually running on.
+ *
+ * `side` and `active_side` are both on the payload and both are rendered. On 2026-08-19 this
+ * console read the laptop store and reported an empty ledger while the Fly engine carried 251
+ * permanently retired rows. A number with no box named against it is what made that possible.
+ */
+type DrainView = {
+  side: string;
+  active_side: string;
+  store_dir: string;
+  ledger_path: string;
+  ledger_exists: boolean;
+  max_attempts: number;
+  rows: number;
+  histogram: Record<string, number>;
+  retired: string[];
+  retired_count: number;
+  warnings: string[];
+  incident: string;
+  error: string | null;
+};
+
 /** How the consumer's state reads as a colour. `late` is amber, not red: alive and slow is not
  *  the same fault as gone, and treating them alike is how a real death gets ignored. */
 function consumerTone(state: string): 'ok' | 'warn' | 'bad' | 'mute' {
@@ -89,6 +113,9 @@ export default function Queue() {
   // 15s. This is the page someone sits on while they wait for the queue to move, so it is
   // one of the two fastest panels in the console (the other is the brains on Engine).
   const { data, envelope, error } = useOps<QueueView>('queue', {}, { pollMs: 15_000 });
+  // Two minutes, not fifteen seconds: this one SSHes into the active engine to read its
+  // ledger and measured 4.6s on 2026-08-19. It is a number that changes once a tick at most.
+  const drain = useOps<DrainView>('drain', {}, { pollMs: 120_000 });
 
   return (
     <Shell title="Queue" intro="Work the engine has taken on and not yet finished.">
@@ -144,7 +171,7 @@ export default function Queue() {
             <Stat
               label="stalled"
               value={data.backlog.stalled}
-              note="tried too many times"
+              note="out of re-vet budget"
               tone={data.backlog.stalled ? 'warn' : 'plain'}
             />
             <Stat
@@ -177,6 +204,93 @@ export default function Queue() {
           </div>
         </Card>
       ) : null}
+
+      <Card
+        title="Given up on"
+        right={
+          drain.data ? (
+            <Pill tone={drain.data.retired_count ? 'bad' : 'ok'}>
+              {drain.data.side}
+              {drain.data.side !== drain.data.active_side ? ' (not the active side)' : ''}
+            </Pill>
+          ) : null
+        }
+      >
+        {drain.error ? <Problem>{drain.error}</Problem> : null}
+        {!drain.data && !drain.error ? <div>reading the active engine…</div> : null}
+        {drain.data ? (
+          <>
+            <p className="text-[14px]">
+              A candidate leaves the queue for good after {drain.data.max_attempts} completed
+              re-vets that did not resolve it. Nothing puts it back.
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3">
+              <Stat
+                label="retired"
+                value={drain.data.retired_count}
+                note="will never be worked again"
+                tone={drain.data.retired_count ? 'warn' : 'ok'}
+              />
+              <Stat label="rows tracked" value={drain.data.rows} note="have been tried at least once" />
+              <Stat label="give-up cap" value={drain.data.max_attempts} note="attempts per row" />
+            </div>
+            {Object.keys(drain.data.histogram).length ? (
+              <div className="mt-3">
+                <Row label="Attempts spent">
+                  {Object.entries(drain.data.histogram)
+                    .sort((a, b) => Number(a[0]) - Number(b[0]))
+                    .map(([n, count]) => `${n}x: ${count}`)
+                    .join(' · ')}
+                </Row>
+              </div>
+            ) : null}
+            <div className="mt-3">
+              <Row label="Read from">
+                <span className="font-mono text-[12px]">{drain.data.ledger_path}</span> on{' '}
+                {drain.data.side}
+              </Row>
+              <Row label="Engine is on">{drain.data.active_side}</Row>
+            </div>
+            {drain.data.warnings.map((w) => (
+              <Problem key={w}>{w}</Problem>
+            ))}
+            <Note>
+              Until PR #356 an outage of our own spent a row&rsquo;s budget like a real attempt, so
+              251 candidates were retired for our downtime rather than on their merits. The counter
+              ignores infrastructure defers now, but no code hands back a budget already spent —
+              that is what the reset below is for. Record:{' '}
+              <span className="font-mono text-[11px]">{drain.data.incident}</span>
+            </Note>
+            <div className="mt-3">
+              <Confirm
+                action="drain.reset"
+                kind="danger"
+                label="Hand every row its budget back"
+                applyLabel="Yes, clear the ledger"
+                disabled={!drain.data.rows}
+                payload={() => ({ side: 'active' })}
+                requireAck={(p) =>
+                  Number(p.rows ?? 0) > 0
+                    ? `I understand this puts ${p.rows} row(s) back to zero attempts on ${String(
+                        p.side ?? '',
+                      )} and the engine will spend money re-vetting them.`
+                    : null
+                }
+                renderPreview={(p) => (
+                  <div className="flex flex-col gap-1">
+                    <div className="font-[560]">{String(p.effect ?? '')}</div>
+                    <div>Cost: {String(p.cost ?? '')}</div>
+                    <div>Backup: {String(p.backup ?? '')}</div>
+                    <div>Reversible: {String(p.reversible ?? '')}</div>
+                    <div className="font-mono text-[11px]">{String(p.ledger_path ?? '')}</div>
+                  </div>
+                )}
+                onApplied={drain.refresh}
+              />
+            </div>
+          </>
+        ) : null}
+      </Card>
 
       {data ? (
         <Card title="Is it moving?">
