@@ -180,7 +180,7 @@ class SchedulerGuard:
         """Identity of the ledger's first bytes — changes iff the file was rotated/rewritten."""
         try:
             with p.open("rb") as f:
-                return hashlib.sha1(f.read(_HEAD_PROBE_BYTES)).hexdigest()
+                return hashlib.sha1(f.read(_HEAD_PROBE_BYTES), usedforsecurity=False).hexdigest()
         except OSError:
             return ""
 

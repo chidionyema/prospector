@@ -171,7 +171,7 @@ class ClaimLock:
         same slug still get different files."""
         key = f"{purpose}\x00{candidate_id}"
         slug = _SAFE.sub("-", f"{purpose}__{candidate_id}").strip("-")[:96] or "claim"
-        digest = hashlib.sha1(key.encode("utf-8")).hexdigest()[:12]
+        digest = hashlib.sha1(key.encode("utf-8"), usedforsecurity=False).hexdigest()[:12]
         return self._dir / f"{slug}.{digest}.lock"
 
     # -- acquisition ---------------------------------------------------------------

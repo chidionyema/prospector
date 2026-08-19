@@ -375,7 +375,7 @@ def _remote_index(s3, bucket: str, prefix: str) -> dict[str, str]:
 
 
 def _md5(path: Path) -> str:
-    h = hashlib.md5()  # noqa: S324 - matching R2's ETag, not a security decision
+    h = hashlib.md5(usedforsecurity=False)  # matching R2's ETag, not a security decision
     with path.open("rb") as f:
         for chunk in iter(lambda: f.read(1 << 20), b""):
             h.update(chunk)
@@ -700,7 +700,7 @@ def restore(s3, bucket: str, dest: Path) -> int:
         body = s3.get_object(Bucket=bucket, Key=key)["Body"].read()
         rel = key[len(DOSSIER_PREFIX):]
 
-        if hashlib.md5(body).hexdigest() != etag:  # noqa: S324 - matching R2's ETag
+        if hashlib.md5(body, usedforsecurity=False).hexdigest() != etag:  # R2's ETag
             bad.append(f"{rel}: bytes differ from the ETag R2 recorded at upload")
             continue
         try:

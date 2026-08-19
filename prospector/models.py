@@ -116,7 +116,7 @@ SCORE_AXES = ("pain_acuity", "money_provability", "automatability",
 
 
 def _id(*parts: str) -> str:
-    return hashlib.sha1("|".join(parts).encode()).hexdigest()[:16]
+    return hashlib.sha1("|".join(parts).encode(), usedforsecurity=False).hexdigest()[:16]
 
 
 @dataclass
