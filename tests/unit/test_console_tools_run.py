@@ -341,9 +341,16 @@ def test_the_browser_view_allowlist_matches_the_gateway():
         pytest.skip("the Next console is not in this checkout")
     block = route.read_text(encoding="utf-8").split("export const VIEWS = [", 1)[1]
     listed = set(re.findall(r"'([a-z_]+)'", block.split("]", 1)[0]))
-    assert listed == set(api.READS), (
-        f"only in the browser: {sorted(listed - set(api.READS))}; "
-        f"only in the gateway: {sorted(set(api.READS) - listed)}")
+    # `share_open` is deliberately NOT in the browser list, and its absence is a security fence
+    # rather than drift. It is the one read reachable without a console session, so it has its own
+    # route (`pages/api/s/[token].ts`) which names it as a literal. Adding it here would put it on
+    # the authed door as well, and the console's own suite asserts it is missing
+    # (Ops.Console/tests/share.test.ts, "share_open is absent from the authed view list").
+    session_free = {"share_open"}
+    gateway = set(api.READS) - session_free
+    assert listed == gateway, (
+        f"only in the browser: {sorted(listed - gateway)}; "
+        f"only in the gateway: {sorted(gateway - listed)}")
 
 
 # --------------------------------------------------------------------------- #

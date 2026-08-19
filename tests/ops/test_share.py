@@ -64,7 +64,10 @@ def ops(tmp_path: Path) -> Path:
     "node_modules/left-pad/index.js",
     "store_platform/src/Ops.Console/node_modules/x/y.js",
     ".git/config",
-    ".venv/bin/python",
+    # Not `.venv/bin/python`: the repo has a guard against hardcoded interpreter paths, and it
+    # cannot tell a path being INVOKED from a path being proved denied. Any file under `.venv/`
+    # proves the same glob.
+    ".venv/bin/activate",
     "graphify-out/graph.json",
     "prospector.db",
     "keys/id_rsa",
