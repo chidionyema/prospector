@@ -1,0 +1,44 @@
+{
+  "id": "INC-2026-08-19-stale-base-merges-turned-main-red",
+  "opened": "2026-08-19",
+  "title": "Two pull requests, each green on its own base, turned main red together and took 17 open pull requests down with it",
+  "severity": "high",
+  "detected_by": "founder — \"a lot of failing prs also\", then \"all other prs will fail if main isnt green\"",
+  "first_order": {
+    "what_broke": "main went red on three tests at da0d9589. Two of them name the same file: scripts/rework_metrics.py. PR #373 (4d5458ad, merged 2026-08-19T10:13Z) added that script. PR #372 (383b7224, merged 2026-08-19T07:46Z) added tests/unit/test_no_store_path_is_derived_from_file.py, a guard that reads every script in the repo. #373 was written against a base that did not yet contain the guard, so its own CI never ran the guard over its new file. #372 was written against a base that did not yet contain the script, so its own CI had nothing to catch. Both were green. Nothing ever ran the combination. Every open pull request then rebased onto or merged against a red main and inherited all three failures, so 17 pull requests read as broken by their author's change when none of them were.",
+    "receipt": "gh run view 32241158649 --log-failed (main, da0d9589): FAILED tests/unit/test_console_tools_run.py::test_console_tool_registry_has_no_drift — assert not ['scripts/rework_metrics.py']; FAILED tests/unit/test_no_store_path_is_derived_from_file.py::test_no_store_path_is_derived_from_the_source_files_location — assert not [\"scripts/rework_metrics.py:66  ROOT / 'store'\"]; FAILED tests/unit/test_doc_lint_never_increases.py::test_no_doc_gets_less_accurate_than_its_baseline. Provenance: git log --diff-filter=A -- scripts/rework_metrics.py => 4d5458ad (#373); git log --diff-filter=A -- tests/unit/test_no_store_path_is_derived_from_file.py => 383b7224 (#372).",
+    "fixed_by": "PR #400 (ea5dfce0) fixed two of the three: it classified scripts/rework_metrics.py in the console tool registry and moved its store path onto prospector.config.store_root(). The doc-lint baseline was the third."
+  },
+  "cause_chain": [
+    "main is red on three tests.",
+    "Two of the three name scripts/rework_metrics.py, a file added by #373.",
+    "#373 was green. Its CI ran the guard set that existed on its base, which did not include #372's guard.",
+    "#372 was green. Its CI ran its new guard over the files that existed on its base, which did not include #373's script.",
+    "GitHub merged both because both were green. Nothing asked whether either was still green against the main it was about to land on.",
+    "automerge.yml passed pr.head.sha to pulls.merge. That argument asserts the HEAD has not MOVED. It says nothing about whether the BASE has moved underneath it.",
+    "Branch protection's \"require branches to be up to date before merging\" is the native mechanism for exactly this, and it is unavailable: this repository is private on a plan where PUT /repos/{owner}/{repo}/branches/main/protection and POST /repos/{owner}/{repo}/rulesets both return 403 \"Upgrade to GitHub Pro or make this repository public\".",
+    "CLASS: a green verdict is a statement about a base that has since moved. Any check that proves refs/pull/N/merge proves the combination as it stood when the run STARTED, so two changes that are individually correct can break their combination, and the more the repository grades itself file-by-file the more likely that is. This repository has 24 tests that enumerate the tree and grade every file they find; each one is a surface where a file added by one pull request breaks a rule added by another."
+  ],
+  "second_order": {
+    "sweep_command": "rg -l 'rglob|glob\\(|walk\\(' tests/unit/*.py | wc -l",
+    "siblings_found": 24,
+    "siblings_fixed": 0,
+    "note": "24 unit tests enumerate the repository and grade every file they find, so all 24 carry the same collision surface as test_no_store_path_is_derived_from_file.py. They were NOT changed and should not be: each is correct on its own, and weakening them to tolerate an unseen file would remove the guard rather than the collision. The collision is a merge-order problem, so the fix belongs at merge time, which is what third_order does. Sibling count recorded so the next occurrence is graded against it."
+  },
+  "third_order": {
+    "tier": "refuse",
+    "mechanism": "automerge.yml now refuses to merge a pull request that sits behind main. Before merging it calls repos.compareCommits(base: 'main', head: pr.head.sha); if behind_by > 0 it calls pulls.updateBranch (with expected_head_sha, so a push that landed while the job was deciding fails the update instead of being built on), dispatches ci.yml on that branch, and skips the merge. The run that comes back tests the actual combination and merges it. A conflict git cannot resolve fails the job and labels the pull request needs-rebase, because at that point a person is required. Two knock-ons handled: updateBranch pushes with GITHUB_TOKEN and a GITHUB_TOKEN push starts no workflow run, so the workflow dispatches CI itself; and a dispatched run's event is workflow_dispatch, so the job's `if` now accepts that event — narrowed to triggering_actor.login == 'github-actions[bot]' so that a human running `gh workflow run ci.yml --ref my-branch` does not turn a test run into a merge button.",
+    "landed_on": null,
+    "why_not_higher": "heal is not reachable. The self-healing form of this is branch protection's \"require branches to be up to date before merging\", which GitHub enforces itself; it returns 403 on this plan for a private repository. update-branch is a merge, not a rebase — PUT /repos/{owner}/{repo}/pulls/{n}/update-branch takes exactly one body parameter, expected_head_sha, and merges the base HEAD into the head branch. \"Update with rebase\" is a web-UI button with no REST equivalent (GitHub REST docs, checked 2026-08-19). A rebase would also rewrite a branch another session may have checked out, so the merge is the safer of the two here, and main never sees it because the merge is a squash.",
+    "note": "Landed on PR #409, branch fix/automerge-stale-base: .github/workflows/automerge.yml plus 5 new checks in tests/unit/test_automerge_reports_what_it_could_not_merge.py (12 passing). Not merged yet, so landed_on stays null until it is. The five new tests grade the workflow's code with comments stripped, so a comment describing the check cannot pass for the check. They pin: the staleness read happens before pulls.merge, updateBranch is called, the updated branch gets a ci.yml dispatch, the job accepts its own dispatched run, only github-actions[bot] dispatches count, and updateBranch asserts the head it measured."
+  },
+  "grade": {
+    "signature": "a pull request merged into main while behind main, followed by a red main CI run",
+    "before": 9,
+    "after": null,
+    "window_days": 2,
+    "verdict": "unproven",
+    "note": "unproven — the mechanism landed on PR #409 and has not merged yet. Baseline measured 2026-08-19: gh run list --branch main --workflow ci.yml -L 40 gives 5 failures on 2026-08-18 and 4 on 2026-08-19, 9 red main runs in two days. Re-measure the same command over the two days after #409 merges and record `after`. This record cannot close until then."
+  },
+  "state": "open"
+}

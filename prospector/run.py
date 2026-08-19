@@ -469,7 +469,7 @@ def _save_pending_signal(signal_text: str, cfg: Config) -> Optional[Path]:
     swallowed as if the deferral succeeded.
     """
     import hashlib
-    key = hashlib.sha1(signal_text.encode()).hexdigest()[:16]
+    key = hashlib.sha1(signal_text.encode(), usedforsecurity=False).hexdigest()[:16]
     path = _PENDING_DIR / f"{key}.json"
     try:
         _PENDING_DIR.mkdir(parents=True, exist_ok=True)
