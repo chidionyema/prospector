@@ -2902,7 +2902,7 @@ def _t(path, purpose, writes, screen, run=True, danger=None, cmd=None, risk=None
     command = cmd or f".venv/bin/python {path}"
     # The id must be stable across restarts (a browser holds it between preview and confirm) and
     # unique. The command alone is neither: two rows share `launchctl list | grep com.prospector`.
-    ident = hashlib.sha1(f"{path}|{purpose}|{command}".encode()).hexdigest()[:10]
+    ident = hashlib.sha1(f"{path}|{purpose}|{command}".encode(), usedforsecurity=False).hexdigest()[:10]
     return {"id": ident,
             "path": path, "purpose": purpose, "writes": writes, "screen": screen,
             "run": bool(run) and risk != "shell", "danger": danger, "risk": risk,
@@ -2931,6 +2931,10 @@ TOOLS: list[dict] = [
        cmd=".venv/bin/python -m prospector.run diagnose"),
     _t("scripts/process_audit.py", "Grade every automated job on this estate", False,
        "/processes", cmd=".venv/bin/python scripts/process_audit.py"),
+    _t("scripts/workflow_health.py", "Are any CI workflows dead or disabled?", False,
+       "/processes", cmd=".venv/bin/python scripts/workflow_health.py"),
+    _t("scripts/main_red.py", "Why is main red, and what fixes it?", False,
+       "/processes", cmd=".venv/bin/python scripts/main_red.py"),
     _t("prospector/run.py", "Operator state and quotas", False, "/engine",
        cmd=".venv/bin/python -m prospector.run operators"),
     _t("prospector/run.py", "Manage ambition lanes", True, "/tools",

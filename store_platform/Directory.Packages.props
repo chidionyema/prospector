@@ -1,6 +1,12 @@
 <Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- Lets a PackageVersion below bind a package NOTHING here references directly. Both
+         advisories this repo has had arrived that way: SQLite through
+         Microsoft.EntityFrameworkCore.Sqlite, and OpenTelemetry through Crux.Observability.
+         Without this, patching a transitive advisory means waiting for the package in front
+         of it to ship a new version, which for a local feed package like Crux is never. -->
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
   <ItemGroup>
     <!-- Framework & Standard -->
@@ -37,6 +43,32 @@
     <PackageVersion Include="Crux.Storage" Version="1.0.0" />
     <PackageVersion Include="Crux.Resilience" Version="1.0.0" />
     <PackageVersion Include="Crux.Observability" Version="1.0.0" />
+
+    <!-- Transitive pins that exist ONLY to clear a published advisory. Nothing in this repo
+         references any of them directly. They are here because the vulnerability scan named
+         them, and CI now fails when it does. Delete a line once the package in front of it has
+         moved past the pin on its own.
+
+         SQLitePCLRaw.lib.e_sqlite3, GHSA-2m69-gcr7-jv3q, High. The bundled SQLite build carries
+         a SQLite vulnerability. The vulnerable range is everything at or below 2.1.11 and the
+         advisory names no patched release, so the pin is the newest 2.1.x, which sits outside
+         that range. It stays in the 2.1 line deliberately: SQLitePCLRaw.core, .provider and
+         .bundle all resolve to 2.1.10 under EF Core 9.0.4, and 3.0.x is a different native ABI.
+         Arrives via Microsoft.EntityFrameworkCore.Sqlite.
+
+         OpenTelemetry, GHSA-g94r-2vxg-569j, Moderate. Parsing a propagation header can allocate
+         without bound, which is a request shaped denial of service on a public API. First
+         patched version is 1.15.3. The API and the SDK are pinned together on purpose;
+         OpenTelemetry .NET does not support a split between them, and pinning only the package
+         the scanner named would leave an SDK built against a different API surface. Arrives via
+         Crux.Observability 1.0.0, which is on the local feed and will not move. The
+         Instrumentation.* packages version on their own line and need no pin: they ask for a
+         minimum API version, which 1.15.3 satisfies. -->
+    <PackageVersion Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.13" />
+    <PackageVersion Include="OpenTelemetry" Version="1.15.3" />
+    <PackageVersion Include="OpenTelemetry.Api" Version="1.15.3" />
+    <PackageVersion Include="OpenTelemetry.Api.ProviderBuilderExtensions" Version="1.15.3" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
 
     <!-- Analyzers -->
     <PackageVersion Include="SonarAnalyzer.CSharp" Version="9.32.0.97167" />

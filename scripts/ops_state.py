@@ -37,10 +37,17 @@ sys.path.insert(0, str(ROOT))
 from prospector.config import store_root  # noqa: E402
 
 
-def _sh(cmd: list[str] | str, timeout: float = 25.0) -> tuple[int, str]:
-    """Run a command, return (exit_code, combined output). Never raises."""
+def _sh(cmd: list[str], timeout: float = 25.0) -> tuple[int, str]:
+    """Run a command, return (exit_code, combined output). Never raises.
+
+    Argument list only, never a shell string. A shell string used to be accepted, and
+    exactly one probe used it: `whois mumchimp.com | grep -iE ...`. That carried two
+    defects at once. The shell is a hole nobody needed here, and a pipeline reports the
+    exit status of its LAST stage, so a whois that answered fine but matched no line
+    returned grep's 1 and the probe printed UNREACHABLE. Filter in Python instead.
+    """
     try:
-        r = subprocess.run(cmd, shell=isinstance(cmd, str), cwd=str(ROOT),
+        r = subprocess.run(cmd, cwd=str(ROOT),
                            capture_output=True, text=True, timeout=timeout)
         return r.returncode, ((r.stdout or "") + (r.stderr or "")).strip()
     except subprocess.TimeoutExpired:
@@ -218,12 +225,18 @@ def p_catalog() -> str:
     return out[:160]
 
 
+#: The whois fields this probe reports. Matched case-insensitively against each line,
+#: in Python rather than by piping whois into grep — see `_sh`.
+_WHOIS_FIELDS = ("expiry", "registrar:", "name server")
+
+
 def p_dns1() -> str:
-    code, out = _sh("whois mumchimp.com | grep -iE 'expiry|registrar:|name server'",
-                    timeout=30)
+    code, out = _sh(["whois", "mumchimp.com"], timeout=30)
     if code:
         return "UNREACHABLE: " + out[:120]
-    return " | ".join(ln.strip() for ln in out.splitlines()[:4]) or "no match"
+    hits = [ln.strip() for ln in out.splitlines()
+            if any(f in ln.lower() for f in _WHOIS_FIELDS)]
+    return " | ".join(hits[:4]) or "no match"
 
 
 def p_dns3() -> str:
