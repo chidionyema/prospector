@@ -3336,6 +3336,11 @@ TOOLS: list[dict] = [
 NOT_AN_OPS_TOOL: dict[str, str] = {
     # developer and CI tooling — it runs in a terminal or in GitHub Actions, never from an ops page
     "scripts/ci-gate.sh": "the POPDD CI gate; GitHub Actions runs it, not an operator",
+    "scripts/ci_runner_tools.py": "checks that the runner image carries the binaries our "
+                                  "workflows call; it grades the PATH of whatever machine "
+                                  "runs it, so on the operator's Mac it would grade the Mac. "
+                                  "The console's view of the same question is the CI fleet "
+                                  "probe, which asks it from outside",
     "scripts/seed_action_cache.sh": "fills the self-hosted runners' action cache; CI plumbing, "
                                     "run once on the runner box, not from an ops page",
     "scripts/setup_worktree.sh": "makes a git worktree usable; a developer's machine, not ops",
