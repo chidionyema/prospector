@@ -83,11 +83,18 @@ def main() -> int:
     ap.add_argument("--repo", default="", help="checkout to grade (default: this one)")
     args = ap.parse_args()
 
-    here = Path(__file__).resolve().parent.parent
-    _, common = git(here, "rev-parse", "--git-common-dir")
-    # In a worktree `.git` is a FILE, and --git-common-dir points at the main checkout's .git.
-    # Its parent is the shared checkout, which is the only one this script is about.
-    repo = Path(args.repo) if args.repo else Path(common).resolve().parent
+    # --repo exists because of a deadlock: the SessionStart hook runs this script straight out
+    # of origin/main (`git show origin/main:scripts/... > /tmp/...`), since a tool that fixes a
+    # stale checkout must not be read FROM the stale checkout. Run that way, __file__ is /tmp
+    # and says nothing about which repository is meant, so the caller names it.
+    if args.repo:
+        repo = Path(args.repo).resolve()
+    else:
+        here = Path(__file__).resolve().parent.parent
+        _, common = git(here, "rev-parse", "--git-common-dir")
+        # In a worktree `.git` is a FILE, and --git-common-dir points at the main checkout's
+        # .git. Its parent is the shared checkout, the only one this script is about.
+        repo = Path(common).resolve().parent
 
     code, _ = git(repo, "fetch", "-q", "origin", "main")
     if code != 0:
@@ -129,7 +136,7 @@ def main() -> int:
     if edits:
         print(f"\nSnapshotting {len(edits)} uncommitted file(s) first...")
         snap = subprocess.run(
-            [sys.executable, str(here / "scripts" / "worktree_snapshot.py"), "--push"],
+            [sys.executable, str(repo / "scripts" / "worktree_snapshot.py"), "--push"],
             capture_output=True, text=True, timeout=900, check=False)
         print(snap.stdout.strip() or snap.stderr.strip())
         if snap.returncode != 0:
