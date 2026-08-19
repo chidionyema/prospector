@@ -87,6 +87,40 @@ describe('the console and the gateway agree on what exists', () => {
   });
 });
 
+describe('a link that goes somewhere does something when it lands', () => {
+  /**
+   * The estate's recurring defect is "built and unreachable": a thing exists, a link points at it,
+   * and the target ignores what the link said. The Incidents page deep-links a record into the
+   * Docs page as `/docs?open=<name>`, and the first version of that link was inert because Docs
+   * kept its selection in local state and never looked at the query string.
+   *
+   * So: any page that emits `/route?param=` must be answered by a page that reads `query.param`.
+   */
+  const LINKS = /href=[{]?[`'"]\/([a-z0-9-]+)\?([a-z_]+)=/g;
+
+  it('every query-string link is read by the page it points at', () => {
+    const found: string[] = [];
+    const inert: string[] = [];
+    for (const file of SCREENS) {
+      const text = readFileSync(file, 'utf8');
+      for (const [, route, param] of text.matchAll(LINKS)) {
+        found.push(`/${route}?${param}`);
+        const target = SCREENS.find((f) => f.endsWith(`/pages/${route}.tsx`));
+        if (!target) {
+          inert.push(`/${route}?${param} — no such page`);
+          continue;
+        }
+        if (!new RegExp(`query\\.${param}\\b`).test(readFileSync(target, 'utf8'))) {
+          inert.push(`/${route}?${param} — ${route}.tsx never reads it`);
+        }
+      }
+    }
+    // Anti-vacuity. If nothing matched, this test proves nothing and must say so.
+    expect(found.length).toBeGreaterThan(0);
+    expect(inert).toEqual([]);
+  });
+});
+
 describe('no page scrolls the whole document sideways', () => {
   it('wide content is wrapped, and the body cannot scroll horizontally', () => {
     const css = readFileSync(`${SRC}/styles/globals.css`, 'utf8');

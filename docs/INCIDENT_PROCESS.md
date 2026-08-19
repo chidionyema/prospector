@@ -81,9 +81,20 @@ session's context is work that gets done twice or not at all.
 
 ## Ops visibility
 
-`scripts/incident.py --json` writes `store/ops/incidents.json`, read by the ops console, alongside
-the `method_metrics.json` that `reflect.py` already writes. The console shows: open incidents,
-incidents whose mechanism is unproven, and the friction table with its recommendations.
+**Built 2026-08-19: `/incidents` in the ops console.** It shows the headline counts (open, nothing
+armed, ungraded, overdue, record incomplete, untracked), the split by mechanism tier, and every
+record worst-first with the one next action for each. Each row deep-links to the full record on
+`/docs`. The headline counts also sit on the `/` screen, inside the `status` read.
+
+It does NOT read `store/ops/incidents.json`, which is what this section used to say. That file is
+still written by `scripts/incident.py --json`, but a console reading a snapshot would show whatever
+the last person to run the command left behind. `prospector/ops/incidents_view.py` loads the
+records live and calls this script's own `validate`, `overdue`, `needs_ticket` and `rollup`, so the
+page and the CI gate cannot answer different questions about the same file.
+
+`check`, `friction` and `ticket` are all registered in the console's tool catalogue against
+`/incidents`, so an operator can run them there behind the usual preview and intent log.
+The friction table is runnable but not yet RENDERED as a table; it comes back as tool output.
 
 ## Self-improvement
 

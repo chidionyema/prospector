@@ -168,7 +168,24 @@ def _read_status(cfg, args: dict) -> dict:
     except Exception as exc:  # StaleProcessGlobal and friends are information, not a crash
         out["routing"] = {"error": f"{exc}", "error_kind": type(exc).__name__}
     out["spend"] = _spend_headline(cfg)
+    out["incidents"] = _incident_headline()
     return out
+
+
+def _incident_headline() -> dict:
+    """Counts only, for the Now page. The records themselves are the `incidents` view.
+
+    Wrapped because this is the ONE view polled every 30 seconds by the front page: a malformed
+    incident record, or a checkout with no `scripts/` at all, must cost a line on one card and
+    never the whole screen. `load()` already treats a malformed file as a finding rather than an
+    exception, so this only catches the case where the script itself cannot be reached.
+    """
+    try:
+        from .incidents_view import incidents_view
+
+        return incidents_view(_repo_root())["headline"]
+    except Exception as exc:  # noqa: BLE001 — a broken record must not blank the Now page
+        return {"error": f"{exc}", "error_kind": type(exc).__name__}
 
 
 def _supervisor_view() -> dict:
@@ -445,6 +462,19 @@ def _read_docs(cfg, args: dict) -> dict:
     if name:
         return doc_view(_repo_root(), name)
     return docs_index(_repo_root())
+
+
+def _read_incidents(cfg, args: dict) -> dict:
+    """What broke, what stops it repeating, and what is still unguarded.
+
+    Registered 2026-08-19. The rollup existed only as terminal output from
+    `scripts/incident.py check`, so an operator without a checkout could not see that a record
+    had no mechanism or that a mechanism was past its grading window. The judgement stays in
+    that script — this view calls it, so the page and the CI gate can never disagree.
+    """
+    from .incidents_view import incidents_view
+
+    return incidents_view(_repo_root())
 
 
 def _read_metrics(cfg, args: dict) -> dict:
@@ -1385,6 +1415,7 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
     "data": _read_data,
     "metrics": _read_metrics,
     "docs": _read_docs,
+    "incidents": _read_incidents,
     "runs": _read_runs,
     "run": _read_run,
     "candidate": _read_candidate,
@@ -2959,10 +2990,20 @@ TOOLS: list[dict] = [
     _t("scripts/doc_lint.py", "Find docs that point at something no longer there", False,
        "/audit"),
     # --- registered 2026-08-18 with the incident loop; docs/INCIDENT_PROCESS.md ---
+    # Moved from /audit to /incidents on 2026-08-19, when that page was built. `screen` is not
+    # part of the tool id, so the ids these rows have always had are unchanged and a browser
+    # holding one between preview and confirm still resolves it.
     _t("scripts/incident.py", "Incidents: what broke, what class it belongs to, was the fix graded",
-       False, "/audit", cmd=".venv/bin/python scripts/incident.py check"),
+       False, "/incidents", cmd=".venv/bin/python scripts/incident.py check"),
     _t("scripts/incident.py", "What takes longest and what repeats, with recommendations", False,
-       "/audit", cmd=".venv/bin/python scripts/incident.py friction"),
+       "/incidents", cmd=".venv/bin/python scripts/incident.py friction"),
+    # `external` because it creates GitHub issues, which no local snapshot can roll back.
+    _t("scripts/incident.py", "Open a ticket for every incident with no mechanism behind it",
+       True, "/incidents", risk="external",
+       cmd=".venv/bin/python scripts/incident.py ticket",
+       danger="opens real GitHub issues; run the dry run first"),
+    _t("scripts/incident.py", "Show what a ticket run would open, without opening anything",
+       False, "/incidents", cmd=".venv/bin/python scripts/incident.py ticket --dry-run"),
     # --- registered 2026-08-19. Hermes lives in ~/.hermes, a different repo, but the operator
     # should not have to know that: the founder's ask was "make this visible in ops".
     _t("~/.hermes/scripts/hermes_selfcheck.py", "Is Hermes actually healthy? six invariants, "
@@ -3012,6 +3053,9 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     "scripts/seed_action_cache.sh": "fills the self-hosted runners' action cache; CI plumbing, "
                                     "run once on the runner box, not from an ops page",
     "scripts/setup_worktree.sh": "makes a git worktree usable; a developer's machine, not ops",
+    "scripts/prove_test_fails.py": "edits source files to prove a test goes red, then puts them "
+                                  "back; it belongs to whoever is writing the test, and "
+                                  "pointing it at a running estate would mutate live code",
     "scripts/session_check.py": "asks whether an agent session left work behind — uncommitted, "
                                "unpushed, a branch with no PR; a session's own hygiene, and there "
                                "is no session to check from an ops page",
