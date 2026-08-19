@@ -15,6 +15,7 @@ import argparse
 import datetime
 import json
 import os
+import socket
 import sys
 import uuid
 from pathlib import Path
@@ -50,11 +51,25 @@ def _vet_workers(cfg) -> int:
 _LEASE_HELD = object()
 
 
+def _host_id() -> str:
+    """Which machine this worker runs on. Part of every lease owner string.
+
+    `FLY_MACHINE_ID` first because the engine now runs on Fly and that id is stable for the life
+    of the machine; `gethostname()` is the laptop and any other box. Never empty — an empty host
+    segment would parse as a legacy owner and re-open the cross-machine hole this exists to close.
+    """
+    return (os.environ.get("FLY_MACHINE_ID") or socket.gethostname() or "unknown").strip()
+
+
+def _mint_lease_owner() -> str:
+    """`host:pid:uuid`. The uuid makes it per-INVOCATION, not per-process (see `_cmd_resume`)."""
+    return f"{_host_id()}:{os.getpid()}:{uuid.uuid4().hex[:8]}"
+
+
 def _owner_is_gone(owner: str) -> bool:
     """True when a lease owner is a process that is definitely not running any more.
 
-    Owners are minted as `f"{os.getpid()}:{uuid4}"` (see `_cmd_resume`), and every worker in this
-    system runs on this machine — the engine is local by design. `os.kill(pid, 0)` is the check:
+    Owners are minted as `host:pid:uuid` by `_mint_lease_owner`. `os.kill(pid, 0)` is the check:
     it signals nothing and only asks whether the pid exists.
 
     UNSURE ALWAYS MEANS ALIVE. An unparsable owner, a pid we lack permission to signal, or a pid
@@ -62,7 +77,23 @@ def _owner_is_gone(owner: str) -> bool:
     only thing that frees it. The cost of a false "gone" is two workers on one row, which is the
     double-publish this lease exists to prevent; the cost of a false "alive" is one row waiting.
     """
-    head = owner.split(":", 1)[0]
+    parts = owner.split(":")
+    if len(parts) >= 3:
+        # `host:pid:uuid`. A PID IS ONLY MEANINGFUL ON THE MACHINE THAT MINTED IT. Asking
+        # `os.kill` about another host's pid answers a question about OUR process table: the pid
+        # is usually absent, so a live worker on the other machine reads as gone, its row is
+        # reclaimed, and two workers vet one candidate — the double-publish this lease prevents.
+        # Pid reuse makes the other direction possible too. So a foreign host is always ALIVE
+        # here and only the TTL frees its rows, which is the same rule the rest of this function
+        # follows: unsure means alive.
+        if parts[0] != _host_id():
+            return False
+        head = parts[1]
+    else:
+        # LEGACY `pid:uuid`, minted before owners carried a host. Kept reading as before rather
+        # than as foreign, so the 2026-08-16 dead-worker reclaim does not regress on rows already
+        # in the store; they age out within one `lease_ttl_s` and stop appearing.
+        head = parts[0]
     if not head.isdigit():
         return False
     try:
@@ -2645,7 +2676,7 @@ def _recover_orphans(args: argparse.Namespace, cfg: Config, op: Operator,
     if limit is not None:
         todo = todo[:limit]
 
-    owner = f"{os.getpid()}:{uuid.uuid4().hex[:8]}"
+    owner = _mint_lease_owner()
     print(f"Recovering {len(todo)} candidate(s) abandoned by a process that died mid-vet"
           + (f" ({settled} more already had a verdict on disk)." if settled else "."))
     for i, rec in enumerate(todo, 1):
@@ -2952,7 +2983,7 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     # concurrently in one process would share a pid, and `Store.claim` deliberately lets an owner
     # re-take its own row so a long vet can renew. A shared owner string would turn that renewal
     # affordance into "both passes may hold the same row", which is the bug, not the feature.
-    lease_owner = f"{os.getpid()}:{uuid.uuid4().hex[:8]}"
+    lease_owner = _mint_lease_owner()
     lease_ttl = _lease_ttl_s(cfg)
 
     def _revet(idx: int, row: dict):

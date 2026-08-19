@@ -311,3 +311,84 @@ def test_an_unparsable_or_foreign_owner_is_treated_as_alive(tmp_path):
     assert _owner_is_gone("not-a-pid:abc") is False
     assert _owner_is_gone("") is False
     assert _owner_is_gone(f"{os.getpid()}:abc") is False
+
+
+# ---------------------------------------------------------------------------------------------
+# A PID IS ONLY MEANINGFUL ON THE MACHINE THAT MINTED IT.
+#
+# Owners were `pid:uuid`, and `_owner_is_gone` asked `os.kill(pid, 0)` about them. That is a
+# question about OUR process table, and it was correct for exactly as long as the docstring's
+# stated premise held: "every worker in this system runs on this machine — the engine is local by
+# design." The engine moved to Fly on 2026-08-18 and task #60 is to run more than one instance,
+# which retires that premise. Two machines pick pids from separate spaces, so machine B asking
+# about machine A's pid usually gets ProcessLookupError, calls a live worker gone, reclaims the
+# row and puts two workers on one candidate — the double publish the lease exists to prevent.
+#
+# These tests pin the host segment. They are the reason multi-instance is safe to attempt at all,
+# so they must fail if anyone drops the host back out of the owner string.
+# ---------------------------------------------------------------------------------------------
+
+def test_a_live_worker_on_another_machine_is_never_declared_gone():
+    """The cross-machine double-publish: `os.kill` is not asked at all about a foreign host.
+
+    Documents the rule; it is NOT the test that would have stopped the defect. Fed a three-part
+    owner, the pre-fix parser took `host` as the pid, found it non-numeric and returned False, so
+    this passed before the fix too. The bug was in the MINT, not the parse — the owner had no host
+    to check. `test_every_lease_owner_carries_the_host_that_minted_it` is the load-bearing one,
+    and it does fail on the old `pid:uuid` format. Verified rather than assumed, 2026-08-19."""
+    from prospector.run import _owner_is_gone
+
+    # A pid that certainly does not exist HERE, owned by a host that is not this one. Before the
+    # host segment this returned True and the row was reclaimed under a working worker.
+    assert _owner_is_gone("some-other-fly-machine:999999:abc") is False
+    # And the reverse: a pid that IS alive here, but minted elsewhere, is still not ours to judge.
+    assert _owner_is_gone(f"some-other-fly-machine:{os.getpid()}:abc") is False
+
+
+def test_a_dead_worker_on_this_machine_is_still_reclaimed():
+    """The host check must not cost us the 2026-08-16 fix. Same host, exited pid, still gone."""
+    import subprocess
+
+    from prospector.run import _host_id, _owner_is_gone
+
+    p = subprocess.Popen(["true"])
+    p.wait()
+    assert _owner_is_gone(f"{_host_id()}:{p.pid}:deadbeef") is True
+
+
+def test_every_lease_owner_carries_the_host_that_minted_it():
+    """Both mint sites go through one function, so a new caller cannot reintroduce `pid:uuid`."""
+    from prospector.run import _host_id, _mint_lease_owner
+
+    owner = _mint_lease_owner()
+    parts = owner.split(":")
+    assert len(parts) == 3, f"expected host:pid:uuid, got {owner!r}"
+    assert parts[0] == _host_id()
+    assert parts[1] == str(os.getpid())
+    assert _mint_lease_owner() != owner, "the uuid makes it per-invocation, not per-process"
+
+
+def test_the_host_id_is_never_empty(monkeypatch):
+    """An empty host segment would parse as a legacy `pid:uuid` owner and silently re-open the
+    cross-machine hole, which is the one failure mode that must not degrade quietly."""
+    from prospector import run as run_mod
+
+    monkeypatch.setenv("FLY_MACHINE_ID", "80d34da6636478")
+    assert run_mod._host_id() == "80d34da6636478"
+
+    monkeypatch.delenv("FLY_MACHINE_ID", raising=False)
+    monkeypatch.setattr(run_mod.socket, "gethostname", lambda: "")
+    assert run_mod._host_id() == "unknown"
+
+
+def test_a_legacy_owner_minted_before_the_host_segment_still_reclaims(tmp_path):
+    """Rows already in the store carry `pid:uuid`. They must keep the old behaviour rather than
+    read as foreign-and-alive, or the dead-worker reclaim regresses for one whole `lease_ttl_s`
+    on exactly the rows most likely to be stuck. They age out and stop appearing."""
+    import subprocess
+
+    from prospector.run import _owner_is_gone
+
+    p = subprocess.Popen(["true"])
+    p.wait()
+    assert _owner_is_gone(f"{p.pid}:deadbeef") is True
