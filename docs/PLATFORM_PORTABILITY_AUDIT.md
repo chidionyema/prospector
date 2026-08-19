@@ -271,11 +271,9 @@ Founder, 2026-08-19: *"right now we dont have proper loggin visibility in store 
 etc — we log but no cetral place to view, and there is a story for this."* Measured, and it is
 worse than "no central place":
 
-*Zero* log aggregation is configured anywhere in this estate. Searching the tree for `loki`,
-`grafana`, `datadog`, `sentry`, `opentelemetry`, `otel`, `axiom`, `vector`, `fluentbit`,
-`betterstack`, `papertrail`, `logtail` returns hits **only** inside `store/scheduler/audit/*.jsonl`
-and the shadow logs — which are candidate *business ideas the engine itself generated about
-observability companies*, not configuration. The single real code reference in the whole repo is
+*Zero* log **aggregation** is configured anywhere in this estate: nothing ships a log line off the machine that wrote it, to anywhere, ever.
+
+**Correction, 2026-08-19.** This paragraph previously said that searching the tree for `loki`, `grafana`, `datadog`, `sentry`, `opentelemetry`, `otel`, `axiom`, `vector`, `fluentbit`, `betterstack`, `papertrail`, `logtail` returned hits **only** inside `store/scheduler/audit/*.jsonl` and the shadow logs — candidate *business ideas the engine generated about observability companies*, not configuration. That is true of eleven of the twelve terms and false of `opentelemetry`, which I missed because the sweep did not reach `store_platform/`. OpenTelemetry is pinned in `store_platform/Directory.Packages.props:68-71` and ships inside a package Store.Api already references. What survives from the original claim is the part that matters — nothing is *aggregated* — but the estate is closer to it than I wrote, and that changes the plan rather than the verdict. See “what already exists” below. The single real code reference in the whole repo is
 `store_platform/src/Store.Web/src/components/ErrorBoundary.tsx:32`:
 
 > `// Surface in the console for now; a real reporter (Sentry) is a deferred, founder-gated decision.`
@@ -294,9 +292,54 @@ Where logs actually go, counted from `ops/launchd/*.json` and disk:
 
 **Four consequences, none hypothetical.** A customer-facing error in the storefront is recorded
 nowhere durable. A question spanning the web, the API and the engine cannot be answered at all,
-because no request identifier crosses those boundaries. Two months of Hermes history exists in
+because the one request identifier that does exist is
+born and dies inside the API. Two months of Hermes history exists in
 exactly one copy, on the laptop. And the ops console — the surface the founder wants everything
 driven from — writes its own logs to a directory macOS deletes on reboot.
+
+**What already exists, measured 2026-08-19, and it changes the plan from build to extend.**
+
+Store.Api is not starting from nothing. It has a correlation id, wired end to end *within itself*:
+
+| Where | What |
+|---|---|
+| `Program.cs:72` | `builder.Services.AddCorrelationId();` |
+| `Program.cs:77` | `http.AddHttpMessageHandler<CorrelationIdHttpClientHandler>();` — every outbound HTTP call carries it |
+| `Program.cs:225` | `app.UseCorrelationId();`, with the comment that it must be early "so every log line carries the id" |
+| `Common/HttpContextExtensions.cs:11` | `public const string CorrelationIdHeader = "X-Correlation-Id";` |
+| same, `:13` | `GetCorrelationId()` — honours an inbound header, falls back to `TraceIdentifier` |
+| `Common/Audit/IAuditLogger.cs` | already writes the id into every structured AUDIT line |
+
+The implementation is in `Crux.Observability 1.0.0`, which also drags in
+`OpenTelemetry.Instrumentation.AspNetCore`, `.Http`, `.EntityFrameworkCore` and `.Runtime` plus
+`OpenTelemetry.Extensions.Hosting` (read from the package's own nuspec). So the API already pays
+for OpenTelemetry instrumentation on every build.
+
+**It never switches it on.** `AddOpenTelemetry`, `WithTracing`, `AddOtlpExporter` and
+`ActivitySource` appear nowhere in `store_platform/src/Store.Api/`. The package describes itself as
+"OpenTelemetry wiring, correlation-id middleware, health checks", but the only extension methods it
+exposes are `AddCorrelationId`, `UseCorrelationId`, `AddDbHealthCheck` and `AddDbContextCheck` —
+there is no entry point that would activate tracing. (Method: `strings` over
+`lib/net9.0/Crux.Observability.dll`. That is indicative, not exhaustive; the confirming step is
+reading the assembly metadata, and it is worth doing before anyone plans work around it.)
+
+The three ends that are genuinely absent, each measured with `rg` and no `-r` flag:
+
+| Surface | Correlation id | Evidence |
+|---|---|---|
+| Store.Web (storefront) | **none** — the browser never sends one | 0 matches in `src/`; the fetch wrappers in `lib/api/client.ts` set only `Content-Type` |
+| Ops.Console | **none** | 0 matches in `src/` |
+| Engine (`prospector/`) | **none** | 0 matches across the package |
+
+So the honest shape of F9 is narrower and cheaper than "build request tracing": the id exists and
+is correct in the middle tier, and the work is to originate it at the browser, accept and log it in
+the engine, and pick something that stores the result. A second correlation id must not be built.
+
+**Method note, because it nearly cost a wrong plan.** My first pass at this measurement used
+`rg -rn`. In ripgrep `-r` is `--replace`, not `--recursive`: it substituted the literal `n` for
+every match, so `CorrelationIdHeader` printed as `"n"` and the engine sweep printed nothing at all.
+Read cleanly, the engine result is the same (zero), but it was zero for the wrong reason for an
+hour. rg recurses by default. Memory: `rg-dash-r-is-replace-not-recursive.md`.
 
 **The story the founder remembered is real, and it is two months old.**
 `specs/observability-gap-search.md` (2026-06-24) diagnoses `web_calls=0` and states the class in
@@ -311,6 +354,55 @@ by an exit code that only proved the job ran (F8, fixed today). Same class every
 was emitted and nothing consumed it.** Observability here is not a missing vendor, it is a missing
 rule — *emitting is not observing, and a signal with no consumer is not evidence.* That belongs in
 `PLATFORM_MANIFESTO.md` as a law, because a fourth instance is otherwise certain.
+
+**F11 — Four .NET dependencies are binaries whose source is in another private repo.
+CONFIRMED. Blocks selling, not bootstrapping.**
+
+Found while measuring F9, and it is a portability finding rather than an observability one.
+
+Store.Api builds against `Crux.Storage`, `Crux.Resilience` and `Crux.Observability`, and pulls
+`Crux.Kernel` transitively. All are vendored into the repo as `.nupkg` files under
+`store_platform/local-feed/` and all are git-tracked, together with `store_platform/nuget.config`,
+which maps `Crux.*` to that folder by package-source mapping. **A fresh clone therefore builds with
+no token and no sibling checkout.** That was deliberate and it works; the comment in `nuget.config`
+says so, and `git ls-files` confirms all eight nupkgs are committed.
+
+What is not in the repo is the source. Each package contains `lib/net9.0/*.dll` and nothing else —
+no `.cs`, no `.pdb`, no SourceLink. The source is `github.com/chidionyema/crux`, **private**, last
+pushed 2026-07-10, and it is **not on this machine**: `nuget.config` names `~/Documents/code/crux`
+as the place to rebuild the feed from, and that directory does not exist.
+
+Three consequences.
+
+1. **A defect inside Crux cannot be fixed from this repo.** Not hypothetical — the workaround is
+   already written into `Directory.Packages.props:64`. OpenTelemetry advisory GHSA-g94r-2vxg-569j
+   arrives through `Crux.Observability 1.0.0`, "which is on the local feed and will not move", so it
+   was cleared by pinning the transitive package instead. That answer works for a dependency *of*
+   Crux. There is no answer for a defect *in* Crux.
+2. **It contradicts the one rule that survived the hosted-inference rewrite.** The project rule is
+   that the repo stays the complete system. Four DLLs are the exception. For "packaged up and
+   portble", a buyer receives code they cannot rebuild unless the sale includes the crux repo.
+3. **Four of the eight vendored packages are unreachable.** `Crux.Idempotency`, `Crux.Identity`,
+   `Crux.Notifications` and `Crux.Payments.Stripe` have no `PackageVersion` entry, and central
+   package management is on, so nothing can reference them; none is a dependency of the four that
+   are used either. They are dead weight — and dead weight named `Payments.Stripe` and `Identity`
+   is worse than neutral, because it reads as though the money path sits behind a binary. It does
+   not: only three `.cs` files in the whole solution import Crux at all.
+
+**Grade: SOUND on bootstrap, FLAKY on sell-the-business.** A new developer on a new laptop can
+build today. Patching and selling are what break.
+
+**Options, for the founder to decide — this is a repo-ownership question, not a technical one.**
+Publish the packages to GitHub Packages and keep the vendored feed as the offline fallback (cheap,
+keeps the private repo private, but a buyer still needs the repo). Or add crux as a git submodule
+or a vendored source drop (makes this repo genuinely complete, at the cost of merging the kernel's
+history into the sale). Or build the packages with `<IncludeSymbols>` and SourceLink, which fixes
+debugging but not patching. Doing nothing is defensible while the kernel is stable; it stops being
+defensible the day an advisory names a Crux package rather than one of its dependencies.
+
+Cheap and independent of that decision: delete the four unreachable nupkgs, or add the
+`PackageVersion` lines if they were meant to be used. That is a measurement away from being a
+one-line PR and needs no founder input.
 
 **F10 — We are building scripts to survive our process instead of fixing it. CONFIRMED.**
 
@@ -439,11 +531,23 @@ not a new single point of failure; and it moves with the estate to any provider.
 | **Ship to R2 as JSONL and query with DuckDB** | Zero new infrastructure; uses a bucket we already back up; genuinely free | No live tail, no alerting; a bespoke tool to write — the exact habit F10 names | Rejected on F10 grounds |
 | **Status quo** | — | F9 | Rejected |
 
+**Re-weighed 2026-08-19, after measuring what the API already has.** The API already carries
+OpenTelemetry instrumentation (through `Crux.Observability`) and a correct `X-Correlation-Id`, and
+simply never activates the tracing. That does not change the grade, but it changes the reason: the
+question is now which sink to point an OTLP exporter at, not what to build. It strengthens the
+first row — Grafana Cloud accepts OTLP natively, so the API side becomes configuration rather than
+code — and it strengthens the case against the R2+DuckDB row further, since that one would mean
+discarding instrumentation already paid for. It also puts a floor under the exit argument: an OTLP
+exporter can be repointed at a self-hosted Loki later by changing an endpoint.
+
 Two parts of this are independent of the vendor choice and should exist whichever way it goes.
-**A request identifier that crosses the storefront, the API and the engine** — without it no
-aggregator can answer a question that spans them, and with it even `grep` can. And **a real error
-reporter behind `ErrorBoundary.tsx:32`**, since a customer-visible error currently persists
-nowhere. Both are small; neither is done.
+**A request identifier that crosses the storefront, the API and the engine.** One third of this
+exists and is done well; what is missing is originating the id in the browser's fetch wrappers
+(`Store.Web/src/lib/api/client.ts` and its two siblings, which today send only `Content-Type`) and
+accepting and logging it in the engine, which has no correlation id anywhere. Extend
+`X-Correlation-Id`; do not introduce a second scheme. And **a real error reporter behind
+`ErrorBoundary.tsx:32`**, since a customer-visible error currently persists nowhere. Both are
+small; neither is done.
 
 **Ops console:** the console renders what the aggregator holds — it does not become a second log
 store. Extending the existing action pattern (§6) keeps "all by ops dashboad" cheap.
