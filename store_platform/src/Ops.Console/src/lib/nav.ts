@@ -57,6 +57,7 @@ export const GROUPS: Group[] = [
     screens: [
       { href: '/data', label: 'Backups', what: 'what survives if the volume is lost' },
       { href: '/audit', label: 'Audit', what: 'what changed, and who changed it' },
+      { href: '/docs', label: 'Docs', what: 'the decisions, incidents and runbooks, in here' },
     ],
   },
   {

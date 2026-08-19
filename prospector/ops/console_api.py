@@ -430,6 +430,21 @@ def _read_data(cfg, args: dict) -> dict:
     return data_view(cfg)
 
 
+def _read_docs(cfg, args: dict) -> dict:
+    """The repo's own documentation, in the console. Index by default, one doc with `name=`.
+
+    Registered 2026-08-19: the founder asked twice whether docs were reachable from ops and the
+    answer was no. Reads are confined to `docs/` by `docs_view._safe`, which resolves first and
+    checks containment second so a `..` or a symlink cannot leave the tree.
+    """
+    from .docs_view import doc_view, docs_index
+
+    name = str(args.get("name") or "").strip()
+    if name:
+        return doc_view(_repo_root(), name)
+    return docs_index(_repo_root())
+
+
 def _read_metrics(cfg, args: dict) -> dict:
     from .metrics import snapshot
 
@@ -1250,6 +1265,7 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
     "money": _read_money,
     "data": _read_data,
     "metrics": _read_metrics,
+    "docs": _read_docs,
     "runs": _read_runs,
     "run": _read_run,
     "candidate": _read_candidate,

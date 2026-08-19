@@ -35,6 +35,7 @@ export const VIEWS = [
   'pack',
   'shelf',
   'method',
+  'docs',
   'content_rules',
   'orders',
   'order',
@@ -60,6 +61,7 @@ const ALLOWED_ARGS: Record<string, string[]> = {
   sales: ['days'],
   deliveries: ['state', 'limit'],
   disputes: ['days'],
+  docs: ['name'],
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
