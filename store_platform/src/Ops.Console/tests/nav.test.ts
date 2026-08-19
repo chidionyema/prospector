@@ -69,8 +69,11 @@ describe('neither row is long enough to scroll off a phone', () => {
     expect(GROUPS.length).toBeLessThanOrEqual(7);
   });
 
-  it('at most four screens in a group', () => {
-    for (const g of GROUPS) expect(g.screens.length).toBeLessThanOrEqual(4);
+  // The screen row wraps too (`components/Shell.tsx:79`, `flex flex-wrap`), so the ceiling moved
+  // from four to five when the Workflows screen landed in Control: the fifth short pill costs a
+  // wrapped line of header, not a sideways scroll. Same reasoning as the group ceiling above.
+  it('at most five screens in a group', () => {
+    for (const g of GROUPS) expect(g.screens.length).toBeLessThanOrEqual(5);
   });
 
   it('labels stay short enough to sit on one line', () => {

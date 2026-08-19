@@ -342,47 +342,34 @@ def grade_launchd(docs: set[str]) -> list[tuple[str, str, str]]:
 
 
 def grade_workflows(docs: set[str]) -> list[tuple[str, str, str]]:
-    """One (grade, filename, detail) row per GitHub workflow."""
-    code, out = sh(
-        ["gh", "run", "list", "--limit", "200", "--json",
-         "workflowName,conclusion,status,createdAt,event"], timeout=90)
-    runs: list[dict] = []
-    gh_error = None
-    if code != 0:
-        gh_error = (out.strip().splitlines() or ["gh failed"])[0]
-    else:
-        try:
-            runs = json.loads(out)
-        except ValueError as exc:
-            gh_error = str(exc)
+    """One (grade, filename, detail) row per GitHub workflow.
 
-    newest: dict[str, dict] = {}
-    for run in runs:
-        name = run.get("workflowName", "")
-        if name not in newest or run.get("createdAt", "") > newest[name].get("createdAt", ""):
-            newest[name] = run
+    The grading lives in `scripts/workflow_health.py`, which the ops console reads too, so the
+    console and this audit can never disagree about which fences are up.
+
+    This function used to do its own counting with `gh run list --limit 200` -- one global window
+    across every workflow. Measured 2026-08-19T14:11Z, those 200 runs covered 3 hours 39 minutes,
+    because CI and auto-merge alone produced 164 of them. Five of the ten workflows on disk had no
+    run inside the window and were reported NEVER-RAN; four had in fact run that morning and three
+    of those were FAILING. The window got smaller the busier CI was, so the audit was least
+    truthful exactly when it mattered.
+    """
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import workflow_health
+
+    report = workflow_health.collect()
+    if not report.get("reachable"):
+        return [(WARN, "GitHub workflows", f"could not ask GitHub ({report.get('error', '?')})")]
 
     rows: list[tuple[str, str, str]] = []
-    for f in sorted(WORKFLOW_DIR.glob("*.y*ml")):
-        text = f.read_text(encoding="utf-8")
-        m = re.search(r"^name:\s*(.+)$", text, re.M)
-        name = m.group(1).strip().strip("\"'") if m else f.stem
-        run = newest.get(name)
-        if gh_error:
-            rows.append((WARN, f.name, f"could not ask GitHub ({gh_error})"))
-            continue
-        if run is None:
-            # A workflow that never ran leaves no red run anywhere. This is the only place it shows.
-            rows.append((BAD, f.name, f"NEVER-RAN -- no run of '{name}' in the last 200"))
-            continue
-        concl = run.get("conclusion") or run.get("status") or "?"
-        detail = f"last {concl} ({run.get('event')}) {run.get('createdAt', '')[:16]}"
-        if concl in ("failure", "timed_out", "startup_failure"):
-            rows.append((BAD, f.name, f"FAILING -- {detail}"))
-        elif f.name not in docs:
-            rows.append((BAD, f.name, f"UNDOCUMENTED, absent from {INVENTORY.name} -- {detail}"))
-        else:
-            rows.append((OK, f.name, detail))
+    for r in report["rows"]:
+        grade, detail = r["grade"], r["detail"]
+        # Documentation is this audit's rule, not workflow_health's: that module answers "is the
+        # fence up", this one also answers "can a human find out what it is for".
+        if grade == OK and r["file"] not in docs:
+            grade = BAD
+            detail = f"UNDOCUMENTED, absent from {INVENTORY.name} -- {detail}"
+        rows.append((grade, r["file"], detail))
     return rows
 
 
