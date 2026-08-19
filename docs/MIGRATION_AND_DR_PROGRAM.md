@@ -70,6 +70,95 @@ decided, verbatim, with dates.** Read it before planning; it is where the 30-min
 
 ---
 
+## 0. The eight core requirements, and what they are worth in a real failure
+
+Founder, 2026-08-19, verbatim: *"if i have 30 ninutes to nigrate the wwhole stack, donain, third
+party deps/ donain , everything running in this nachine because i also have a new laptop, so engine,
+hernes, jobs, and evertything on fly to another onpren or cloud provider, i should not epericne ny
+downtine and get this seanlessly done fron ops dashboard and prove and see realtine progress. this
+is the bar, even things like logs, etc nothing beig used can be nissed out, and this has to be
+resuable for any project not just prospector etc, should be able to probe and audit any systen and
+get this done."*
+
+Eight requirements are named in that one sentence. They are the bar, restated so each one can be
+graded:
+
+| # | Requirement | His words | Status |
+|---|---|---|---|
+| **B1** | **Completeness** — nothing in use is missed: domain, third-party deps, logs, secrets, data, jobs | "nothing beig used can be nissed out" | **not met** — three inventories that never meet (M1) |
+| **B2** | **Thirty minutes**, end to end | "if i have 30 ninutes" | **unproven** — nothing has ever been timed |
+| **B3** | **Zero downtime** for the customer | "i should not epericne ny downtine" | **unproven** — no cutover has been run |
+| **B4** | **Driven from the ops dashboard**, not a terminal | "fron ops dashboard" | **not met** — no Continuity panel (M5) |
+| **B5** | **Provable, real-time progress** | "prove and see realtine progress" | **not met** |
+| **B6** | **Destination-agnostic** — any on-prem or cloud provider | "to another onpren or cloud provider" | **partly** — engine has 3 adapters, money path has none (M3) |
+| **B7** | **Reusable for any project**, not prospector-shaped | "not just prospector etc" | **not met** — every artefact is prospector-shaped |
+| **B8** | **Probe and audit any system** — discover the estate, don't hand-write it | "should be able to probe and audit any systen" | **not met** |
+
+### 0.1 The precondition nobody wrote down: B0
+
+The eight requirements are all about *moving* the estate. Every one of them assumes the estate still
+exists to be moved. That assumption is the requirement, and it is not in the list:
+
+> **B0 — the data survives the machine.** A migration plan is a way of *rebuilding* from a copy. If
+> the copy is stale or absent, none of B1–B8 can be attempted at any speed.
+
+**B0 is currently failing.** Measured 2026-08-19:
+
+```
+store/backup.log      last STORE_BACKUP PASS = ledger/prospector-2026-08-17.jsonl.gz
+                      file mtime 2026-08-17 09:38          -> 2 days, no backup
+launchctl list        com.prospector.backup  last_exit=78  (EX_CONFIG, dead at spawn)
+store/prospector.jsonl  258 MB, mtime 2026-08-18 18:51     -> newer than any backup of it
+prospector-live       HEAD debfe1c, 44 commits behind origin/main
+                      scripts/process_audit.py MISSING -> com.prospector.process-audit exit 2
+fly logs prospector-engine | grep STORE_BACKUP  -> no lines in the retained buffer
+```
+
+The last two lines matter together. `deploy/engine/supervisord.conf` on `origin/main` runs
+`[program:backup]` and `[program:offsite-backup]` on Fly, so the intent is that Fly covers this. The
+Fly log buffer shows nothing, which is a **lead, not proof** — the buffer is short. Grading it
+honestly: **the laptop's backup is proven dead since 2026-08-17; whether Fly has replaced it is
+UNPROVEN and is the single most urgent thing to measure in this programme.**
+
+### 0.2 How the priority reorders if we lost Fly and the laptop today
+
+The build order and the disaster order are different lists, and the difference is the finding. Under
+"Fly is gone and the laptop is dead this morning", six of the eight requirements are about doing the
+migration *well*. Only two decide whether it can be done at all.
+
+| Rank | What | Why it sits here |
+|---|---|---|
+| **1** | **B0 — data survives** | Nothing else is attemptable. Restores the ledger, the store DB, the dossiers, the Stripe reconciliation trail. If this fails the business is gone, not delayed. |
+| **2** | **B1 — completeness** | You can only restore what something wrote down. The gap that bites is never the database; it is the DNS record, the webhook secret, the API key with no restore path (M2/T10: the SOPS age private key has no documented recovery). |
+| **3** | **B6 — destination-agnostic** | You need somewhere to go. The engine can move (3 adapters). **The money path cannot** — it is SQLite on Fly with no adapter (M3), so the shop stops taking money regardless of how fast the engine moves. |
+| **4** | **RTO, not B3** | B3 is *zero* downtime. In a real double failure the downtime already happened. The live question becomes "how many hours until a buyer can buy again", which is a different and more honest target than "seamless". |
+| **5** | **B2 — thirty minutes** | Becomes a measurement, not a bar. A number nobody has ever clocked cannot be a constraint. |
+| **6** | **B5 — provable progress** | Matters once the restore is running, so you know whether to wait or intervene. Not before. |
+| **7** | **B4 — from the ops dashboard** | The dashboard is on the dead laptop or the dead platform. In the real incident you are in a terminal. B4 is a requirement for the *routine* migration, not the emergency one. |
+| **8** | **B7 / B8 — reusable, auditable** | These pay off on the *next* project. They cost nothing during the incident and save nothing during it. |
+
+**What that reordering changes about what to build next.** The current M-series sequence leads with
+M1 (inventory) and M2 (bootstrap). The disaster ordering says the true head of the queue is
+**M11 + M4 — name every datastore and prove one restore** — because they are B0, and B0 is failing
+today. Nothing above rank 3 is a tooling decision; all of it is proving that a copy exists and comes
+back.
+
+**Second and third order effects of accepting this ordering.** Second order: M2's bootstrap work
+(mise, uv, SOPS) drops behind restore drills, which delays "new laptop" readiness — acceptable,
+because a new laptop with no data to put on it is not readiness. Third order: the ops console
+Continuity panel (M5, B4) slips furthest, so for some weeks the migration remains a terminal
+procedure. That must be said out loud rather than discovered later, because B4 is one of the
+founder's eight and deferring it is a decision, not an oversight.
+
+### 0.3 The immediate consequence
+
+`P0 — com.prospector.backup fails at spawn (launchd exit 78)` is already tracked. It has been
+carried as one broken job. Under B0 it is not one broken job; **it is the top requirement of the
+entire programme failing silently for two days**, which is L11 test 2 exactly: it failed in a way
+that looked like nothing.
+
+---
+
 ## 1. Why this exists — the measurement that started it
 
 On 2026-08-19 a probe was written to ask one question: *which Fly apps does no committed file
