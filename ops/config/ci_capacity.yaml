@@ -82,8 +82,17 @@ pools:
     # machine, and it is needed: these runners are `--ephemeral`, so each one deregisters when a
     # job ends and re-registers when Fly restarts it about two seconds later. A blink is normal;
     # two machines down at once is not.
+    # AUTOSCALE SETS THIS RANGE NOW, not a hand-counted fleet (founder chose max 6 on
+    # 2026-08-19). `runners` is autoscale_min -- the machines kept started at all times, and the floor that
+    # turns a dark runner into a failing row -- and
+    # `ephemeral` is the headroom up to autoscale_max. scripts/ci_capacity.py --live checks
+    # between the two, which is exactly the band autoscale is allowed to move in.
+    #
+    # A stopped machine bills no CPU and no RAM, so the headroom costs pennies and is only paid
+    # for while it is running jobs. box.heavy_slots, not this number, is what bounds the CPU
+    # arithmetic, so widening the band does not oversubscribe anything.
     runners: 2
-    ephemeral: 1
+    ephemeral: 4
     variable: CI_HEAVY_RUNS_ON
     # LABEL `fly`, NOT `heavy` OR `self-hosted`, SINCE 2026-08-19. mumchimp-mac-4 was online
     # carrying `self-hosted`, the same label the Linux fleet carries, so GitHub scheduled
@@ -116,8 +125,9 @@ pools:
     # not a separate fleet any more -- the reservation the split existed for came from the Macs,
     # where mumchimp-mac-4 deliberately lacked `heavy`. Keep the split declared: it costs
     # nothing, and it is how a light job gets its own capacity again the moment one is added.
+    # Same band, same fleet: these machines carry both labels.
     runners: 2
-    ephemeral: 1
+    ephemeral: 4
     variable: CI_LIGHT_RUNS_ON
     # Same fleet, same label, same reason as heavy above.
     label: fly
@@ -136,11 +146,12 @@ pools:
 # idle machine in the pool costs pennies, so capacity for a busy afternoon is nearly free and is
 # only paid for while it is actually running jobs.
 #
-# autoscale_min  machines kept started at all times. 1, not 0: a cold start costs a job about a
+# autoscale_min  machines kept started at all times. 2, not 0: a cold start costs a job about a
 #                minute, and the first job of the morning should not pay it. Set 0 to pay
 #                nothing overnight and accept that delay.
-# autoscale_max  the ceiling. Never higher than the machines the pool actually holds --
+# autoscale_max  the ceiling, 6 by founder decision on 2026-08-19. Never higher than the
+#                machines the pool actually holds --
 #                `deploy/runners.sh up <n>` is what creates them; autoscale only starts and
 #                stops what is already there, and says so when it wants more than exists.
-autoscale_min: 1
-autoscale_max: 3
+autoscale_min: 2
+autoscale_max: 6

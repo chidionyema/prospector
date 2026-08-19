@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -22,6 +23,7 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[2]
 RUNNERS = REPO / "deploy" / "runners.sh"
+CFG = REPO / "ops" / "config" / "ci_capacity.yaml"
 
 
 def _stub_bin(tmp_path: Path, machines: list[dict], busy: list[str], queued: str | None) -> Path:
@@ -81,9 +83,13 @@ def test_a_queue_starts_stopped_machines(tmp_path):
 @pytest.mark.skipif(not RUNNERS.exists(), reason="runners.sh not in this checkout")
 def test_an_empty_queue_stops_idle_machines_but_never_a_busy_one(tmp_path):
     # s0 is mid-job. Stopping it kills a build, so the verb must walk past it and stop s1.
-    out, calls = _run(tmp_path, _machines(started=2, stopped=0), busy=["runner-s0"], queued="0")
-    assert "want=1" in out, out                      # autoscale_min floors it at 1
-    assert "machine stop s0" not in calls, calls
+    # The floor comes from the config, not from a number typed here: autoscale_min moves when the
+    # fleet is resized, and a hardcoded 1 would then fail for a reason that has nothing to do with
+    # the behaviour under test.
+    lo = int(re.search(r"^autoscale_min:\s*(\d+)", CFG.read_text(), re.M).group(1))
+    out, calls = _run(tmp_path, _machines(started=lo + 2, stopped=0), busy=["runner-s0"], queued="0")
+    assert f"want={lo}" in out, out
+    assert "machine stop s0" not in calls, calls     # busy, so it must be walked past
     assert "machine stop s1" in calls, calls
 
 
@@ -97,8 +103,7 @@ def test_an_unreadable_queue_never_scales_down(tmp_path):
 @pytest.mark.skipif(not RUNNERS.exists(), reason="runners.sh not in this checkout")
 def test_the_ceiling_is_the_config_not_the_queue(tmp_path):
     # A 50-run pile-up must not start 50 machines. The ceiling is ops/config/ci_capacity.yaml.
-    import re
-    cfg = (REPO / "ops" / "config" / "ci_capacity.yaml").read_text()
+    cfg = CFG.read_text()
     want_max = int(re.search(r"^autoscale_max:\s*(\d+)", cfg, re.M).group(1))
     out, _ = _run(tmp_path, _machines(started=0, stopped=10), busy=[], queued="50")
     assert f"want={want_max}" in out, out
