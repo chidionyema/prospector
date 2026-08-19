@@ -64,7 +64,7 @@ Everything below is a measurement, taken 2026-08-19, not a recollection. The com
 | `.github/workflows/` | 9 | |
 | `deploy/` | 30 | 3 target adapters, 3 Dockerfiles, 3 fly.toml, 5 loose plists |
 | `prospector/ops/` | 22 | the console API |
-| `sqlite3.connect` call sites | 86 | across 25 files |
+| `sqlite3.connect` call sites | 86 | **but only ~10 are production**: 6 in `prospector/`, 2 in `tools/`, 2 in `ops/`. 42 of the 86 are in tests |
 | `store/` on disk | 691 MB | |
 
 **Runtime, measured from the plists: four different Python interpreters.**
@@ -342,7 +342,42 @@ Litestream, LiteFS and libSQL have removed SQLite's backup, replication and read
 limits — **write concurrency is the one that remains, and it is the one that matters for
 payments.** ([RaidFrame 2026](https://raidframe.com/articles/postgres-vs-sqlite-2026))
 
-**Verdict: Postgres for the money path. SQLite everywhere else.**
+**Verdict: Postgres for the money path. The target is ONE database, not two.**
+
+Founder challenge, 2026-08-19: "why the insistence on sqlite / what advantage does it give
+us?" — and "requires maintaining 2 databases, this is concerning". That is right, and the
+first draft of this section was wrong to present "SQLite everywhere else" as a design choice.
+It is an interim state, not a target. Running two datastores means two backup paths, two
+restore drills, two failure modes and a permanent "which store is this in?" question — which
+is the exact duplication this audit exists to kill.
+
+Two corrections to the numbers this document gave, both of which cut toward one database:
+
+- **The migration surface is ~10 production call sites, not 86.** Measured:
+  `prospector/` 6 sites in 3 files, `tools/` 2, `ops/` 2. The other 42 are in tests
+  (22 files of 355).
+- **The engine's data is 99.6% files, not rows.** `store/` is 691 MB, of which
+  `prospector.db` is 2.5 MB. Moving those rows to Postgres does not remove a storage
+  discipline — the dossiers and the ledger stay on a filesystem either way.
+
+So the two real questions separate cleanly:
+
+| Store | Decision | Why |
+|---|---|---|
+| Money path (orders, entitlements, identity) | **Postgres, now** | Not about size. One machine, one volume, one zone; the API cannot be made redundant and every deploy is a gap in taking money |
+| Engine store (2.5 MB of rows beside 688 MB of files) | **Follow, after the money path is proven on Postgres** | ~10 production call sites. Small, and not what loses orders |
+
+**What SQLite genuinely buys, stated fairly so the trade is visible:** no server to run, patch
+or exhaust connections on; 48 test files build a real store from a temp file with no service
+in CI (a stated cost constraint here, since CI runs on self-hosted minutes); and `t_pack` in
+`deploy/PORTABILITY.md` is a file copy, where Postgres adds a dump and restore step to every
+target adapter. Those are real. **They are not worth a second permanent datastore discipline
+once Postgres exists anyway** — which is why the engine follows rather than staying behind.
+
+**Sequence, and the reason for it:** move the money path first because it is the one losing
+orders; prove Postgres there with a restore drill; then move the engine's 2.5 MB and delete
+the second discipline. Doing the engine first would be optimising the store that is not
+failing.
 
 - **It does not cost lock-in — it reduces it.** Every provider speaks Postgres and `pg_dump`
   moves it. A managed Postgres is the most portable managed dependency available, and it
@@ -453,8 +488,11 @@ M3 (money-path adapter), M7 (chaos), M8 (end-to-end buy), M9 (DNS, shipped), M11
    No new app, no new provider.
 3. **Delete passes.** **DECIDED 2026-08-19: delete once each has been confirmed run, and
    update the repo docs in the same pass.** Report mode still runs first.
-4. **Postgres for the money path** (new, from section 4a). The audit's recommendation is yes.
+4. **Postgres for the money path** (section 4a). The audit's recommendation is yes.
    It is a founder call because it touches the money rail. **OPEN.**
+5. **One database as the target** (section 4a). Recommendation: yes — the engine follows the
+   money path onto Postgres once that is proven, rather than keeping SQLite permanently.
+   ~10 production call sites. **OPEN.**
 
 ## 10. Ledger
 
