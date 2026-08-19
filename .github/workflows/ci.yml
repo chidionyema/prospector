@@ -156,6 +156,84 @@ jobs:
       web: ${{ steps.filter.outputs.web }}
       console: ${{ steps.filter.outputs.console }}
     steps:
+      # ─── NO PR BUILD RUNS WHILE MAIN IS RED ───────────────────────
+      #
+      # Founder directive 2026-08-19: "i dont see hwy any pr should run when nain is red",
+      # and "this nust be visibke so it can be fied as priority".
+      #
+      # WHAT IT DOES. On a pull_request event this reads main's most recent COMPLETED CI run.
+      # If that run did not succeed, the step fails here, in the light `changes` job, before a
+      # single heavy job is dispatched.
+      #
+      # WHY IT IS THE FIRST STEP OF `changes` RATHER THAN ITS OWN JOB. A separate job would
+      # need its own runner slot, which is the resource the gate exists to protect. `changes`
+      # already runs first and everything else declares `needs: changes`, so failing here stops
+      # the whole run for the price of a few seconds on the light pool.
+      #
+      # THE COST IT PREVENTS, measured 2026-08-19. Main was red on one test. Twenty-one PR runs
+      # were queued ahead of main's own fix run on a fleet of three live runners, so main — the
+      # only run whose colour every other run inherits — could not get a machine. Every one of
+      # those PR runs was doomed to fail on main's defect and spent ~26 minutes of a heavy
+      # runner proving it.
+      #
+      # THE ESCAPE HATCH, and it is deliberate. The PR that FIXES main must be able to build
+      # while main is red, or the estate deadlocks. Label that PR `fixes-main` and this step
+      # stands aside. `workflow_dispatch` is a second hatch: this only gates `pull_request`.
+      #
+      # IT FAILS OPEN. An API error, or a main with no completed CI run at all, warns and
+      # passes. A gate that guesses must guess towards letting work through, because a gate
+      # that blocks the whole repo on its own bug is worse than the problem it polices.
+      - name: Main must be green before any PR builds
+        if: >-
+          github.event_name == 'pull_request' &&
+          !contains(github.event.pull_request.labels.*.name, 'fixes-main')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let latest;
+            try {
+              const res = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'ci.yml',
+                branch: 'main',
+                status: 'completed',
+                per_page: 1,
+              });
+              latest = res.data.workflow_runs[0];
+            } catch (e) {
+              core.warning(`Could not read main's CI history (${e.message}) — gate fails open.`);
+              return;
+            }
+
+            if (!latest) {
+              core.warning("main has no completed CI run — gate fails open.");
+              return;
+            }
+
+            const sha = latest.head_sha.slice(0, 8);
+            if (latest.conclusion === 'success') {
+              core.info(`main is green at ${sha} (run ${latest.id}) — carrying on.`);
+              return;
+            }
+
+            const msg = [
+              `main is ${latest.conclusion.toUpperCase()} at ${sha}.`,
+              `This PR was not built, because a PR cannot be greener than the branch it merges into.`,
+              ``,
+              `FIX MAIN FIRST. That is the whole queue's top priority:`,
+              `  ${latest.html_url}`,
+              ``,
+              `If THIS PR is the one that fixes main, label it \`fixes-main\` and re-run.`,
+            ].join('\n');
+
+            await core.summary
+              .addHeading('main is red — fix main first', 2)
+              .addRaw(msg.replace(/\n/g, '<br>'))
+              .write();
+
+            core.setFailed(msg);
+
       # WHY THE BOX IS SLOW, PRINTED BEFORE ANYTHING ELSE RUNS.
       #
       # On 2026-08-18 four CI jobs sat for an hour. `npm test` was at 0.0% CPU for 72 seconds,
