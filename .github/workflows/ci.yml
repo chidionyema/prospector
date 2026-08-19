@@ -485,6 +485,10 @@ jobs:
           if [ "$count" -eq 0 ]; then
             echo "::error::collected no test files — the pattern is wrong"; exit 1
           fi
+          # `$files` is a newline-separated list and MUST split into separate arguments
+          # here. Quoting it hands pytest one path containing newlines, which collects
+          # nothing. The `count` check three lines up is what makes the split safe.
+          # shellcheck disable=SC2086
           python -m pytest -q $files -n 4 --tb=short -p no:warnings
 
       # ── Hard gate ──────────────────────────────────────────────
