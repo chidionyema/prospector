@@ -1,0 +1,81 @@
+# .claudeignore — paths Claude must never read into context.
+#
+# THIS FILE IS NOT READ BY CLAUDE CODE ON ITS OWN. Measured 2026-08-19 against the
+# 2.1.235 binary: the string "claudeignore" appears 0 times, ".gitignore" appears 95.
+# The mechanism that actually gates a read is a `Read(<glob>)` entry in the
+# `permissions.deny` list of a settings file ("deny reading within the sandbox.
+# Merged with paths from Read(", same binary).
+#
+# So this file is the SOURCE, and `scripts/claudeignore_sync.py` compiles it into
+# `~/.claude/settings.json`. Edit here, then run:
+#
+#     python3 scripts/claudeignore_sync.py            # report only
+#     python3 scripts/claudeignore_sync.py --fix      # write the deny rules
+#
+# settings.json is read ONCE at process start, so a change applies at the next launch,
+# never to the running session.
+#
+# Rule of thumb: generated, vendored, minified or huge. Never a receipt. store/ stays
+# readable on purpose — persisted receipts there are evidence (memory
+# `the-answer-was-already-on-disk-as-a-receipt`), and only its caches are blocked.
+
+# Vendored dependencies
+**/node_modules/**
+
+# Build output
+**/.next/**
+**/dist/**
+**/build/**
+**/bin/Debug/**
+**/bin/Release/**
+**/obj/**
+**/.turbo/**
+**/storybook-static/**
+**/playwright-report/**
+**/test-results/**
+
+# Lockfiles: thousands of lines, and never the answer to a question
+**/package-lock.json
+**/pnpm-lock.yaml
+**/yarn.lock
+**/uv.lock
+**/packages.lock.json
+
+# Minified and mapped assets
+**/*.min.js
+**/*.min.css
+**/*.map
+
+# Coverage and profiling
+**/coverage/**
+**/htmlcov/**
+**/.pytest_cache/**
+**/.ruff_cache/**
+**/__pycache__/**
+
+# Logs
+**/*.log
+
+# Generated knowledge graph — 8.1 MB, rebuilt by a post-commit hook
+graphify-out/**
+
+# Virtualenvs
+.venv/**
+**/.venv/**
+
+# Regenerated engine caches. NOT store/ as a whole: dossiers and *.lint.json are receipts.
+store/_cache/**
+store/golden_runs/**
+store/control_center/runs/**
+
+# Binary content
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.pdf
+**/*.zip
+**/*.bundle
+**/*.db
+**/*.db-wal
+**/*.db-shm
