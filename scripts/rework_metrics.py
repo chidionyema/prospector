@@ -6,24 +6,45 @@ trips per session. Every one of those improves if the work gets sloppier. An age
 test, ships the first guess and moves on scores BETTER on all of them, and the scoreboard would
 call that progress right up until production broke.
 
-So the cost numbers need a guard beside them. This is that guard, and it is deliberately a
-different kind of measurement -- git history rather than session transcripts -- because a metric
-and its guard sharing a source can fail together.
+So the cost numbers need a guard beside them, from a different source -- git history rather than
+session transcripts -- because a metric and its guard sharing a source can fail together.
 
-Two numbers, per month, over a bounded window:
+WHAT THIS MEASURES, and the two things it deliberately does NOT
+--------------------------------------------------------------
+It reports ONE number per month: the share of conventionally-labelled commits that are fixes or
+reverts. The denominator is the labelled commits, not all commits, and that matters -- see the
+second dead end below.
 
-  fix_share      fix/revert commits as a share of all commits. Blunt: a fix commit may be
-                 repairing a two-year-old bug, which is not rework of recent work at all.
+Two earlier versions of this metric were built, measured, and found to have no power. Both are
+recorded here because both look obviously right and neither is.
 
-  fast_rework    fix/revert commits that touch a file some other commit touched within the
-                 previous FAST_WINDOW_DAYS. This is the honest one. It says: we changed this
-                 file, and within a fortnight we had to come back and fix it.
+**Dead end 1: "a fix touching a file another commit touched in the last fortnight."** This reads
+as the definition of rework of recent work. Measured 2026-08-19 on 420 first-parent commits, with
+the same test run over EVERY commit as a control: fix commits hit recently-touched files 96.0% of
+the time in August, and so did 93.5% of all commits. Lift 1.03. Swept across windows from six
+hours to fourteen days the lift never left 0.99-1.16. In a repository this hot every commit
+touches recently-touched code, so the test has no discriminating power at any window. The
+continuous version -- median hours since the previous touch -- failed the same way: 1.6h for
+fixes against 1.1h for everything else.
 
-How to read them TOGETHER with the cost numbers, which is the only way they mean anything:
+**Dead end 2: fixes as a share of ALL commits.** That number read 9.6% in June, 7.7% in July and
+40.6% in August, which looks like a collapse in quality. It is substantially a labelling change:
+conventional-commit prefixes were on 37% of June's commits, 28% of July's and 60% of August's,
+and the unlabelled ones cannot be classified at all. Founder, 2026-08-19: "we did a lot more work
+in august". Comparing labelled commits with labelled commits removes that confound; it does not
+remove all of them, and the caveats below still stand.
 
-  cost down, rework flat or down   the method genuinely improved
-  cost down, rework UP             the loop is training for cheapness at the cost of correctness
-  cost up,   rework down           bought quality with tokens; a choice, not a failure
+WHAT IT STILL CANNOT TELL YOU
+-----------------------------
+A fix commit may repair a two-year-old bug. Workflow changes move the number without quality
+moving: one PR per fix produces more fix commits than one PR per batch of fixes. Read it as a
+trend with a known floor of noise, never as a score.
+
+How to read it TOGETHER with the cost numbers, which is the only way it means anything:
+
+  cost down, fix share flat or down   the method genuinely improved
+  cost down, fix share UP             the loop is training for cheapness at the cost of correctness
+  cost up,   fix share down           bought quality with tokens; a choice, not a failure
 
 Read-only. Writes one JSON file and prints a summary. Never touches the working tree.
 
@@ -37,7 +58,6 @@ import argparse
 import json
 import subprocess
 import sys
-from bisect import bisect_left
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -45,21 +65,21 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUT = ROOT / "store" / "ops" / "rework_metrics.json"
 
-#: How recently a file must have been touched for a later fix to count as rework of recent work.
-#: A fortnight, because that is roughly the horizon over which this estate ships and re-ships a
-#: thing. Widen it and every fix looks like rework; narrow it and only same-week churn counts.
-FAST_WINDOW_DAYS = 14
-
 #: How far back to measure. Longer costs nothing extra (one git call) but dilutes the trend with
 #: a period whose method no longer exists.
 WINDOW_DAYS = 180
 
-#: A commit is rework if its subject starts one of these. This repo uses conventional commits, so
-#: the prefix is reliable; `revert` covers the case where the fix was to undo the change entirely.
+#: A commit is rework if its subject starts one of these.
 _REWORK_PREFIXES = ("fix(", "fix:", "revert", "hotfix")
 
-#: Files whose churn says nothing about engineering quality. Runtime state and generated output
-#: change on every run, so a fix that touches them would count as rework of work nobody did.
+#: The DENOMINATOR. Only commits carrying one of these type prefixes are classifiable, so only
+#: they are counted. An unlabelled subject cannot be called a fix or not-a-fix, and counting it
+#: as not-a-fix is what made this metric track prefix adoption instead of quality: 37% of June's
+#: commits were labelled against 60% of August's. `Merge pull request ...` commits are excluded
+#: by the same rule, which is right -- a merge commit is a container, not a unit of work.
+_TYPE_PREFIXES = ("feat", "fix", "chore", "docs", "test", "refactor", "perf", "ci", "build",
+                  "style", "revert", "process", "land", "ship", "guard", "hotfix")
+
 _IGNORED_PREFIXES = ("store/", "storage/", "graphify-out/", "docs/doc_lint_baseline.json")
 
 
@@ -73,6 +93,12 @@ def _git(args: list[str]) -> str:
 def _is_rework(subject: str) -> bool:
     s = subject.strip().lower()
     return s.startswith(_REWORK_PREFIXES)
+
+
+def _is_labelled(subject: str) -> bool:
+    """Does this subject carry a conventional type prefix, so it can be classified at all?"""
+    s = subject.strip().lower()
+    return any(s.startswith(t + "(") or s.startswith(t + ":") for t in _TYPE_PREFIXES)
 
 
 def read_history(ref: str, days: int) -> list[dict]:
@@ -105,57 +131,42 @@ def read_history(ref: str, days: int) -> list[dict]:
 def measure(commits: list[dict]) -> dict:
     """Fold the history into per-month counts.
 
-    `fast_rework` needs, for each file, the times it was touched. Building that index once and
-    binary-searching it keeps this linear; scanning the history per fix commit would be quadratic
-    and this runs on a console request.
+    One pass. The expensive version of this script indexed every file's touch history to answer
+    "was this file touched recently"; that test was measured to have no discriminating power
+    (see the module docstring), so the index is gone and so is the cost.
     """
-    touched: dict[str, list[str]] = defaultdict(list)
-    for c in reversed(commits):  # oldest first, so each list is already sorted
-        for f in c["files"]:
-            touched[f].append(c["iso"])
-
     per_month: dict[str, dict] = defaultdict(
-        lambda: {"commits": 0, "rework": 0, "fast_rework": 0})
+        lambda: {"commits": 0, "labelled": 0, "rework": 0})
     examples: list[dict] = []
 
     for c in commits:
-        month = c["iso"][:7]
-        row = per_month[month]
+        row = per_month[c["iso"][:7]]
         row["commits"] += 1
+        if not _is_labelled(c["subject"]):
+            continue
+        row["labelled"] += 1
         if not _is_rework(c["subject"]):
             continue
         row["rework"] += 1
-
-        try:
-            when = datetime.fromisoformat(c["iso"])
-        except ValueError:
-            continue
-        cutoff = (when - timedelta(days=FAST_WINDOW_DAYS)).isoformat()
-        hit = None
-        for f in c["files"]:
-            stamps = touched.get(f) or []
-            i = bisect_left(stamps, cutoff)
-            # Any touch of this file in [cutoff, this commit) is prior recent work.
-            if any(cutoff <= s < c["iso"] for s in stamps[i:]):
-                hit = f
-                break
-        if hit:
-            row["fast_rework"] += 1
-            if len(examples) < 8:
-                examples.append({"sha": c["sha"][:8], "date": c["iso"][:10],
-                                 "subject": c["subject"][:90], "file": hit})
+        if len(examples) < 8:
+            examples.append({"sha": c["sha"][:8], "date": c["iso"][:10],
+                             "subject": c["subject"][:90],
+                             "file": (c["files"] or ["--"])[0]})
 
     months = []
     for m in sorted(per_month):
         r = per_month[m]
-        n = r["commits"]
+        n, lab, rw = r["commits"], r["labelled"], r["rework"]
         months.append({
             "month": m,
             "commits": n,
-            "rework": r["rework"],
-            "fast_rework": r["fast_rework"],
-            "fix_share": round(100 * r["rework"] / n, 1) if n else None,
-            "fast_rework_share": round(100 * r["fast_rework"] / n, 1) if n else None,
+            "labelled": lab,
+            "rework": rw,
+            #: The headline. Fixes as a share of the commits that can be classified at all.
+            "fix_share": round(100 * rw / lab, 1) if lab else None,
+            #: Shown so the reader can see how much of the month is being judged. A month where
+            #: only a third of commits carry a prefix is a thin sample, whatever the share says.
+            "labelled_share": round(100 * lab / n, 1) if n else None,
         })
 
     latest = months[-1] if months else {}
@@ -173,7 +184,6 @@ def measure(commits: list[dict]) -> dict:
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "window_days": WINDOW_DAYS,
-        "fast_window_days": FAST_WINDOW_DAYS,
         "oldest_commit": oldest,
         "shallow_clone": shallow,
         "coverage_note": (
@@ -184,17 +194,18 @@ def measure(commits: list[dict]) -> dict:
         "headline": {
             "month": latest.get("month"),
             "fix_share": latest.get("fix_share"),
-            "fast_rework_share": latest.get("fast_rework_share"),
+            "labelled_share": latest.get("labelled_share"),
+            "labelled": latest.get("labelled"),
         },
         "by_month": months,
         "examples": examples,
-        "note": ("The guard on the cost numbers. Cost falling while rework rises means the "
-                 "method is getting cheaper by getting worse. fast_rework counts a fix that "
-                 "touches a file some other commit touched within %d days, which is rework of "
-                 "recent work rather than an old bug being repaired. First-parent history, so a "
-                 "merged branch counts once. Runtime state and generated output are excluded, "
-                 "because they change on every run and would inflate every number here."
-                 % FAST_WINDOW_DAYS),
+        "note": ("Fixes as a share of the commits that CAN be classified -- the ones carrying a "
+                 "conventional type prefix. Against all commits instead, this number tracked "
+                 "prefix adoption rather than quality (37% of June's commits were labelled "
+                 "against 60% of August's). It is a trend with real noise in it, not a score: a "
+                 "fix may repair an old bug, and one PR per fix produces more fix commits than "
+                 "one PR per batch. Read it beside the cost numbers -- cost falling while this "
+                 "rises means the method got cheaper by getting worse."),
     }
 
 
@@ -227,15 +238,18 @@ def main() -> int:
     out.write_text(json.dumps(snap, indent=2) + "\n", encoding="utf-8")
 
     print(f"REWORK  {args.ref}  last {args.days}d  ->  {out}")
-    print(f"{'month':<9}{'commits':>9}{'fix':>6}{'fix %':>8}{'recent':>8}{'recent %':>10}")
     print(snap["coverage_note"])
+    print(f"{'month':<9}{'commits':>9}{'labelled':>10}{'labelled %':>12}"
+          f"{'fix':>6}{'fix % of labelled':>19}")
     for m in snap["by_month"]:
-        print(f"{m['month'] + ('*' if m.get('partial') else ''):<9}{m['commits']:>9}{m['rework']:>6}"
-              f"{m['fix_share'] if m['fix_share'] is not None else '-':>8}"
-              f"{m['fast_rework']:>8}"
-              f"{m['fast_rework_share'] if m['fast_rework_share'] is not None else '-':>10}")
+        print(f"{m['month'] + ('*' if m.get('partial') else ''):<9}{m['commits']:>9}"
+              f"{m['labelled']:>10}"
+              f"{m['labelled_share'] if m['labelled_share'] is not None else '-':>12}"
+              f"{m['rework']:>6}"
+              f"{m['fix_share'] if m['fix_share'] is not None else '-':>19}")
+
     if snap["examples"]:
-        print("\nrework of recent work, most recent first:")
+        print("\nmost recent fix commits:")
         for e in snap["examples"]:
             print(f"  {e['date']}  {e['sha']}  {e['subject']}\n"
                   f"              via {e['file']}")

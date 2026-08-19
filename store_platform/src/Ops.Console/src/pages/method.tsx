@@ -80,15 +80,19 @@ type MethodView = {
     stale?: boolean;
     coverage_note?: string;
     shallow_clone?: boolean;
-    fast_window_days?: number;
-    headline?: { month?: string; fix_share?: number | null; fast_rework_share?: number | null };
+    headline?: {
+      month?: string;
+      fix_share?: number | null;
+      labelled_share?: number | null;
+      labelled?: number;
+    };
     by_month?: {
       month: string;
       commits: number;
+      labelled: number;
       rework: number;
-      fast_rework: number;
       fix_share: number | null;
-      fast_rework_share: number | null;
+      labelled_share: number | null;
       partial?: boolean;
     }[];
     examples?: { sha: string; date: string; subject: string; file: string }[];
@@ -324,8 +328,8 @@ export default function Method() {
           {data.rework.present ? (
             <>
               <Note>
-                Cost down and rework flat or down means the method improved. Cost down and
-                rework up means it got cheaper by getting worse.
+                Cost down and this flat or down means the method improved. Cost down and this up
+                means it got cheaper by getting worse.
               </Note>
               {data.rework.coverage_note ? <Note>{data.rework.coverage_note}</Note> : null}
               <Scroll>
@@ -334,9 +338,10 @@ export default function Method() {
                     <tr>
                       <th className="py-1 text-left font-[520]">month</th>
                       <th className="py-1 text-right font-[520]">commits</th>
+                      <th className="py-1 text-right font-[520]">labelled</th>
+                      <th className="py-1 text-right font-[520]">labelled %</th>
                       <th className="py-1 text-right font-[520]">fix</th>
-                      <th className="py-1 text-right font-[520]">fix %</th>
-                      <th className="py-1 text-right font-[520]">recent rework %</th>
+                      <th className="py-1 text-right font-[520]">fix % of labelled</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -347,15 +352,16 @@ export default function Method() {
                           {m.partial ? <span className="text-subtle"> (partial)</span> : null}
                         </td>
                         <td className="py-1.5 text-right">{m.commits.toLocaleString()}</td>
+                        <td className="py-1.5 text-right">{m.labelled.toLocaleString()}</td>
+                        <td className="py-1.5 text-right text-subtle">{m.labelled_share ?? '\u2014'}</td>
                         <td className="py-1.5 text-right">{m.rework.toLocaleString()}</td>
-                        <td className="py-1.5 text-right">{m.fix_share ?? '—'}</td>
                         <td
                           className={
                             'py-1.5 text-right font-[560] ' +
-                            ((m.fast_rework_share ?? 0) >= 25 ? 'text-warn-strong' : '')
+                            ((m.fix_share ?? 0) >= 50 ? 'text-warn-strong' : '')
                           }
                         >
-                          {m.fast_rework_share ?? '—'}
+                          {m.fix_share ?? '\u2014'}
                         </td>
                       </tr>
                     ))}
@@ -363,9 +369,18 @@ export default function Method() {
                 </table>
               </Scroll>
               <Note>
-                Recent rework counts a fix that touches a file some other commit touched within
-                the previous {data.rework.fast_window_days ?? 14} days. That is rework of recent
-                work, not an old bug being repaired.
+                The denominator is the commits carrying a conventional type prefix, not all
+                commits. Against all commits this number tracked prefix adoption rather than
+                quality &mdash; 37% of June&apos;s commits were labelled against 60% of
+                August&apos;s. A month with a low labelled % is a thin sample whatever the
+                share says.
+              </Note>
+              <Note>
+                Two earlier versions of this metric were measured and thrown away, both recorded
+                in scripts/rework_metrics.py. &quot;A fix touching a file another commit touched
+                in the last fortnight&quot; sounds like the definition of rework and has no
+                discriminating power here: 96% of August&apos;s fixes did it, and so did 93.5% of
+                all commits. In a repository this hot, everything touches recent code.
               </Note>
               {(data.rework.examples ?? []).length ? (
                 <Scroll>

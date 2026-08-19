@@ -1219,7 +1219,6 @@ def _read_rework() -> dict:
         "age_hours": round(age_h, 1),
         "stale": age_h >= _REWORK_STALE_H,
         "generated_at": snap.get("generated_at"),
-        "fast_window_days": snap.get("fast_window_days"),
         "headline": snap.get("headline", {}),
         # A shallow clone answers a 180-day question with whatever it has and says nothing.
         # The reader has to carry that, or a five-day window renders as a monthly rate.
