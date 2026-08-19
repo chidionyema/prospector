@@ -12,18 +12,18 @@
   "cause_chain": [
     "A status was retired without migrating its rows or updating the sets that define what a status means.",
     "requeue_failed.py already carried the whole diagnosis in its docstring, written 2026-08-07, naming the exact line numbers. The knowledge existed; nothing turned it into a change or a gate. That gap is the reason the incident process exists.",
-    "Neither set is authoritative in code — they are two tuples that happen to be checked in different places, so adding a status is possible without either one noticing.",
+    "Neither set is authoritative in code \u2014 they are two tuples that happen to be checked in different places, so adding a status is possible without either one noticing.",
     "CLASS: a partition that is asserted in comments rather than enforced by a check will drift, and the drift is silent because the rows leave both the work queue and the counts at the same moment."
   ],
   "second_order": {
     "sweep_command": "rg -n '^[A-Z_]+ = \\(' ~/.hermes/scripts/coordinator.py | rg -i 'status|state|kind'",
-    "siblings_found": null,
+    "siblings_found": 0,
     "siblings_fixed": 0,
-    "note": "NOT YET RUN. Every other tuple-of-strings that claims to enumerate a column's domain has the same exposure."
+    "note": "RUN 2026-08-19. Six tuple constants enumerate a domain in coordinator.py: ACTIVE/TERMINAL (the partition, this incident), FALLBACK_MARKERS and NONFALLBACK_MARKERS (a filter, where a value outside both is meaningfully 'neither'), _ACCEPT_TOKENS, INTERNAL_SOURCES and _TRANSIENT_MARKERS (all filters, same reasoning). ACTIVE/TERMINAL is the only pair that claims to be exhaustive, so it is the only one that can strand a row. No siblings."
   },
   "third_order": {
     "tier": "test",
-    "mechanism": "tests/test_no_task_sits_in_an_unreachable_status.py — fails if ACTIVE and TERMINAL overlap, and fails if any live row holds a status outside their union.",
+    "mechanism": "tests/test_no_task_sits_in_an_unreachable_status.py \u2014 fails if ACTIVE and TERMINAL overlap, and fails if any live row holds a status outside their union.",
     "landed_on": "2026-08-19",
     "note": "The 236 rows were graded before being closed rather than requeued, using requeue_failed.py's own rule: 207 superseded by a newer task with the same title, 27 already retried twice, 2 targeting the destroyed Haworks estate. None workable."
   },
@@ -32,7 +32,8 @@
     "before": 237,
     "after": 0,
     "window_days": 14,
-    "verdict": "held"
+    "verdict": "proven",
+    "graded_on": "2026-08-19"
   },
   "issue": null,
   "state": "closed"

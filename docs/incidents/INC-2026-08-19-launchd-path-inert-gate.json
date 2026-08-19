@@ -6,12 +6,12 @@
   "detected_by": "founder",
   "first_order": {
     "what_broke": "runaway-reaper.err.log has logged `sysctl: command not found` on every run. The same bare `sysctl` call is the load gate in idle-learning-run.sh, and there it failed silently in the dangerous direction: NCPU fell back to 1, so MAX_LOAD became 2, and host_load() returned 0 because sysctl printed nothing. `[ 0 -gt 2 ]` is false, so the gate never deferred at any host load.",
-    "receipt": "MEASURED 2026-08-19 under a launchd-shaped PATH of /usr/bin:/bin — before: `NCPU=1 MAX_LOAD=2 load=` (empty). After pinning /usr/sbin/sysctl: `NCPU=12 MAX_LOAD=24 load=10`. The gate's own comment records why it exists: the box was measured at 1-minute loadavg 317-405 while legitimate estate work ran, and the documented correct response is to DEFER.",
+    "receipt": "MEASURED 2026-08-19 under a launchd-shaped PATH of /usr/bin:/bin \u2014 before: `NCPU=1 MAX_LOAD=2 load=` (empty). After pinning /usr/sbin/sysctl: `NCPU=12 MAX_LOAD=24 load=10`. The gate's own comment records why it exists: the box was measured at 1-minute loadavg 317-405 while legitimate estate work ran, and the documented correct response is to DEFER.",
     "fixed_by": "~/.hermes c2b1cf9"
   },
   "cause_chain": [
     "The scripts call `sysctl` and `lsof` by bare name. Both live in /usr/sbin, which an interactive shell has on PATH and a launchd job does not always have.",
-    "Every call site swallowed the failure: `sysctl -n hw.ncpu 2>/dev/null || echo 1` and `sysctl -n vm.loadavg 2>/dev/null`. The fallbacks were written to keep the script from crashing, and they succeeded — the script kept running with numbers that meant the opposite of the truth.",
+    "Every call site swallowed the failure: `sysctl -n hw.ncpu 2>/dev/null || echo 1` and `sysctl -n vm.loadavg 2>/dev/null`. The fallbacks were written to keep the script from crashing, and they succeeded \u2014 the script kept running with numbers that meant the opposite of the truth.",
     "A safety gate that fails OPEN reports nothing when it stops working. The load gate produced no error, no alert and no log line; the only trace was `command not found` in a different job's stderr, which is why this survived 410 runs.",
     "CLASS: a bare tool name plus a swallowed failure turns a guard into a no-op. Same class as the already-recorded launchd-path-hides-local-bin-clis trap, and the same shape as a warning fence that is not a fence."
   ],
@@ -23,9 +23,9 @@
   },
   "third_order": {
     "tier": "test",
-    "mechanism": null,
-    "landed_on": null,
-    "note": "The mechanism that kills the class is a test that runs every hermes shell script's tool lookups under a launchd-shaped PATH and fails on any bare name resolving outside /usr/bin and /bin. Not written yet. The stronger tier would be `refuse`: a gate whose inputs are missing must fail CLOSED, not fall back to a number that disables it."
+    "mechanism": "tests/test_scripts_do_not_rely_on_launchd_path.py in ~/.hermes (757bf94) \u2014 scans every scripts/*.sh for a bare invocation of a /usr/sbin tool and fails by name, plus a second test that pins the load gate's two inputs to absolute paths.",
+    "landed_on": "2026-08-19",
+    "note": "The stronger tier is `refuse`: a gate whose inputs are missing should fail CLOSED rather than fall back to a number that disables it. Not done \u2014 the fallbacks still exist, they just cannot be reached now that the paths are absolute. If a future incident shows the test is not enough, that is the next link."
   },
   "grade": {
     "signature": "`command not found` in any hermes job stderr, and a load gate that reports MAX_LOAD=2 on a 12-CPU box",

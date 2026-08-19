@@ -16,9 +16,9 @@
   ],
   "second_order": {
     "sweep_command": "rg -n 'refs/remotes/origin' ~/.claude/scripts/*.py scripts/*.py",
-    "siblings_found": null,
+    "siblings_found": 0,
     "siblings_fixed": 0,
-    "note": "NOT YET RUN."
+    "note": "RUN 2026-08-19 across rule-guard.py, push-pr-fence.py, branch-pr-guard.py and tool-drip-guard.py: 11 ref-reading call sites. Ten ask a LOCAL question (what branch am I on, does this sha exist here) and answer it locally, which is correct. Only branch-pr-guard.py:144 asked a question about the REMOTE and read the local cache \u2014 that is this incident. No siblings."
   },
   "third_order": {
     "tier": "heal",
