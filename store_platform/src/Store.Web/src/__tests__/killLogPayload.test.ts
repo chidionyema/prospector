@@ -19,7 +19,7 @@ const SRC = fileURLToPath(new URL('..', import.meta.url));
  * four hundred arguments in order to look at four hundred titles, and a static JSON import cannot
  * be tree-shaken away.
  *
- * The corpus now lives behind `getStaticProps` and `/api/kill-log-detail`. These tests hold the
+ * The corpus now lives behind the page's server data function and `/api/kill-log-detail`. These tests hold the
  * split in place, because it is the kind of fix a single convenient import silently undoes.
  */
 describe('the kill log ships the table, not the corpus', () => {
@@ -38,11 +38,18 @@ describe('the kill log ships the table, not the corpus', () => {
       .map((l) => l.trim())
       .filter((l) => /^import\b|\brequire\(|\bimport\(/.test(l) && l.includes('kill-log.json'));
     expect(imports, 'the corpus is back in the client bundle').toEqual([]);
-    // `killLog.server` is imported by the page, but only `getStaticProps` may call it -- that is
-    // what lets Next strip it, and the JSON with it, from the client bundle.
+    // `killLog.server` is imported by the page, but only the SERVER data function may call it --
+    // that is what lets Next strip it, and the JSON with it, from the client bundle.
+    //
+    // Either data function does that job, and on 2026-08-19 this page moved from `getStaticProps`
+    // to `getServerSideProps` because it also prints the live shelf count, which a build-time
+    // snapshot got wrong. The bundle rule is unchanged, so the check now names the mechanism it
+    // actually cares about -- server-side, exactly once -- instead of one of the two spellings.
     const calls = page.split('\n').filter((l) => l.includes('buildKillIndex()'));
-    expect(calls, 'buildKillIndex must be called once, inside getStaticProps').toHaveLength(1);
-    const body = page.slice(page.indexOf('export const getStaticProps'));
+    expect(calls, 'buildKillIndex must be called once, inside the server data function').toHaveLength(1);
+    const serverProps = /export const get(?:StaticProps|ServerSideProps)\b/.exec(page);
+    expect(serverProps, 'the page has no server data function, so the corpus runs in the browser').not.toBeNull();
+    const body = page.slice(serverProps!.index);
     expect(body).toContain('buildKillIndex()');
   });
 
