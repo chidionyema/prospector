@@ -48,7 +48,12 @@
 
   --text: #171717;
   --muted: #52525b;
-  --subtle: #71717a;
+  /* #6d6d76, not the #71717a this was until 2026-08-19. On --bad-bg #fef2f2 the old
+     value measured 4.41:1 at 12px, 0.09 under the AA floor, and the a11y suite carried
+     it as a dated exception rather than fixing it. #6d6d76 measures 4.68:1 there and
+     5.12:1 on white, so the exception is gone rather than deferred. There is one
+     definition of this token and no dark theme, so nothing else moves. */
+  --subtle: #6d6d76;
   --faint: #a1a1aa;
 
   --action: #2d3436;

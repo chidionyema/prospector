@@ -38,15 +38,13 @@ type Known = { reason: string; expires: string };
  * The list is not a severity being switched off. Each entry fails the run when it expires, and
  * fails the run if it ever stops firing.
  */
-const KNOWN: Record<string, Known> = {
-  'color-contrast': {
-    // One element, and it misses by 0.09. --subtle #71717A on --bad-bg #FEF2F2 measures 4.41:1
-    // at 12px against a 4.5:1 floor. A tinted ground plus the muted ink is the pairing; either
-    // moving.
-    reason: '--subtle #71717A on --bad-bg #FEF2F2 is 4.41:1 at 12px, 0.09 under the AA floor.',
-    expires: '2026-09-19',
-  },
-};
+// EMPTY, and that is the point. The one entry this held -- --subtle #71717A on --bad-bg
+// #FEF2F2 at 4.41:1, 0.09 under the floor -- was deferred to 2026-09-19 and then fixed on
+// 2026-08-19 instead: globals.css now sets --subtle to #6D6D76, which measures 4.68:1 on that
+// ground and 5.12:1 on white. The stale-exception check below is what forced the choice. It
+// failed the run the moment the violation stopped firing, so an exception cannot quietly
+// outlive the defect it excuses.
+const KNOWN: Record<string, Known> = {};
 
 const WIDTHS = [
   { name: 'phone', width: 390, height: 844 },
