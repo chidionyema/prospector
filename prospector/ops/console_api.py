@@ -3116,6 +3116,13 @@ TOOLS: list[dict] = [
     # itself: the workflow can only see the workflow.
     _t("scripts/ci_capacity.py", "Does CI still fit on this machine alongside the daemons?",
        False, "/engine", cmd="python3 scripts/ci_capacity.py --live", risk="external"),
+    # Registered 2026-08-19. `ci_capacity.py` answers whether CI FITS; this answers whether it
+    # can RUN AT ALL. The two are separate questions and the estate has been wrong about the
+    # second one twice in a day: a fleet scaled up whose machines were left stopped, and an
+    # autoscale workflow that failed on every one of its five runs while nothing said so.
+    _t("scripts/ci_fleet_probe.py",
+       "Can CI actually run? Machines against runners, for every fleet", False, "/engine",
+       cmd=".venv/bin/python scripts/ci_fleet_probe.py", risk="external"),
     _t("scripts/launchd_plists.py", "Record the current job definitions", True, "/engine",
        cmd="python3 scripts/launchd_plists.py --snapshot",
        danger="overwrites the tracked copies with whatever is live, so run --check first "
