@@ -3,7 +3,15 @@
 The founder's ask was plain: swapping a role's brain, or pointing a brain at a different model
 version, must be a console edit. Before 2026-08-18 the page reached three of five chains and
 none of the model pins, so changing the brain that writes what a buyer reads meant editing
-config.yaml on the Fly machine — the one thing this page exists to remove.
+config.yaml on the Fly machine, the one thing this page exists to remove.
+
+Amended 2026-08-20. This file used to demand `model` and `model_fast` as console knobs. They
+were console knobs, and they were inert: the value reached one construction site behind an empty
+prefix table and selected nothing anywhere. This test pinned the PRESENCE of a control while
+nothing tested that the control did anything, so it kept a dead knob alive. The model pins are
+now `component_models.<component>.<provider>`, and their liveness is proven by
+`tests/unit/test_component_models.py::test_no_model_knob_is_inert`.
+See docs/MODEL_PINNING_PROGRAM.md.
 """
 from __future__ import annotations
 
@@ -22,9 +30,12 @@ CONFIG = Path(__file__).resolve().parents[2] / "config.yaml"
 # roster that may rule finally, and it is a role decision like the rest.
 ROLE_KEYS = ("operator", "moat_primary", "noncritical_operator",
              "artifact_operator", "marketing_operator")
-MODEL_PINS = ("model", "model_fast", "model_defaults.minimax",
-              "model_defaults.minimax_fast", "model_defaults.minimax_m27",
-              "model_defaults.deepseek", "model_defaults.ollama")
+MODEL_PINS = ("model_defaults.minimax", "model_defaults.minimax_fast",
+              "model_defaults.minimax_m27", "model_defaults.deepseek",
+              "model_defaults.ollama",
+              "component_models.moat.claude_cli", "component_models.moat.minimax",
+              "component_models.noncritical.deepseek",
+              "component_models.grounding.claude_cli")
 
 
 def _raw() -> dict:
@@ -36,7 +47,10 @@ def test_the_console_can_reach_every_brain_role(key):
     assert key in KNOBS_BY_KEY, (
         f"{key} routes work to a brain but no console knob sets it, so changing it means "
         f"editing config.yaml on the box. Known knobs: {sorted(KNOBS_BY_KEY)}")
-    assert KNOBS_BY_KEY[key]["group"] == "brains"
+    expected = "brains" if key in ROLE_KEYS else "models"
+    assert KNOBS_BY_KEY[key]["group"] == expected, (
+        f"{key} sits in group {KNOBS_BY_KEY[key]['group']!r}; roles belong in `brains`, "
+        "model versions in `models`")
 
 
 def test_no_operator_chain_in_config_is_unreachable_from_the_console():

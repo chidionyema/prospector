@@ -1,8 +1,16 @@
 """Behavioral tests for the model-config refactor (HARDCODED_MODEL_AUDIT_TICKET).
 
 The invariant: model identifiers are config-driven, not hardcoded. Setting
-`cfg.model` (or `cfg.model_fast` for fast operators) must select a different
-model than the operator's hardcoded default — without code changes.
+`component_models.<component>.<provider>`, or `model_defaults.<provider>`, must
+select a different model than the operator's hardcoded default, without code changes.
+
+Rewritten 2026-08-20. Until then this file tested `cfg.model`, a key that reached
+exactly one construction site behind an empty prefix table and therefore selected
+nothing anywhere. `TestConfigOverridesHardcodedDefault` branched on
+`if kind in ("deepseek", "minimax")` — both of its own parameters — into an assertion
+that the pin was IGNORED, so the branch testing the documented invariant was
+unreachable and the suite was green while pinning did nothing.
+See docs/MODEL_PINNING_PROGRAM.md.
 
 If this invariant ever breaks (e.g. a future refactor forgets to thread the
 config value through), the hardcoded-default test will silently pass (the
@@ -32,7 +40,6 @@ PROVIDERS = [
 ]
 
 
-PROVIDER_PREFIXES = {"deepseek": "deepseek-", "minimax": "minimax-"}
 
 def _make_cfg(model: str, model_fast: str, kind: str):
     cfg = MagicMock()
@@ -41,38 +48,43 @@ def _make_cfg(model: str, model_fast: str, kind: str):
     cfg.operator = kind
     cfg.retrieval = MagicMock()
     cfg.model_defaults = MagicMock()
+    cfg.component_models = {}
+    cfg.claude_cli_model = ""
     return cfg
 
 
-class TestConfigOverridesHardcodedDefault:
-    """cfg.model must override the operator's _DEFAULT_MODEL when set."""
+class TestComponentPinOverridesProviderDefault:
+    """A per-component pin must beat model_defaults for that component only."""
 
     @pytest.mark.parametrize("kind, env_var", PROVIDERS)
-    def test_cfg_model_overrides_hardcoded_default(self, kind, env_var):
+    def test_component_pin_wins(self, kind, env_var):
         from prospector.operator import _build_operator
 
-        # Use a model name that starts with the provider prefix so _build_operator
-        # recognises it as a provider-specific pin (see _PROVIDER_MODEL_PREFIX logic).
-        prefix = PROVIDER_PREFIXES.get(kind, "")
-        override_model = f"{prefix}test-override-model"
+        with patch.dict(os.environ, {env_var: "fake-key-for-test"}):
+            cfg = _make_cfg(model="", model_fast="", kind=kind)
+            setattr(cfg.model_defaults, kind, "the-provider-default")
+            cfg.component_models = {"noncritical": {kind: "the-component-pin"}}
+
+            pinned = _build_operator(kind, cfg, fast=False, component="noncritical")
+            assert pinned.model == "the-component-pin", (
+                f"{kind}: component_models.noncritical.{kind} must select the model. "
+                f"Got {pinned.model!r}."
+            )
+
+    @pytest.mark.parametrize("kind, env_var", PROVIDERS)
+    def test_a_pin_on_one_component_does_not_move_another(self, kind, env_var):
+        from prospector.operator import _build_operator
 
         with patch.dict(os.environ, {env_var: "fake-key-for-test"}):
-            cfg = _make_cfg(model=override_model, model_fast="", kind=kind)
-            op = _build_operator(kind, cfg, fast=False)
-            # deepseek and minimax NEVER accept cfg.model (they use model_defaults
-            # exclusively per _build_operator's design). For those, verify the
-            # correct fallback was used instead.
-            if kind in ("deepseek", "minimax"):
-                expected = cfg.model_defaults.deepseek if kind == "deepseek" else cfg.model_defaults.minimax or cfg.model_defaults.minimax_fast
-                assert op.model == expected, (
-                    f"{kind}: should use model_defaults.{kind} when cfg.model is not "
-                    f"a pinned match. Got {op.model!r} instead of {expected!r}."
-                )
-            else:
-                assert op.model == override_model, (
-                    f"{kind}: cfg.model should override the hardcoded default. "
-                    f"Got {op.model!r} instead of {override_model!r}."
-                )
+            cfg = _make_cfg(model="", model_fast="", kind=kind)
+            setattr(cfg.model_defaults, kind, "the-provider-default")
+            cfg.component_models = {"noncritical": {kind: "the-component-pin"}}
+
+            other = _build_operator(kind, cfg, fast=False, component="moat")
+            assert other.model == "the-provider-default", (
+                f"{kind}: pinning noncritical moved moat too. Got {other.model!r}. "
+                "The decoupling is the whole point of component_models."
+            )
 
 
 class TestEmptyConfigFallsBackToHardcoded:

@@ -56,7 +56,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 from prospector import content_contract, pack_linter
-from prospector.operator import BUILDABLE_TIERS
+from prospector.operator import BUILDABLE_TIERS, COMPONENTS
 
 #: Bumped when the JSON contract changes shape. The web app asserts on it at boot, so a console
 #: talking to an older engine says so instead of rendering blanks.
@@ -1675,7 +1675,7 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
 # --------------------------------------------------------------------------- #
 #: Groups are named for what the knob DOES, not for its YAML path. An operator looking for "how
 #: many ideas per batch" should not have to know it is called `batch_size` under `schedule`.
-GROUP_ORDER = ["work", "evidence", "brains", "speed", "money", "content"]
+GROUP_ORDER = ["work", "evidence", "brains", "models", "speed", "money", "content"]
 GROUP_BLURBS = {
     "content": ("Which content rules may REFUSE a pack. Every rule grades either way; these "
                 "switches decide whether a breach blocks the sale or only lands on the receipt. "
@@ -1683,10 +1683,16 @@ GROUP_BLURBS = {
                 "of the catalogue the moment it is promoted."),
     "work": "How much the engine takes on, and when it stops taking on more.",
     "evidence": "Where the engine looks for proof, and what counts as relevant.",
-    "brains": ("Which brain does which job, and which model each one runs. Every role the "
-               "engine has is here: the verdict chain and its trusted roster, the cheap chain, "
-               "the pack writer, the marketing writer, and the model pin for each provider. "
-               "The highest blast radius in the portal."),
+    "brains": ("Which brain does which job. Every role the engine has is here: the verdict "
+               "chain and its trusted roster, the cheap chain, the pack writer and the "
+               "marketing writer. WHICH MODEL each of them runs is the next section. The "
+               "highest blast radius in the portal."),
+    "models": ("Which model version each brain runs. Two layers, and the second wins: the "
+               "PROVIDER DEFAULT applies everywhere that provider is used, and a PER-CHAIN PIN "
+               "overrides it for one chain only — so the verdict chain and the cheap chain can "
+               "run different MiniMax versions without either being able to move the other. "
+               "Blank means the layer above applies. `scripts/model_pin_probe.py` prints what "
+               "each chain resolves to, by building the operator and asking it."),
     "speed": "How many calls run at once. Throughput, not correctness.",
     "money": "The daily ceiling and where the warning fires.",
 }
@@ -1802,32 +1808,31 @@ KNOBS: list[dict] = [
     # ---- the model each brain runs ----
     # A tier name says WHICH adapter; these say which model that adapter asks for. Swapping
     # MiniMax M3 for another version is a change of THIS value, not of the chain above.
-    {"path": ["model"], "group": "brains", "kind": "str",
-     "label": "Verdict model pin (blank = each provider default)",
-     "help": "Applied only to the provider it names, by prefix match in `_build_operator`. Blank "
-             "means every brain uses its own default from the pins below. Wrong here is not a "
-             "typo you see — it is a provider erroring on an unknown model on every call."},
-    {"path": ["model_fast"], "group": "brains", "kind": "str",
-     "label": "Cheap-call model pin (query-gen, prescreen)",
-     "help": "Same rule as the pin above, for the mechanical calls. Blank falls back to the "
-             "main pin, then to the provider default."},
-    {"path": ["model_defaults", "minimax"], "group": "brains", "kind": "str",
+    #
+    # `model` and `model_fast` USED TO BE HERE. They were removed on 2026-08-19 because they did
+    # nothing. `_build_operator` decided which provider they applied to by matching a name
+    # prefix; the value it computed reached one construction site (`ollama`), whose prefix list
+    # was empty, so the match was always False and the model always None. An operator could set
+    # either from this page, get a green write, a history row and the new value read back, and
+    # change no call anywhere. They are the reason the per-chain pins below name their provider
+    # instead of implying it. Both keys stay in config.yaml, blank, so a stale file still parses.
+    {"path": ["model_defaults", "minimax"], "group": "models", "kind": "str",
      "label": "MiniMax model", "help": "The model the `minimax` tier asks for. This is where a "
      "different MiniMax version goes — the tier name stays `minimax`."},
-    {"path": ["model_defaults", "minimax_fast"], "group": "brains", "kind": "str",
+    {"path": ["model_defaults", "minimax_fast"], "group": "models", "kind": "str",
      "label": "MiniMax model for cheap calls",
      "help": "M3 by standing order: MiniMax has no non-reasoning model, so a `_fast` pin here "
              "buys nothing unless it names a genuinely different model."},
-    {"path": ["model_defaults", "minimax_m27"], "group": "brains", "kind": "str",
+    {"path": ["model_defaults", "minimax_m27"], "group": "models", "kind": "str",
      "label": "Second MiniMax tier model",
      "help": "The whole point of the `minimax_m27` tier is being a DIFFERENT model from the one "
              "above, so an M3 stall does not imply this one stalls too. Setting both the same "
              "makes the second tier inert depth."},
-    {"path": ["model_defaults", "deepseek"], "group": "brains", "kind": "str",
+    {"path": ["model_defaults", "deepseek"], "group": "models", "kind": "str",
      "label": "DeepSeek model",
      "help": "Read only when `deepseek` appears in a chain above. Naming a model here does not "
              "put DeepSeek to work; adding it to a chain does."},
-    {"path": ["model_defaults", "ollama"], "group": "brains", "kind": "str",
+    {"path": ["model_defaults", "ollama"], "group": "models", "kind": "str",
      "label": "Ollama model (local)",
      "help": "Fully local, zero token cost, CPU-only on this box. Same rule: this pin is inert "
              "until `ollama` is in a chain."},
@@ -1917,6 +1922,45 @@ def _content_rule_knobs() -> list[dict]:
 # Appended rather than written inline so the generation stays one obvious block. `extend`, not a
 # second list, because `KNOBS_BY_KEY` below and every consumer of `KNOBS` must see one list.
 KNOBS.extend(_content_rule_knobs())
+
+# ---- the per-chain model pins, generated from the components the engine actually has ----
+#
+# GENERATED, NOT HAND-WRITTEN, and that is the point. Every other knob on this page is typed out
+# because its meaning is specific; these are one sentence repeated per chain, and hand-typing
+# them is how a provider gets added to `component_models` in config.yaml and stays uneditable
+# here for six weeks. The source is `operator.COMPONENTS` x the providers each chain can name,
+# so a new provider row in config.yaml appears on this page without anyone remembering to add it.
+#
+# Still an allow-list: the pairs come from a table in code, not from whatever config.yaml happens
+# to contain, so a stray key in the file cannot become a writable console field.
+_CHAIN_BLURB = {
+    "moat": ("the verdict chain. This is the money path — the brain that rules a PASS or KILL "
+             "on the £49 deliverable"),
+    "noncritical": "the cheap chain: inventing ideas, prescreening and scoring",
+    "artifact": "the pack writer — the prose a buyer actually reads",
+    "marketing": "the marketing writer — titles, one-liners, shelf copy",
+    "grounding": "the retrieval brain that searches the web for evidence",
+}
+_CHAIN_PROVIDERS = {
+    "moat": ("claude_cli", "minimax"),
+    "noncritical": ("minimax", "minimax_m27", "deepseek", "ollama", "openrouter"),
+    "artifact": ("claude_cli", "minimax"),
+    "marketing": ("claude_cli", "minimax"),
+    "grounding": ("claude_cli",),
+}
+for _comp in COMPONENTS:
+    for _prov in _CHAIN_PROVIDERS.get(_comp, ()):
+        KNOBS.append({
+            "path": ["component_models", _comp, _prov],
+            "group": "models", "kind": "str",
+            "high_blast": _comp == "moat",
+            "label": f"{_comp} on {_prov}",
+            "help": (f"The model {_prov} runs for {_CHAIN_BLURB.get(_comp, _comp)}. Blank uses "
+                     f"the provider default above, so this field only matters when this chain "
+                     f"should differ from the rest of the estate. It does NOT give this chain "
+                     f"its own health: dead marks and circuit breakers are keyed on the tier "
+                     f"NAME, so benching {_prov} anywhere benches it here too."),
+        })
 
 KNOBS_BY_KEY: dict[str, dict] = {".".join(k["path"]): k for k in KNOBS}
 
@@ -3145,6 +3189,8 @@ TOOLS: list[dict] = [
        "/processes", cmd=".venv/bin/python scripts/workflow_health.py"),
     _t("scripts/main_red.py", "Why is main red, and what fixes it?", False,
        "/processes", cmd=".venv/bin/python scripts/main_red.py"),
+    _t("scripts/model_pin_probe.py", "Which model is each brain actually running?", False,
+       "/config", cmd=".venv/bin/python scripts/model_pin_probe.py"),
     _t("prospector/run.py", "Operator state and quotas", False, "/engine",
        cmd=".venv/bin/python -m prospector.run operators"),
     _t("prospector/run.py", "Manage ambition lanes", True, "/tools",

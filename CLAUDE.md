@@ -63,6 +63,7 @@ docs.** Every cut below names where its detail went. Verbatim pre-cut text:
 | `docs/SITE_SPEC_PROGRAM.md` | The mumchimp.com design/UX/copy spec and its live status ledger. Read before touching the storefront. |
 | `docs/PACK_NARRATIVE_PROGRAM.md` | What the buyer reads: the 14-section order, the eight deterministic renderers and why they stay model-free, the three weak gates, the switches deliberately OFF. Read before touching a `pack_*.py` renderer, the pack linter, or `tools/backfill_bundle_html.py`. |
 | `docs/ENGINE_MIGRATION_PROGRAM.md` | Where the engine runs and why it moved. |
+| `docs/MODEL_PINNING_PROGRAM.md` | Which model version each brain runs, the two layers (`model_defaults` and `component_models`), and the probe that proves a pin arrived. Read before touching `_build_operator` or the console's `models` knob group. |
 
 **Ask the graph before grepping.** `~/.claude/skills/graphify/SKILL.md` owns it (`/graphify`
 invokes the skill). `graphify query "<question>" --budget 2000` is a local BFS over

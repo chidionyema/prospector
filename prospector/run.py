@@ -981,7 +981,7 @@ def _generate_pack_content(op, cand, checks, *, query_op, quality_op, cfg, score
         if not escalated and (breaches or any(
                 str(pb).startswith("marketing '") for pb in problems)):
             escalated = True
-            copy_op = _build_prose_chain(cfg, esc_order, quality_op,
+            copy_op = _build_prose_chain(cfg, esc_order, quality_op, component="artifact",
                                          label="Shelf-copy escalation")
             logger.warning(
                 "Escalating shelf copy for %s to %s after the cheap chain breached the "
@@ -1059,7 +1059,8 @@ def _noncritical_order(cfg: Config | None = None) -> tuple[str, ...]:
 # ---------------------------------------------------------------------------
 
 @track_latency(name="vet_candidate")
-def _build_prose_chain(cfg: Config, order, fallback_op: Operator, *, label: str) -> Operator:
+def _build_prose_chain(cfg: Config, order, fallback_op: Operator, *, label: str,
+                       component: str) -> Operator:
     """Build a prose-generation chain from a config-declared operator list.
 
     Shared by the deliverable chain and the marketing-copy chain so the two can never drift in
@@ -1076,7 +1077,7 @@ def _build_prose_chain(cfg: Config, order, fallback_op: Operator, *, label: str)
     tiers = []
     for kind in (order or []):
         try:
-            tiers.append((kind, _build_operator(kind, cfg, fast=False)))
+            tiers.append((kind, _build_operator(kind, cfg, fast=False, component=component)))
         except RuntimeError:
             pass  # CLI not on PATH / not configured — skip this tier
     if not tiers:
@@ -1107,7 +1108,7 @@ def _build_artifact_op(cfg: Config, fallback_op: Operator) -> Operator:
     `_escalation_order` — which is what "an option, not a dependency" means in code.
     """
     return _build_prose_chain(cfg, cfg.artifact_operator, fallback_op,
-                              label="Artifact deliverable")
+                              label="Artifact deliverable", component="artifact")
 
 
 def _escalation_order(cfg: Config) -> list[str]:
@@ -1160,7 +1161,8 @@ def _build_marketing_op(cfg: Config, fallback_op: Operator) -> Operator:
     # default for buyer-visible copy is the EXPENSIVE chain, because that is where it ran
     # until this directive.
     order = getattr(cfg, "marketing_operator", None) or cfg.artifact_operator
-    return _build_prose_chain(cfg, order, fallback_op, label="Marketing copy")
+    return _build_prose_chain(cfg, order, fallback_op, label="Marketing copy",
+                              component="marketing")
 
 
 def publish_and_record(dossier: Dossier, cfg: Config, store: Optional[Store] = None) -> str:
@@ -1636,7 +1638,8 @@ def run_signal(
         tiers = []
         for kind in order:
             try:
-                tiers.append((kind, _build_operator(kind, cfg, fast=fast)))
+                tiers.append((kind, _build_operator(kind, cfg, fast=fast,
+                                                    component="noncritical")))
             except RuntimeError:
                 pass  # tier not configured or missing API key
         if len(tiers) == 0:
