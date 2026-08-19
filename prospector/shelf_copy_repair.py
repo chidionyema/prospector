@@ -40,6 +40,7 @@ import re
 
 from .field_write import ONE_LINER_CUT_AT
 from .pack_linter import check_shelf_copy, expands_on_first_use, unexplained_initialisms
+from .telemetry import stage as telemetry_stage
 
 SYSTEM = (
     "You rewrite one line of shelf copy for a storefront that sells research packs about "
@@ -142,7 +143,13 @@ def rewrite_one(op, title: str, line: str, attempts: int = 2,
     for attempt in range(max(1, attempts)):
         try:
             prompt = USER.format(title=title, line=line)
-            got = op.complete_json(SYSTEM, prompt + note)
+            # Declared so the spend ledger can attribute this call. It was one of two model
+            # calls in the engine that ran outside any `telemetry.stage()`, which is why the
+            # runaway rewrite in `docs/CONTENT_CONTRACT_PROGRAM.md:489` cost 23 minutes and
+            # could not be found in `store/prospector.jsonl` afterwards. The stage is also the
+            # handle `operator.minimax_max_tokens_for_stage` resolves the output ceiling from.
+            with telemetry_stage("shelf_copy_repair"):
+                got = op.complete_json(SYSTEM, prompt + note)
         except Exception as exc:  # an outage is not a verdict on the copy
             raise RewriteUnavailable(f"rewrite call failed: {exc}") from exc
         new = (got or {}).get("one_liner", "") if isinstance(got, dict) else ""
