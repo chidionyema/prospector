@@ -71,6 +71,86 @@ function Section({ title, rows }: { title: string; rows: ProcessRow[] }) {
   );
 }
 
+type AutomationRow = {
+  automation: string;
+  status: 'ok' | 'findings' | 'unknown';
+  findings: number;
+  summary: string;
+  probe: string;
+  took_ms: number;
+  error?: string | null;
+};
+
+type AutomationsView = {
+  count: number;
+  needs_attention: number;
+  automations: AutomationRow[];
+  note?: string;
+};
+
+/** `unknown` is not `ok`. An automation that could not answer sorts and colours with the failures. */
+const AUTO_TONE: Record<AutomationRow['status'], 'ok' | 'warn' | 'bad'> = {
+  ok: 'ok',
+  findings: 'warn',
+  unknown: 'bad',
+};
+
+/**
+ * The declared automations, each one run for real when this card loads.
+ *
+ * Not a cached status. `prospector/ops/automations_view.py` discovers every engine that has a
+ * declaration and runs its `--json`, so this card needs no edit when the next automation lands.
+ * Retention (`log_rotation`) is one of these: it freed 1,044 MB on its first scheduled run and
+ * nothing on this console showed that it existed.
+ */
+function Automations() {
+  const { data, error } = useOps<AutomationsView>('automations', {}, { pollMs: 300_000 });
+  if (error) return <Problem>{error}</Problem>;
+  if (!data) return <Note>running every automation — each one answers for itself</Note>;
+
+  const rows = data.automations ?? [];
+  return (
+    <Card
+      title={`Automations (${data.count})`}
+      tone={data.needs_attention ? 'warn' : 'ok'}
+      right={
+        data.needs_attention ? (
+          <Pill tone="warn">{data.needs_attention} need attention</Pill>
+        ) : (
+          <Pill tone="ok">clean</Pill>
+        )
+      }
+    >
+      {rows.length === 0 ? (
+        <Empty>{data.note ?? 'no automation has both an engine and a declaration here'}</Empty>
+      ) : (
+        <Scroll>
+          <table className="w-full text-sm">
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.automation} className="border-b border-border last:border-0 align-top">
+                  <td className="py-2 pr-3 whitespace-nowrap">
+                    <Pill tone={AUTO_TONE[r.status]}>{r.status}</Pill>
+                  </td>
+                  <td className="py-2 pr-3 font-mono text-xs whitespace-nowrap">{r.automation}</td>
+                  <td className="py-2 text-subtle">
+                    {r.error ? r.error : r.summary}
+                    <div className="font-mono text-[11px] text-subtle/70 mt-1">{r.probe}</div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Scroll>
+      )}
+      <Note>
+        Every one of these reads by default and takes <code>--fix</code> as a second, explicit run.
+        Both are on <code>/tools</code>, behind the same preview and rollback as everything else.
+      </Note>
+    </Card>
+  );
+}
+
 export default function Processes() {
   const { data, envelope, error } = useOps<ProcessesView>('processes', {}, { pollMs: 300_000 });
 
@@ -100,6 +180,8 @@ export default function Processes() {
               </Note>
             )}
           </Card>
+
+          <Automations />
 
           {data.sections.map((s) => (
             <Section key={s.title} title={s.title} rows={s.rows} />

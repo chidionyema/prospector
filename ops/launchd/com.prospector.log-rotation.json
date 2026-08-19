@@ -1,0 +1,19 @@
+{
+  "EnvironmentVariables": {
+    "HOME": "/Users/chidionyema",
+    "PATH": "/Users/chidionyema/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "PROSPECTOR_STORE_DIR": "/Users/chidionyema/Documents/code/prospector/store"
+  },
+  "Label": "com.prospector.log-rotation",
+  "ProgramArguments": [
+    "/Users/chidionyema/Documents/code/prospector-live/.venv/bin/python",
+    "-m",
+    "ops.automations.log_rotation",
+    "--fix"
+  ],
+  "RunAtLoad": true,
+  "StandardErrorPath": "/Users/chidionyema/Documents/code/prospector/store/log_rotation.log",
+  "StandardOutPath": "/Users/chidionyema/Documents/code/prospector/store/log_rotation.log",
+  "StartInterval": 21600,
+  "WorkingDirectory": "/Users/chidionyema/Documents/code/prospector-live"
+}
