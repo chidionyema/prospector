@@ -182,7 +182,7 @@ HOOK
 chmod +x "$hooks_dir/pre-push"
 echo "[hooks] pre-push installed at $hooks_dir/pre-push (per-tree, shared by every worktree)"
 
----------------------------------------------------------------- 6. the warnings
+# ---------------------------------------------------------------- 6. the warnings
 cat <<'NOTE'
 
 [note] Things this script deliberately does NOT do, because they are not fixable here:
