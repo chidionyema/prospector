@@ -296,9 +296,18 @@ plists themselves.
 repository (`2b683ab`), 11 files dirty, **and `git remote -v` is empty**. That directory is where
 LAW 0 says every cross-session guard must live — the push fence, the rule guard, the cost
 sentinel, `reflect.py` — and two launchd jobs run out of it. It is backed up by nothing and
-pushed nowhere. If this laptop dies, every mechanism that stops agents repeating estate mistakes
-dies with it, and the repo a buyer receives contains none of them. Task #100 is open on this and
-is now the highest-value item in the whole F4 group, because it is the cheapest to fix.
+pushed nowhere.
+
+Worse when read file by file: **six of the eleven were untracked**, and three of those six are
+live `PreToolUse` hooks refusing work in every session at the moment they were measured —
+`dupe-work-fence.py`, `pr-freeze.py` and `scope-guard.py` — plus `directives.py`, the founder-
+directive index. They existed in exactly one place: uncommitted, on one laptop's disk.
+
+**Half-fixed in this pass.** All eleven are now committed (`b95e629`), after a scan for secret-
+shaped literals found none. That removes "uncommitted", not "unbacked": `git remote -v` is
+still empty, so the repository exists on this machine only. Giving it a remote pushes the
+estate's guard machinery to a hosting account and is the founder's call, not mine. Task #100
+owns the rest and is the cheapest item in the whole F4 group.
 
 **F4d — LUX is mostly untracked and the POPDD gate is currently switched off.** Of the files
 under `.lux/`, **3 are tracked and 23 are not** — the spec registry's receipts and the signing
@@ -534,6 +543,42 @@ defensible the day an advisory names a Crux package rather than one of its depen
 Cheap and independent of that decision: delete the four unreachable nupkgs, or add the
 `PackageVersion` lines if they were meant to be used. That is a measurement away from being a
 one-line PR and needs no founder input.
+
+**F12 — Our CI falls back to a platform we cannot pay for, and says so in a message that
+blames the code. CONFIRMED, measured 2026-08-19.**
+
+The founder asked why the build had been broken two days running. Part of the answer is a finding
+in its own right, and it is not a test.
+
+Every job in `ci.yml` is scheduled with
+`runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}`. When those repo
+variables are absent the job goes to GitHub's hosted runners, and **GitHub-hosted Actions minutes
+are not payable on this account**. The jobs then fail before running a single step, with:
+
+> The job was not started because recent account payments have failed or your spending limit needs
+> to be increased.
+
+Measured across the last 40 failing runs, that happened in exactly one window — runs
+`32294852235` (19:46:12Z) and `32295066869` (19:48:33Z) — and the three `CI_*_RUNS_ON` variables
+were created at **19:49:40Z**, one minute after the last one. Since then CI has run on the Fly
+runners (`runner-8576715b121d68` and siblings) and PR #445's jobs are green. So the window closed
+by itself, and nobody wrote down that it had happened.
+
+**What it does NOT explain:** the two days of red. Those runs had runners and ran their steps —
+they are real failures, covered by F10 and by `docs/STACK_FLAKINESS_AUDIT.md`. This finding is a
+different defect that was hiding inside the same red tick.
+
+**The class:** *a fallback that points at a platform we cannot use*. It is the same shape as F4a's
+frozen failover copy — a safety net configured once and never checked against the world it now
+lives in. It fails at the worst moment, and its error message accuses the account rather than the
+config, so the reader goes to Billing instead of to `runs-on`. Three variables deleted or renamed
+puts every branch back into this state with no warning.
+
+**The guard is one line and it is not written**, because the founder parked CI work
+(*"forget cicd for now ... revisit it as last step"*). Recorded here so it is not rediscovered: the
+`guard` job should assert `vars.CI_RUNS_ON` is non-empty and fail with the real reason. The
+alternative — deleting the `|| 'ubuntu-latest'` fallback so an unset variable produces an obviously
+invalid label — is smaller still. Task #104 is the nearest home for it.
 
 ## 6. What the ops console can already do
 
