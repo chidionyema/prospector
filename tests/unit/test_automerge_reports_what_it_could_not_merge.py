@@ -77,3 +77,34 @@ def test_the_visibility_label_does_not_also_block_the_merge(source):
     hold = re.search(r"const HOLD = new Set\(\[([^\]]*)\]\)", source)
     assert hold, "the HOLD set moved; this test can no longer see it"
     assert "needs-rebase" not in hold.group(1)
+
+
+def test_a_pull_request_behind_main_is_not_merged(source):
+    """The stale-base failure of 2026-08-19. #372, #373 and #377 were each green on their own
+    base; landing all three made main red on three tests, and all seventeen open PRs inherited
+    them. `pulls.merge`'s `sha` argument only asserts the HEAD did not move -- it says nothing
+    about the base -- so the refusal has to be explicit."""
+    code = _strip_comments(source)
+    assert "compareCommits(" in code, (
+        "nothing asks whether the head is behind main, so a stale branch still merges")
+    assert re.search(r"behind_by\s*>\s*0", code), (
+        "behind_by is read but never used as the refusal")
+    merge_at = code.index("pulls.merge(")
+    behind_at = code.index("behind_by")
+    assert behind_at < merge_at, "the staleness check must run before the merge, not after"
+
+
+def test_an_updated_branch_gets_a_ci_run_of_its_own(source):
+    """updateBranch pushes with GITHUB_TOKEN, and a GITHUB_TOKEN push starts no workflow run.
+    Without the dispatch the PR is updated and then waits forever for a run that cannot exist."""
+    code = _strip_comments(source)
+    assert "updateBranch(" in code, "a PR behind main is never brought up to date"
+    assert re.search(r"createWorkflowDispatch\(\s*\{owner, repo, workflow_id: 'ci\.yml', ref: pr\.head\.ref\}",
+                     code), "the updated branch gets no CI run, so the merge can never be retried"
+
+
+def test_the_job_accepts_the_runs_it_dispatches_itself(source):
+    """A dispatched run's event is `workflow_dispatch`, not `pull_request`. Gating on
+    `pull_request` alone would drop the very run this workflow started."""
+    assert "workflow_run.event == 'workflow_dispatch'" in source, (
+        "CI dispatched on an updated branch never comes back here, so nothing merges it")
