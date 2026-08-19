@@ -323,6 +323,57 @@ def grade_workflows(docs: set[str]) -> list[tuple[str, str, str]]:
 
 
 
+
+# A worktree this far behind origin/main is not "a bit stale". It is a different estate: the
+# CLAUDE.md, the docs and the scripts a session reads there describe an older system, and the
+# session cannot tell. 25 is the line because the 2026-08-19 false outage was called from a
+# checkout 59 commits behind, and the pre-Fly production section it read had been wrong for a day.
+DRIFT_BAD = 25
+
+
+def grade_worktree_drift() -> list[tuple[str, str, str]]:
+    """How far has each worktree drifted from origin/main, and can it close the gap by itself?
+
+    Founder, 2026-08-19: "need to address branch and worktree divergence from main branch, need
+    constant refresh". Divergence is measured by scripts/worktree_gc.py, which owns worktrees;
+    this only grades what it reports. A tree with no local commits can be fast-forwarded with no
+    risk, so leaving it behind is a choice nobody made. A tree with local commits needs a rebase
+    its owner must run.
+    """
+    gc = ROOT / "scripts" / "worktree_gc.py"
+    if not gc.exists():
+        return [(BAD, "worktree drift", f"MISSING {gc.relative_to(ROOT)}")]
+    try:
+        r = subprocess.run([sys.executable, str(gc), "--json"], cwd=ROOT,
+                           capture_output=True, text=True, timeout=180)
+        data = json.loads(r.stdout)
+    except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError, ValueError) as e:
+        return [(BAD, "worktree drift", f"could not measure: {type(e).__name__}")]
+
+    drift = data.get("drift") or []
+    if not drift:
+        return [(OK, "worktree drift", "every worktree is level with origin/main")]
+
+    rows: list[tuple[str, str, str]] = []
+    far = sorted((d for d in drift if d["behind"] >= DRIFT_BAD),
+                 key=lambda d: -d["behind"])
+    ff = [d for d in drift if d["action"] == "fast-forward" and d["clean"]]
+
+    rows.append((BAD if far else WARN, "worktree drift",
+                 f"{len(drift)} worktree(s) behind origin/main, "
+                 f"{len(far)} by {DRIFT_BAD}+ commits -- a session opening in one is briefed "
+                 f"on an older estate"))
+    for d in far[:8]:
+        rows.append((BAD, f"drift: {d['branch']}",
+                     f"{d['behind']} behind, {d['ahead']} ahead -- "
+                     f"git -C {d['path']} rebase origin/main"))
+    if ff:
+        rows.append((WARN, "worktree drift (refreshable)",
+                     f"{len(ff)} worktree(s) have no local commits and can close the gap with "
+                     f"no risk -- .venv/bin/python scripts/worktree_gc.py --refresh"))
+    return rows
+
+
 def grade_enforcement() -> list[tuple[str, str, str]]:
     """Grade the mechanisms that are supposed to be REFUSING bad work.
 
@@ -590,6 +641,7 @@ def main() -> int:
         ("GitHub workflows", grade_workflows(docs)),
         ("enforcement", grade_enforcement()),
         ("specialist probes", grade_specialists()),
+        ("worktree drift", grade_worktree_drift()),
         ("orphaned directories", orphaned_worktrees()),
     ]
 
