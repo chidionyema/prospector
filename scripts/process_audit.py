@@ -31,6 +31,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import plistlib
 import re
 import subprocess
@@ -439,6 +440,7 @@ def grade_enforcement() -> list[tuple[str, str, str]]:
                  "present" if baseline.exists() else "MISSING, so the ratchet cannot tighten"))
 
     rows.extend(_grade_state_probe())
+    rows.extend(_grade_session_hooks())
     rows.extend(_grade_instruction_checkouts())
     return rows
 
@@ -530,6 +532,83 @@ def _grade_instruction_checkouts() -> list[tuple[str, str, str]]:
                          f"{behind} commits behind origin/main -- any session started here is "
                          f"briefed on a stale estate"))
     return rows
+
+
+
+def _grade_session_hooks() -> list[tuple[str, str, str]]:
+    """Grade the hooks that police every agent turn, because nothing else did.
+
+    These twelve scripts are the only enforcement that runs on every session in this estate:
+    they refuse a forbidden command, stop a drip of one-command turns, block a push with no PR.
+    None of them is in a git repository, so none is covered by CI, and a hook that starts
+    crashing fails OPEN -- the harness ignores a broken hook and the turn proceeds. That is the
+    right failure mode for the session and a silent one for the estate, which is why it belongs
+    on this dashboard.
+
+    Two questions per hook. Is the file still where settings.json says it is, and where the hook
+    ships a `--selftest`, does that selftest still pass? A hook with no selftest is graded WARN,
+    not OK: it is enforcing rules with nothing checking that it enforces the right ones.
+    """
+    settings = Path.home() / ".claude" / "settings.json"
+    try:
+        cfg = json.loads(settings.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return [(BAD, "session hooks", f"cannot read {settings}: {exc}")]
+
+    commands: dict[str, list[str]] = {}
+    for event, groups in (cfg.get("hooks") or {}).items():
+        for group in groups:
+            for hook in group.get("hooks") or []:
+                cmd = str(hook.get("command", ""))
+                m = re.search(r"(\S+\.py)", cmd)
+                if not m:
+                    continue
+                path = m.group(1).strip("'\"")
+                commands.setdefault(path, []).append(event)
+
+    if not commands:
+        return [(BAD, "session hooks", f"no hooks configured in {settings} -- every rule is prose")]
+
+    rows: list[tuple[str, str, str]] = []
+    ok = tested = 0
+    for raw, events in sorted(commands.items()):
+        path = Path(os.path.expandvars(raw)).expanduser()
+        name = path.name
+        where = "+".join(sorted(set(events)))
+        if not path.exists():
+            rows.append((BAD, f"hook {name}", f"CONFIGURED for {where} but MISSING at {path} -- "
+                                              f"the harness fails open, so this rule is unenforced"))
+            continue
+        try:
+            body = path.read_text(encoding="utf-8", errors="replace")
+        except OSError as exc:
+            rows.append((BAD, f"hook {name}", f"unreadable: {exc}"))
+            continue
+        if "--selftest" not in body:
+            rows.append((WARN, f"hook {name}", f"{where}: no --selftest, so nothing checks it "
+                                               f"enforces the right thing"))
+            continue
+        tested += 1
+        try:
+            r = subprocess.run([sys.executable, str(path), "--selftest"],
+                               capture_output=True, text=True, timeout=60)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            rows.append((BAD, f"hook {name}", f"selftest did not finish: {exc}"))
+            continue
+        last = ((r.stdout or "") + (r.stderr or "")).strip().splitlines()
+        verdict = last[-1][:70] if last else "no output"
+        if r.returncode == 0:
+            ok += 1
+            rows.append((OK, f"hook {name}", f"{where}: {verdict}"))
+        else:
+            rows.append((BAD, f"hook {name}", f"{where}: SELFTEST FAILING -- {verdict}"))
+
+    head = (OK if tested and ok == tested else WARN,
+            "session hooks",
+            f"{len(commands)} hook file(s) across {sum(len(v) for v in commands.values())} "
+            f"registrations, {tested} carry a selftest, {ok} of those pass -- "
+            f"none of these files is in a git repository")
+    return [head] + rows
 
 
 def grade_specialists() -> list[tuple[str, str, str]]:

@@ -96,8 +96,14 @@ Two mechanisms this estate has never used at all, both of which would help:
   200-line guidance, and every line is resident on every turn of every session.
 
 **One caveat worth stating plainly.** All twelve hooks live in `~/.claude/scripts/`. None is in a
-git repository, none goes through a pull request, and none has a test. The machines enforcing this
-estate's engineering standards are the only code here held to none of them.
+git repository and none goes through a pull request, so no CI job ever runs them. Some do carry a
+`--selftest` -- `rule-guard.py` has 66 cases -- and the process audit now runs every selftest it
+finds and grades a hook with none as WARN. The machines enforcing this estate's engineering
+standards are still the only code here that ships without review.
+
+A hook fails OPEN. If one crashes, the harness logs it and the turn proceeds, so a broken rule and
+an obeyed rule look identical from inside a session. That is why hook health is an audit row and
+not a thing anyone is expected to notice.
 
 ## The incident this came from
 
