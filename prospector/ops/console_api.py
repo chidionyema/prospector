@@ -898,13 +898,30 @@ def _act_delivery_resend(cfg, payload: dict, preview: bool) -> dict:
     return receipt
 
 
+def _tool_on_disk(root: Path, rel: str) -> Path:
+    """Where a catalogued tool actually lives.
+
+    `root / rel` is wrong for the estate tools, and wrong SILENTLY. Most rows are repo-relative,
+    but some name a tool outside this checkout — `~/.hermes/scripts/hermes_selfcheck.py`. Joined
+    to the repo root that becomes `<repo>/~/.hermes/...`, which never exists, so the console
+    reported the tool missing and the run action refused it. The Hermes self-check button was
+    registered on 2026-08-19 and could not have run on any day since.
+
+    Same shape as the store resolver incident: a path built from the wrong base answers a
+    different question and says nothing about it. Expand first, then join only what is still
+    relative.
+    """
+    expanded = Path(rel).expanduser()
+    return expanded if expanded.is_absolute() else root / expanded
+
+
 def _read_tools(cfg, args: dict) -> dict:
     """The operator CLI catalogue. See `TOOLS` for why it is a table and not a directory scan."""
     root = _repo_root()
     out = []
     for tool in TOOLS:
         rel = tool["path"]
-        out.append({**tool, "exists": (root / rel).exists()})
+        out.append({**tool, "exists": _tool_on_disk(root, rel).exists()})
     return {"root": str(root), "tools": out,
             "note": "Run any of these with the `tools.run` action, using the tool's `id`. What "
                     "makes it safe is the preview, the confirmation token and the rollback "
@@ -2060,6 +2077,11 @@ def _tool_argv(tool: dict, payload: dict) -> list[str]:
     """
     argv: list[str] = []
     for part in shlex.split(tool["command"]):
+        # THE CHILD RUNS WITHOUT A SHELL, so nothing expands `~` on the way in. Expanded here,
+        # before substitution, so it applies to the catalogued command only and never to a value
+        # the browser sent.
+        if part.startswith("~"):
+            part = str(Path(part).expanduser())
         missing: list[str] = []
 
         def _fill(match, _missing=missing):
@@ -2112,7 +2134,7 @@ def _act_tools_run(cfg, payload: dict, preview: bool) -> dict:
     root = _repo_root()
     if not tool["run"]:
         raise ValueError(f"{tool['path']} is not runnable from the console. {tool['danger']}")
-    if not (root / tool["path"]).exists():
+    if not _tool_on_disk(root, tool["path"]).exists():
         raise ValueError(f"{tool['path']} is not on disk. The catalogue is hand-kept, so this "
                          f"means the tool was renamed or deleted and the table was not updated.")
 

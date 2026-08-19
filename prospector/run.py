@@ -15,7 +15,6 @@ import argparse
 import datetime
 import json
 import os
-import socket
 import sys
 import uuid
 from pathlib import Path
@@ -54,11 +53,14 @@ _LEASE_HELD = object()
 def _host_id() -> str:
     """Which machine this worker runs on. Part of every lease owner string.
 
-    `FLY_MACHINE_ID` first because the engine now runs on Fly and that id is stable for the life
-    of the machine; `gethostname()` is the laptop and any other box. Never empty — an empty host
-    segment would parse as a legacy owner and re-open the cross-machine hole this exists to close.
+    One definition, in `audit.host_id`, because the consumer heartbeat asks the same question
+    about the same kind of persisted pid. A second copy here would be the rule everyone
+    reimplements slightly differently. Imported inside the function to match how the rest of
+    this module reaches `audit`, and to keep the import graph unchanged.
     """
-    return (os.environ.get("FLY_MACHINE_ID") or socket.gethostname() or "unknown").strip()
+    from .audit import host_id
+
+    return host_id()
 
 
 def _mint_lease_owner() -> str:

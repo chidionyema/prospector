@@ -371,13 +371,16 @@ def test_every_lease_owner_carries_the_host_that_minted_it():
 def test_the_host_id_is_never_empty(monkeypatch):
     """An empty host segment would parse as a legacy `pid:uuid` owner and silently re-open the
     cross-machine hole, which is the one failure mode that must not degrade quietly."""
+    from prospector import audit as audit_mod
     from prospector import run as run_mod
 
     monkeypatch.setenv("FLY_MACHINE_ID", "80d34da6636478")
     assert run_mod._host_id() == "80d34da6636478"
 
     monkeypatch.delenv("FLY_MACHINE_ID", raising=False)
-    monkeypatch.setattr(run_mod.socket, "gethostname", lambda: "")
+    # Patched on `audit`, not on `run`: there is ONE definition of the host and `run._host_id`
+    # delegates to it, so the lease and the consumer heartbeat cannot answer differently.
+    monkeypatch.setattr(audit_mod.socket, "gethostname", lambda: "")
     assert run_mod._host_id() == "unknown"
 
 

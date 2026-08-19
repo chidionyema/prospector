@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import time
+from pathlib import Path
 
 import pytest
 
@@ -412,3 +413,50 @@ def test_a_shelf_repair_preview_runs_nothing(monkeypatch):
         ])
         assert code == 4
         assert doc["data"]["moat_affecting"] is False
+
+
+# --------------------------------------------------------------------------- #
+# A tool outside this checkout
+#
+# Found 2026-08-19 by `test_every_listed_tool_is_on_disk`, which is the one check in this file
+# that measures the territory rather than the map. The catalogue gained its first `~`-rooted row
+# on 2026-08-19 (the Hermes self-check). `root / "~/.hermes/..."` is `<repo>/~/.hermes/...`, so
+# the console called the tool missing and the run action refused it — a button that could not
+# have worked on any day since it was registered.
+# --------------------------------------------------------------------------- #
+def test_a_home_rooted_tool_resolves_outside_the_repo():
+    """The resolver, directly. `root / rel` is the defect and it fails silently."""
+    root = Path("/somewhere/else/prospector")
+    out = api._tool_on_disk(root, "~/.hermes/scripts/hermes_selfcheck.py")
+
+    assert str(out).startswith(str(Path.home())), f"still joined to the repo root: {out}"
+    assert "~" not in str(out)
+    assert api._tool_on_disk(root, "scripts/doc_lint.py") == root / "scripts/doc_lint.py", (
+        "a repo-relative row must still resolve against the repo"
+    )
+
+
+def test_a_home_rooted_command_is_expanded_before_the_child_runs():
+    """The child runs without a shell, so nothing else will expand it.
+
+    The exists check and the argv build are two separate sites reading the same string. Fixing
+    one and not the other gives a button that passes its preflight and then dies with
+    'No such file or directory'.
+    """
+    tool = {"command": "/usr/local/bin/python3 ~/.hermes/scripts/hermes_selfcheck.py",
+            "purpose": "the self-check"}
+    argv = api._tool_argv(tool, {})
+
+    assert not any(a.startswith("~") for a in argv), argv
+    assert argv[-1] == str(Path.home() / ".hermes/scripts/hermes_selfcheck.py")
+
+
+def test_a_browser_supplied_value_is_never_tilde_expanded():
+    """Expansion happens on the CATALOGUED command, before substitution. A value the caller sent
+    is data, and turning `~` in it into a real home directory would be this module deciding what
+    a caller's string means."""
+    tool = {"command": "/usr/local/bin/python3 scripts/doc_lint.py --path <p>",
+            "purpose": "doc lint"}
+    argv = api._tool_argv(tool, {"p": "~/secrets"})
+
+    assert argv[-1] == "~/secrets", argv

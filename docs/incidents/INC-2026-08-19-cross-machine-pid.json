@@ -1,0 +1,42 @@
+{
+  "id": "INC-2026-08-19-cross-machine-pid",
+  "opened": "2026-08-19",
+  "title": "A persisted pid was checked against the wrong machine's process table",
+  "severity": "high",
+  "detected_by": "review",
+  "first_order": {
+    "what_broke": "Two places persist a pid and later ask `os.kill(pid, 0)` whether it is alive. Neither recorded which machine minted it. The queue lease minted owners as `pid:uuid`, so `run.py::_owner_is_gone` reclaimed a row held by a LIVE worker on another host and put two workers on one candidate — the double publish the lease exists to prevent. The consumer heartbeat wrote a bare `pid`, so `consumer.py::consumer_liveness` read a healthy remote consumer as `dead` and paged for it. Both were latent while everything ran on one laptop. The engine moved to Fly on 2026-08-18 and task #60 asks for more instances, so both were about to fire.",
+    "receipt": "Reconstructed the pre-fix `_owner_is_gone` and ran it: a three-part owner parsed `host` as the pid, found it non-numeric and returned False, so the parse was never the bug — the MINT was, because the owner had no host to check. On the consumer side, three of the five new tests fail against the committed `consumer.py` and pass after the fix: test_every_beat_carries_the_host_that_minted_its_pid, test_a_consumer_on_another_machine_is_never_paged_as_dead, test_a_remote_consumer_that_really_died_is_still_caught_by_staleness.",
+    "fixed_by": "prospector a6898c30 (the lease) and this commit (the heartbeat and the shared host id)"
+  },
+  "cause_chain": [
+    "A pid was persisted as if it were a global identifier. It is not: it names a slot in ONE machine's process table.",
+    "The liveness rule was right and the input was wrong. `_owner_is_gone` and `_pid_alive` both already said 'unsure means alive' and both already had a way to express it. Neither could apply it, because nothing on the record said the pid was foreign.",
+    "The estate had no single definition of 'which machine am I', so each site would have grown its own. `claim_lock.py` already recorded `socket.gethostname()`; the lease and the heartbeat did not, and nothing compared them.",
+    "The assumption was true for as long as there was one machine, and nothing in the code recorded that it WAS an assumption. It became false on 2026-08-18 without a single line changing.",
+    "CLASS: an identifier that is only unique within a boundary must carry that boundary, or the first day the boundary moves, every check on it silently answers a different question. This is the same class as the store resolver that followed the CODE instead of the store (INC-2026-08-18-store-resolver): both are environment assumptions that no assertion ever stated."
+  ],
+  "second_order": {
+    "sweep_command": "rg -n 'os\\.kill' -g '*.py' prospector/ scripts/ && rg -n 'getpid\\(\\)' -g '*.py' prospector/ scripts/",
+    "siblings_found": 3,
+    "siblings_fixed": 2,
+    "note": "RUN 2026-08-19. Every `os.kill` on a pid that came from PERSISTED state: prospector/run.py (the lease, fixed a6898c30), prospector/consumer.py (the heartbeat, fixed here), and prospector/ops/runs.py::process_alive (the run records, NOT fixed here — see below). scripts/watch_engine.py and scripts/popdd_verify.py read a pid file written by a process on the same box in the same run, so they are same-machine by construction; prospector/ops/runner.py and the tests all kill a child they spawned themselves. prospector/claim_lock.py already records `host` beside its pid, which is what the others now do. THE FIRST SWEEP MISSED process_alive because its output was truncated with `head -20` — recorded here rather than quietly corrected, because a truncated sweep is the same defect class as the one being swept for."
+  },
+  "third_order": {
+    "tier": "test",
+    "mechanism": "tests/unit/test_queue_lease.py (5 tests, of which test_every_lease_owner_carries_the_host_that_minted_it fails on the old `pid:uuid` mint) and tests/unit/test_consumer_heartbeat.py (5 tests, of which 3 fail on the pre-fix consumer). test_the_lease_and_the_heartbeat_ask_one_machine_the_same_way pins the two to the single definition in `audit.host_id`, so a third copy cannot appear without the test noticing.",
+    "landed_on": "2026-08-19",
+    "note": "Proved rather than assumed: the tests were run against the pre-fix files and the failures recorded above. One of the lease tests does NOT fail pre-fix and its docstring says so, because a test that documents a rule is not the same thing as a test that would have caught the defect. process_alive is left open as task #21 with the fix written out: it needs `host` on every audit row plus four call sites, which is a schema change and not a same-turn edit. Splitting it is stated here rather than left implicit, so `after: 0` below counts the two sites this commit claims and no more."
+  },
+  "grade": {
+    "signature": "a persisted pid with no host beside it, checked with os.kill (lease and heartbeat)",
+    "before": 2,
+    "after": 0,
+    "window_days": 14,
+    "verdict": "proven",
+    "graded_on": "2026-08-19",
+    "note": "Scoped to the two sites fixed. The third, process_alive, is task #21 and is NOT counted as fixed here."
+  },
+  "issue": null,
+  "state": "closed"
+}
