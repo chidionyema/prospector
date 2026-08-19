@@ -1,0 +1,40 @@
+{
+  "id": "INC-2026-08-19-ci-change-filter-skipped-the-console",
+  "opened": "2026-08-19",
+  "title": "A pull request that changed the ops console was merged green without the console ever being typechecked",
+  "severity": "high",
+  "detected_by": "claude",
+  "first_order": {
+    "what_broke": "ci.yml's `changes` job decides which lanes run. On any diff touching .github/ it took an early exit that decided the dotnet, web and console lanes from the TEXT of the workflow diff and threw the actual file list away. A pull request that changed both a workflow and some console code got console=false. The ops-console job reported `skipped`, nothing typechecked or linted or unit-tested the console, and the run was green.",
+    "receipt": "CI run 32226199534 on branch ops/drain-visibility-and-incident: the diff includes store_platform/src/Ops.Console/src/pages/queue.tsx and two files under store_platform/src/Ops.Console/src/pages/api/ops/, and the ops-console and nextjs jobs both reported `skipped`. The gate is ci.yml:751, `if: needs.changes.outputs.console == 'true'`. Reproduced locally by running the filter's own shell against that file list: the pre-fix form returns console=false, the fixed form returns console=true.",
+    "fixed_by": "The four lane variables are now computed from the file list first and unconditionally, and the `.github/` rule only ever ADDS to them. It can no longer subtract, and it no longer returns early, so a mixed diff grades both halves."
+  },
+  "cause_chain": [
+    "A change to the pipeline itself used to run every lane, which was expensive, so a rule was added to run only the lanes the workflow diff names.",
+    "That rule was written as an early `exit 0` with its own complete set of echoes, so it did not narrow the decision, it REPLACED it. Every file in the diff that was not under .github/ stopped counting.",
+    "The two halves of the diff were never combined because the filter had two exits, and only the first one reached read the file list. A second exit path that writes the same outputs is a second implementation of the decision, and the two drifted the moment one of them was written to answer a narrower question.",
+    "Nothing caught it because a skipped job leaves a tick, not a cross. GitHub renders `skipped` and `success` the same shade of green at the top of a run, and the required-checks gate treats a skipped job as satisfied, so 'graded and passed' and 'never looked at' are indistinguishable from outside.",
+    "The filter was shell inside YAML, so no test could reach it. Every existing test of the pipeline grades the TEXT of ci.yml - which jobs exist, which variables they read - and none of them execute the decision, so its behaviour was ungraded by construction.",
+    "CLASS: a decision procedure with more than one exit path, where the cheap path writes the same outputs as the full path, will silently answer a different question than the one asked - and when the output of that decision is 'skip a check', the failure is invisible because a skipped check reports as a passing one."
+  ],
+  "second_order": {
+    "sweep_command": "rg -n 'exit 0' .github/workflows/*.yml && rg -n 'if: needs\\.changes\\.outputs' .github/workflows/ci.yml",
+    "siblings_found": 0,
+    "siblings_fixed": 0,
+    "note": "`exit 0` appears in exactly one other place in the workflows, ci.yml's doc-rot step, where it ends a step rather than choosing what runs, so nothing downstream is gated on it. The four `needs.changes.outputs.*` gates in ci.yml (python, dotnet, web, console) are all now fed by the single unconditional block, and the new test asserts the filter writes all four on every path. The wider class - a check that reports green when it did not run - is the S1 standard in docs/decisions/0002-engine-runtime-and-engineering-standards.md, which classified it as 4 of 9 incidents in two days. This record is a fifth instance of that class."
+  },
+  "third_order": {
+    "tier": "test",
+    "mechanism": "tests/unit/test_ci_change_filter_grades_every_lane.py lifts the filter step's shell out of ci.yml, stubs `git` with a shell function so the .github patch text is supplied by the test, runs it under bash with a real GITHUB_OUTPUT file, and asserts the four lane values. It grades behaviour, not text, so the regexes can be edited freely. Seventeen cases: each area turns on its own lane; each area ALSO turns on its own lane when a workflow file is in the same diff and the workflow patch names nothing (this is the regression, and it is parametrized across all four lanes); a workflow-only change runs python and nothing heavy; a workflow patch naming a lane runs it with no files of its own; a docs-only change runs nothing; all four outputs are written on every path, because an unwritten output is the empty string and silently skips its job; and the outputs the filter writes are the same set the jobs gate on. Mutation-checked: restoring the pre-fix early exit turns exactly three red, the three lanes that were being discarded.",
+    "landed_on": "2026-08-19",
+    "why_not_higher": "Self-healing is not available: the filter's job is to decide, and a decision that repairs itself has no definition of correct to repair towards. A refusal would have to run before the lanes are chosen, inside GitHub's own scheduler, and there is no such hook. The repository suite gates the merge that would reintroduce it, so a test is the earliest point a machine can say no. The stronger fix is the S6 standard - CI should also refuse a merge whose required checks include a skipped job on a path it should have graded - and that is a pipeline change tracked separately, not something this record can land."
+  },
+  "grade": {
+    "signature": "a CI job that reports skipped on a pull request that changed the files it exists to grade",
+    "before": 1,
+    "after": null,
+    "window_days": 30,
+    "verdict": "unproven"
+  },
+  "state": "open"
+}
