@@ -509,3 +509,125 @@ def test_a_browser_supplied_value_is_never_tilde_expanded():
     argv = api._tool_argv(tool, {"p": "~/secrets"})
 
     assert argv[-1] == "~/secrets", argv
+
+
+# --------------------------------------------------------------------------- #
+# Sharing a repo file with somebody who has no console session
+# --------------------------------------------------------------------------- #
+# `tests/ops/test_share.py` is where the fence itself is tested — the deny-list, path escapes,
+# expiry, revocation. What is tested HERE is the gateway wrapping it: that the listing carries no
+# key material, that minting still goes through the same confirmation fence as every other write,
+# and that the one view answering without a session is registered and reachable by name.
+def test_the_share_listing_never_carries_a_token():
+    """The listing is rendered in a browser, logged and screenshotted. If a token survived into
+    it, every one of those becomes a place the credential leaked to."""
+    doc, code = api.dispatch(["read", "shares"])
+    assert code == 0, doc.get("error")
+    body = json.dumps(doc["data"])
+    assert "token_sha256" not in body
+    assert '"token"' not in body
+
+
+def test_the_share_listing_says_which_fence_answered_and_how_much_it_covers():
+    """`git ls-files` is exact; the tree walk is what runs in the engine image, where
+    `.dockerignore` removes `.git/`. An operator about to hand out a repo-wide link needs to know
+    which one produced the number, because they do not always agree."""
+    doc, _ = api.dispatch(["read", "shares"])
+    data = doc["data"]
+    assert data["allow_list_source"] in ("git ls-files", "tree walk + deny-list")
+    assert data["shareable_count"] > 0
+    assert data["max_days"] >= data["default_days"] >= 1
+
+
+def test_the_file_list_is_only_sent_when_asked_for():
+    """It is thousands of paths. Shipping it on every poll of the share screen would make the
+    cheapest view on the console the most expensive one."""
+    doc, _ = api.dispatch(["read", "shares"])
+    assert "files" not in doc["data"]
+    doc, _ = api.dispatch(["read", "shares", "--arg", "files=1"])
+    assert doc["data"]["files"] and ".env" not in doc["data"]["files"]
+
+
+def test_the_public_view_is_registered_but_refuses_a_token_it_never_minted():
+    """The public Next route names this view as a literal. If it were not registered the share
+    door would 404 for everyone, and the failure would look like a bad link rather than a missing
+    handler."""
+    assert "share_open" in api.READS
+    doc, code = api.dispatch(["read", "share_open", "--arg", "token=never-minted"])
+    assert code != 0
+    assert doc["ok"] is False
+    assert doc["data"] in (None, {}, [])
+
+
+def test_minting_a_link_goes_through_the_same_confirmation_fence_as_every_other_write():
+    """A link is a credential. Minting one with a single unconfirmed call is exactly the shape of
+    write this console refuses everywhere else."""
+    doc, code = api.dispatch([
+        "act", "share.create",
+        "--payload", json.dumps({"scope": "file", "target": "README.md", "days": 1}),
+    ])
+    assert code == 4
+    assert doc["error_kind"] == "ConfirmationRequired"
+
+
+def test_the_preview_says_how_many_files_the_link_would_expose():
+    """A `repo` share and a `file` share look identical in a form. The count is the difference,
+    and it is shown before anything is minted."""
+    doc, code = api.dispatch([
+        "act", "share.create",
+        "--payload", json.dumps({"scope": "repo", "target": "", "days": 1}), "--preview",
+    ])
+    assert code == 0, doc.get("error")
+    data = doc["data"]
+    assert data["covers"] > 1
+    assert data["sample"] and all(api_share().is_denied(f) == "" for f in data["sample"])
+
+
+def test_a_preview_mints_nothing(_no_production_writes):
+    api.dispatch([
+        "act", "share.create",
+        "--payload", json.dumps({"scope": "file", "target": "README.md", "days": 1}), "--preview",
+    ])
+    assert not (_no_production_writes / "shares.json").exists(), "the preview minted a live link"
+
+
+def test_a_scope_the_engine_does_not_have_is_refused_by_name():
+    doc, code = api.dispatch([
+        "act", "share.create",
+        "--payload", json.dumps({"scope": "everything", "target": ""}), "--preview",
+    ])
+    assert code != 0
+    assert "scope must be one of" in doc["error"]
+
+
+def test_a_link_can_be_minted_then_revoked_through_the_gateway(cfg, _no_production_writes):
+    """The whole round trip on the operator's side, through `dispatch` rather than through
+    `share.py` directly — a fence that only holds when called from Python is not a fence."""
+    payload = {"scope": "file", "target": "README.md", "days": 1, "note": "gateway test"}
+    token = api._valid_tokens(cfg, "share.create", payload)[0]
+    doc, code = api.dispatch([
+        "act", "share.create", "--payload", json.dumps(payload), "--confirm", token,
+    ])
+    assert code == 0, doc.get("error")
+    minted = doc["data"]
+    assert minted["path"] == f"/s/{minted['token']}"
+
+    opened, code = api.dispatch(["read", "share_open", "--arg", f"token={minted['token']}"])
+    assert code == 0, opened.get("error")
+    assert opened["data"]["kind"] == "file"
+
+    rpayload = {"id": minted["id"]}
+    rtoken = api._valid_tokens(cfg, "share.revoke", rpayload)[0]
+    doc, code = api.dispatch([
+        "act", "share.revoke", "--payload", json.dumps(rpayload), "--confirm", rtoken,
+    ])
+    assert code == 0, doc.get("error")
+
+    doc, code = api.dispatch(["read", "share_open", "--arg", f"token={minted['token']}"])
+    assert code != 0, "a revoked link still opened"
+
+
+def api_share():
+    from prospector.ops import share
+
+    return share
