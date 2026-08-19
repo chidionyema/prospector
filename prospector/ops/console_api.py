@@ -3225,7 +3225,12 @@ TOOLS: list[dict] = [
     _t("scripts/backup_store.py", "Back up dossiers and ledger to R2", True, "/tools",
        risk="external"),
     _t("scripts/restore_drill.py", "Prove the backup restores", False, "/tools"),
+    _t("scripts/dns_zone.py", "Has DNS drifted from the committed zone", False,
+       "/tools", cmd=".venv/bin/python scripts/dns_zone.py --check "
+                     "--zone mumchimp.com"),
     _t("scripts/store_audit.py", "Audit the operator's store", False, "/tools"),
+    _t("scripts/rework_metrics.py", "Rework rate: the guard on the cost scoreboard",
+       False, "/method"),
     _t("scripts/blocker_probe.py", "Which programme items are blocked", False, "/tools"),
     _t("scripts/load_gate.py", "Is the machine fit to trust a test result", False, "/tools"),
     _t("scripts/popdd_verify.py", "The lane-aware proof runner", False, "/tools"),
