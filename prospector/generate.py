@@ -774,7 +774,7 @@ def generate(
     # 'retiree_cohort'). We also seed the start from the signal so different signals begin
     # at different personas, breaking the cross-run bias toward the first persona.
     _seed_src = (signal_text or sector or "").encode("utf-8")
-    aud_base = int(hashlib.sha1(_seed_src).hexdigest(), 16) if audience_forms else 0
+    aud_base = int(hashlib.sha1(_seed_src, usedforsecurity=False).hexdigest(), 16) if audience_forms else 0
 
     # Floor on ideas-per-call. Config-declared (`generation.min_ask`); 1 restores the
     # legacy one-idea-per-call fan-out. See plan_wave's docstring for the 2026-08-14
