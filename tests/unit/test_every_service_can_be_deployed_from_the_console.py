@@ -28,9 +28,9 @@ from prospector.ops import console_api as api  # noqa: E402
 
 
 def _button_for(name: str) -> dict | None:
-    command = f".venv/bin/python scripts/deploy_now.py {name}"
+    """The catalogued button that ships `name`, found the way the console finds it."""
     for tool in api.TOOLS:
-        if tool["command"] == command:
+        if tool["path"] == api._DEPLOY_NOW and tool["command"].split()[-1] == name:
             return tool
     return None
 
@@ -56,8 +56,8 @@ def test_a_shippable_service_has_a_button_and_a_warning(name):
     tool = _button_for(name)
     assert tool is not None, (
         f"{name} can be deployed by scripts/deploy_now.py but has no row in console_api.TOOLS, "
-        f"so the operator cannot reach it. Expected command: "
-        f"'.venv/bin/python scripts/deploy_now.py {name}'"
+        f"so the operator cannot reach it. Expected a row running "
+        f"{api._DEPLOY_NOW} with {name} as its last argument"
     )
     assert tool["screen"] == "/deploys", (
         f"{name}'s deploy button is on {tool['screen']}, not the page that shows the gap"

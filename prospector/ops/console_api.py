@@ -1634,6 +1634,11 @@ def _read_deploys(cfg, args: dict) -> dict:
     return view
 
 
+#: The tool that ships one service. Named once, so the button lookup below and the registry
+#: row cannot drift apart.
+_DEPLOY_NOW = "scripts/deploy_now.py"
+
+
 def _deploy_route(name: str) -> dict:
     """How the operator ships one deployable FROM THIS PAGE, or why there is no button.
 
@@ -1645,21 +1650,25 @@ def _deploy_route(name: str) -> dict:
     than hardcoded, so renaming the row cannot leave a button pointing at nothing. When there is
     no button, `deploy_how` says what does ship it — never silence.
     """
-    command = f".venv/bin/python scripts/deploy_now.py {name}"
     for tool in TOOLS:
-        if tool["command"] == command:
+        if tool["path"] == _DEPLOY_NOW and tool["command"].split()[-1] == name:
             return {"deploy_tool_id": tool["id"], "deploy_how": tool["purpose"],
                     "deploy_danger": tool["danger"]}
 
-    route = {}
     try:
         scripts_dir = str(_REPO_ROOT / "scripts")
         if scripts_dir not in sys.path:  # called once per deployable, per page read
             sys.path.insert(0, scripts_dir)
         import deploy_now  # type: ignore
-        route = deploy_now.routes().get(name, {})
-    except Exception:  # noqa: BLE001 - a missing route never blanks the page
-        route = {}
+    except ImportError as exc:
+        # Narrow on purpose, and it says so rather than returning silence: this happens on a
+        # checkout older than the commit that added the script, which is exactly when the
+        # operator is looking at this page to roll that checkout forward.
+        return {"deploy_tool_id": None,
+                "deploy_how": f"this checkout has no deploy routes yet ({exc}); roll it forward "
+                              f"with scripts/live_checkout.py --update",
+                "deploy_danger": None}
+    route = deploy_now.routes().get(name, {})
     if route.get("kind") == "manual":
         return {"deploy_tool_id": None, "deploy_how": route["why"], "deploy_danger": None}
     if route.get("kind") == "button":
