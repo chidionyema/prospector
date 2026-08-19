@@ -106,3 +106,74 @@ One rule: **arrive with a measurement.** A practice change is a claim about beha
 the number it moved or the incident it would have caught, in the ledger above, with the command
 that reproduces it. A practice with no measurement is a preference, and preferences belong in a
 conversation rather than in a programme.
+
+## Three gaps the founder closed on 2026-08-19
+
+All three had been left open because they were direction, not engineering. The answer to each
+was yes.
+
+**1. The global `~/.claude/CLAUDE.md` gets the same treatment as the project one.** It was 23,277
+characters — about 5,819 tokens re-billed on every turn of every session in every project.
+Anthropic's own guidance names the over-specified CLAUDE.md as the first failure pattern: rules
+get lost in the noise. Two changes, both keeping the rule and moving the evidence:
+
+- The Model routing ladder (3,809 chars of measurement history, needed once at session start)
+  became the `model-routing` skill. Six lines of operative rule stayed.
+- Budget mode restated batching, delegation and narrow reads, which Context discipline already
+  owned. It now says only what is distinct: smallest diff, measure before building, report mode
+  before fix mode, stop at the deliverable.
+
+Measured after: **20,107 characters, about 5,027 tokens — 792 fewer per session.**
+
+**2. `.claude/agents/` reviewers become routine.** `receipt-auditor` and `estate-recon` already
+shipped. The gap was that nothing made anyone use them. `.claude/skills/ship-a-pr/SKILL.md` now
+carries the shipping sequence and puts a `receipt-auditor` pass before every PR, ahead of the
+gate. The session that wrote the code is the worst reviewer of it — it already believes the
+reasoning — so the review has to happen in a context that never saw the argument.
+
+**3. The context guard blocks instead of nudging.** It had only ever injected about 70 tokens of
+advice, and the advice was ignored: 38 of the last 40 sessions peaked above the 140K ceiling,
+median 165,553, which is the auto-compaction knee. See below for what blocking means and how a
+session recovers.
+
+### What "blocking" means, precisely
+
+`~/.claude/scripts/context-guard-hook.py` now serves two hook events from one file. Above
+`RESIDENT_BLOCK = 140_000` the `PreToolUse` half exits 2, which refuses the tool call and shows
+the reason to the model.
+
+It refuses **only calls that grow context**: `Read`, `Grep`, `Glob`, `WebFetch`, `WebSearch`,
+`Agent`, and pure-reading shell commands (`cat`, `head`, `rg`, `grep`, `sed -n`, `find`). In auto
+mode reading happens through Bash, so refusing the Read tool alone would have been a hole big
+enough to drive the session through.
+
+It refuses **nothing else, ever**. `Write`, `Edit`, `TodoWrite`, `git`, `gh`, test runs, builds,
+and any command with a `>` redirect all still run at any size. That is not a soft edge, it is the
+design: the way out of a fat session is to write the handoff and commit, and a guard that blocked
+that would trap the session in the exact state it exists to end.
+
+### How a session recovers
+
+The block message spells out the four steps, and every one of them is a call the guard allows:
+
+1. Finish the step you are on. Nothing is cut off mid-edit.
+2. Write the handoff to `checkpoints/LATEST.md`.
+3. Commit and push what is done.
+4. End the reply with the safe-point line and `/clear`.
+
+The `SessionStart` memory-loop hook re-injects that handoff into the next session, so `/clear`
+costs nothing except the reading that would have had to be redone anyway. Recovery is the
+mechanism that already existed and was already proven; the block just makes taking it
+non-optional.
+
+If a block is genuinely wrong — the remaining work cannot be split — the escape is one line and
+it is the founder's call, not the agent's:
+
+```bash
+touch ~/.claude/state/contextguard/OFF     # off for every session until removed
+```
+
+This is the first guard in the estate that can fail CLOSED, so both directions are pinned by
+selftest: 17 new cases covering what it refuses and, more important, what it must never refuse.
+`python3 ~/.claude/scripts/context-guard-hook.py --selftest` — 29/29 pass, and
+`process_audit.py` grades a failing selftest as BAD.
