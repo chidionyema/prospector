@@ -92,7 +92,7 @@ Read this before proposing to build any of it (memory
 | Store move | `scripts/store_migrate.py` (+ `verify`) | written; `verify` is the restore proof |
 | Compose substrate | `deploy/compose/` | written; the founder's chosen route "c" |
 | Offsite backup | `ops/automations/offsite_backup.py`, `ops/config/offsite_backup.yaml` | running, green, **from the laptop** |
-| Fly inventory | `scripts/fly_estate_probe.py` (PR #390) | shipped 2026-08-19; Fly apps only |
+| Fly inventory | `scripts/fly_estate_probe.py` (PR #390) | raised 2026-08-19, **not merged**; Fly apps only |  <!-- doc-lint-ok: lands with PR #390 -->
 | Laptop inventory | `ops/launchd/*.json`, `scripts/launchd_plists.py`, `scripts/process_audit.py` | declarations exist; not joined to Fly |
 | Estate census | `scripts/estate_census.py`, `scripts/estate_map.py`, `scripts/worktree_census.py` | run by hand |
 | Production currency | `scripts/live_checkout.py` (+ `--update`) | shipped, a console button |
@@ -114,7 +114,8 @@ a **Story** in the founder's words, **Done when** as a command someone can run, 
 
 ### M1 — One inventory, or none. Today the estate has three lists that never meet. **P0, M**
 
-**Breaks today.** `scripts/fly_estate_probe.py` sees 11 Fly apps. `ops/launchd/*.json` declares the
+**Breaks today.** `scripts/fly_estate_probe.py` (PR #390, open) saw 11 Fly apps when it was run.  <!-- doc-lint-ok: lands with PR #390 -->
+`ops/launchd/*.json` declares the
 laptop's jobs. `.github/workflows/*.yml` declares scheduled CI work. Nothing joins them, so the
 question *"what unattended work does this business run, and where?"* has no answer without three
 commands and a person to reconcile them. `prospector-hermes` ran undescribed for a day precisely in
@@ -153,7 +154,7 @@ keys is untested.
 
 **Story.** *"i can get a new nachine checkout and everything setup seanlessly"*.
 
-**Done when.** `scripts/bootstrap_machine.sh` takes a bare macOS or Linux machine to: repo cloned,
+**Done when.** `scripts/bootstrap_machine.sh` takes a bare macOS or Linux machine to: repo cloned,  <!-- doc-lint-ok: this task's own deliverable, so it does not exist yet -->
 `.venv` built, `node_modules` present, `.lux/keys/agent.pem` present, hooks decided, secrets restored,
 and `.venv/bin/python scripts/popdd_verify.py --staged` passing. It is idempotent. A drill (M6) runs
 it in a clean container and the run is the proof, not the script's existence.
@@ -524,6 +525,6 @@ Append here. One line per shipped item, with the receipt.
 
 | Date | Item | What shipped | Receipt |
 |---|---|---|---|
-| 2026-08-19 | M1 (part) | `scripts/fly_estate_probe.py` — Fly apps with no committed config | PR #390; `exit=1`, `prospector-hermes` named |
+| 2026-08-19 | M1 (part) | `scripts/fly_estate_probe.py` — Fly apps with no committed config | PR #390 **open, not merged**; `exit=1`, `prospector-hermes` named |  <!-- doc-lint-ok: lands with PR #390 -->
 | 2026-08-19 | M3 (fence) | `deploy/targets/fly.sh` flyctl shim; D3 was red with `fly: command not found` | PR #388; 2 failed → 3 passed |
 | 2026-08-19 | — | `docs/ESTATE_MAP.md` Hermes section corrected from asserted to measured | PR #390 |

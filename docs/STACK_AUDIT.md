@@ -275,7 +275,7 @@ what makes the platform's restart policy work.
 
 Researched previously, unchanged, recorded here so the audit is complete in one place:
 **SOPS + age** for secrets in git; **octoDNS** for DNS as code (Python and YAML, matching
-`scripts/dns_zone.py` which already exports a committed zone); **OpenTofu** over Terraform
+`scripts/dns_zone.py`, which exports a committed zone and is open in PR #397); **OpenTofu** over Terraform  <!-- doc-lint-ok: lands with PR #397 -->
 (MPL 2.0, Linux Foundation, native state encryption; Terraform is BSL since Aug 2023);
 **Vector** to collect and **Loki** or **OpenObserve** to store logs; **Pumba** for chaos on
 containers and **Toxiproxy** for surgical network faults; **Playwright** on a schedule for
@@ -477,7 +477,7 @@ first, per the standing rule.
 - `store/catalog.sqlite3` (0 bytes)
 - One of `ops_state.py` / `ops_status.py`
 - 5 of the 7 branch/worktree scripts, folded into one
-- `NEXT_MOVE_2026-08-14/15/17.md`, to `docs/archive/`
+- `docs/NEXT_MOVE_2026-08-14.md`, `docs/NEXT_MOVE_2026-08-15.md` and `docs/NEXT_MOVE_2026-08-17.md`, to `docs/archive/`
 
 ## 8. What this changes about the migration programme
 
