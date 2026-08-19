@@ -21,11 +21,21 @@ refs="$(cat)"
 # Worktrees share ONE hooks directory (it lives in the common git dir), so this hook also runs in
 # trees created before the guard existed. Refusing loudly beats skipping quietly: a tree that old
 # is also a tree whose base is stale.
-if [ ! -f scripts/guard_dead_branch_push.py ]; then
-  echo "pre-push blocked: this tree predates scripts/guard_dead_branch_push.py."
+if [ ! -f scripts/guard_dead_branch_push.py ] || [ ! -f scripts/guard_main_push.py ]; then
+  echo "pre-push blocked: this tree predates a guard this hook needs."
+  echo "Missing: $(for g in guard_dead_branch_push guard_main_push; do
+                     [ -f "scripts/$g.py" ] || printf 'scripts/%s.py ' "$g"; done)"
   echo "Rebase it:  git fetch origin main && git rebase origin/main"
   echo "Or push anyway:  ALLOW_BRANCH_RECREATE=1 git push ..."
   [ "${ALLOW_BRANCH_RECREATE:-}" = "1" ] || exit 1
+fi
+
+# WHERE the push lands is judged before the guards that ask GitHub anything. It is the cheapest
+# check here and the only one that cannot fail open: a string comparison on refs git has already
+# resolved, with no network call and no `gh`. The two guards below have to decide what to do when
+# GitHub does not answer. This one still holds when GitHub is unreachable.
+if ! printf "%s" "$refs" | python3 scripts/guard_main_push.py; then
+  exit 1
 fi
 
 if [ -f scripts/guard_dead_branch_push.py ] && ! printf "%s" "$refs" | python3 scripts/guard_dead_branch_push.py; then
