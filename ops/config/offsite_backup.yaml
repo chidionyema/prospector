@@ -80,5 +80,8 @@ sources:
       - "{dest}"
       - https://api.mumchimp.com/internal/backup/keyring
     key: data-protection-keys/keyring.tgz
-    verify: nonempty
+    # Opened as a tar archive, and its index read, before it counts. This said `nonempty`
+    # until 2026-08-19: a size cannot tell a whole key ring from a download that stopped
+    # halfway, and the half-download is the copy you find out about during a restore.
+    verify: tgz
     keep: 30

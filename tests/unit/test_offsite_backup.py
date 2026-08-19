@@ -10,8 +10,10 @@ No network. The storage client is a stub, and the sources are throwaway files.
 
 from __future__ import annotations
 
+import io
 import json
 import sqlite3
+import tarfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -207,6 +209,60 @@ def test_a_good_sqlite_copy_passes(tmp_path):
 def test_an_unknown_verify_kind_is_unknown_not_a_pass(tmp_path):
     with pytest.raises(CannotEstablish, match="unknown verify kind"):
         verify_copy(_sqlite_file(tmp_path / "store.db"), "vibes")
+
+
+def _keyring_tgz(path: Path) -> Path:
+    """What /internal/backup/keyring returns: a gzipped tar holding the key ring XML."""
+    body = b"<key id='a5' />"
+    with tarfile.open(path, "w:gz") as archive:
+        info = tarfile.TarInfo("keys/key-a5.xml")
+        info.size = len(body)
+        archive.addfile(info, io.BytesIO(body))
+    return path
+
+
+def test_a_good_key_ring_archive_passes(tmp_path):
+    verify_copy(_keyring_tgz(tmp_path / "keyring.tgz"), "tgz")
+
+
+def test_a_truncated_key_ring_archive_is_rejected(tmp_path):
+    # The failure `nonempty` could never see: the download stopped halfway, so the file is
+    # far larger than zero bytes and completely unusable.
+    whole = _keyring_tgz(tmp_path / "keyring.tgz").read_bytes()
+    torn = tmp_path / "torn.tgz"
+    torn.write_bytes(whole[: len(whole) // 2])
+
+    with pytest.raises(CannotEstablish):
+        verify_copy(torn, "tgz")
+
+
+def test_an_archive_holding_nothing_is_not_a_key_ring(tmp_path):
+    empty = tmp_path / "empty.tgz"
+    with tarfile.open(empty, "w:gz"):
+        pass
+
+    with pytest.raises(CannotEstablish, match="no members"):
+        verify_copy(empty, "tgz")
+
+
+def test_the_key_ring_is_graded_by_opening_it_not_by_its_size():
+    """The guard on the declaration, not on the code.
+
+    A working `tgz` kind buys nothing if the key ring is declared `nonempty` again. Losing
+    the Data Protection ring does not lose data, it makes every grant token and cookie
+    undecryptable, so a restore reading from a half-downloaded archive looks successful and
+    hands every buyer a broken link.
+    """
+    import yaml
+
+    declared = yaml.safe_load(
+        (Path(__file__).resolve().parents[2] / "ops/config/offsite_backup.yaml").read_text()
+    )
+    keyring = [s for s in declared["sources"] if s["name"] == "data-protection-keys"]
+    assert keyring, "the key ring source is gone from the declaration"
+    assert keyring[0]["verify"] == "tgz", (
+        "the key ring is graded by size again; a truncated download would count as a backup"
+    )
 
 
 # --- taking a backup ----------------------------------------------------------------------

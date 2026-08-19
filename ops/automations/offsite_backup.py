@@ -36,6 +36,7 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
 import urllib.error
@@ -272,6 +273,20 @@ def verify_copy(path: Path, kind: str) -> None:
             raise CannotEstablish(
                 f"the copy failed PRAGMA integrity_check: {verdict[0] if verdict else 'no result'}"
             )
+        return
+    if kind == "tgz":
+        # `nonempty` graded the key ring until 2026-08-19, and a byte count is not a verdict.
+        # A download that stopped halfway and a gzip stream that ends mid-member are both
+        # larger than zero bytes, so both were recorded as that night's backup. Opening the
+        # archive and reading its index is what proves it can be unpacked on the day a
+        # restore needs it.
+        try:
+            with tarfile.open(path, "r:*") as archive:
+                members = archive.getnames()
+        except (tarfile.TarError, EOFError, OSError) as exc:
+            raise CannotEstablish(f"the copy does not open as a tar archive: {exc}") from exc
+        if not members:
+            raise CannotEstablish(f"the archive opened but holds no members: {path.name}")
         return
     raise CannotEstablish(f"unknown verify kind `{kind}` on {path.name}")
 
