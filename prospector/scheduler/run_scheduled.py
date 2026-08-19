@@ -2456,9 +2456,13 @@ def run_daemon(cfg, *, interval: int, candidates: int | None = None, generate_fn
 
 def _route_ledger(cfg) -> None:
     """Send telemetry to the canonical ledger so the guard's spend math sees real costs."""
+    from prospector.log_shipper import attach as attach_central_log
     from prospector.telemetry import route_logs_to_file
 
     route_logs_to_file(str(_store_dir(cfg) / "prospector.jsonl"))
+    # And to the central ingest. No-op without STORE_INTERNAL_API_KEY; cannot raise; does
+    # no I/O on the tick's own thread (docs/LOGGING_AND_RETENTION.md Part 8 step 7).
+    attach_central_log("scheduler")
 
 
 def _err_log_path(cfg) -> Path:

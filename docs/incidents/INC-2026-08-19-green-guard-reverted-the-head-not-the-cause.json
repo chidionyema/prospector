@@ -1,0 +1,41 @@
+{
+  "id": "INC-2026-08-19-green-guard-reverted-the-head-not-the-cause",
+  "opened": "2026-08-19",
+  "title": "The green guard reverted an innocent commit, left main red, and filed a ticket blaming the work it removed",
+  "severity": "high",
+  "detected_by": "agent",
+  "first_order": {
+    "what_broke": "main was red on an assertion introduced by PR #460. The next commit to land was #463 (`bab16b19`), which touches `scripts/launchd_plists.py` and one test file and nothing that assertion reads. CI ran on main with #463 as the head, failed on #460's assertion, and `main-green-guard.yml` reverted #463. main stayed red — the guard removed working code and left the broken code in place — and opened issue #468 titled 'main was red: bab16b19 reverted by the green guard', so the next reader inherits a confident, wrong diagnosis with a receipt attached.",
+    "receipt": "Revert commit 4ca967e1: 'Reverted by main-green-guard because CI failed twice on bab16b19901998c95950db37f5cd6ea50dd134cb'. The failing job on that run (96245987336) reads `FAILED tests/unit/test_console_tools_run.py::test_console_tool_registry_has_no_drift - assert not ['scripts/pr_triage.py']`. `git show --stat bab16b19` touches scripts/launchd_plists.py and tests/unit/test_launchd_checks_the_script_not_the_interpreter.py only. The same test still failed on origin/main AFTER the revert: `.venv/bin/python -m pytest tests/unit/test_console_tools_run.py::test_console_tool_registry_has_no_drift` -> 1 failed, at 4ca967e1.",
+    "fixed_by": "PR #472 restores bab16b19 (git revert of the revert)."
+  },
+  "cause_chain": [
+    "The guard reverts `the commit the run tested` — the head of main when CI failed.",
+    "With several sessions merging, the head when a run fails is frequently not the commit that broke it. Tonight six PRs merged in 3m14s, so the head was three commits past the cause by the time CI concluded.",
+    "The guard's design already names six failure modes it defends against — ping-pong, revert storms, silent reverts, conflicting reverts, recursion, and reverting good work for a network blip (which is why it waits for two failures). It does not name this one: that the head may simply not be the cause.",
+    "Nothing in the guard consults the PREVIOUS run on main. GitHub already holds the answer: if the same job failed on the parent commit's run, the head is provably innocent and no revert is warranted.",
+    "CLASS: a mechanism that selects its target by POSITION rather than by EVIDENCE. It is the machine committing LAW 1's error — acting on the shape of the data (which commit is on top) instead of its content (which change the failing assertion actually reads). It is worse than an agent doing it, because it also writes a ticket that makes the wrong answer look investigated."
+  ],
+  "second_order": {
+    "sweep_command": "rg -n 'revert' .github/workflows/*.yml scripts/*.py | rg -i 'git revert|reverts a|revert the'",
+    "siblings_found": 0,
+    "siblings_fixed": 0,
+    "note": "RUN 2026-08-19. `.github/workflows/main-green-guard.yml` is the only mechanism in the estate that reverts anything. `scripts/guard_main_push.py` prevents a direct push to main and takes no target of its own; `scripts/rework_metrics.py` only counts commits whose subject looks like a revert. No siblings. The class is broader than reverting — any automation that picks a target by position — but nothing else in the estate does so destructively."
+  },
+  "third_order": {
+    "tier": "refuse",
+    "mechanism": "NOT LANDED. Before reverting commit X, fetch main's CI run on X's parent and compare the failing job and test id. If the same failure is present on the parent, the head is not the cause: skip the revert and open an issue naming the earliest commit whose run shows the failure. This needs no test execution — the runs are already on GitHub. The guard should also refuse to revert a commit whose diff touches no file the failing test reads, where that is knowable.",
+    "landed_on": null,
+    "note": "Until it lands, the operator rule is in docs/CI_DEBUG_RUNBOOK.md: an issue opened by a guard is not evidence that the guard identified the right commit."
+  },
+  "grade": {
+    "signature": "a main-green-guard revert of a commit whose parent's CI run shows the same failing job",
+    "before": 1,
+    "after": null,
+    "window_days": 14,
+    "verdict": "unproven",
+    "graded_on": null
+  },
+  "issue": null,
+  "state": "open"
+}
