@@ -208,11 +208,11 @@ not be done. That is stale; STACK_AUDIT answered it. Task #90 is to fold the ans
 
 ## 5. Contradictions and reversals, recorded so they are not re-litigated
 
-**The `tie-*` Fly apps.** Sessions have been carrying a constraint that reads "keep the `tie-*` Fly
-apps". The transcript says the opposite. On 2026-08-18T00:40 he annotated a waste row reading *"Five
-tie-* Fly apps, last deployed 13 June, two Postgres machines, 11GB of volumes, all still running"*
-with: *"// this needs to be deleted pernanenly"*. The carried constraint is wrong. Destroying Fly
-apps is irreversible, so confirm once before acting, then delete.
+**The `tie-*` Fly apps. RESOLVED 2026-08-19: leave them.** On 2026-08-18T00:40 he annotated a waste
+row reading *"Five tie-* Fly apps, last deployed 13 June, two Postgres machines, 11GB of volumes,
+all still running"* with *"// this needs to be deleted pernanenly"*. On 2026-08-19 he changed it:
+*"leave tie as it is fr now"*. The later instruction stands. Do not delete them. Revisit only when
+he raises it.
 
 **Kamal.** On 2026-08-18 I recommended Kamal for deploys and OpenTofu for provisioning. On
 2026-08-19 `docs/STACK_AUDIT.md` reversed the first half: keep the adapter contract in
@@ -221,24 +221,51 @@ that the eleven-verb adapter contract already exists and works, and Nomad is BUS
 Terraform is unchanged and is not in dispute: Terraform went BUSL in August 2023, so choosing it to
 avoid lock-in is a contradiction.
 
-**The six Fly machines in `prospector-ci`.** Created on 2026-08-19 on a guess that CI was congested;
-the founder refused the attempt to destroy them. IDs `83d1d60cd66d68`, `80e9e0ef100dd8`,
-`2860671c150d78`, `859297f4e949e8`, `860097ae224e58`, `287356ebd15e18`. They are untouched and await
-his decision. Do not act on them.
+**The six Fly machines in `prospector-ci`. RESOLVED 2026-08-19: destroyed.** Created that day on a
+guess that CI was congested — the mistake that produced LAW 1. He first refused the attempt to
+destroy them, then ordered it: *"renove thhen"*. Four went immediately (`83d1d60cd66d68`,
+`2860671c150d78`, `860097ae224e58`, `287356ebd15e18`). Two were **online and executing CI jobs** at
+that moment (`80e9e0ef100dd8` running `python`, `859297f4e949e8` running `ops-console`, both on run
+32271900907), so they were left to finish and reaped on idle. Destroying them live would have been
+the exact failure LAW 0 names: an agent action that silently destroys another agent's in-flight
+work. The lesson generalises — **Fly's machine state is not the safety check. GitHub's `busy` flag
+is.** `80e9e0ef100dd8` read `stopped` in `fly machines list` while GitHub reported it online and
+running a job.
 
-## 6. Open questions the founder has asked and nobody has answered
+## 6. Open questions, and the ones that turned out to be answered already
 
-1. **Why two databases?** *"wwhy eatcy? requres naintinng 2 databases, etc, this is concering ile"*
-   / *"wwhen advatage does it gve us"* — on task #93, moving the money path from SQLite to Postgres.
-   He is right that it splits the estate across two engines. STACK_AUDIT's own numbers argue against
-   it: `store/prospector.db` is 2.5 MB, and Postgres becomes the right answer above roughly 10,000
-   writes per second, above about 1 TB, on a network filesystem, or across servers. None of those
-   hold. The real datastore problem it named is different: a **258 MB `prospector.jsonl` ledger**,
-   unindexed append-only text that the daily spend cap linear-scans, with no transaction to roll back
-   a torn write. **Owed to him: a written recommendation.**
-2. **Where do Healthchecks and Dagu run** — on `prospector-engine`, or their own small Fly app?
-3. **The ~90-file delete list** — confirm report-first, then a second `--fix` run.
-4. **Drop the two 3600s DNS TTLs to 60s** in GoDaddy. Founder-only; on the critical path for B1.
+1. **Why two databases? ANSWERED — the answer was in the audit and I misreported it.** He asked
+   *"wwhy eatcy? requres naintinng 2 databases, etc, this is concering ile"* / *"wwhen advatage does
+   it gve us"*. I told him the numbers argued against the split. That was wrong, and it was wrong
+   because I quoted the engine store's numbers at a question about the money path. They are two
+   different datastores and the audit treats them separately:
+   - **Money path — Postgres, decided.** Not about size. `prospector-store-api` runs **one machine,
+     on one volume, in one zone** (`vol_4ql6dzwjylqeygnr`, 1 GB, lhr), because SQLite pins the API to
+     the machine holding the file. So it cannot be made redundant, and every deploy is a window in
+     which the estate cannot take money. `prospector-store-web` already runs two machines; the API
+     cannot follow it. His own words on that arrangement: *"come on this is irresponsible"*.
+     `STACK_AUDIT.md` §4a, decision §9.4, task #93. Confirmed by him again on 2026-08-19.
+   - **Engine — SQLite stays.** `STACK_AUDIT.md` §9.5. The engine's data is 99.6% files, so moving
+     2.5 MB of rows buys no discipline, and 48 test files build a real store from a temp file with
+     no service in CI.
+   - **So the estate runs two engines by choice, and that is the honest cost of the decision.** The
+     price is two backup paths and two restore drills, and the audit is explicit that both must be
+     automated and drilled rather than documented — tasks #94 (Litestream) and #80 (M4).
+   - **The 258 MB `prospector.jsonl` ledger is a separate problem and still open.** Unindexed
+     append-only text that the daily spend cap linear-scans, with no transaction to roll back a torn
+     write. It is a file-format problem, not a database-engine one. `STACK_AUDIT.md` §9.1.
+2. **Where do Healthchecks and Dagu run?** Answered on 2026-08-19 — `prospector-engine`, no new app,
+   no new provider. **The answer is half wrong and is now task #97:** a dead-man's switch that runs
+   on the machine it watches cannot report that machine dying; the silence and the alerter stop
+   together. Dagu can stay; the alerter has to sit outside.
+3. **The ~90-file delete list.** Answered: delete once each is confirmed run, docs updated in the
+   same pass, report mode first. `STACK_AUDIT.md` §9.3.
+4. **The two 3600s DNS TTLs. No longer a founder-only action, and my earlier note was wrong.** An
+   hour of DNS cache makes the 30-minute bar unmeetable, so this is on B1's critical path. I recorded
+   it as founder-only because GoDaddy has no API *in use here* — but GoDaddy publishes a DNS API,
+   Steampipe ships a `godaddy_dns_record` table, and that plugin's own worked example lists records
+   whose TTL exceeds a threshold. So the founder supplies a key once, and after that octoDNS owns the
+   zone and a check fails whenever a record exceeds the cutover budget. Task #99, pairs with #77.
 
 ## 7. How to add to this file
 
