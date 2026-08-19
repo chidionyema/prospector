@@ -22,6 +22,8 @@ Usage
     python3 scripts/doc_lint.py            # report; exit 1 if anything is wrong
     python3 scripts/doc_lint.py --json     # same, machine-readable
     python3 scripts/doc_lint.py --list     # what it scanned and what it knows, then exit 0
+    python3 scripts/doc_lint.py --check    # ratchet: a doc may not get worse, and a suppression
+                                           # may not outlive the deadline written beside it
 
 Report-only by design. It never edits a doc.
 """
@@ -33,6 +35,7 @@ import json
 import re
 import subprocess
 import sys
+from datetime import date, timedelta
 from pathlib import Path, PurePosixPath
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -253,6 +256,54 @@ def lint(config_path: Path | None = None) -> list[dict]:
 #: a number may fall, never rise, and a doc not listed here must be clean.
 BASELINE_PATH = REPO_ROOT / "docs" / "doc_lint_baseline.json"
 
+#: How long a NEW suppression gets before it has to be gone. A ratchet with no burn-down date is
+#: a warning fence, and a warning fence is not a fence: on 2026-08-18 this file held all 45 live
+#: findings, so `--check` was green while every finding was real
+#: (docs/incidents/INC-2026-08-18-doc-rot-ratchet.json).
+BASELINE_FIRST_DUE_DAYS = 30
+
+#: Deadlines are staggered a week apart, cheapest doc first, so the burn-down is a queue rather
+#: than one day on which fourteen docs come due at once and everybody re-baselines instead.
+BASELINE_STAGGER_DAYS = 7
+
+
+def _baseline_entries(raw: dict) -> dict[str, tuple[int, str | None]]:
+    """Read either baseline shape as (ceiling, deadline).
+
+    A bare int is the OLD shape: a ceiling that never expires. It is still read, so an old
+    baseline does not crash, but `check_ratchet` refuses it -- see there for why.
+    """
+    out: dict[str, tuple[int, str | None]] = {}
+    for rel, value in raw.items():
+        if isinstance(value, dict):
+            out[rel] = (int(value.get("count", 0)), value.get("expires"))
+        else:
+            out[rel] = (int(value), None)
+    return out
+
+
+def due_dates(counts: dict[str, int],
+              previous: dict[str, tuple[int, str | None]],
+              today: date) -> dict[str, str]:
+    """Assign a deadline to every baselined doc, keeping the old one unless the count came DOWN.
+
+    This is the whole mechanism. Without the "unless it came down" rule, `--write-baseline` is a
+    snooze button: run it again on the deadline and buy another month, which is exactly how the
+    findings this file suppresses became permanent in the first place. A doc only earns a fresh
+    deadline by getting more accurate.
+    """
+    out: dict[str, str] = {}
+    fresh = 0
+    for rel in sorted(counts, key=lambda r: (counts[r], r)):
+        was, when = previous.get(rel, (None, None))
+        if when is not None and was is not None and counts[rel] >= was:
+            out[rel] = when
+            continue
+        out[rel] = (today + timedelta(days=BASELINE_FIRST_DUE_DAYS
+                                      + BASELINE_STAGGER_DAYS * fresh)).isoformat()
+        fresh += 1
+    return out
+
 
 def counts_by_file(findings: list[dict]) -> dict[str, int]:
     out: dict[str, int] = {}
@@ -294,12 +345,29 @@ def check_ratchet(findings: list[dict], scope: set[str] | None = None) -> tuple[
     if not BASELINE_PATH.exists():
         return False, [f"no baseline at {BASELINE_PATH.relative_to(REPO_ROOT)} — "
                        f"run `python3 scripts/doc_lint.py --write-baseline`"]
-    baseline = json.loads(BASELINE_PATH.read_text())
+    entries = _baseline_entries(json.loads(BASELINE_PATH.read_text()))
     now = counts_by_file(findings)
+    today = date.today().isoformat()
     problems: list[str] = []
     inherited: list[str] = []
     for rel, count in now.items():
-        was = baseline.get(rel, 0)
+        was, expires = entries.get(rel, (0, None))
+        if was and expires is None:
+            problems.append(
+                f"{rel}: baseline entry has no burn-down date — "
+                f"run `python3 scripts/doc_lint.py --write-baseline`")
+            continue
+        if expires is not None and expires < today and count:
+            # Deliberately fatal whether or not this branch touched the doc. `scope` exists so a
+            # pull request is not failed by someone else's NEW regression; a deadline is neither
+            # new nor a surprise -- it was written into the baseline weeks ago and the file names
+            # the day. If this were reported and not fatal, a doc nobody happens to edit would rot
+            # forever, which is the exact failure the deadline exists to end.
+            problems.append(
+                f"{rel}: {count} finding(s) still suppressed, and the suppression expired on "
+                f"{expires} — fix the doc. `--write-baseline` only moves the date once the "
+                f"count comes DOWN.")
+            continue
         if count <= was:
             continue
         message = f"{rel}: {was} -> {count} — a doc may only get more accurate"
@@ -308,7 +376,7 @@ def check_ratchet(findings: list[dict], scope: set[str] | None = None) -> tuple[
         else:
             problems.append(message)
     improved = [f"{rel}: {was} -> {now.get(rel, 0)}"
-                for rel, was in baseline.items() if now.get(rel, 0) < was]
+                for rel, (was, _) in entries.items() if now.get(rel, 0) < was]
     if improved and not problems:
         problems = []  # improving is never a failure; the message below tells you to re-baseline
     notes = [f"IMPROVED (re-baseline to lock it in) {i}" for i in improved]
@@ -347,9 +415,17 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.write_baseline:
         counts = counts_by_file(findings)
-        BASELINE_PATH.write_text(json.dumps(counts, indent=2) + "\n")
+        previous = (_baseline_entries(json.loads(BASELINE_PATH.read_text()))
+                    if BASELINE_PATH.exists() else {})
+        due = due_dates(counts, previous, date.today())
+        payload = {rel: {"count": counts[rel], "expires": due[rel]} for rel in sorted(counts)}
+        BASELINE_PATH.write_text(json.dumps(payload, indent=2) + "\n")
+        held = sum(1 for rel in counts
+                   if rel in previous and due[rel] == previous[rel][1])
         print(f"wrote {BASELINE_PATH.relative_to(REPO_ROOT)}: "
               f"{len(findings)} finding(s) across {len(counts)} doc(s)")
+        print(f"next deadline {min(due.values())}; {held} doc(s) kept an existing deadline "
+              f"because their count did not come down")
         return 0
 
     if args.check:

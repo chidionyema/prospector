@@ -36,9 +36,11 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import plistlib
 import re
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -227,9 +229,78 @@ def c_eng1():
     return (DONE if stranded == 0 else OPEN), f"{stranded} of {total} passed packs stranded"
 
 
+#: The launchd job that runs the retention policy unattended, and how often it is meant to fire.
+#: Named here rather than inline so this probe and `scripts/launchd_plists.py` cannot drift to two
+#: different labels.
+LOG_ROTATION_JOB = "com.prospector.log-rotation"
+LOG_ROTATION_INTERVAL_S = 21600          # StartInterval on the plist: every six hours
+
+
+def _job_stdout_path(label: str) -> Path | None:
+    """Where a launchd job writes its stdout, read from the plist that is actually installed."""
+    plist = Path.home() / "Library" / "LaunchAgents" / f"{label}.plist"
+    try:
+        out = plistlib.loads(plist.read_bytes()).get("StandardOutPath")
+    except (OSError, ValueError):
+        return None
+    return Path(out) if out else None
+
+
 def c_eng5():
-    ok, ev = on_main("ops/automations/log_rotation.py")
-    return (DONE if ok else OPEN), ev
+    """Logs grow unbounded unless three things are true at once, so grade all three.
+
+    The old check asked only whether `ops/automations/log_rotation.py` was on `origin/main`. A
+    file on main deletes nothing. It read DONE for the whole period in which nothing ran it, while
+    `~/.hermes` accumulated 15,363 cron output files and 194 MB of stale state snapshots. That is
+    the prose-drift this repo keeps paying for: status taken from the existence of code rather
+    than from the behaviour of the estate.
+
+    What it grades now, and what it deliberately does not. A handful of files sitting past their
+    age budget is the NORMAL state between sweeps — the job fires every six hours, and the estate
+    writes logs in between. Failing on that would put the item OPEN for five hours out of every
+    six and teach the founder to ignore it. The failure ENG-5 actually names is growth the policy
+    cannot contain, and that has three mechanical signals:
+
+      no job          — the policy is committed and nothing runs it (the original incident),
+      stale job       — the job exists but has not fired within two intervals,
+      over max_delete — a target has more to delete than one sweep is allowed to remove, so the
+                        backlog grows however often the job runs. This is the only finding that
+                        means the budget itself is wrong.
+    """
+    on_origin, ev = on_main("ops/automations/log_rotation.py")
+    if not on_origin:
+        return OPEN, ev
+
+    rc, _out = sh("launchctl", "list", LOG_ROTATION_JOB, timeout=20)
+    if rc != 0:
+        return OPEN, f"policy is on main but {LOG_ROTATION_JOB} is not loaded — nothing runs it"
+
+    # Ask the INSTALLED plist where the job writes, never `store_root()`. The plist pins
+    # PROSPECTOR_STORE_DIR to the canonical store; this probe run from a worktree with no such
+    # env var resolves a different `store/` and reports a job that has been running for weeks as
+    # never having run. A path derived from the caller's cwd is not evidence about a daemon.
+    log = _job_stdout_path(LOG_ROTATION_JOB)
+    if log is None:
+        return MANUAL, f"cannot read the installed plist for {LOG_ROTATION_JOB}"
+    if not log.exists():
+        return OPEN, f"{LOG_ROTATION_JOB} is loaded but has never written {log}"
+    age_h = (time.time() - log.stat().st_mtime) / 3600
+    if age_h > 2 * LOG_ROTATION_INTERVAL_S / 3600:
+        return OPEN, f"{LOG_ROTATION_JOB} last ran {age_h:.0f}h ago (fires every 6h)"
+
+    rc, out = sh(sys.executable, "-m", "ops.automations.log_rotation", "--json", timeout=180)
+    if rc not in (0, 1):
+        # 2 is the automation's own "could not establish"; anything else is the probe failing.
+        return MANUAL, f"log_rotation could not answer (rc={rc}); run it by hand"
+    try:
+        over = [e["where"] for e in json.loads(out)["prune"] if e.get("over_cap")]
+    except (ValueError, KeyError, TypeError):
+        return MANUAL, f"log_rotation gave no readable JSON (rc={rc}); run it by hand"
+    if over:
+        return OPEN, (f"{len(over)} target(s) have more to delete than one sweep may remove "
+                      f"(max_delete): {', '.join(over[:3])}")
+    return DONE, (f"{LOG_ROTATION_JOB} ran {age_h:.0f}h ago; every target inside its budget "
+                  f"and none over max_delete")
 
 
 def c_eng6():

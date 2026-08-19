@@ -744,6 +744,81 @@ removes, and each is a monthly bill.
 
 ---
 
+### 5.1 What the research changed, 2026-08-19 — and the one thing that shipped
+
+Founder, this morning: *"the goal of this audit is not to repeat the same mistakes, we need to
+improve the state of play also and research better tooling always as we audit"*. Fair. §5 above
+picked eleven tools and **not one of them has landed**. A decision on paper is not an improvement.
+
+So: four questions researched today, what each one CHANGED, and the fix that shipped with it.
+
+**1. Litestream is usable now, and it was not before.** Version 0.5.0 (late 2025) replaced the old
+WAL-polling design with LTX. The old design made replicating many databases from one process
+impractical, which is why the earlier note here read *"if RPO 1 h is not enough"*. It now replicates
+hundreds of databases from one process, and its S3-compatible targets explicitly include Cloudflare
+R2 — the bucket this estate already pays nothing for.
+*Changes:* task #94 moves from speculative to buildable with **no new provider, no new bill and no
+new credential**. It reuses `ops/config/offsite_backup.yaml`'s bucket.
+*Risk:* a replication stream is not a backup — it faithfully replicates a `DELETE FROM`. It must sit
+BESIDE the daily snapshot, never replace it.
+*Security:* it needs write access to the backup bucket from the engine container, which already
+holds those keys. No new blast radius.
+*Compliance:* order and entitlement rows are personal data. Continuous replication means the same
+personal data in the same bucket, more often — it does not widen the retention window, which is
+still governed by `keep: 30`.
+Source: [Litestream](https://litestream.io/).
+
+**2. Borg is disqualified on a fact, not a preference.** Borg requires exclusive access to a
+repository, so a laptop, a Fly machine and a future second machine cannot back up into one repo.
+That is the whole shape of this estate. Kopia is the faster of the remaining two — community
+benchmarks in early 2026 put large restores 20–40% ahead of restic — and it has a web UI and more
+backends. **restic wins anyway**, and the justification is today's bug: the failure this estate keeps
+having is a verifier that grades a file instead of opening it. restic's `check --read-data`
+is part of the core tool, and it supports concurrent backups from several hosts into one repository.
+A tool that restores 30% faster is worth less than a tool that tells the truth about whether it can
+restore at all.
+*Risk:* a repository password. Lose it and every backup is unreadable — this is the same class as
+losing the ASP.NET key ring, and it goes wherever that goes (M2, task #82).
+*Security:* end-to-end encryption in all three, so the backup provider never sees plaintext orders.
+*Compliance:* client-side encryption is what makes an offsite copy of buyer records defensible.
+Sources: [restic](https://restic.net/), [Kopia](https://kopia.io/), [BorgBackup](https://www.borgbackup.org/).
+
+**3. The torn-snapshot rule, stated exactly.** `.backup` uses the SQLite Backup API and produces a
+byte-faithful copy including free pages. `VACUUM INTO` writes a compacted copy and rewrites every
+page. **Both are safe against a live database in WAL mode; a plain file copy is not**, because
+recent commits live in the `-wal` file and copying the main file alone loses them silently.
+*Changes:* nothing for the money database — `/internal/backup/database` already runs `VACUUM INTO`
+before it answers. It names the remaining tear precisely: **Hermes state is fetched by `tar`**, and
+`coordinator.db-wal` was 1,388,472 bytes when measured. That is why M4 (task #80) is still open, and
+the fix is one endpoint on the Hermes side, not a new tool.
+Sources: [SQLite forum: hot backup in WAL mode](https://sqlite.org/forum/forumpost/2ea989bbe9),
+[backing up SQLite](https://oneuptime.com/blog/post/2026-03-02-how-to-back-up-sqlite-databases-on-ubuntu/view).
+
+**4. The scheduler is not the thing to land first.** Dagu, Cronicle and supercronic were compared
+again, and the finding that matters is negative: **none of the three has native dead-man's-switch
+integration**. All of them ping Healthchecks by HTTP from inside the job. So the monitored-job
+wrapper is scheduler-independent — which means the estate can get the alerting benefit of task #95
+*before* migrating any scheduler, and keep it *after*.
+*Changes the order of work.* `deploy/engine/supervisord.conf` already wraps four jobs in
+`receipt.sh`. Teaching that one script to ping a check URL converts four unwatched jobs into
+monitored ones without adopting Dagu, and survives the Dagu migration unchanged. Task #97 still
+stands: the checker must not run on the machine it watches.
+Sources: [Dagu](https://github.com/dagucloud/dagu),
+[Healthchecks docs](https://healthchecks.io/docs/), [Cronicle](https://deployable.sh/apps/cronicle/).
+
+**And the improvement that actually shipped today, because research on its own is another probe.**
+The ASP.NET Data Protection key ring — the thing whose loss makes every grant token and cookie
+undecryptable — was graded `verify: nonempty`. A byte count cannot tell a whole key ring from a
+download that stopped halfway, and the half-download is the copy you find out about during a
+restore. `verify_copy` now has a `tgz` kind that opens the archive and reads its index
+(`ops/automations/offsite_backup.py`), the declaration uses it (`ops/config/offsite_backup.yaml`),
+and four tests hold it there, including one that grades the declaration so nobody quietly puts
+`nonempty` back (`tests/unit/test_offsite_backup.py`). This is the same class as task #109, where
+`backup_store --verify-only` fails on a healthy backup: **a verifier that grades the wrong property
+is worse than no verifier, because it is believed.**
+
+---
+
 ## 6. Sequence
 
 Ordered by what unblocks what, and by the founder's rule that the money path outranks the engine.
@@ -804,3 +879,5 @@ Append here. One line per shipped item, with the receipt.
 | 2026-08-19 | M1 (part) | `scripts/fly_estate_probe.py` — Fly apps with no committed config | PR #390 **open, not merged**; `exit=1`, `prospector-hermes` named |  <!-- doc-lint-ok: lands with PR #390 -->
 | 2026-08-19 | M3 (fence) | `deploy/targets/fly.sh` flyctl shim; D3 was red with `fly: command not found` | PR #388; 2 failed → 3 passed |
 | 2026-08-19 | — | `docs/ESTATE_MAP.md` Hermes section corrected from asserted to measured | PR #390 |
+| 2026-08-19 | M4 (part) | key-ring backup graded by opening the archive, not by its size — new `tgz` verify kind | PR #441; `26 passed` |
+| 2026-08-19 | M4 (part) | `verify:` has no default — a source that states no kind, or an unknown kind, is refused when the declaration is read | `29 passed`; mutation-proved (`2 failed` with the default restored) |

@@ -1,17 +1,49 @@
 # Where CI runs
 
-CI runs on our own Mac, not on GitHub's runners. This file says why, how to move it back, and how
-to fix it when it stops.
+**CI runs on the Fly Linux fleet (`prospector-ci`), not on GitHub's runners and not on the Mac.**
+The Mac runners were removed on 2026-08-19 — see "Why there are no Mac runners" below before
+adding one back. This file says why, how to move it, and how to fix it when it stops.
 
 ## The live answer is a command, not this file
 
 ```bash
-gh variable get CI_RUNS_ON                                   # self-hosted => our Mac; unset => GitHub
+gh variable get CI_RUNS_ON                                   # fly => the Fly Linux fleet; unset => GitHub
 gh api repos/chidionyema/prospector/actions/runners \
   -q '.runners[] | "\(.name) \(.status) busy=\(.busy)"'      # online => it can take jobs
 ```
 
 Anything below that disagrees with those two commands is out of date. Fix this file.
+
+## Why there are no Mac runners
+
+Removed 2026-08-19, on the founder's instruction: "mac runners should be disabled".
+
+**What broke.** The DNS drift drill went red on a pull request. Nothing was wrong with the drill.
+The job had landed on `mumchimp-mac-4`, and `actions/setup-python@v5` died with
+`mkdir: /Users/runner: Permission denied` — that action writes to the hosted-runner tool cache
+path, which does not exist on a laptop.
+
+**Why it kept happening and kept looking like a different bug.** Every workflow says
+`runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}`, and `CI_RUNS_ON` was `self-hosted`. The Mac
+runner carried `self-hosted, macOS, X64, light`. The Fly runners carry
+`self-hosted, X64, heavy, Linux, container, fly`. **Both satisfy `self-hosted`.** So every
+Linux-assuming job was a coin flip, and losing it read as a broken test rather than a misrouted
+job. One online Mac runner was enough to poison the whole pool.
+
+**What was done, in four layers so no single one has to hold.**
+
+1. All four Mac runners removed from the repo registration, which revokes their credentials.
+   `svc.sh start` can no longer bring one back — only a human re-running `config.sh` with a token.
+2. `CI_RUNS_ON`, `CI_LIGHT_RUNS_ON` and `CI_HEAVY_RUNS_ON` all set to **`fly`**, a label only the
+   Linux fleet carries. A re-registered Mac still could not take a job.
+3. The launchd agents and the `~/actions-runner*` install directories were parked
+   (`.DISABLED-2026-08-19`).
+4. `tests/unit/test_ci_runners_are_linux_only.py` fails if any `actions.runner.*` definition is
+   committed again, because a committed plist is how one gets installed.
+
+**If you ever add a self-hosted runner of any OS, give it a label no other fleet carries and
+point the workflows at THAT label.** Sharing `self-hosted` across two operating systems is what
+caused this.
 
 ## Why
 
@@ -42,7 +74,7 @@ Set the variable and all jobs move to our Mac. Unset it and they go straight bac
 is one command, no commit and no review:
 
 ```bash
-gh variable set CI_RUNS_ON --body self-hosted   # our Mac
+gh variable set CI_RUNS_ON --body fly           # the Fly Linux fleet
 gh variable unset CI_RUNS_ON                    # back to GitHub's hosted runners
 ```
 

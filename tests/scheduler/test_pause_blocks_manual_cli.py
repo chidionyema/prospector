@@ -84,18 +84,21 @@ def test_pause_does_not_blind_the_operator(paused_store: Path):
         f"the engine will lift the switch to see it.\nstderr: {proc.stderr[-2000:]}")
 
 
-def test_helper_is_silent_when_not_paused(tmp_path: Path):
-    """`None` means 'not paused' — the value callers branch on."""
+def test_helper_is_silent_when_not_paused(tmp_path: Path, monkeypatch):
+    """`None` means 'not paused' — the value callers branch on.
+
+    `monkeypatch.setenv` rather than a raw `os.environ` write with a `finally`: the finally was
+    correct, but the shape is the one that poisons a whole xdist worker the day someone adds an
+    early `return` or a second assignment above it. PROSPECTOR_STORE_DIR beats `cfg.store["dir"]`
+    in `Config.store_dir`, so a leak of it silently redirects every later test's store.
+    """
     from prospector.config import load_config
     from prospector.scheduler.guard import pause_block_reason
 
-    os.environ["PROSPECTOR_STORE_DIR"] = str(tmp_path)
-    try:
-        cfg = load_config(str(REPO / "config.yaml"))
-        assert pause_block_reason(cfg) is None
-        (tmp_path / "scheduler").mkdir(parents=True, exist_ok=True)
-        (tmp_path / "scheduler" / "PAUSE").write_text("", encoding="utf-8")
-        reason = pause_block_reason(cfg)
-        assert reason and "PAUSED" in reason
-    finally:
-        os.environ.pop("PROSPECTOR_STORE_DIR", None)
+    monkeypatch.setenv("PROSPECTOR_STORE_DIR", str(tmp_path))
+    cfg = load_config(str(REPO / "config.yaml"))
+    assert pause_block_reason(cfg) is None
+    (tmp_path / "scheduler").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "scheduler" / "PAUSE").write_text("", encoding="utf-8")
+    reason = pause_block_reason(cfg)
+    assert reason and "PAUSED" in reason

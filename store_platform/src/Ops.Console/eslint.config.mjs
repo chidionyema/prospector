@@ -12,6 +12,7 @@
  */
 import coreWebVitals from 'eslint-config-next/core-web-vitals';
 import typescript from 'eslint-config-next/typescript';
+import tailwind from 'eslint-plugin-tailwindcss';
 
 const config = [
   {
@@ -21,10 +22,35 @@ const config = [
       'next-env.d.ts',
       'playwright-report/**',
       'test-results/**',
+      'storybook-static/**',
     ],
   },
   ...coreWebVitals,
   ...typescript,
+  /**
+   * Tailwind class strings, checked as code rather than read as text.
+   *
+   * `no-contradicting-classname` is the one that earns its place: `px-2 px-4` in the same string
+   * is a bug you cannot see in review and the browser resolves silently by source order.
+   *
+   * Two rules are deliberately OFF. `classnames-order` was 408 of 517 findings on the storefront
+   * -- a wall of ordering advice that buries everything else. `no-custom-classname` fires on
+   * every class this console defines itself (`tap`, `wrap-any`, `sw9`), which are the vocabulary
+   * of the design, not mistakes.
+   */
+  {
+    ...tailwind.configs.recommended,
+    name: 'ops/tailwind',
+    files: ['src/**/*.{ts,tsx}'],
+    settings: { tailwindcss: { cssConfigPath: './src/styles/globals.css' } },
+    rules: {
+      ...tailwind.configs.recommended.rules,
+      'tailwindcss/no-contradicting-classname': 'error',
+      'tailwindcss/enforces-shorthand': 'warn',
+      'tailwindcss/classnames-order': 'off',
+      'tailwindcss/no-custom-classname': 'off',
+    },
+  },
   {
     rules: {
       // The console renders engine prose it does not control. Escaping every apostrophe in copy

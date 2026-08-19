@@ -123,7 +123,14 @@ def test_load_dotenv_does_fill_gaps_when_the_guard_is_cleared(tmp_path, monkeypa
         "the fence test above is passing for the wrong reason")
 
     # And with the guard back on, the same call is a no-op.
-    monkeypatch.delenv("PROSPECTOR_DOTENV_CANARY", raising=False)
+    #
+    # `os.environ.pop` and not `monkeypatch.delenv`, which is what this was until 2026-08-19.
+    # `MonkeyPatch.delitem` records the CURRENT value so it can put it back, and undo replays
+    # in reverse — so deleting the canary through monkeypatch here made undo RESTORE the
+    # "loaded-from-disk" value that `_load_dotenv()` wrote raw four lines above, leaking it to
+    # every later test in this xdist worker. The first delenv above recorded nothing to undo
+    # (delitem skips a key that is absent), so popping it here leaves it absent for good.
+    os.environ.pop("PROSPECTOR_DOTENV_CANARY", None)
     monkeypatch.setenv("PROSPECTOR_DISABLE_DOTENV", "1")
     R._load_dotenv()
     assert "PROSPECTOR_DOTENV_CANARY" not in os.environ

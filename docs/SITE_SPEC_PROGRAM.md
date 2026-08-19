@@ -42,6 +42,15 @@ founder before any colour work: it sets `--action: #1B3F8B` (navy) where the 202
 review chose charcoal `#2D3436`, and it says "drop category colour-coding entirely" where §3 here
 records the 12 `--cat-*` hues as a deliberate, documented exception.
 
+**Every finding from the 2026-08-19 storefront critique is in
+`docs/STOREFRONT_CRITIQUE_2026-08-19.md`, with its receipt and its verdict.** Read that before
+re-critiquing the site. It covers the 18-persona teardown of the live build: what was fixed and
+with which guard, what the critique got wrong, what belongs to another session's branch, and the
+six decisions that are the founder's and not an engineer's. Two of its rows matter to anyone
+reading this spec. The live site is running an older build than `main`, so some findings grade copy
+this repository no longer produces. And `mumchimp.css` being byte-locked blocks two accessibility
+fixes at source, which is deliberate and needs a decision rather than a workaround.
+
 ---
 
 ## Status ledger — last verified 2026-08-08

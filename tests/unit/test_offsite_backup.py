@@ -10,8 +10,10 @@ No network. The storage client is a stub, and the sources are throwaway files.
 
 from __future__ import annotations
 
+import io
 import json
 import sqlite3
+import tarfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -21,10 +23,13 @@ from ops.automations.offsite_backup import (
     EXIT_FINDINGS,
     EXIT_OK,
     EXIT_UNKNOWN,
+    VERIFY_KINDS,
     CannotEstablish,
     Source,
+    Watched,
     _expand,
     check,
+    check_watched,
     load_declaration,
     main,
     run,
@@ -89,7 +94,8 @@ def _declaration(tmp_path: Path, **overrides) -> Path:
             "prefix": "offsite/",
         },
         "max_age_hours": 24,
-        "sources": [{"name": "money-db", "key": "money-db/store.db", "fetch": ["true"]}],
+        "sources": [{"name": "money-db", "key": "money-db/store.db", "fetch": ["true"],
+                     "verify": "nonempty"}],
     }
     body.update(overrides)
     path = tmp_path / "decl.yaml"
@@ -209,6 +215,60 @@ def test_an_unknown_verify_kind_is_unknown_not_a_pass(tmp_path):
         verify_copy(_sqlite_file(tmp_path / "store.db"), "vibes")
 
 
+def _keyring_tgz(path: Path) -> Path:
+    """What /internal/backup/keyring returns: a gzipped tar holding the key ring XML."""
+    body = b"<key id='a5' />"
+    with tarfile.open(path, "w:gz") as archive:
+        info = tarfile.TarInfo("keys/key-a5.xml")
+        info.size = len(body)
+        archive.addfile(info, io.BytesIO(body))
+    return path
+
+
+def test_a_good_key_ring_archive_passes(tmp_path):
+    verify_copy(_keyring_tgz(tmp_path / "keyring.tgz"), "tgz")
+
+
+def test_a_truncated_key_ring_archive_is_rejected(tmp_path):
+    # The failure `nonempty` could never see: the download stopped halfway, so the file is
+    # far larger than zero bytes and completely unusable.
+    whole = _keyring_tgz(tmp_path / "keyring.tgz").read_bytes()
+    torn = tmp_path / "torn.tgz"
+    torn.write_bytes(whole[: len(whole) // 2])
+
+    with pytest.raises(CannotEstablish):
+        verify_copy(torn, "tgz")
+
+
+def test_an_archive_holding_nothing_is_not_a_key_ring(tmp_path):
+    empty = tmp_path / "empty.tgz"
+    with tarfile.open(empty, "w:gz"):
+        pass
+
+    with pytest.raises(CannotEstablish, match="no members"):
+        verify_copy(empty, "tgz")
+
+
+def test_the_key_ring_is_graded_by_opening_it_not_by_its_size():
+    """The guard on the declaration, not on the code.
+
+    A working `tgz` kind buys nothing if the key ring is declared `nonempty` again. Losing
+    the Data Protection ring does not lose data, it makes every grant token and cookie
+    undecryptable, so a restore reading from a half-downloaded archive looks successful and
+    hands every buyer a broken link.
+    """
+    import yaml
+
+    declared = yaml.safe_load(
+        (Path(__file__).resolve().parents[2] / "ops/config/offsite_backup.yaml").read_text()
+    )
+    keyring = [s for s in declared["sources"] if s["name"] == "data-protection-keys"]
+    assert keyring, "the key ring source is gone from the declaration"
+    assert keyring[0]["verify"] == "tgz", (
+        "the key ring is graded by size again; a truncated download would count as a backup"
+    )
+
+
 # --- taking a backup ----------------------------------------------------------------------
 
 def test_a_failed_fetch_uploads_nothing(tmp_path):
@@ -269,6 +329,46 @@ def test_a_missing_source_key_is_unknown(tmp_path):
         load_declaration(path)
 
 
+def test_a_source_that_states_no_verify_kind_is_refused(tmp_path):
+    """The trap one level under the key ring: `verify:` used to DEFAULT to a size check, so
+    the next source anyone adds — Hermes state is the one queued — would silently be graded
+    by its byte count without anybody choosing that. There is no default now."""
+    path = _declaration(tmp_path, sources=[
+        {"name": "hermes-state", "key": "hermes/coordinator.db", "fetch": ["true"]},
+    ])
+
+    with pytest.raises(CannotEstablish, match="must state `verify:`"):
+        load_declaration(path)
+
+
+def test_a_verify_kind_the_code_cannot_perform_is_refused_at_load(tmp_path):
+    """A typo used to survive the read, download the money database, and only then fail. It
+    is refused when the declaration is parsed, before any work and before the nightly run."""
+    path = _declaration(tmp_path, sources=[
+        {"name": "money-db", "key": "money-db/store.db", "fetch": ["true"],
+         "verify": "sqllite"},
+    ])
+
+    with pytest.raises(CannotEstablish, match="cannot perform"):
+        load_declaration(path)
+
+
+def test_every_kind_the_registry_names_can_actually_be_performed(tmp_path):
+    """`VERIFY_KINDS` is what the loader accepts. If it names a kind `verify_copy` does not
+    implement, the loader waves through a source nothing can grade — the same believed-check
+    defect wearing the opposite hat."""
+    real = tmp_path / "real"
+    real.write_bytes(b"not empty")
+
+    for kind in VERIFY_KINDS:
+        try:
+            verify_copy(real, kind)
+        except CannotEstablish as exc:
+            assert "unknown verify kind" not in str(exc), (
+                f"VERIFY_KINDS names `{kind}` but verify_copy has no branch for it"
+            )
+
+
 def test_exit_codes_are_distinct(tmp_path, monkeypatch, capsys):
     # 0 fresh, 1 stale or missing, 2 could not establish. A caller that cannot tell
     # "unknown" from "clean" is the whole defect this exit code exists to prevent.
@@ -308,3 +408,131 @@ def test_the_live_declaration_parses():
     assert "money-db" in names, "the money database must be declared"
     money = next(s for s in decl.sources if s.name == "money-db")
     assert money.verify == "sqlite", "a database copy nobody opened is a file, not a backup"
+
+
+# --- watched prefixes: another job's output, graded on the object rather than its exit code ---
+#
+# These exist because the engine store's only offsite copy (ledger/, db/, repo/) was graded by
+# nothing at all until 2026-08-19. The evidence that the backup worked was the job's exit code
+# in its receipt, and an exit code says the job RAN, not that bytes LANDED.
+
+WATCHED = Watched(name="engine-ledger", prefix="ledger/",
+                  writer="scripts/backup_store.py", max_age_hours=30)
+
+
+def test_a_stale_watched_prefix_is_a_finding():
+    """The negative fixture. A check only ever seen to say `fresh` is not known to work."""
+    storage = FakeStorage([_obj("ledger/prospector-2026-08-10.jsonl.gz", age_hours=54)])
+    report = check_watched(storage, "backup-bucket", [WATCHED])
+
+    assert report[0]["fresh"] is False
+    assert "54.0h old" in report[0]["what"]
+    assert "scripts/backup_store.py" in report[0]["what"], "a finding must name who writes it"
+
+
+def test_an_empty_watched_prefix_is_a_finding():
+    report = check_watched(FakeStorage([]), "backup-bucket", [WATCHED])
+
+    assert report[0]["fresh"] is False
+    assert "nothing at all" in report[0]["what"]
+    assert report[0]["age_hours"] is None
+
+
+def test_a_fresh_watched_prefix_is_clean():
+    storage = FakeStorage([_obj("ledger/prospector-2026-08-19.jsonl.gz", age_hours=0.7)])
+    report = check_watched(storage, "backup-bucket", [WATCHED])
+
+    assert report[0]["fresh"] is True
+    assert report[0]["watched"] is True
+    assert "what" not in report[0]
+
+
+def test_a_storage_outage_on_a_watched_prefix_is_never_read_as_missing():
+    """The dangerous failure. `no backup exists` is the loudest finding there is, and an
+    outage must never be able to manufacture it."""
+    with pytest.raises(CannotEstablish):
+        check_watched(FakeStorage(list_raises=True), "backup-bucket", [WATCHED])
+
+
+def test_a_watched_prefix_grades_only_its_own_objects():
+    """`ledger/` must not be graded green by a fresh object sitting under `db/`."""
+    storage = FakeStorage([
+        _obj("ledger/prospector-2026-08-10.jsonl.gz", age_hours=54),
+        _obj("db/prospector-2026-08-19.db.gz", age_hours=0.5),
+    ])
+    report = check_watched(storage, "backup-bucket", [WATCHED])
+
+    assert report[0]["fresh"] is False
+
+
+def test_watch_is_optional(tmp_path):
+    """The empty case. Every declaration written before `watch:` existed still loads."""
+    decl = load_declaration(_declaration(tmp_path))
+
+    assert decl.watched == []
+
+
+def test_a_watch_entry_without_a_prefix_is_refused(tmp_path):
+    path = _declaration(tmp_path, watch=[{"name": "engine-ledger"}])
+
+    with pytest.raises(CannotEstablish, match="needs `name:` and `prefix:`"):
+        load_declaration(path)
+
+
+def test_an_empty_watch_prefix_is_refused(tmp_path):
+    """An empty prefix lists the WHOLE bucket, so every watched entry would be graded off the
+    same newest object and all of them would go green together off one healthy job."""
+    path = _declaration(tmp_path, watch=[{"name": "engine-ledger", "prefix": "  "}])
+
+    with pytest.raises(CannotEstablish, match="empty `prefix:`"):
+        load_declaration(path)
+
+
+def test_a_watched_prefix_can_never_be_fetched_or_pruned(tmp_path):
+    """The structural guard, not a convention. `take_backup` and `_prune` both take a `Source`;
+    a watched entry is a `Watched`, so it cannot reach either. `_prune` keeps the newest `keep`
+    copies and deletes the rest — aimed at `dossiers/` it would delete 4,450 of the 4,480
+    dossiers that are the engine's only offsite copy."""
+    path = _declaration(tmp_path, watch=[{"name": "engine-ledger", "prefix": "ledger/"}])
+    decl = load_declaration(path)
+
+    assert [type(s) for s in decl.sources] == [Source]
+    assert not any(isinstance(s, Watched) for s in decl.sources)
+    assert not hasattr(decl.watched[0], "fetch")
+    assert not hasattr(decl.watched[0], "keep")
+
+
+def test_the_declared_ceiling_clears_the_job_interval():
+    """A number in a plan is a claim. These jobs run on an 86400s timer, so a 24h ceiling
+    against a 24h period flickers red on ordinary drift and teaches everyone to ignore it."""
+    import yaml
+
+    root = Path(__file__).resolve().parents[2]
+    body = yaml.safe_load((root / "ops" / "config" / "offsite_backup.yaml").read_text())
+
+    watched = {w["name"]: w for w in body.get("watch") or []}
+    assert watched, "the engine store prefixes must stay declared"
+    for name, entry in watched.items():
+        assert entry["max_age_hours"] > 24, (
+            f"{name} has a {entry['max_age_hours']}h ceiling against a 24h job period; "
+            "it will flicker red on drift"
+        )
+        assert entry.get("writer"), f"{name} must name the job that writes it"
+
+
+def test_dossiers_and_hermes_are_not_watched():
+    """Both would be wrong, in opposite directions, and both are easy to add by accident.
+
+    `dossiers/` is a content mirror keyed by dossier id, so its newest-object age tracks ENGINE
+    OUTPUT, not backup health — it goes red on a quiet day while the backup is healthy.
+    `hermes/` holds one 313-byte `leader.json`, leader-election state that is rewritten
+    constantly and backs up nothing, so it would report GREEN forever. Hermes state is genuinely
+    not backed up; that stays open as M4 rather than being papered over here."""
+    import yaml
+
+    root = Path(__file__).resolve().parents[2]
+    body = yaml.safe_load((root / "ops" / "config" / "offsite_backup.yaml").read_text())
+
+    prefixes = {w["prefix"] for w in body.get("watch") or []}
+    assert "dossiers/" not in prefixes
+    assert "hermes/" not in prefixes
