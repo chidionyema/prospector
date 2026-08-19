@@ -34,6 +34,7 @@ import json
 import os
 import plistlib
 import re
+from datetime import datetime, timezone
 import subprocess
 import sys
 import time
@@ -507,6 +508,7 @@ def grade_enforcement() -> list[tuple[str, str, str]]:
     rows.extend(_grade_session_hooks())
     rows.extend(_grade_agent_memory())
     rows.extend(_grade_instruction_checkouts())
+    rows.extend(_grade_scheduled_workflows())
     return rows
 
 
@@ -899,6 +901,126 @@ def litter() -> list[str]:
     return sorted(
         p.name for p in AGENTS_DIR.glob("*")
         if p.is_file() and p.suffix != ".plist" and not p.name.startswith("."))
+
+
+#: How long after its due time a scheduled workflow may stay silent before the audit calls it
+#: stalled. GitHub delays scheduled runs under load, routinely by minutes and occasionally by
+#: hours, so one missed slot is noise. Two in a row is not.
+_SCHEDULE_GRACE = 2.0
+
+
+def _cron_period_hours(cron: str) -> float | None:
+    """Roughly how often this cron fires, in hours. None when the shape is not one we grade.
+
+    Deliberately crude. It reads three shapes -- weekly, daily, hourly -- because those are the
+    three this estate uses, and a wrong answer here would produce a false alarm about a job that
+    is fine. Anything else returns None and the row reports the last conclusion without an age.
+    """
+    f = cron.split()
+    if len(f) != 5:
+        return None
+    minute, hour, dom, _month, dow = f
+    if dow != "*":
+        return 24 * 7
+    if dom != "*":
+        return 24 * 30
+    if hour != "*":
+        return 24
+    if minute != "*":
+        return 1
+    return None
+
+
+def _scheduled_workflows() -> list[tuple[str, str, str]]:
+    """(display name, filename, cron) for every workflow this repo schedules."""
+    out = []
+    for path in sorted(WORKFLOW_DIR.glob("*.yml")):
+        text = path.read_text(encoding="utf-8", errors="replace")
+        if not re.search(r"^\s*schedule:", text, re.M):
+            continue
+        cron = re.search(r"^\s*-\s*cron:\s*[\"\']?([^\"\'#\n]+)", text, re.M)
+        name = re.search(r"^name:\s*(.+)$", text, re.M)
+        out.append(((name.group(1).strip().strip("\"\'") if name else path.stem),
+                    path.name, (cron.group(1).strip() if cron else "")))
+    return out
+
+
+def _grade_scheduled_workflows() -> list[tuple[str, str, str]]:
+    """Is anything watching the watchers?
+
+    A scheduled workflow is an enforcement that runs with nobody in the room. When it goes red
+    the only signal is a red dot on a page nobody opens, so it stays red. Measured 2026-08-19:
+    `e2e-live-smoke.yml` -- the check that a buyer can see a pack on the live site -- had failed
+    every run since 2026-08-18 07:43, 26 hours earlier, with the first pack card 1,363px below
+    the fold on a 844px phone and the search palette never opening (issue #384). Two more
+    scheduled workflows had never run at all.
+
+    Nothing in this estate looked at any of that. This row does, so a silent enforcement failure
+    reaches the ops console instead of waiting for someone to browse the Actions tab.
+
+    One `gh run list` call for the whole repo, not one per workflow, and it grades what it got:
+    with no `gh`, no network or no auth the rows read WARN, never a false OK.
+    """
+    workflows = _scheduled_workflows()
+    if not workflows:
+        return []
+
+    now = datetime.now(timezone.utc)
+    rows: list[tuple[str, str, str]] = []
+    for _name, filename, cron in workflows:
+        label = f"workflow {filename.removesuffix('.yml')}"
+        # Per workflow, not one shared `gh run list --limit 100`. A repo-wide list is cheaper
+        # by two calls and wrong: measured 2026-08-19, e2e-live-smoke had failed 6 runs in a
+        # row but only 1 of them was inside the newest 100 runs of a busy repo, so the shared
+        # query reported a streak of 1. An undercounted streak is what makes a long-running
+        # failure read as a blip.
+        code, out = sh(["gh", "run", "list", "--workflow", filename, "--limit", "20",
+                        "--json", "conclusion,status,createdAt"], timeout=45)
+        if code != 0:
+            rows.append((WARN, label,
+                         f"scheduled `{cron}` but `gh run list` failed, so its health is "
+                         f"UNKNOWN rather than fine: {out.strip()[:100]}"))
+            continue
+        try:
+            runs = json.loads(out)
+        except ValueError:
+            rows.append((WARN, label, "`gh run list` returned no JSON"))
+            continue
+        mine = [r for r in runs if r.get("status") == "completed"]
+        if not mine:
+            rows.append((BAD, label,
+                         f"scheduled `{cron}` and has NEVER completed a run. A drill that has "
+                         f"never fired is a drill nobody has proven works."))
+            continue
+
+        newest = mine[0]
+        age_h = (now - datetime.fromisoformat(
+            newest["createdAt"].replace("Z", "+00:00"))).total_seconds() / 3600
+        streak = 0
+        for r in mine:
+            if r.get("conclusion") == "failure":
+                streak += 1
+            else:
+                break
+
+        period = _cron_period_hours(cron)
+        if streak:
+            first = mine[streak - 1]["createdAt"]
+            red_h = (now - datetime.fromisoformat(
+                first.replace("Z", "+00:00"))).total_seconds() / 3600
+            rows.append((BAD, label,
+                         f"RED for {streak} consecutive run(s), unbroken since "
+                         f"{first[:16].replace('T', ' ')}Z -- {red_h:.0f}h. "
+                         f"Nothing alerts on this; the audit is the alert."))
+        elif period and age_h > period * _SCHEDULE_GRACE:
+            rows.append((WARN, label,
+                         f"last completed {age_h:.0f}h ago but scheduled `{cron}` "
+                         f"(~{period:.0f}h). It may have stopped firing."))
+        else:
+            rows.append((OK, label,
+                         f"last run {newest.get('conclusion')} {age_h:.0f}h ago, "
+                         f"scheduled `{cron}`"))
+    return rows
 
 
 def main() -> int:
