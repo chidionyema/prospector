@@ -1628,7 +1628,45 @@ def _read_deploys(cfg, args: dict) -> dict:
         cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=300)
     if not proc.stdout.strip():
         raise RuntimeError(f"deploy_status.py produced nothing: {proc.stderr[-400:]}")
-    return json.loads(proc.stdout)
+    view = json.loads(proc.stdout)
+    for row in view.get("deployables", []):
+        row.update(_deploy_route(str(row.get("name") or "")))
+    return view
+
+
+def _deploy_route(name: str) -> dict:
+    """How the operator ships one deployable FROM THIS PAGE, or why there is no button.
+
+    The founder's instruction, 2026-08-19: "all our services must be deployable from the ops
+    dashboard". This page could say the storefront was behind main and offer nothing to do about
+    it, which meant shipping needed someone with a shell.
+
+    `deploy_tool_id` is the id of the TOOLS row that ships it, looked up by the command rather
+    than hardcoded, so renaming the row cannot leave a button pointing at nothing. When there is
+    no button, `deploy_how` says what does ship it — never silence.
+    """
+    command = f".venv/bin/python scripts/deploy_now.py {name}"
+    for tool in TOOLS:
+        if tool["command"] == command:
+            return {"deploy_tool_id": tool["id"], "deploy_how": tool["purpose"],
+                    "deploy_danger": tool["danger"]}
+
+    route = {}
+    try:
+        scripts_dir = str(_REPO_ROOT / "scripts")
+        if scripts_dir not in sys.path:  # called once per deployable, per page read
+            sys.path.insert(0, scripts_dir)
+        import deploy_now  # type: ignore
+        route = deploy_now.routes().get(name, {})
+    except Exception:  # noqa: BLE001 - a missing route never blanks the page
+        route = {}
+    if route.get("kind") == "manual":
+        return {"deploy_tool_id": None, "deploy_how": route["why"], "deploy_danger": None}
+    if route.get("kind") == "button":
+        return {"deploy_tool_id": None, "deploy_how": route["where"], "deploy_danger": None}
+    return {"deploy_tool_id": None,
+            "deploy_how": "no route: this can only be shipped from a terminal",
+            "deploy_danger": None}
 
 
 READS: dict[str, Callable[[Any, dict], Any]] = {
@@ -3367,6 +3405,34 @@ TOOLS: list[dict] = [
     _t("scripts/deploy_status.py", "Start stopped CI runners when deploys are queued behind them",
        True, "/deploys", cmd=".venv/bin/python scripts/deploy_status.py --fix", risk="external",
        danger="starts Fly machines on prospector-ci; only acts when runs are actually queued"),
+    # --- registered 2026-08-19, on the founder's instruction that "all our services must be
+    # deployable from the ops dashboard". Before these, /deploys could say the storefront was
+    # behind main and offer nothing to do about it: shipping meant someone with a shell typing
+    # `gh workflow run`. Every route is in scripts/deploy_now.py and
+    # tests/unit/test_every_service_can_be_deployed_from_the_console.py fails when a deployable
+    # has no route and no button.
+    #
+    # `external` on all of them: a dispatch starts a GitHub run that deploys to Fly, and no
+    # local store snapshot can roll that back. The undo is a redeploy of the previous commit.
+    _t("scripts/deploy_now.py", "How does each service ship, and what can this page deploy?",
+       False, "/deploys", cmd=".venv/bin/python scripts/deploy_now.py --list"),
+    _t("scripts/deploy_now.py", "Deploy the engine now (and the admin console inside it)", True,
+       "/deploys", cmd=".venv/bin/python scripts/deploy_now.py engine", risk="external",
+       danger="deploys whatever is on main right now, including work merged since you looked at "
+              "this page. prospector-engine is one machine with strategy=immediate, so the "
+              "scheduler, consumer, watchdog and console all restart"),
+    _t("scripts/deploy_now.py", "Deploy the store API now", True, "/deploys",
+       cmd=".venv/bin/python scripts/deploy_now.py store-api", risk="external",
+       danger="deploys whatever is on main right now. Checkout and fulfilment restart"),
+    _t("scripts/deploy_now.py", "Deploy the storefront now", True, "/deploys",
+       cmd=".venv/bin/python scripts/deploy_now.py store-web", risk="external",
+       danger="deploys whatever is on main right now to mumchimp.com, the page buyers see"),
+    # searxng has no workflow, so this one builds from THIS checkout. deploy_now refuses when the
+    # shipping paths are dirty, which is what stops another session's uncommitted edit shipping.
+    _t("scripts/deploy_now.py", "Deploy the search endpoint (searxng) now", True, "/deploys",
+       cmd=".venv/bin/python scripts/deploy_now.py searxng", risk="external",
+       danger="no CI workflow exists for searxng, so this builds from the console host's "
+              "checkout; it refuses if the shipping paths are modified"),
     # Registered 2026-08-19. `ci_capacity.py` answers whether CI FITS; this answers whether it
     # can RUN AT ALL. The two are separate questions and the estate has been wrong about the
     # second one twice in a day: a fleet scaled up whose machines were left stopped, and an
