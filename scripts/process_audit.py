@@ -29,6 +29,7 @@ gate CI; `--quiet` prints only the problems.
 from __future__ import annotations
 
 import argparse
+import datetime as _dt
 import hashlib
 import json
 import os
@@ -497,15 +498,48 @@ def grade_enforcement() -> list[tuple[str, str, str]]:
     rows.append((OK if has_guard else BAD, "ci guard job",
                  "present in ci.yml" if has_guard else "MISSING from ci.yml"))
 
-    # The doc-lint ratchet only ratchets while its baseline is committed.
-    baseline = ROOT / "docs" / "doc_lint_baseline.json"
-    rows.append((OK if baseline.exists() else BAD, "doc lint baseline",
-                 "present" if baseline.exists() else "MISSING, so the ratchet cannot tighten"))
+    # The doc-lint ratchet only ratchets while its baseline is committed AND every suppression in
+    # it still has a deadline in front of it. A baseline holding every live finding with no
+    # burn-down date is green forever while every finding is real
+    # (docs/incidents/INC-2026-08-18-doc-rot-ratchet.json), so the deadline is what is graded here.
+    rows.append(_grade_doc_lint_baseline())
 
     rows.extend(_grade_state_probe())
     rows.extend(_grade_session_hooks())
     rows.extend(_grade_instruction_checkouts())
     return rows
+
+
+def _grade_doc_lint_baseline() -> tuple[str, str, str]:
+    """Is the doc-lint ratchet still able to go red?
+
+    Three ways it cannot: the baseline is gone, an entry has no burn-down date, or a deadline has
+    already passed and nobody burned the findings down. The last one is a real failure and reads
+    as one, because a deadline nobody is graded against is the same warning fence again.
+    """
+    baseline = ROOT / "docs" / "doc_lint_baseline.json"
+    if not baseline.exists():
+        return (BAD, "doc lint baseline", "MISSING, so the ratchet cannot tighten")
+    try:
+        raw = json.loads(baseline.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return (BAD, "doc lint baseline", f"unreadable: {exc}")
+
+    dates = {rel: v.get("expires") for rel, v in raw.items() if isinstance(v, dict)}
+    undated = sorted(set(raw) - {rel for rel, when in dates.items() if when})
+    if undated:
+        return (BAD, "doc lint baseline",
+                f"{len(undated)} suppression(s) with no burn-down date, e.g. {undated[0]} — "
+                f"run `python3 scripts/doc_lint.py --write-baseline`")
+
+    today = _dt.date.today().isoformat()
+    overdue = sorted(rel for rel, when in dates.items() if when < today)
+    if overdue:
+        return (BAD, "doc lint baseline",
+                f"{len(overdue)} suppression(s) past their burn-down date, e.g. {overdue[0]}")
+    soonest = min(dates.values())
+    return (OK, "doc lint baseline",
+            f"{len(dates)} doc(s) suppressed, next burn-down due {soonest}")
 
 
 def _grade_state_probe() -> list[tuple[str, str, str]]:
