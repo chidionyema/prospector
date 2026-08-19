@@ -235,11 +235,85 @@ This is also the sellability finding. A buyer's first act is putting a new engin
 machine. If that takes days of tribal knowledge, the asset is worth materially less than the code
 suggests, and the diligence question "can your team be onboarded?" has no good answer.
 
-**F4 — Six installed jobs are tracked nowhere. FLAKY (silent loss).**
-36 plists in `~/Library/LaunchAgents/` vs 30 in `ops/launchd/`. Six jobs run on this machine that
-no file in this repo describes. A migration copies the 30 it can see, and the six are discovered
-by whatever breaks next week. This is precisely the founder's "nothing beig used can be nissed
-out". **The identity of those six is UNPROVEN and is the next measurement.**
+**F4 — Three copies of our code run off-repo, each pinned at a different commit, and the
+check that would have said so was dead. CONFIRMED, measured 2026-08-19.**
+
+F4 was written as "six installed jobs are tracked nowhere" with the identity of the six marked
+UNPROVEN. Measuring it found something worse than an inventory gap, so the finding is restated.
+
+**The count first.** 36 plists installed in `~/Library/LaunchAgents/`, 27 tracked in
+`ops/launchd/` on `origin/main`. Excluding Adobe, ExpressVPN and Steam, **seven** estate jobs are
+installed and snapshotted nowhere — not six. Six of the seven are loaded right now.
+
+| Installed, not snapshotted | Runs | Is that target in git? |
+|---|---|---|
+| `com.prospector-control.failover-watch` | `~/.prospector/bin/failover check`, every 60s | installer is: `deploy/install_failover_watch.sh` |
+| `com.prospector-control.standby-sync` | same launcher, `sync`, every 900s | same |
+| `com.prospector-control.receipt-bridge` | same launcher, `receipts`, every 900s | same |
+| `com.prospector.log-rotation` | `ops.automations.log_rotation --fix`, every 6h | yes: `deploy/com.prospector.log-rotation.plist` |
+| `com.prospector.process-audit` | `scripts/process_audit.py --quiet --alert`, hourly | script yes, plist nowhere |
+| `ai.hermes.lease-guard` | `~/.hermes/scripts/lease-guard.sh`, every 300s | yes, in `chidionyema/hermes-config` |
+| `ai.hermes.selfcheck` | `~/.hermes/scripts/hermes_selfcheck.py`, hourly | yes, in `chidionyema/hermes-config` |
+
+Four tracked plists are installed nowhere: the `actions.runner.chidionyema-prospector.mumchimp-mac{,-2,-3,-4}`
+agents, correctly gone since the runners moved to Fly (task #6), never removed from the snapshot.
+
+**Now the real finding.** Chasing what those jobs execute turned up three separate copies of our
+own code, none of them this repo, each pinned at a different commit, and nothing on a schedule
+compares any of them to `origin/main`:
+
+| Copy | What runs it | Measured drift, 2026-08-19 |
+|---|---|---|
+| `/Users/chidionyema/Documents/code/prospector-live` | 9 laptop launchd jobs (4 loaded) | **44 commits behind `origin/main`** |
+| `~/.prospector/bin/engine_failover.frozen.py` | the 3 `com.prospector-control.*` DR jobs | **514 lines vs 735 on `origin/main`, 225 lines different**, 3 merged commits behind |
+| the `prospector-engine` Fly image | production | graded by `scripts/live_checkout.py`, the only one of the three that is graded at all |
+
+The frozen failover copy is deliberate and the reasoning in `deploy/install_failover_watch.sh:14`
+is right: *"The plist runs a LAUNCHER, not a path into a checkout. A disaster-recovery tool that
+lives"* in a checkout dies with the checkout. The defect is that freezing was implemented and
+re-freezing was not. So the failover watcher that runs every 60 seconds is executing a copy of
+itself taken before the Fly cutover — it predates `#327`, the commit whose subject is *"make
+grounding, the ops dashboard and the merge queue work after the Fly cutover"*. **The apparatus
+that exists to survive this machine dying does not know the machine already moved.**
+
+**Two jobs are failing right now, and both failures are invisible.**
+
+- `com.prospector.process-audit`, last exit **2**, every hour: `can't open file
+  '/Users/chidionyema/Documents/code/prospector-live/scripts/process_audit.py': No such file or
+  directory`. That file landed on `origin/main` at 2026-08-19 10:13; the live checkout is 44
+  commits behind, so the job's entry point does not exist there.
+- `com.prospector.backup`, last exit **78** (`EX_CONFIG`). `store/backup.log` ends 2026-08-17
+  09:38 on a `PASS` line. It has written nothing since. Tasks #92 and #109 own it.
+
+**And this is the class.** `scripts/process_audit.py:700` runs
+`["scripts/launchd_plists.py", "--check"]` as one of its checks — it is the only caller of the
+drift detector in the estate. Run by hand today, `--check` works perfectly and exits FAIL with 14
+findings, naming all seven untracked jobs. It has been telling nobody, hourly, since its runner
+died. **The detector was never silent. Its runner was dead, and nothing watches runners.**
+
+`--check` could not catch its own runner either, and the reason is exact. `broken_programs()`
+already validates that a job's program and `WorkingDirectory` exist on disk — that is how it
+catches the two dead `com.haworks.*` jobs. But it tests `argv[0]`, and `argv[0]` is the Python
+interpreter. Every job in this estate is `python <script>`, so the guard validated the one
+argument that never goes missing, and `process-audit`'s missing script sat in `argv[5]`.
+
+Graded under L11: clause 2, it can fail silently. Every one of these failures is written to a log
+file on the machine that produced it, read by nobody. F4 and F9 are the same finding seen from two
+ends, and F9 is what fixes the reporting half.
+
+**What counts as the stack, since the laptop does not distinguish.** Founder, 2026-08-19:
+*"prospector and hermes agent and the surface area around them is the stack, the dependencies"*.
+So the two `ai.hermes.*` jobs above are in scope and must migrate. `com.haworks.*` and
+`com.tie.*` are not, and neither are Adobe, ExpressVPN and Steam. Nothing on this machine records
+that distinction: 36 agents sit in one flat directory, and the only thing separating a stack job
+from somebody else's is the prefix of its label. A migration script that takes "the launchd jobs"
+takes four projects, and one that hand-picks them will miss the next one added. The label prefix
+is the de-facto namespace, so it should become the declared one.
+
+*Fixed in this pass:* `broken_programs()` now checks every absolute `.py`/`.sh` argument, not just
+`argv[0]`, with a regression test built from this exact plist. *Needs a human:* rolling
+`prospector-live` forward is the console's `Update live checkout` button — it is production, so an
+agent is refused it.
 
 **F5 — Secrets live in at least four places. FLAKY (no source of truth).**
 Laptop `.env`; 15 Fly secrets on `prospector-engine` alone; 3 GitHub repo secrets; `~/.hermes/`.
