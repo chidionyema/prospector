@@ -3,6 +3,10 @@
 The incident it comes from is in the module docstring of `scripts/guard_dead_branch_push.py`. What
 is pinned here is the part that decides, plus the part a guard usually gets wrong: PROVING IT CAN
 FAIL. A fence that only has a green fixture is a fence nobody has seen refuse anything.
+
+It is pinned as a CLASS, never as the branch that taught it: every branch a push would create is
+checked, and both ways a PR finishes — merged, or closed without merging — count as spent. The one
+name that is never blocked is a branch with an OPEN PR, because that push is just updating it.
 """
 from __future__ import annotations
 
@@ -103,7 +107,7 @@ def fake_gh(tmp_path: Path):
 def test_it_blocks_a_push_that_recreates_a_merged_branch(fake_gh):
     """THE NEGATIVE FIXTURE. On 2026-08-19 this exact push was allowed and the work sat on a
     branch with no PR."""
-    path = fake_gh('[{"number": 364}]')
+    path = fake_gh('[{"number": 364, "state": "MERGED"}]')
     got = _run(f"refs/heads/process/incident-loop {SHA} refs/heads/process/incident-loop {ZERO}", path=path)
     assert got.returncode == 1
     assert "PR #364" in got.stdout
@@ -139,7 +143,7 @@ def test_no_gh_on_the_machine_blocks_too(tmp_path: Path):
 def test_the_override_is_one_variable_and_it_works(fake_gh):
     """Recreating a branch on purpose is a real thing to want. The escape hatch is named in the
     refusal message, so it is a decision rather than a workaround somebody has to invent."""
-    path = fake_gh('[{"number": 364}]')
+    path = fake_gh('[{"number": 364, "state": "MERGED"}]')
     got = _run(
         f"refs/heads/process/incident-loop {SHA} refs/heads/process/incident-loop {ZERO}",
         env_extra={guard.OVERRIDE: "1"},
@@ -155,6 +159,38 @@ def test_a_normal_push_makes_no_network_call_at_all(tmp_path: Path):
     empty.mkdir()
     got = _run(f"refs/heads/feat/x {SHA} refs/heads/feat/x abc1234", path=str(empty))
     assert got.returncode == 0
+
+
+def test_a_closed_pr_spends_the_name_just_like_a_merged_one(fake_gh):
+    """THE CLASS, not the one branch. A PR closed without merging leaves the same dead name: the
+    branch gets deleted, and pushing it again puts work somewhere nobody is looking. Blocking only
+    the merged half would have been a fence around one instance of the failure."""
+    path = fake_gh('[{"number": 401, "state": "CLOSED"}]')
+    got = _run(f"refs/heads/feat/abandoned {SHA} refs/heads/feat/abandoned {ZERO}", path=path)
+    assert got.returncode == 1
+    assert "PR #401" in got.stdout
+    assert "closed without merging" in got.stdout
+
+
+def test_an_open_pr_on_the_same_name_is_never_blocked(fake_gh):
+    """The branch was recreated and something is already watching it, so the work is not stranded.
+    Refusing here would break the ordinary case of re-pushing a branch after a local reset."""
+    path = fake_gh('[{"number": 500, "state": "OPEN"}, {"number": 364, "state": "MERGED"}]')
+    got = _run(f"refs/heads/feat/live {SHA} refs/heads/feat/live {ZERO}", path=path)
+    assert got.returncode == 0, got.stdout
+
+
+def test_every_created_branch_in_one_push_is_checked_not_just_the_first(fake_gh):
+    """`git push --all` creates several at once. A guard that inspected only the first ref would
+    pass the push that carried the dead branch in second place."""
+    path = fake_gh('[{"number": 364, "state": "MERGED"}]')
+    text = "\n".join([
+        f"refs/heads/feat/one {SHA} refs/heads/feat/one {ZERO}",
+        f"refs/heads/feat/two {SHA} refs/heads/feat/two {ZERO}",
+    ])
+    got = _run(text, path=path)
+    assert got.returncode == 1
+    assert "feat/one" in got.stdout and "feat/two" in got.stdout
 
 
 # --------------------------------------------------------------------------------------------

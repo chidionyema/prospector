@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Refuse a push that RECREATES a branch GitHub already deleted when it merged the PR.
+"""Refuse a push that RECREATES a branch whose pull request is already finished.
+
+THE CLASS, not the one branch that taught it: any branch name a merged OR closed PR has already
+used. GitHub deletes the head branch when it merges; people delete it when they abandon a PR.
+Either way the name is spent, and pushing it again lands work on a branch nobody is watching. An
+OPEN PR on the same name is never blocked — that push updates the PR, which is the whole point.
 
 The failure this exists to stop, measured on 2026-08-19. A session pushed to
 `process/incident-loop`, the branch its PR had been opened from. That PR had already auto-merged
@@ -56,21 +61,35 @@ def created_branches(stdin_text: str) -> list[str]:
     return out
 
 
-def merged_pr(branch: str) -> int | None:
-    """The number of a MERGED PR whose head was this branch, or None. Raises if gh cannot answer.
+def finished_pr(branch: str) -> tuple[int, str] | None:
+    """A PR that is DONE WITH this branch name — merged or closed — or None. Raises if gh cannot
+    answer.
 
-    Raising rather than returning None is the point: "no merged PR" and "I could not look" are
+    Merged and closed are the same problem, which is why one query covers both. GitHub deletes the
+    head branch on merge; a human deletes it when they close a PR they abandoned. Either way the
+    name is spent, and pushing it again puts work on a branch nobody is watching. An OPEN PR is
+    the normal case and is never blocked — that push updates the PR, which is the point.
+
+    Raising rather than returning None is the point: "no finished PR" and "I could not look" are
     different answers, and collapsing them is how a fence becomes a suggestion.
     """
     proc = subprocess.run(
-        ["gh", "pr", "list", "--head", branch, "--state", "merged", "--limit", "1",
-         "--json", "number"],
+        ["gh", "pr", "list", "--head", branch, "--state", "all", "--limit", "20",
+         "--json", "number,state"],
         capture_output=True, text=True, timeout=30, check=False,
     )
     if proc.returncode != 0:
         raise RuntimeError(proc.stderr.strip() or "gh exited non-zero")
     rows = json.loads(proc.stdout or "[]")
-    return int(rows[0]["number"]) if rows else None
+    # An OPEN PR on this name wins over any finished one: the branch was recreated and a PR is
+    # already watching it, so the work is not stranded and there is nothing to refuse.
+    if any(str(r.get("state", "")).upper() == "OPEN" for r in rows):
+        return None
+    for row in rows:
+        state = str(row.get("state", "")).upper()
+        if state in ("MERGED", "CLOSED"):
+            return int(row["number"]), state.lower()
+    return None
 
 
 def main() -> int:
@@ -80,29 +99,39 @@ def main() -> int:
     if not branches:
         return 0
 
+    # Every created branch is judged before anything is printed. Stopping at the first dead one
+    # hides the others, so a `git push --all` gets fixed one refusal at a time.
+    dead: list[tuple[str, int, str]] = []
     for branch in branches:
         try:
-            number = merged_pr(branch)
+            found = finished_pr(branch)
         except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as exc:
             print(f"\ndead-branch guard BLOCKED: cannot ask GitHub about '{branch}' ({exc}).")
             print("This push would CREATE that branch. If the branch was deleted by a merge, the")
             print("push lands work on a branch with no PR and nobody notices.")
             print(f"Check it yourself, then: {OVERRIDE}=1 git push ...")
             return 1
-        if number is not None:
-            print(f"\ndead-branch guard BLOCKED: '{branch}' was deleted when PR #{number} merged.")
-            print("This push does not update that PR. It creates a new branch with the old name,")
-            print("and the work sits there with no PR open on it.")
-            print("")
-            print("Do this instead:")
-            print("    git fetch origin main")
-            print("    git checkout -B <a-new-name> origin/main")
-            print("    git cherry-pick <your commits>")
-            print("    git push -u origin <a-new-name> && gh pr create")
-            print("")
-            print(f"If you really mean to recreate it: {OVERRIDE}=1 git push ...")
-            return 1
-    return 0
+        if found is not None:
+            dead.append((branch, found[0], found[1]))
+
+    if not dead:
+        return 0
+
+    print("")
+    for branch, number, state in dead:
+        verb = "merged" if state == "merged" else "closed without merging"
+        print(f"dead-branch guard BLOCKED: '{branch}' belongs to PR #{number}, {verb}.")
+    print("This push does not update those PRs. It creates new branches with the old names,")
+    print("and the work sits there with no PR open on it.")
+    print("")
+    print("Do this instead:")
+    print("    git fetch origin main")
+    print("    git checkout -B <a-new-name> origin/main")
+    print("    git cherry-pick <your commits>")
+    print("    git push -u origin <a-new-name> && gh pr create")
+    print("")
+    print(f"If you really mean to recreate it: {OVERRIDE}=1 git push ...")
+    return 1
 
 
 if __name__ == "__main__":
