@@ -496,6 +496,98 @@ jobs:
         run: python -m pytest tests/test_golden_set.py -v --tb=short
       # ────────────────────────────────────────────────────────────
 
+      # ── Security: the code ─────────────────────────────────────
+      # Bandit, gated on HIGH severity only, and that threshold is a measurement rather than a
+      # preference. On origin/main at da0d9589 the full scan reported 361 findings. Fourteen were
+      # HIGH: thirteen were sha1 or md5 hashing content to make a cache key, a dedup key or an
+      # ETag, and one was real — `scripts/ops_state.py` ran `whois … | grep …` through a shell.
+      #
+      # The thirteen are fixed by saying so in code, `usedforsecurity=False`, not by switching
+      # the check off. The digest is byte-identical either way; the flag is the language's own
+      # way to state that a hash is an identifier and not a security decision. That is what
+      # leaves the rule armed: a NEW sha1 that really does authenticate something still fails
+      # here. Adding B324 to a skip list would have disarmed it permanently.
+      #
+      # The other 347 are MEDIUM and LOW and are printed, not enforced. The largest groups are
+      # B603/B404/B607 (this repo shells out to git, fly and gh by design, 189 of them) and
+      # B310 urllib (39). Walling the gate on those would mean 347 suppression comments on the
+      # first day, which teaches everyone to write `# nosec` and stops anyone reading it.
+      #
+      # --python matters and is not tidiness. uvx builds its own environment, and by default that
+      # was Python 3.11.15 while this repo runs 3.14.6. On 3.11 bandit could not parse
+      # tools/experiments/g_generation_ab.py and skipped it, reporting "syntax error while parsing
+      # AST from file" into a JSON field nothing read. A skipped file is an unscanned file, so the
+      # step now pins the interpreter AND fails if bandit's `errors` array is non-empty.
+      - name: Bandit security scan
+        run: |
+          set -eu
+          uvx --python "${PYTHON_VERSION}" bandit \
+            -r prospector ops scripts tools -q -f json -o /tmp/bandit-all.json || true
+          python - <<'PY'
+          import json, sys
+          skipped = json.load(open("/tmp/bandit-all.json"))["errors"]
+          if skipped:
+              for e in skipped:
+                  print(f"::error::bandit could not read {e['filename']}: {e['reason']}")
+              sys.exit("bandit skipped a file, so it did not scan it")
+          PY
+          python - <<'PY'
+          import collections, json
+          rows = json.load(open("/tmp/bandit-all.json"))["results"]
+          by = collections.Counter((r["issue_severity"], r["test_id"]) for r in rows)
+          print(f"{len(rows)} findings, not enforced below HIGH:")
+          for (sev, tid), n in by.most_common():
+              print(f"  {sev:<6} {tid} {n}")
+          PY
+          uvx --python "${PYTHON_VERSION}" bandit \
+            -r prospector ops scripts tools -q --severity-level high \
+            || { echo "::error::Bandit found a HIGH severity issue. If the hash is an identifier"
+                 echo "::error::rather than a security decision, pass usedforsecurity=False."
+                 exit 1; }
+          echo "no HIGH severity findings"
+
+      # ── Security: the dependencies ─────────────────────────────
+      # pip-audit against the Python Advisory Database. It reads a frozen list rather than
+      # requirements.txt on purpose: freeze reports what the job will actually import, pins and
+      # transitive packages included, and needs no resolution step. requirements.txt would miss
+      # an advisory that arrives through a dependency of a dependency, which is how both of the
+      # .NET advisories this repo has carried arrived.
+      #
+      # The grep drops the two line shapes pip-audit cannot read: `-e <path or VCS url>` and
+      # `name @ file:///...`. Both name a checkout rather than a released version, so there is no
+      # advisory to look up, and pip-audit does not skip them — it aborts the whole run with
+      # "is not a valid editable requirement" and audits nothing. Measured on the founder's
+      # laptop: three such lines out of 121, and the step failed outright until they were cut.
+      # CI builds its venv from requirements.txt alone and has none of them, which is exactly why
+      # this would only ever have broken locally.
+      #
+      # Measured 2026-08-19 on origin/main: "No known vulnerabilities found". This goes in green.
+      #
+      # `uv pip freeze`, not `python -m pip freeze`. The shared venv above is built by
+      # `uv venv`, and uv does not install pip into a venv it creates. So the first form is a
+      # ModuleNotFoundError in the only environment this step ever runs in:
+      #
+      #   .../ci-venvs/py3.14-e49c923ecd1f4b82/bin/python: No module named pip
+      #
+      # `set -eu` does not set pipefail, so the failing command was the LEFT side of a pipe and
+      # the step's status came from grep instead. It went red either way, but on the wrong
+      # command, which is why the log reads as a scan failure rather than a missing module.
+      - name: Dependency advisory scan
+        run: |
+          set -euo pipefail
+          uv pip freeze > /tmp/all-packages.txt
+          # grep exits 1 when it filters everything out, which under pipefail would read as a
+          # scan failure rather than an empty list. The floor below is what actually grades it.
+          grep -vE '^-e|@ ' /tmp/all-packages.txt > /tmp/frozen.txt || true
+          n="$(wc -l < /tmp/frozen.txt | tr -d ' ')"
+          echo "packages audited: $n of $(wc -l < /tmp/all-packages.txt | tr -d ' ')"
+          # A scan of an empty list passes and reports nothing. Measured on origin/main the
+          # venv holds 121 packages, so under 20 means uv read a different environment rather
+          # than that this repo got smaller.
+          [ "$n" -ge 20 ] || { echo "::error::froze $n packages, so this is not the venv the suite runs"; exit 1; }
+          uvx pip-audit -r /tmp/frozen.txt
+      # ────────────────────────────────────────────────────────────
+
   # ──────────────────────────────────────────────────────────────────
   # Engine — the crown jewel's own gate.
   #
@@ -642,6 +734,44 @@ jobs:
       # The test project lives under store_platform/. These paths previously omitted that
       # prefix, so every run failed with MSB1009 (project file does not exist) and the job
       # had never actually executed a test.
+      # Before restore, because after restore is too late to be told.
+      #
+      # An XML comment may not contain two hyphens in a row. On 2026-08-19 a comment in
+      # Directory.Packages.props quoted a command line with long flags, the file stopped
+      # parsing, and MSBuild dropped it. That turns ManagePackageVersionsCentrally off, and a
+      # PackageReference with no Version attribute then has nothing to resolve against.
+      #
+      # The failure never names the file. Re-measured by breaking it on purpose: `dotnet
+      # restore` printed NU1604 "does not contain an inclusive lower bound" 21 times, once per
+      # centrally-versioned package across all three projects, and not one line mentioned
+      # Directory.Packages.props. `dotnet build` does name it, with MSB4024 — but restore runs
+      # first and fails first, so nobody reads that far.
+      #
+      # This cannot be a test in Store.Tests. That was tried the same day and proved inert:
+      # with the file malformed, MSBuild will not evaluate Store.Tests.csproj either, so the
+      # test assembly never loads and the assertion never runs. A step before restore is the
+      # only place that can see it.
+      - name: MSBuild props files parse
+        run: |
+          set -eu
+          python3 - <<'PY'
+          import pathlib, sys, xml.etree.ElementTree as ET
+          files = sorted(pathlib.Path("store_platform").rglob("Directory.*.props"))
+          files = [f for f in files if "bin" not in f.parts and "obj" not in f.parts]
+          if not files:
+              sys.exit("::error::found no Directory.*.props to check - the glob is wrong")
+          bad = 0
+          for f in files:
+              try:
+                  ET.parse(f)
+                  print(f"ok  {f}")
+              except ET.ParseError as exc:
+                  bad += 1
+                  print(f"::error file={f}::{exc}. An XML comment cannot contain two hyphens "
+                        f"in a row; write the flag name in prose instead.")
+          sys.exit(bad and "a build props file does not parse")
+          PY
+
       - name: Restore dependencies
         run: dotnet restore store_platform/src/Store.Tests/Store.Tests.csproj
 
@@ -656,6 +786,35 @@ jobs:
 
       - name: Test
         run: dotnet test store_platform/src/Store.Tests/Store.Tests.csproj --no-build --verbosity normal -m:1
+
+      # Known-vulnerable dependencies, including the ones nothing here references directly.
+      #
+      # `--include-transitive` is the whole point. Both advisories this repo has carried were
+      # transitive: SQLitePCLRaw.lib.e_sqlite3 2.1.10 (GHSA-2m69-gcr7-jv3q, High) through
+      # Microsoft.EntityFrameworkCore.Sqlite, and OpenTelemetry.Api 1.11.2
+      # (GHSA-g94r-2vxg-569j, Moderate) through Crux.Observability. A top-level-only scan sees
+      # neither. Both were live on main until 2026-08-19; they are pinned in
+      # store_platform/Directory.Packages.props now.
+      #
+      # The grep is not laziness. `dotnet list package --vulnerable` exits 0 whether it finds
+      # anything or not, so a step that only ran the command would be a green check that reads
+      # nothing. The sentence it matches is NuGet's own wording for a project with findings.
+      #
+      # The solution, not the test project: this restores all three projects and reports each
+      # one by name, so an advisory that reaches only Store.Api still fails here with the
+      # project named.
+      - name: Vulnerable dependency scan
+        run: |
+          set -eu
+          dotnet restore store_platform/Store.sln
+          dotnet list store_platform/Store.sln package --vulnerable --include-transitive \
+            | tee /tmp/vuln.txt
+          if grep -q "has the following vulnerable packages" /tmp/vuln.txt; then
+            echo "::error::A dependency has a published security advisory. Pin a patched version"
+            echo "::error::in store_platform/Directory.Packages.props; transitive pinning is on."
+            exit 1
+          fi
+          echo "no vulnerable packages"
 
   # ──────────────────────────────────────────────────────────────────
   # Next.js — build check on store platform
@@ -730,6 +889,13 @@ jobs:
       - name: Lint
         run: npm run lint -- --cache
 
+      # CSS has never had a lane. `stylelint.config.mjs` runs the possible-errors half of
+      # stylelint over the two stylesheets this repo is allowed to write (the shipped bundle
+      # mumchimp.css is byte-locked and deliberately ignored): duplicate properties, unknown
+      # units, invalid hex, a shorthand that silently wipes the longhand above it.
+      - name: Lint CSS
+        run: npm run lint:css
+
       # The 523 vitest tests had NO enforcement point anywhere: this job ran typecheck +
       # build only, and the pre-commit gate ran pytest, which cannot see a .tsx. A storefront
       # unit test could go red and reach main with every check green.
@@ -739,6 +905,18 @@ jobs:
       # NEXT_PUBLIC_* are inlined at build time. Set placeholder https values here so the
       # build exercises the same code path as production (CSP connect-src and the sitemap
       # both derive from them) instead of silently baking in localhost defaults.
+      # `npm ci` above runs with --no-audit so that install stays fast and deterministic. That
+      # is precisely why the audit needs its own step: with the flag on install, nothing ever
+      # checks. Measured 2026-08-19 in both web projects: "found 0 vulnerabilities", so this
+      # goes in green.
+      #
+      # --audit-level=high, not low. npm reports transitive advisories in build-only tooling
+      # that no request ever reaches, and a gate that fires on those gets switched off within a
+      # week. High and critical are the ones worth stopping a merge for.
+      - name: Dependency advisory scan
+        working-directory: store_platform/src/Store.Web
+        run: npm audit --audit-level=high
+
       - name: Build
         run: npm run build
         env:
@@ -803,6 +981,18 @@ jobs:
       # No NEXT_PUBLIC_* here on purpose. The console talks to the local Python gateway
       # through `PROSPECTOR_PYTHON`, resolved at RUN time by the `start` script, so nothing
       # about the deployment is inlined into the build.
+      # `npm ci` above runs with --no-audit so that install stays fast and deterministic. That
+      # is precisely why the audit needs its own step: with the flag on install, nothing ever
+      # checks. Measured 2026-08-19 in both web projects: "found 0 vulnerabilities", so this
+      # goes in green.
+      #
+      # --audit-level=high, not low. npm reports transitive advisories in build-only tooling
+      # that no request ever reaches, and a gate that fires on those gets switched off within a
+      # week. High and critical are the ones worth stopping a merge for.
+      - name: Dependency advisory scan
+        working-directory: store_platform/src/Ops.Console
+        run: npm audit --audit-level=high
+
       - name: Build
         run: npm run build
 
