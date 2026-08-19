@@ -57,9 +57,9 @@ estate disagree, the disagreement is written down rather than settled by prefere
 | "Hooks are deterministic; CLAUDE.md instructions are advisory" | 12 hooks wired, all ten of the session ones self-testing and graded. Ahead of the guidance here |
 | "Give Claude a check it can run" | `scripts/popdd_verify.py`, `scripts/process_audit.py`, `ops/state_probe.sh`, `scripts/live_checkout.py`. Strong |
 | "Use subagents for investigation; scope it or it fills your context" | Standing rule, and the delegation trigger is mechanical (second exploratory read → subagent) |
-| "Custom subagents in `.claude/agents/`" | none. Open — the review and recon prompts are retyped each session instead |
+| "Custom subagents in `.claude/agents/`" | two: `estate-recon` (haiku, read-only, returns a verdict and refs, never dumps) and `receipt-auditor` (adversarial diff review against proof-of-claim discipline). Both committed, so every worktree gets them |
 | "`/clear` between unrelated tasks; manage context aggressively" | Enforced by measurement: `context-guard-hook.py` nudges at 140K, and 38 of the last 40 sessions still ran past it |
-| "Add an adversarial review step in a fresh context" | Not standard practice here yet. Open |
+| "Add an adversarial review step in a fresh context" | `receipt-auditor` exists as of today. Making it routine before a PR is the open half |
 | "Explore, plan, code, commit — plan mode for multi-file or unfamiliar work" | Partly. "Plan and claim before code" is a rule, but plan mode itself is rarely used |
 
 Two places this estate deliberately goes further, both for reasons that are written down: every
@@ -77,6 +77,11 @@ Shipped:
 - all ten session hooks answer `--selftest`; the audit runs and grades them (#373, #381)
 - the hooks are tracked in git; the audit reports any hook file behind `origin/main` (#381)
 - `ops/share_memory.sh` and the audit row that grades the memory partition (#381)
+- `.claude/agents/estate-recon.md` and `.claude/agents/receipt-auditor.md` — the recon and
+  review prompts stop being retyped from memory each session (#381)
+- two guards stopped refusing correct commands: `rule-guard` no longer reads a commit
+  message as a command (70/70), `hang-guard` no longer reads a heredoc body as one
+  (26/26). Both found by being blocked while writing down the rule itself (#381)
 - `scripts/rework_metrics.py` and the `/method` rework card (#373)
 - the probe refreshes its own snapshot past 6h, in the background, under a lock; the audit
   grades the snapshot's age so a refresh that stopped working is visible (#381)
