@@ -127,7 +127,8 @@ def check_branch_has_pr(r: Report, local_only: bool) -> None:
         r.note(f"skipped the pull request check for {branch} (--local)")
         return
     code, out = run(["gh", "pr", "list", "--head", branch, "--state", "all",
-                     "--json", "number,state,statusCheckRollup", "--limit", "5"])
+                     "--json", "number,state,statusCheckRollup,mergeStateStatus,isDraft",
+                     "--limit", "5"])
     if code == 127:
         r.note("gh is not available, so the pull request checks were skipped")
         return
@@ -149,8 +150,55 @@ def check_branch_has_pr(r: Report, local_only: bool) -> None:
             r.flag("W19", f"PR #{pr['number']} is open with failing checks: "
                           f"{', '.join(failing[:4])}",
                    f"gh pr checks {pr['number']}")
-        else:
+        blocker, fix = merge_blocker(pr)
+        if blocker:
+            r.flag("W19", f"PR #{pr['number']} cannot be merged: {blocker}", fix)
+        elif unknown_merge_state(pr):
+            r.note(f"PR #{pr['number']}: GitHub has not computed mergeability yet. Ask again "
+                   f"before you stop: gh pr view {pr['number']} --json mergeStateStatus")
+        elif not failing:
             r.note(f"PR #{pr['number']} is open and not failing. Follow it to merged.")
+
+
+# Why a green pull request still does not land. `statusCheckRollup` cannot see any of these: the
+# checks passed, so it says nothing is wrong.
+#
+# WHY THIS EXISTS. Measured 2026-08-19: PR #374 had every check green and `mergeStateStatus`
+# DIRTY. This script would have printed "open and not failing. Follow it to merged." Auto-merge
+# could never fire on it and neither the workflow nor this checker said so.
+#
+# UNKNOWN is deliberately absent. GitHub computes mergeability lazily, so a PR pushed to seconds
+# ago genuinely answers UNKNOWN for a moment. Flagging that would cry wolf on every push, which
+# is how a checker gets ignored; `unknown_merge_state` reports it as a note instead.
+MERGE_BLOCKERS: dict[str, tuple[str, str]] = {
+    "DIRTY": ("it conflicts with main", "git rebase origin/main   # then push --force-with-lease"),
+    "BEHIND": ("main moved and the branch must be updated first",
+               "git rebase origin/main   # then push --force-with-lease"),
+    "BLOCKED": ("a required review or check has not been satisfied", "gh pr view {n} --web"),
+}
+
+
+def merge_blocker(pr: dict) -> tuple[str, str]:
+    """Why this open pull request cannot land right now, and the command that clears it.
+
+    ("", "") when nothing is standing in the way. A draft is listed first because it is the one
+    blocker that is usually deliberate -- and it is also invisible: auto-merge skips drafts
+    silently, so a draft left over from a rescue never merges and never complains.
+    """
+    number = pr.get("number", "?")
+    if pr.get("isDraft"):
+        return ("it is still a draft, and auto-merge skips drafts",
+                f"gh pr ready {number}")
+    state = str(pr.get("mergeStateStatus") or "").upper()
+    if state in MERGE_BLOCKERS:
+        why, fix = MERGE_BLOCKERS[state]
+        return why, fix.format(n=number)
+    return ("", "")
+
+
+def unknown_merge_state(pr: dict) -> bool:
+    """GitHub has not worked out yet whether this can merge. A moment, not a finding."""
+    return str(pr.get("mergeStateStatus") or "").upper() in {"", "UNKNOWN"}
 
 
 def check_worktrees(r: Report) -> None:
