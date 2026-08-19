@@ -66,31 +66,15 @@ import { paybackEquation } from '@/lib/payback';
  * card showing the same number. That is the determinism rule the deleted cover carried, kept.
  */
 
-/**
- * The largest multiple this shop will SHOUT.
- *
- * Founder, 2026-08-15, on seeing 123x on the live shelf: "123x is the number that makes a buyer
- * distrust the other 58 cards. exactly." That is the whole argument, and it is about the reader
- * rather than the arithmetic -- the division is exact, and a card claiming the pack returns 123
- * times its price inside thirty days is still read as a lie, which then retroactively prices
- * every honest 6x on the same shelf as marketing. An implausible number is not a strong claim;
- * it is a solvent applied to the credible ones next to it.
- *
- * Set at 20 because the live distribution and the plausibility argument break in the same place.
- * The bulk of the catalogue ends at 17x (28 of 36, p75 = 17) and the remainder jumps 21, 22, 25,
- * 30, 45, 76, 89, 123 -- a tail, not a continuation. And 20x of a 49.99 pack is a modelled £1,000
- * in month one, which is the top of what a person starting from nothing reads as possible; above
- * it the claim runs to £6,150 and stops being arguable.
- *
- * Falling THROUGH rather than clamping the display is deliberate. Printing "20x+" would still
- * make the claim, just less precisely, and a capped figure invites the reader to wonder what was
- * capped. Rung 2 is a fact about the research (a cited source count, populated on 59 of 59), so
- * the eight loudest packs now lead with the number this shop can actually defend. Nothing is
- * hidden: `pages/pack/[id].tsx` still shows the full equation -- price, modelled revenue, and the
- * division -- next to the "Modelled economics" box, where the working is visible and the buyer
- * judges it in context rather than meeting a bare 123x at display size on a shelf.
+/*
+ * THE CEILING LIVES IN ONE PLACE. `CREDIBLE_MULTIPLE_CEILING` is declared in `lib/payback.ts:80`,
+ * with the founder's 2026-08-15 reasoning and the live distribution set out beside it, and
+ * `paybackEquation` applies it at the source. This file used to declare its own copy of the
+ * number AND its own copy of that argument. Two declarations of one rule is how the rule drifts:
+ * whoever moves the ceiling next moves one of them, and the shelf and the pack page then disagree
+ * about which claims this shop will make. `crossCuttingSweep.test.ts` fails if a second
+ * declaration reappears anywhere under `src/`.
  */
-const CREDIBLE_MULTIPLE_CEILING = 20;
 
 export type PackStatKind = 'price_multiple' | 'sources';
 
@@ -109,13 +93,14 @@ export interface PackLeadStat {
  *
  * `CardProof` needs the FIGURE and supplies its own noun ("payback"), so it cannot use
  * `packLeadStat`, which is a figure welded to a sentence sized for the 44px `.stat` device. Same
- * ceiling, same source: one `paybackEquation` call, one `CREDIBLE_MULTIPLE_CEILING`, so the row
- * and the featured card can never disagree about which multiples this shop will claim.
+ * source, and therefore the same ceiling: `paybackEquation` already refuses a multiple above
+ * `CREDIBLE_MULTIPLE_CEILING`, so the row and the featured card can never disagree about which
+ * multiples this shop will claim. There is no second check here. A re-check would read as a
+ * safety net and behave as a duplicate: it can only ever agree with the bound above it, and the
+ * day someone raises one of the two it silently becomes the lower ceiling of the pair.
  */
 export function paybackMultiple(pack: Pack): number | null {
-  const payback = paybackEquation(pack.price, pack.financialSnapshot);
-  if (payback && payback.multiple <= CREDIBLE_MULTIPLE_CEILING) return payback.multiple;
-  return null;
+  return paybackEquation(pack.price, pack.financialSnapshot)?.multiple ?? null;
 }
 
 export function packLeadStat(pack: Pack): PackLeadStat | null {
@@ -129,7 +114,7 @@ export function packLeadStat(pack: Pack): PackLeadStat | null {
   // about which claims this shop will make. A rung that re-checked it here would be a second
   // ceiling to keep in step with the first.
   const payback = paybackEquation(pack.price, pack.financialSnapshot);
-  if (payback && payback.multiple <= CREDIBLE_MULTIPLE_CEILING) {
+  if (payback) {
     return {
       kind: 'price_multiple',
       figure: `${payback.multiple}×`,
