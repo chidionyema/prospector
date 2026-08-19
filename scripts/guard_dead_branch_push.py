@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+"""Refuse a push that RECREATES a branch GitHub already deleted when it merged the PR.
+
+The failure this exists to stop, measured on 2026-08-19. A session pushed to
+`process/incident-loop`, the branch its PR had been opened from. That PR had already auto-merged
+on green, and GitHub deletes the head branch on merge, so the push did not update anything — it
+created a brand new branch that looked exactly like the old one. Git said so, quietly, in a line
+nobody reads:
+
+    remote: Create a pull request for 'process/incident-loop' on GitHub by visiting:
+
+The work then sat on a branch with no PR, which is the one state that looks like progress and is
+not. Rebasing it onto main conflicted as well, because the merged commits came back as a squash
+and the originals were still in the branch.
+
+The fence is mechanical because the tell is not readable. A push either creates a remote branch or
+it does not, and git tells the hook which on stdin.
+
+  <local ref> <local sha> <remote ref> <remote sha>
+
+A remote sha of all zeros means "this push creates the branch". That is the only case checked, so
+the normal push — updating a branch that exists — costs nothing and makes no network call.
+
+WHEN `gh` CANNOT ANSWER, THIS BLOCKS. A guard that waves the push through whenever it cannot check
+is a warning, and a warning is not a fence. The escape hatch is named in the message and is one
+environment variable, because a deliberate re-creation is a real thing to want.
+"""
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+
+ZERO = "0" * 40
+OVERRIDE = "ALLOW_BRANCH_RECREATE"
+
+
+def created_branches(stdin_text: str) -> list[str]:
+    """The branch names this push would CREATE on the remote, from git's pre-push protocol.
+
+    Deletions (local sha all zeros) and updates (remote sha set) are not our business. Tags are
+    skipped: a tag is meant to be created, and there is no PR behind it.
+    """
+    out = []
+    for line in stdin_text.splitlines():
+        parts = line.split()
+        if len(parts) != 4:
+            continue
+        _local_ref, local_sha, remote_ref, remote_sha = parts
+        if local_sha.strip("0") == "" or remote_sha.strip("0") != "":
+            continue
+        if not remote_ref.startswith("refs/heads/"):
+            continue
+        out.append(remote_ref[len("refs/heads/"):])
+    return out
+
+
+def merged_pr(branch: str) -> int | None:
+    """The number of a MERGED PR whose head was this branch, or None. Raises if gh cannot answer.
+
+    Raising rather than returning None is the point: "no merged PR" and "I could not look" are
+    different answers, and collapsing them is how a fence becomes a suggestion.
+    """
+    proc = subprocess.run(
+        ["gh", "pr", "list", "--head", branch, "--state", "merged", "--limit", "1",
+         "--json", "number"],
+        capture_output=True, text=True, timeout=30, check=False,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(proc.stderr.strip() or "gh exited non-zero")
+    rows = json.loads(proc.stdout or "[]")
+    return int(rows[0]["number"]) if rows else None
+
+
+def main() -> int:
+    if os.environ.get(OVERRIDE) == "1":
+        return 0
+    branches = created_branches(sys.stdin.read())
+    if not branches:
+        return 0
+
+    for branch in branches:
+        try:
+            number = merged_pr(branch)
+        except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as exc:
+            print(f"\ndead-branch guard BLOCKED: cannot ask GitHub about '{branch}' ({exc}).")
+            print("This push would CREATE that branch. If the branch was deleted by a merge, the")
+            print("push lands work on a branch with no PR and nobody notices.")
+            print(f"Check it yourself, then: {OVERRIDE}=1 git push ...")
+            return 1
+        if number is not None:
+            print(f"\ndead-branch guard BLOCKED: '{branch}' was deleted when PR #{number} merged.")
+            print("This push does not update that PR. It creates a new branch with the old name,")
+            print("and the work sits there with no PR open on it.")
+            print("")
+            print("Do this instead:")
+            print("    git fetch origin main")
+            print("    git checkout -B <a-new-name> origin/main")
+            print("    git cherry-pick <your commits>")
+            print("    git push -u origin <a-new-name> && gh pr create")
+            print("")
+            print(f"If you really mean to recreate it: {OVERRIDE}=1 git push ...")
+            return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
