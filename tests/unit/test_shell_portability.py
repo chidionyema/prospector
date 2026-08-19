@@ -123,3 +123,74 @@ def test_the_guard_actually_catches_the_original_bug(tmp_path):
         "command -v flock >/dev/null || true",
     ):
         assert not pattern.search(line), line
+
+
+# ---------------------------------------------------------------------------------------------
+# A second member of the same class: a line that reads as documentation and executes as a command.
+
+#: Characters a hand-drawn section rule is made of. A first word built only from these is never a
+#: command anyone meant to run.
+RULE_CHARS = set("-=*_~+.")
+
+
+def _bare_rule_lines(path: Path) -> list[tuple[int, str]]:
+    """Code lines whose command word is a punctuation rule that lost its `#`."""
+    out = []
+    for n, text in _code_lines(path):
+        first = text.strip().split()[0] if text.strip() else ""
+        if len(first) >= 3 and set(first) <= RULE_CHARS:
+            out.append((n, text.strip()))
+    return out
+
+
+def test_no_tracked_script_has_a_section_rule_that_lost_its_comment_marker():
+    """A separator missing its `#` is a command, and `bash -n` says the file is fine.
+
+    Measured 2026-08-19: `scripts/setup_worktree.sh:185` was
+    `---------------------------------------------------------------- 6. the warnings`, the only
+    one of that file's eight section rules without a leading `# `. Every other check passed it:
+    the syntax is valid, so `bash -n` returned 0, and the file ran correctly right up to that
+    line. Then `set -euo pipefail` killed it with `command not found` and exit **127** — after
+    all the setup work was done, but before `echo "==> worktree ready."`.
+
+    So every agent following the documented worktree procedure in CLAUDE.md got a non-zero exit
+    and concluded setup had failed, on a worktree that was in fact complete. The warnings block
+    on the next 20 lines never printed either, so the three traps it exists to teach — never
+    `git add -A` here, `npm run build | tail` reports tail's status, delete `.pyc` after a
+    `worktree move` — were silently withheld from the person who most needed them.
+
+    Same class as the `flock` bug above: an exit code that means "this line is not a command"
+    is indistinguishable from an exit code that means something about the work.
+    """
+    offenders = [
+        f"{path.relative_to(ROOT)}:{n}: {text}"
+        for path in _tracked_shell_scripts()
+        for n, text in _bare_rule_lines(path)
+    ]
+    assert not offenders, (
+        "these lines are section rules that lost their leading `# `, so the shell will try to "
+        "run them and the script dies with exit 127 under `set -e`:\n  " + "\n  ".join(offenders)
+    )
+
+
+def test_the_rule_guard_catches_the_line_that_shipped(tmp_path):
+    """Meta-test: fire on the real regression, stay quiet on real commands."""
+    script = tmp_path / "s.sh"
+    script.write_text(
+        "#!/usr/bin/env bash\n"
+        "# ------------------- 1. fine, this one is commented\n"
+        "---------------------------------------------------------------- 6. the warnings\n"
+        "echo done\n"
+    )
+    assert [n for n, _ in _bare_rule_lines(script)] == [3]
+
+    # ...and does not fire on flags, case terminators, or a relative path.
+    quiet = tmp_path / "q.sh"
+    quiet.write_text(
+        "#!/usr/bin/env bash\n"
+        "--) shift ;;\n"
+        "./scripts/thing.sh --flag\n"
+        "-\n"
+        "cmd -- --end-of-flags\n"
+    )
+    assert _bare_rule_lines(quiet) == [], _bare_rule_lines(quiet)

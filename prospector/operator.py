@@ -1799,9 +1799,12 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
     model_matches = bool(cfg_model) and any(cfg_model.lower().startswith(p.lower()) for p in prefixes)
     model = cfg_model if model_matches else None
     if kind == "claude_cli":
-        # cfg.model is an API pin; don't leak it to the claude CLI.
-        from .claude_cli import ClaudeCliOperator
-        return ClaudeCliOperator(model=None)
+        # cfg.model is an API pin for a hosted tier; it must not leak to the claude CLI, whose
+        # model names are different. But passing nothing is not free either: the CLI then uses
+        # the machine's own default, which was measured as `opus[1m]` on 2026-08-19. So this
+        # tier always carries an explicit pin, and it defaults to the cheapest Claude.
+        from .claude_cli import CHEAPEST_CLAUDE_MODEL, ClaudeCliOperator
+        return ClaudeCliOperator(model=(cfg.claude_cli_model or "").strip() or CHEAPEST_CLAUDE_MODEL)
     if kind == "claude":
         raise ValueError(
             "operator 'claude' (the PAID Anthropic API tier) was removed on 2026-08-15 "
