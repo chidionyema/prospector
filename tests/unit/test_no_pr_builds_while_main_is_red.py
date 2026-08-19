@@ -48,12 +48,20 @@ def test_the_gate_only_stops_pull_requests(gate):
 
 
 def test_the_pr_that_fixes_main_can_still_build(gate):
-    """Without an escape hatch a red main is a permanent, unfixable deadlock."""
-    cond = " ".join(gate["if"].split())
-    assert "fixes-main" in cond and "!contains" in cond, (
-        "the gate must stand aside for a PR labelled `fixes-main`, or the PR that repairs "
-        f"main can never build. Condition: {cond!r}"
+    """The `fixes-main` hatch must be read LIVE, never from the frozen event payload.
+
+    `github.event.pull_request.labels` is a snapshot taken when the run started. Measured
+    2026-08-19: this gate refused PR #443 — the PR that carries the gate and fixes main —
+    because the label arrived ninety seconds after the run did. A hatch that is shut at the
+    moment it is needed is not a hatch. Founder: "this should obviosly eclude nain, basi
+    edge case".
+    """
+    assert "github.event.pull_request.labels" not in gate["if"], (
+        "the frozen event payload must not decide the hatch"
     )
+    script = gate["with"]["script"]
+    assert "listLabelsOnIssue" in script
+    assert "labels.includes('fixes-main')" in script
 
 
 def test_the_gate_reads_mains_last_completed_run(gate):
@@ -94,3 +102,40 @@ def test_every_heavy_job_is_stopped_by_the_gate(workflow, job):
         f"{job} does not declare `needs: changes`, so it would build even after the "
         "main-is-red gate refused the run"
     )
+
+
+def test_main_mid_run_also_stops_a_pr_build(gate):
+    """A PR must not take a runner while main's own CI is queued or running.
+
+    Measured 2026-08-19: main's five heavy jobs sat queued while eight of eleven runners ran
+    PR jobs, and the starvation was self-sustaining — every runner a PR job freed was taken
+    by the next queued PR job. Founder: "nain should be priority over feaature branches ...
+    this should never happen".
+    """
+    script = gate["with"]["script"]
+    assert "'in_progress'" in script and "'queued'" in script
+    assert "main gets the machines before any feature branch" in script
+
+
+def test_the_mid_run_check_runs_before_the_green_check(gate):
+    """An in-flight main run is the more urgent fact, and a stale green would hide it."""
+    script = gate["with"]["script"]
+    assert script.index("CHECK 1") < script.index("CHECK 2")
+
+
+def test_a_wedged_main_run_does_not_block_the_whole_repo(gate):
+    """A main run stuck queued for hours is broken, not in flight.
+
+    Without the age filter, one wedged run would stop every PR in the repo — a bigger outage
+    than the one the gate exists to prevent.
+    """
+    script = gate["with"]["script"]
+    assert "STALE_MINUTES" in script
+    assert "run_started_at" in script
+
+
+def test_the_mid_run_check_fails_open(gate):
+    """A gate that cannot read GitHub must let work through, not become a second outage."""
+    script = gate["with"]["script"]
+    assert "Could not read main's live runs" in script
+    assert "active = []" in script

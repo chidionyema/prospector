@@ -156,14 +156,19 @@ jobs:
       web: ${{ steps.filter.outputs.web }}
       console: ${{ steps.filter.outputs.console }}
     steps:
-      # ─── NO PR BUILD RUNS WHILE MAIN IS RED ───────────────────────
+      # ─── MAIN COMES FIRST: NO PR BUILD WHILE MAIN IS RED OR MID-RUN ───────────────
       #
-      # Founder directive 2026-08-19: "i dont see hwy any pr should run when nain is red",
-      # and "this nust be visibke so it can be fied as priority".
+      # Founder directives 2026-08-19: "i dont see hwy any pr should run when nain is red",
+      # "this nust be visibke so it can be fied as priority", and, after watching a PR job take
+      # a runner out from under a queued main run, "nain should be priority over feaature
+      # branches ... this should never happen".
       #
-      # WHAT IT DOES. On a pull_request event this reads main's most recent COMPLETED CI run.
-      # If that run did not succeed, the step fails here, in the light `changes` job, before a
-      # single heavy job is dispatched.
+      # WHAT IT DOES. On a pull_request event it refuses to build for either of two reasons:
+      #   1. A CI run on main is queued or in progress. Main gets the machines first. A feature
+      #      branch never competes with the branch it merges into.
+      #   2. Main's last completed CI run did not succeed. A PR cannot be greener than main.
+      # Check 1 comes first, because an in-flight main run is the more urgent fact and it is
+      # what a stale green from an hour ago hides.
       #
       # WHY IT IS THE FIRST STEP OF `changes` RATHER THAN ITS OWN JOB. A separate job would
       # need its own runner slot, which is the resource the gate exists to protect. `changes`
@@ -171,25 +176,107 @@ jobs:
       # the whole run for the price of a few seconds on the light pool.
       #
       # THE COST IT PREVENTS, measured 2026-08-19. Main was red on one test. Twenty-one PR runs
-      # were queued ahead of main's own fix run on a fleet of three live runners, so main — the
-      # only run whose colour every other run inherits — could not get a machine. Every one of
-      # those PR runs was doomed to fail on main's defect and spent ~26 minutes of a heavy
-      # runner proving it.
+      # were queued ahead of main own fix run, so main — the only run whose colour every other
+      # run inherits — could not get a machine. Every one of those PR runs was doomed to fail on
+      # main defect and spent ~26 minutes of a heavy runner proving it. Worse, the starvation
+      # was self-sustaining: as each PR job finished, the next queued PR job took the freed
+      # runner, so main crawled through its five heavy jobs one gap at a time.
       #
       # THE ESCAPE HATCH, and it is deliberate. The PR that FIXES main must be able to build
       # while main is red, or the estate deadlocks. Label that PR `fixes-main` and this step
       # stands aside. `workflow_dispatch` is a second hatch: this only gates `pull_request`.
       #
+      # A WEDGED MAIN RUN MUST NOT BECOME A TOTAL OUTAGE. Check 1 only counts main runs younger
+      # than STALE_MINUTES. A run stuck queued for hours is not in flight, it is broken, and
+      # blocking every PR in the repo behind it would turn one bad run into an estate-wide stop.
+      #
       # IT FAILS OPEN. An API error, or a main with no completed CI run at all, warns and
       # passes. A gate that guesses must guess towards letting work through, because a gate
       # that blocks the whole repo on its own bug is worse than the problem it polices.
       - name: Main must be green before any PR builds
-        if: >-
-          github.event_name == 'pull_request' &&
-          !contains(github.event.pull_request.labels.*.name, 'fixes-main')
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
+            const STALE_MINUTES = 90;
+
+            // ── THE ESCAPE HATCH, READ LIVE. ──────────────────────────────────────────
+            // `github.event.pull_request.labels` is a snapshot frozen when the run STARTED.
+            // Label a PR `fixes-main` after its run began and that payload never sees it, so
+            // the hatch is shut at the exact moment it exists for. Measured 2026-08-19: this
+            // gate refused PR #443, the PR that carries this gate and fixes main, because the
+            // label arrived ninety seconds after the run did. Founder: "this should obviosly
+            // eclude nain, basi edge case". Ask the API for the labels the PR has NOW, so
+            // labelling and re-running is enough.
+            let labels = [];
+            try {
+              const res = await github.rest.issues.listLabelsOnIssue({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+              });
+              labels = res.data.map((l) => l.name);
+            } catch (e) {
+              core.warning(`Could not read this PR's labels (${e.message}) — gate fails open.`);
+              return;
+            }
+
+            if (labels.includes('fixes-main')) {
+              core.info("PR is labelled `fixes-main` — it repairs main, so it is not gated.");
+              return;
+            }
+
+            const refuse = async (heading, lines) => {
+              const msg = lines.join('\n');
+              await core.summary
+                .addHeading(heading, 2)
+                .addRaw(msg.replace(/\n/g, '<br>'))
+                .write();
+              core.setFailed(msg);
+            };
+
+            // ── CHECK 1: main gets the machines first. ────────────────────────────────
+            let active = [];
+            try {
+              for (const status of ['in_progress', 'queued']) {
+                const res = await github.rest.actions.listWorkflowRuns({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  workflow_id: 'ci.yml',
+                  branch: 'main',
+                  status,
+                  per_page: 20,
+                });
+                active = active.concat(res.data.workflow_runs);
+              }
+            } catch (e) {
+              core.warning(`Could not read main's live runs (${e.message}) — gate fails open.`);
+              active = [];
+            }
+
+            const now = Date.now();
+            const live = active.filter((r) => {
+              const age = now - new Date(r.run_started_at).getTime();
+              return age < STALE_MINUTES * 60 * 1000;
+            });
+
+            if (live.length) {
+              const r = live[0];
+              return await refuse('main is building — feature branches wait', [
+                `main's CI is ${r.status.toUpperCase()} at ${r.head_sha.slice(0, 8)}.`,
+                `This PR was not built, because main gets the machines before any feature branch.`,
+                ``,
+                `Main is the branch every PR inherits its colour from, so it is never made to`,
+                `queue behind the branches that merge into it.`,
+                ``,
+                `  ${r.html_url}`,
+                ``,
+                `Re-run this PR once main has finished. If THIS PR is the one that fixes main,`,
+                `label it \`fixes-main\` and it will not be gated.`,
+              ]);
+            }
+
+            // ── CHECK 2: main must be green. ──────────────────────────────────────────
             let latest;
             try {
               const res = await github.rest.actions.listWorkflowRuns({
@@ -213,11 +300,11 @@ jobs:
 
             const sha = latest.head_sha.slice(0, 8);
             if (latest.conclusion === 'success') {
-              core.info(`main is green at ${sha} (run ${latest.id}) — carrying on.`);
+              core.info(`main is green at ${sha} (run ${latest.id}) and not mid-run — carrying on.`);
               return;
             }
 
-            const msg = [
+            return await refuse('main is red — fix main first', [
               `main is ${latest.conclusion.toUpperCase()} at ${sha}.`,
               `This PR was not built, because a PR cannot be greener than the branch it merges into.`,
               ``,
@@ -225,14 +312,7 @@ jobs:
               `  ${latest.html_url}`,
               ``,
               `If THIS PR is the one that fixes main, label it \`fixes-main\` and re-run.`,
-            ].join('\n');
-
-            await core.summary
-              .addHeading('main is red — fix main first', 2)
-              .addRaw(msg.replace(/\n/g, '<br>'))
-              .write();
-
-            core.setFailed(msg);
+            ]);
 
       # WHY THE BOX IS SLOW, PRINTED BEFORE ANYTHING ELSE RUNS.
       #
