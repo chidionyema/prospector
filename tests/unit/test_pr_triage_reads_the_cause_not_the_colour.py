@@ -144,14 +144,132 @@ def test_a_conflict_outranks_the_run_even_when_ci_is_green():
 
 
 def test_github_still_computing_the_merge_is_not_a_conflict():
-    """GitHub answers UNKNOWN until it has computed the merge. Every fresh PR passes through it."""
+    """GitHub answers UNKNOWN until it has computed the merge. Every fresh PR passes through it.
+
+    UNKNOWN must not become CONFLICT -- that would mark every newly-opened pull request as
+    needing a rebase. It must not become GREEN either, which is what this test used to pin and
+    what reported #445 as green on 2026-08-19 while it had a merge conflict with main.
+    """
     mod = _load()
     green = _run(status="completed", conclusion="success")
-    for undecided in ("UNKNOWN", None, ""):
-        assert mod.classify(green, [], {}, undecided)[0] == "GREEN", (
-            f"mergeable={undecided!r} means not yet known, not conflicting; flagging it would "
-            f"mark every newly-opened pull request as needing a person"
-        )
+
+    verdict, detail = mod.classify(green, [], {}, "UNKNOWN")
+    assert verdict != "CONFLICT", "unknown is not a conflict"
+    assert verdict == "MERGE UNKNOWN", (
+        f"an uncomputed merge is neither clean nor conflicting, and reporting it GREEN is a "
+        f"claim the data does not support. got {verdict!r}"
+    )
+    assert "re-run" in detail, "it must say what the action is"
+    assert verdict in mod.STUCK, "nothing about this PR moves until GitHub answers"
+    assert verdict not in mod.NEEDS_A_PERSON, (
+        "it usually resolves itself on the next ask; escalating it to a person would make the "
+        "'needs a person' number noise, and a noisy number gets ignored"
+    )
+
+
+def test_a_caller_that_never_asked_about_the_merge_still_gets_the_ci_verdict():
+    """`mergeable=None` means this caller did not ask, which is different from GitHub not knowing.
+
+    Conflating the two would turn every unit-level call of classify() into MERGE UNKNOWN and
+    make the verdict depend on the caller's curiosity rather than on the pull request.
+    """
+    mod = _load()
+    green = _run(status="completed", conclusion="success")
+    assert mod.classify(green, [], {}, None)[0] == "GREEN"
+    assert mod.classify(green, [], {})[0] == "GREEN"
+
+
+def test_a_draft_is_never_reported_as_green():
+    """A draft does not merge, however green it is. #461 was green, a draft, and unlandable."""
+    mod = _load()
+    green = _run(status="completed", conclusion="success")
+
+    verdict, detail = mod.classify(green, [], {}, "MERGEABLE", True)
+    assert verdict == "DRAFT", f"a green draft is not a landed PR. got {verdict!r}"
+    assert "ready for review" in detail, "it must name the action that unblocks it"
+    assert verdict in mod.STUCK, "a draft moves only when someone marks it ready"
+    assert mod.classify(green, [], {}, "MERGEABLE", False)[0] == "GREEN", (
+        "a non-draft green PR must still read GREEN"
+    )
+
+
+def test_an_obstacle_never_hides_a_fault():
+    """Draft and unknown-merge overrule GREEN only. A broken draft still reports as broken.
+
+    The opposite ordering trades one silence for another: the queue stops lying about drafts
+    and starts hiding their failures instead.
+    """
+    mod = _load()
+    failed = _run(status="completed", conclusion="failure")
+    jobs = [{"id": 1, "name": "python", "conclusion": "failure",
+             "steps": [{"name": "Test suite", "conclusion": "failure"}]}]
+
+    verdict, detail = mod.classify(failed, jobs, {}, "UNKNOWN", True)
+    assert verdict == "REAL FAIL", (
+        f"a draft with a failing test must still report the failure. got {verdict!r}"
+    )
+    assert "Test suite" in detail, "and it must still name the step that failed"
+
+
+def test_the_merge_state_is_asked_again_before_it_is_believed(monkeypatch):
+    """The first ask is what STARTS GitHub computing, so the first answer is routinely UNKNOWN.
+
+    This is the mechanical half of the #445 fix. Without the re-ask, the tool's verdict depends
+    on how recently the PR was touched, which is not a property of the pull request at all.
+    """
+    mod = _load()
+    answers = [
+        [{"number": 1, "mergeable": "UNKNOWN"}],
+        [{"number": 1, "mergeable": "CONFLICTING"}],
+    ]
+    calls = []
+
+    def fake_json(args):
+        calls.append(args)
+        return answers[min(len(calls) - 1, len(answers) - 1)]
+
+    monkeypatch.setattr(mod, "_json", fake_json)
+    monkeypatch.setattr(mod.time, "sleep", lambda _s: None)
+
+    prs = mod.list_open_prs()
+    assert len(calls) == 2, f"it must ask again while the answer is UNKNOWN. calls={len(calls)}"
+    assert prs[0]["mergeable"] == "CONFLICTING", "and it must report the resolved answer"
+
+
+def test_the_re_ask_is_bounded_and_reports_what_it_could_not_resolve(monkeypatch):
+    """A PR GitHub never resolves must end as UNKNOWN, not as an unbounded wait or a clean bill."""
+    mod = _load()
+    calls = []
+
+    def fake_json(args):
+        calls.append(args)
+        return [{"number": 1, "mergeable": "UNKNOWN"}]
+
+    monkeypatch.setattr(mod, "_json", fake_json)
+    monkeypatch.setattr(mod.time, "sleep", lambda _s: None)
+
+    prs = mod.list_open_prs(attempts=3)
+    assert len(calls) == 3, f"bounded at the attempt count. calls={len(calls)}"
+    assert prs[0]["mergeable"] == "UNKNOWN", (
+        "it must hand back the unresolved answer so classify() can report it, rather than "
+        "dropping the field and letting the PR read green"
+    )
+
+
+def test_a_resolved_merge_state_is_asked_for_exactly_once(monkeypatch):
+    """The retry must cost nothing on the normal path, or nobody will run the tool."""
+    mod = _load()
+    calls = []
+
+    def fake_json(args):
+        calls.append(args)
+        return [{"number": 1, "mergeable": "MERGEABLE"}]
+
+    monkeypatch.setattr(mod, "_json", fake_json)
+    monkeypatch.setattr(mod.time, "sleep", lambda _s: pytest.fail("must not sleep"))
+
+    mod.list_open_prs()
+    assert len(calls) == 1, f"one clean answer needs one call. calls={len(calls)}"
 
 
 def test_the_cancelled_reason_names_no_mechanism_it_did_not_measure():

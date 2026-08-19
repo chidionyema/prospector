@@ -41,6 +41,7 @@ import json
 import shutil
 import subprocess
 import sys
+import time
 
 RUNNER_LOSS = "lost communication with the server"
 
@@ -49,7 +50,7 @@ GHOST = "action_required"
 
 #: Ordered worst-first, so the summary leads with what a person must actually fix.
 SEVERITY = ["REAL FAIL", "CONFLICT", "NO RUN", "GHOST ONLY", "RUNNER KILLED", "CANCELLED",
-            "IN PROGRESS", "GREEN"]
+            "MERGE UNKNOWN", "DRAFT", "IN PROGRESS", "GREEN"]
 
 #: These need a person. REAL FAIL needs code read; CONFLICT needs a rebase, which no re-run and
 #: no amount of waiting will produce. Leaving CONFLICT out was a real defect in this tool: on
@@ -57,8 +58,11 @@ SEVERITY = ["REAL FAIL", "CONFLICT", "NO RUN", "GHOST ONLY", "RUNNER KILLED", "C
 #: could not have landed whatever CI said. A summary that cannot see a blocker reports all-clear.
 NEEDS_A_PERSON = {"REAL FAIL", "CONFLICT"}
 
-#: Not green and not still running: nothing is happening to it without an action.
-STUCK = {"REAL FAIL", "CONFLICT", "NO RUN", "GHOST ONLY", "RUNNER KILLED", "CANCELLED"}
+#: Not green and not still running: nothing is happening to it without an action. DRAFT and
+#: MERGE UNKNOWN are here because a green tick on either is not a PR that is going to land, and
+#: printing GREEN for one is the same false all-clear this tool exists to stop.
+STUCK = {"REAL FAIL", "CONFLICT", "NO RUN", "GHOST ONLY", "RUNNER KILLED", "CANCELLED",
+         "MERGE UNKNOWN", "DRAFT"}
 
 
 def _gh(args: list[str], timeout: int = 90) -> tuple[int, str]:
@@ -88,13 +92,42 @@ def _repo() -> str | None:
 
 def classify(run: dict | None, jobs: list[dict] | None,
              annotations: dict[int, str] | None,
-             mergeable: str | None = None) -> tuple[str, str]:
-    """(verdict, detail) for one pull request. Pure, so the tests need no network."""
-    # A conflicting branch cannot land on any CI verdict, so this outranks the run. GitHub
-    # answers UNKNOWN while it computes the merge, and UNKNOWN is not a conflict -- treating it
-    # as one would flag every freshly-opened PR.
+             mergeable: str | None = None,
+             draft: bool = False) -> tuple[str, str]:
+    """(verdict, detail) for one pull request. Pure, so the tests need no network.
+
+    A GREEN tick answers "did CI pass". It does NOT answer "is this going to land", and the
+    gap between those two questions is where this tool has now been wrong twice. First it had
+    no CONFLICT verdict and printed "0 of 6 need a person" over two PRs that could not merge.
+    Then it printed GREEN for #445, whose mergeability GitHub had not finished computing, and
+    for #461, which is a draft. Both were unlandable and both read as done.
+
+    So the run verdict is computed first and then OVERRULED, but only when it came out GREEN.
+    A draft with a real failure still reports the failure -- an obstacle must never hide a
+    fault, or the tool trades one silence for another.
+    """
+    # A conflicting branch cannot land on any CI verdict, so this outranks the run outright.
     if mergeable == "CONFLICTING":
         return "CONFLICT", "merge conflict with main; needs a rebase, not a re-run"
+
+    verdict, detail = _from_run(run, jobs, annotations)
+    if verdict != "GREEN":
+        return verdict, detail
+
+    if draft:
+        return "DRAFT", "CI is green, but a draft never merges; mark it ready for review"
+    # GitHub computes mergeability lazily and answers UNKNOWN until it has. UNKNOWN is not a
+    # conflict -- treating it as one would flag every freshly-opened PR -- but it is not
+    # evidence of a clean merge either, and GREEN would claim it is. triage() re-asks a few
+    # times before it gets here, so reaching this line means GitHub is still not saying.
+    if mergeable == "UNKNOWN":
+        return "MERGE UNKNOWN", "CI green; GitHub has not computed mergeability yet — re-run"
+    return verdict, detail
+
+
+def _from_run(run: dict | None, jobs: list[dict] | None,
+              annotations: dict[int, str] | None) -> tuple[str, str]:
+    """The CI half of the verdict: what the run itself says, and why."""
     if run is None:
         return "NO RUN", "no CI run at this head"
     if run.get("conclusion") == GHOST:
@@ -142,9 +175,36 @@ def newest_real_run(runs: list[dict]) -> dict | None:
     return sorted(live, key=lambda r: r.get("createdAt", ""))[-1]
 
 
+#: gh's own field name for "I have not worked it out yet".
+UNCOMPUTED = "UNKNOWN"
+
+
+def list_open_prs(attempts: int = 3, pause_s: float = 2.0) -> list[dict]:
+    """Open PRs, with mergeability actually resolved rather than merely requested.
+
+    GitHub does not keep a merge result standing by. It computes one when something asks, and
+    until that finishes the API answers `mergeable: UNKNOWN` -- so the FIRST question about a
+    recently-touched PR is the question that starts the work, and it reliably comes back
+    UNKNOWN. Asking once and believing the answer is how #445 was reported GREEN on
+    2026-08-19 while it had a merge conflict with main and could not land at all.
+
+    Asking again is the whole fix: the first call started the computation, so the second
+    usually has it. Bounded at `attempts` because a PR GitHub cannot resolve must be reported
+    as unresolved, never waited on forever and never quietly called clean.
+    """
+    prs: list[dict] = []
+    for i in range(attempts):
+        prs = _json(["pr", "list", "--state", "open", "--limit", "60", "--json",
+                     "number,headRefName,headRefOid,title,isDraft,mergeable"]) or []
+        if not any(p.get("mergeable") == UNCOMPUTED for p in prs):
+            break
+        if i < attempts - 1:
+            time.sleep(pause_s)
+    return prs
+
+
 def triage(repo: str, workflow: str = "CI", limit: int = 250) -> list[dict]:
-    prs = _json(["pr", "list", "--state", "open", "--limit", "60", "--json",
-                 "number,headRefName,headRefOid,title,isDraft,mergeable"]) or []
+    prs = list_open_prs()
     runs = _json(["run", "list", "--limit", str(limit), "--json",
                   "headSha,workflowName,status,conclusion,databaseId,createdAt"]) or []
     by_sha: dict[str, list[dict]] = collections.defaultdict(list)
@@ -166,7 +226,7 @@ def triage(repo: str, workflow: str = "CI", limit: int = 250) -> list[dict]:
                     continue
                 a = _json(["api", f"repos/{repo}/check-runs/{j['id']}/annotations"]) or []
                 anns[j["id"]] = " ".join(str(x.get("message", "")) for x in a)
-        verdict, detail = classify(run, jobs, anns, p.get("mergeable"))
+        verdict, detail = classify(run, jobs, anns, p.get("mergeable"), p.get("isDraft", False))
         out.append({"pr": p["number"], "branch": p["headRefName"], "draft": p["isDraft"],
                     "title": p["title"], "verdict": verdict, "detail": detail,
                     "run": run.get("databaseId") if run else None})
