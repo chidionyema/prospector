@@ -84,3 +84,76 @@ def test_present_check_is_skipped_on_a_github_hosted_runner(monkeypatch, capsys)
     assert mod.hosted_runner() is True
     monkeypatch.setenv("RUNNER_ENVIRONMENT", "self-hosted")
     assert mod.hosted_runner() is False
+
+
+def _run(*args: str, path: str | None = None) -> subprocess.CompletedProcess:
+    """Run the guard as a subprocess with a chosen PATH.
+
+    Emptying PATH is how "the fleet is running an older image" is reproduced without a fleet:
+    every declared binary becomes un-findable, which is exactly the state the guard must
+    classify as an operator action rather than a code defect.
+    """
+    env = {"RUNNER_ENVIRONMENT": "self-hosted"}
+    if path is not None:
+        env["PATH"] = path
+    return subprocess.run(
+        [sys.executable, str(SCRIPT), *args],
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+
+def test_a_stale_fleet_does_not_wall_the_pull_request_gate():
+    """The first version of this guard failed the pull request that fixed the image.
+
+    A binary that is DECLARED in deploy/runner/Dockerfile but absent from PATH means the
+    running machines predate the Dockerfile. No pull request can change that; only an operator
+    running `deploy/runners.sh up` can. If the gate failed here it would block every pull
+    request in the repository, including the deploy that clears it, so it must not.
+    """
+    result = _run(path="")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "::warning title=Runner fleet is stale::" in result.stdout
+    assert "ssh: not on PATH" in result.stdout
+    assert "deploy/runners.sh up" in result.stdout
+    assert "PASSING ANYWAY" in result.stdout
+
+
+def test_strict_makes_a_stale_fleet_fatal():
+    """--strict is what the fleet probe runs, where an operator reads the answer."""
+    result = _run("--strict", path="")
+    assert result.returncode == 1
+    assert "THE RUNNING FLEET IS OLDER THAN THE RUNNER DOCKERFILE" in result.stderr
+    assert "ssh: not on PATH" in result.stderr
+
+
+def test_an_undeclared_package_is_fatal_even_without_strict(monkeypatch, capsys):
+    """The one failure a pull request CAN fix stays fatal in the gate.
+
+    Proved by injecting a row for a package no Dockerfile line installs, which is the same
+    defect as deleting a package from the image. PATH is left alone, so a non-zero exit here
+    can only have come from the declaration lane.
+    """
+    mod = _load()
+    mod.REQUIRED["notarealbinary"] = ("definitely-not-a-real-package", "injected by a test")
+    monkeypatch.setattr(sys, "argv", ["ci_runner_tools.py"])
+    monkeypatch.delenv("RUNNER_ENVIRONMENT", raising=False)
+    assert mod.main() == 1
+    captured = capsys.readouterr()
+    assert "definitely-not-a-real-package" in captured.err
+    assert "deploy/runner/Dockerfile" in captured.err
+
+
+def test_the_declaration_lane_runs_on_a_hosted_runner_too(monkeypatch):
+    """An undeclared package must fail on ubuntu-latest as well.
+
+    Otherwise the guard only speaks on our own fleet, and the fleet is exactly what is stale
+    when it matters. RUNNER_ENVIRONMENT is set to github-hosted here, which switches the PATH
+    lane off, and the exit code must still be 1.
+    """
+    mod = _load()
+    mod.REQUIRED["notarealbinary"] = ("definitely-not-a-real-package", "injected by a test")
+    monkeypatch.setattr(sys, "argv", ["ci_runner_tools.py"])
+    monkeypatch.setenv("RUNNER_ENVIRONMENT", "github-hosted")
+    assert mod.main() == 1

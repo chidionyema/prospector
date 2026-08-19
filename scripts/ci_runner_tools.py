@@ -31,6 +31,26 @@ TWO CHECKS, because either alone has a hole:
    rather than quietly passing: ubuntu-latest has all of these, so a pass there proves
    nothing about the image we ship.
 
+TWO KINDS OF FAILURE, AND ONLY ONE OF THEM MAY BLOCK A PULL REQUEST. This distinction was
+not in the first version of this script, and the first thing that version did was fail the
+very pull request that added the missing package:
+
+  * UNDECLARED — the Dockerfile does not install the package. A pull request can fix that by
+    editing one line, so this is FATAL. Exit 1, every time, on every runner.
+  * ABSENT — the Dockerfile declares it but the binary is not on PATH. That means the fleet is
+    running an image built before the change. NO pull request can fix it; only an operator
+    running ``deploy/runners.sh up`` can. Failing here walls every pull request in the
+    repository INCLUDING the deploy that would clear it, so by default it is reported as a
+    GitHub warning annotation and the step passes. ``--strict`` makes it fatal, which is for
+    the fleet probe the operator reads, not for the pull-request gate.
+
+That is not "a warning fence is not a fence". The gate's job is to stop the CODE defect, and
+the code defect is UNDECLARED. ABSENT is an operator action, so its fence belongs where the
+operator looks: ``scripts/ci_fleet_probe.py`` calls this script with ``--strict`` and the ops
+console surfaces the result. That probe arrives with pull request #417; until it merges, the
+warning annotation on the job summary is the only signal, which is why the annotation names
+the exact command rather than describing the problem.
+
 Standard library only, no virtualenv, no network — it runs in the ``guard`` job beside
 ``ci_capacity.py``.
 """
@@ -64,6 +84,13 @@ REQUIRED: dict[str, tuple[str, str]] = {
     "gpg": ("gnupg", "apt key handling in setup-* actions"),
     "xz": ("xz-utils", "several release tarballs are .tar.xz"),
 }
+
+
+FIX_DECLARE = "add the package to the apt-get install list in deploy/runner/Dockerfile."
+FIX_REBUILD = (
+    "rebuild and restart the fleet with `deploy/runners.sh up`. Check for in-flight CI runs "
+    "first — that deploy uses `--strategy immediate` and will kill them."
+)
 
 
 def declared_packages(dockerfile: Path) -> set[str]:
@@ -102,16 +129,26 @@ def main() -> int:
         action="store_true",
         help="grade PATH even on a GitHub-hosted runner (for testing this script)",
     )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help=(
+            "treat a declared-but-absent binary as fatal. For the fleet probe an operator "
+            "reads, NOT for the pull-request gate: a stale image is not a code defect and no "
+            "pull request can fix it."
+        ),
+    )
     args = parser.parse_args()
 
     declared = declared_packages(DOCKERFILE)
-    failures: list[str] = []
+    undeclared: list[str] = []
+    absent: list[str] = []
 
     print(f"DECLARED — {DOCKERFILE.relative_to(REPO_ROOT)} installs {len(declared)} packages")
     for binary, (package, why) in sorted(REQUIRED.items()):
         if package in declared:
             continue
-        failures.append(
+        undeclared.append(
             f"  {binary}: needs apt package `{package}`, which the runner image does not "
             f"install. Why it is needed: {why}."
         )
@@ -121,7 +158,7 @@ def main() -> int:
         print("PRESENT — grading PATH on this runner")
         for binary, (package, why) in sorted(REQUIRED.items()):
             if shutil.which(binary) is None:
-                failures.append(
+                absent.append(
                     f"  {binary}: not on PATH (apt package `{package}`). Why it is needed: "
                     f"{why}. A step that calls it will exit 127."
                 )
@@ -132,17 +169,40 @@ def main() -> int:
             "GitHub's image, not ours. Passing would prove nothing."
         )
 
-    if failures:
-        print("\nRUNNER IMAGE IS MISSING TOOLS OUR WORKFLOWS RUN:", file=sys.stderr)
-        for line in failures:
+    if undeclared:
+        print("\nRUNNER IMAGE DOES NOT DECLARE TOOLS OUR WORKFLOWS RUN:", file=sys.stderr)
+        for line in undeclared:
             print(line, file=sys.stderr)
-        print(
-            "\nFix: add the package to the apt-get install list in "
-            "deploy/runner/Dockerfile, then rebuild and restart the fleet with "
-            "`deploy/runners.sh up`.",
-            file=sys.stderr,
+        print(f"\nFix: {FIX_DECLARE}", file=sys.stderr)
+
+    if absent:
+        # Only the packages the Dockerfile DOES declare reach here — an undeclared one is
+        # already fatal above. So this is always the same diagnosis: the fleet predates the
+        # Dockerfile. Say that, name the one command that clears it, and do not block.
+        stream = sys.stderr if args.strict else sys.stdout
+        headline = (
+            "THE RUNNING FLEET IS OLDER THAN THE RUNNER DOCKERFILE. These tools are declared "
+            "in the image we build but are not on PATH on the machine this job ran on:"
         )
+        if not args.strict:
+            # A GitHub warning annotation surfaces on the job summary and in the PR's file
+            # view, so it is visible without reading the log.
+            print(f"::warning title=Runner fleet is stale::{headline}", file=stream)
+        else:
+            print(f"\n{headline}", file=stream)
+        for line in absent:
+            print(line, file=stream)
+        print(f"\nFix (operator, not a pull request): {FIX_REBUILD}", file=stream)
+
+    if undeclared or (absent and args.strict):
         return 1
+    if absent:
+        print(
+            "\nPASSING ANYWAY — a stale fleet is an operator action, not a code defect. "
+            "Blocking here would wall every pull request including the one that rebuilds it. "
+            "Run with --strict where an operator reads the result."
+        )
+        return 0
 
     print(f"\nOK — all {len(REQUIRED)} required tools are accounted for.")
     return 0
