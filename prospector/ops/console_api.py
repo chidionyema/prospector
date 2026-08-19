@@ -1191,6 +1191,64 @@ def _read_engine_location(cfg, args: dict) -> dict:
     return json.loads(_failover(*argv, timeout=180))
 
 
+#: The sides the drain ledger can be read from. "active" resolves through the same marker the
+#: failover watchdog uses, so the console and the watchdog can never disagree about which box is
+#: production.
+DRAIN_SIDES = ("active", "fly", "laptop")
+
+
+def _drain_ledger(cfg, *, side: str = "active", reset: bool = False) -> dict:
+    """The drain's give-up ledger, read from the side the engine is ACTUALLY running on.
+
+    This goes through `scripts/engine_failover.py drain` instead of reading the local store, and
+    that indirection is the whole point of the view. Production moved to Fly on 2026-08-17, so
+    `config.store_root()` in this process resolves to the LAPTOP store, which is idle. On
+    2026-08-19 that store held an empty ledger while the Fly engine carried 253 rows, 251 of them
+    permanently retired, and said so in its log once a minute
+    (`docs/incidents/INC-2026-08-19-drain-retired-on-our-own-outages.json`). A console pointed at
+    the wrong box does not show less than the truth. It shows a confident zero, which is worse.
+    """
+    if side not in DRAIN_SIDES:
+        raise ValueError(f"unknown side {side!r}; expected one of {', '.join(DRAIN_SIDES)}")
+    argv = ["drain", "--side", side, "--json"]
+    if reset:
+        argv.append("--reset")
+    data = json.loads(_failover(*argv, timeout=180))
+
+    warnings: list[str] = []
+    if data.get("error"):
+        warnings.append(f"Could not read the {data.get('side')} ledger: {data['error']}")
+    if data.get("side") != data.get("active_side"):
+        warnings.append(
+            f"These numbers come from the {data.get('side')} side, but the engine is running on "
+            f"{data.get('active_side')}. Nothing here describes production.")
+    if not data.get("max_attempts"):
+        warnings.append(
+            "schedule.max_resume_attempts is 0, so the give-up cap is off and no row can be "
+            "retired. `retired` stays empty while that holds, however stuck the queue is.")
+    if data.get("retired_count"):
+        warnings.append(
+            f"{data['retired_count']} candidate(s) have spent their whole re-vet budget and have "
+            "left the drainable population for good. The drain will log them as excluded and "
+            "never touch them again. Read the incident record before assuming they are genuinely "
+            "unrulable — until PR #356 an outage spent that budget like a real attempt.")
+    data["warnings"] = warnings
+    data["incident"] = "docs/incidents/INC-2026-08-19-drain-retired-on-our-own-outages.json"
+    return data
+
+
+def _read_drain(cfg, args: dict) -> dict:
+    """How much work the drain has permanently given up on, and on which box.
+
+    A row leaves the drainable population after `schedule.max_resume_attempts` completed re-vets
+    that did not resolve it. Until PR #356 an infrastructure DEFER — a MiniMax quota outage, a
+    retrieval failure — spent that budget like a real attempt, so 251 candidates were retired for
+    our own downtime. The counter is blind to infrastructure defers now, but nothing hands back a
+    budget already spent. That is what `drain.reset` is for.
+    """
+    return _drain_ledger(cfg, side=str(args.get("side") or "active"))
+
+
 def _act_engine_arm(cfg, payload: dict, preview: bool) -> dict:
     if preview:
         st = json.loads(_failover("status", "--json"))
@@ -1287,6 +1345,7 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
     "content_rules": _read_content_rules,
     "status": _read_status,
     "queue": _read_queue,
+    "drain": _read_drain,
     "providers": _read_providers,
     "routing": _read_routing,
     "spend": _read_spend,
@@ -1755,6 +1814,76 @@ def _act_pause_disarm(cfg, payload: dict, preview: bool) -> dict:
 
     return disarm(cfg, scope, actor=str(payload.get("actor") or "console"),
                   nonce=str(payload.get("nonce") or ""))
+
+
+def _act_drain_reset(cfg, payload: dict, preview: bool) -> dict:
+    """Hand every retired row its re-vet budget back by clearing the attempt ledger.
+
+    `drain_state.load` returns `{}` for a missing file and calls that "a real value"
+    (`prospector/drain_state.py:130-131`), so deleting the ledger IS the reset. There is no
+    separate un-retire path to write, and writing one would be a second definition of the same
+    fact.
+
+    It runs against the ACTIVE side, not this laptop. Resetting the laptop ledger while Fly's
+    stayed full would be the same lie the read view exists to remove.
+
+    The ledger is copied beside itself first. The counts are the only record of which rows had
+    been worked and how often, and losing them costs re-vet money rather than correctness.
+
+    This is deliberately not scoped to "only the retired rows". A row sitting at 4 of 5 got there
+    the same way the retired ones did, and leaving it one outage short of retirement would keep
+    exactly the bug this reset undoes.
+    """
+    side = str(payload.get("side") or "active").strip()
+    if side not in DRAIN_SIDES:
+        raise ValueError(f"unknown side {side!r}; expected one of {', '.join(DRAIN_SIDES)}")
+
+    before = _drain_ledger(cfg, side=side)
+    if before.get("error"):
+        raise RuntimeError(f"cannot read the {before.get('side')} ledger, so it will not be "
+                           f"cleared: {before['error']}")
+
+    if preview:
+        rows, retired = before.get("rows", 0), before.get("retired_count", 0)
+        return {
+            "action": "drain.reset",
+            "side": before.get("side"),
+            "active_side": before.get("active_side"),
+            "ledger_path": before.get("ledger_path"),
+            "store_dir": before.get("store_dir"),
+            "rows": rows,
+            "retired_count": retired,
+            "histogram": before.get("histogram"),
+            "max_attempts": before.get("max_attempts"),
+            "warnings": before.get("warnings"),
+            "effect": (
+                f"Deletes {before.get('ledger_path')} on {before.get('side')}. {retired} retired "
+                f"row(s) become drainable again and all {rows} row(s) go back to zero attempts. "
+                "The next tick starts working them, which costs re-vet money."
+                if rows else
+                f"Nothing to do: {before.get('ledger_path')} holds no rows on "
+                f"{before.get('side')}."),
+            "cost": ("Roughly one re-vet per released row. MiniMax was measured at about "
+                     "$0.0004 per check on 2026-08-19."),
+            "backup": "<ledger>.bak-<UTC timestamp>, beside the ledger",
+            "reversible": "Yes — copy the backup back over the ledger.",
+        }
+
+    after = _drain_ledger(cfg, side=side, reset=True)
+    if after.get("error"):
+        raise RuntimeError(f"the reset failed on {after.get('side')}: {after['error']}")
+    return {
+        "action": "drain.reset",
+        "side": after.get("side"),
+        "ledger_path": after.get("ledger_path"),
+        "removed": after.get("removed"),
+        "rows_released": before.get("rows", 0),
+        "retired_released": before.get("retired_count", 0),
+        "backup": after.get("backup"),
+        "note": ("every row now reads as untried; the next tick picks them up"
+                 if after.get("removed") else
+                 "there was no ledger on disk, so every row already read as untried"),
+    }
 
 
 def _act_routing_set(cfg, payload: dict, preview: bool) -> dict:
@@ -2548,6 +2677,7 @@ ACTIONS: dict[str, Callable[[Any, dict, bool], dict]] = {
     "pause.arm": _act_pause_arm,
     "pause.disarm": _act_pause_disarm,
     "routing.set_moat_primary": _act_routing_set,
+    "drain.reset": _act_drain_reset,
     "config.set": _act_config_set,
     "config.restore": _act_config_restore,
     "catalogue.set_listing": _act_catalogue_listing,

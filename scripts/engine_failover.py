@@ -562,6 +562,135 @@ def cmd_receipts(args) -> int:
     return 0
 
 
+# --------------------------------------------------------------------------- drain ledger
+
+#: Where the drain's give-up counter lives, relative to a store root. One string, because the
+#: laptop reads it with pathlib and Fly reads it over ssh, and a second copy of this path is how
+#: the two silently start describing different files.
+DRAIN_LEDGER_REL = "scheduler/drain_attempts.json"
+FLY_STORE = "/data/store"
+
+
+def _drain_grade(raw: str, cap: int) -> dict:
+    """Turn a ledger's JSON text into counts. A missing or torn file is an EMPTY ledger, never an
+    error, because that is exactly how `prospector.drain_state.load` reads it (drain_state.py:130)
+    and the console must not disagree with the engine about what a row's budget is."""
+    try:
+        ledger = json.loads(raw) if raw.strip() else {}
+    except json.JSONDecodeError:
+        ledger = {}
+    if not isinstance(ledger, dict):
+        ledger = {}
+    histogram: dict[str, int] = {}
+    for n in ledger.values():
+        histogram[str(n)] = histogram.get(str(n), 0) + 1
+    retired = sorted(cid for cid, n in ledger.items()
+                     if cap and isinstance(n, int) and n >= cap)
+    return {"rows": len(ledger), "histogram": histogram,
+            "retired": retired, "retired_count": len(retired)}
+
+
+def _drain_cap() -> int:
+    """The give-up cap, from config. 5 when config cannot be read — the shipped default, and the
+    same fallback `drain_state.DEFAULT_MAX_ATTEMPTS` carries."""
+    try:
+        sys.path.insert(0, str(REPO))
+        from prospector import drain_state
+        from prospector.config import load_config
+        return drain_state.max_attempts(load_config())
+    except Exception:  # noqa: BLE001 — this script must run on a box with no venv
+        return 5
+
+
+def drain_ledger(side: str, *, reset: bool = False) -> dict:
+    """Read (or clear) the drain attempt ledger on ONE named side.
+
+    This lives here rather than in the console because the console is not the only caller that
+    needs it, and because the console reads the LAPTOP store while the engine has been on Fly
+    since 2026-08-17. A drain panel that quietly reported the laptop's empty ledger while Fly
+    carried 251 retired rows would be a confident lie, which is worse than no panel.
+    """
+    cap = _drain_cap()
+    out: dict = {"side": side, "max_attempts": cap, "ok": False, "error": None,
+                 "ledger_path": None, "removed": False, "backup": None}
+
+    if side == "laptop":
+        path = LAPTOP_STORE / DRAIN_LEDGER_REL
+        out["store_dir"] = str(LAPTOP_STORE)
+        out["ledger_path"] = str(path)
+        try:
+            raw = path.read_text(encoding="utf-8")
+        except OSError:
+            raw = ""
+        out.update(_drain_grade(raw, cap))
+        out["ledger_exists"] = path.exists()
+        out["ok"] = True
+        if reset and path.exists():
+            backup = path.with_name(path.name + ".bak-" + time.strftime("%Y%m%dT%H%M%SZ",
+                                                                       time.gmtime()))
+            backup.write_bytes(path.read_bytes())
+            path.unlink()
+            out["removed"] = True
+            out["backup"] = str(backup)
+        return out
+
+    if side != "fly":
+        out["error"] = f"unknown side {side!r}; expected fly or laptop"
+        return out
+
+    remote = f"{FLY_STORE}/{DRAIN_LEDGER_REL}"
+    out["store_dir"] = FLY_STORE
+    out["ledger_path"] = remote
+    if not shutil.which("fly"):
+        out["error"] = "fly CLI not installed on this machine"
+        return out
+    # `cat || true` so a missing ledger comes back as empty rather than as a failed command:
+    # absent means "nothing has been tried", which is a real answer, not an outage.
+    rc, so, se = sh(["fly", "ssh", "console", "-a", FLY_APP, "-C",
+                     f"/bin/sh -lc 'cat {remote} 2>/dev/null || true'"], timeout=90)
+    if rc != 0:
+        out["error"] = (se or so).strip()[:200] or f"fly ssh exited {rc}"
+        return out
+    body = so[so.index("{"):so.rindex("}") + 1] if "{" in so and "}" in so else ""
+    out.update(_drain_grade(body, cap))
+    out["ledger_exists"] = bool(body)
+    out["ok"] = True
+
+    if reset and body:
+        stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+        rc, so2, se2 = sh(["fly", "ssh", "console", "-a", FLY_APP, "-C",
+                           f"/bin/sh -lc 'cp {remote} {remote}.bak-{stamp} && rm -f {remote} "
+                           f"&& echo RESET_OK'"], timeout=90)
+        if rc != 0 or "RESET_OK" not in so2:
+            out["error"] = (se2 or so2).strip()[:200] or f"reset exited {rc}"
+            return out
+        out["removed"] = True
+        out["backup"] = f"{remote}.bak-{stamp}"
+    return out
+
+
+def cmd_drain(args) -> int:
+    side = args.side if args.side != "active" else active_side()
+    if side not in ("fly", "laptop"):
+        side = "laptop"
+    data = drain_ledger(side, reset=bool(args.reset))
+    data["active_side"] = active_side()
+    data["asked_for"] = args.side
+    if args.reset:
+        event("drain_reset", side=side, removed=data.get("removed"),
+              rows=data.get("rows"), retired=data.get("retired_count"))
+    if args.json:
+        print(json.dumps(data, indent=2))
+    else:
+        print(f"{side}: {data.get('rows')} row(s), {data.get('retired_count')} retired "
+              f"(cap {data['max_attempts']}) at {data.get('ledger_path')}")
+        if data["error"]:
+            print(f"  error: {data['error']}")
+        if data["removed"]:
+            print(f"  cleared; backup {data['backup']}")
+    return 0 if data["ok"] else 1
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -585,6 +714,13 @@ def main() -> int:
 
     s = sub.add_parser("disarm", help="turn automatic failover off")
     s.set_defaults(fn=cmd_disarm)
+
+    s = sub.add_parser("drain", help="the drain's give-up ledger on the ACTIVE side")
+    s.add_argument("--side", default="active", choices=["active", "fly", "laptop"])
+    s.add_argument("--reset", action="store_true",
+                   help="clear it, handing every retired row its budget back (keeps a backup)")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_drain)
 
     s = sub.add_parser("switch", help="move the engine to the other side, deliberately")
     s.add_argument("--to", required=True, choices=["fly", "laptop", "sshdocker"])

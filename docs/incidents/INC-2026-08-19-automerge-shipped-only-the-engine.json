@@ -1,0 +1,39 @@
+{
+  "id": "INC-2026-08-19-automerge-shipped-only-the-engine",
+  "opened": "2026-08-19",
+  "title": "Auto-merge took over merging and quietly stopped deploying the API and the storefront",
+  "severity": "high",
+  "detected_by": "founder",
+  "first_order": {
+    "what_broke": "Pull requests that changed Store.Api or Store.Web went green, were squash-merged onto main by .github/workflows/automerge.yml, and were never deployed. No workflow failed and no check went red. The only symptom was a deploy run that did not happen, and nothing watches for an absent run.",
+    "receipt": "gh run list --workflow deploy-api.yml --limit 5 -> newest run 2026-08-18T05:01:55Z, event push. Merged after it and touching its watched paths: #358 at 2026-08-18T23:25:03Z and #342 at 2026-08-18T23:39:58Z. gh run list --workflow deploy-web.yml --limit 5 -> newest PUSH run 2026-08-18T13:33:57Z; merged after it and touching Store.Web: #349 at 2026-08-18T22:46:52Z, #363 at 2026-08-19T05:58:39Z, #365 at 2026-08-19T06:18:59Z. deploy-engine.yml over the same window shows five workflow_dispatch runs, because that is the one workflow automerge dispatched.",
+    "fixed_by": "automerge.yml now carries every deploy workflow with its own paths and dispatch inputs, and dispatches each one whose paths the merge touched."
+  },
+  "cause_chain": [
+    "automerge.yml held a single hand-written regex named DEPLOY that covered deploy-engine.yml's paths only, and dispatched deploy-engine.yml alone.",
+    "A push made with the default GITHUB_TOKEN starts no workflow runs, so the merge commit automerge creates could not trigger deploy-api.yml or deploy-web.yml on its own. Explicit dispatch was the only route, and there was none.",
+    "The regex was a hand-copy of another file's on.push.paths. Its own comment said 'Kept in step with that file', which is an instruction to a person, and the two files were never compared by anything.",
+    "The failure mode of a missing dispatch is silence. CI is green, the merge is green, the PR closes, and the absent deploy run leaves no artifact. Every alert in this estate fires on something that ran and failed.",
+    "CLASS: a list that must mirror another file, kept in step by a comment, will drift, and when the drift's symptom is an action that does not happen, nothing will notice."
+  ],
+  "second_order": {
+    "sweep_command": "ls .github/workflows/deploy-*.yml && rg -n 'createWorkflowDispatch|Kept in step|must match|keep in step' .github/workflows/",
+    "siblings_found": 1,
+    "siblings_fixed": 1,
+    "note": "The sibling is inside the same file and the same class: automerge also dispatches ci.yml on main after a merge, and that one was correct because there is only one CI workflow to name. The three deploy workflows were the drifting set and all three are now derived from one list that a test compares against the workflows themselves. No other file in .github/workflows/ copies another file's path filter. The wider estate has one more instance of the shape - the console's TypeScript view and action allowlists mirror the Python READS/ACTIONS registries - and that pair was already fenced by store_platform/src/Ops.Console/tests/pages.test.ts, which is the same remedy applied earlier."
+  },
+  "third_order": {
+    "tier": "test",
+    "mechanism": "tests/unit/test_every_deploy_ships_on_green_main.py reads automerge.yml's DEPLOYS list and every .github/workflows/deploy-*.yml, and fails when a deploy workflow is absent from the list, when the path lists disagree in either direction, when a deploy workflow has no workflow_dispatch trigger, when a required dispatch input is unsupplied, or when automerge stops being gated on a successful CI run. Mutation-checked: deleting the deploy-api entry turns three of its ten tests red.",
+    "landed_on": "2026-08-19",
+    "why_not_higher": "A refusal would have to run inside GitHub Actions, and the only place to put it is the workflow that is itself the thing being graded. A test in the repository's own suite is the strongest fence available here, and CI is what gates the merge that would introduce the drift."
+  },
+  "grade": {
+    "signature": "a merged change to a deployable component with no deploy run after it",
+    "before": 5,
+    "after": null,
+    "window_days": 14,
+    "verdict": "unproven"
+  },
+  "state": "open"
+}
