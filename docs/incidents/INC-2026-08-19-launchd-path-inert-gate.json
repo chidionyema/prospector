@@ -1,0 +1,39 @@
+{
+  "id": "INC-2026-08-19-launchd-path-inert-gate",
+  "opened": "2026-08-19",
+  "title": "the idle-learning load gate never deferred, because sysctl is in /usr/sbin and the job's PATH is not",
+  "severity": "high",
+  "detected_by": "founder",
+  "first_order": {
+    "what_broke": "runaway-reaper.err.log has logged `sysctl: command not found` on every run. The same bare `sysctl` call is the load gate in idle-learning-run.sh, and there it failed silently in the dangerous direction: NCPU fell back to 1, so MAX_LOAD became 2, and host_load() returned 0 because sysctl printed nothing. `[ 0 -gt 2 ]` is false, so the gate never deferred at any host load.",
+    "receipt": "MEASURED 2026-08-19 under a launchd-shaped PATH of /usr/bin:/bin — before: `NCPU=1 MAX_LOAD=2 load=` (empty). After pinning /usr/sbin/sysctl: `NCPU=12 MAX_LOAD=24 load=10`. The gate's own comment records why it exists: the box was measured at 1-minute loadavg 317-405 while legitimate estate work ran, and the documented correct response is to DEFER.",
+    "fixed_by": "~/.hermes c2b1cf9"
+  },
+  "cause_chain": [
+    "The scripts call `sysctl` and `lsof` by bare name. Both live in /usr/sbin, which an interactive shell has on PATH and a launchd job does not always have.",
+    "Every call site swallowed the failure: `sysctl -n hw.ncpu 2>/dev/null || echo 1` and `sysctl -n vm.loadavg 2>/dev/null`. The fallbacks were written to keep the script from crashing, and they succeeded — the script kept running with numbers that meant the opposite of the truth.",
+    "A safety gate that fails OPEN reports nothing when it stops working. The load gate produced no error, no alert and no log line; the only trace was `command not found` in a different job's stderr, which is why this survived 410 runs.",
+    "CLASS: a bare tool name plus a swallowed failure turns a guard into a no-op. Same class as the already-recorded launchd-path-hides-local-bin-clis trap, and the same shape as a warning fence that is not a fence."
+  ],
+  "second_order": {
+    "sweep_command": "rg -n '\\b(sysctl|lsof|ioreg|networksetup|system_profiler|pmset|diskutil)\\b' ~/.hermes/scripts/*.sh | rg -v '/usr/sbin/|/usr/bin/'",
+    "siblings_found": 3,
+    "siblings_fixed": 3,
+    "note": "8 call sites across runaway-reaper.sh (1), idle-learning-run.sh (4) and otto-daemon.sh (3). otto-daemon.sh is the same shape on lsof: a missing lsof reads as 'the port is free', so the holder check passes and a second server starts. All pinned to /usr/sbin in the same commit."
+  },
+  "third_order": {
+    "tier": "test",
+    "mechanism": null,
+    "landed_on": null,
+    "note": "The mechanism that kills the class is a test that runs every hermes shell script's tool lookups under a launchd-shaped PATH and fails on any bare name resolving outside /usr/bin and /bin. Not written yet. The stronger tier would be `refuse`: a gate whose inputs are missing must fail CLOSED, not fall back to a number that disables it."
+  },
+  "grade": {
+    "signature": "`command not found` in any hermes job stderr, and a load gate that reports MAX_LOAD=2 on a 12-CPU box",
+    "before": 410,
+    "after": null,
+    "window_days": 14,
+    "verdict": "unproven"
+  },
+  "issue": null,
+  "state": "open"
+}
