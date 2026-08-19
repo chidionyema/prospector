@@ -562,7 +562,19 @@ def _grade_state_probe() -> list[tuple[str, str, str]]:
                      f"{len(blind)} project dir(s) have no .state-probe, so sessions started "
                      f"there open blind: {', '.join(sorted(blind)[:3])}"))
     else:
-        rows.append((OK, "state probe pointers", f"{len(targets)} project dir(s) wired"))
+        # A pointer that names no checkout still briefs the session on the estate, but cannot say
+        # how stale the code and CLAUDE.md in front of it are -- which is the failure that started
+        # this work. Re-running --install matches any new project directory to a checkout on disk.
+        vague = [d.name for d in targets
+                 if "--checkout" not in (d / ".state-probe").read_text(errors="replace")]
+        if vague:
+            rows.append((WARN, "state probe pointers",
+                         f"{len(targets)} wired, but {len(vague)} name no checkout, so those "
+                         f"sessions are not told how far behind their own tree is; re-run "
+                         f"bash ops/state_probe.sh --install"))
+        else:
+            rows.append((OK, "state probe pointers",
+                         f"{len(targets)} project dir(s) wired, each naming its checkout"))
 
     # The probe renders a snapshot. If nothing refreshes that snapshot the probe becomes the
     # stale paragraph it replaced -- correct-looking, months old, no tell from the inside. The

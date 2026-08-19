@@ -59,6 +59,9 @@ Shipped:
 - `scripts/rework_metrics.py` and the `/method` rework card (#373)
 - the probe refreshes its own snapshot past 6h, in the background, under a lock; the audit
   grades the snapshot's age so a refresh that stopped working is visible (#381)
+- the probe names the checkout THIS session is sitting in, how far behind `origin/main` it is,
+  and whether its `CLAUDE.md` differs from main's. Measured today: 61 commits behind, and it
+  does differ (#381)
 
 Open:
 
@@ -67,9 +70,9 @@ Open:
 - `context-guard-hook.py` nudges at 140K resident context and cannot block. 38 of the last 40
   sessions peaked above it, median 165,553. Enforcement would have to change shape, and that is a
   founder decision (see the handoff in `checkpoints/`)
-- both developer checkouts sit ~60 commits behind `origin/main`, so their injected `CLAUDE.md`
-  describes an older estate. Measured today: main's `CLAUDE.md` has replaced the "no hosted
-  service" rule; the stale copies still carry it
+- both developer checkouts sit ~60 commits behind `origin/main`. The probe now says so at the top
+  of every session, but saying so is not fixing it: nothing refreshes those checkouts, and the
+  iCloud one has uncommitted work in it that belongs to another session
 
 ## Adding to this programme
 
