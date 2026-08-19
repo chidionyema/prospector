@@ -1953,6 +1953,20 @@ instance is styled grey, not because the token differs. Changing our link colour
 break every other link on the site. The harness says WHERE to look; the drawing says what it should
 be.
 
+**The next step for the harness: grade only what the stylesheet declares about a component.** Right
+now it compares every property in its list against whatever element matched, and for a selector that
+is a bare utility rather than a component that is meaningless. `mumchimp.css:9` is
+`.num{font-variant-numeric:tabular-nums}` and nothing else, so `.num` sits on a dozen unrelated
+elements. Its 48 hard findings contradict each other in both directions -- `letterSpacing` reads
+"drawing normal / built -0.38" on one page and "drawing -0.38 / built normal" on another, and
+`fontWeight` reads 670 against 400. `.tlink` (76 findings) declares only `color` and `font-weight`
+and has the same problem.
+
+Grading each selector on the properties its own rule declares would cut that noise without losing
+anything the gate has caught: defect 10 was found on `h2.sec`, and `mumchimp.css:14` declares
+`font-weight` there explicitly. Not done in this pass -- it is a second redesign of the comparator
+and wants its own before-and-after measurement.
+
 **Why it is not a CI job.** The built page in CI is built against `https://api.example.com`, so it
 has no catalogue: the shelf, the kill log and the hero counts all render empty. The comparison only
 means anything against the live API. It runs locally, before shipping a storefront change:
