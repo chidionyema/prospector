@@ -147,10 +147,12 @@ body {
   max-width: 100%;
 }
 
-/* Long ids, URLs and YAML paths break rather than widening the page. */
+/* Long ids, URLs and YAML paths break rather than widening the page.
+   `word-break: break-word` used to sit here too. It is deprecated, and it was doing nothing: it
+   is defined as `overflow-wrap: anywhere` plus `word-break: normal`, and the line above already
+   says that. Found by stylelint on its first run. */
 .wrap-any {
   overflow-wrap: anywhere;
-  word-break: break-word;
 }
 
 /* Tap targets. 44px is the iOS minimum; a control below it is a mis-tap on a moving train. */

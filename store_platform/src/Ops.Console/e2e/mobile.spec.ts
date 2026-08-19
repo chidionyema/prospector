@@ -12,27 +12,7 @@
  */
 import { expect, test } from '@playwright/test';
 
-const PASSWORD = 'e2e-password';
-
-const SCREENS = [
-  '/',
-  '/engine',
-  '/config',
-  '/queue',
-  '/runs',
-  '/spend',
-  '/metrics',
-  '/catalogue',
-  '/tools',
-  '/audit',
-];
-
-async function signIn(page: import('@playwright/test').Page) {
-  await page.goto('/login');
-  await page.getByLabel(/password/i).fill(PASSWORD);
-  await page.getByRole('button', { name: /sign in/i }).click();
-  await page.waitForURL('**/');
-}
+import { SCREENS, signIn } from './session';
 
 test.describe('the phone', () => {
   test('the login page fits', async ({ page }) => {
@@ -49,6 +29,10 @@ test.describe('the phone', () => {
   });
 
   test('every screen fits and says when it read', async ({ page }) => {
+    // Ten screens, each waiting on a Python spawn. Measured 2026-08-19: 40.3s alone, and over
+    // the 60s default when the two phone projects run back to back on a cold server. Several
+    // views log `read_slow` at 6-8s on their own. The budget moves; the coverage does not.
+    test.setTimeout(180_000);
     await signIn(page);
 
     for (const path of SCREENS) {

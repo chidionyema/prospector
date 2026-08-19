@@ -19,7 +19,7 @@ import { GROUPS, activeScreen } from '@/lib/nav';
 const PAGES_DIR = fileURLToPath(new URL('../src/pages', import.meta.url));
 
 /** Routes with no nav entry by design: the wrapper, the door, and detail routes reached by link. */
-const NOT_IN_NAV = new Set(['/_app', '/login']);
+const NOT_IN_NAV = new Set(['/_app', '/_document', '/login']);
 
 function routes(dir: string, prefix = ''): string[] {
   const out: string[] = [];

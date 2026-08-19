@@ -263,7 +263,9 @@ export default function Now() {
             {data.providers.tiers.map((t) => (
               <Pill key={t.name} tone={t.state === 'live' ? 'ok' : t.state === 'dead' ? 'bad' : 'warn'}>
                 {t.name}
-                <span className="text-[11px] opacity-70">
+                {/* No `opacity-70` here: it blended ok-strong to 3.65:1 on the tinted
+                    ground, which axe flags and a phone in sunlight proves. */}
+                <span className="text-[11px]">
                   {t.state === 'live' ? 'live' : `${t.state}${t.dead_for_s ? ` ${duration(t.dead_for_s)}` : ''}`}
                 </span>
               </Pill>

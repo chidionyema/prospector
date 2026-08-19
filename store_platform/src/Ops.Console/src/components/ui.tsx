@@ -90,11 +90,14 @@ export function Stat({
         : tone === 'bad'
           ? 'text-bad-strong'
           : 'text-text';
+  // `text-subtle`, not `text-faint`: axe measured --faint at 2.56:1 on white at this size, and a
+  // stat that reads "not recorded" is information, not decoration. --faint is for rules and
+  // placeholders that carry nothing.
   const missing = value === null || value === undefined || value === '';
   return (
     <div className="min-w-0">
       <div className="text-[12px] uppercase tracking-[0.06em] text-subtle">{label}</div>
-      <div className={`font-mono text-[22px] leading-tight ${missing ? 'text-faint' : colour}`}>
+      <div className={`font-mono text-[22px] leading-tight ${missing ? 'text-subtle' : colour}`}>
         {missing ? ABSENT : value}
         {!missing && unit ? <span className="ml-1 text-[13px] text-subtle">{unit}</span> : null}
       </div>
@@ -136,9 +139,19 @@ export function Row({ label, children }: { label: ReactNode; children: ReactNode
   );
 }
 
-/** The only place sideways scrolling is allowed. */
+/**
+ * The only place sideways scrolling is allowed.
+ *
+ * `tabIndex={0}` because a scroll container a keyboard cannot enter is content a keyboard user
+ * cannot reach the right-hand side of. axe rates it `serious`, and it only fires at 390px --
+ * where these actually overflow -- which is the width the console is used at.
+ */
 export function Scroll({ children }: { children: ReactNode }) {
-  return <div className="scroll-x -mx-4 px-4">{children}</div>;
+  return (
+    <div className="scroll-x -mx-4 px-4" tabIndex={0}>
+      {children}
+    </div>
+  );
 }
 
 export function Button({
