@@ -23,6 +23,30 @@ Founder directive, 2026-08-18/19:
 > *"and autonated drills"* · *"full ops visibility and adni"* ·
 > *"and platforn independence as headline"* · *"to guide architecture of this project"*
 
+**The acceptance bar, set 2026-08-19, verbatim.** This is what "done" means for the whole
+programme, and no part of it is currently met:
+
+> *"if i have 30 ninutes to nigrate the wwhole stack, donain, third party deps/ donain , everything
+> running in this nachine because i also have a new laptop, so engine, hernes, jobs, and evertything
+> on fly to another onpren or cloud provider, i should not epericne ny downtine and get this
+> seanlessly done fron ops dashboard and prove and see realtine progress. this is the bar, even
+> things like logs, etc nothing beig used can be nissed out, and this has to be resuable for any
+> project not just prospector etc, should be able to probe and audit any systen and get this done."*
+
+Eight requirements come out of that sentence — 30 minutes; domain and third-party dependencies move
+too; everything on the laptop moves; everything on Fly moves; zero downtime; driven from the ops
+dashboard with real-time provable progress; nothing in use is missed, logs included; reusable for
+any project, able to probe and audit any system. The scoreboard against each of the eight is in
+[`docs/PLATFORM_DIRECTIVES.md`](PLATFORM_DIRECTIVES.md) §1, along with the three measured physical
+blockers: a 3600-second DNS TTL on `www.` and `api.` (an hour of cache, so a 30-minute cutover
+cannot work today), a money datastore that is a SQLite file copy, and secrets with no restore path.
+
+**A second directive, said twice and now binding on how this document is read.** The laptop is an
+emergency backup, not stack infrastructure, and developer workflow is separate from stack
+infrastructure. Only the second column of that split — the things a customer or a scheduled job
+notices when they stop — is in scope here. Editors, worktrees, local test runs and the session
+guards are re-created on a new machine, never migrated.
+
 **Scope is everything, and the founder said so plainly.** DNS, logs, databases, object storage,
 payments, CI, secrets, certificates, the laptop's jobs and the Fly apps. Not the engine, not "the
 important bits". If losing it would cost money or time, it is in this programme.
@@ -39,6 +63,10 @@ engine's own move, step by step. [`docs/ESTATE_MAP.md`](ESTATE_MAP.md) — what 
 [`docs/RUNBOOKS.md`](RUNBOOKS.md) — the manual procedures this programme has to automate away.
 [`docs/PLATFORM_MANIFESTO.md`](PLATFORM_MANIFESTO.md) — the portability targets and the drill
 principle. [`docs/BACKLOG.md`](BACKLOG.md) — the ranked P0 list this programme sits beside.
+[`docs/STACK_AUDIT.md`](STACK_AUDIT.md) — **the estate measured and the free/OSS verdict per
+cluster.** It answers §5 below; read it before proposing any tool.
+[`docs/PLATFORM_DIRECTIVES.md`](PLATFORM_DIRECTIVES.md) — **what the founder has already
+decided, verbatim, with dates.** Read it before planning; it is where the 30-minute bar lives.
 
 ---
 
@@ -454,13 +482,32 @@ gaps outright.
 | Redundancy | `fly scale count`, and the equivalent adapter verb elsewhere | none needed |
 | Scheduling drills | GitHub Actions on the self-hosted runners, like `escape-hatch-drill.yml` | none needed |
 
-**HYPOTHESIS, and the exact check.** The founder asked me to *"think and reseach toling on the web"*.
-I could not: `WebSearch` is refused by the context guard in this session. So the right-hand column
-above is written from knowledge, not from a fetched source, and every entry in it is a **candidate,
-not a decision**. The check that confirms or kills each one, to be run at the top of a fresh session:
-for each candidate, confirm the licence is OSI-approved, confirm it runs on Linux **and** macOS
-without a hosted control plane, and confirm it is maintained — a commit in the last six months. The
-left-hand column needs no such check; it is code in this repo.
+**The check has now been run. It is [`docs/STACK_AUDIT.md`](STACK_AUDIT.md), merged as PR #392.**
+This section used to carry a HYPOTHESIS marker saying `WebSearch` was refused by the context guard,
+so the right-hand column was knowledge rather than a fetched source. That is no longer true, and the
+audit's verdicts outrank the table above wherever the two differ. What it changed:
+
+- **Five of the twelve gaps stop being things we build** — M1, M2, M4, M6 and M10 all have an
+  existing tool that does the job.
+- **Inventory (M1): use Steampipe, do not write one.** The table above says "none needed"; that was
+  wrong once the bar became *"probe and audit any systen"* rather than probe this one.
+- **Scheduling: Dagu**, replacing all 31 launchd jobs (task #95). Temporal, Windmill and Cronicle
+  were considered and rejected, with reasons, in the audit.
+- **Liveness: Healthchecks plus Gatus** (task #95), replacing nine bespoke "what's running" scripts.
+  The audit's finding on this estate: *many bespoke observers, no dead-man's switch.*
+- **Backup: Litestream plus restic** (task #94). Litestream moves from "if RPO 1h is not enough" to
+  required, because the 30-minute bar demands zero downtime and copying a live SQLite file is
+  downtime by definition.
+- **Declarative infra: OpenTofu, not Terraform.** Terraform has been BUSL since August 2023, so
+  choosing it to escape lock-in is a contradiction. Also **not Kamal and not Nomad** — the
+  eleven-verb adapter contract in `deploy/PORTABILITY.md` already works, and Nomad is BUSL too.
+- **Toolchain: mise plus a uv lock.** The audit measured four different Python interpreters in this
+  estate and no version pin anywhere.
+- **Secrets: SOPS + age. DNS: octoDNS. Logs: Vector into Loki or OpenObserve. Chaos: Pumba and
+  Toxiproxy. Supervision: s6-overlay** instead of supervisord.
+
+The licence, portability and maintenance check the old marker described was applied to each of
+those. The left-hand column still needs no check; it is code in this repo.
 
 **What I will not propose.** A hosted control plane of any kind (Terraform Cloud, a SaaS chaos
 platform, a managed backup service). Each one re-introduces exactly the dependency this programme
