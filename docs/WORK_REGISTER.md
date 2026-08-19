@@ -71,9 +71,10 @@ a real pipeline, no blind spots. Two strands remain.
 A lease matters more than the move. Two live environments with no lease is the failure the
 founder named ("we cant have 2 ennvironents running"), and the move alone does not fix it.
 
-### Two findings, measured 2026-08-19
+### Two findings, and what was done about them — 2026-08-19
 
-**The Fly Hermes coordinator database sits on the image filesystem, and a deploy erases it.**
+**Finding 1: the Fly coordinator database sat on the image filesystem. Any deploy would have
+erased it. FIXED.**
 
 ```
 fly ssh console -a prospector-hermes -C "ls -la /Users/chidionyema/.hermes/coordinator.db"
@@ -82,37 +83,70 @@ fly ssh console -a prospector-hermes -C "ls -la /data/db"
   ls: cannot access '/data/db': No such file or directory
 ```
 
-`deploy/hermes/entrypoint.sh` in the Hermes checkout already contains the fix — create
-`/data/db`, move each database onto the volume, symlink it back. Its own comment records the
-measurement that produced it, taken at 09:40 on 2026-08-18. The machine was last updated at
-08:39 UTC, one minute earlier. **The fix exists in source and has never been deployed.** A
-written fix that was never shipped reads exactly like a shipped one to anyone reading the
-file.
+`deploy/hermes/entrypoint.sh:26-40` already contained the fix, and had never been deployed. A
+written fix that was never shipped reads exactly like a shipped one to anyone reading the file.
 
-The database is real work: `integrity_check ok`, 12 tasks, 125 events, 48 telemetry rows, 25
-in the progress outbox. A copy is held off the machine.
+The repair order is the opposite of the obvious one. The entrypoint only copies a database onto
+the volume when the volume has none (`[ -s "/data/db/$f" ] || cp ...`, line 35), and a fresh
+image has no work in it, so deploying first destroys the database. The volume was seeded first:
 
-Order matters and it is the opposite of the obvious one. Deploying first destroys the
-database, because the entrypoint only copies a database onto the volume when the volume has
-none, and the fresh image has no work in it. Seed the volume, then deploy.
+```
+printf 'put coordinator.db /data/db/coordinator.db\n' | fly ssh sftp shell -a prospector-hermes
+  176128 bytes written
+read back, both ends:  840828d9c99c8dd22cf131db466004cebfec767b   (identical)
+sqlite3 integrity_check -> ok ; tasks=12 ; events=125
+```
 
-**Two coordinators run at once, on databases that cannot be reconciled.**
+Then deployed. Proof it is fixed:
+
+```
+fly ssh console -a prospector-hermes -C "readlink -f /Users/chidionyema/.hermes/coordinator.db"
+  /data/db/coordinator.db
+fly ssh console -a prospector-hermes -C "ls -la /data/db/"
+  coordinator.db  coordinator.db-shm  coordinator.db-wal   <- the coordinator is writing there
+```
+
+**Finding 2: two coordinators ran at once, on databases that cannot be reconciled. FIXED, and
+fenced.**
 
 ```
 FLY   supervisorctl status -> cockpit, coordinator, otto-server, progress, rsi,
-                              submodule-backup RUNNING; gateway STOPPED
+                              submodule-backup RUNNING
 MAC   launchctl list       -> ai.hermes.coordinator, ai.hermes.otto-server,
                               ai.hermes.gateway all with live pids
 ```
 
-The double-answer fence in `entrypoint.sh` covers the **gateway only**, through
-`HERMES_GATEWAY_AUTOSTART=0`. That fence is correct and it is doing its job: one Telegram
-long-poller, held back deliberately. Nothing fences the coordinator. The two coordinators
-hold separate databases on separate machines, so "keep them in sync" is not available as an
-option — there is nothing to sync, there are two estates. Only a lease closes this, which is
-strand 4.
+The Mac side is booted out and disabled, which survives a reboot:
 
----
+```
+launchctl bootout  gui/501/<label>
+launchctl disable  gui/501/<label>
+```
+applied to coordinator, otto-server, cockpit, rsi, progress, submodule-backup, watchdog,
+selfcheck and gateway. Watchdog and selfcheck went too, because they exist to resurrect the
+others. Still loaded on the Mac and correct to leave: `keepawake`, `idle-engine`,
+`runaway-reaper`.
+
+**Turning it off is not a fence, so a fence was added.** `scripts/check_single_environment.sh`
+in the Hermes repo fails when any daemon Fly's supervisord runs is also loaded on this Mac.
+`verify_estate.sh` calls it as a `SOLO` section and a non-zero exit fails the whole probe. The
+primary is declared in `config/primary_environment`, so failing over to the laptop is a
+one-line edit rather than a code change.
+`scripts/test_verify_estate_single_environment.sh` proves the fence can fail: it stubs
+`launchctl` on `PATH`, so it needs no real daemon. `GATE: PASS`, 4 checks.
+
+**A third finding fell out of the second: `HERMES_GATEWAY_AUTOSTART` was decorative.**
+`entrypoint.sh:101-105` printed which state the flag was in, while `supervisord.conf:45` said
+`autostart=false` unconditionally. Setting the flag to 1 in `fly.toml` did nothing, and the
+gateway could only ever be started by hand. So "the gateway has its own fence" was true on
+paper and false in the container. `supervisord.conf` now reads
+`autostart=%(ENV_HERMES_GATEWAY_AUTOSTART)s`, and the flag is 1: the single Telegram
+long-poller runs on Fly, next to the coordinator database that actually has the data. The Mac
+gateway is stopped and disabled. Before this it was answering from a database nothing writes
+to any more, which is worse than no door at all.
+
+What is left on this strand is the leader lease (row 4 above). Booting the Mac out settles
+today; a lease is what makes the primary a fact both machines agree on.
 
 ## 5. Blocked — needs the founder
 
