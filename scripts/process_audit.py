@@ -58,6 +58,10 @@ OWNED_PREFIXES = (
 
 OK, WARN, BAD = "ok", "warn", "bad"
 
+#: The Fly app that hosts the self-hosted CI runners. The three mumchimp-mac
+#: runners are OFF by founder decision, so this app IS the CI capacity.
+CI_FLY_APP = "prospector-ci"
+
 # Production is Fly, not this Mac. `deploy/engine/fly.toml` publishes one port and the image runs
 # the scheduler, consumer, watchdog and both backups under supervisord. Every local launchd job
 # below was doing that work before 2026-08-18 and is now a duplicate of it.
@@ -509,6 +513,7 @@ def grade_enforcement() -> list[tuple[str, str, str]]:
     rows.extend(_grade_agent_memory())
     rows.extend(_grade_instruction_checkouts())
     rows.extend(_grade_scheduled_workflows())
+    rows.extend(_grade_ci_capacity())
     return rows
 
 
@@ -943,6 +948,70 @@ def _scheduled_workflows() -> list[tuple[str, str, str]]:
         out.append(((name.group(1).strip().strip("\"\'") if name else path.stem),
                     path.name, (cron.group(1).strip() if cron else "")))
     return out
+
+
+def _grade_ci_capacity() -> list[tuple[str, str, str]]:
+    """Does the CI runner capacity we PAY for match the capacity GitHub can SEE?
+
+    A self-hosted runner fails in a way no dashboard shows: the machine boots, the agent logs
+    "Listening for Jobs", and GitHub simply does not have it registered. The machine looks
+    healthy from the inside and is dark from the outside, so the only symptom is a queue.
+
+    Measured 2026-08-19 10:50Z: `prospector-ci` had 3 machines `started` and 2 runners
+    registered. Twelve runs were queued behind the two while the third idled. Restarting the
+    machine re-registered it. Nothing compared those two numbers before this row existed.
+
+    Grades what it got. No `flyctl`, no `gh`, no network -- WARN, never a false OK.
+    """
+    rows: list[tuple[str, str, str]] = []
+
+    code, out = sh(["gh", "api", "repos/chidionyema/prospector/actions/runners",
+                    "-q", '.runners[] | select(.status=="online") | .name'], timeout=45)
+    if code != 0:
+        return [(WARN, "ci runner capacity",
+                 f"`gh api actions/runners` failed, so capacity is UNKNOWN: {out.strip()[:100]}")]
+    online = {n.strip() for n in out.splitlines() if n.strip()}
+
+    code, out = sh(["flyctl", "machines", "list", "-a", CI_FLY_APP, "--json"], timeout=60)
+    if code != 0:
+        rows.append((WARN, "ci runner capacity",
+                     f"`flyctl machines list -a {CI_FLY_APP}` failed, so the Fly half of "
+                     f"capacity is UNKNOWN: {out.strip()[:100]}"))
+    else:
+        try:
+            machines = json.loads(out)
+        except ValueError:
+            machines = []
+        started = [m for m in machines if (m.get("state") or "") == "started"]
+        # The runner agent names itself `runner-<machine id>`, which is what makes the two
+        # lists comparable at all.
+        dark = [m for m in started
+                if f"runner-{m.get('id')}" not in online]
+        if dark:
+            ids = ", ".join(str(m.get("id")) for m in dark)
+            rows.append((BAD, "ci runner capacity",
+                         f"{len(dark)} of {len(started)} {CI_FLY_APP} machine(s) are started but "
+                         f"NOT registered as runners ({ids}). That capacity is paid for and "
+                         f"dark; the machine logs 'Listening for Jobs' and never gets one. "
+                         f"Fix: flyctl machine restart {dark[0].get('id')} -a {CI_FLY_APP}"))
+        else:
+            rows.append((OK, "ci runner capacity",
+                         f"{len(started)} {CI_FLY_APP} machine(s) started, all registered"))
+
+    # Queue depth is the symptom this row exists to explain, so report it next to the cause.
+    code, out = sh(["gh", "run", "list", "--limit", "100", "--json", "status"], timeout=45)
+    if code == 0:
+        try:
+            runs = json.loads(out)
+        except ValueError:
+            runs = []
+        queued = sum(1 for r in runs if r.get("status") == "queued")
+        # Two per online runner is a working queue; beyond that jobs wait longer than they run.
+        limit = max(4, 2 * len(online))
+        grade = BAD if queued > 2 * limit else (WARN if queued > limit else OK)
+        rows.append((grade, "ci queue depth",
+                     f"{queued} run(s) queued against {len(online)} online runner(s)"))
+    return rows
 
 
 def _grade_scheduled_workflows() -> list[tuple[str, str, str]]:
