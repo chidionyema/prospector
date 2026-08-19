@@ -2931,6 +2931,8 @@ TOOLS: list[dict] = [
        cmd=".venv/bin/python -m prospector.run diagnose"),
     _t("scripts/process_audit.py", "Grade every automated job on this estate", False,
        "/processes", cmd=".venv/bin/python scripts/process_audit.py"),
+    _t("scripts/rework_metrics.py", "Rework rate: the guard beside the cost scoreboard",
+       False, "/method", cmd=".venv/bin/python scripts/rework_metrics.py"),
     _t("prospector/run.py", "Operator state and quotas", False, "/engine",
        cmd=".venv/bin/python -m prospector.run operators"),
     _t("prospector/run.py", "Manage ambition lanes", True, "/tools",
