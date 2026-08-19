@@ -279,12 +279,39 @@ def test_an_unreachable_store_raises_rather_than_reporting_an_empty_shelf(monkey
 # --------------------------------------------------------------------------- #
 # The tool inventory
 # --------------------------------------------------------------------------- #
-def test_every_listed_tool_is_on_disk():
+def test_every_listed_tool_the_repo_OWNS_is_on_disk():
     """The table is hand-kept, so it can go stale. `exists` is measured, and this is the check
-    that the map still matches the territory."""
+    that the map still matches the territory.
+
+    SCOPED TO THE REPO ON 2026-08-19, AND THE SCOPE IS THE POINT. This guard used to assert on
+    every row. The catalogue then gained its first row outside the checkout — the Hermes
+    self-check, at `~/.hermes/scripts/hermes_selfcheck.py` — and the guard went red on CI while
+    passing on the laptop, because the laptop has that file and a runner does not. A repo test
+    can only grade what the repo ships. Anything else is a fact about one machine, and asserting
+    it here turns someone else's push red for a file they never touched.
+
+    So the rule, and it is the same rule `tests/test_suite_is_machine_independent.py` exists to
+    enforce: EXISTENCE IS ONLY ASSERTABLE INSIDE THE REPO. An out-of-repo row still gets graded,
+    just on the half the repo controls — that the resolver expanded it to an absolute path
+    instead of silently hanging it off the repo root, which was the actual bug underneath.
+    """
+    root = api._repo_root()
+    owned, foreign = [], []
+    for t in api.TOOLS:
+        resolved = api._tool_on_disk(root, t["path"])
+        (foreign if not str(resolved).startswith(str(root)) else owned).append((t, resolved))
+
     out = api._read_tools(api._cfg(None), {})
-    missing = [t["path"] for t in out["tools"] if not t["exists"]]
-    assert missing == []
+    by_path = {t["path"]: t for t in out["tools"]}
+    missing = [t["path"] for t, _ in owned if not by_path[t["path"]]["exists"]]
+    assert missing == [], "catalogued tools the repo ships but does not have"
+
+    for t, resolved in foreign:
+        assert resolved.is_absolute(), (
+            f"{t['id']}: {t['path']} resolved to {resolved} — an out-of-repo row that is not "
+            "absolute was joined to the repo root, which is the defect this scoping hides "
+            "if the resolver ever regresses"
+        )
 
 
 def test_money_rail_tools_say_in_the_preview_that_undo_cannot_reach_stripe():

@@ -107,11 +107,21 @@ def test_every_module_a_console_button_runs_is_importable_on_disk():
 
 
 def test_every_script_a_console_button_runs_exists():
-    """The same check for the shell-script and plain-file rows, which never reach argparse."""
+    """The same check for the shell-script and plain-file rows, which never reach argparse.
+
+    SCOPED TO THE REPO ON 2026-08-19. A command may name a script this checkout does not ship —
+    `~/.hermes/scripts/hermes_selfcheck.py` is the first — and whether that file is present is a
+    fact about one machine. Grading it here passed on the laptop and turned CI red, for a file
+    no push had touched. EXISTENCE IS ONLY ASSERTABLE INSIDE THE REPO; the console measures the
+    rest at runtime and reports the button unavailable, which is where a machine fact belongs.
+    """
     missing = []
     for tid, cmd in _commands():
         for part in shlex.split(cmd):
-            if part.endswith((".py", ".sh")) and "/" in part and not part.startswith("-"):
-                if not (REPO / part).exists():
-                    missing.append(f"{tid}: `{cmd}` -> no file {part}")
+            if not (part.endswith((".py", ".sh")) and "/" in part and not part.startswith("-")):
+                continue
+            if Path(part).expanduser().is_absolute():
+                continue  # not this checkout's to grade
+            if not (REPO / part).exists():
+                missing.append(f"{tid}: `{cmd}` -> no file {part}")
     assert not missing, "console buttons naming a file that is not here:\n  " + "\n  ".join(missing)
