@@ -1296,6 +1296,7 @@ def _read_method(cfg: Any, args: dict) -> dict:
 _FAILOVER_SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "engine_failover.py"
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _AUDIT_SCRIPT = _REPO_ROOT / "scripts" / "process_audit.py"
+_DEPLOY_SCRIPT = _REPO_ROOT / "scripts" / "deploy_status.py"
 
 
 def _failover(*argv: str, timeout: int = 120) -> str:
@@ -1487,8 +1488,28 @@ def _read_processes(cfg, args: dict) -> dict:
     return json.loads(proc.stdout)
 
 
+def _read_deploys(cfg, args: dict) -> dict:
+    """When each deployable last shipped, and whether anything is stuck on the way out.
+
+    The console had no answer to "is the live site running what is on main". On 2026-08-19 a
+    merge sat undeployed for twelve hours behind a queued run, and the only way to see it was
+    to compare a Fly release to origin/main by hand.
+
+    The exit code is deliberately ignored. `deploy_status.py` exits 1 when something is STALLED
+    and 2 when it could not measure something; both of those are the ANSWER, and treating them
+    as a failed read would blank the panel at the only moment it matters.
+    """
+    proc = subprocess.run(
+        [sys.executable, str(_DEPLOY_SCRIPT), "--json"],
+        cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=300)
+    if not proc.stdout.strip():
+        raise RuntimeError(f"deploy_status.py produced nothing: {proc.stderr[-400:]}")
+    return json.loads(proc.stdout)
+
+
 READS: dict[str, Callable[[Any, dict], Any]] = {
     "processes": _read_processes,
+    "deploys": _read_deploys,
     "engine_location": _read_engine_location,
     "method": _read_method,
     "shelf": _read_shelf,
@@ -3116,6 +3137,13 @@ TOOLS: list[dict] = [
     # itself: the workflow can only see the workflow.
     _t("scripts/ci_capacity.py", "Does CI still fit on this machine alongside the daemons?",
        False, "/engine", cmd="python3 scripts/ci_capacity.py --live", risk="external"),
+    # --- registered 2026-08-19, after a merge sat undeployed for twelve hours ---
+    _t("scripts/deploy_status.py", "Is the live stack running what is on main?", False,
+       "/deploys", cmd=".venv/bin/python scripts/deploy_status.py", risk="external"),
+    # `external` because it starts Fly machines, which costs money and no local undo covers it.
+    _t("scripts/deploy_status.py", "Start stopped CI runners when deploys are queued behind them",
+       True, "/deploys", cmd=".venv/bin/python scripts/deploy_status.py --fix", risk="external",
+       danger="starts Fly machines on prospector-ci; only acts when runs are actually queued"),
     _t("scripts/launchd_plists.py", "Record the current job definitions", True, "/engine",
        cmd="python3 scripts/launchd_plists.py --snapshot",
        danger="overwrites the tracked copies with whatever is live, so run --check first "

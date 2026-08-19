@@ -221,6 +221,37 @@ def grade_fly() -> list[tuple[str, str, str]]:
 
 
 
+def grade_deploys() -> list[tuple[str, str, str]]:
+    """Is the live stack running what is on `main`?
+
+    The runner row above says whether a job COULD run. This says whether the thing it was
+    supposed to ship actually shipped. On 2026-08-19 those two answers came apart: every runner
+    was online and busy, so nothing looked wrong, while a merge to main sat undeployed for
+    twelve hours behind the queue. Nobody could see it, because no check compared the live Fly
+    release to origin/main.
+
+    `scripts/deploy_status.py` owns that comparison. This grades its verdict so it reaches the
+    operator on the audit's own schedule, through the audit's own alert path.
+    """
+    rc, out = sh([sys.executable, str(ROOT / "scripts/deploy_status.py"), "--json"], timeout=300)
+    if not out.strip():
+        return [(WARN, "deploys", f"deploy_status.py said nothing (rc={rc})")]
+    try:
+        report = json.loads(out)
+    except json.JSONDecodeError as exc:
+        return [(WARN, "deploys", f"deploy_status.py returned non-JSON: {exc}")]
+    # UNKNOWN grades BAD on purpose. A probe that could not measure is the shape of the failure
+    # this row exists to catch, and grading it OK would rebuild the blind spot inside the guard.
+    grade_of = {"LIVE": OK, "SHIPPING": OK, "DRIFTED": WARN,
+                "STALLED": BAD, "FAILED": BAD, "UNKNOWN": BAD}
+    rows = [(grade_of.get(d["state"], BAD), f"deploy {d['name']}", f"{d['state']} -- {d['why']}")
+            for d in report.get("deployables", [])]
+    fleet = report.get("runners") or {}
+    if fleet.get("problem"):
+        rows.append((BAD, "deploy queue", fleet["problem"]))
+    return rows
+
+
 def grade_ci_runners() -> list[tuple[str, str, str]]:
     """Ask GitHub which runners can actually take a job.
 
@@ -780,6 +811,7 @@ def main() -> int:
         # Production first, and it is not this Mac. Everything below this line is estate support.
         ("production (Fly)", grade_fly()),
         ("CI runners", grade_ci_runners()),
+        ("deploys", grade_deploys()),
         ("launchd jobs on this Mac", grade_launchd(docs)),
         ("GitHub workflows", grade_workflows(docs)),
         ("enforcement", grade_enforcement()),

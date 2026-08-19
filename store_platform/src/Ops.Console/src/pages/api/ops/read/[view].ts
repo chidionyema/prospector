@@ -47,6 +47,7 @@ export const VIEWS = [
   'disputes',
   'console_log',
   'processes',
+  'deploys',
 ] as const;
 
 /** Arguments each view accepts. Anything else in the query string is dropped, not forwarded. */

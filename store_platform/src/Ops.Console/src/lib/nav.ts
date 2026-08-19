@@ -15,7 +15,13 @@ export type Group = { label: string; screens: Screen[] };
 export const GROUPS: Group[] = [
   {
     label: 'Now',
-    screens: [{ href: '/', label: 'Now', what: 'what needs attention right now' }],
+    // Deploys sits beside Now because "is the thing I merged actually live?" is a
+    // right-now question. It was invisible for twelve hours on 2026-08-19 while every
+    // other screen read green.
+    screens: [
+      { href: '/', label: 'Now', what: 'what needs attention right now' },
+      { href: '/deploys', label: 'Deploys', what: 'what each deployable is running, and how far behind main' },
+    ],
   },
   {
     label: 'Engine',
