@@ -122,3 +122,25 @@ pools:
     # Same fleet, same label, same reason as heavy above.
     label: fly
     jobs: [changes, guard, ci-ok, nextjs, ops-console]
+
+# HOW MANY MACHINES MAY BE RUNNING AT ONCE, AND HOW FEW.
+#
+# Priced 2026-08-19 from https://fly.io/docs/about/pricing/. A `shared-cpu-4x` machine is
+# $8.08/month of CPU; extra RAM is about $5/GB/month, so the 8 GB in deploy/runner/fly.toml is
+# roughly $40 more. Call it ~$48/month per machine left started around the clock, ~$145/month
+# for the fleet of three. A STOPPED machine bills no CPU and no RAM -- only rootfs storage at
+# $0.15 per GB per 30 days.
+#
+# That price shape is why `deploy/runners.sh autoscale` starts and stops machines instead of
+# creating and destroying them, and why the ceiling can be raised without raising the bill: an
+# idle machine in the pool costs pennies, so capacity for a busy afternoon is nearly free and is
+# only paid for while it is actually running jobs.
+#
+# autoscale_min  machines kept started at all times. 1, not 0: a cold start costs a job about a
+#                minute, and the first job of the morning should not pay it. Set 0 to pay
+#                nothing overnight and accept that delay.
+# autoscale_max  the ceiling. Never higher than the machines the pool actually holds --
+#                `deploy/runners.sh up <n>` is what creates them; autoscale only starts and
+#                stops what is already there, and says so when it wants more than exists.
+autoscale_min: 1
+autoscale_max: 3
