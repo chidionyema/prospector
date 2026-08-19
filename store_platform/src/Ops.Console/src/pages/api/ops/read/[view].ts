@@ -39,6 +39,7 @@ export const VIEWS = [
   'method',
   'docs',
   'incidents',
+  'automations',
   'content_rules',
   'orders',
   'order',

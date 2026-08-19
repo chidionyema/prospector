@@ -26,11 +26,11 @@ from ops.automations.log_rotation import (
     Target,
     check,
     check_prune,
+    load_declaration,
+    main,
     prune,
     resolve,
     resolve_prune,
-    load_declaration,
-    main,
     rotate,
     run,
 )
@@ -246,7 +246,8 @@ def test_the_live_declaration_parses_and_leaves_the_ledger_alone(tmp_path):
 def _aged(path: Path, days: float, size: int = 16) -> Path:
     """A file with a chosen age. mtime is set explicitly — a test that waits is a test that
     is skipped."""
-    import os, time
+    import os
+    import time
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(b"x" * size)
     when = time.time() - days * 86400
@@ -490,7 +491,6 @@ def test_when_git_cannot_answer_nothing_is_pruned(tmp_path, monkeypatch):
     """Cannot-establish is a refusal, not a green light. If the tool that knows what is in
     version control will not answer, deleting anyway is the incident this fence prevents,
     with the evidence removed."""
-    import subprocess as sp
 
     from ops.automations import log_rotation as engine
     engine._tracked_under.cache_clear()
@@ -506,3 +506,54 @@ def test_when_git_cannot_answer_nothing_is_pruned(tmp_path, monkeypatch):
     assert engine.resolve_prune(PruneTarget(path=str(tmp_path / "*.log"),
                                             older_than_days=30), tmp_path) == []
     engine._tracked_under.cache_clear()
+
+
+def test_the_tracked_file_list_is_read_once_per_repository(tmp_path, monkeypatch):
+    """One `git ls-files` per repository, however many directories the glob spans.
+
+    This is a performance fence with a real incident behind it. The first version cached the
+    tracked-file set with `@functools.lru_cache(maxsize=64)` keyed by DIRECTORY. The declared
+    prune targets span 17,065 files across far more than 64 parent directories, so the cache
+    thrashed and `git ls-files` re-ran for the same repository over and over. Measured on this
+    estate: 67.9s wall for one read-only run, against the 25s the console allows an automation,
+    so `/processes` reported log rotation `unknown` rather than clean. Splitting the cache into
+    `_repo_top` (per directory) and `_tracked_in_repo` (per repository), both unbounded, took the
+    same run to 15.8s with byte-identical output.
+
+    Counting subprocess calls is the only honest way to pin this: a wall-clock assertion would be
+    flaky on a loaded box, and it would pass again the day someone re-introduces the bug on a
+    faster machine.
+    """
+    import subprocess as sp
+
+    from ops.automations import log_rotation as engine
+    # `getattr` on purpose: the assertion below is what must fail when someone drops a cache,
+    # not an AttributeError in the setup. A guard that dies before it measures proves nothing.
+    for cache in (engine._tracked_under, engine._repo_top, engine._tracked_in_repo):
+        getattr(cache, "cache_clear", lambda: None)()
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    sp.run(["git", "init", "-q", str(repo)], check=True)
+    for n in range(200):                     # comfortably past the old maxsize of 64
+        _aged(repo / f"d{n}" / "old.log", days=90)
+
+    real_run = engine.subprocess.run
+    calls: list[str] = []
+
+    def counting(args, *a, **kw):
+        if isinstance(args, (list, tuple)) and "ls-files" in args:
+            calls.append("ls-files")
+        return real_run(args, *a, **kw)
+
+    monkeypatch.setattr(engine.subprocess, "run", counting)
+
+    found = engine.resolve_prune(PruneTarget(path=str(repo / "**" / "*.log"),
+                                             older_than_days=30), tmp_path)
+    assert len(found) == 200, len(found)
+    assert calls == ["ls-files"], f"{len(calls)} ls-files calls for one repository"
+
+    # `getattr` on purpose: the assertion below is what must fail when someone drops a cache,
+    # not an AttributeError in the setup. A guard that dies before it measures proves nothing.
+    for cache in (engine._tracked_under, engine._repo_top, engine._tracked_in_repo):
+        getattr(cache, "cache_clear", lambda: None)()

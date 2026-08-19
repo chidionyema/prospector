@@ -29,14 +29,14 @@ stdout redirection has exactly this property, and every writer in this estate is
 from __future__ import annotations
 
 import argparse
-import gzip
 import functools
+import gzip
 import json
 import os
 import shutil
 import subprocess
-import time
 import sys
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -256,7 +256,7 @@ def _bound(entry: dict[str, Any]) -> str:
     return " + ".join(parts) or "no bound"
 
 
-@functools.lru_cache(maxsize=64)
+@functools.lru_cache(maxsize=None)
 def _tracked_under(directory: str) -> frozenset[str] | None:
     """Absolute paths git tracks in the repository containing `directory`.
 
@@ -275,20 +275,44 @@ def _tracked_under(directory: str) -> frozenset[str] | None:
     says nothing about a tracked file sitting in an ordinary directory, which is what a
     log-shaped glob will find.
     """
+    root_dir = _repo_top(directory)
+    if root_dir is None:
+        return None
+    if root_dir == "":
+        return frozenset()              # not a repository: a real answer, not a failure
+    return _tracked_in_repo(root_dir)
+
+
+#: Unbounded on purpose. The caches are keyed by directory and by repository, and both sets are
+#: small — a run touches a handful of repositories and a few hundred directories. A bounded cache
+#: is what made the first version slow: `maxsize=64` thrashed against 17,065 files spread over
+#: more parent directories than that, so a `git ls-files` ran again and again for the same
+#: repository. Measured on this estate: 67.9s wall for one read-only run, which is why the console
+#: reported it `unknown` rather than clean.
+@functools.lru_cache(maxsize=None)
+def _repo_top(directory: str) -> str | None:
+    """The repository root containing `directory`. "" for no repository, None for cannot tell."""
     try:
         top = subprocess.run(["git", "-C", directory, "rev-parse", "--show-toplevel"],
                              capture_output=True, text=True, timeout=20)
-        if top.returncode != 0:
-            return frozenset()          # not a repository: a real answer, not a failure
-        root_dir = top.stdout.strip()
-        listed = subprocess.run(["git", "-C", root_dir, "ls-files", "-z"],
-                                capture_output=True, text=True, timeout=60)
-        if listed.returncode != 0:
-            return None
-        return frozenset(str(Path(root_dir) / rel)
-                         for rel in listed.stdout.split("\0") if rel)
     except (OSError, subprocess.SubprocessError):
         return None
+    if top.returncode != 0:
+        return ""
+    return top.stdout.strip()
+
+
+@functools.lru_cache(maxsize=None)
+def _tracked_in_repo(root_dir: str) -> frozenset[str] | None:
+    """Every absolute path this repository tracks. One `git ls-files` per repository, ever."""
+    try:
+        listed = subprocess.run(["git", "-C", root_dir, "ls-files", "-z"],
+                                capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if listed.returncode != 0:
+        return None
+    return frozenset(str(Path(root_dir) / rel) for rel in listed.stdout.split("\0") if rel)
 
 
 def resolve_prune(target: PruneTarget, root: Path) -> list[Path]:

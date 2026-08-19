@@ -464,6 +464,23 @@ def _read_docs(cfg, args: dict) -> dict:
     return docs_index(_repo_root())
 
 
+def _read_automations(cfg, args: dict) -> dict:
+    """Every automation on this estate, each one run for real, right now.
+
+    Registered 2026-08-19. `automations_view.py` had existed for weeks with no caller: it was
+    written, tested, and reachable from nothing — not READS, not the browser allow-list, not a
+    page. That is the defect this repo keeps hitting, and the reason log rotation could be
+    scheduled, running and freeing a gigabyte a week while the console showed no sign of it.
+
+    The view discovers its own subjects, so a new automation is two files and no console edit.
+    `tests/unit/test_a_view_module_with_no_caller_is_unreachable.py` fails if the next one is
+    written and left unwired.
+    """
+    from .automations_view import read_automations
+
+    return read_automations(cfg, args)
+
+
 def _read_incidents(cfg, args: dict) -> dict:
     """What broke, what stops it repeating, and what is still unguarded.
 
@@ -1504,6 +1521,7 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
     "metrics": _read_metrics,
     "docs": _read_docs,
     "incidents": _read_incidents,
+    "automations": _read_automations,
     "runs": _read_runs,
     "run": _read_run,
     "candidate": _read_candidate,
@@ -3044,6 +3062,29 @@ TOOLS: list[dict] = [
        danger="MONEY RAIL — bulk Stripe writes. Undo cannot take them back"),
     _t("tools/depth_reprice_preview.py", "Before/after for the depth ladder", False, "/tools"),
     _t("tools/price_history.py", "Who moved a price and why", False, "/catalogue"),
+    # --- retention and the other declared automations ---
+    # Each of these reads by default and takes `--fix` as a second, explicit run, so the row
+    # below writes nothing and the fix row is separate. `/processes` lists them all with their
+    # live status; these entries are what lets an operator ACT on one without a terminal.
+    _t("ops/automations/log_rotation.py", "What is over its size or age budget", False,
+       "/processes", cmd=".venv/bin/python -m ops.automations.log_rotation"),
+    _t("ops/automations/log_rotation.py", "Rotate and prune to the declared policy", True,
+       "/processes", cmd=".venv/bin/python -m ops.automations.log_rotation --fix",
+       danger="DELETES files past their declared age. It refuses anything git tracks and stops "
+              "at each target's max_delete; run it read-only first and read the counts"),
+    _t("ops/automations/offsite_backup.py", "Is there a fresh copy off this machine", False,
+       "/data", cmd=".venv/bin/python -m ops.automations.offsite_backup"),
+    _t("ops/automations/offsite_backup.py", "Ship a backup to R2 and prune old ones", True,
+       "/data", risk="external",
+       cmd=".venv/bin/python -m ops.automations.offsite_backup --fix",
+       danger="writes to R2 and deletes objects past the declared keep count. Undo covers the "
+              "local store only"),
+    _t("ops/automations/stranded_packs.py", "PASSes that cannot be bought", False, "/shelf",
+       cmd=".venv/bin/python -m ops.automations.stranded_packs"),
+    _t("ops/automations/retired_terms.py", "Retired wording still in the tree", False,
+       "/processes", cmd=".venv/bin/python -m ops.automations.retired_terms"),
+    _t("ops/automations/human_register.py", "Figures a human still has to verify", False,
+       "/processes", cmd=".venv/bin/python -m ops.automations.human_register"),
     # --- integrity / probes ---
     _t("scripts/backup_store.py", "Back up dossiers and ledger to R2", True, "/tools",
        risk="external"),
@@ -3156,6 +3197,7 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
                                 "reading for whoever is deleting dead code, not an action on the "
                                 "running platform",
     "scripts/test_impacted.py": "picks the tests a local edit can affect; a developer's loop",
+    "scripts/rework_metrics.py": "grades the agents, not the estate: it reads git history for the share of commits that are fixes or reverts, as a guard on the /method cost scoreboard. Nothing it reports is an action on the running platform, and nothing on the platform changes when it runs",
     "scripts/verify_engine_change.sh": "the pre-commit proof that an engine change is safe",
     "tools/commit_mine.sh": "commits exactly the named paths; a developer's git helper",
     "tools/backfill_human_register.py": "a one-off repair that back-filled the human register after a schema change; kept for the record, not for re-running",
