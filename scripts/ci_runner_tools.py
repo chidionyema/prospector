@@ -46,10 +46,13 @@ very pull request that added the missing package:
 
 That is not "a warning fence is not a fence". The gate's job is to stop the CODE defect, and
 the code defect is UNDECLARED. ABSENT is an operator action, so its fence belongs where the
-operator looks: ``scripts/ci_fleet_probe.py`` calls this script with ``--strict`` and the ops
-console surfaces the result. That probe arrives with pull request #417; until it merges, the
-warning annotation on the job summary is the only signal, which is why the annotation names
-the exact command rather than describing the problem.
+operator looks, and it cannot live in this script: ``--strict`` grades the PATH of whatever
+machine runs it, so on a laptop it grades the laptop. The operator-facing fence is
+``image_staleness()`` in ``scripts/ci_fleet_probe.py``, which asks the question from outside —
+is the running fleet built from the ``deploy/runner/`` that ``origin/main`` describes? — and
+answers it for every change to the image, not only a missing binary. That probe is a console
+button and arrives with pull request #417. ``--strict`` stays for the one place it is honest:
+run by hand, or in a job, ON a runner.
 
 Standard library only, no virtualenv, no network — it runs in the ``guard`` job beside
 ``ci_capacity.py``.
