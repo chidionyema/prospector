@@ -82,6 +82,7 @@ checkout. See the "Where production runs" section of `CLAUDE.md`.
 | `com.prospector.scheduler` | keepalive | The generation daemon: `prospector.scheduler.run_scheduled --daemon --interval 7200`. |
 | `com.prospector.consumer` | keepalive | Drains the queue and publishes: `prospector.run consume --publish`. |
 | `com.prospector.watchdog` | every 900s | `run_scheduled --watchdog`; restarts the scheduler when a tick stops landing. |
+| `com.prospector.process-audit` | hourly | `scripts/process_audit.py --quiet --alert`; grades every job on this Mac and the seven programs on Fly, and raises the operator alarm when anything is failing. This is the job that watches the watchers. |
 | `com.prospector.ops-console` | keepalive | Serves the Next.js ops console on the tailnet address. |
 | `com.prospector.live-update` | every 60s | `scripts/live_checkout.py --unattended`; rolls the live checkout forward to `origin/main`. |
 | `com.prospector.backup` | 03:40 | `scripts/backup_store.py --mirror-only`. **The git bundle mirror, and the only thing that writes it.** The full store backup runs on Fly under `fly:prospector-engine`; this job is not a duplicate of it. |
@@ -159,6 +160,19 @@ Declared here, owned elsewhere. They are listed so the audit can grade them rath
 ---
 
 ## Open items
+
+**`com.prospector.process-audit` is written but not started.** The plist is at
+`~/Library/LaunchAgents/com.prospector.process-audit.plist`. An agent cannot run `launchctl`,
+so a human starts it once:
+
+```bash
+launchctl bootstrap gui/$UID ~/Library/LaunchAgents/com.prospector.process-audit.plist
+.venv/bin/python scripts/launchd_plists.py --snapshot   # then track the definition
+```
+
+Until that is run, `scripts/process_audit.py` grades it NOT LOADED, which is correct: the
+alarm that watches everything else is not yet running.
+
 
 Recorded here rather than in a chat, because that is where the last inventory went.
 
