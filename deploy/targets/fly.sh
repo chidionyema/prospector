@@ -19,9 +19,25 @@ ENGINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../engine" && pwd)"
 # file rather than a wrong context. It cost one cutover attempt at 02:27 on 2026-08-18.
 REPO_ROOT="$(cd "$ENGINE_DIR/../.." && pwd)"
 
+# The CLI answers to two names and the environment decides which one exists. Homebrew's
+# `flyctl` formula installs both `flyctl` and a `fly` symlink; the `superfly/flyctl-actions/
+# setup-flyctl` action used by .github/workflows/escape-hatch-drill.yml and deploy-engine.yml
+# puts only `flyctl` on PATH. Every call below says `fly`, so on 2026-08-19 the weekly escape
+# hatch drill died at its first step with `deploy/targets/fly.sh: line 106: fly: command not
+# found`, exit 127 — the portability drill could not run because of the name of a binary.
+#
+# One shim rather than renaming twenty-five call sites: if `fly` is missing and `flyctl` is
+# present, define `fly` as a function that forwards. It is defined before any function that
+# calls it, and bash resolves functions at call time, so every `fly ...` below is covered.
+if ! command -v fly >/dev/null 2>&1 && command -v flyctl >/dev/null 2>&1; then
+  fly() { flyctl "$@"; }
+fi
+
 t_name() { echo "fly:${APP}"; }
 
 t_preflight() {
+  # `command -v` is true for the shim above as well as for a real binary, which is the point:
+  # preflight asks whether the CLI is REACHABLE, not what it is called.
   command -v fly >/dev/null || { echo "fly CLI not installed: brew install flyctl" >&2; return 1; }
   fly auth whoami >/dev/null 2>&1 || { echo "fly CLI not logged in: fly auth login" >&2; return 1; }
   # `fly auth whoami` passes on a dead token in some versions, so make one real API call.
