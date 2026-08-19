@@ -33,6 +33,19 @@ from .retrieval import SearchProvider
 from .telemetry import logger, record_usage, track_latency
 
 CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
+
+# The cheapest Claude tier, and the DEFAULT for every claude_cli call this estate makes.
+# Founder directive 2026-08-19: "i need to ensure they fall back to the cheapest possible
+# version of claude ... enforced and documented".
+#
+# Why this needs a pin rather than a comment: `run_claude_cli` only passes `--model` when a
+# model is given, so a bare ClaudeCliOperator() inherits whatever the machine's Claude Code
+# settings default to. Measured 2026-08-19 on this laptop that default was `opus[1m]`
+# (~/.claude/settings.json:81) — the most expensive model there is, silently ruling verdicts
+# on the £49 deliverable. The cost is not only money: `claude -p` spends the SUBSCRIPTION
+# allowance, and Opus burns it several times faster than Haiku, so an unpinned fallback also
+# hits `usage_wall` sooner and takes the whole failover chain down with it.
+CHEAPEST_CLAUDE_MODEL = "claude-haiku-4-5-20251001"
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # The headless `claude -p` CLI is a completion endpoint for us, NOT an agent working on this
