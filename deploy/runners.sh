@@ -103,9 +103,26 @@ cmd_up() {
   local n="${1:?usage: runners.sh up <count>}"
   command -v fly >/dev/null || { echo "fly CLI not installed" >&2; exit 1; }
 
-  grep -q '^GITHUB_RUNNER_PAT=' "$ENV_FILE" || {
+  # NO PAT, NO PERSON. GitHub has no API that creates a fine-grained PAT, so standing a fleet
+  # up for a NEW repository used to stop here and wait for someone to visit a web form. A
+  # REGISTRATION token needs no form: anything that can already administer the repo can mint
+  # one, including the `gh` CLI. It expires in an hour, which is enough - entrypoint.sh keeps
+  # the .credentials that first registration writes and never needs the token again.
+  #
+  # This is the SMALLER credential, not a shortcut around the PAT: the container ends up able
+  # to be one runner on one repository, and unable to add or remove runners at all. What it
+  # gives up is per-job re-registration, so the runner is not --ephemeral; the workspace wipe
+  # between jobs, which is what stops one job inheriting another, still runs.
+  local reg_token=""
+  if ! grep -q '^GITHUB_RUNNER_PAT=' "$ENV_FILE" && command -v gh >/dev/null; then
+    reg_token="$(gh api -X POST "repos/$GH_REPO/actions/runners/registration-token" \
+                   --jq .token 2>/dev/null || true)"
+    [ -n "$reg_token" ] && say "no PAT on file - registering $APP with a one-hour registration token"
+  fi
+
+  [ -n "$reg_token" ] || grep -q '^GITHUB_RUNNER_PAT=' "$ENV_FILE" || {
     cat >&2 <<'MSG'
-No GITHUB_RUNNER_PAT in the env file.
+No GITHUB_RUNNER_PAT in the env file, and `gh` could not mint a registration token either.
 
 A runner registers itself, and registration tokens last an hour, so they cannot be baked into
 an image. The container needs a credential that can mint them. Create a FINE-GRAINED personal
@@ -131,17 +148,39 @@ MSG
   say "pushing the runner credential"
   # Only the two keys the runner needs. A CI runner must never hold the money keys: it runs
   # code from every pull request, including one an outsider opened.
-  grep -E '^(GITHUB_RUNNER_PAT|RUNNER_LABELS)=' "$ENV_FILE" > "$REPO_ROOT/.runner.env"
+  : > "$REPO_ROOT/.runner.env"
   chmod 600 "$REPO_ROOT/.runner.env"
+  if [ -n "$reg_token" ]; then
+    # Written to a 600 file and piped straight into fly, so the value is never an argument and
+    # never reaches a terminal. GITHUB_REPO rides along because a token-only runner has no way
+    # to ask which repository it belongs to.
+    printf 'RUNNER_TOKEN=%s\nGITHUB_REPO=%s\n' "$reg_token" "$GH_REPO" >> "$REPO_ROOT/.runner.env"
+    grep -E '^RUNNER_LABELS=' "$ENV_FILE" >> "$REPO_ROOT/.runner.env" || true
+  else
+    grep -E '^(GITHUB_RUNNER_PAT|RUNNER_LABELS)=' "$ENV_FILE" >> "$REPO_ROOT/.runner.env"
+  fi
   fly secrets import -a "$APP" --stage < "$REPO_ROOT/.runner.env"
   rm -f "$REPO_ROOT/.runner.env"
 
   say "building and deploying the runner image"
-  fly deploy "$REPO_ROOT" --config "$HERE/runner/fly.toml" -a "$APP" \
+  # One image, one config per fleet. A second repository needs a different GITHUB_REPO in
+  # [env], and that is the only difference, so it gets its own file rather than a flag.
+  local cfg="$HERE/runner/fly.$APP.toml"
+  [ -f "$cfg" ] || cfg="$HERE/runner/fly.toml"
+  fly deploy "$REPO_ROOT" --config "$cfg" -a "$APP" \
     --dockerfile "$HERE/runner/Dockerfile" --strategy immediate --yes
 
   say "scaling to $n"
   fly scale count "$n" -a "$APP" -r "$REGION" --yes
+  # `fly scale count` leaves the machines it keeps in whatever state they were in, and a machine
+  # that has just been created by `fly deploy` can be stopped. A stopped runner is invisible in
+  # every screen that counts runners, so the fleet reads as "1 machine" and takes no jobs.
+  # Measured 2026-08-19 standing hermes-ci up: scale reported success, GitHub showed 0 runners.
+  fly machine list -a "$APP" --json 2>/dev/null \
+    | jq -r '.[] | select(.state != "started") | .id' \
+    | while read -r mid; do
+        [ -n "$mid" ] && { say "starting stopped machine $mid"; fly machine start "$mid" -a "$APP" >/dev/null; }
+      done
   echo "  runners will appear at https://github.com/$GH_REPO/settings/actions/runners"
   echo "  they carry the label 'self-hosted', which is what vars.CI_RUNS_ON asks for, so they"
   echo "  start taking jobs immediately alongside the Macs. Nothing in .github/ changes."
