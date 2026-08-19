@@ -55,6 +55,26 @@ OWNED_PREFIXES = (
 
 OK, WARN, BAD = "ok", "warn", "bad"
 
+# Production is Fly, not this Mac. `deploy/engine/fly.toml` publishes one port and the image runs
+# the scheduler, consumer, watchdog and both backups under supervisord. Every local launchd job
+# below was doing that work before 2026-08-18 and is now a duplicate of it.
+#
+# This map exists because the alternative is worse in both directions. Grading these as FAILING
+# raises an alarm every hour about work that is being done correctly somewhere else. Dropping them
+# silently loses the fact that a stale, wrong copy is still installed on the laptop -- and
+# com.prospector.backup is not merely idle, it fails daily and would write the laptop's store,
+# which stopped being the canonical one when the engine moved.
+FLY_APP = "prospector-engine"
+SUPERSEDED = {
+    "com.prospector.scheduler": "supervisord `scheduler` in the prospector-engine image",
+    "com.prospector.consumer": "supervisord `consumer` in the prospector-engine image",
+    "com.prospector.watchdog": "supervisord `watchdog` in the prospector-engine image",
+    "com.prospector.backup": "supervisord `backup` in the prospector-engine image",
+    "com.prospector.offsite-backup": "supervisord `offsite-backup`, gated by ENGINE_BACKUPS_ENABLED",
+    "com.prospector.ops-console": "the [http_service] on port 8611 of prospector-engine",
+    "com.prospector.live-update": "`fly deploy`; there is no local checkout left to roll forward",
+}
+
 
 def sh(cmd: list[str], timeout: int = 60) -> tuple[int, str]:
     """Run a command and return (returncode, stdout). Never raises; a failure is a return value."""
@@ -148,6 +168,56 @@ def age(ts: float | None) -> str:
     return f"{hours:.0f}h ago" if hours < 48 else f"{hours / 24:.0f}d ago"
 
 
+
+def grade_fly() -> list[tuple[str, str, str]]:
+    """Production. One row per Fly app, plus one per supervisord program inside the engine image.
+
+    This section exists because the audit was born grading the wrong host. The laptop's launchd
+    jobs looked like the process table and were not; `deploy/engine/fly.toml` runs the scheduler,
+    consumer, watchdog and both backups under supervisord, and publishes the ops console on 8611.
+    An estate probe that walks only the machine it is running on cannot see production at all.
+
+    `fly ssh console` is a network call and it is slow, so it is asked once and only of the engine.
+    A failure to reach Fly is reported as a failure to ASK, never as a healthy answer.
+    """
+    rows: list[tuple[str, str, str]] = []
+    code, out = sh(["fly", "apps", "list", "--json"], timeout=90)
+    if code != 0:
+        return [(BAD, "fly", f"could not list apps: {out.strip().splitlines()[:1]}")]
+    try:
+        apps = json.loads(out)
+    except ValueError as exc:
+        return [(BAD, "fly", f"unreadable app list: {exc}")]
+
+    for app in sorted(apps, key=lambda a: a.get("Name", "")):
+        name = app.get("Name", "?")
+        if not name.startswith("prospector-"):
+            continue  # other products in the same org
+        status = (app.get("Status") or "").lower()
+        grade = OK if status == "deployed" else BAD
+        rows.append((grade, name, f"fly status={status or '?'}"))
+
+    code, out = sh(["fly", "ssh", "console", "-a", FLY_APP, "-C", "supervisorctl status"],
+                   timeout=150)
+    if code != 0:
+        rows.append((BAD, f"{FLY_APP} processes",
+                     "could not read supervisorctl -- production's process table is UNKNOWN, "
+                     f"which is not the same as healthy: {out.strip().splitlines()[-1:]}"))
+        return rows
+    seen = 0
+    for line in out.splitlines():
+        parts = line.split()
+        if len(parts) < 2 or not parts[0].isidentifier() and "-" not in parts[0]:
+            continue
+        program, state = parts[0], parts[1]
+        seen += 1
+        rows.append((OK if state == "RUNNING" else BAD,
+                     f"{FLY_APP}/{program}", " ".join(parts[1:])[:90]))
+    if not seen:
+        rows.append((BAD, f"{FLY_APP} processes", "supervisorctl answered, but named no programs"))
+    return rows
+
+
 def grade_launchd(docs: set[str]) -> list[tuple[str, str, str]]:
     """One (grade, label, detail) row per launchd job we own."""
     declared, installed, loaded, receipts = (
@@ -174,7 +244,13 @@ def grade_launchd(docs: set[str]) -> list[tuple[str, str, str]]:
         except ValueError:
             failed = False
 
-        if failed:
+        if label in SUPERSEDED:
+            note = f"SUPERSEDED by {SUPERSEDED[label]}"
+            if label in installed or label in loaded:
+                rows.append((WARN, label, f"{note}; still installed here -- uninstall it -- {detail}"))
+            else:
+                rows.append((OK, label, f"{note}; correctly absent from this Mac"))
+        elif failed:
             rows.append((BAD, label, f"FAILING exit {status} -- {detail}"))
         elif label in installed and label not in loaded:
             # The worst state in the estate, and the one that was invisible until 2026-08-19: the
@@ -183,7 +259,12 @@ def grade_launchd(docs: set[str]) -> list[tuple[str, str, str]]:
             # that is absent, and a job that never runs never fails, so it appears nowhere at all.
             # Measured that day: com.prospector.scheduler, .consumer, .watchdog and .ops-console
             # were all installed and none was loaded, while the audit reported 15 other problems.
-            rows.append((BAD, label, f"NOT LOADED, launchd is not running it -- {detail}"))
+            # WARN, not FAIL, and the distinction is the point. That the job is not running is a
+            # fact this probe measured. That it OUGHT to be running is a claim it cannot make: only
+            # one GitHub runner of four is meant to be up at a time, and the ngrok tunnel is off on
+            # purpose. An alarm that cries about six deliberate choices is an alarm nobody reads,
+            # and the first real outage arrives in a list already full of noise.
+            rows.append((WARN, label, f"NOT LOADED, launchd is not running it -- {detail}"))
         elif label in loaded and label not in declared:
             rows.append((BAD, label, f"UNDECLARED, no ops/launchd JSON -- {detail}"))
         elif label not in docs:
@@ -302,10 +383,60 @@ def grade_enforcement() -> list[tuple[str, str, str]]:
 
     # The doc-lint ratchet only ratchets while its baseline is committed.
     baseline = ROOT / "docs" / "doc_lint_baseline.json"
+    rows.extend(_grade_instruction_checkouts())
+
     rows.append((OK if baseline.exists() else BAD, "doc lint baseline",
                  "present" if baseline.exists() else "MISSING, so the ratchet cannot tighten"))
     return rows
 
+
+
+
+# Every checkout on this Mac that carries a CLAUDE.md. The harness loads the one belonging to the
+# session's working directory, so a stale checkout does not merely hold old code -- it hands the
+# agent an old description of the estate as authoritative instructions.
+INSTRUCTION_CHECKOUTS = (
+    Path.home() / "Documents" / "code" / "prospector",
+    Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs" / "Documents" / "code"
+    / "prospector",
+)
+
+
+def _grade_instruction_checkouts() -> list[tuple[str, str, str]]:
+    """A checkout whose CLAUDE.md is behind main is an agent briefed on an estate we no longer run.
+
+    This is the enforcement that was missing on 2026-08-19, and its absence cost a session. The
+    iCloud checkout was 59 commits behind `origin/main`. Its CLAUDE.md still said production ran
+    from a local `prospector-live` directory; production had moved to Fly the day before. Working
+    from that file I read the laptop's launchd jobs as the production process table, found six of
+    them unloaded, and reported an outage while the engine was ruling verdicts in lhr.
+
+    Founder, that day: "we can't be guessing how our system works". Nothing was guessed -- the
+    instructions were read, and they were 59 commits old. Stale instructions are indistinguishable
+    from correct ones from the inside, which is exactly why this has to be a probe.
+    """
+    rows: list[tuple[str, str, str]] = []
+    for checkout in INSTRUCTION_CHECKOUTS:
+        if not (checkout / "CLAUDE.md").exists():
+            continue
+        name = f"instructions: {checkout.name} ({'iCloud' if 'CloudDocs' in str(checkout) else 'local'})"
+        code, _ = sh(["git", "-C", str(checkout), "fetch", "-q", "origin", "main"], timeout=90)
+        code, out = sh(["git", "-C", str(checkout), "rev-list", "--count", "HEAD..origin/main"])
+        if code != 0:
+            rows.append((WARN, name, f"could not measure: {out.strip()[:120]}"))
+            continue
+        try:
+            behind = int(out.strip())
+        except ValueError:
+            rows.append((WARN, name, f"unreadable count {out.strip()[:60]!r}"))
+            continue
+        if behind == 0:
+            rows.append((OK, name, "current with origin/main"))
+        else:
+            rows.append((BAD, name,
+                         f"{behind} commits behind origin/main -- any session started here is "
+                         f"briefed on a stale estate"))
+    return rows
 
 
 def grade_specialists() -> list[tuple[str, str, str]]:
@@ -411,7 +542,9 @@ def main() -> int:
 
     docs = documented_names()
     sections = [
-        ("launchd jobs", grade_launchd(docs)),
+        # Production first, and it is not this Mac. Everything below this line is estate support.
+        ("production (Fly)", grade_fly()),
+        ("launchd jobs on this Mac", grade_launchd(docs)),
         ("GitHub workflows", grade_workflows(docs)),
         ("enforcement", grade_enforcement()),
         ("specialist probes", grade_specialists()),

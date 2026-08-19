@@ -7,6 +7,22 @@ but need coherent AND WELL THOUGHT/ENGINEERED RELIABILITY"*, and *"everything ru
 auditable, configurable and visible from the ops dashboard"*, and *"the enforcements also need to
 be visible and alert when failed"*.
 
+## Production is Fly. This Mac is estate support.
+
+Read this before anything else, because getting it wrong is what produced the worst finding in this
+document. The engine runs in the `prospector-engine` app on Fly, one machine in `lhr`, declared by
+`deploy/engine/fly.toml`. Its image runs seven programs under supervisord — `scheduler`,
+`consumer`, `watchdog`, `backup`, `offsite-backup`, `restore-drill`, `ops-console` — and publishes
+one public port, 8611. `prospector-store-api` and `prospector-store-web` serve api.mumchimp.com and
+mumchimp.com.
+
+The laptop's `com.prospector.*` launchd jobs did that work until 2026-08-18. They are leftovers.
+Six sit unloaded and `com.prospector.backup` still fires daily and fails.
+
+On 2026-08-19 an agent read those unloaded jobs as the production process table and reported
+"production engine is down". The engine was ruling verdicts in `lhr` that same minute. The audit
+now grades Fly first and marks each superseded job `SUPERSEDED`, so the alarm cannot recur.
+
 ## The problem, stated once
 
 This estate was never short of watchers. It had launchd jobs, GitHub workflows, pre-commit gates,
@@ -52,6 +68,7 @@ script would be. The list is the answer to "what do we already have":
 
 | probe | owns |
 | --- | --- |
+| `fly apps list`, `supervisorctl status` | **production** — what is deployed, and the seven engine programs |
 | `scripts/launchd_plists.py --check` | drift between live plists and the tracked copies |
 | `prospector/ops/supervisor.py` | whether a job is loaded, and restarting it |
 | `~/.hermes/scripts/capability_audit.py` | grading the receipt ledger into PASS / FAIL / DARK |
@@ -132,6 +149,12 @@ health.
    capability goes DARK.
 3. **The two never-ran workflows.** `escape-hatch-drill.yml` and `weekly-estate-review.yml` are
    both committed and scheduled and neither has ever produced a run.
-4. **Two failing jobs belong to other products.** `com.tie.ai-review` points at a script that no
+4. **The instruction files are 59 commits stale in both dev checkouts.** The harness injects the
+   CLAUDE.md of the session's working directory, so every session there is briefed on the estate we
+   ran before the Fly migration. The audit now fails on it. The remedy is a founder decision: the
+   iCloud checkout holds 132 uncommitted paths and must not be reset by an agent.
+5. **Seven superseded launchd jobs are still installed on the laptop.** Uninstalling them is one
+   command per label and needs a human, because an agent cannot run `launchctl` here.
+6. **Two failing jobs belong to other products.** `com.tie.ai-review` points at a script that no
    longer exists; both `com.haworks.*` jobs fail `EX_CONFIG` because their working directory is
    gone. Retiring them is the owner's call.

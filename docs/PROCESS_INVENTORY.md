@@ -1,5 +1,45 @@
 # Process inventory
 
+## Production: the `prospector-engine` app on Fly
+
+This is the process table that matters. Everything in the launchd sections below runs on the
+founder's laptop and supports development; none of it is production.
+
+| program | what it does | how to see it |
+| --- | --- | --- |
+| `scheduler` | the producer loop — generation and vetting | `fly ssh console -a prospector-engine -C "supervisorctl status"` |
+| `consumer` | the drain loop | same |
+| `watchdog` | restarts what dies inside the image | same |
+| `backup` | the daily store backup | same |
+| `offsite-backup` | the R2 copy, gated by `ENGINE_BACKUPS_ENABLED` | same |
+| `restore-drill` | proves the backup can be restored | same |
+| `ops-console` | the dashboard, the one public port (8611) | same |
+
+Other Fly apps: `prospector-store-api` (api.mumchimp.com), `prospector-store-web`
+(mumchimp.com), `prospector-searxng` (private grounding, no public IP), `prospector-ci`,
+`prospector-hermes`.
+
+## Superseded by the Fly migration (2026-08-18)
+
+These seven launchd jobs are still declared in `ops/launchd/` and still installed in
+`~/Library/LaunchAgents`, and every one of them is now a duplicate of a supervisord program above.
+`com.prospector.backup` is not merely idle: it fires daily, fails with exit 78, and if it ever
+succeeded it would write the laptop store, which stopped being canonical when the engine moved.
+
+`com.prospector.scheduler`, `com.prospector.consumer`, `com.prospector.watchdog`,
+`com.prospector.backup`, `com.prospector.offsite-backup`, `com.prospector.ops-console`,
+`com.prospector.live-update`.
+
+Uninstalling them needs a human — an agent cannot run `launchctl` in this estate:
+
+```bash
+for l in scheduler consumer watchdog backup offsite-backup ops-console live-update; do
+  launchctl bootout gui/$UID/com.prospector.$l 2>/dev/null
+  rm -f ~/Library/LaunchAgents/com.prospector.$l.plist
+done
+```
+
+
 Every automated process that runs on this estate, in one place, because nothing else knew.
 
 **This file is machine-checked.** `scripts/process_audit.py` reads it, and any launchd label or
