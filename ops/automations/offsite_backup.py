@@ -73,6 +73,12 @@ class CannotEstablish(Exception):
     """The check could not run. Reported as `unknown`, never as clean."""
 
 
+# The kinds `verify_copy` can actually perform. The loader refuses anything else, so a typo
+# like `sqllite` fails when the declaration is read rather than after the money database has
+# already been downloaded at 03:00.
+VERIFY_KINDS = ("nonempty", "sqlite", "tgz")
+
+
 @dataclass
 class Source:
     """One thing that must exist in two places."""
@@ -81,7 +87,10 @@ class Source:
     key: str
     fetch: list[str]
     why: str = ""
-    verify: str = "nonempty"
+    # No default on purpose. `nonempty` was the default until 2026-08-19, so a source added
+    # without thinking about verification silently got a size check — and a size check is
+    # believed, which is worse than no check at all. Every source states its own kind.
+    verify: str = ""
     keep: int = DEFAULT_KEEP
     max_age_hours: float = DEFAULT_MAX_AGE_HOURS
 
@@ -152,13 +161,25 @@ def load_declaration(path: Path) -> Declaration:
             raise CannotEstablish(
                 f"source {entry['name']} needs a `fetch:` command as a list of arguments"
             )
+        kind = str(entry.get("verify") or "")
+        if not kind:
+            raise CannotEstablish(
+                f"source {entry['name']} must state `verify:` — one of {', '.join(VERIFY_KINDS)}. "
+                "There is no default: an unstated kind used to mean a size check, and a size "
+                "check passes a download that stopped halfway."
+            )
+        if kind not in VERIFY_KINDS:
+            raise CannotEstablish(
+                f"source {entry['name']} declares `verify: {kind}`, which this automation "
+                f"cannot perform. Valid kinds: {', '.join(VERIFY_KINDS)}."
+            )
         sources.append(
             Source(
                 name=str(entry["name"]),
                 key=str(entry["key"]),
                 fetch=[str(part) for part in fetch],
                 why=str(entry.get("why") or ""),
-                verify=str(entry.get("verify") or "nonempty"),
+                verify=kind,
                 keep=int(entry.get("keep") or DEFAULT_KEEP),
                 max_age_hours=float(entry.get("max_age_hours") or default_age),
             )
@@ -288,7 +309,9 @@ def verify_copy(path: Path, kind: str) -> None:
         if not members:
             raise CannotEstablish(f"the archive opened but holds no members: {path.name}")
         return
-    raise CannotEstablish(f"unknown verify kind `{kind}` on {path.name}")
+    raise CannotEstablish(
+        f"unknown verify kind `{kind}` on {path.name}; valid kinds: {', '.join(VERIFY_KINDS)}"
+    )
 
 
 def _dated_key(prefix: str, source: Source, stamp: str) -> str:

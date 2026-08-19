@@ -23,6 +23,7 @@ from ops.automations.offsite_backup import (
     EXIT_FINDINGS,
     EXIT_OK,
     EXIT_UNKNOWN,
+    VERIFY_KINDS,
     CannotEstablish,
     Source,
     _expand,
@@ -91,7 +92,8 @@ def _declaration(tmp_path: Path, **overrides) -> Path:
             "prefix": "offsite/",
         },
         "max_age_hours": 24,
-        "sources": [{"name": "money-db", "key": "money-db/store.db", "fetch": ["true"]}],
+        "sources": [{"name": "money-db", "key": "money-db/store.db", "fetch": ["true"],
+                     "verify": "nonempty"}],
     }
     body.update(overrides)
     path = tmp_path / "decl.yaml"
@@ -323,6 +325,46 @@ def test_a_missing_source_key_is_unknown(tmp_path):
 
     with pytest.raises(CannotEstablish, match="needs `name:` and `key:`"):
         load_declaration(path)
+
+
+def test_a_source_that_states_no_verify_kind_is_refused(tmp_path):
+    """The trap one level under the key ring: `verify:` used to DEFAULT to a size check, so
+    the next source anyone adds — Hermes state is the one queued — would silently be graded
+    by its byte count without anybody choosing that. There is no default now."""
+    path = _declaration(tmp_path, sources=[
+        {"name": "hermes-state", "key": "hermes/coordinator.db", "fetch": ["true"]},
+    ])
+
+    with pytest.raises(CannotEstablish, match="must state `verify:`"):
+        load_declaration(path)
+
+
+def test_a_verify_kind_the_code_cannot_perform_is_refused_at_load(tmp_path):
+    """A typo used to survive the read, download the money database, and only then fail. It
+    is refused when the declaration is parsed, before any work and before the nightly run."""
+    path = _declaration(tmp_path, sources=[
+        {"name": "money-db", "key": "money-db/store.db", "fetch": ["true"],
+         "verify": "sqllite"},
+    ])
+
+    with pytest.raises(CannotEstablish, match="cannot perform"):
+        load_declaration(path)
+
+
+def test_every_kind_the_registry_names_can_actually_be_performed(tmp_path):
+    """`VERIFY_KINDS` is what the loader accepts. If it names a kind `verify_copy` does not
+    implement, the loader waves through a source nothing can grade — the same believed-check
+    defect wearing the opposite hat."""
+    real = tmp_path / "real"
+    real.write_bytes(b"not empty")
+
+    for kind in VERIFY_KINDS:
+        try:
+            verify_copy(real, kind)
+        except CannotEstablish as exc:
+            assert "unknown verify kind" not in str(exc), (
+                f"VERIFY_KINDS names `{kind}` but verify_copy has no branch for it"
+            )
 
 
 def test_exit_codes_are_distinct(tmp_path, monkeypatch, capsys):
