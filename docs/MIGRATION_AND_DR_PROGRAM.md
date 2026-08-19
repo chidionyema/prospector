@@ -576,7 +576,7 @@ backed up at all. Declared or measured today: `prospector-store-api` SQLite (`/d
 backed up, **never restored**; the engine store (SQLite catalogue plus append-only JSONL, 0.49 GiB,
 2,935 dossiers, 906,341 ledger lines) — backed up, **never restored**; R2 — the files buyers download,
 somebody else's durability but ours to enumerate; Stripe — an independent ledger of every payment
-we have never exported; Hermes' state on the laptop — **no backup at all**; and the provider-health,
+we have never exported; Hermes' state, now on a Fly volume rather than the laptop — **no backup at all**; and the provider-health,
 retrieval-cache and scheduler files under the store, recoverable only if a restore includes them.
 
 **Story.** *"everything fron dns, logs, everything, db"* · *"this si critial , busines dpeendent
@@ -588,6 +588,50 @@ proven restore is blank, or older than its drill cadence, reads red on the conso
 is written as a rebuild script — that is what turns R1 from fatal into slow.
 
 **Costs.** M. Most of it is wiring what already runs into one honest table.
+
+#### M11 census — measured 2026-08-19, read-only
+
+Every volume on every Fly app, opened and listed. This is the table M11 asks for, at the coverage
+it has today. "Last proven restore" is a date only where a drill actually ran and exited 0.
+
+| Datastore | Where | Size | Backed up | Verified how | Last proven restore |
+|---|---|---|---|---|---|
+| Engine store `/data/store` | `prospector-engine`, vol `prospector_store` 20GB lhr | 701M — `prospector.jsonl` 351MB, `prospector.db` 3.1MB, `run_metrics.db`, `self_modifications.db`, ~15 JSONL logs | `backup_store.py`, daily, R2 `prospector-backup` | drill script | **2026-08-19 13:54 UTC, exit 0** |
+| Claude state `/data/state/claude` | same volume | 257M | **NO** — outside every prefix in `backup_store.py` | — | never |
+| Money DB `/data/store.db` | `prospector-store-api`, vol `store_data` 1GB lhr | 4,354,048 bytes, mtime Aug 19 17:22 | `offsite_backup` source `money-db`, daily, R2 | `PRAGMA integrity_check` | **never** |
+| Data-protection key ring `/data/keys` | same volume | 1000 bytes, one XML key | `offsite_backup` source `data-protection-keys` | non-empty only | **never** |
+| Hermes state `/data` | `prospector-hermes`, vol `hermes_state` 3GB lhr | 29M used — `/data/state` 27M, `/data/db` 1.9M (`coordinator.db` + WAL, `kanban.db`, `state.db` + WAL) | **NO** — named in no backup source | — | never |
+| Pack files | R2 `prospector-packs` | not enumerated | third party, no export | — | never |
+| Payments ledger | Stripe | not enumerated | third party, no export | — | never |
+
+`prospector-store-web`, `prospector-searxng`, `prospector-ci` and `hermes-ci` hold no volumes and
+are stateless. The `tie-*` apps are excluded on the founder's instruction.
+
+**What this proves, against the earlier belief.** The money path IS copied off Fly, and that was
+not certain before. Run on the engine, `python -m ops.automations.offsite_backup` reports
+`OK money-db: 0.0h old` and `OK data-protection-keys: 0.0h old`, and the engine has both
+`FLYCTL=/root/.fly/bin/fly` and a token set. The 20GB engine volume holds 701M, so nothing is
+close to full.
+
+**Three gaps the census found. One is fixed in this commit.**
+
+1. **The offsite backup wrote no receipt.** `deploy/engine/supervisord.conf` wrapped `backup` and
+   `restore-drill` in `receipt.sh` and left `offsite-backup` bare, so the one job that protects the
+   money DB reported its verdict only into `fly logs`, which rotate. That is exactly what §0.3
+   forbids. **Fixed here:** it now runs under `receipt.sh offsite_backup`, so the verdict lands in
+   `/data/store/ops/receipts/offsite_backup.json` with a timestamp and an exit code.
+2. **Hermes state has no backup at all.** 29M, so the cost is trivial; what is missing is a fetch
+   command that does not tear a live SQLite file. `/data/db` holds three databases with active WAL
+   files, so a plain `tar` copies a torn page set. It needs `sqlite3 .backup` or the Python backup
+   API run on the machine before the tarball, and that is M4's torn-snapshot work, not a one-line
+   config addition. **Not fixed here, deliberately** — a backup that silently restores corrupt is
+   worse than a gap you can see.
+3. **Every backup lands in one R2 account.** `prospector-backup` holds the money DB, the key ring
+   and the engine store. Losing that one account loses every copy of everything. That is L11's first
+   flakiness test, a mechanism that depends on a single thing, and it is unaddressed.
+
+**Still true after the census:** no datastore except the engine store has ever been restored. Two
+of the seven rows above have a backup nobody has ever read back.
 
 ---
 

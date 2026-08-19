@@ -47,7 +47,7 @@ repository**, so most of the register is UNPROVEN by L11 test 3 rather than by o
 This is the worked example the new law is written against, and it was found while looking for
 something else.
 
-**What we believed.** `.github/workflows/ci-autoscale.yml` sizes the Fly runner pool to the queue.
+**What we believed.** `.github/workflows/ci-autoscale.yml` sizes the Fly runner pool to the queue. <!-- doc-lint-ok: the workflow was deleted from main by #434; this line records what we believed -->
 It was written with a careful comment explaining why it runs on `ubuntu-latest` and not on a
 self-hosted runner, it was reviewed, and it was merged to `main`.
 
@@ -96,21 +96,26 @@ by a different agent in a different session. A machine can refuse it: `actionlin
 workflow file and rejects an unknown trigger, and it is one CI step.
 
 **Decision — taken, in this commit.** The class is closed with a guard, not a note:
-`tests/unit/test_workflow_triggers_are_real_events.py` parses every workflow file and fails if any
+`tests/unit/test_workflow_triggers_are_real_events.py` parses every workflow file and fails if any <!-- doc-lint-ok: this test was deleted as a duplicate, see 10b below -->
 `on:` key is not an event GitHub accepts as a trigger. It runs in the python lane every branch
 already has to pass, so it reaches every agent, and it handles the YAML 1.1 trap where a bare `on:`
 key parses as the boolean `True` — a reader that misses that passes every file vacuously, which is
 the same defect wearing a different hat. This is preferred to an `actionlint` CI step because it
 needs no new workflow and no new tool in the image.
 
-`ci-autoscale.yml` is now `on: workflow_dispatch`. That makes the file valid and stops the false red
-runs while changing no automatic behaviour — the scaler did not run before and does not run now.
+**Superseded by main, 2026-08-19.** `ci-autoscale.yml` no longer exists. PR #434 deleted the file
+and added `actionlint` to `ci.yml`'s `guard` job, and `tests/unit/test_ci_autoscale_stays_off.py`
+now fails if any workflow reintroduces the scaler or calls `fly machine stop`. The founder's
+decision was recorded there: no autoscaling until spun-up machines are proven reliable. So the
+option list below is closed, and this branch carries neither the file nor a duplicate guard.
 
-**Decision — NOT taken, and it is the founder's.** What should start the scaler automatically. A
-`schedule:` cron is simple but GitHub delays crons by 5–15 minutes under load, so the pool lags the
-queue. `workflow_run:` on the CI workflow is prompt but reacts to runs rather than jobs, so it
-cannot see per-job queueing. The third option is to keep a fixed floor and delete the workflow. Each
-has a different monthly cost, so it is a spending decision, not an engineering one.
+**One contradiction is left open, and it is not mine to close.** That test states the scaler stopped
+machines mid-build and killed nine PRs. Section 1 of this audit proves the workflow never executed a
+step, so it cannot have called anything. Both cannot be true. Nothing else in the repo invokes the
+scaler — `rg 'runners\.sh +auto'` finds only `deploy/runners.sh` itself, its unit test and a comment
+in `ops/config/ci_capacity.yaml` — so if machines were stopped, something outside the repo did it,
+by hand or by Fly. That matters, because a guard on a workflow that could not run does not stop
+whatever actually stopped the machines. It is flagged, not investigated: main owns that file.
 
 ---
 
@@ -355,7 +360,7 @@ did not read. Named so it is not lost.
 Nothing below is a new system. Every line is a sequencing change or a one-line guard.
 
 1. ~~A guard so an unrunnable workflow is refused.~~ **Done in this commit** —
-   `tests/unit/test_workflow_triggers_are_real_events.py`. Closes the S1 class.
+   `tests/unit/test_workflow_triggers_are_real_events.py`. Closes the S1 class. <!-- doc-lint-ok: this test was deleted as a duplicate, see 10b below -->
 2. Decide what triggers the autoscaler: cron, `workflow_run`, or delete it. It is manual-only today.
 3. S2 before S3: the off-box dead-man's switch lands before 31 jobs move onto one Fly machine.
 4. The 22 agent guards become tracked files with an installer, and a probe asserts every hook in
@@ -467,12 +472,12 @@ Three things, and none of them is a new build.
 
 ## 10b. Correction — the autoscaler fix was already open, twice
 
-This audit fixed `ci-autoscale.yml` and wrote `tests/unit/test_workflow_triggers_are_real_events.py`
+This audit fixed `ci-autoscale.yml` and wrote `tests/unit/test_workflow_triggers_are_real_events.py` <!-- doc-lint-ok: naming the two files that were deleted is the point of this section -->
 to close the class. **Both were duplicates and both have been removed from this branch.** Measured
 2026-08-19:
 
 - **PR #417**, `fix/ci-autoscale-trigger` — fixes the same file and ships
-  `tests/unit/test_workflow_triggers_are_real.py`, the same guard under an almost identical name.
+  `tests/unit/test_workflow_triggers_are_real.py`, the same guard under an almost identical name. <!-- doc-lint-ok: #417's file, never merged; naming it is the point of this section -->
 - **PR #434**, `fix/ci-visibility` — fixes the same file and runs **`actionlint`** in `ci.yml`'s
   `guard` job. That is the stronger guard: it grades every workflow rule, not only the trigger key,
   and it names this exact defect in one line:
@@ -498,5 +503,5 @@ The finding in section 1 stands unchanged: the autoscaler has never run. Only th
 | 2026-08-19 | Autoscaler proven never to have run | 35 push-triggered runs, 0 jobs, 0 `workflow_job` runs |
 | 2026-08-19 | Earlier inference that the autoscaler killed a CI job WITHDRAWN | the workflow cannot execute |
 | 2026-08-19 | L11 "No flaky solutions" added to the manifesto | `docs/PLATFORM_MANIFESTO.md` |
-| 2026-08-19 | S1 class closed by a guard; `ci-autoscale.yml` made valid, manual-only | `tests/unit/test_workflow_triggers_are_real_events.py`, 13 passed |
+| 2026-08-19 | S1 class closed on main, not here: #434 deleted `ci-autoscale.yml` and added `actionlint` | `tests/unit/test_ci_autoscale_stays_off.py` on `origin/main` |
 | 2026-08-19 | Section 12 added: the complete register of all 39 proposed solutions, graded | 13 of 15 picked binaries ABSENT; `rg` finds no reference to dagu, litestream or healthchecks; `origin/main` has no `uv.lock`; `supervisord.conf` runs 7 programs in one container |
