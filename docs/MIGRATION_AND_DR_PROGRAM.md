@@ -116,9 +116,48 @@ fly logs prospector-engine | grep STORE_BACKUP  -> no lines in the retained buff
 
 The last two lines matter together. `deploy/engine/supervisord.conf` on `origin/main` runs
 `[program:backup]` and `[program:offsite-backup]` on Fly, so the intent is that Fly covers this. The
-Fly log buffer shows nothing, which is a **lead, not proof** — the buffer is short. Grading it
-honestly: **the laptop's backup is proven dead since 2026-08-17; whether Fly has replaced it is
-UNPROVEN and is the single most urgent thing to measure in this programme.**
+Fly log buffer shows nothing, which is a **lead, not proof** — the buffer is short.
+
+**MEASURED 2026-08-19 16:55 UTC, and it reverses the grade above.** Fly HAS taken over. The receipts
+are on the volume, written by `receipt.sh`, and they are the data the log buffer had already lost:
+
+```
+fly ssh console -a prospector-engine -C 'supervisorctl status'
+  backup          RUNNING   uptime 2:57:28
+  offsite-backup  RUNNING   uptime 2:57:28
+  restore-drill   RUNNING   uptime 2:57:28
+
+/data/store/ops/receipts/backup_store.py.json
+  started_at 1787147677  ended_at 1787147740  duration_s 63  exit_code 0   # 13:55:40 UTC today
+/data/store/ops/receipts/restore_drill.py.json
+  started_at 1787147677  ended_at 1787147695  duration_s 18  exit_code 0   # 13:54:55 UTC today
+
+/data/store/prospector.jsonl   350 MB  mtime Aug 19 16:51   <- canonical, on Fly
+store/prospector.jsonl (laptop) 258 MB  mtime Aug 18 18:51   <- a stale COPY
+```
+
+**Corrected grade.** B0 is not failing. The backup ran today and exited 0, and the restore drill ran
+today and exited 0. My earlier reading — "if the laptop broke today we lose two days of ledger" —
+was wrong, and it was wrong because I graded the estate from the laptop's files while the canonical
+store had already moved to the Fly volume. The laptop's dead `com.prospector.backup` (exit 78)
+guards a stale copy of a store nothing writes to any more, so **task #92 is not P0**; it is a dead
+job to unload (task #19), not a data-loss risk.
+
+What is still UNPROVEN under B0, and what M4/M11 must still close:
+
+- **Completeness.** One backup exiting 0 proves the ledger and the dossiers were written to R2. It
+  does not name every datastore. Store.Api's SQLite money DB has no line in any receipt. That is
+  M11, and it is still the head of the queue.
+- **The restore drill's scope.** `restore_drill.py` exits 0 in 18 seconds. Eighteen seconds is not
+  a 350 MB ledger restore, so what it actually proves needs reading before it is counted as B0
+  evidence. Graded UNPROVEN, not SOUND.
+- **The verifier's verdict is worthless, in the loud direction.** `backup_store.py --verify-only`
+  on the engine prints `STORE_BACKUP FAIL ... verified=7/8` because it samples the CURRENT local
+  dossier set against R2, so any dossier written since the last run reads as missing
+  (`d359676bde96b6b5.defer.json`, mtime 16:13, against a backup that ran at 13:55). **A healthy
+  three-hour-old backup and a genuinely broken one print the identical FAIL.** That is L11 test 2
+  again: an alarm that is always on is an alarm nobody reads. Tracked as task #109. `backup_store`
+  is already touched by open PR #420, so the fix waits on that PR rather than racing it.
 
 ### 0.2 How the priority reorders if we lost Fly and the laptop today
 
@@ -152,10 +191,23 @@ founder's eight and deferring it is a decision, not an oversight.
 
 ### 0.3 The immediate consequence
 
-`P0 — com.prospector.backup fails at spawn (launchd exit 78)` is already tracked. It has been
-carried as one broken job. Under B0 it is not one broken job; **it is the top requirement of the
-entire programme failing silently for two days**, which is L11 test 2 exactly: it failed in a way
-that looked like nothing.
+`P0 — com.prospector.backup fails at spawn (launchd exit 78)` is already tracked, and §0.1 shows it
+is **not** P0: it guards a store that is no longer canonical. It gets unloaded (task #19), not fixed.
+
+The consequence that survives the correction is about *grading*, not about that job. Both readings
+of B0 today came from a status surface rather than from the data behind it — first the laptop's
+`backup.log`, which is a stale file the live job no longer writes; then `fly logs`, whose buffer had
+already rotated past the successful run. Both said "nothing is happening". The receipts on the
+volume said the opposite, and they are the only durable record either job leaves.
+
+**So the programme gains a rule, and M4 gains a deliverable.** Every scheduled job's verdict must be
+readable from a durable artefact with a timestamp and an exit code, not from a log tail. `receipt.sh`
+already does this and is already installed; nothing surfaces it. M5's Continuity panel reads receipts
+or it is decoration. Until then, the command that answers "did the backup run?" is:
+
+```
+fly ssh console -a prospector-engine -C 'cat /data/store/ops/receipts/backup_store.py.json'
+```
 
 ---
 
