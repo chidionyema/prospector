@@ -276,14 +276,14 @@ export function PackContentsSection({
           <div key={item.section} className="docitem">
             <span className="i num">{String(i + 1).padStart(2, '0')}</span>
             <div>
-              <h5>
+              <h3>
                 {item.title}
                 {hasCount && item.showSourceCount && (
                   <span className="ml-2 font-mono text-caption font-normal text-success">
                     {sourceCount} sources
                   </span>
                 )}
-              </h5>
+              </h3>
               <p>{item.desc}</p>
             </div>
           </div>
@@ -295,7 +295,7 @@ export function PackContentsSection({
         {files.map((item) => (
           <div key={item.filename} className="file">
             <p className="fn">{item.filename}</p>
-            <h5>{item.title}</h5>
+            <h3>{item.title}</h3>
             <p>{item.desc}</p>
           </div>
         ))}

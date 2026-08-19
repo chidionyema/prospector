@@ -3,7 +3,7 @@ import type { FacetKind } from '@/lib/facets';
 import { VARIANTS, type VariantKey } from '@/lib/copyConfig';
 
 /**
- * Topical landing pages at `/collections/<slug>`, one per facet value.
+ * Topical landing pages at `/ideas/<slug>`, one per facet value.
  *
  * THE PROBLEM THEY SOLVE. The catalogue is one page with a client-side filter bar. That is a good
  * shopping experience and a poor discovery one: someone searching "business ideas I can run in the
@@ -19,7 +19,7 @@ import { VARIANTS, type VariantKey } from '@/lib/copyConfig';
  *     about that slice, what the category means and who it suits. None is a template with a noun
  *     swapped in. If you add a landing, write real copy for it; do not paraphrase a neighbour.
  *  2. A landing only renders when the live catalogue holds at least `MIN_PACKS_FOR_LANDING` packs
- *     for it, and 404s otherwise (`pages/collections/[slug].tsx`). A page listing two packs is thin
+ *     for it, and 404s otherwise (`pages/ideas/[slug].tsx`). A page listing two packs is thin
  *     content, and thin content is the actual mechanism by which pages like these get demoted.
  *  3. The list is derived from the facet vocabulary the engine already emits, it cannot invent a
  *     category the catalogue does not contain.
@@ -41,7 +41,7 @@ import { VARIANTS, type VariantKey } from '@/lib/copyConfig';
 export const MIN_PACKS_FOR_LANDING = 5;
 
 export interface Landing {
-  /** URL segment under `/collections/`. Written the way people search, not the way the code names it. */
+  /** URL segment under `/ideas/`. Written the way people search, not the way the code names it. */
   slug: string;
   kind: FacetKind;
   value: string;
@@ -303,7 +303,7 @@ export function packMatchesLanding(pack: Pack, landing: Landing): boolean {
 }
 
 /** The landings the live catalogue can actually fill, in declaration order. Used by the sitemap and
- *  by the cross-links on the catalogue, so both agree with what `/collections/<slug>` will really serve. */
+ *  by the cross-links on the catalogue, so both agree with what `/ideas/<slug>` will really serve. */
 export function eligibleLandings(packs: Pack[]): { landing: Landing; count: number }[] {
   return LANDINGS.map((landing) => ({
     landing,

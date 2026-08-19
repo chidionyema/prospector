@@ -213,7 +213,7 @@ export default function AboutPage() {
             catalogue; the catalogue is what's left.
           */}
           <Link
-            href="/kill-log"
+            href="/kill-log" prefetch={false}
             className="card tc transition-colors hover:border-border-strong"
           >
             <h4>The kill log</h4>

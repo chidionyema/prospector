@@ -58,14 +58,13 @@ export function verifiedLabel(verifiedAt: string): string {
  * nowrap `truncate` they carried is what ran the line off the right edge of the card at 390px.
  *
  * `<b>` on the figure and plain text on the noun, because `.proof b` is the only weight the
- * drawing's stylesheet sets here. `children` is the slot for the row's market note, which is a
- * fact about the READER rather than about the pack and so is not part of the proof.
+ * drawing's stylesheet sets here. NOTHING ELSE GOES IN `.proof`. The row's market note is a fact about the
+ * READER rather than about the pack, so it sits in the row's `.top` eyebrow, not here.
  */
 export function CardProof({
   sources,
   payback,
   className,
-  children,
   /* `span` for the three-up tile. Its `.foot` is a `<span>` in the drawing
      (`mockups/index.html` section 5), and a `<p>` inside a `<span>` is invalid HTML: the parser
      closes the span, so the price that follows ended up outside the foot it is laid out in. The
@@ -75,7 +74,6 @@ export function CardProof({
   sources?: number | null;
   payback?: number | null;
   className?: string;
-  children?: React.ReactNode;
   as?: 'p' | 'span';
 }) {
   const parts: React.ReactNode[] = [];
@@ -84,21 +82,18 @@ export function CardProof({
     // checking the ban does not have to look it up.
     parts.push(
       <React.Fragment key="payback">
-        <b>{payback}×</b>{'\u00A0'}payback
+        <b>{payback}×</b> payback
       </React.Fragment>,
     );
   }
   if (typeof sources === 'number' && sources > 0) {
     parts.push(
       <React.Fragment key="sources">
-        {/* NO-BREAK SPACE between the figure and its noun (founder's polish layer, 3.1). "28"
-            and "sources" are one token to a reader; `.row .proof` wraps, so without this the
-            count can end a line and its unit start the next. */}
-        <b>{sources}</b>{'\u00A0'}{sources === 1 ? 'source' : 'sources'}
+        <b>{sources}</b> {sources === 1 ? 'source' : 'sources'}
       </React.Fragment>,
     );
   }
-  if (parts.length === 0 && !children) return null;
+  if (parts.length === 0) return null;
 
   return (
     <Tag className={cx('proof num', className)}>
@@ -108,7 +103,6 @@ export function CardProof({
           {part}
         </React.Fragment>
       ))}
-      {children}
     </Tag>
   );
 }

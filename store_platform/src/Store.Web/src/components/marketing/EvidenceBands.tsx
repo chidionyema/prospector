@@ -56,7 +56,7 @@ export function KillGateBand() {
           </div>
           <p className="barkey">{gates.map(([g]) => GATE_LABELS[g] ?? g).join(' · ')}</p>
           <p className="src num">
-            Every kill published with its reason · <Link href="/kill-log">read the kill log</Link>
+            Every kill published with its reason · <Link href="/kill-log" prefetch={false}>read the kill log</Link>
           </p>
         </div>
       </div>

@@ -128,7 +128,7 @@ describe('the check vocabulary is defined once', () => {
     // nothing.
     const derived: [string, string][] = [
       [join('pages', 'llms.txt.tsx'), 'checksSentence()'],
-      [join('pages', 'collections', '[slug].tsx'), 'checksSentence()'],
+      [join('pages', 'ideas', '[slug].tsx'), 'checksSentence()'],
       // Was `engineGateIds()` until 2026-08-07. The homepage method band no longer lists the
       // checks at all (the email deletes the jargon strip from the homepage entirely), so the
       // pin moves to a negative: the page must not enumerate the set. The pin for /how-it-works

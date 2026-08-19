@@ -98,7 +98,7 @@ export function CheckSequence({ className }: { className?: string }) {
               <span className="i num">{String(i + 1).padStart(2, '0')}</span>
 
               <div className="min-w-0">
-                <h5>{check.name}</h5>
+                <h3>{check.name}</h3>
                 <p>{plainEnglish(check.rationale)}</p>
                 {domains.length > 0 && (
                   /* `.checkrow .srcs` is the mono source line under the reading. A `<p>`, as the
