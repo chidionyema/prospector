@@ -129,3 +129,20 @@ def test_the_snapshot_parent_is_the_worktree_head(dirty: Path):
     sha, err = ws.snapshot(dirty)
     assert sha and not err, err
     assert git(dirty, "rev-parse", f"{sha}^") == git(dirty, "rev-parse", "HEAD")
+
+
+def test_two_worktrees_with_the_same_basename_get_different_branches():
+    """A basename is not unique. Two trees called wt-converge exist on this disk, and pushing
+    both under one name failed the WHOLE push with `receives from more than one src` -- so twelve
+    good snapshots were lost to two colliding names, on 2026-08-19."""
+    a = Path("/tmp/claude-501/x/3fa47c70-1111-2222-3333-444455556666/scratchpad/wt-converge")
+    b = Path("/Users/someone/Documents/code/wt-converge")
+    assert ws.branch_name(a) != ws.branch_name(b)
+    assert ws.branch_name(a).endswith("-3fa47c70")
+    assert ws.branch_name(b).endswith("-shared")
+
+
+def test_the_branch_name_is_stable_for_the_same_worktree():
+    """Re-running must overwrite the same branch, not accumulate one per run."""
+    p = Path("/tmp/x/3fa47c70-1111-2222-3333-444455556666/scratchpad/wt-ci")
+    assert ws.branch_name(p) == ws.branch_name(p)

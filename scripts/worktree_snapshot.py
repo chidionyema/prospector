@@ -55,6 +55,18 @@ def git(args: list[str], cwd: Path, env: dict | None = None, timeout: int = 300)
     return p.returncode, (p.stdout or p.stderr).strip()
 
 
+def branch_name(wt: Path) -> str:
+    """A worktree BASENAME is not unique. Two trees called wt-converge live on this disk, one
+    under a session scratchpad and one under ~/Documents/code, and pushing both produced
+    `dst ref refs/heads/snapshot/2026-08-19/wt-converge receives from more than one src` --
+    which failed the WHOLE push, so twelve good snapshots were lost to two colliding names.
+    The session id disambiguates, and it is also the thing you want to know when you find the
+    branch later."""
+    session = next((part[:8] for part in wt.parts
+                    if len(part) == 36 and part.count("-") == 4), "shared")
+    return f"{wt.name}-{session}"
+
+
 def worktrees(repo: Path) -> list[Path]:
     _, out = git(["worktree", "list", "--porcelain"], repo)
     return [Path(ln.split(" ", 1)[1]) for ln in out.splitlines() if ln.startswith("worktree ")]
@@ -148,7 +160,7 @@ def main() -> int:
         sha, err = snapshot(wt)
         rows.append((wt, len(files), sha, err))
         if sha:
-            refspecs.append(f"{sha}:refs/heads/{prefix}/{wt.name}")
+            refspecs.append(f"{sha}:refs/heads/{prefix}/{branch_name(wt)}")
 
     if not rows:
         print("No worktree holds uncommitted work. Nothing to snapshot.")
