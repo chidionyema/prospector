@@ -3,6 +3,7 @@
 #
 #   deploy/runners.sh up 4          # build, push, and run four runners
 #   deploy/runners.sh status        # what GitHub thinks it has, and what the platform is running
+#   deploy/runners.sh autoscale     # start/stop machines to match the queue depth
 #   deploy/runners.sh down          # stop them all; the repo falls back to whatever is left
 #   deploy/runners.sh laptop-off    # unload the four Mac runners, after Fly's have taken jobs
 #
@@ -147,6 +148,89 @@ MSG
   echo "  start taking jobs immediately alongside the Macs. Nothing in .github/ changes."
 }
 
+cmd_autoscale() {
+  # Match the number of STARTED machines to the number of queued runs, inside the bounds
+  # declared in ops/config/ci_capacity.yaml. Start/stop, never create/destroy: a stopped Fly
+  # machine bills no CPU and no RAM, and starting one takes seconds because the image is
+  # already on the host.
+  #
+  # SAFETY: a machine is only stopped when GitHub says its runner is NOT busy. The runners are
+  # --ephemeral, so a machine between jobs is idle and safe; one mid-job is never touched.
+  # If GitHub cannot be reached the verb scales UP only, because the failure mode of scaling
+  # down on bad data is killing a build.
+  command -v fly >/dev/null || { echo "fly CLI not installed" >&2; exit 1; }
+
+  local min max
+  min="$(_cfg_num autoscale_min 1)"
+  max="$(_cfg_num autoscale_max 3)"
+
+  local queued=""
+  queued="$(gh api "repos/$GH_REPO/actions/runs?status=queued&per_page=100" \
+              --jq '.workflow_runs | length' 2>/dev/null || true)"
+
+  local machines busy_names
+  machines="$(fly machines list -a "$APP" --json 2>/dev/null || echo '[]')"
+  busy_names="$(gh api "repos/$GH_REPO/actions/runners" \
+                  --jq '.runners[] | select(.busy) | .name' 2>/dev/null || true)"
+
+  local started stopped
+  started="$(printf '%s' "$machines" | jq -r '[.[] | select(.state=="started")] | .[].id')"
+  stopped="$(printf '%s' "$machines" | jq -r '[.[] | select(.state!="started")] | .[].id')"
+
+  local n_started
+  n_started="$(printf '%s\n' "$started" | grep -c . || true)"
+
+  local want
+  if [ -z "$queued" ]; then
+    # No reading from GitHub. Hold at least `min` and never scale down on a guess.
+    want="$min"
+    [ "$n_started" -gt "$want" ] && want="$n_started"
+    echo "  could not read the queue; holding at $want (scale-down needs real data)"
+  else
+    want="$queued"
+    [ "$want" -lt "$min" ] && want="$min"
+    [ "$want" -gt "$max" ] && want="$max"
+  fi
+
+  say "queue=${queued:-unknown} started=$n_started want=$want (min=$min max=$max)"
+
+  if [ "$want" -gt "$n_started" ]; then
+    local need=$(( want - n_started ))
+    for id in $stopped; do
+      [ "$need" -gt 0 ] || break
+      fly machine start "$id" -a "$APP" >/dev/null 2>&1 \
+        && { echo "  started $id"; need=$(( need - 1 )); } \
+        || echo "  could not start $id"
+    done
+    [ "$need" -gt 0 ] && echo "  wanted $need more machine(s) than the pool holds; raise the" \
+                              "pool with: deploy/runners.sh up $max"
+  elif [ "$want" -lt "$n_started" ] && [ -n "$queued" ]; then
+    local excess=$(( n_started - want ))
+    for id in $started; do
+      [ "$excess" -gt 0 ] || break
+      # `runner-<machine id>` is how the entrypoint names itself, which is the only thing that
+      # makes the two lists comparable.
+      printf '%s\n' "$busy_names" | grep -qx "runner-$id" && continue
+      fly machine stop "$id" -a "$APP" >/dev/null 2>&1 \
+        && { echo "  stopped $id (idle)"; excess=$(( excess - 1 )); } \
+        || echo "  could not stop $id"
+    done
+  else
+    echo "  nothing to do"
+  fi
+}
+
+_cfg_num() {
+  # One key out of ops/config/ci_capacity.yaml without adding a YAML dependency to a shell
+  # script. The keys are plain `name: number` at the top level of the autoscale block.
+  local key="$1" fallback="$2" val
+  val="$(awk -v k="$key" '$1 == k":" {print $2; exit}' "$REPO_ROOT/ops/config/ci_capacity.yaml" 2>/dev/null)"
+  case "$val" in
+    ''|*[!0-9]*) echo "$fallback" ;;
+    *) echo "$val" ;;
+  esac
+}
+
 cmd_status() {
   say "GitHub's view"
   gh api "repos/$GH_REPO/actions/runners" \
@@ -200,6 +284,7 @@ case "${1:-}" in
   up)         shift; cmd_up "$@" ;;
   down)       cmd_down ;;
   status)     cmd_status ;;
+  autoscale)  cmd_autoscale ;;
   laptop-off) cmd_laptop_off ;;
   laptop-on)  cmd_laptop_on ;;
   *) sed -n '2,20p' "$0"; exit 2 ;;
