@@ -20,6 +20,7 @@ export const VIEWS = [
   'queue',
   'drain',
   'providers',
+  'deploys',
   'routing',
   'spend',
   'money',

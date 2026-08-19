@@ -15,7 +15,7 @@ import { useState } from 'react';
 
 import Confirm from '@/components/Confirm';
 import Shell from '@/components/Shell';
-import { AsOf, Button, Card, Note, Pill, Problem, Row, Scroll } from '@/components/ui';
+import { AsOf, Button, Card, Empty, Mono, Note, Pill, Problem, Row, Scroll, Spinner } from '@/components/ui';
 import { ABSENT, ago, duration } from '@/lib/time';
 import { useOps } from '@/lib/useOps';
 
@@ -188,6 +188,96 @@ const ROLE_TITLE: Record<string, string> = {
   backup: 'Offsite backup',
 };
 
+type Deploy = {
+  name: string;
+  kind: string;
+  sha: string | null;
+  deployed_at: number | null;
+  age_s: number | null;
+  behind_main: number | null;
+  status: 'ok' | 'stale' | 'behind' | 'unknown';
+  detail: string;
+  url?: string;
+};
+type DeploysView = {
+  generated_at: number;
+  stale_after_s: number;
+  rows: Deploy[];
+  unknown: number;
+  behind: number;
+};
+
+/**
+ * WHAT IS ACTUALLY RUNNING, AND HOW OLD IT IS.
+ *
+ * Founder, 2026-08-19: "in admin ops dashboard, should be able to see last time anything
+ * deployable on the stack was deployed."
+ *
+ * The panel exists because on 17 August production ran 17-hour-old code and every screen read
+ * green -- the only way to find out was `lsof` on the pid. A workflow badge says a deploy
+ * succeeded, never when, and never whether main has moved since. Both of those are the whole
+ * question.
+ *
+ * Polled, like the brains panel above it: a deploy lands while the page is open, and a screen
+ * that answers this question with a stale number is the exact defect it was built to catch.
+ */
+function DeployedCard() {
+  const d = useOps<DeploysView>('deploys', {}, { pollMs: 60_000 });
+  const rows = d.data?.rows ?? [];
+  const bad = (d.data?.behind ?? 0) + (d.data?.unknown ?? 0);
+
+  return (
+    <Card
+      title="Deployed"
+      tone={bad > 0 ? 'warn' : 'plain'}
+      right={<AsOf asOf={d.envelope?.as_of} tookMs={d.envelope?.took_ms} />}
+    >
+      {d.error ? <Problem>{d.error}</Problem> : null}
+      {!d.data && !d.error ? <Spinner what="asking each deployable" /> : null}
+      {d.data && rows.length === 0 ? <Empty>nothing reported a deploy</Empty> : null}
+
+      <div className="flex flex-col gap-3">
+        {rows.map((r) => (
+          <Row
+            key={r.name}
+            label={
+              <span className="flex items-center gap-2">
+                <Pill tone={toneFor(r.status)}>{r.status}</Pill>
+                <span>{r.name}</span>
+              </span>
+            }
+          >
+            <span className="flex flex-wrap items-center gap-2 text-[13px]">
+              <span>{r.age_s === null ? ABSENT : `${duration(r.age_s)} ago`}</span>
+              {r.behind_main ? (
+                <Pill tone="warn">{r.behind_main} commits behind main</Pill>
+              ) : null}
+              {r.sha ? <Mono>{r.sha.slice(0, 8)}</Mono> : null}
+              <span className="text-subtle">{r.detail}</span>
+            </span>
+          </Row>
+        ))}
+      </div>
+
+      <Note>
+        Every line is a probe, not a record. Store.Web and Store.Api report the last successful run
+        of their deploy workflow on main; the engine reports the prospector-live checkout&apos;s own
+        HEAD, because that working tree is what the daemons execute; the console reports the mtime
+        of the build directory `next start` serves, because it serves a build and not the source
+        beside it. A deployable that cannot be probed reads <Mono>unknown</Mono>. It never reads
+        &quot;up to date&quot;.
+      </Note>
+    </Card>
+  );
+}
+
+function toneFor(status: Deploy['status']): 'ok' | 'warn' | 'bad' | 'mute' {
+  if (status === 'ok') return 'ok';
+  if (status === 'unknown') return 'mute';
+  if (status === 'stale') return 'warn';
+  return 'bad';
+}
+
 export default function Engine() {
   const pause = useOps<PauseView>('status');
   // POLLED, unlike every other panel on this page. Founder, 2026-08-18: "i need to see real
@@ -207,6 +297,8 @@ export default function Engine() {
       {pause.error ? <Problem>{pause.error}</Problem> : null}
 
       <EngineLocationCard />
+
+      <DeployedCard />
 
       <Card
         title="Processes"

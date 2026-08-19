@@ -1487,6 +1487,12 @@ def _read_processes(cfg, args: dict) -> dict:
     return json.loads(proc.stdout)
 
 
+def _read_deploys(cfg, args: dict) -> dict:
+    from .deploys import deploys_view
+
+    return deploys_view(cfg, args)
+
+
 READS: dict[str, Callable[[Any, dict], Any]] = {
     "processes": _read_processes,
     "engine_location": _read_engine_location,
@@ -1497,6 +1503,7 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
     "queue": _read_queue,
     "drain": _read_drain,
     "providers": _read_providers,
+    "deploys": _read_deploys,
     "routing": _read_routing,
     "spend": _read_spend,
     "money": _read_money,
