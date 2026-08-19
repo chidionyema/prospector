@@ -148,7 +148,7 @@ def load_config_raw() -> dict[str, Any]:
 def config_hash(cfg: dict[str, Any]) -> str:
     """Stable hash of the config dict for certification tracking."""
     return hashlib.sha1(
-        yaml.safe_dump(cfg, sort_keys=True).encode()
+        yaml.safe_dump(cfg, sort_keys=True).encode(), usedforsecurity=False
     ).hexdigest()[:12]
 
 
