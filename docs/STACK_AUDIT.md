@@ -268,7 +268,10 @@ the synthetic buy-a-pack proof.
 
 ## 4. "Is SQLite even appropriate?"
 
-**Yes — and it is not the datastore that should worry us.**
+**Split answer, because there are two different datastores and only one of them is fine.**
+Yes for the engine and the research store. **No for the money path** — and the reason is not
+size or write rate, it is that SQLite pins the API to one machine, which forbids the
+redundancy and the zero-downtime deploys we have already committed to.
 
 Measured on disk today:
 
@@ -298,6 +301,64 @@ We are nowhere near any of those. One engine writes; the money fence already for
 already set in `prospector/metrics_store.py:37`, `prospector/self_modify.py:44` and
 `prospector/store.py:145`. **Moving to Postgres would add a network hop, a second failure
 domain and a migration, and buy nothing measurable.**
+
+### 4a. The money path: measured, and the verdict is different
+
+Measured 2026-08-19:
+
+| Fact | Evidence |
+|---|---|
+| Store.Api persists to SQLite | `Program.cs:26` `?? "Data Source=store.db"`, `:28` `options.UseSqlite(...)`; 9 `UseSqlite` references |
+| `prospector-store-api` runs **1 machine** | `fly machines list -a prospector-store-api` |
+| on **1 volume, 1 zone** | `vol_4ql6dzwjylqeygnr`, 1 GB, lhr, zone 8169 |
+| `prospector-store-web` already runs **2 machines** | stateless, no volume — it scaled; the API cannot follow |
+| EF migrations in Store.Api | **0**. Store.Catalog has one `InitialCreate` carrying `Sqlite:Autoincrement` annotations |
+
+Every order, entitlement, identity record and refresh token in the business lives in one
+SQLite file, on one volume, attached to one machine, in one zone.
+
+**Three consequences, none of which is about size.**
+
+1. **The API cannot be made redundant.** M12 says "scale the shop front to 2". The web tier
+   already is. The API cannot be, because its database is a local file. The datastore choice,
+   not a config flag, is what blocks it.
+2. **Every API deploy is a gap in taking money.** One machine with an attached volume cannot
+   roll: the volume has to move. That contradicts the standing "zero customer downtime"
+   constraint.
+3. **A zone failure loses orders.** Fly does not replicate between volumes and its own docs
+   say a single volume is persistent but not durable — if the drive fails, the data is gone.
+   Daily snapshots kept 5 days are a floor, not a strategy.
+   ([Fly volumes overview](https://fly.io/docs/volumes/overview/))
+
+**The documented failure mode is ours exactly.** The reported pattern is payment intents
+showing succeeded while the order record never reached the database, writes lost to WAL
+contention, and overlapping deploys with concurrent SQLite access losing orders despite
+successful charges. A well-tuned SQLite app handles 50–100 write transactions per second, and
+the recommendation is to migrate for multi-user SaaS that takes payments and mutates state
+concurrently. ([ultrathink.art](https://ultrathink.art/blog/sqlite-in-production-lessons),
+[RaidFrame 2026](https://raidframe.com/articles/postgres-vs-sqlite-2026))
+
+Litestream, LiteFS and libSQL have removed SQLite's backup, replication and read-scaling
+limits — **write concurrency is the one that remains, and it is the one that matters for
+payments.** ([RaidFrame 2026](https://raidframe.com/articles/postgres-vs-sqlite-2026))
+
+**Verdict: Postgres for the money path. SQLite everywhere else.**
+
+- **It does not cost lock-in — it reduces it.** Every provider speaks Postgres and `pg_dump`
+  moves it. A managed Postgres is the most portable managed dependency available, and it
+  satisfies the no-lock-in constraint better than a file pinned to one Fly volume.
+- **The swap is cheap, measured.** Store.Api has **zero** EF migrations; Store.Catalog has one
+  `InitialCreate` whose only provider-specific content is `Sqlite:Autoincrement`. EF Core makes
+  the provider a configuration change plus regenerated migrations. This is the cheapest it will
+  ever be — the cost grows with every order written.
+- **Not LiteFS, not rqlite.** LiteFS gives read replicas with a single writer, which does not
+  fix deploys or write availability. rqlite cannot do transactions, which is disqualifying for
+  an order-plus-entitlement write. ([rqlite FAQ](https://rqlite.io/docs/faq/))
+- **Litestream on the money DB is the stopgap, not the fix.** It takes RPO from 24 hours to
+  seconds this week. It does not make the API redundant.
+
+**Sequence:** Litestream on both SQLite files now (days, no code change) -> Postgres for
+Store.Api (M3, and it makes the money path portable at the same time) -> scale the API to 2.
 
 **What IS wrong, in priority order:**
 
@@ -387,11 +448,13 @@ M3 (money-path adapter), M7 (chaos), M8 (end-to-end buy), M9 (DNS, shipped), M11
 ## 9. Decisions needed from the founder
 
 1. **Ledger migration.** Move the 258 MB spend ledger from JSONL into `prospector.db`?
-   It touches the money rail's daily cap, so it is a founder call, not mine.
-2. **Healthchecks and Dagu need somewhere to run.** Both are containers. On `prospector-engine`
-   alongside the engine, or their own small Fly app? No new provider either way.
-3. **Delete passes.** Section 7 is 90-odd files. Confirm the shape (report first, then a
-   `--fix` run) before any of it moves.
+   It touches the money rail's daily cap, so it is a founder call, not mine. **OPEN.**
+2. **Where Healthchecks and Dagu run.** **DECIDED 2026-08-19: on `prospector-engine`.**
+   No new app, no new provider.
+3. **Delete passes.** **DECIDED 2026-08-19: delete once each has been confirmed run, and
+   update the repo docs in the same pass.** Report mode still runs first.
+4. **Postgres for the money path** (new, from section 4a). The audit's recommendation is yes.
+   It is a founder call because it touches the money rail. **OPEN.**
 
 ## 10. Ledger
 
