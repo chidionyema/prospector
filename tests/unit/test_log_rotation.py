@@ -27,6 +27,7 @@ from ops.automations.log_rotation import (
     check,
     check_prune,
     prune,
+    resolve,
     resolve_prune,
     load_declaration,
     main,
@@ -414,3 +415,46 @@ def test_the_live_declaration_bounds_every_prune_target_and_spares_durable_state
         for durable in ("prospector.jsonl", "complaint_ledger", "complaint_register",
                         "node_modules", "venv", ".git/"):
             assert durable not in target.path, f"{target.path} names durable state"
+
+
+# ── a declared path must follow the STORE, not the checkout the process runs from ──────────
+
+def test_an_environment_variable_in_a_declared_path_expands(tmp_path, monkeypatch):
+    store = tmp_path / "canonical-store"
+    store.mkdir()
+    (store / "backup.log").write_text("x" * 2_000_000)
+    monkeypatch.setenv("PROSPECTOR_STORE_DIR", str(store))
+
+    decl = Declaration(targets=[Target(path="$PROSPECTOR_STORE_DIR/*.log", max_mb=1.0)])
+    found = resolve(decl.targets[0], tmp_path / "some-other-checkout")
+    assert found == [store / "backup.log"]
+
+
+def test_an_unset_variable_is_refused_not_silently_matched_as_nothing(tmp_path, monkeypatch):
+    """expandvars leaves an unset $VAR literal, so the glob matches nothing and the target
+    reports ABSENT. A policy that is switched off must not report as a policy with no work."""
+    monkeypatch.delenv("PROSPECTOR_STORE_DIR", raising=False)
+    with pytest.raises(CannotEstablish) as exc:
+        resolve(Target(path="$PROSPECTOR_STORE_DIR/*.log", max_mb=1.0), tmp_path)
+    assert "not set" in str(exc.value)
+
+
+def test_a_prune_target_gets_the_same_variable_guard(tmp_path, monkeypatch):
+    monkeypatch.delenv("PROSPECTOR_STORE_DIR", raising=False)
+    with pytest.raises(CannotEstablish):
+        resolve_prune(PruneTarget(path="$PROSPECTOR_STORE_DIR/**/*", older_than_days=1), tmp_path)
+
+
+def test_a_bare_run_still_works_without_the_variable_set(tmp_path, monkeypatch):
+    """The scheduled job exports it; a developer typing the command does not."""
+    monkeypatch.delenv("PROSPECTOR_STORE_DIR", raising=False)
+    _pin_root(monkeypatch, tmp_path)
+    store = tmp_path / "store"
+    store.mkdir()
+    (store / "backup.log").write_text("x" * 2_000_000)
+    config = tmp_path / "decl.yaml"
+    config.write_text("targets:\n  - path: $PROSPECTOR_STORE_DIR/*.log\n    max_mb: 1\n    keep: 2\n")
+
+    result = run(config, tmp_path)
+    assert result["status"] == "findings", result
+    assert any("backup.log" in f["where"] for f in result["findings"]), result["findings"]

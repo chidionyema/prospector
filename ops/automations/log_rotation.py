@@ -64,8 +64,26 @@ DEFAULT_MAX_DELETE = 20_000
 
 
 def _expand(pattern: str) -> str:
-    """`~` in a declared path. Every estate-wide target lives outside the repo."""
-    return os.path.expanduser(pattern)
+    """`~` and `$VAR` in a declared path.
+
+    `$PROSPECTOR_STORE_DIR` matters more than it looks. A relative `store/*.log` resolves
+    against the process's working directory, and the scheduled job runs from the LIVE
+    checkout while the canonical store lives in the developer one — so the declaration
+    silently matched an empty directory and the job's own log grew unbounded. That is the
+    same defect CLAUDE.md records for four constants derived from `__file__`: a store path
+    that follows the CODE instead of the store.
+    """
+    return os.path.expanduser(os.path.expandvars(pattern))
+
+
+def _assert_expanded(pattern: str, expanded: str) -> None:
+    """A `$VAR` that did not expand is left LITERAL by expandvars, so the glob quietly
+    matches nothing and the target reports ABSENT — a policy that is off, reported as a
+    policy that has nothing to do. Refuse instead."""
+    if "$" in expanded:
+        raise CannotEstablish(
+            f"declared path {pattern!r} contains an environment variable that is not set "
+            f"in this process; it would silently match nothing")
 
 
 class CannotEstablish(Exception):
@@ -174,6 +192,7 @@ def resolve(target: Target, root: Path) -> list[Path]:
     """A target may name one file or a glob. Absolute paths are honoured as written, so this
     engine works for /var/log in a startup that keeps its logs outside the repo."""
     pattern = _expand(target.path)
+    _assert_expanded(target.path, pattern)
     if pattern.startswith("/"):
         base, rel = Path("/"), pattern.lstrip("/")
     else:
@@ -246,6 +265,7 @@ def resolve_prune(target: PruneTarget, root: Path) -> list[Path]:
                         silently, and it looks exactly like deleting old files.
     """
     pattern = _expand(target.path)
+    _assert_expanded(target.path, pattern)
     if pattern.startswith("/"):
         base, rel = Path("/"), pattern.lstrip("/")
     else:
@@ -375,6 +395,11 @@ def run(config_path: Path, start: Path, *, fix: bool = False) -> dict[str, Any]:
     try:
         decl = load_declaration(config_path)
         root = repo_root(start)
+        # A developer running this by hand has no PROSPECTOR_STORE_DIR; the scheduled job
+        # does, and it points at the canonical store rather than at whatever checkout the
+        # process happens to run from. Defaulting it here keeps both honest: the declaration
+        # names the store, and a bare "python -m ops.automations.log_rotation" still works.
+        os.environ.setdefault("PROSPECTOR_STORE_DIR", str(root / "store"))
         looked, findings = check(decl, root)
 
         if fix and findings:

@@ -10,7 +10,7 @@ keep: 5         # Five archives at daily-ish rotation is roughly a working week 
                 # which is the window in which anybody asks "what happened on Tuesday".
 
 targets:
-  - path: store/scheduler/*.log
+  - path: $PROSPECTOR_STORE_DIR/scheduler/*.log
     why: >
       The daemon's stdout and stderr. This is the file that caused the rule: on 2026-08-16 a
       grep over an unrotated 25 MB launchd.err.log counted 97 provider failures and read as
@@ -19,7 +19,7 @@ targets:
     max_mb: 10
     keep: 7
 
-  - path: store/*.log
+  - path: $PROSPECTOR_STORE_DIR/*.log
     why: >
       Backup and offsite-backup receipts. Small, but they are the only proof a scheduled job
       ran, so they are kept longer than they are large.
