@@ -51,6 +51,7 @@ permissions:
   contents: write
   pull-requests: write
   actions: write # to dispatch main's CI and the engine deploy after the merge
+  checks: read # the stranded-PR sweep reads check runs on each open PR's head sha
 
 # One merge at a time. Two merges racing onto main is how a green PR lands on top of a commit
 # its own CI run never saw.
@@ -245,6 +246,39 @@ jobs:
 
             if (!merged) return
 
+            // THE DEPLOY DISPATCH RUNS BEFORE THE SWEEP, AND THAT ORDER IS THE FIX.
+            // Until 2026-08-19 the sweep came first. On 2026-08-19T21:09Z it threw 403
+            // `Resource not accessible by integration` on
+            // GET /repos/.../commits/<sha>/check-runs (the response's own
+            // x-accepted-github-permissions header said `checks=read`, which this workflow's
+            // permissions block did not declare). The throw aborted the script AFTER #453 had
+            // already merged, so no deploy was dispatched for that merge or the three that
+            // followed it. Production sat 9 commits behind main and every run looked either
+            // green or like a merge that failed. Anything that must happen because code LANDED
+            // belongs above anything that is best effort.
+            // Start what the merge push could not (see the header). workflow_dispatch is the
+            // documented exception that works with GITHUB_TOKEN.
+            core.info('dispatching CI on main')
+            await github.rest.actions.createWorkflowDispatch(
+              {owner, repo, workflow_id: 'ci.yml', ref: 'main'})
+            if (toDeploy.size === 0) {
+              core.info('merged files touch nothing any deploy workflow watches — no deploy')
+            } else {
+              // deploy-web.yml takes a target as well as dry_run. Its own default is prod, but a
+              // dispatch that omits an input gets the workflow default, and relying on a default in
+              // another file is how a production deploy quietly becomes a test one. Pass it.
+              const INPUTS = {
+                'deploy-engine.yml': {dry_run: 'false'},
+                'deploy-web.yml': {target: 'prod', dry_run: 'false'},
+                'deploy-api.yml': {dry_run: 'false'},
+              }
+              for (const wf of toDeploy) {
+                core.info(`merged files touch what ${wf} watches — dispatching it`)
+                await github.rest.actions.createWorkflowDispatch(
+                  {owner, repo, workflow_id: wf, ref: 'main', inputs: INPUTS[wf]})
+              }
+            }
+
             // AFTER A MERGE, EVERY OTHER GREEN PR IS NOW BEHIND MAIN AND NOTHING WILL NOTICE.
             // This job fires only when a CI run completes, and it looks only at the PRs whose
             // head is that run's sha. A PR that went green BEFORE this merge now sits behind
@@ -311,25 +345,3 @@ jobs:
               }
             }
 
-            // Start what the merge push could not (see the header). workflow_dispatch is the
-            // documented exception that works with GITHUB_TOKEN.
-            core.info('dispatching CI on main')
-            await github.rest.actions.createWorkflowDispatch(
-              {owner, repo, workflow_id: 'ci.yml', ref: 'main'})
-            if (toDeploy.size === 0) {
-              core.info('merged files touch nothing any deploy workflow watches — no deploy')
-              return
-            }
-            // deploy-web.yml takes a target as well as dry_run. Its own default is prod, but a
-            // dispatch that omits an input gets the workflow default, and relying on a default in
-            // another file is how a production deploy quietly becomes a test one. Pass it.
-            const INPUTS = {
-              'deploy-engine.yml': {dry_run: 'false'},
-              'deploy-web.yml': {target: 'prod', dry_run: 'false'},
-              'deploy-api.yml': {dry_run: 'false'},
-            }
-            for (const wf of toDeploy) {
-              core.info(`merged files touch what ${wf} watches — dispatching it`)
-              await github.rest.actions.createWorkflowDispatch(
-                {owner, repo, workflow_id: wf, ref: 'main', inputs: INPUTS[wf]})
-            }
