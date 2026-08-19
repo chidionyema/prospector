@@ -62,19 +62,14 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-#: The CHECKOUT. Used as git's working directory, which is the one thing that genuinely belongs
-#: to the code. The OUTPUT below is state and does not.
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT))
 
-from prospector.config import store_root  # noqa: E402  (needs ROOT on sys.path first)
+# The store is where PROSPECTOR_STORE_DIR says, never where this file sits. A path derived from
+# __file__ follows the CODE; production moved off this checkout on 2026-08-17 and the state did
+# not. One resolver: prospector.config.store_root().
+from prospector.config import store_root  # noqa: E402
 
-#: Written where PROSPECTOR_STORE_DIR says, never beside this file. It was `ROOT / "store"` until
-#: 2026-08-19, which put the receipt in /app/store on the engine while the store was the volume at
-#: /data/store -- so the console read a file the scoreboard never wrote. That is the trap
-#: CLAUDE.md documents and `test_no_store_path_is_derived_from_file.py` grades; this line was the
-#: one offender that test found on main.
 DEFAULT_OUT = store_root() / "ops" / "rework_metrics.json"
 
 #: How far back to measure. Longer costs nothing extra (one git call) but dilutes the trend with
