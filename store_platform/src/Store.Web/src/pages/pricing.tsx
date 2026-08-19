@@ -5,7 +5,7 @@ import { Seo } from '@/components/Seo';
 import { Icon, textLinkClass } from '@/components/ui';
 import { PACK_DOCUMENTS } from '@/components/marketing/PackContents';
 import { BRAND, LEGAL } from '@/lib/config';
-import { GetStaticProps } from 'next';
+import { GetServerSideProps } from 'next';
 import { fetchCatalog } from '@/lib/api/client';
 import { priceRange, priceLadder, priceSentence, formatGbp, type PriceRange, type LadderRung } from '@/lib/priceRange';
 import PriceLadder from '@/components/marketing/PriceLadder';
@@ -355,12 +355,23 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
  * A failed fetch is not an error page: `range` is null, and every price claim above simply does
  * not render. The page still answers what is in a pack, what is not, and the refund terms.
  *
- * ISR, not `getServerSideProps` (measured 2026-08-14): this function reads no `context` at all --
- * no visitor-specific input exists on a pricing page whose numbers are the same for everyone --
- * so every hit was paying a live `/catalog` round trip for two figures that only change when the
- * engine publishes. 300s revalidate matches `kill-log.tsx`'s ISR window for the same reason.
+ * REQUEST TIME, NOT ISR, AND THE 2026-08-14 MEASUREMENT THAT SAID OTHERWISE IS OVERTURNED.
+ *
+ * That note was right that no visitor-specific input exists here, and wrong that the figures only
+ * change when the engine publishes: the price sentence prints a SHELF COUNT, and a shelf count is
+ * only ever correct read live. `stats.ts` states that invariant and refuses to export a published
+ * count for the same reason.
+ *
+ * Measured 2026-08-19 by `verify.mjs` C1, minutes after a clean build: `/` and `/ideas` read 76
+ * packs from `/catalog` at request time while this page, generated at build time, still said
+ * "30 of the 75 packs available now". Both numbers came from the same catalogue. One of them was
+ * 300 seconds old, and the page whose whole argument is that our arithmetic checks out was the
+ * one contradicting the other two.
+ *
+ * A `/catalog` round trip per pricing hit is what that costs. The ladder is derived from the same
+ * fetch, so it stops drifting too.
  */
-export const getStaticProps: GetStaticProps<{
+export const getServerSideProps: GetServerSideProps<{
   range: PriceRange | null;
   ladder: LadderRung[];
 }> = async () => {
@@ -368,5 +379,5 @@ export const getStaticProps: GetStaticProps<{
   // Same fetch, two derivations. `ladder` is `[]` on a failed fetch, and `PriceLadder` renders
   // nothing below two rungs, so the drawing disappears with the rest of the price claims rather
   // than drawing a shelf nobody could read.
-  return { props: { range: priceRange(packs), ladder: priceLadder(packs) }, revalidate: 300 };
+  return { props: { range: priceRange(packs), ladder: priceLadder(packs) } };
 };
