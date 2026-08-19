@@ -18,7 +18,6 @@ that did not happen, and it sees it by comparing the two lists that must agree.
 """
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 
