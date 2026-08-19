@@ -45,7 +45,33 @@ class CannotEstablish(Exception):
 
 
 def _root() -> Path:
+    """The CHECKOUT this code was loaded from. Correct for the declaration, and only for it.
+
+    `ops/config/stranded_packs.yaml` ships beside the code and moves with it, so deriving its
+    path from `__file__` is right. The STORE does not move with the code, which is why it is
+    resolved separately by `_store()` below.
+    """
     return Path(__file__).resolve().parents[2]
+
+
+def _store() -> Path:
+    """The store directory: `PROSPECTOR_STORE_DIR`, or `<checkout>/store` when it is unset.
+
+    This probe read `_root() / "store" / "dossiers"` until 2026-08-19. On the engine the code is
+    at /app and the store is a mounted volume at /data/store, so it looked in /app/store/dossiers,
+    found nothing, and returned `status: unknown, error: no dossier directory`. The one automation
+    built to answer "why is finished research not on the shelf" could not answer it in the only
+    place the question is asked.
+
+    It is the `__file__` trap CLAUDE.md documents, in a file written after the trap was
+    documented. A comment is not a guard, so this resolution now goes through the same
+    `config.store_root()` every other module uses, and
+    `test_stranded_packs.py::test_the_dossier_dir_follows_the_store_not_the_code` fails if it
+    ever goes back.
+    """
+    from prospector.config import store_root
+
+    return store_root()
 
 
 def _default_config() -> Path:
@@ -82,9 +108,12 @@ def _pack_id(name: str) -> str:
     return name.split(".", 1)[0]
 
 
-def scan(root: Path, decl: dict[str, Any]) -> dict[str, Any]:
-    """Classify every passed pack by the first publication gate it fails."""
-    doss = root / str(decl.get("dossier_dir") or "store/dossiers")
+def scan(store: Path, decl: dict[str, Any]) -> dict[str, Any]:
+    """Classify every passed pack by the first publication gate it fails.
+
+    `store` is the STORE directory, not the checkout. `dossier_dir` is declared relative to it.
+    """
+    doss = store / str(decl.get("dossier_dir") or "dossiers")
     if not doss.is_dir():
         raise CannotEstablish(f"no dossier directory at {doss}")
 
@@ -156,15 +185,15 @@ def scan(root: Path, decl: dict[str, Any]) -> dict[str, Any]:
 
 
 def run(config_path: Optional[Path] = None, as_json: bool = False,
-        root: Optional[Path] = None) -> int:
+        store: Optional[Path] = None) -> int:
     path = Path(config_path) if config_path else _default_config()
-    root = Path(root) if root else _root()
+    store = Path(store) if store else _store()
     ran_at = datetime.now(timezone.utc).isoformat()
     probe = f"python -m ops.automations.{AUTOMATION}"
 
     try:
         decl = load_declaration(path)
-        result = scan(root, decl)
+        result = scan(store, decl)
     except CannotEstablish as exc:
         doc = {"automation": AUTOMATION, "status": "unknown", "checked": None,
                "findings": [], "ran_at": ran_at, "probe": probe, "error": str(exc)}
@@ -198,13 +227,14 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap.add_argument("--json", action="store_true", help="machine-readable; this is what the "
                                                         "console calls")
     ap.add_argument("--config", default=None, help="path to the declaration")
-    # A worktree carries the code but not the runtime store, so the checkout being measured is not
-    # always the checkout the code was read from. That is a fact about where files are, not about
-    # this business, so it is a flag rather than a YAML key.
-    ap.add_argument("--root", default=None, help="checkout to measure; defaults to this one")
+    # A worktree carries the code but not the runtime store, and on the engine the two are on
+    # different filesystems entirely. That is a fact about where files are, not about this
+    # business, so it is a flag rather than a YAML key.
+    ap.add_argument("--store", default=None,
+                    help="store directory to measure; defaults to PROSPECTOR_STORE_DIR")
     args = ap.parse_args(argv)
     return run(Path(args.config) if args.config else None, as_json=args.json,
-               root=Path(args.root) if args.root else None)
+               store=Path(args.store) if args.store else None)
 
 
 if __name__ == "__main__":
