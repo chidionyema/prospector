@@ -52,19 +52,50 @@ if [ "${1:-}" = "--install" ]; then
   exit 0
 fi
 
+# --- what is running, MEASURED -----------------------------------------------------------------
+# Everything below this line used to be a hand-written paragraph. It went stale the way every
+# paragraph about state goes stale: silently, with no tell from the inside. It named
+# prospector-ci as the "intended home" of CI for the whole time CI actually ran there.
+#
+# So the facts are measured by `scripts/estate_map.py --snapshot`, which writes
+# <store>/ops/estate_map.json, and this probe RENDERS that file and says how old it is. No
+# network here: the map shells into Fly and curls the storefront, which is seconds a session
+# must not pay. A missing or old snapshot is reported loudly rather than papered over.
+STORE="${PROSPECTOR_STORE_DIR:-$HOME/Documents/code/prospector/store}"
+SNAP="$STORE/ops/estate_map.json"
+
 echo "PRODUCTION IS FLY. This Mac is development and estate support, not production."
-echo "  engine    prospector-engine (lhr, 1 machine). supervisord runs seven programs: scheduler,"
-echo "            consumer, watchdog, backup, offsite-backup, restore-drill, ops-console (port 8611)."
-echo "  shop      prospector-store-api = api.mumchimp.com, prospector-store-web = mumchimp.com"
-echo "  grounding prospector-searxng, private 6PN, no public IP"
-echo "  The live process table is a command, never this text:"
+python3 - "$SNAP" <<'PYEOF' 2>/dev/null || echo "  (no estate snapshot yet -- run: .venv/bin/python scripts/estate_map.py --snapshot)"
+import json, sys, time, calendar
+path = sys.argv[1]
+d = json.load(open(path))
+age_h = (time.time() - calendar.timegm(time.strptime(d["as_of_utc"], "%Y-%m-%dT%H:%M:%SZ"))) / 3600
+stamp = f"measured {age_h:.0f}h ago" if age_h >= 1 else f"measured {age_h*60:.0f}m ago"
+if age_h > 24:
+    stamp = (f"STALE: measured {age_h/24:.0f} DAYS ago. Treat every line below as a lead, and "
+             f"refresh with `.venv/bin/python scripts/estate_map.py --snapshot`")
+print(f"  {stamp}, by scripts/estate_map.py --snapshot")
+for a in d.get("fly_apps", []):
+    if not a["name"].startswith("prospector-"):
+        continue
+    m = (d.get("machines") or {}).get(a["name"]) or {}
+    print(f"    {a['state']:<4} {a['name']:<22} {a['why'][:78]}")
+    if m.get("note"):
+        print(f"         {m['note'][:88]}")
+bad = [e for e in d.get("endpoints", []) if e["state"] != "ok"]
+print(f"  customer-facing URLs: {len(d.get('endpoints', [])) - len(bad)} ok"
+      + (f", {len(bad)} NOT ok -> " + ", ".join(e["url"] for e in bad) if bad else ""))
+cr = d.get("ci_runners") or {}
+if cr.get("note"):
+    print(f"  CI: {cr['note'][:200]}")
+PYEOF
+
+# Decisions, not measurements. These do not change when a probe runs, so they are written down.
+echo "  The live process table is a command, never a snapshot:"
 echo "      fly ssh console -a prospector-engine -C \"supervisorctl status\""
 echo "  This Mac's com.prospector.* launchd jobs are pre-2026-08-18 leftovers. Do not read them as"
 echo "  production and do not restart them. scripts/process_audit.py grades them SUPERSEDED."
-echo "  CI        prospector-ci (Fly, lhr) -- 2 Linux container runners, label 'heavy'. CI does"
-echo "            NOT run on this Mac. The actions.runner.* jobs here are offline ON PURPOSE;"
-echo "            do not start them. A queued pull request is usually capacity, not a dead"
-echo "            runner. Ask, never guess:"
+echo "  The actions.runner.* jobs here are offline ON PURPOSE. Do not start them. Ask, never guess:"
 echo "      gh api repos/chidionyema/prospector/actions/runners --jq '.runners[] | \"\\(.name) \\(.status) busy=\\(.busy)\"'"
 
 for repo in "$HOME/Documents/code/prospector" \

@@ -234,8 +234,9 @@ def grade_ci_runners() -> list[tuple[str, str, str]]:
     which sees every runner of every kind and whether it is free.
     """
     rc, out = sh(["gh", "api", "repos/chidionyema/prospector/actions/runners",
-                  "--jq", '.runners[] | "\(.name)\t\(.status)\t\(.busy)\t'
-                          '\(.labels|map(.name)|join(\",\"))"'], timeout=60)
+                  # Raw: every \( here is jq interpolation, not a Python escape.
+                  "--jq", r'.runners[] | "\(.name)\t\(.status)\t\(.busy)\t'
+                          r'\(.labels|map(.name)|join(","))"'], timeout=60)
     if rc != 0 or not out.strip():
         return [(WARN, "CI runners", "cannot ask GitHub (gh missing, unauthenticated or offline)")]
 
@@ -504,6 +505,7 @@ def grade_enforcement() -> list[tuple[str, str, str]]:
 
     rows.extend(_grade_state_probe())
     rows.extend(_grade_session_hooks())
+    rows.extend(_grade_agent_memory())
     rows.extend(_grade_instruction_checkouts())
     return rows
 
@@ -598,6 +600,79 @@ def _grade_instruction_checkouts() -> list[tuple[str, str, str]]:
 
 
 
+def _hook_staleness(path: Path) -> str:
+    """Is the hook file at this path behind what has been reviewed and merged?
+
+    A hook is executed FROM THE PATH settings.json names, not from whatever branch a session is
+    working on. Measured 2026-08-19: two hooks point into a developer checkout that was 60
+    commits behind `origin/main`, so every session in the estate was policed by unreviewed,
+    out-of-date code -- and there was no tell, because a hook that runs successfully looks the
+    same whatever version it is.
+
+    Returns a phrase to append to the row, empty when the file is current or not in a repo.
+    """
+    rc, top = sh(["git", "-C", str(path.parent), "rev-parse", "--show-toplevel"], timeout=15)
+    if rc != 0 or not top.strip():
+        return " -- not in a git repository, so nothing reviews it"
+    rc, behind = sh(["git", "-C", top.strip(), "rev-list", "--count", "HEAD..origin/main",
+                     "--", str(path)], timeout=20)
+    if rc != 0 or not behind.strip().isdigit():
+        return ""
+    n = int(behind.strip())
+    if n == 0:
+        return ""
+    return (f" -- WARNING: this file is {n} commit(s) behind origin/main in "
+            f"{Path(top.strip()).name}; sessions run THIS copy, not main")
+
+
+def _grade_agent_memory() -> list[tuple[str, str, str]]:
+    """Can a session in THIS checkout read what a session in another checkout learned?
+
+    Claude Code stores agent memory per working directory: ~/.claude/projects/<cwd-slug>/memory.
+    This estate has three prospector checkouts and about thirty-five worktrees, so it has that
+    many separate stores. Counted 2026-08-19: 390 files in one, 13 in another, 1 in a third, and
+    zero in every worktree, with no overlap but the index file. A session started anywhere but
+    the main checkout could see 13 of 391 lessons.
+
+    The cost is not hypothetical. Two sessions hit the same trap on the same day -- CI runs on
+    the Fly app prospector-ci, not on this Mac -- and each wrote its own memory file about it,
+    in its own store, neither able to see the other's.
+
+    `bash ops/share_memory.sh --apply` merges them into ~/.claude/memory/prospector and links
+    every slug at it. This row says whether that has been done, because a fix nobody applied
+    looks exactly like a fix nobody needed.
+    """
+    projects = Path.home() / ".claude" / "projects"
+    shared = Path.home() / ".claude" / "memory" / "prospector"
+    if not projects.is_dir():
+        return [(WARN, "agent memory", f"no {projects} -- cannot tell what sessions can read")]
+
+    stores = [d / "memory" for d in projects.glob("*")
+              if d.is_dir() and "-private-" not in d.name
+              and (d.name.endswith("code-prospector") or "-code-wt-" in d.name
+                   or d.name == "prospector")]
+    stores = [m for m in stores if m.exists()]
+    if not stores:
+        return [(WARN, "agent memory", "no memory store for any prospector checkout")]
+
+    linked = [m for m in stores if m.is_symlink()]
+    split = [m for m in stores if not m.is_symlink()]
+    if not split:
+        n = len(list(shared.glob("*.md"))) if shared.is_dir() else 0
+        return [(OK, "agent memory",
+                 f"{len(linked)} checkout(s) share one store of {n} memories at "
+                 f"~/.claude/memory/prospector -- a lesson learned in any checkout is readable "
+                 f"in all of them")]
+
+    sizes = sorted(((len(list(m.glob("*.md"))), m.parent.name) for m in split), reverse=True)
+    biggest = sizes[0][0]
+    smallest = sizes[-1][0]
+    return [(BAD, "agent memory",
+             f"PARTITIONED across {len(split)} store(s): {biggest} memories in one, {smallest} "
+             f"in another. A session in the smaller checkout is blind to what the other learned, "
+             f"and writes a duplicate instead. Fix: bash ops/share_memory.sh --apply")]
+
+
 def _grade_session_hooks() -> list[tuple[str, str, str]]:
     """Grade the hooks that police every agent turn, because nothing else did.
 
@@ -647,9 +722,10 @@ def _grade_session_hooks() -> list[tuple[str, str, str]]:
         except OSError as exc:
             rows.append((BAD, f"hook {name}", f"unreadable: {exc}"))
             continue
+        stale = _hook_staleness(path)
         if "--selftest" not in body:
             rows.append((WARN, f"hook {name}", f"{where}: no --selftest, so nothing checks it "
-                                               f"enforces the right thing"))
+                                               f"enforces the right thing{stale}"))
             continue
         tested += 1
         try:
@@ -662,15 +738,20 @@ def _grade_session_hooks() -> list[tuple[str, str, str]]:
         verdict = last[-1][:70] if last else "no output"
         if r.returncode == 0:
             ok += 1
-            rows.append((OK, f"hook {name}", f"{where}: {verdict}"))
+            # A passing selftest on a stale file proves the STALE file is self-consistent. It
+            # says nothing about whether main has since fixed the rule, so the row must not
+            # read green on that alone.
+            rows.append((WARN if "WARNING" in stale else OK,
+                         f"hook {name}", f"{where}: {verdict}{stale}"))
         else:
             rows.append((BAD, f"hook {name}", f"{where}: SELFTEST FAILING -- {verdict}"))
 
     head = (OK if tested and ok == tested else WARN,
             "session hooks",
             f"{len(commands)} hook file(s) across {sum(len(v) for v in commands.values())} "
-            f"registrations, {tested} carry a selftest, {ok} of those pass -- "
-            f"none of these files is in a git repository")
+            f"registrations, {tested} carry a selftest, {ok} of those pass. Most live in "
+            f"~/.claude/scripts, outside any repository, so CI never sees them; the rows below "
+            f"say which are behind main")
     return [head] + rows
 
 
