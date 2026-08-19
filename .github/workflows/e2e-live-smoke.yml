@@ -28,6 +28,11 @@ on:
     # 07:00 UTC daily — before the UK working day, so a broken shelf is known before buyers arrive.
     - cron: "0 7 * * *"
   workflow_dispatch:
+    inputs:
+      update_visual_baselines:
+        description: "Regenerate the visual baselines from the live site and commit them"
+        type: boolean
+        default: false
 
 # One smoke at a time. Two overlapping runs against the same live site tell you nothing extra and
 # make the report artifacts ambiguous about which run produced them.
@@ -77,3 +82,161 @@ jobs:
           name: playwright-report
           path: store_platform/src/Store.Web/playwright-report/
           retention-days: 7
+
+  # ──────────────────────────────────────────────────────────────────
+  # ACCESSIBILITY, against the same live site the smoke just walked.
+  #
+  # Separate job, not a step in `smoke`, for one reason: they answer different questions and a
+  # buyer-blocking break should not be hidden behind an axe finding, or the other way round. Both
+  # run, both report.
+  #
+  # This is the RUNTIME half. eslint-plugin-jsx-a11y already fails the build on the static half
+  # (eslint.config.mjs runs its full recommended set as errors), and it cannot see contrast, focus
+  # order, duplicate landmarks, or an aria-labelledby pointing at an id that never rendered.
+  # ──────────────────────────────────────────────────────────────────
+  a11y:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+
+    defaults:
+      run:
+        working-directory: store_platform/src/Store.Web/
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: store_platform/src/Store.Web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: axe-core against live
+        run: npm run test:a11y
+        env:
+          WEB_BASE_URL: ${{ vars.WEB_BASE_URL || 'https://mumchimp.com' }}
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-report
+          path: store_platform/src/Store.Web/playwright-report/
+          retention-days: 7
+
+  # ──────────────────────────────────────────────────────────────────
+  # LIGHTHOUSE. Budgets for what a buyer's browser has to do, measured on the delivered site
+  # rather than on a build artefact — bundle size is not the question, delivery is.
+  #
+  # The thresholds live in store_platform/src/Store.Web/lighthouserc.cjs and were set from a real
+  # run. Raising one to make this green is the failure mode; the file says so at the top.
+  # ──────────────────────────────────────────────────────────────────
+  lighthouse:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+
+    defaults:
+      run:
+        working-directory: store_platform/src/Store.Web/
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: store_platform/src/Store.Web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # lhci drives Chrome directly. Playwright's chromium is already a known-good download on
+      # these runners, so it is reused rather than installing a second browser.
+      - name: Install Chrome
+        run: npx playwright install --with-deps chromium
+
+      - name: Lighthouse budgets against live
+        run: npm run test:lighthouse
+        env:
+          LHCI_URL: ${{ vars.WEB_BASE_URL || 'https://mumchimp.com' }}
+          CHROME_PATH: ${{ github.workspace }}/.cache/ms-playwright
+
+      - name: Upload Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: store_platform/src/Store.Web/.lighthouseci/
+          retention-days: 7
+
+  # ──────────────────────────────────────────────────────────────────
+  # VISUAL BASELINES. Dispatch only, and only when explicitly asked for.
+  #
+  # A screenshot baseline is platform-specific: a shot taken on darwin never grades a run on
+  # Linux, because the font stacks and the subpixel rendering differ. CI is Linux, so the
+  # baselines CI compares against have to be SHOT on Linux, which is what this job is for.
+  #
+  # It commits, so it is fenced three ways: dispatch only, the boolean input must be true, and it
+  # runs on no schedule and no push. A scheduled run that could write to the repo is a scheduled
+  # run that can rewrite the thing it is supposed to be checking.
+  #
+  # Updating a baseline is a claim that the new look is CORRECT. Look at the diff as a picture
+  # before merging it.
+  # ──────────────────────────────────────────────────────────────────
+  visual-baselines:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.update_visual_baselines }}
+    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    permissions:
+      contents: write
+
+    defaults:
+      run:
+        working-directory: store_platform/src/Store.Web/
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: store_platform/src/Store.Web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Shoot the baselines
+        run: npm run test:visual:update
+        env:
+          WEB_BASE_URL: ${{ vars.WEB_BASE_URL || 'https://mumchimp.com' }}
+
+      - name: Commit them
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Only the snapshot directories. `git add -A` in this repo picks up tracked runtime
+          # state under store/ and storage/ that the suite writes to.
+          git add "e2e/**/*-snapshots/**" || true
+          if git diff --cached --quiet; then
+            echo "baselines unchanged"
+            exit 0
+          fi
+          git commit -m "chore(web): refresh Playwright visual baselines on Linux"
+          git push origin HEAD:${{ github.ref_name }}
+
