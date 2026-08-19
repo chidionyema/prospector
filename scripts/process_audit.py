@@ -987,25 +987,50 @@ def _grade_scheduled_workflows() -> list[tuple[str, str, str]]:
             rows.append((WARN, label, "`gh run list` returned no JSON"))
             continue
         mine = [r for r in runs if r.get("status") == "completed"]
+        period = _cron_period_hours(cron)
         if not mine:
-            rows.append((BAD, label,
-                         f"scheduled `{cron}` and has NEVER completed a run. A drill that has "
-                         f"never fired is a drill nobody has proven works."))
+            # A workflow added yesterday that fires on Sundays has not failed to run; its slot
+            # has not arrived. Grading that BAD is a false alarm, and a false alarm is how an
+            # audit trains people to skim it. Measured 2026-08-19: both never-fired workflows
+            # here were added inside 33 hours and are weekly.
+            _, added = sh(["git", "log", "-1", "--format=%aI", "--diff-filter=A",
+                           "--", f".github/workflows/{filename}"], timeout=30)
+            age = None
+            if added.strip():
+                age = (now - datetime.fromisoformat(
+                    added.strip())).total_seconds() / 3600
+            if period and age is not None and age < period:
+                rows.append((WARN, label,
+                             f"never fired yet, and not yet due -- added {age:.0f}h ago and "
+                             f"scheduled `{cron}` (~{period:.0f}h). `gh workflow run "
+                             f"{filename} --ref main` proves it works without waiting."))
+            else:
+                rows.append((BAD, label,
+                             f"scheduled `{cron}` and has NEVER completed a run, though its "
+                             f"slot has passed. A drill that has never fired is a drill nobody "
+                             f"has proven works."))
             continue
 
         newest = mine[0]
         age_h = (now - datetime.fromisoformat(
             newest["createdAt"].replace("Z", "+00:00"))).total_seconds() / 3600
+        # A `skipped` run is not a green run -- the job never reported on the site at all --
+        # so it must not break a red streak. Measured 2026-08-19: e2e-live-smoke had failed 7
+        # runs in a row with one skip in the middle, and counting the skip as a break reported
+        # the streak as 4 and the onset as six hours later than it was.
         streak = 0
         for r in mine:
-            if r.get("conclusion") == "failure":
+            c = r.get("conclusion")
+            if c == "failure":
                 streak += 1
+            elif c == "skipped":
+                continue
             else:
                 break
 
-        period = _cron_period_hours(cron)
         if streak:
-            first = mine[streak - 1]["createdAt"]
+            reds = [r for r in mine if r.get("conclusion") == "failure"]
+            first = reds[streak - 1]["createdAt"]
             red_h = (now - datetime.fromisoformat(
                 first.replace("Z", "+00:00"))).total_seconds() / 3600
             rows.append((BAD, label,
