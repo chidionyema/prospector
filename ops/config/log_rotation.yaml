@@ -132,6 +132,34 @@ prune:
       The same vendor's second log tree, 397 files and 40.9 MB.
     older_than_days: 30
 
+  # ── The engine. This is the only target here that is not on this Mac. ────────────────
+  - path: /data/logs/*.jsonl
+    why: >
+      The ingested logs of every service, one file per service per day
+      (`prospector/log_ingest.py` writes `<svc>-<date>.jsonl` under `log_dir()`).
+
+      14 days is not a disk number. `docs/LOGGING_AND_RETENTION.md` §5.2 sets it as the HOT
+      window because it covers "what happened last week" across two weekends, and §5.3 makes
+      it a data-protection decision: these lines carry IP addresses, email addresses and
+      Stripe identifiers, so the period is an outer bound on how long personal data is held,
+      not a preference about storage.
+
+      Age only, no `keep_newest`. A count bound would hold a file forever on a service that
+      stopped emitting, which is the one case where a stale log still contains personal data
+      and no longer answers any question.
+
+      Why the path is absolute and not `$PROSPECTOR_LOG_DIR`: an environment variable would
+      have to be set on every host that runs this sweep, including this Mac, which has no
+      ingest at all — and `_assert_expanded` turns an unset variable into a `CannotEstablish`
+      that takes the WHOLE run to `unknown`, so a Mac that forgot the variable would stop
+      reporting on Hermes, Adobe and the daemon's own stdout as well. `/data/logs` simply
+      does not exist here, so the target reports zero files, which is the truth.
+
+      The cost of an absolute path is that it restates what `log_ingest.log_dir()` derives
+      from the store root. `tests/unit/test_log_retention_sweeps_where_the_logs_land.py`
+      fails if the two ever disagree.
+    older_than_days: 14
+
 # Deliberately NOT pruned, and why — this list is as load-bearing as the one above:
 #
 #   ~/.hermes/state/complaint_ledger.cache.json — 224 MB and it LOOKS like the obvious win.

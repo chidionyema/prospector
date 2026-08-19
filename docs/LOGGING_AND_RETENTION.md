@@ -831,13 +831,65 @@ allow-list, which the drift test in `tests/unit/test_console_tools_run.py`
 sides, and `tests/unit/test_log_search.py` (16 tests) drives the reader — including the cases
 where it stops early, so a bounded search can never render as a quiet estate.
 
-**Step 11 — The retention sweeper.**
-A new `ops/automations/log_retention.py` + `ops/config/log_retention.yaml` (doc-lint-ok:
-neither exists yet — this step is what creates them), following the
-`ops/automations` contract exactly: report-only by default, `--fix` to delete, `--json` for the
-console, exit 0 clean / 1 findings / 2 cannot establish. Fails closed if it cannot establish a
-file's age (P6).
-*Verification:* report mode names the files it would delete and deletes nothing.
+**Step 11 — The retention sweeper. DONE, and not as this step instructed.**
+The instruction above was to write a new module, `ops/automations/log_retention.py` (doc-lint-ok),
+carrying its own declaration, `ops/config/log_retention.yaml` (doc-lint-ok). Neither should ever
+exist, and the reason is worth recording because the same mistake is available on every future
+step of this document.
+
+`ops/automations/log_rotation.py` already implements the whole contract this step asked for:
+report-only by default, `--fix` to delete, `--json`, `--config PATH`, exit 0 clean / 1 findings /
+2 could not establish, plus two things the new module would not have had on day one — a
+`max_delete` cap that refuses a glob that matches more than its author believed, and
+`resolve_prune`, which will not follow a symlink, will not cross a `.git` segment and skips any
+file git is tracking. A second module would have been a second copy of a tested engine, and the
+copy is where the next deletion accident lives.
+
+So Step 11 is two edits to files that already exist, and a test that pins the one thing the edits
+cannot prove about each other.
+
+*The declaration.* One prune target appended to `ops/config/log_rotation.yaml`:
+`/data/logs/*.jsonl`, `older_than_days: 14`, no `keep_newest`. Age only is deliberate — a count
+bound holds a file forever on a service that stopped emitting, and that is precisely the case
+where a stale log still contains personal data (§5.3) and no longer answers any question.
+
+*The path is absolute on purpose, and this was the second design.* The first attempt set
+`PROSPECTOR_LOG_DIR=/data/logs` in `deploy/engine/Dockerfile`, `deploy/engine/fly.toml` and the
+Mac plist, and declared the target as `$PROSPECTOR_LOG_DIR/*.jsonl`. It was built, tested green
+and then reverted, for two measured reasons:
+
+- `ops/launchd/*.json` is a SNAPSHOT of the plists installed on this Mac, not a source that
+  anything installs from — `scripts/launchd_plists.py` has `--check` and `--snapshot` and no
+  installer, and it duly reported the edit as *drift*. Committing it would have asserted a
+  machine state that does not exist.
+- An unset variable is not a quiet no-op in this engine. `_assert_expanded` raises
+  `CannotEstablish`, and `run()` catches that at the top level and returns `status="unknown"`
+  for the WHOLE run. A Mac that never got the variable would therefore also stop reporting on
+  Hermes' logs, the Adobe pile and the daemon's own stdout — one missing variable blanking four
+  unrelated targets.
+
+`/data/logs` simply does not exist on this Mac, so the target reports zero files, which is the
+truth. The cost is that the string restates what `log_ingest.log_dir()` derives from the store
+root, and that cost is paid by the test below.
+
+*Something has to run it.* Measured before this step,
+`rg -n log_rotation ops/launchd/ .github/workflows/ deploy/engine/` returned exactly one hit —
+the Mac plist. Nothing pruned `/data/logs` at all, so the declaration alone would have been a
+policy that is off. `[program:log-retention]` in `deploy/engine/supervisord.conf` runs it daily
+(the bound is 14 days; a sweep a few hours late deletes the same files) through `receipt.sh`, so
+the exit code lands in `$PROSPECTOR_STORE_DIR/ops/receipts/` — a silently failing sweep is the
+Step 2 defect again, and this is what stops it being invisible. `priority=50` puts it after every
+program that produces logs; it holds no descriptor on what it deletes and opens no database, so
+it cannot wedge a producer.
+
+*Verification:* `tests/unit/test_log_retention_sweeps_where_the_logs_land.py`, 8 passed.
+Report mode names the old files and deletes nothing; `--fix` deletes past the window and leaves a
+file one hour inside it; the glob leaves a `.json` and a `.db` sitting beside the logs. The test
+that justifies the whole file asserts that the declared glob's parent equals
+`log_ingest.log_dir()` under the `PROSPECTOR_STORE_DIR` the engine Dockerfile declares, so the
+two halves cannot drift apart in silence. Mutation-checked four ways — remove
+`[program:log-retention]`, point the glob at `/data/store/logs`, widen the window to 30 days, drop
+`--fix` — each kills exactly one test, and the restore is green.
 
 **Step 12 — Cold tier and the restore drill.**
 Daily gzip of yesterday's files to R2 `prospector-backup/logs/` with a 90-day lifecycle rule.
