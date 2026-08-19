@@ -17,9 +17,9 @@
   ],
   "second_order": {
     "sweep_command": "rg -n 'in cmd|in command|re.search|findall' ~/.claude/scripts/rule-guard.py ~/.claude/scripts/hang-guard.py ~/.claude/scripts/push-pr-fence.py ~/.claude/scripts/branch-pr-guard.py ~/.claude/scripts/idle-guard.py",
-    "siblings_found": null,
+    "siblings_found": 1,
     "siblings_fixed": 0,
-    "note": "NOT YET RUN. Every PreToolUse guard in ~/.claude/scripts receives the same raw command string, so the sibling count is likely to be most of them."
+    "note": "RUN 2026-08-19. Of the PreToolUse guards, rule-guard.py (this incident) and idle-guard.py pattern-match the raw command string. push-pr-fence.py and branch-pr-guard.py do not. idle-guard.py is unfixed: it has the same exposure and has not yet produced a false refusal, which is why it is counted and not closed."
   },
   "third_order": {
     "tier": "refuse",

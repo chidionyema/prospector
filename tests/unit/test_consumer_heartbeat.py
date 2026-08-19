@@ -447,3 +447,73 @@ def test_a_broken_liveness_check_never_takes_the_daemon_watchdog_with_it(tmp_pat
                         lambda cfg, **kw: (_ for _ in ()).throw(RuntimeError("boom")))
 
     assert rs._run_watchdog(cfg) == 0, "the producer's verdict must survive a broken consumer check"
+
+
+# --------------------------------------------------------------------------- #
+# The pid is only meaningful on the machine that minted it
+#
+# Found 2026-08-19 while fixing the same defect in the queue lease
+# (`run.py::_owner_is_gone`). The beat carried a bare pid. Since 2026-08-18 the engine runs on
+# Fly and ops reads this same file shape from the laptop, so `os.kill` was being asked about a
+# foreign process table: the pid is absent there, `_pid_alive` returns False, and a healthy
+# consumer pages `dead`. The rule is the lease's rule — unsure means alive — and the mechanism
+# is one shared host id in `audit.host_id`.
+# --------------------------------------------------------------------------- #
+def test_every_beat_carries_the_host_that_minted_its_pid(tmp_path, monkeypatch):
+    """The load-bearing one. Without a host on the beat, no reader can tell whose pid it is."""
+    from prospector.audit import host_id
+
+    _quiet_decay(monkeypatch)
+    C._write_heartbeat(_cfg(tmp_path), phase="draining")
+
+    beat = json.loads((tmp_path / "scheduler" / "consumer_heartbeat.json").read_text())
+    assert beat["host"] == host_id()
+    assert beat["host"], "an empty host reads as 'no host', which is the legacy path"
+
+
+def test_a_consumer_on_another_machine_is_never_paged_as_dead(tmp_path, monkeypatch):
+    """The double-page this closes: pid 999999 does not exist HERE, and that proves nothing."""
+    monkeypatch.setattr("prospector.audit.host_id", lambda: "the-reader")
+    _put(tmp_path, ts=C.datetime.now(C.timezone.utc).isoformat(), mono=1.0,
+         pid=999_999, host="a-fly-machine", role="consumer", phase="draining")
+
+    out = C.consumer_liveness(_cfg(tmp_path))
+    assert out["state"] != "dead", "a foreign pid is unproven, never proof of death"
+    assert out["state"] == "running"
+    assert out["pid_alive"] is None, "unproven is None; False is the alarm"
+    assert out["pid_host"] == "a-fly-machine"
+
+
+def test_a_remote_consumer_that_really_died_is_still_caught_by_staleness(tmp_path, monkeypatch):
+    """The cost of the fix, stated: slower, not silent.
+
+    Staleness is the only signal left for a remote consumer, so this test exists to prove the
+    signal still fires rather than to describe the trade in prose.
+    """
+    monkeypatch.setattr("prospector.audit.host_id", lambda: "the-reader")
+    old = C.datetime.now(C.timezone.utc).timestamp() - (C._NO_NEXT_CHECK_STALE_S + 600)
+    _put(tmp_path, ts=C.datetime.fromtimestamp(old, C.timezone.utc).isoformat(), mono=1.0,
+         pid=999_999, host="a-fly-machine", role="consumer", phase="draining")
+
+    out = C.consumer_liveness(_cfg(tmp_path))
+    assert out["state"] == "late"
+
+
+def test_a_beat_with_no_host_is_still_read_as_local(tmp_path, monkeypatch):
+    """No regression on a laptop-only estate, and none on a beat written before this change."""
+    monkeypatch.setattr("prospector.audit.host_id", lambda: "the-reader")
+    _put(tmp_path, ts=C.datetime.now(C.timezone.utc).isoformat(), mono=1.0,
+         pid=999_999, role="consumer", phase="draining")     # no `host` key at all
+
+    out = C.consumer_liveness(_cfg(tmp_path))
+    assert out["state"] == "dead"
+    assert out["pid_alive"] is False
+
+
+def test_the_lease_and_the_heartbeat_ask_one_machine_the_same_way(tmp_path):
+    """Two persisted pids, one definition of the host. A second copy is how the two drift."""
+    from prospector import run as R
+    from prospector.audit import host_id
+
+    assert R._host_id() == host_id()
+    assert R._mint_lease_owner().split(":")[0] == host_id()

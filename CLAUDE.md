@@ -16,6 +16,10 @@
 > every session is bound by, the portability target matrix and its drills, and the measured
 > automation audit. Read it before proposing anything structural.
 >
+> `docs/decisions/` holds the decisions that are settled, with the evidence that settled them.
+> ADR 0002 is the live one: the engine stays Python, and the bug rate is fixed by standards and
+> their enforcement (S1–S6), not by a rewrite. Read it before proposing either.
+>
 > **When something breaks, the fix is half the job.** `docs/INCIDENT_PROCESS.md` is the other
 > half: sweep for the siblings, land a mechanism that refuses the whole class, and grade it
 > afterwards. Records: `docs/incidents/*.json`. Gate: `.venv/bin/python scripts/incident.py check`.

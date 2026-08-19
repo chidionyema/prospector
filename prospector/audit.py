@@ -55,6 +55,7 @@ from __future__ import annotations
 import itertools
 import logging
 import os
+import socket
 import threading
 import uuid
 from datetime import datetime, timezone
@@ -161,6 +162,23 @@ _seq = itertools.count(1)
 def run_id() -> str:
     """This process's audit run id. Stable for the life of the process."""
     return _RUN_ID
+
+
+def host_id() -> str:
+    """Which machine this process runs on. The single definition in the estate.
+
+    A PID IS ONLY MEANINGFUL ON THE MACHINE THAT MINTED IT. Two places persist a pid and later
+    ask `os.kill` about it — the queue lease in `run.py` and the consumer heartbeat in
+    `consumer.py` — and both must pair that pid with a host or they answer a question about the
+    wrong process table. That is not theoretical since 2026-08-18: the engine runs on Fly while
+    ops reads the same store shape from the laptop.
+
+    `FLY_MACHINE_ID` first because it is stable for the life of a Fly machine; `gethostname()`
+    is the laptop and any other box. NEVER EMPTY — an empty host would compare equal to a
+    record that carries no host at all, which is exactly the case the callers must treat as
+    unproven rather than as a match.
+    """
+    return (os.environ.get("FLY_MACHINE_ID") or socket.gethostname() or "unknown").strip()
 
 
 # Rows the sink threw away. `audit()` must never raise — observability cannot be allowed to kill

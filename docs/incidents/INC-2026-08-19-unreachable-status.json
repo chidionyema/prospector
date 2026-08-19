@@ -1,0 +1,40 @@
+{
+  "id": "INC-2026-08-19-unreachable-status",
+  "opened": "2026-08-19",
+  "title": "237 coordinator tasks sat in a status that was neither worked nor counted as closed",
+  "severity": "medium",
+  "detected_by": "probe",
+  "first_order": {
+    "what_broke": "coordinator.py declared ACTIVE and TERMINAL as the two sets a task status can be in. `failed` (236 rows) and `cancelled` (1) were in neither. The tick's only work query selects WHERE status IN (ACTIVE), so those rows were unreachable by every retry path, and every rollup that counts closed work ignored them too. They were neither open nor done, and nothing said so.",
+    "receipt": "select status, count(*) from tasks group by status -> done 266, failed 236, blocked 13, escalated 11, awaiting_approval 2, cancelled 1. ACTIVE and TERMINAL cover all but failed and cancelled. Last row to enter `failed`: 2026-08-06T01:23:21.",
+    "fixed_by": "~/.hermes d04ee14"
+  },
+  "cause_chain": [
+    "A status was retired without migrating its rows or updating the sets that define what a status means.",
+    "requeue_failed.py already carried the whole diagnosis in its docstring, written 2026-08-07, naming the exact line numbers. The knowledge existed; nothing turned it into a change or a gate. That gap is the reason the incident process exists.",
+    "Neither set is authoritative in code \u2014 they are two tuples that happen to be checked in different places, so adding a status is possible without either one noticing.",
+    "CLASS: a partition that is asserted in comments rather than enforced by a check will drift, and the drift is silent because the rows leave both the work queue and the counts at the same moment."
+  ],
+  "second_order": {
+    "sweep_command": "rg -n '^[A-Z_]+ = \\(' ~/.hermes/scripts/coordinator.py | rg -i 'status|state|kind'",
+    "siblings_found": 0,
+    "siblings_fixed": 0,
+    "note": "RUN 2026-08-19. Six tuple constants enumerate a domain in coordinator.py: ACTIVE/TERMINAL (the partition, this incident), FALLBACK_MARKERS and NONFALLBACK_MARKERS (a filter, where a value outside both is meaningfully 'neither'), _ACCEPT_TOKENS, INTERNAL_SOURCES and _TRANSIENT_MARKERS (all filters, same reasoning). ACTIVE/TERMINAL is the only pair that claims to be exhaustive, so it is the only one that can strand a row. No siblings."
+  },
+  "third_order": {
+    "tier": "test",
+    "mechanism": "tests/test_no_task_sits_in_an_unreachable_status.py \u2014 fails if ACTIVE and TERMINAL overlap, and fails if any live row holds a status outside their union.",
+    "landed_on": "2026-08-19",
+    "note": "The 236 rows were graded before being closed rather than requeued, using requeue_failed.py's own rule: 207 superseded by a newer task with the same title, 27 already retried twice, 2 targeting the destroyed Haworks estate. None workable."
+  },
+  "grade": {
+    "signature": "a task row whose status is in neither ACTIVE nor TERMINAL",
+    "before": 237,
+    "after": 0,
+    "window_days": 14,
+    "verdict": "proven",
+    "graded_on": "2026-08-19"
+  },
+  "issue": null,
+  "state": "closed"
+}

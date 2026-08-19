@@ -353,10 +353,19 @@ def _write_heartbeat(cfg, *, phase: str, **extra) -> None:
     NEVER RAISES. Liveness is a diagnostic: a consumer that died because it could not write a
     heartbeat would be the monitor causing the outage it exists to report.
     """
+    from .audit import host_id
+
     beat = {
         "ts": datetime.now(timezone.utc).isoformat(),
         "mono": time.monotonic(),
         "pid": os.getpid(),
+        # A PID IS ONLY MEANINGFUL ON THE MACHINE THAT MINTED IT, and since 2026-08-18 the
+        # engine runs on Fly while ops reads this same file shape from the laptop. Without a
+        # host, `consumer_liveness` asks `os.kill` about a foreign pid, gets a process table
+        # that has never heard of it, and pages `dead` for a healthy consumer. Same defect the
+        # queue lease carried in `run.py::_owner_is_gone`; one definition of the host, in
+        # `audit.host_id`, so the two answers cannot drift.
+        "host": host_id(),
         "role": "consumer",
         "phase": phase,
         **extra,
@@ -497,6 +506,8 @@ def consumer_liveness(cfg, *, now: float | None = None) -> dict:
     (see `_LATE_GRACE_S`) precisely because the sleeps are long. The pid is the fast, certain
     signal; staleness is only the backstop for a process that is alive and wedged.
     """
+    from .audit import host_id
+
     now = time.time() if now is None else now
     out: dict = {"state": "unknown", "reason": "", "path": None, "phase": None,
                  "pid": None, "age_s": None, "alive": False, "beat": None}
@@ -536,7 +547,18 @@ def consumer_liveness(cfg, *, now: float | None = None) -> dict:
         age = None
     out["age_s"] = age
 
-    alive = _pid_alive(pid)
+    # THE PID ANSWER IS ONLY VALID ON THE HOST THAT WROTE IT. A beat from another machine gets
+    # `None` — unproven — never `False`, because `False` is the `dead` alarm two lines below and
+    # a foreign pid is almost always absent from our process table. Staleness still catches a
+    # remote consumer that really died; it is slower, and slower is the correct trade against
+    # paging for a working one. A beat with no `host` at all is an older writer, and is read as
+    # local exactly as it was before, so this does not regress a laptop-only estate.
+    beat_host = str(beat.get("host") or "").strip()
+    if beat_host and beat_host != host_id():
+        alive = None
+        out["pid_host"] = beat_host
+    else:
+        alive = _pid_alive(pid)
     out["pid_alive"] = alive
 
     if phase == "stopped":

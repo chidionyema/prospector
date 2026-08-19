@@ -432,6 +432,21 @@ def _read_data(cfg, args: dict) -> dict:
     return data_view(cfg)
 
 
+def _read_docs(cfg, args: dict) -> dict:
+    """The repo's own documentation, in the console. Index by default, one doc with `name=`.
+
+    Registered 2026-08-19: the founder asked twice whether docs were reachable from ops and the
+    answer was no. Reads are confined to `docs/` by `docs_view._safe`, which resolves first and
+    checks containment second so a `..` or a symlink cannot leave the tree.
+    """
+    from .docs_view import doc_view, docs_index
+
+    name = str(args.get("name") or "").strip()
+    if name:
+        return doc_view(_repo_root(), name)
+    return docs_index(_repo_root())
+
+
 def _read_metrics(cfg, args: dict) -> dict:
     from .metrics import snapshot
 
@@ -926,13 +941,30 @@ def _act_delivery_resend(cfg, payload: dict, preview: bool) -> dict:
     return receipt
 
 
+def _tool_on_disk(root: Path, rel: str) -> Path:
+    """Where a catalogued tool actually lives.
+
+    `root / rel` is wrong for the estate tools, and wrong SILENTLY. Most rows are repo-relative,
+    but some name a tool outside this checkout — `~/.hermes/scripts/hermes_selfcheck.py`. Joined
+    to the repo root that becomes `<repo>/~/.hermes/...`, which never exists, so the console
+    reported the tool missing and the run action refused it. The Hermes self-check button was
+    registered on 2026-08-19 and could not have run on any day since.
+
+    Same shape as the store resolver incident: a path built from the wrong base answers a
+    different question and says nothing about it. Expand first, then join only what is still
+    relative.
+    """
+    expanded = Path(rel).expanduser()
+    return expanded if expanded.is_absolute() else root / expanded
+
+
 def _read_tools(cfg, args: dict) -> dict:
     """The operator CLI catalogue. See `TOOLS` for why it is a table and not a directory scan."""
     root = _repo_root()
     out = []
     for tool in TOOLS:
         rel = tool["path"]
-        out.append({**tool, "exists": (root / rel).exists()})
+        out.append({**tool, "exists": _tool_on_disk(root, rel).exists()})
     return {"root": str(root), "tools": out,
             "note": "Run any of these with the `tools.run` action, using the tool's `id`. What "
                     "makes it safe is the preview, the confirmation token and the rollback "
@@ -1352,6 +1384,7 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
     "money": _read_money,
     "data": _read_data,
     "metrics": _read_metrics,
+    "docs": _read_docs,
     "runs": _read_runs,
     "run": _read_run,
     "candidate": _read_candidate,
@@ -2217,6 +2250,11 @@ def _tool_argv(tool: dict, payload: dict) -> list[str]:
     """
     argv: list[str] = []
     for part in shlex.split(tool["command"]):
+        # THE CHILD RUNS WITHOUT A SHELL, so nothing expands `~` on the way in. Expanded here,
+        # before substitution, so it applies to the catalogued command only and never to a value
+        # the browser sent.
+        if part.startswith("~"):
+            part = str(Path(part).expanduser())
         missing: list[str] = []
 
         def _fill(match, _missing=missing):
@@ -2269,7 +2307,7 @@ def _act_tools_run(cfg, payload: dict, preview: bool) -> dict:
     root = _repo_root()
     if not tool["run"]:
         raise ValueError(f"{tool['path']} is not runnable from the console. {tool['danger']}")
-    if not (root / tool["path"]).exists():
+    if not _tool_on_disk(root, tool["path"]).exists():
         raise ValueError(f"{tool['path']} is not on disk. The catalogue is hand-kept, so this "
                          f"means the tool was renamed or deleted and the table was not updated.")
 
@@ -2925,6 +2963,11 @@ TOOLS: list[dict] = [
        False, "/audit", cmd=".venv/bin/python scripts/incident.py check"),
     _t("scripts/incident.py", "What takes longest and what repeats, with recommendations", False,
        "/audit", cmd=".venv/bin/python scripts/incident.py friction"),
+    # --- registered 2026-08-19. Hermes lives in ~/.hermes, a different repo, but the operator
+    # should not have to know that: the founder's ask was "make this visible in ops".
+    _t("~/.hermes/scripts/hermes_selfcheck.py", "Is Hermes actually healthy? six invariants, "
+       "not liveness", False, "/audit",
+       cmd="/usr/local/bin/python3 ~/.hermes/scripts/hermes_selfcheck.py"),
     _t("scripts/copy_audit.sh", "Copy audit across the marketing and pack lanes", False, "/shelf",
        cmd="bash scripts/copy_audit.sh"),
     _t("scripts/backfill_packs_parallel.sh", "Backfill P5 pack artefacts into listed packs", True,
