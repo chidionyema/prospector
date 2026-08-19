@@ -26,8 +26,10 @@ from ops.automations.offsite_backup import (
     VERIFY_KINDS,
     CannotEstablish,
     Source,
+    Watched,
     _expand,
     check,
+    check_watched,
     load_declaration,
     main,
     run,
@@ -406,3 +408,131 @@ def test_the_live_declaration_parses():
     assert "money-db" in names, "the money database must be declared"
     money = next(s for s in decl.sources if s.name == "money-db")
     assert money.verify == "sqlite", "a database copy nobody opened is a file, not a backup"
+
+
+# --- watched prefixes: another job's output, graded on the object rather than its exit code ---
+#
+# These exist because the engine store's only offsite copy (ledger/, db/, repo/) was graded by
+# nothing at all until 2026-08-19. The evidence that the backup worked was the job's exit code
+# in its receipt, and an exit code says the job RAN, not that bytes LANDED.
+
+WATCHED = Watched(name="engine-ledger", prefix="ledger/",
+                  writer="scripts/backup_store.py", max_age_hours=30)
+
+
+def test_a_stale_watched_prefix_is_a_finding():
+    """The negative fixture. A check only ever seen to say `fresh` is not known to work."""
+    storage = FakeStorage([_obj("ledger/prospector-2026-08-10.jsonl.gz", age_hours=54)])
+    report = check_watched(storage, "backup-bucket", [WATCHED])
+
+    assert report[0]["fresh"] is False
+    assert "54.0h old" in report[0]["what"]
+    assert "scripts/backup_store.py" in report[0]["what"], "a finding must name who writes it"
+
+
+def test_an_empty_watched_prefix_is_a_finding():
+    report = check_watched(FakeStorage([]), "backup-bucket", [WATCHED])
+
+    assert report[0]["fresh"] is False
+    assert "nothing at all" in report[0]["what"]
+    assert report[0]["age_hours"] is None
+
+
+def test_a_fresh_watched_prefix_is_clean():
+    storage = FakeStorage([_obj("ledger/prospector-2026-08-19.jsonl.gz", age_hours=0.7)])
+    report = check_watched(storage, "backup-bucket", [WATCHED])
+
+    assert report[0]["fresh"] is True
+    assert report[0]["watched"] is True
+    assert "what" not in report[0]
+
+
+def test_a_storage_outage_on_a_watched_prefix_is_never_read_as_missing():
+    """The dangerous failure. `no backup exists` is the loudest finding there is, and an
+    outage must never be able to manufacture it."""
+    with pytest.raises(CannotEstablish):
+        check_watched(FakeStorage(list_raises=True), "backup-bucket", [WATCHED])
+
+
+def test_a_watched_prefix_grades_only_its_own_objects():
+    """`ledger/` must not be graded green by a fresh object sitting under `db/`."""
+    storage = FakeStorage([
+        _obj("ledger/prospector-2026-08-10.jsonl.gz", age_hours=54),
+        _obj("db/prospector-2026-08-19.db.gz", age_hours=0.5),
+    ])
+    report = check_watched(storage, "backup-bucket", [WATCHED])
+
+    assert report[0]["fresh"] is False
+
+
+def test_watch_is_optional(tmp_path):
+    """The empty case. Every declaration written before `watch:` existed still loads."""
+    decl = load_declaration(_declaration(tmp_path))
+
+    assert decl.watched == []
+
+
+def test_a_watch_entry_without_a_prefix_is_refused(tmp_path):
+    path = _declaration(tmp_path, watch=[{"name": "engine-ledger"}])
+
+    with pytest.raises(CannotEstablish, match="needs `name:` and `prefix:`"):
+        load_declaration(path)
+
+
+def test_an_empty_watch_prefix_is_refused(tmp_path):
+    """An empty prefix lists the WHOLE bucket, so every watched entry would be graded off the
+    same newest object and all of them would go green together off one healthy job."""
+    path = _declaration(tmp_path, watch=[{"name": "engine-ledger", "prefix": "  "}])
+
+    with pytest.raises(CannotEstablish, match="empty `prefix:`"):
+        load_declaration(path)
+
+
+def test_a_watched_prefix_can_never_be_fetched_or_pruned(tmp_path):
+    """The structural guard, not a convention. `take_backup` and `_prune` both take a `Source`;
+    a watched entry is a `Watched`, so it cannot reach either. `_prune` keeps the newest `keep`
+    copies and deletes the rest — aimed at `dossiers/` it would delete 4,450 of the 4,480
+    dossiers that are the engine's only offsite copy."""
+    path = _declaration(tmp_path, watch=[{"name": "engine-ledger", "prefix": "ledger/"}])
+    decl = load_declaration(path)
+
+    assert [type(s) for s in decl.sources] == [Source]
+    assert not any(isinstance(s, Watched) for s in decl.sources)
+    assert not hasattr(decl.watched[0], "fetch")
+    assert not hasattr(decl.watched[0], "keep")
+
+
+def test_the_declared_ceiling_clears_the_job_interval():
+    """A number in a plan is a claim. These jobs run on an 86400s timer, so a 24h ceiling
+    against a 24h period flickers red on ordinary drift and teaches everyone to ignore it."""
+    import yaml
+
+    root = Path(__file__).resolve().parents[2]
+    body = yaml.safe_load((root / "ops" / "config" / "offsite_backup.yaml").read_text())
+
+    watched = {w["name"]: w for w in body.get("watch") or []}
+    assert watched, "the engine store prefixes must stay declared"
+    for name, entry in watched.items():
+        assert entry["max_age_hours"] > 24, (
+            f"{name} has a {entry['max_age_hours']}h ceiling against a 24h job period; "
+            "it will flicker red on drift"
+        )
+        assert entry.get("writer"), f"{name} must name the job that writes it"
+
+
+def test_dossiers_and_hermes_are_not_watched():
+    """Both would be wrong, in opposite directions, and both are easy to add by accident.
+
+    `dossiers/` is a content mirror keyed by dossier id, so its newest-object age tracks ENGINE
+    OUTPUT, not backup health — it goes red on a quiet day while the backup is healthy.
+    `hermes/` holds one 313-byte `leader.json`, leader-election state that is rewritten
+    constantly and backs up nothing, so it would report GREEN forever. Hermes state is genuinely
+    not backed up; that stays open as M4 rather than being papered over here."""
+    import yaml
+
+    root = Path(__file__).resolve().parents[2]
+    body = yaml.safe_load((root / "ops" / "config" / "offsite_backup.yaml").read_text())
+
+    prefixes = {w["prefix"] for w in body.get("watch") or []}
+    assert "dossiers/" not in prefixes
+    assert "hermes/" not in prefixes
