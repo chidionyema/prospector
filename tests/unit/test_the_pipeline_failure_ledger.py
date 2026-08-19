@@ -162,6 +162,18 @@ LEDGER: tuple[Mode, ...] = (
         None,
     ),
     Mode(
+        "a-parked-run-stalls-the-queue-and-nothing-starts-it",
+        "The run above is not only misread, it is never STARTED. GitHub parks it, and no event in "
+        "this estate fires on `action_required`, so nothing notices. Measured 2026-08-20: four of "
+        "the eight open pull requests sat behind one, including #474 — the one-file fix for the "
+        "single test holding main red — so main stayed red, and a red main stops ci.yml building "
+        "any pull request at all. The whole queue was stalled behind a run nobody had let start.",
+        (".github/workflows/approve-parked-runs.yml",),
+        "tests/unit/test_only_our_own_parked_runs_are_approved.py",
+        None,
+        None,
+    ),
+    Mode(
         "a-workflow-github-cannot-start-reports-nothing",
         "A workflow subscribing to an event GitHub does not have produces runs with no jobs and "
         "no red check anywhere. The alarm is silent in exactly the way a healthy alarm is.",
