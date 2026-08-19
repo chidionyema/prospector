@@ -96,11 +96,32 @@ class Source:
 
 
 @dataclass
+class Watched:
+    """A prefix some OTHER job writes, graded for freshness and nothing else.
+
+    Deliberately not a `Source`. `take_backup` and `_prune` both take a `Source`, so a watched
+    prefix cannot be fetched and — this is the point — cannot have its objects deleted. `prune`
+    keeps the newest `keep` copies and deletes the rest; aimed at `dossiers/` it would delete
+    4,450 of the 4,480 dossiers that are the engine's only offsite copy. The type is the guard.
+
+    `writer` names the job that fills the prefix, so a stale finding says who to go and look at
+    instead of leaving the reader to work it out.
+    """
+
+    name: str
+    prefix: str
+    why: str = ""
+    writer: str = ""
+    max_age_hours: float = DEFAULT_MAX_AGE_HOURS
+
+
+@dataclass
 class Declaration:
     """The business facts. Everything startup-specific lives here, never in the code."""
 
     storage: dict[str, Any] = field(default_factory=dict)
     sources: list[Source] = field(default_factory=list)
+    watched: list[Watched] = field(default_factory=list)
 
 
 def load_dotenv(path: Path) -> None:
@@ -185,7 +206,31 @@ def load_declaration(path: Path) -> Declaration:
             )
         )
 
-    return Declaration(storage=storage, sources=sources)
+    watched: list[Watched] = []
+    for entry in raw.get("watch") or []:
+        if not isinstance(entry, dict) or not entry.get("name") or not entry.get("prefix"):
+            raise CannotEstablish(
+                f"every `watch:` entry needs `name:` and `prefix:`: {entry!r}"
+            )
+        wprefix = str(entry["prefix"]).strip()
+        if not wprefix:
+            # An empty prefix lists the WHOLE bucket, so every watched entry would grade the
+            # same newest object and all of them would go green together off one healthy job.
+            raise CannotEstablish(
+                f"watch entry {entry['name']} has an empty `prefix:`; that lists the whole "
+                "bucket and grades every entry off the same object."
+            )
+        watched.append(
+            Watched(
+                name=str(entry["name"]),
+                prefix=wprefix,
+                why=str(entry.get("why") or ""),
+                writer=str(entry.get("writer") or ""),
+                max_age_hours=float(entry.get("max_age_hours") or default_age),
+            )
+        )
+
+    return Declaration(storage=storage, sources=sources, watched=watched)
 
 
 def _endpoint_clock_offset(endpoint: str) -> float | None:
@@ -434,6 +479,46 @@ def check(client: Any, bucket: str, prefix: str, sources: list[Source]) -> list[
     return report
 
 
+def check_watched(client: Any, bucket: str, entries: list[Watched]) -> list[dict[str, Any]]:
+    """Read-only, and read-only by construction. How old is the newest object under each prefix
+    another job is supposed to be filling?
+
+    A watched prefix is graded from the bucket root, ignoring `storage.prefix` — these are not
+    this automation's own copies, they are somebody else's, and their layout is not ours to
+    assume."""
+    now = datetime.now(timezone.utc)
+    report: list[dict[str, Any]] = []
+    for item in entries:
+        copies = _list_copies(client, bucket, item.prefix)
+        writer = f" — {item.writer} writes it" if item.writer else ""
+        if not copies:
+            report.append({
+                "where": f"{bucket}/{item.prefix}*",
+                "what": f"{item.name}: nothing at all under {bucket}/{item.prefix}{writer}",
+                "source": item.name, "age_hours": None, "fresh": False, "watched": True,
+            })
+            continue
+        newest = copies[-1]
+        age_h = max(0.0, (now - newest["LastModified"]).total_seconds() / 3600.0)
+        fresh = age_h <= item.max_age_hours
+        entry: dict[str, Any] = {
+            "where": f"{bucket}/{newest['Key']}",
+            "source": item.name,
+            "age_hours": round(age_h, 2),
+            "bytes": newest.get("Size"),
+            "copies": len(copies),
+            "fresh": fresh,
+            "watched": True,
+        }
+        if not fresh:
+            entry["what"] = (
+                f"{item.name}: newest object is {age_h:.1f}h old, older than the declared "
+                f"{item.max_age_hours:.0f}h{writer}"
+            )
+        report.append(entry)
+    return report
+
+
 def run(config_path: Path, *, fix: bool = False) -> dict[str, Any]:
     ran_at = datetime.now(timezone.utc).isoformat()
     probe = f"python -m ops.automations.{AUTOMATION} --config {config_path}"
@@ -450,6 +535,7 @@ def run(config_path: Path, *, fix: bool = False) -> dict[str, Any]:
                 take_backup(client, bucket, prefix, source) for source in decl.sources
             ]
         report = check(client, bucket, prefix, decl.sources)
+        report += check_watched(client, bucket, decl.watched)
     except CannotEstablish as exc:
         result.update({"status": "unknown", "reason": str(exc)})
         return result

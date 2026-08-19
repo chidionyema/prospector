@@ -159,6 +159,30 @@ before final decsion"*). The argument is written out and shown FIRST. The decisi
 it and refers to it. A decision presented without its argument cannot be challenged, so it gets
 re-litigated every time somebody new reads it.
 
+### L12. Emitting is not observing
+
+Founder, 2026-08-19: *"we log but no cetral place to view"*. And two months earlier, in
+`specs/observability-gap-search.md`: *"we cannot be guessing; we must log and observe thoroughly;
+we must prevent this from ever happening again."*
+
+**A signal with no consumer is not evidence.** It is the appearance of evidence, which is worse
+than nothing, because it stops anyone looking further.
+
+Three instances in this estate, all the same defect:
+
+1. `web_calls=0` — a metric shipped that no provider ever incremented. We then used it to decide
+   whether search was working. It was working.
+2. launchd jobs exiting non-zero for days. Nothing reads the second column of `launchctl list`, so
+   `com.prospector.backup` has been failing with exit 78 unnoticed.
+3. Backups graded by the writer's exit code, which proves the job ran and not that bytes landed.
+
+**So when anything emits a signal, name its consumer in the same change.** Who or what reads this,
+where does it surface, and what happens when it goes bad? If the answer is "somebody would notice",
+there is no consumer and the signal is decoration.
+
+**And prove the consumer by breaking it.** A red that has never been seen red is not known to work
+— the negative-fixture standard the test suite already holds itself to, applied to operations.
+
 ---
 
 ## Part 2. Agent tenets

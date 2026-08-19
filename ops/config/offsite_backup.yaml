@@ -85,3 +85,62 @@ sources:
     # halfway, and the half-download is the copy you find out about during a restore.
     verify: tgz
     keep: 30
+
+# ---------------------------------------------------------------------------------------------
+# Prefixes ANOTHER job writes. Graded for freshness only: never fetched, never verified, never
+# pruned, never deleted. `scripts/backup_store.py` writes the engine store's only offsite copy,
+# and until 2026-08-19 nothing graded the result. The whole of the evidence was the job's exit
+# code in its receipt, and an exit code says the job RAN, not that bytes LANDED — the same
+# defect as the `verify: nonempty` default removed from this file the same day.
+#
+# Measured when this was written (2026-08-19T18:30Z), newest object per prefix:
+#   ledger/    17 objects   0.7h old   29,027,771 B   ledger/prospector-2026-08-19.jsonl.gz
+#   db/         9 objects   0.7h old      975,183 B   db/prospector-2026-08-19.db.gz
+#   repo/       9 objects   0.4h old   66,664,795 B   repo/2026-08-19T180648Z.bundle
+#
+# TWO PREFIXES ARE DELIBERATELY ABSENT, and the reasons are the whole point:
+#
+#   dossiers/ — 4,480 objects, a content mirror keyed by dossier id, NOT a dated series. Its
+#     newest-object age tracks ENGINE OUTPUT, not backup health: on a quiet day, or while the
+#     moat is blind and nothing is being vetted, no new dossier is written, the newest object
+#     stops moving, and this check would go red while the backup is perfectly healthy. A check
+#     that goes red for the wrong reason gets muted, and a muted check is worse than none.
+#
+#   hermes/ — holds exactly one object, `leader.json`, 313 bytes: leader-election state that is
+#     rewritten constantly and is not a backup of anything. Watching it would report GREEN
+#     forever off a file that has nothing to do with Hermes state being recoverable. A false
+#     green is the worst grade there is. Hermes state is genuinely NOT backed up; that is the
+#     open M4 work, and it stays open rather than being papered over by this list.
+#
+# The three below ARE dated series — one new object per run — so "age of the newest object" is
+# exactly "when did this backup last deposit bytes", which is the question.
+watch:
+  # 30 hours, not 24. These jobs run on an 86400s timer (deploy/engine/supervisord.conf), so a
+  # 24h ceiling against a 24h period flickers red on ordinary drift and teaches everyone to
+  # ignore it. 30h tolerates the drift and still catches a MISSED RUN, which reaches 48h.
+  - name: engine-ledger
+    prefix: ledger/
+    writer: scripts/backup_store.py, supervisord [program:backup], daily
+    why: >-
+      The spend ledger, store/prospector.jsonl. It is what the daily spend cap is computed from,
+      so losing it does not just lose history — it loses the rail that stops the daemon spending
+      without limit. 29 MB compressed as of 2026-08-19.
+    max_age_hours: 30
+
+  - name: engine-store-db
+    prefix: db/
+    writer: scripts/backup_store.py, supervisord [program:backup], daily
+    why: >-
+      The engine's own catalogue database: which ideas exist, which passed, which are published
+      and priced. Distinct from the money database at /data/store.db, which is fetched by the
+      money-db source above.
+    max_age_hours: 30
+
+  - name: repo-mirror
+    prefix: repo/
+    writer: scripts/backup_store.py mirror_repo(), supervisord [program:backup], daily
+    why: >-
+      A `git bundle` of the whole repository, so the SOURCE survives losing GitHub as well as
+      losing Fly. This is the half of DR that a database backup does not cover: restoring data
+      with no code to run against it is not a restore.
+    max_age_hours: 30
