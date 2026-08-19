@@ -510,6 +510,22 @@ def grade_enforcement() -> list[tuple[str, str, str]]:
     return rows
 
 
+def _store_root() -> str:
+    """The canonical store, asked of prospector.config rather than derived from this file's path.
+
+    A store path built from `__file__` follows the CODE. On 2026-08-17 four constants did that and
+    the health marks, the retrieval cache and the scheduler audit trail were written beside a new
+    checkout while the ledger went to the real store.
+    """
+    try:
+        sys.path.insert(0, str(ROOT))
+        from prospector.config import store_root
+        return str(store_root())
+    except Exception:  # noqa: BLE001 -- the audit must still run outside a configured checkout
+        return os.environ.get("PROSPECTOR_STORE_DIR",
+                              str(Path.home() / "Documents" / "code" / "prospector" / "store"))
+
+
 def _grade_state_probe() -> list[tuple[str, str, str]]:
     """Is every session still being told where production is?
 
@@ -547,6 +563,31 @@ def _grade_state_probe() -> list[tuple[str, str, str]]:
                      f"there open blind: {', '.join(sorted(blind)[:3])}"))
     else:
         rows.append((OK, "state probe pointers", f"{len(targets)} project dir(s) wired"))
+
+    # The probe renders a snapshot. If nothing refreshes that snapshot the probe becomes the
+    # stale paragraph it replaced -- correct-looking, months old, no tell from the inside. The
+    # probe refreshes it in the background past 6h; this row is the guard on that self-healing,
+    # because a background refresh that silently stopped working looks exactly like one that has
+    # nothing to do.
+    snap = Path(_store_root()) / "ops" / "estate_map.json"
+    if not snap.exists():
+        rows.append((BAD, "estate snapshot",
+                     "MISSING -- sessions are briefed with no measured estate at all; run "
+                     ".venv/bin/python scripts/estate_map.py --snapshot"))
+    else:
+        age_h = (time.time() - snap.stat().st_mtime) / 3600
+        if age_h > 24:
+            rows.append((BAD, "estate snapshot",
+                         f"{age_h/24:.1f} DAYS old -- the probe's background refresh is not "
+                         f"running. Every session is being briefed on a stale measurement"))
+        elif age_h > 8:
+            rows.append((WARN, "estate snapshot",
+                         f"{age_h:.0f}h old -- past the probe's 6h refresh threshold, so the "
+                         f"next session start should refresh it. Still stale if this persists"))
+        else:
+            rows.append((OK, "estate snapshot",
+                         f"measured {age_h*60:.0f}m ago" if age_h < 1 else
+                         f"measured {age_h:.0f}h ago"))
     return rows
 
 

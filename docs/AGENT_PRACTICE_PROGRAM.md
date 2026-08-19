@@ -57,13 +57,13 @@ Shipped:
 - the hooks are tracked in git; the audit reports any hook file behind `origin/main` (#381)
 - `ops/share_memory.sh` and the audit row that grades the memory partition (#381)
 - `scripts/rework_metrics.py` and the `/method` rework card (#373)
+- the probe refreshes its own snapshot past 6h, in the background, under a lock; the audit
+  grades the snapshot's age so a refresh that stopped working is visible (#381)
 
 Open:
 
 - `bash ops/share_memory.sh --apply` — needs the founder; the auto-mode classifier refuses writes
   under `~/.claude`. Until it runs, a session outside the main checkout sees 13 of 391 memories
-- no scheduled refresh of `estate_map.json` yet, so the probe's snapshot ages until someone runs
-  `--snapshot`. The audit should grade its age
 - `context-guard-hook.py` nudges at 140K resident context and cannot block. 38 of the last 40
   sessions peaked above it, median 165,553. Enforcement would have to change shape, and that is a
   founder decision (see the handoff in `checkpoints/`)

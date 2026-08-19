@@ -64,6 +64,29 @@ fi
 STORE="${PROSPECTOR_STORE_DIR:-$HOME/Documents/code/prospector/store}"
 SNAP="$STORE/ops/estate_map.json"
 
+# Self-healing before anything else. A snapshot nobody refreshes rots into the same stale
+# paragraph this file replaced, and the founder should not have to remember a command. So an old
+# snapshot starts its own refresh, detached, and this session renders the OLD one and moves on.
+# Never in the foreground: the map shells into Fly and curls the storefront, and a session start
+# must not wait for that. The lock is a directory because mkdir is atomic; a lock left behind by
+# a killed process is cleared after 30 minutes rather than blocking refreshes forever.
+_refresh_snapshot_if_stale() {
+  local lock="$STORE/ops/.estate_map.refresh.lock" repo="" py
+  [ -n "$(find "$SNAP" -mmin -360 2>/dev/null)" ] && return 0   # fresh enough, nothing to do
+  for c in "$HOME/Documents/code/prospector-live" "$HOME/Documents/code/prospector"; do
+    [ -f "$c/scripts/estate_map.py" ] && { repo="$c"; break; }
+  done
+  [ -z "$repo" ] && return 0
+  [ -n "$(find "$lock" -maxdepth 0 -mmin +30 2>/dev/null)" ] && rmdir "$lock" 2>/dev/null
+  mkdir "$lock" 2>/dev/null || return 0                          # another session is already on it
+  py="$repo/.venv/bin/python"; [ -x "$py" ] || py="$(command -v python3)"
+  ( cd "$repo" && "$py" scripts/estate_map.py --snapshot; rmdir "$lock" 2>/dev/null ) \
+    >/dev/null 2>&1 &
+  echo "  (snapshot was over 6h old -- a refresh is running in the background from $repo)"
+}
+mkdir -p "$STORE/ops" 2>/dev/null
+_refresh_snapshot_if_stale
+
 echo "PRODUCTION IS FLY. This Mac is development and estate support, not production."
 python3 - "$SNAP" <<'PYEOF' 2>/dev/null || echo "  (no estate snapshot yet -- run: .venv/bin/python scripts/estate_map.py --snapshot)"
 import json, sys, time, calendar
