@@ -2962,6 +2962,8 @@ TOOLS: list[dict] = [
     _t("scripts/estate_map.py", "The whole estate, probed live: Fly apps, customer URLs, laptop "
        "jobs, volumes, secret names", False, "/engine", run=True,
        cmd=".venv/bin/python scripts/estate_map.py"),
+    _t("prospector/listing_ledger.py", "Why is each pack on or off the shelf?", False,
+       "/catalogue", run=True, cmd=".venv/bin/python -m prospector.listing_ledger"),
     _t("tools/spend_today.py", "Today's spend against the cap", False, "/spend"),
     # --- publish / republish ---
     _t("publish/publish.py", "The single publish entry point", True, "/catalogue",
