@@ -130,6 +130,35 @@ A `file:line`, command output, or a runnable test, in the same breath as the cla
 claim is labelled HYPOTHESIS with the exact check that would settle it. This applies to humans,
 to agents, to commit messages and to this document.
 
+### L11. No flaky solutions
+
+Founder, 2026-08-19: *"dont want flaky solutions ... never go for flaky solutions"*. He said it
+after reading five of our own proposals back to us, and he was right about all five.
+
+A solution is FLAKY if any one of these is true. They are the test, and every proposal is graded
+against them before it is accepted, not after it is built.
+
+1. **It depends on the thing it protects.** A watcher on the machine it watches dies with it. A
+   backup in the same account as the data. A gate that runs inside the process it gates.
+2. **It can fail silently.** If the failure looks like success, or like noise, or like somebody
+   else's bug, nobody acts on it. Every mechanism must answer: what fails, loudly, and who is told?
+3. **Nothing measures it.** A number in a plan is a claim. A target with no clock, a rail with no
+   drill, a budget with no meter: those are wishes, and a wish is flaky by construction.
+4. **It moves the single point of failure instead of removing it.** Off the laptop and onto one
+   Fly machine is progress. It is not redundancy, and it must never be written down as if it were.
+
+**Grade honestly and say so.** SOUND, FLAKY or UNPROVEN, with the evidence. UNPROVEN is an allowed
+answer and usually the true one. SOUND without a receipt is not.
+
+**A flaky solution is worse than no solution**, because it also spends the attention that would
+have found the real one. The autoscaler is the worked example: written, reviewed, merged, and it
+had never once run. See [`docs/STACK_FLAKINESS_AUDIT.md`](STACK_FLAKINESS_AUDIT.md).
+
+**Justification before decision** (same directive, same day: *"i need justifications alo outputted
+before final decsion"*). The argument is written out and shown FIRST. The decision line comes after
+it and refers to it. A decision presented without its argument cannot be challenged, so it gets
+re-litigated every time somebody new reads it.
+
 ---
 
 ## Part 2. Agent tenets
