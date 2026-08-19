@@ -161,6 +161,188 @@ def normalise(obj: Any, host: str, now: datetime) -> dict | None:
     return line
 
 
+# --------------------------------------------------------------------------- reading
+#: The most bytes `search` reads from the END of any one day file. A day file is capped at 200 MB
+#: (§4.6); pulling 200 MB to render 200 rows would hang the console page and pin the engine's CPU
+#: while it did. 8 MB is 500 lines at the 16 KB line cap and tens of thousands at a realistic size.
+#: When a file is larger than this the result says `truncated`, which is the whole point: it is the
+#: difference between "there are no more matches" and "we stopped looking".
+MAX_TAIL_BYTES = 8 * 1024 * 1024
+
+#: The most day files one search opens, newest first. Bounded for the same reason.
+MAX_FILES = 21
+
+#: The most rows one search returns, whatever the caller asks for.
+MAX_LIMIT = 2000
+
+
+def day_files(directory: Path) -> list[tuple[str, str, Path]]:
+    """`(day, svc, path)` for every valid day file, NEWEST FIRST.
+
+    A file whose name `_DAY_RE` cannot parse is skipped, not guessed at. That is the same regex
+    the writer uses to build the name, so a name this cannot read is a name we did not write.
+    """
+    out: list[tuple[str, str, Path]] = []
+    for path in directory.glob("*.jsonl"):
+        match = _DAY_RE.match(path.name)
+        if match:
+            out.append((match.group("day"), match.group("svc"), path))
+    out.sort(reverse=True)
+    return out
+
+
+def tail_lines(path: Path, window: int | None = None) -> tuple[list[str], bool]:
+    """The last `window` bytes of `path` as whole lines, and whether anything was cut off.
+
+    `window` resolves from `MAX_TAIL_BYTES` at CALL time, never as a default argument. A default
+    is evaluated once at import, which would make the module constant a copy rather than the knob
+    — and the test that drives the truncation path could then never reach it.
+
+    Reading from the end is what makes "newest first" cheap. The first line inside the window is
+    almost always half a line, so it is dropped when the window did not reach the start of the
+    file: a torn line parsed as data is worse than a line not shown, and the caller is told the
+    result was truncated either way.
+    """
+    size = path.stat().st_size
+    start = max(0, size - (MAX_TAIL_BYTES if window is None else window))
+    with path.open("rb") as handle:
+        handle.seek(start)
+        blob = handle.read()
+    truncated = start > 0
+    if truncated:
+        newline = blob.find(b"\n")
+        blob = blob[newline + 1:] if newline >= 0 else b""
+    return blob.decode("utf-8", errors="replace").splitlines(), truncated
+
+
+def _min_level_index(level: str) -> int:
+    """Index into `LEVELS` for a minimum-severity filter; -1 when there is no filter.
+
+    An unknown level name means NO filter rather than an empty result. A typo in a query string
+    must not look like a quiet system.
+    """
+    name = (level or "").strip().lower()
+    return LEVELS.index(name) if name in LEVELS else -1
+
+
+def _matches(row: dict, raw: str, *, service: str, min_level: int,
+             since: str, until: str, corr: str, needle: str) -> bool:
+    """Every filter, applied to one already-decoded row."""
+    if service and str(row.get("svc") or "") != service:
+        return False
+    if min_level >= 0:
+        lvl = str(row.get("lvl") or "info")
+        if lvl not in LEVELS or LEVELS.index(lvl) < min_level:
+            return False
+    if corr and str(row.get("corr") or "") != corr:
+        return False
+    if since or until:
+        # RFC3339 UTC sorts correctly as a string, which is why the schema fixes the format.
+        # A row with no `ts` is never excluded by a time filter — the ingest stamps one, so a
+        # missing `ts` here means a hand-written file, and dropping it would hide it.
+        ts = str(row.get("ts") or "")
+        if ts and since and ts < since:
+            return False
+        if ts and until and ts > until:
+            return False
+    if needle and needle not in raw.lower():
+        return False
+    return True
+
+
+def search(*, directory: Path | None = None, service: str = "", level: str = "",
+           since: str = "", until: str = "", corr: str = "", q: str = "",
+           limit: int = 200) -> dict:
+    """Newest-first log lines matching every filter given, with the cost of the answer attached.
+
+    This is the read half of the design's Part 4, and the console's `/logs` page is its only
+    caller today. It reads the files directly rather than asking the ingest process over HTTP,
+    because both run on the same machine (`deploy/engine/supervisord.conf`, `[program:ops-console]`
+    and `[program:log-ingest]`). Going through the ingest would mean the logs became unreadable
+    exactly when the ingest is the process that died, which is when they are worth most.
+
+    Every bound is reported, never silently applied: `truncated` when a file was longer than the
+    tail window, `files_capped` when there were more day files than `MAX_FILES`, `unreadable` for
+    torn lines. A reader who cannot tell "nothing matched" from "we stopped early" will eventually
+    conclude a healthy silence from a bounded search.
+    """
+    directory = directory or log_dir()
+    limit = max(1, min(int(limit or 200), MAX_LIMIT))
+    needle = (q or "").strip().lower()
+    service = (service or "").strip()
+    corr = (corr or "").strip()
+    min_level = _min_level_index(level)
+
+    result: dict[str, Any] = {
+        "dir": str(directory),
+        "present": directory.exists(),
+        "rows": [],
+        "matched": 0,
+        "scanned": 0,
+        "unreadable": 0,
+        "files_read": 0,
+        "files_total": 0,
+        "files_capped": False,
+        "truncated": False,
+        "days": [],
+        "services": list(KNOWN_SERVICES),
+        "levels": list(LEVELS),
+        "limit": limit,
+    }
+    if not directory.exists():
+        return result
+
+    files = day_files(directory)
+    result["files_total"] = len(files)
+    result["days"] = sorted({day for day, _, _ in files}, reverse=True)
+    if service:
+        files = [f for f in files if f[1] == service]
+    if len(files) > MAX_FILES:
+        files = files[:MAX_FILES]
+        result["files_capped"] = True
+
+    rows: list[dict] = []
+    for _day, _svc, path in files:
+        if len(rows) >= limit:
+            break
+        try:
+            lines, truncated = tail_lines(path)
+        except OSError:
+            # A file that vanished mid-read is the retention sweeper doing its job, not an error
+            # worth failing the whole page over.
+            continue
+        result["files_read"] += 1
+        result["truncated"] = result["truncated"] or truncated
+        for raw in reversed(lines):
+            raw = raw.strip()
+            if not raw:
+                continue
+            result["scanned"] += 1
+            try:
+                row = json.loads(raw)
+            except ValueError:
+                result["unreadable"] += 1
+                continue
+            if not isinstance(row, dict):
+                result["unreadable"] += 1
+                continue
+            if not _matches(row, raw, service=service, min_level=min_level,
+                            since=since, until=until, corr=corr, needle=needle):
+                continue
+            result["matched"] += 1
+            if len(rows) < limit:
+                rows.append(row)
+            else:
+                break
+
+    # Files are opened newest-day first and each is read back to front, so `rows` is already in
+    # newest-first order WITHIN a service. Across services on the same day it is not, and an
+    # operator reading a correlation id needs the true order. Sort by `ts`, stably.
+    rows.sort(key=lambda r: str(r.get("ts") or ""), reverse=True)
+    result["rows"] = rows
+    return result
+
+
 # --------------------------------------------------------------------------- limiter
 class RateLimiter:
     """One token bucket per service. Refills at `rps`, capacity `rps`.
