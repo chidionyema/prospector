@@ -1,83 +1,83 @@
 {
   "pages": {
     "index@390": {
-      "hard": 48,
+      "hard": 25,
       "absent": 18
     },
     "index@1280": {
-      "hard": 49,
+      "hard": 25,
       "absent": 17
     },
     "ideas@390": {
-      "hard": 17,
+      "hard": 2,
       "absent": 3
     },
     "ideas@1280": {
-      "hard": 18,
+      "hard": 2,
       "absent": 3
     },
     "how-it-works@390": {
-      "hard": 49,
+      "hard": 12,
       "absent": 6
     },
     "how-it-works@1280": {
-      "hard": 51,
+      "hard": 12,
       "absent": 6
     },
     "kill-log@390": {
-      "hard": 54,
+      "hard": 11,
       "absent": 20
     },
     "kill-log@1280": {
-      "hard": 52,
+      "hard": 12,
       "absent": 21
     },
     "faq@390": {
-      "hard": 27,
+      "hard": 0,
       "absent": 5
     },
     "faq@1280": {
-      "hard": 27,
+      "hard": 0,
       "absent": 5
     },
     "pricing@390": {
-      "hard": 33,
+      "hard": 4,
       "absent": 5
     },
     "pricing@1280": {
-      "hard": 33,
+      "hard": 4,
       "absent": 5
     },
     "about@390": {
-      "hard": 24,
+      "hard": 8,
       "absent": 2
     },
     "about@1280": {
-      "hard": 24,
+      "hard": 8,
       "absent": 2
     },
     "account@390": {
-      "hard": 31,
+      "hard": 1,
       "absent": 30
     },
     "account@1280": {
-      "hard": 31,
+      "hard": 1,
       "absent": 30
     },
     "refund@390": {
-      "hard": 40,
+      "hard": 11,
       "absent": 4
     },
     "refund@1280": {
-      "hard": 40,
+      "hard": 11,
       "absent": 4
     },
     "sample@390": {
-      "hard": 38,
+      "hard": 3,
       "absent": 9
     },
     "sample@1280": {
-      "hard": 38,
+      "hard": 3,
       "absent": 9
     }
   }

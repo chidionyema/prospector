@@ -146,19 +146,32 @@ async function shoot(page, url, selectors) {
   return page.evaluate(
     ([sels, exact, len, soft]) =>
       sels.map((sel) => {
-        const el = document.querySelector(sel);
-        if (!el) return { sel, present: false };
+        const all = document.querySelectorAll(sel);
+        const el = all[0];
+        if (!el) return { sel, present: false, count: 0 };
         const cs = getComputedStyle(el);
         /* A component that renders nothing is absent, whatever the DOM says. This is how the
            `hidden md:block` band on phones reads as a component the drawing does not have. */
         if (cs.display === 'none' || cs.visibility === 'hidden') return { sel, present: false };
         const box = el.getBoundingClientRect();
-        const rec = { sel, present: true, style: {}, len: {}, box: {} };
+        const rec = { sel, present: true, count: all.length, style: {}, len: {}, box: {} };
         const px = (v) => parseFloat(v) || 0;
         for (const p of exact) {
           /* A flex or grid child is blockified by CSS itself. Our breadcrumb row is flex and the
              drawing's is inline text, so identical output computes two different words. */
           rec.style[p] = p === 'display' && cs[p] === 'inline-block' ? 'block' : cs[p];
+        }
+        /* A COLOUR ON A BORDER THAT IS NOT DRAWN IS NOT A COLOUR. When a side's width computes to
+           0, its `border-*-color` is whatever `currentColor` or the UA sheet left behind, and it
+           paints nothing. `mumchimp.css:33` is `.rule2{border:0;border-top:2px solid var(--ink)}`,
+           so the bottom border is 0px wide on both sides of the comparison -- and the gate still
+           reported "drawing rgb(128,128,128) / built rgb(23,25,28)" on it, 8 times. Across the
+           whole report 94 of the 724 hard findings were border colours. A real difference in
+           whether a border is drawn at all is still caught: `borderTopWidth` and `borderBottomWidth`
+           are compared as lengths, and both feed `boxTop` and `boxBottom`. */
+        for (const p of ['borderTopColor', 'borderBottomColor']) {
+          const w = p === 'borderTopColor' ? cs.borderTopWidth : cs.borderBottomWidth;
+          if (px(w) === 0) rec.style[p] = 'no-border';
         }
         /* VERTICAL KEEPS ITS MARGIN, HORIZONTAL DOES NOT. A vertical margin is a rhythm decision
            and the drawings make it deliberately. A horizontal one is usually `auto`, and
@@ -191,6 +204,7 @@ function compare(mockRecs, builtRecs) {
   const hard = [];
   const absent = [];
   const softOut = [];
+  const multi = [];
   for (const b of builtRecs) {
     const m = byMock.get(b.sel);
     if (!m || (!m.present && !b.present)) continue;
@@ -198,8 +212,21 @@ function compare(mockRecs, builtRecs) {
       absent.push({ sel: b.sel, mock: m.present ? 'yes' : 'no', built: b.present ? 'EXTRA' : 'MISSING' });
       continue;
     }
+    /* ONLY A SELECTOR THAT MATCHES ONE ELEMENT IN BOTH DOCUMENTS CAN BE GATED. The two documents
+       are written independently -- the drawings by hand, the pages by us -- so there is no way to
+       tell mechanically that the drawing's third `.btn` is the same button as ours. This harness
+       pairs the FIRST match, and for a selector used many times per page that pairs two unrelated
+       elements. The tell is findings that contradict each other: `.num` reported "drawing normal /
+       built -0.38" on one page and "drawing -0.38 / built normal" on another, and `mumchimp.css:9`
+       declares nothing but `font-variant-numeric` on it. `.tlink` (76 findings) and `.btn` (48) had
+       the same shape. Those selectors are still probed and still printed, as MULTI -- they say where
+       to look. They do not gate, because a number nobody can act on is not a gate. Singletons like
+       `.hero`, `h2.sec` and `.logo` still gate, and defect 10 was found on one of those. */
+    const gated = m.count === 1 && b.count === 1;
+    const out = gated ? hard : multi;
+    if (!gated) multi.push({ sel: b.sel, prop: 'count', mock: m.count, built: b.count });
     for (const p of HARD_EXACT) {
-      if (m.style[p] !== b.style[p]) hard.push({ sel: b.sel, prop: p, mock: m.style[p], built: b.style[p] });
+      if (m.style[p] !== b.style[p]) out.push({ sel: b.sel, prop: p, mock: m.style[p], built: b.style[p] });
     }
     for (const p of HARD_LEN) {
       const a = m.len[p];
@@ -207,11 +234,11 @@ function compare(mockRecs, builtRecs) {
       if (a === c) continue;
       /* `normal` against a number, or `none` against a cap, is a real change of kind. */
       if (typeof a !== 'number' || typeof c !== 'number') {
-        hard.push({ sel: b.sel, prop: p, mock: a, built: c });
+        out.push({ sel: b.sel, prop: p, mock: a, built: c });
         continue;
       }
       if (Math.abs(a - c) <= Math.max(LEN_ABS, Math.abs(a) * LEN_PCT)) continue;
-      hard.push({ sel: b.sel, prop: p, mock: `${a}px`, built: `${c}px` });
+      out.push({ sel: b.sel, prop: p, mock: `${a}px`, built: `${c}px` });
     }
     for (const p of SOFT) {
       const a = m.box[p];
@@ -220,7 +247,7 @@ function compare(mockRecs, builtRecs) {
       softOut.push({ sel: b.sel, prop: p, mock: a, built: c });
     }
   }
-  return { hard, absent, soft: softOut };
+  return { hard, absent, soft: softOut, multi };
 }
 
 const argv = process.argv.slice(2);
@@ -250,7 +277,7 @@ for (const pair of pairs) {
     const builtRecs = await shoot(page, `${BUILT}${pair.route}`, SELECTORS);
     await ctx.close();
 
-    const { hard, absent, soft } = compare(mockRecs, builtRecs);
+    const { hard, absent, soft, multi } = compare(mockRecs, builtRecs);
     const key = `${pair.name}@${width}`;
     const base = baseline?.pages?.[key];
     const regressed =
@@ -262,6 +289,7 @@ for (const pair of pairs) {
       hard: hard.length,
       absent: absent.length,
       soft: soft.length,
+      multi: multi.length,
       base,
       regressed,
     });
@@ -269,9 +297,10 @@ for (const pair of pairs) {
       `${pair.name.padEnd(14)} ${String(width).padStart(4)}` +
         `  hard=${String(hard.length).padStart(3)}${base ? `/${base.hard}` : ''}` +
         `  absent=${String(absent.length).padStart(3)}${base ? `/${base.absent}` : ''}` +
-        `  soft=${String(soft.length).padStart(3)}${regressed ? '   REGRESSED' : ''}`,
+        `  soft=${String(soft.length).padStart(3)}` +
+        `  multi=${String(multi.length).padStart(3)}${regressed ? '   REGRESSED' : ''}`,
     );
-    if (hard.length || absent.length || soft.length) {
+    if (hard.length || absent.length || soft.length || multi.length) {
       details.push(`\n### ${pair.name} at ${width}\n`);
       for (const f of hard) {
         details.push(`- HARD \`${f.sel}\` **${f.prop}**: drawing \`${f.mock}\` / built \`${f.built}\``);
@@ -282,14 +311,22 @@ for (const pair of pairs) {
       for (const f of soft) {
         details.push(`- soft \`${f.sel}\` ${f.prop}: drawing ${f.mock} / built ${f.built}`);
       }
+      for (const f of multi) {
+        details.push(`- MULTI \`${f.sel}\` ${f.prop}: drawing \`${f.mock}\` / built \`${f.built}\``);
+      }
     }
   }
 }
 await browser.close();
 
 const totals = rows.reduce(
-  (a, r) => ({ hard: a.hard + r.hard, absent: a.absent + r.absent, soft: a.soft + r.soft }),
-  { hard: 0, absent: 0, soft: 0 },
+  (a, r) => ({
+    hard: a.hard + r.hard,
+    absent: a.absent + r.absent,
+    soft: a.soft + r.soft,
+    multi: a.multi + r.multi,
+  }),
+  { hard: 0, absent: 0, soft: 0, multi: 0 },
 );
 const regressions = rows.filter((r) => r.regressed);
 
@@ -310,6 +347,11 @@ const lines = [
   'in the drawing is compared against the first matching element in the built page, at 390 and 1280.',
   '',
   '- `hard` is a computed-style difference on a component both documents render. It is a defect.',
+  '  Only selectors matching exactly ONE element in BOTH documents can be hard, because that is the',
+  '  only case where the two elements are certainly the same component.',
+  '- `MULTI` is the same comparison on a selector used more than once on the page. The two documents',
+  '  were written independently, so the first match on each side may be unrelated elements. It says',
+  '  where to look. It never gates.',
   '- `absent` is a component one document renders and the other does not, `display:none` included.',
   '  Some are defects and some are the content divergence in `docs/SITE_SPEC_PROGRAM.md` 11.9.',
   '- `soft` is width or height past tolerance. Usually copy. It never gates.',
@@ -318,12 +360,12 @@ const lines = [
   'hold, never get worse. The pixel harness `visual_regression.mjs` still runs and still writes its',
   'PNGs, but it reports rather than gates, for the reason recorded in 11.9.',
   '',
-  '| Page | Width | Hard | Baseline | Absent | Baseline | Soft |',
-  '| --- | --- | --- | --- | --- | --- | --- |',
+  '| Page | Width | Hard | Baseline | Absent | Baseline | Soft | Multi |',
+  '| --- | --- | --- | --- | --- | --- | --- | --- |',
   ...rows.map(
     (r) =>
       `| ${r.page} | ${r.width} | ${r.hard} | ${r.base?.hard ?? '-'} | ${r.absent} |` +
-      ` ${r.base?.absent ?? '-'} | ${r.soft} |`,
+      ` ${r.base?.absent ?? '-'} | ${r.soft} | ${r.multi} |`,
   ),
   '',
   `**Totals: hard ${totals.hard}, absent ${totals.absent}, soft ${totals.soft}.**`,
@@ -337,7 +379,9 @@ const lines = [
 ];
 await writeFile(REPORT, lines.join('\n'), 'utf8');
 
-console.log(`\ntotals: hard=${totals.hard} absent=${totals.absent} soft=${totals.soft}`);
+console.log(
+  `\ntotals: hard=${totals.hard} absent=${totals.absent} soft=${totals.soft} multi=${totals.multi}`,
+);
 console.log(`report: ${REPORT}`);
 /* RECORDING A BASELINE IS NOT GRADING AGAINST ONE. `regressions` was computed against the file as
    it stood BEFORE this run overwrote it, so reporting it here would grade a run against a baseline
