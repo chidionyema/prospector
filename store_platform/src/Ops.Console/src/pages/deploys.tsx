@@ -40,6 +40,11 @@ type Deployable = {
   /** What ships it: the button's purpose, or the reason there is no button. Never blank. */
   deploy_how?: string;
   deploy_danger?: string | null;
+  /** The catalogued tool that puts this one back on its previous image, or null. */
+  rollback_tool_id?: string | null;
+  /** What puts it back: the button's purpose, or the reason there is no button. Never blank. */
+  rollback_how?: string;
+  rollback_danger?: string | null;
 };
 
 type Fleet = {
@@ -158,6 +163,30 @@ function Deployable({ d }: { d: Deployable }) {
           />
         ) : (
           <Note>not deployable from here — {d.deploy_how}</Note>
+        )}
+      </div>
+      {/*
+        Rollback sits beside Deploy, not on another page. An operator who has just shipped a bad
+        build is the least likely person to go looking for the undo, so it is where the mistake
+        was made. It redeploys the PREVIOUS Fly image: no build, no CI, seconds not minutes.
+      */}
+      <div className="mt-2">
+        {d.rollback_tool_id ? (
+          <Confirm
+            action="tools.run"
+            payload={() => ({ id: d.rollback_tool_id })}
+            label={`Roll ${d.name} back`}
+            kind="danger"
+            renderPreview={(pv) => (
+              <div>
+                <Mono>{String(pv.command ?? '')}</Mono>
+                {pv.danger ? <Note>{String(pv.danger)}</Note> : null}
+                <Note>{String(pv.note ?? '')}</Note>
+              </div>
+            )}
+          />
+        ) : (
+          <Note>no rollback from here — {d.rollback_how}</Note>
         )}
       </div>
     </Card>
