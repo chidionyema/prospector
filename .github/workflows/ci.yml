@@ -318,6 +318,19 @@ jobs:
           CI_LIGHT_RUNS_ON: ${{ vars.CI_LIGHT_RUNS_ON }}
         run: python3 scripts/ci_capacity.py
 
+      # Our runners are a container we build, not GitHub's ubuntu-latest, and it installs
+      # seventeen packages on purpose. A step written against GitHub's image therefore fails
+      # here as a MISSING COMMAND -- exit 127, and usually with no message, because the step
+      # that needed it had already redirected stderr. It has happened twice: `python3` after a
+      # successful web deploy, and `openssh-client` on 2026-08-19, which killed the whole
+      # hermes-config gate in seventeen milliseconds with no output at all.
+      #
+      # RUNNER_ENVIRONMENT is passed through so the check knows whose PATH it is grading. On a
+      # GitHub-hosted runner it grades the Dockerfile only and says so; passing on ubuntu-latest
+      # would prove nothing about the image we ship.
+      - name: The runner carries the tools our workflows run
+        run: python3 scripts/ci_runner_tools.py
+
   # ──────────────────────────────────────────────────────────────────
   # Python — full test suite + golden-set hard gate
   # ──────────────────────────────────────────────────────────────────
