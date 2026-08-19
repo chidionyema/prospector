@@ -121,6 +121,57 @@ def _code_changes(porcelain: str) -> list[str]:
     return out
 
 
+def _deployed_changes(changed: str) -> list[str] | None:
+    """Which of these changed files would actually have triggered a production deploy?
+
+    "N commits behind" was the wrong question and it cried wolf. Every docs merge, every test-only
+    fix and every web change moved the number, so the probe reported production stale while
+    production was running exactly the code it should run. An alarm that is usually wrong is an
+    alarm that gets ignored, and the next real one arrives inside that habit.
+
+    The right question is the one deploy-engine.yml asks itself: did anything under its `paths:`
+    filter change? That filter is READ from the workflow, never copied here. A second copy would
+    drift, and it would drift silently in the one direction that matters -- production graded
+    current while a real change sat unshipped.
+
+    Returns the deployed files that changed, [] if none did, or None if the filter could not be
+    read, in which case the caller keeps the old blunt warning rather than claiming all-clear.
+    """
+    # Read the filter out of origin/main, not out of the working tree. DEV is a developer
+    # checkout and was measured 60 commits behind on 2026-08-19; its copy of this workflow
+    # predates the path filter entirely, so a working-tree read returned no patterns and the
+    # helper fell back to the blunt warning it was written to replace. The comparison is
+    # against origin/main, so the filter must come from origin/main too.
+    rel = ".github/workflows/deploy-engine.yml"
+    rc, text = run(["git", "show", f"origin/main:{rel}"], cwd=DEV, timeout=15)
+    if rc != 0 or not text.strip():
+        try:
+            text = (DEV / rel).read_text(encoding="utf-8")
+        except OSError:
+            return None
+    m = re.search(r"^  push:\n(?:.*\n)*?    paths:\n((?:      - .*\n)+)", text, re.M)
+    if not m:
+        return None
+    patterns = [ln.strip().lstrip("-").strip().strip('"').strip("'")
+                for ln in m.group(1).splitlines() if ln.strip()]
+    if not patterns:
+        return None
+
+    hits = []
+    for f in (ln.strip() for ln in changed.splitlines()):
+        if not f:
+            continue
+        for pat in patterns:
+            if pat.endswith("/**"):
+                if f.startswith(pat[:-2]):
+                    hits.append(f)
+                    break
+            elif f == pat:
+                hits.append(f)
+                break
+    return hits
+
+
 def job_cwd(job: str) -> tuple[str | None, str | None]:
     """Return (pid, cwd) for a launchd job, read from the process, not from config."""
     rc, out = run(["launchctl", "print", f"gui/{os.getuid()}/{job}"])
@@ -518,8 +569,18 @@ def fly_report() -> int:
             else:
                 rc, behind = run(["git", "rev-list", "--count", f"{bare}..origin/main"], cwd=DEV)
                 gap = behind if rc == 0 and behind.isdigit() else "?"
+                _, changed = run(["git", "diff", "--name-only", f"{bare}..origin/main"], cwd=DEV)
+                shipped = _deployed_changes(changed)
                 print(f"  origin/main     {main_sha[:12]}   production is {gap} commit(s) behind")
-                problems.append(f"production is {gap} commit(s) behind origin/main")
+                if shipped is None:
+                    problems.append(f"production is {gap} commit(s) behind origin/main")
+                elif shipped:
+                    print(f"  of which        {len(shipped)} file(s) are deployed code, "
+                          f"e.g. {shipped[0]}")
+                    problems.append(f"production is {gap} commit(s) behind origin/main, "
+                                    f"{len(shipped)} deployed file(s) changed")
+                else:
+                    print("  of which        none touch deployed code, so production is current")
         _, subject = run(["git", "log", "-1", "--format=%h %ad %s", "--date=short", bare],
                          cwd=DEV, timeout=15)
         if subject:
