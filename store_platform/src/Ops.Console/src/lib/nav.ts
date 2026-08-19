@@ -58,6 +58,7 @@ export const GROUPS: Group[] = [
       { href: '/data', label: 'Backups', what: 'what survives if the volume is lost' },
       { href: '/audit', label: 'Audit', what: 'what changed, and who changed it' },
       { href: '/docs', label: 'Docs', what: 'the decisions, incidents and runbooks, in here' },
+      { href: '/incidents', label: 'Incidents', what: 'what broke, and what stops it recurring' },
     ],
   },
   {
@@ -67,11 +68,6 @@ export const GROUPS: Group[] = [
       { href: '/tools', label: 'Tools', what: 'run a tool, and undo it' },
       { href: '/method', label: 'Method', what: 'how the agents work, and if it is improving' },
       { href: '/processes', label: 'Processes', what: 'every automated job, and what is failing' },
-      {
-        href: '/incidents',
-        label: 'Incidents',
-        what: 'what broke, and what stops it happening again',
-      },
     ],
   },
 ];
