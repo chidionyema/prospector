@@ -26,6 +26,7 @@ all this needs: the question is "is a credential present, and which kind", never
     .venv/bin/python scripts/ci_fleet_probe.py            # human report; exit 1 if degraded
     .venv/bin/python scripts/ci_fleet_probe.py --json     # for the ops console
 """
+
 from __future__ import annotations
 
 import argparse
@@ -86,8 +87,9 @@ def _cli(name: str) -> str | None:
 
 def _run(cmd: list[str], timeout: int = 45) -> tuple[int, str]:
     try:
-        p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
-                           stdin=subprocess.DEVNULL)
+        p = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL
+        )
         return p.returncode, (p.stdout or "") + (p.stderr or "")
     except subprocess.TimeoutExpired:
         return 124, f"timed out after {timeout}s"
@@ -107,7 +109,7 @@ def _json_out(cmd: list[str], timeout: int = 45):
     if not starts:
         return None, "no JSON in the output"
     try:
-        return json.loads(out[min(starts):]), None
+        return json.loads(out[min(starts) :]), None
     except json.JSONDecodeError as exc:
         return None, f"unparseable JSON: {exc}"
 
@@ -125,10 +127,70 @@ def discover_fleets() -> list[dict]:
         app = re.search(r'(?m)^\s*app\s*=\s*"([^"]+)"', text)
         repo = re.search(r'(?m)^\s*GITHUB_REPO\s*=\s*"([^"]+)"', text)
         if app and app.group(1) not in fleets:
-            fleets[app.group(1)] = {"app": app.group(1),
-                                    "repo": repo.group(1) if repo else None,
-                                    "config": str(cfg.relative_to(ROOT))}
+            fleets[app.group(1)] = {
+                "app": app.group(1),
+                "repo": repo.group(1) if repo else None,
+                "config": str(cfg.relative_to(ROOT)),
+            }
     return list(fleets.values())
+
+
+# The image stamp. `deploy/runners.sh up` passes RUNNER_IMAGE_SHA into every machine it
+# creates, set to the commit that last touched deploy/runner/. Nothing else can answer "is the
+# fleet running the image this repository describes?": Fly reports a deployment id and a layer
+# digest, neither of which maps back to a commit, and the tools inside the image are only
+# visible by opening an SSH session to a machine.
+#
+# THE FAILURE THIS GRADES. On 2026-08-19 the hermes-config gate died at exit 127 with no
+# output, because the image had no openssh-client. The package was added to the Dockerfile the
+# same hour. The fleet went on running the old image for as long as nobody thought to redeploy
+# it, and every screen — Fly, GitHub, the machine list — said the fleet was healthy, because it
+# was: it was healthily running the wrong image.
+STAMP = "RUNNER_IMAGE_SHA"
+
+
+def expected_image_sha() -> str | None:
+    """The commit ``origin/main`` last changed the runner image at.
+
+    Graded against ORIGIN/MAIN, never the local HEAD: this probe runs from a developer
+    checkout that is routinely dozens of commits behind, and "the fleet matches my working
+    tree" is not the question. It does not fetch — a probe that reaches the network to decide
+    what to compare has two ways to be wrong instead of one.
+    """
+    code, out = _run(
+        ["git", "-C", str(ROOT), "log", "-1", "--format=%H", "origin/main", "--", "deploy/runner"]
+    )
+    sha = out.strip()
+    return sha if code == 0 and re.fullmatch(r"[0-9a-f]{40}", sha) else None
+
+
+def image_staleness(machines: list[dict], expected: str | None) -> str | None:
+    """One problem line, or None when every machine carries the expected stamp.
+
+    Unstamped machines are reported as stale rather than skipped. A machine with no stamp was
+    built before `runners.sh` learned to write one, which means it is at least that old — the
+    exact condition this exists to catch. Passing an unknown is how a staleness check quietly
+    stops checking.
+    """
+    if expected is None or not machines:
+        return None
+    seen: dict[str, int] = {}
+    for m in machines:
+        env = (m.get("config") or {}).get("env") or {}
+        seen[env.get(STAMP) or "unstamped"] = seen.get(env.get(STAMP) or "unstamped", 0) + 1
+    wrong = {k: v for k, v in seen.items() if k != expected}
+    if not wrong:
+        return None
+    detail = ", ".join(
+        f"{n} machine(s) at {k[:12] if k != 'unstamped' else k}" for k, n in sorted(wrong.items())
+    )
+    return (
+        f"the fleet is not running the image this repository describes: {detail}, but "
+        f"deploy/runner/ on origin/main is at {expected[:12]}. A workflow step can then "
+        f"fail as a bare exit 127 with no output. Rebuild: deploy/runners.sh up "
+        f"(check `gh run list --status in_progress` first — that deploy kills in-flight "
+        f"jobs)"
+    )
 
 
 def grade(fleet: dict, fly: str | None, gh: str | None) -> dict:
@@ -138,9 +200,21 @@ def grade(fleet: dict, fly: str | None, gh: str | None) -> dict:
     # machines minutes or hours after the credential was written, and a registration token is
     # dead in an hour. Everything graded against the autoscale band is gated on this.
     autoscaled = False
-    out = dict(fleet, machines=[], started=0, stopped=0, floor=lo, ceiling=hi,
-               runners_online=0, runners_offline=0,
-               runners_busy=0, queued=0, credential=None, problems=[], notes=[])
+    out = dict(
+        fleet,
+        machines=[],
+        started=0,
+        stopped=0,
+        floor=lo,
+        ceiling=hi,
+        runners_online=0,
+        runners_offline=0,
+        runners_busy=0,
+        queued=0,
+        credential=None,
+        problems=[],
+        notes=[],
+    )
 
     if fly is None:
         out["problems"].append("flyctl is not on PATH, so the machines cannot be graded")
@@ -149,8 +223,10 @@ def grade(fleet: dict, fly: str | None, gh: str | None) -> dict:
         if machines is None:
             out["problems"].append(f"fly machine list failed: {err}")
         else:
-            out["machines"] = [{"id": m.get("id"), "state": m.get("state"),
-                                "region": m.get("region")} for m in machines]
+            out["machines"] = [
+                {"id": m.get("id"), "state": m.get("state"), "region": m.get("region")}
+                for m in machines
+            ]
             out["started"] = sum(1 for m in machines if m.get("state") == "started")
             out["stopped"] = len(machines) - out["started"]
             # A STOPPED MACHINE IS NOT A FAULT. `deploy/runners.sh autoscale` stops idle
@@ -168,11 +244,16 @@ def grade(fleet: dict, fly: str | None, gh: str | None) -> dict:
                 out["problems"].append(
                     f"{out['started']} machine(s) started, below the floor of {lo} in "
                     f"ops/config/ci_capacity.yaml. A cold pool makes the next job wait for a "
-                    f"boot. PROSPECTOR_RUNNER_APP={app} deploy/runners.sh autoscale")
+                    f"boot. PROSPECTOR_RUNNER_APP={app} deploy/runners.sh autoscale"
+                )
             if not machines:
                 out["problems"].append(
                     f"no machines at all — nothing can run a {repo or app} job. "
-                    f"PROSPECTOR_RUNNER_APP={app} deploy/runners.sh up 1")
+                    f"PROSPECTOR_RUNNER_APP={app} deploy/runners.sh up 1"
+                )
+            stale = image_staleness(machines, expected_image_sha())
+            if stale:
+                out["problems"].append(stale)
 
         # NAMES AND DIGESTS ONLY. There is no code path in this file that can read a value.
         secrets, err = _json_out([fly, "secrets", "list", "-a", app, "--json"])
@@ -189,18 +270,21 @@ def grade(fleet: dict, fly: str | None, gh: str | None) -> dict:
                     "token-only fleet. It holds nothing that can add or remove a runner, which "
                     "is the narrower and safer mode — but a registration token expires in an "
                     "HOUR, so a machine started later cannot register. Do not point "
-                    "`runners.sh autoscale` at this fleet without moving it to a PAT.")
+                    "`runners.sh autoscale` at this fleet without moving it to a PAT."
+                )
             elif names:
                 out["problems"].append(
                     "no runner credential on the app, so a machine can never register. "
-                    f"PROSPECTOR_RUNNER_APP={app} deploy/runners.sh up 1 mints one.")
+                    f"PROSPECTOR_RUNNER_APP={app} deploy/runners.sh up 1 mints one."
+                )
 
     if gh is None:
         out["problems"].append("gh is not on PATH, so the repository's runners cannot be read")
         return out
     if repo is None:
-        out["problems"].append(f"{fleet['config']} names no GITHUB_REPO, so this fleet "
-                               "registers with nothing")
+        out["problems"].append(
+            f"{fleet['config']} names no GITHUB_REPO, so this fleet registers with nothing"
+        )
         return out
 
     runners, err = _json_out([gh, "api", f"repos/{repo}/actions/runners", "--jq", ".runners"])
@@ -220,26 +304,39 @@ def grade(fleet: dict, fly: str | None, gh: str | None) -> dict:
             out["problems"].append(
                 f"{out['started']} machine(s) started but {out['runners_online']} runner(s) "
                 f"online at {repo}. Registration failed — usually an expired credential. "
-                f"fly logs -a {app} says which.")
+                f"fly logs -a {app} says which."
+            )
 
-    counted, err = _json_out([gh, "api",
-                              f"repos/{repo}/actions/runs?status=queued&per_page=1",
-                              "--jq", "{n: .total_count}"])
+    counted, err = _json_out(
+        [
+            gh,
+            "api",
+            f"repos/{repo}/actions/runs?status=queued&per_page=1",
+            "--jq",
+            "{n: .total_count}",
+        ]
+    )
     if counted is not None:
         out["queued"] = counted.get("n", 0)
-        if out["queued"] and out["runners_online"] and not out["stopped"] and \
-                out["runners_busy"] >= out["runners_online"]:
+        if (
+            out["queued"]
+            and out["runners_online"]
+            and not out["stopped"]
+            and out["runners_busy"] >= out["runners_online"]
+        ):
             # Only when there is nothing left to start. While stopped machines remain, the
             # answer is to start them, and saying "buy more" alongside that is advice that
             # contradicts the fault printed two lines above it.
             out["notes"].append(
                 f"{out['queued']} run(s) queued, every runner busy and every machine already "
                 f"started. That is capacity, not a fault. "
-                f"PROSPECTOR_RUNNER_APP={app} deploy/runners.sh up {out['started'] + 1}")
+                f"PROSPECTOR_RUNNER_APP={app} deploy/runners.sh up {out['started'] + 1}"
+            )
         elif out["queued"] and not out["runners_online"]:
             out["problems"].append(
                 f"{out['queued']} run(s) queued and NO runner online at {repo} — CI is stopped, "
-                f"not slow.")
+                f"not slow."
+            )
         # THE AUTOSCALE FAULT, stated as the pair rather than as either half. Stopped machines
         # are fine. Stopped machines while work waits, with the ceiling not reached, means the
         # scaler did not react. Measured 2026-08-19: 5 queued, 4 started, 8 stopped, ceiling
@@ -248,21 +345,32 @@ def grade(fleet: dict, fly: str | None, gh: str | None) -> dict:
             out["problems"].append(
                 f"{out['queued']} run(s) queued with {out['stopped']} machine(s) stopped and "
                 f"the ceiling at {hi} — the scaler did not react. "
-                f"gh run list -R {repo} --workflow ci-autoscale.yml -L 3")
+                f"gh run list -R {repo} --workflow ci-autoscale.yml -L 3"
+            )
 
     # THE SCALER'S OWN HEALTH. This is the check that was missing on 2026-08-19, when the
     # autoscale workflow failed five times out of five and nothing said so. A workflow GitHub
     # rejects at parse time starts no job, so it writes no log and annotates no check suite:
     # the conclusion of its newest run is the only evidence that exists.
-    scaler, _err = (None, None) if not autoscaled else _json_out([gh, "api",
-                              f"repos/{repo}/actions/workflows/ci-autoscale.yml/runs?per_page=1",
-                              "--jq", "{c: .workflow_runs[0].conclusion, "
-                                      "n: .workflow_runs[0].run_number}"])
+    scaler, _err = (
+        (None, None)
+        if not autoscaled
+        else _json_out(
+            [
+                gh,
+                "api",
+                f"repos/{repo}/actions/workflows/ci-autoscale.yml/runs?per_page=1",
+                "--jq",
+                "{c: .workflow_runs[0].conclusion, n: .workflow_runs[0].run_number}",
+            ]
+        )
+    )
     if scaler and scaler.get("c") not in (None, "success", "cancelled", "skipped"):
         out["problems"].append(
             f"the CI autoscale workflow's newest run (#{scaler.get('n')}) is {scaler['c']}, so "
             f"nothing is sizing this pool. "
-            f"gh run list -R {repo} --workflow ci-autoscale.yml -L 5")
+            f"gh run list -R {repo} --workflow ci-autoscale.yml -L 5"
+        )
     return out
 
 
@@ -277,28 +385,33 @@ def main() -> int:
     degraded = [g for g in graded if g["problems"]]
 
     if args.json:
-        print(json.dumps({"ok": not degraded and bool(graded),
-                          "fleets": graded}, indent=2))
+        print(json.dumps({"ok": not degraded and bool(graded), "fleets": graded}, indent=2))
         return 1 if degraded or not graded else 0
 
     if not fleets:
-        print(f"FAIL  no runner fleets found in {RUNNER_DIR.relative_to(ROOT)}/ — either the "
-              f"fleet configs moved or this checkout is stale")
+        print(
+            f"FAIL  no runner fleets found in {RUNNER_DIR.relative_to(ROOT)}/ — either the "
+            f"fleet configs moved or this checkout is stale"
+        )
         return 1
 
     for g in graded:
-        print(f"{'FAIL' if g['problems'] else 'PASS'}  {g['app']:<14} "
-              f"{g['repo'] or '(no repo)':<26} "
-              f"machines {g['started']}/{len(g['machines'])} started · "
-              f"runners {g['runners_online']} online ({g['runners_busy']} busy) · "
-              f"queued {g['queued']} · credential {g['credential'] or 'none'}")
+        print(
+            f"{'FAIL' if g['problems'] else 'PASS'}  {g['app']:<14} "
+            f"{g['repo'] or '(no repo)':<26} "
+            f"machines {g['started']}/{len(g['machines'])} started · "
+            f"runners {g['runners_online']} online ({g['runners_busy']} busy) · "
+            f"queued {g['queued']} · credential {g['credential'] or 'none'}"
+        )
         for p in g["problems"]:
             print(f"        x {p}")
         for n in g["notes"]:
             print(f"        · {n}")
     print()
-    print(f"CI FLEET: {'DEGRADED' if degraded else 'OPERATIONAL'} "
-          f"({len(graded) - len(degraded)}/{len(graded)} fleets healthy)")
+    print(
+        f"CI FLEET: {'DEGRADED' if degraded else 'OPERATIONAL'} "
+        f"({len(graded) - len(degraded)}/{len(graded)} fleets healthy)"
+    )
     return 1 if degraded else 0
 
 
