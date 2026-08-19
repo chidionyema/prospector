@@ -54,7 +54,7 @@ rebases. Neither branch should try to fix it twice.
 | # | Strand | What is proved | What is missing |
 | --- | --- | --- | --- |
 | 6 | Telegram alert noise | Code shipped (`921106b`). The complaint had no number behind it; both paths were already debounced | 24h of real data to set `HERMES_ALERT_HOURLY_CAP`, which is at 12 by guess, not by measurement |
-| 12 | R2 retention actually prunes | `prospector-backup` 4,234 objects / 0.973 GB; `prospector-packs` 4,250 objects / 0.316 GB. `ops/config/offsite_backup.yaml` declares `keep: 30`, `max_age_hours: 24`. `offsite_backup._prune` is at `ops/automations/offsite_backup.py:339`, called at `:328` | Nothing has ever proved `_prune` ran. It swallows failures. Run it read-only, then with `--fix`, and compare the object count before and after |
+| 12 | R2 retention actually prunes | **The prune works.** Measured 2026-08-19: `offsite/money-db` holds exactly 30 objects and `offsite/data-protection-keys` exactly 30, against `keep: 30` in `ops/config/offsite_backup.yaml`. A series sitting exactly on its cap is the prune doing its job | The gap is elsewhere. `_prune` only ever touches the prefixes named as `sources`. `prospector-backup` holds 4,283 objects / 1.044 GB, and 4,150 of them are under `dossiers/` with no retention policy at all, plus `ledger/` at 0.220 GB across 17 copies. Declare a policy for those two, then run it read-only, then with `--fix` |
 
 ---
 
@@ -144,6 +144,28 @@ paper and false in the container. `supervisord.conf` now reads
 long-poller runs on Fly, next to the coordinator database that actually has the data. The Mac
 gateway is stopped and disabled. Before this it was answering from a database nothing writes
 to any more, which is worse than no door at all.
+
+**A fourth finding, from turning the flag on: the image could never have run the gateway.**
+`hermes_cli` was not installed in it.
+
+```
+grep -c hermes_cli /opt/venv/lib/python3.11/site-packages/__editable___hermes_agent_0_16_0_finder.py
+  0
+gateway ->  ModuleNotFoundError: No module named 'hermes_cli'   (exit 1, four restarts)
+```
+
+The Dockerfile installs the package editable before `COPY . .`, so dependency resolution is
+not repeated on every script change. That part is right. But setuptools writes its editable
+finder at that moment and maps only the packages it can see, and `hermes_cli/` was not in the
+build context yet. Every other daemon execs a script by absolute path, so none of them noticed.
+The gateway is the only program that imports the package by name, and the flag had kept it from
+ever being asked. Two defects hid each other: a decorative flag, and an image missing the one
+package that flag controlled.
+
+Fixed by re-running the editable install after the source lands, `--no-deps` so the expensive
+layer is untouched, plus an import assertion at build time so this fails on the builder rather
+than in a restart loop. `supervisorctl status` now reads `gateway RUNNING`, and the log opens
+with "Hermes Gateway Starting" and the MiniMax routing override.
 
 What is left on this strand is the leader lease (row 4 above). Booting the Mac out settles
 today; a lease is what makes the primary a fact both machines agree on.
