@@ -29,7 +29,7 @@ export const GROUPS: Group[] = [
       { href: '/engine', label: 'Engine', what: 'is the daemon running and what is it doing' },
       { href: '/queue', label: 'Queue', what: 'work waiting, and what is blocking it' },
       { href: '/runs', label: 'Runs', what: 'what each run produced' },
-      { href: '/metrics', label: 'Yield', what: 'how much of what it generates survives' },
+      { href: '/method', label: 'Method', what: 'how the agents work, and if it is improving' },
     ],
   },
   {
@@ -37,6 +37,7 @@ export const GROUPS: Group[] = [
     screens: [
       { href: '/catalogue', label: 'Catalogue', what: 'what is on offer' },
       { href: '/shelf', label: 'Stranded', what: 'passed every gate and cannot be bought' },
+      { href: '/metrics', label: 'Yield', what: 'how much of what it generates survives' },
     ],
   },
   {
@@ -65,7 +66,6 @@ export const GROUPS: Group[] = [
       { href: '/audit', label: 'Audit', what: 'what changed, and who changed it' },
       { href: '/docs', label: 'Docs', what: 'the decisions, incidents and runbooks, in here' },
       { href: '/incidents', label: 'Incidents', what: 'what broke, and what stops it recurring' },
-      { href: '/share', label: 'Share', what: 'give someone outside a link to a file or the repo' },
     ],
   },
   {
@@ -73,7 +73,7 @@ export const GROUPS: Group[] = [
     screens: [
       { href: '/config', label: 'Settings', what: 'the knobs, and their history' },
       { href: '/tools', label: 'Tools', what: 'run a tool, and undo it' },
-      { href: '/method', label: 'Method', what: 'how the agents work, and if it is improving' },
+      { href: '/share', label: 'Share', what: 'give someone outside a link to a file or the repo' },
       { href: '/processes', label: 'Processes', what: 'every automated job, and what is failing' },
     ],
   },

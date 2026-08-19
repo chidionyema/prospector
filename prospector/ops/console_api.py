@@ -3073,10 +3073,6 @@ TOOLS: list[dict] = [
        False, "/processes", cmd=".venv/bin/python scripts/checkout_currency.py"),
     _t("scripts/rework_metrics.py", "Rework rate: the guard beside the cost scoreboard",
        False, "/method", cmd=".venv/bin/python scripts/rework_metrics.py"),
-    _t("scripts/rework_metrics.py", "Rework rate: the guard beside the cost scoreboard",
-       False, "/method", cmd=".venv/bin/python scripts/rework_metrics.py"),
-    _t("scripts/rework_metrics.py", "Rework rate: the guard beside the cost scoreboard",
-       False, "/method", cmd=".venv/bin/python scripts/rework_metrics.py"),
     _t("scripts/workflow_health.py", "Are any CI workflows dead or disabled?", False,
        "/processes", cmd=".venv/bin/python scripts/workflow_health.py"),
     _t("scripts/main_red.py", "Why is main red, and what fixes it?", False,
@@ -3229,8 +3225,6 @@ TOOLS: list[dict] = [
        "/tools", cmd=".venv/bin/python scripts/dns_zone.py --check "
                      "--zone mumchimp.com"),
     _t("scripts/store_audit.py", "Audit the operator's store", False, "/tools"),
-    _t("scripts/rework_metrics.py", "Rework rate: the guard on the cost scoreboard",
-       False, "/method"),
     _t("scripts/blocker_probe.py", "Which programme items are blocked", False, "/tools"),
     _t("scripts/load_gate.py", "Is the machine fit to trust a test result", False, "/tools"),
     _t("scripts/popdd_verify.py", "The lane-aware proof runner", False, "/tools"),
@@ -3344,6 +3338,10 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     "scripts/seed_action_cache.sh": "fills the self-hosted runners' action cache; CI plumbing, "
                                     "run once on the runner box, not from an ops page",
     "scripts/setup_worktree.sh": "makes a git worktree usable; a developer's machine, not ops",
+    "scripts/guard_main_push.py": "the pre-push fence that refuses a direct push to main; "
+                                  "git runs it and feeds it the push on stdin, so it has "
+                                  "no meaning without that input and nothing to show an "
+                                  "operator",
     "scripts/prove_test_fails.py": "edits source files to prove a test goes red, then puts them "
                                   "back; it belongs to whoever is writing the test, and "
                                   "pointing it at a running estate would mutate live code",
@@ -3368,7 +3366,6 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
                                 "reading for whoever is deleting dead code, not an action on the "
                                 "running platform",
     "scripts/test_impacted.py": "picks the tests a local edit can affect; a developer's loop",
-    "scripts/rework_metrics.py": "grades the agents, not the estate: it reads git history for the share of commits that are fixes or reverts, as a guard on the /method cost scoreboard. Nothing it reports is an action on the running platform, and nothing on the platform changes when it runs",
     "scripts/verify_engine_change.sh": "the pre-commit proof that an engine change is safe",
     "tools/commit_mine.sh": "commits exactly the named paths; a developer's git helper",
     "tools/backfill_human_register.py": "a one-off repair that back-filled the human register after a schema change; kept for the record, not for re-running",
