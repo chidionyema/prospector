@@ -13,3 +13,9 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /.playwright/
+
+# UI quality tooling output. Both are reports about a run, not source: the Storybook build is
+# 8.9MB of bundled assets and the Lighthouse reports are one JSON per URL per run. CI keeps them
+# as artefacts of the job that produced them, which is where a report belongs.
+/storybook-static/
+/.lighthouseci/
