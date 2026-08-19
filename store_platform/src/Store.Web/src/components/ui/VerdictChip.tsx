@@ -59,7 +59,7 @@ const WORD_FOR: Record<VerdictKind, string> = {
  * `/kill-log`. We drew the same three states in Tailwind utilities instead, so none of those pages
  * emitted the class the drawings style, and the two could drift with nothing to catch it.
  *
- * The utilities are REMOVED rather than layered. `mockup.css` is imported into
+ * The utilities are REMOVED rather than layered. `mumchimp.css` is imported into
  * `layer(components)` (globals.css:8) and Tailwind utilities sit above it, so any utility left in
  * place would beat the class and this change would draw nothing.
  *

@@ -104,6 +104,20 @@ export interface PackLeadStat {
   label: string;
 }
 
+/**
+ * The modelled payback multiple, or null, with no label attached.
+ *
+ * `CardProof` needs the FIGURE and supplies its own noun ("payback"), so it cannot use
+ * `packLeadStat`, which is a figure welded to a sentence sized for the 44px `.stat` device. Same
+ * ceiling, same source: one `paybackEquation` call, one `CREDIBLE_MULTIPLE_CEILING`, so the row
+ * and the featured card can never disagree about which multiples this shop will claim.
+ */
+export function paybackMultiple(pack: Pack): number | null {
+  const payback = paybackEquation(pack.price, pack.financialSnapshot);
+  if (payback && payback.multiple <= CREDIBLE_MULTIPLE_CEILING) return payback.multiple;
+  return null;
+}
+
 export function packLeadStat(pack: Pack): PackLeadStat | null {
   // Rung 1. `pack.price` and not the FX-converted display price: both operands are the pack's
   // own GBP, and a ratio taken across two currencies would be a different number every time the
@@ -129,7 +143,13 @@ export function packLeadStat(pack: Pack): PackLeadStat | null {
     return {
       kind: 'sources',
       figure: String(sources),
-      label: sources === 1 ? 'cited source behind it' : 'cited sources behind it',
+      /* THE DRAWING'S OWN WORD (2026-08-18, D4). This label was "cited sources behind it", a
+         sentence that appears in no mockup file. `mockups/index.html:391` prints the featured
+         card's source count as "30 sources" and `:403` prints a row's as "41 sources", so the
+         noun is `sources` on every surface that states one. D4 named the long form as a defect
+         by name and told us to delete it. The payback label below survives untouched because
+         `mockups/index.html:388` does print it verbatim on this exact device. */
+      label: sources === 1 ? 'source' : 'sources',
     };
   }
 

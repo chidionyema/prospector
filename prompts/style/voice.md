@@ -128,7 +128,47 @@ These are the rules that actually decide whether it reads clearly:
     And vary that opening. Of 75 live one-liners on 2026-08-16, 55 began "A" and 4
     began "An", so four packs in five opened identically on the shelf; the reader
     scanning a grid sees one idea repeated. Open on whichever of the buyer, the
-    trigger, the artefact or the outcome carries the most information for THIS idea.
+    trigger, the document or the outcome carries the most information for THIS idea.
   - CLARITY NEVER COSTS ACCURACY. Numbers, dates and named entities stay exactly as
     the evidence gives them. Simplifying the language must never round a figure,
     soften a caveat, widen a specific finding, or drop a source.
+  - WORDS THAT ARE BANNED OUTRIGHT (founder, 2026-08-18). These never appear, in any
+    document, at any length, whoever the buyer is:
+    leverage, seamless, robust, solution, platform, onboarding, utilise, empower,
+    unlock, supercharge, game-changing, best-in-class, frictionless, scalable,
+    bespoke, curated, journey, space (meaning a market), ecosystem, learnings,
+    deliverable, touchpoint, at scale, deep dive, circle back.
+    They are startup fog. Every one of them is a word a writer reaches for when the
+    sentence has nothing to say. Delete the sentence or name the thing.
+  - CONSULTANT'S WORDS, AND THE ONE TEST THAT DECIDES THEM. The test is never "is this
+    the correct term". It is "does the person this idea is FOR already say this word?"
+    A cannabis SaaS founder knows what a schema is. A bricklayer does not. So a term
+    the buyer uses daily is allowed inside their own pack; the same term on a page
+    written for everybody is not.
+    These have a plain replacement, and the replacement is what to write unless the
+    buyer for THIS idea says the word themselves every day:
+      beachhead              -> the first group to sell to
+      non-goals for v1       -> what to leave out at first
+      on what stack          -> what to build it with
+      machine-readable       -> a version other software can read
+      claim-checked          -> checked against the sources
+      drip feed              -> you get everything at once
+      dossier                -> pack, file
+      artefact / artifact    -> file, document
+      GTM plan               -> how you get your first customers
+      unit economics         -> the numbers
+      LTV : CAC              -> you earn back N times what a customer costs to win
+      adversarial pass       -> a second round of checks
+      the engine             -> the checks
+      productised service    -> fixed-price service
+      vertical software      -> software for one trade
+      marketplace, broker    -> connecting two sides of a deal
+      operators              -> people who run things well
+      micro-hedge            -> small cover that pays out if prices jump
+      parametric bond        -> pays out automatically when it happens
+      documentary research   -> desk research
+      cold-start problem     -> getting the first people on both sides
+  - PUNCTUATION AND GRAMMAR, ALSO BANNED. No sentence starts with "Not". One em dash
+    per paragraph at most, and the rule above says use none. No full stop at the end
+    of a link or a button. No Title Case headings. No "we're excited to". No "simply".
+    No "just" as a softener. No exclamation marks, anywhere.

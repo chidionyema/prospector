@@ -61,7 +61,7 @@ const MANY = '__many__';
  * selection.
  *
  * WHY NOT THE `Dropdown` PRIMITIVE. `Dropdown` draws its own box in Tailwind utilities, and
- * `globals.css` imports mockup.css into the `components` layer, which sits BELOW Tailwind's
+ * `globals.css` imports mumchimp.css into the `components` layer, which sits BELOW Tailwind's
  * `utilities`. So adding `drop` to a Dropdown would leave the class in the markup and lose every
  * property the utilities also set -- height, padding, border, radius, colour -- which is the exact
  * failure the structure check in `scripts/sections.mjs` exists to catch, dressed up as a fix.
@@ -279,7 +279,7 @@ export function FilterBar({
         data-filter-bar="1"
         /* `.filterbar` is `top:58px`, a number the drawing could hard-code because its header
            never contracts. Ours does, so the offset stays the `--h-header` token and the utility
-           layer is where it has to live: mockup.css is imported into the `components` layer, which
+           layer is where it has to live: mumchimp.css is imported into the `components` layer, which
            Tailwind's `utilities` outrank. Same reason for `z-20`: it has to sit under the header's
            `z-30`, and the drawing's 25 was chosen against a different header. */
         className={cx('filterbar', 'sticky top-[var(--h-header)] z-20', className)}
@@ -301,7 +301,7 @@ export function FilterBar({
           </div>
         </div>
 
-        {/* The phone row. `mockup.css` hides `.fb-in` and shows this below 980px; above it, this
+        {/* The phone row. `mumchimp.css` hides `.fb-in` and shows this below 980px; above it, this
             button cannot be reached, so the panel it opens cannot be stranded on a desktop. */}
         <div className="fb-mob">
           <button type="button" className="drop grow" onClick={() => setMobileOpen((open) => !open)}>

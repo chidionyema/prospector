@@ -2109,8 +2109,15 @@ def run_signal(
         # Halt only AFTER the completion loop has drained. Every vet that was already
         # running got to finish and persist itself (store.save lives inside vet_candidate),
         # so the daemon halt costs us no evidence we have already paid for.
-        if infra_halt is not None:
-            raise infra_halt
+        #
+        # The raise itself is DEFERRED to the end of this function, past the summary and the
+        # batch diagnostics. Raising here skipped both, so a batch halted by a dead brain
+        # recorded nothing at all: `batch_diagnostics.jsonl` stopped on 2026-08-16T03:33 while
+        # the engine went on producing 326 dossiers a day, and `rates_over_time` — the only
+        # per-day pass/kill/outage series there is — showed a flat line instead of an outage.
+        # The measurement went blind at exactly the moment it was needed. `metrics._rate_point`
+        # was already written for this case; it prints "N of M vetted deferred and nothing was
+        # ruled — a retrieval/moat outage, not a 0% pass rate", and it never received the row.
 
     # --- Summary ---
     n_pass = sum(1 for d in dossiers if d.decision == Decision.PASS)
@@ -2161,6 +2168,11 @@ def run_signal(
                     "decisions": _bd.get("decisions")})
     except Exception as _diag_exc:  # never let diagnostics break a run
         logger.warning(f"batch diagnostics failed (non-fatal): {_diag_exc}")
+
+    # Now re-raise the infrastructure halt, with this batch's evidence already on disk. The
+    # caller's behaviour is unchanged: it still sees the same exception and still DEFERS.
+    if infra_halt is not None:
+        raise infra_halt
 
     return dossiers
 
@@ -3172,16 +3184,24 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
             else:
                 n_defer += 1
 
-            # PER-ROW ATTEMPT ACCOUNTING. Only a COMPLETED re-vet with a verdict counts, and only
+            # PER-ROW ATTEMPT ACCOUNTING. Only a COMPLETED re-vet with a verdict counts, only
             # if that verdict left the row in the backlog — a DEFER, or a ruling that is
-            # provisional again. The two outage paths never reach here (a blind moat returns before
-            # the pool is built; a ProviderExhaustedError is handled above), which is the point:
-            # the backlog exists because of outages, so an outage must not be able to spend a
-            # row's budget.
+            # provisional again — and only if the verdict was ruled on evidence.
+            #
+            # That last clause is `drain_state.infrastructure_defer`, and it is load-bearing. A
+            # blind moat returns before the pool is built and a ProviderExhaustedError is handled
+            # above, so those two outages never reach this line; a completed re-vet that DEFERred
+            # because a search failed, a verdict call raised, or the tick's clock ran out DOES
+            # reach it, and used to spend the row's budget. Every DEFER this pipeline emits is one
+            # of those (verify.py sets DEFER_GATE in two places, both infrastructure), so the
+            # counter was retiring rows for our own downtime. On the Fly engine 2026-08-18 that was
+            # 251 rows, and the drain had nothing left to work on.
             #
             # A resolved row is FORGOTTEN rather than left at its count, so if a later re-save puts
             # it back in the backlog it starts from a full budget instead of inheriting a spent one.
-            if max_att:
+            # An infrastructure DEFER is neither counted nor forgotten: the row keeps whatever
+            # budget it had, because nothing was learned about it either way.
+            if max_att and not drain_state.infrastructure_defer(d):
                 if d.decision == Decision.DEFER or bool(getattr(d, "provisional", False)):
                     n = drain_state.record_unresolved(store.root, cid)
                     if n >= max_att:

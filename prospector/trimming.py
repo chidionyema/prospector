@@ -86,6 +86,39 @@ _KEEP_RATIO = 0.6
 _TRAILING_JUNK = " \t\r\n,;:-–—("
 
 
+def cap_words(text: str, cap: int) -> str:
+    """Cap a single-line catalogue field at `cap` chars WITHOUT cutting a word in half.
+
+    A bare `text[:cap]` ends wherever the cap happens to land. On 2026-08-08 that shipped a
+    subhead ending "to a true hourly wag" (pack 8ce5270ade208070). `check_truncation`
+    (pack_linter.py) is built to catch precisely that shape — `len(final) == cap` with a word
+    character on both sides of the cut — so a hard slice does not merely read badly, it is
+    GUARANTEED to unlist the pack. The card line takes the stricter route this repo prefers,
+    drop rather than truncate, because the card can fall back to the pack title. `headline` and
+    `subhead` have no fallback, so the better failure is a clean short line.
+
+    Cut back to the last word boundary and drop the punctuation the cut exposes. A single token
+    longer than the whole cap has no boundary to retreat to; it keeps the hard slice and stays
+    visible to the linter rather than being silently disguised.
+
+    It lives HERE, in the module that already owns `clip_to_sentence` and `as_phrase`, because
+    it used to be `bridge._cap_words` — private, in the money rail's own module, importable only
+    by things willing to import the whole bridge. Three other writers therefore did not use it:
+    `pack_floors.claim_safe_marketing` and `tools/backfill_listing_copy.catalog_payload` each
+    hard-sliced instead, and the backfill's own docstring claimed it mirrored the bridge exactly
+    while doing the opposite. A shared rule kept behind a private name is a rule that gets
+    reimplemented.
+    """
+    t = (text or "").strip()
+    if len(t) <= cap:
+        return t
+    head = t[:cap]
+    cut = head.rfind(" ")
+    if cut <= 0:
+        return head
+    return head[:cut].rstrip(" ,;:")
+
+
 def clip_to_sentence(text: str, limit: int = RATIONALE_MAX) -> str:
     """Return `text` bounded to roughly `limit` characters, ending where a human would.
 

@@ -208,6 +208,10 @@ class Retrieval:
     # claude_concurrency — is what bounds throughput now. Was env-only inside operator.py, which
     # made it the one knob you could not turn from config. Env still overrides for ops.
     minimax_concurrency: int = 3        # max concurrent MiniMax HTTP requests
+    # minimax_max_tokens: per-stage OUTPUT ceiling, stage name -> tokens. Empty = every stage
+    # keeps `operator.MINIMAX_MAX_TOKENS_DEFAULT`. Stage names are the strings passed to
+    # `telemetry.stage()`. `PROSPECTOR_MINIMAX_MAX_TOKENS` overrides all of it for ops.
+    minimax_max_tokens: dict = field(default_factory=dict)
     vet_workers: int = 3                # candidates vetted in parallel; align to grounding slots
     # Completion-brain CLI budgets (the non-web Claude CLI). Distinct from
     # search_timeout (web-grounding). query_gen_* is the tight cap for non-critical
@@ -1216,9 +1220,15 @@ def load_config(path: str | Path | None = None) -> Config:
     # it. Written on every load, including when the key is absent (=> reset to the default), so
     # one process loading a fixture config cannot poison the next load. Invalid values raise here
     # — at startup, loudly — rather than silently stamping every ruling `provisional`.
-    from prospector.operator import set_minimax_concurrency, set_moat_primary
+    from prospector.operator import (
+        set_minimax_concurrency,
+        set_minimax_max_tokens,
+        set_moat_primary,
+    )
     set_moat_primary(cfg.moat_primary)
     # Same reason as the fence above: `MiniMaxOperator._throttle` is a class attribute built at
     # import time, so this is the only place config CAN reach it. Written on every load.
     set_minimax_concurrency(getattr(cfg.retrieval, "minimax_concurrency", None))
+    # And the same again for the output ceiling, which `_raw_once` reads with no Config in hand.
+    set_minimax_max_tokens(getattr(cfg.retrieval, "minimax_max_tokens", None))
     return cfg

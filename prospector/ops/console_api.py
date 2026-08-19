@@ -159,7 +159,9 @@ def _read_status(cfg, args: dict) -> dict:
     out: dict[str, Any] = {"heartbeats": _heartbeats(cfg), "alerts": _alerts(cfg)}
     out["supervisor"] = _supervisor_view()
     out["pause"] = pause_view(cfg)
-    out["providers"] = provider_view(cfg)
+    # A SHORT tail here on purpose. This view is polled every 30s by the Now page; the
+    # Engine page asks `providers` directly and gets the full history.
+    out["providers"] = provider_view(cfg, events_limit=8)
     out["queue"] = queue_view(cfg, lookback_h=float(args.get("lookback_h") or 24.0))
     try:
         out["routing"] = routing_view(cfg)
@@ -632,6 +634,47 @@ def _read_intents(cfg, args: dict) -> dict:
     rows.reverse()
     return {"path": str(path), "present": path.exists(), "total": len(rows),
             "unreadable_lines": unreadable, "rows": rows[:limit]}
+
+
+def _read_console_log(cfg, args: dict) -> dict:
+    """What the CONSOLE itself did when it went wrong, newest first.
+
+    WHY THIS EXISTS. On 2026-08-18 every tab in the portal rendered blank at once. The cause was
+    an expired session — the reads 401ed and the page bounced to /login — but nothing recorded
+    it, and `fly logs --no-tail` returns 100 lines, about four minutes on a generating daemon. By
+    the time it was reported the evidence had scrolled away, so it was reasoned about instead of
+    read. Founder: "we should log carefully next time this happens".
+
+    The rows are written by the Next.js routes (`src/lib/oplog.ts`), not by the engine, and they
+    only appear when something is worth a line: a refused read, a failed read, a slow read, a
+    page crash, or a sign-in. A quiet file is the healthy state, which is why the panel says so
+    in words rather than rendering an empty table.
+    """
+    path = _store_ops_dir(cfg) / "console_events.jsonl"
+    limit = int(args.get("limit") or 200)
+    rows: list[dict] = []
+    unreadable = 0
+    if path.exists():
+        for line in path.read_text(errors="replace").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except ValueError:
+                # A torn write leaves half a line. Count it and carry on: one bad line must not
+                # cost the operator the whole history.
+                unreadable += 1
+                continue
+            if isinstance(rec, dict):
+                rows.append(rec)
+    rows.reverse()
+    kinds: dict[str, int] = {}
+    for r in rows:
+        k = str(r.get("kind") or "unknown")
+        kinds[k] = kinds.get(k, 0) + 1
+    return {"path": str(path), "present": path.exists(), "total": len(rows),
+            "unreadable_lines": unreadable, "kinds": kinds, "rows": rows[:limit]}
 
 
 def _store_api() -> tuple[str, str]:
@@ -1288,6 +1331,7 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
     "candidate": _read_candidate,
     "config": _read_config,
     "intents": _read_intents,
+    "console_log": _read_console_log,
     "tools": _read_tools,
     "undo": _read_undo,
     "catalogue": _read_catalogue,
@@ -2637,7 +2681,7 @@ TOOLS: list[dict] = [
     _t("prospector/run.py", "System diagnostics", False, "/tools",
        cmd=".venv/bin/python -m prospector.run diagnose"),
     _t("prospector/run.py", "Operator state and quotas", False, "/engine",
-       cmd=".venv/bin/python -m prospector.run operator"),
+       cmd=".venv/bin/python -m prospector.run operators"),
     _t("prospector/run.py", "Manage ambition lanes", True, "/tools",
        cmd=".venv/bin/python -m prospector.run lanes show"),
     _t("prospector/run.py", "Manage markets", True, "/tools",
@@ -2838,6 +2882,15 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     "scripts/seed_action_cache.sh": "fills the self-hosted runners' action cache; CI plumbing, "
                                     "run once on the runner box, not from an ops page",
     "scripts/setup_worktree.sh": "makes a git worktree usable; a developer's machine, not ops",
+    "scripts/session_check.py": "asks whether an agent session left work behind — uncommitted, "
+                               "unpushed, a branch with no PR; a session's own hygiene, and there "
+                               "is no session to check from an ops page",
+    "scripts/worktree_gc.py": "reports and removes merged git worktrees; a developer's disk, and "
+                              "it refuses to touch another session's tree, so it has no meaning "
+                              "off the machine that made them",
+    "scripts/estate_census.py": "counts tracked files that nothing else refers to; a repo-health "
+                                "reading for whoever is deleting dead code, not an action on the "
+                                "running platform",
     "scripts/test_impacted.py": "picks the tests a local edit can affect; a developer's loop",
     "scripts/verify_engine_change.sh": "the pre-commit proof that an engine change is safe",
     "tools/commit_mine.sh": "commits exactly the named paths; a developer's git helper",
@@ -2848,6 +2901,10 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     # the console itself, and its predecessor
     "scripts/run_ops_console.sh": "launches this console; a button that starts the page you are already on",
     "tools/build_sample_fixture.py": "builds an offline retrieval fixture for the test suite, not a live action",
+    "scripts/build_docs_bundle.py": "bundles docs/ into one shareable HTML file and writes it "
+                                    "into the repo checkout, to be committed. The engine runs "
+                                    "from a detached mirror of main, so a button here would "
+                                    "write a file nothing ever reads and no one can commit",
     # libraries and experiments, not commands
     "tools/_backfill_driver.py": "a library for backfill_missing_listings.sh, not a CLI",
     "tools/l8_ab.sh": "the COST_PROGRAM §L8 A/B experiment harness",

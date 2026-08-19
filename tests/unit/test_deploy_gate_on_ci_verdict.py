@@ -168,9 +168,28 @@ class _Fake:
         return any(c[:2] == ["git", "checkout"] for c in self.calls)
 
 
-def _arm(lc, monkeypatch, tmp_path, verdict: str, *, bypass: bool = False):
+SIDES = ["laptop", "fly"]
+
+
+def _arm(lc, monkeypatch, tmp_path, verdict: str, *, bypass: bool = False, side: str = "laptop"):
+    """Arm update() so it exercises the CI gate and nothing else.
+
+    `side` is not optional decoration. `update()` branches on `active_side()`, which reads
+    `~/.prospector/ACTIVE` — a file in the DEVELOPER'S HOME. Before this parameter existed the
+    tests never pinned it, so which of the two code paths they graded depended on the machine.
+    On a CI runner the file is absent, `active_side()` returns "unknown", and every test below
+    took the laptop path; on the founder's laptop after the 2026-08-18 Fly cutover the file says
+    "fly", `update()` called the real `fly machines list`, and four tests failed locally while CI
+    stayed green. The gate on the path production actually takes had never run anywhere.
+
+    So every gate test now runs twice, once per side, and neither run touches the network.
+    """
+    assert side in SIDES, side
+    monkeypatch.setattr(lc, "active_side", lambda: side)
+
     monkeypatch.setattr(lc, "LIVE", tmp_path / "live")
     (tmp_path / "live").mkdir()
+    monkeypatch.setattr(lc, "DEPLOY_SOURCE", tmp_path / "live")
     monkeypatch.setattr(lc, "NO_AUTO_UPDATE", tmp_path / "NO_AUTO_UPDATE")
     allow = tmp_path / "ALLOW_UNVERIFIED_DEPLOY"
     if bypass:
@@ -181,38 +200,89 @@ def _arm(lc, monkeypatch, tmp_path, verdict: str, *, bypass: bool = False):
     monkeypatch.setattr(lc, "report", lambda: 0)
     fake = _Fake(target="b" * 40, current="a" * 40)
     monkeypatch.setattr(lc, "run", fake)
+
+    # The Fly path's two live probes. `fly_report` shells out to `fly machines list` and reads the
+    # deploy stamp over the network; `deployed_commit` is what decides "already deployed", so it
+    # must answer from the fake LAZILY — a test that reassigns fake.target after arming is asking
+    # exactly that question.
+    monkeypatch.setattr(lc, "fly_report", lambda: 0)
+    monkeypatch.setattr(lc, "deployed_commit", lambda: (fake.current, "stubbed"))
     return fake
 
 
+@pytest.mark.parametrize("side", SIDES)
 @pytest.mark.parametrize("verdict", ["fail", "none", "pending", "unknown"])
 def test_update_refuses_to_ship_a_commit_without_a_green_verdict(
-        lc, monkeypatch, tmp_path, verdict):
-    fake = _arm(lc, monkeypatch, tmp_path, verdict)
+        lc, monkeypatch, tmp_path, verdict, side):
+    fake = _arm(lc, monkeypatch, tmp_path, verdict, side=side)
     assert lc.update(unattended=True) == 1
     assert not fake.checked_out, f"deployed on a {verdict} verdict"
 
 
-def test_update_ships_a_green_commit(lc, monkeypatch, tmp_path):
-    fake = _arm(lc, monkeypatch, tmp_path, "pass")
+@pytest.mark.parametrize("side", SIDES)
+def test_update_ships_a_green_commit(lc, monkeypatch, tmp_path, side):
+    fake = _arm(lc, monkeypatch, tmp_path, "pass", side=side)
     assert lc.update(unattended=True) == 0
     assert fake.checked_out
 
 
-def test_the_bypass_file_ships_a_red_commit(lc, monkeypatch, tmp_path):
-    fake = _arm(lc, monkeypatch, tmp_path, "fail", bypass=True)
+@pytest.mark.parametrize("side", SIDES)
+def test_the_bypass_file_ships_a_red_commit(lc, monkeypatch, tmp_path, side):
+    fake = _arm(lc, monkeypatch, tmp_path, "fail", bypass=True, side=side)
     assert lc.update(unattended=True) == 0
     assert fake.checked_out
 
 
-def test_an_already_current_checkout_is_not_gated(lc, monkeypatch, tmp_path):
+@pytest.mark.parametrize("side", SIDES)
+def test_an_already_current_checkout_is_not_gated(lc, monkeypatch, tmp_path, side):
     """A red verdict on code ALREADY live must not take away the restart button."""
-    fake = _arm(lc, monkeypatch, tmp_path, "fail")
+    fake = _arm(lc, monkeypatch, tmp_path, "fail", side=side)
     fake.target = fake.current
     assert lc.update(unattended=False) == 0
 
 
-def test_the_kill_switch_still_wins_over_everything(lc, monkeypatch, tmp_path):
-    fake = _arm(lc, monkeypatch, tmp_path, "pass")
+@pytest.mark.parametrize("side", SIDES)
+def test_the_kill_switch_still_wins_over_everything(lc, monkeypatch, tmp_path, side):
+    fake = _arm(lc, monkeypatch, tmp_path, "pass", side=side)
     lc.NO_AUTO_UPDATE.write_text("")
     assert lc.update(unattended=True) == 0
     assert not fake.checked_out
+
+
+# ------------------------------------------------------------------ workflows that vote
+
+def test_the_auto_merge_workflow_does_not_vote(lc, monkeypatch):
+    """It acts on pull requests and tests nothing.
+
+    Measured 2026-08-18 on 48f3cfb9, the commit production was running: CI success,
+    Deploy Engine success, and eighteen "Auto-merge green PRs" rows of which two were
+    cancelled. This gate answered `fail` and refused to roll production forward onto a
+    commit whose tests had all passed.
+    """
+    _stub_gh(lc, monkeypatch, 0, _rows(("CI", "completed", "success"),
+                                       ("Auto-merge green PRs", "completed", "cancelled"),
+                                       ("Auto-merge green PRs", "completed", "skipped")))
+    assert lc.ci_verdict("deadbeef")[0] == "pass"
+
+
+def test_a_skipped_run_has_no_opinion(lc, monkeypatch):
+    """A path filter that skips a lane must not read as that lane failing."""
+    _stub_gh(lc, monkeypatch, 0, _rows(("CI", "completed", "success"),
+                                       ("Some future lane", "completed", "skipped")))
+    assert lc.ci_verdict("deadbeef")[0] == "pass"
+
+
+def test_only_skipped_runs_is_none_not_pass(lc, monkeypatch):
+    """Nothing tested this commit. Dropping the skipped rows must not turn that into a pass."""
+    _stub_gh(lc, monkeypatch, 0, _rows(("CI", "completed", "skipped")))
+    assert lc.ci_verdict("deadbeef")[0] == "none"
+
+
+def test_the_gate_tests_never_ask_the_machine_which_side_is_live(lc, monkeypatch, tmp_path):
+    """Guard the guard. If `_arm` ever stops pinning `active_side`, these tests silently go back
+    to grading whichever path the developer's `~/.prospector/ACTIVE` happens to name."""
+    asked = []
+    monkeypatch.setattr(lc, "active_side", lambda: asked.append(1) or "fly")
+    _arm(lc, monkeypatch, tmp_path, "pass", side="laptop")
+    assert lc.active_side() == "laptop", "_arm did not pin active_side"
+    assert not asked, "the real active_side was consulted"

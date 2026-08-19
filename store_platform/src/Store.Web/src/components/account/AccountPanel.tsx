@@ -335,7 +335,7 @@ function OrdersTab() {
             went missing. One sentence is cheaper than the support mail. */}
         <p className="mt-1 max-w-prose text-caption text-muted">
           One row per payment, so an order that carried two packs is one row here and two on the
-          shelf above. The order number is the join.
+          packs above. The order number is the join.
         </p>
         <ul className="mt-4 list-none p-0">
           {orders.map((order) => (

@@ -51,7 +51,7 @@ export const textLinkClass = (className?: string) =>
     // was directionally right and short by 2px. It is set in px-equivalents rather than as an em
     // ratio because Tailwind's offsets are absolute and the sizes this class serves are within one
     // step of each other.
-    // `tlink` is the drawing's own inline-link class (`mockup.css:44`), and every one of the
+    // `tlink` is the drawing's own inline-link class (`mumchimp.css`), and every one of the
     // twelve mockups uses it: `color:var(--link);font-weight:550`. The weight is what was missing
     // here -- `--accent` already resolves to `--link` (brandV3.test.ts) so the colour matched, but
     // a link at body weight sits flatter in a paragraph than the drawing draws it. The underline

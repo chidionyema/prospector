@@ -355,9 +355,19 @@ NO_AUTO_UPDATE = DEV / "store" / "scheduler" / "NO_AUTO_UPDATE"
 #: able to freeze production deploys indefinitely with no way out.
 ALLOW_UNVERIFIED_DEPLOY = DEV / "store" / "scheduler" / "ALLOW_UNVERIFIED_DEPLOY"
 
-#: Workflow runs this gate ignores. Deploys and smoke tests run AFTER a merge and describe
-#: the deployment, not the code; requiring them would deadlock the deploy on itself.
-_IGNORED_WORKFLOWS = ("deploy", "smoke", "e2e")
+#: Workflow runs this gate ignores. Two kinds, for two different reasons.
+#:
+#: Deploys and smoke tests run AFTER a merge and describe the deployment, not the code;
+#: requiring them would deadlock the deploy on itself.
+#:
+#: `automerge` and `cancel` are repository plumbing. They act on pull requests and never
+#: test anything, and `automerge.yml` concludes `skipped` on almost every run by design.
+#: Measured 2026-08-18 on 48f3cfb9, the commit production was running: `CI=success`,
+#: `Deploy Engine=success`, and eighteen "Auto-merge green PRs" rows of which two were
+#: `cancelled`. This gate read that as `fail` and refused to roll production forward onto
+#: a commit whose tests had all passed. A green build cannot be allowed to read as red
+#: because an unrelated automation was cancelled.
+_IGNORED_WORKFLOWS = ("deploy", "smoke", "e2e", "auto-merge", "automerge", "cancel")
 
 
 def ci_verdict(sha: str) -> tuple[str, str]:
@@ -409,6 +419,11 @@ def ci_verdict(sha: str) -> tuple[str, str]:
     rows = [ln.split("\t") for ln in out.splitlines() if ln.strip()]
     relevant = [r for r in rows
                 if not any(w in r[0].lower() for w in _IGNORED_WORKFLOWS)]
+    # A skipped run tested nothing, so it has no opinion about the code. Counting it as a
+    # failure is how one workflow with a path filter walls every deploy. Dropping the rows
+    # BEFORE the emptiness check keeps the safe answer: a commit whose only run was skipped
+    # is "none", which this gate refuses, not "pass".
+    relevant = [r for r in relevant if r[2] != "skipped"]
     if not relevant:
         return "none", "no CI run recorded against this commit"
 

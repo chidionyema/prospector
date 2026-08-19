@@ -195,19 +195,34 @@ def main() -> int:
             bad.append(f"could not read the registered runners: {type(exc).__name__}: {exc}")
             runners = []
         for name, p in sorted(pools.items()):
-            labels = [r["name"] for r in runners if p["label"] in
-                      {lbl["name"] for lbl in r.get("labels", [])}]
+            in_pool = [r for r in runners
+                       if p["label"] in {lbl["name"] for lbl in r.get("labels", [])}]
+            # ONLINE, not registered. A registered runner whose machine is asleep takes no work.
+            # On 2026-08-18 this script printed "heavy pool: 5 registered ... contract: holds"
+            # while a CI run sat queued for 25 minutes: three of the five were the laptop's Mac
+            # runners, offline since the estate moved to Fly, and the two that were online were
+            # both busy. Counting registration measured the GitHub record; the queue measures the
+            # fleet. Offline runners are still printed, because "they are registered but asleep"
+            # is the sentence that explains the queue.
+            online = sorted(r["name"] for r in in_pool if r.get("status") == "online")
+            offline = sorted(r["name"] for r in in_pool if r.get("status") != "online")
             lo = p["runners"]
             hi = lo + p.get("ephemeral", 0)
-            print(f"{name:5} pool: {len(labels)} registered (want {lo}-{hi}) {sorted(labels)}")
+            print(f"{name:5} pool: {len(online)} online (want {lo}-{hi}) {online}"
+                  + (f"  [offline: {offline}]" if offline else ""))
             # A RANGE, not an equality. The Fly runners are ephemeral: each takes one job, then
             # deregisters and is restarted. Between jobs it is legitimately not registered, so
             # `== runners + ephemeral` would fail on a healthy fleet several times an hour. Too
             # few still fails, which is the case worth catching -- that is a runner that died.
-            if not lo <= len(labels) <= hi:
+            if not lo <= len(online) <= hi:
                 bad.append(f"the {name} pool declares {lo} persistent runner(s) and up to "
-                           f"{hi - lo} ephemeral, but {len(labels)} carry the {p['label']!r} "
-                           f"label: {sorted(labels)}")
+                           f"{hi - lo} ephemeral, but {len(online)} carrying the {p['label']!r} "
+                           f"label are ONLINE: {online}"
+                           + (f" (registered but offline: {offline})" if offline else ""))
+        busy = sorted(r["name"] for r in runners
+                      if r.get("status") == "online" and r.get("busy"))
+        if busy:
+            print(f"busy right now: {busy}")
         unlabelled = [r["name"] for r in runners
                       if not ({lbl["name"] for lbl in r.get("labels", [])}
                               & {p["label"] for p in pools.values()})]

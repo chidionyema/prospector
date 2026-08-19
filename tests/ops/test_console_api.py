@@ -389,7 +389,29 @@ def test_every_stranded_pack_names_the_repair_that_fixes_it(monkeypatch):
         assert action in api.ACTIONS
 
 
-def test_a_shelf_repair_cannot_be_run_in_one_step():
+@pytest.fixture()
+def readable_shelf(monkeypatch):
+    """A shelf the console can read, because these two tests are about the CONFIRM GATE.
+
+    `shelf.publish_pending` names the dossiers it will publish, so its preview reads the shelf
+    first, and `_pending_publish_paths` RAISES when the shelf is unreachable — deliberately, so
+    an outage can never render as "nothing needs publishing". Under pytest there is no store
+    database, so that raise fired inside `dispatch`, was caught by the outer handler, and both
+    tests saw exit 1 (`OperationalError: unable to open database file`) where they expected the
+    gate's exit 4. They were failing on the absence of a database, not on the fence they exist
+    to pin. Stubbing the survey is the same trick the shelf-reader tests above already use.
+    """
+    survey = _FakeSurvey(
+        shelf=set(),
+        passes=[("a1", "2026-08-14T00:00:00"), ("a2", "2026-08-14T00:00:00")],
+        why={"a1": "lint blocked (1 error(s): shelf_copy)",
+             "a2": "never published (no lint record)"},
+    )
+    monkeypatch.setattr(api, "_shelf_survey_module", lambda: survey)
+    return survey
+
+
+def test_a_shelf_repair_cannot_be_run_in_one_step(readable_shelf):
     """The repairs call a model and rewrite live copy. They go through the same preview-then-
     confirm gate as every other write; there is no one-step path."""
     for action in ("shelf.repair_copy", "shelf.publish_pending"):
@@ -400,7 +422,7 @@ def test_a_shelf_repair_cannot_be_run_in_one_step():
         assert doc["error_kind"] == "ConfirmationRequired"
 
 
-def test_a_shelf_repair_preview_runs_nothing(monkeypatch):
+def test_a_shelf_repair_preview_runs_nothing(monkeypatch, readable_shelf):
     """A preview that actually ran the repair would rewrite live copy for someone who only
     wanted to look."""
     def _boom(*a, **k):

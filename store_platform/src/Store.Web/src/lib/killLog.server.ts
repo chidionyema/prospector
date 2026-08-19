@@ -128,7 +128,7 @@ const EXTRA_LABELS: Record<string, string> = {
   // engine key with its underscores swapped for spaces -- "adversarial decisive". That is the
   // fourth largest cause of death on the site (142 kills), so the machine's own identifier was
   // being rendered to buyers on the biggest chart the page draws.
-  adversarial_decisive: 'It did not survive the adversarial pass',
+  adversarial_decisive: 'It did not survive the second round of checks',
 };
 
 /*
@@ -172,33 +172,34 @@ export function isStageLabel(label: string): boolean {
   return false;
 }
 
-/** How much of the argument goes in the row. Two lines at the table's width, near enough. */
-const EXCERPT_CHARS = 150;
-
 /**
- * The opening of a kill's argument, cut to fit a table row.
+ * The opening of a kill's argument: its FIRST COMPLETE SENTENCE, and nothing cut.
  *
- * CUT ON A SENTENCE WHERE THERE IS ONE, ON A WORD OTHERWISE, NEVER MID-WORD. This page's entire
- * claim is that we are careful with evidence, so a row reading "the incumbent already bund…" makes
- * the argument look as carelessly handled as the sentence.
+ * THE CHARACTER BUDGET IS GONE (2026-08-18, the founder's live-defect fix prompt, D3a: "Remove
+ * every character-budget cut in the data layer"). It used to be 150 characters, cut on a sentence
+ * end if one fell inside that window and on a word boundary with a trailing ellipsis otherwise.
+ * Measured against `src/data/kill-log.json` on the day it was removed: **364 of the 400 rows took
+ * the ellipsis branch**. The page whose whole argument is that we are careful with evidence
+ * published 91% of its arguments cut off mid-thought.
  *
- * A short reason is returned WHOLE and with no ellipsis. An ellipsis on a complete sentence says
- * there is more to read behind the row when there is not, and a reader who opens it finds the same
- * words again -- which teaches them the rest of the rows are not worth opening either.
+ * A CSS clamp is not the alternative here, and this is the trap worth writing down.
+ * `-webkit-line-clamp` PAINTS ITS OWN ellipsis, so clamping a long reason to two lines reproduces
+ * exactly the "..." the founder reported. The fix has to make the string end where a sentence
+ * ends, which is what this does.
+ *
+ * A first sentence is not a truncation: it is a whole unit of copy, it never ends mid-word, and it
+ * never needs a mark to say something was removed. The row expands to the full argument on click,
+ * so nothing is hidden either way. Measured cost, same day, over the 400 entries: the shipped
+ * strings go from 21.6 KB gzipped to 40.1 KB. Every entry has a sentence end, so the whole-string
+ * fallback below never fired on the current data; it exists so a reason without one still renders.
+ * Sentence length: 39 / 270 / 402 / 511 characters (min / median / p90 / max).
  */
 export function excerptOf(reason: string): string {
   const text = reason.replace(/\s+/g, ' ').trim();
-  if (text.length <= EXCERPT_CHARS) return text;
-
-  const window = text.slice(0, EXCERPT_CHARS + 1);
-
-  // A full stop that ends a sentence, not one inside "3.2" or "e.g." -- it has to be followed by a
-  // space and a capital, which is also why the search starts past the first few characters.
-  const sentence = window.search(/[.!?]\s+[A-Z(]/);
-  if (sentence > EXCERPT_CHARS / 3) return text.slice(0, sentence + 1);
-
-  const space = window.lastIndexOf(' ');
-  return `${text.slice(0, space > 0 ? space : EXCERPT_CHARS).replace(/[,;:]$/, '')}…`;
+  // A full stop that ends a sentence, not one inside "3.2" or "e.g." -- it has to be followed by
+  // a space and a capital, or by the end of the string.
+  const end = text.search(/[.!?](?:\s+[A-Z(]|$)/);
+  return end === -1 ? text : text.slice(0, end + 1);
 }
 
 /** Everything the page needs at load. Called from `getStaticProps`, never from a component. */

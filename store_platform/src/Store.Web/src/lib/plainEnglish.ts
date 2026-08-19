@@ -135,7 +135,7 @@ const RULES: readonly Rule[] = [
   {
     pattern: /\bdossiers\b/g,
     replace: 'evidence records',
-    why: '"evidence record" is the name /how-it-works and /sample already use for the same artifact',
+    why: '"evidence record" is the name /how-it-works and /sample already use for the same document',
   },
   { pattern: /\bdossier\b/g, replace: 'evidence record', why: 'as above' },
   { pattern: /\bDossiers\b/g, replace: 'Evidence records', why: 'sentence-initial form' },

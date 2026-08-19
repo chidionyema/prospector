@@ -414,3 +414,126 @@ through its own path. That is the live-shelf repair tool, not the engine, and mo
 separate change with its own blast radius — it writes rows that are already published. The engine
 side is closed.
 
+## P3, 2026-08-18 — the title and one-liner journeys, traced end to end
+
+Written after a repair spent 23 minutes and $0.059 and produced nothing. The two fields turned
+out to be on the same rails with different wiring, and only one of them worked.
+
+### The two journeys, in order
+
+| | **title** | **one-liner** |
+|---|---|---|
+| born | generation, then `run._generate_pack_content` | same |
+| graded by | `field_write.grade_title` → `pack_linter.check_title` | `field_write.grade_one_liner` → `shelf_copy_repair.voice_breaches` + the length bar |
+| the bar | `TITLE_MAX_CHARS = 60` (`pack_linter.py:689`) | `ONE_LINER_CUT_AT = 280` (`field_write.py:47`) |
+| rewritten by | `_propose_title` → `prompts/retitle.md` | `_propose_one_liner` → `shelf_copy_repair.rewrite_one` |
+| the bar in the prompt | renders `{max_chars}` (`retitle.md:85`) | **carried its own number: 200** |
+| rejection reaches the model | yes, `feedback=feedback` | **no, the argument was dropped** |
+| attempts | 2 | **1** |
+| written to the shelf | `bridge.py` catalogue row | `bridge.py:843`, then cut at 280 by `bridge.py:878` |
+| live-shelf repair | `tools/retitle_catalogue.py` | `tools/sweep_shelf_copy.py`, `tools/repair_stranded_shelf_lines.py` |
+
+Every cell in bold is a defect, and all three are in the same column. The title path already had
+the design; the one-liner path had a copy of the number, a retry that could not fire, and a
+feedback string that was assembled and thrown away.
+
+### What the machine knew and never said
+
+`field_write._reject_feedback` exists to quote a refusal verbatim, counts included — its own
+comment says "a vague 'too long' gets a draft one character shorter". For the one-liner it was
+never sent. `_propose_one_liner` took a `feedback` argument and did not pass it on, and the field
+was declared `attempts=1`, so the loop computed the rejection on its way out and discarded it.
+Three attempts at that pack therefore sent three identical prompts.
+
+### The obvious fix was measured, and it does not work
+
+The first fix written for this was to render `ONE_LINER_CUT_AT` in the prompt, so 280 replaced
+200 and the two numbers could not drift. Run live against the same model and the same line, only
+the number changing:
+
+```
+limit=200   601s   no answer at all — the streamed response hit the 600s deadline
+limit=280   254s   a 320-character line — over the gate anyway
+```
+
+A number in the prompt does not control the length of the reply, because the model cannot count
+its own characters. Raising it turns a stall into a wrong answer. That branch was dropped.
+
+### The 280 itself is right, and that was checked too
+
+Across the 2,805 dossiers in `store/dossiers/` that carry a one-liner, 217 are over 280. Replaying
+`bridge.py:878` over them: **215 are a single runaway sentence** that the bridge would cut with an
+ellipsis, which `check_shelf_copy` then refuses as "trails off on the shelf". Only 2 would be cut
+cleanly on a sentence boundary. So the gate is not stricter than the defect it mirrors — 0.9% of
+the population is gated for nothing, and loosening it would trade that for silently dropping a
+whole sentence of sourced facts.
+
+### What shipped
+
+The character count came out of the ask and went into the loop:
+
+- `shelf_copy_repair.USER` states no length. It says "keep it as short as the facts allow" and
+  "do not count characters; if it comes back too long you will be told by how much".
+- `rewrite_one` measures the answer it got and, when it is over `ONE_LINER_CUT_AT`, re-asks with
+  the exact overage — "it is 320 characters and the shelf cuts at 280, so it needs to lose 40
+  characters without losing a fact". That figure is arithmetic on the reply, which is the one
+  thing only the machine can supply.
+- `rewrite_one` takes a `feedback` argument and puts it in the prompt.
+- `_propose_one_liner` passes `_reject_feedback` through to it.
+- `MAX_ONE_LINER_REPAIR_ATTEMPTS = 2`, so the informed retry can fire at all.
+
+Pinned by `tests/unit/test_the_machine_counts_the_characters_not_the_model.py`: no character
+count in the template, the overage arithmetic in the second prompt, the feedback reaching the
+prompt, a clean answer never re-asked, and the attempt count above one.
+
+### The next link: the runaway call was the only call with no label
+
+CLOSED 2026-08-19, issue #360. The paragraph that used to sit here said the fix was a per-call
+`max_tokens` parameter threaded through every operator's `_raw`. That was the wrong answer, and
+the reason is worth keeping.
+
+An unsatisfiable ask still costs 600 seconds. `operator.py` gave every MiniMax call
+`max_tokens: 65536` from one process-wide environment variable, so a one-sentence rewrite got the
+same budget as a full dossier and billed all of it when it ran away.
+
+That ceiling could not simply be lowered. Measured over the 33,553 `event: "spend"` records in
+`store/prospector.jsonl`, MiniMax output tokens per call:
+
+| stage | n | p50 | p95 | max |
+|---|---:|---:|---:|---:|
+| generate | 480 | 32,094 | 65,536 | 70,017 |
+| **(no stage)** | **5,015** | **1,601** | **15,652** | **55,522** |
+| content_gen | 1,217 | 5,626 | 24,615 | 47,934 |
+| claim_check | 2,147 | 1,755 | 7,282 | 47,146 |
+| query_gen | 1,494 | 1,262 | 4,800 | 38,673 |
+| score | 164 | 2,016 | 3,012 | 15,911 |
+| artifacts | 212 | 3,706 | 9,451 | 15,583 |
+| price_comparables | 140 | 1,111 | 3,183 | 8,210 |
+| verdict | 5,252 | 390 | 1,160 | 6,591 |
+| adversarial | 140 | 711 | 2,217 | 5,794 |
+| prescreen | 935 | 646 | 972 | 1,611 |
+
+`generate` uses the whole ceiling. `verdict` never needs a tenth of it.
+
+The mechanism to tell them apart already existed: `telemetry.stage()`, a contextvar recorded on
+every spend row by 14 call sites. **The two calls outside one were `shelf_copy_repair.py`'s
+rewrite and `field_write.py`'s title repair.** The call that spent 23 minutes and $0.059 is
+therefore inside that 5,015-row `(no stage)` bucket, indistinguishable from a full generation.
+The same missing label made it invisible to the ledger and impossible to bound.
+
+So the fix is one change, not two. Both sites declare a stage, and
+`operator.minimax_max_tokens_for_stage` resolves the ceiling from the stage in force —
+config-declared at `config.yaml retrieval.minimax_max_tokens`, installed process-wide from
+`config.load_config`, with `PROSPECTOR_MINIMAX_MAX_TOKENS` still overriding everything so an
+incident is capped from the plist without a deploy. Each ceiling is the next power of two at or
+above twice the observed maximum.
+
+An undeclared stage keeps 65536. Narrowing blind is the expensive direction: a clipped answer
+raises `_MiniMaxTruncated` and buys two more full-budget retries. The two newly-labelled repair
+stages get no ceiling yet, deliberately — they have never been measured, because they were never
+labelled, and the number follows the data.
+
+Pinned by `tests/unit/test_minimax_max_tokens_is_per_stage.py`, which also fails if any
+`complete_json` on the publish path is outside a stage, with a non-vacuity floor so a rename
+cannot make it green by scanning nothing.
+

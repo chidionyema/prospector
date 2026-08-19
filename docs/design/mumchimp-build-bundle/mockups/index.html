@@ -10,47 +10,40 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..750&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{
-  color-scheme: light only;
-  --paper:#FAFAF7; --surface:#FFFFFF; --line:#E7E7E1; --line-2:#D8D8D1;
-  --ink:#17191C; --ink-2:#565B62; --ink-3:#8B9096;
-  --brand:#14706A; --brand-soft:#CFE3E0; --link:#2447C9; --kill:#B4342B;
-  --dead:#DEDED7;
-  --font-ui:'Inter',system-ui,sans-serif;
-  --font-mono:'IBM Plex Mono',ui-monospace,monospace;
-  --r-card:12px; --r-ctl:8px; --pad:20px;
-}
+/* Mumchimp production stylesheet. Ship as-is; do not reorder or add to it. */
+:root{color-scheme: light only;--paper:#FAFAF7;--surface:#FFFFFF;--line:#E7E7E1;--line-2:#D8D8D1;--ink:#17191C;--ink-2:#565B62;--ink-3:#8B9096;--brand:#14706A;--brand-soft:#CFE3E0;--brand-tint:#F2F8F7;--link:#2447C9;--kill:#B4342B;--dead:#DEDED7;--warn-b:#C9A227;--warn-t:#8A6D0B;--warn-f:#FCF8E8;--font-ui:'Inter',system-ui,sans-serif;--font-mono:'IBM Plex Mono',ui-monospace,monospace;--r-card:12px;--r-ctl:8px;--pad:20px;--h-header:58px;--on-dark:#F3F3EF;--on-dark-2:#9AA0A6;--on-dark-line:#33373C;--kill-on-dark:#F08A80;--brand-on-dark:#5FC9BE;--link-on-dark:#93B4FF}
 *{margin:0;padding:0;box-sizing:border-box}
-html{color-scheme:light only;background:#FAFAF7;forced-color-adjust:none}
-main,footer,.filterbar,.hdr{background:var(--paper)}
-main{display:block;padding-bottom:1px}
-body{font-family:var(--font-ui);background:var(--paper);color:var(--ink);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+html{color-scheme:light only;background:#FAFAF7;-webkit-tap-highlight-color:transparent;forced-color-adjust:none}
+body,main,header,footer,section{background:var(--paper)}
+body{font-family:var(--font-ui);color:var(--ink);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;background:var(--paper)}
 a{color:inherit;text-decoration:none}
 :focus-visible{outline:2px solid var(--link);outline-offset:2px;border-radius:4px}
 .num{font-variant-numeric:tabular-nums}
 .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
 .skip{position:absolute;left:-9999px}
 .skip:focus{left:20px;top:12px;background:var(--ink);color:#fff;padding:10px 16px;border-radius:var(--r-ctl);z-index:99}
+h1{font-size:clamp(33px,6vw,54px);line-height:1.04;letter-spacing:-.03em;font-weight:690;max-width:12ch;margin-bottom:18px;text-wrap:balance}
 h2.sec{font-size:clamp(24px,4.6vw,32px);letter-spacing:-.022em;font-weight:665;line-height:1.12}
 h3.sub{font-size:clamp(19px,3.4vw,23px);letter-spacing:-.02em;font-weight:655}
 .lede{font-size:15.5px;color:var(--ink-2);line-height:1.55;max-width:60ch}
+.lede.big{font-size:17.5px}
 .eyebrow{font-size:12px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
 .mono{font-family:var(--font-mono);font-size:13px;color:var(--ink-3)}
-.btn{display:inline-flex;align-items:center;gap:10px;background:var(--ink);color:#fff;font-size:16px;font-weight:600;letter-spacing:-.01em;padding:13px 22px;border-radius:var(--r-ctl);border:0;cursor:pointer}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;background:var(--ink);color:#fff;font-size:16px;font-weight:600;letter-spacing:-.01em;padding:13px 22px;border-radius:var(--r-ctl);border:0;cursor:pointer}
 .btn:hover{background:#000}
 .btn svg{transition:transform .15s ease}
 .btn:hover svg{transform:translateX(3px)}
 .btn.sm{font-size:14.5px;padding:10px 16px}
+.btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.btn.ghost:hover{background:var(--surface);border-color:var(--line-2)}
 .tlink{color:var(--link);font-weight:550}
 .tlink:hover{text-decoration:underline}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card)}
+.pillx{font-family:var(--font-mono);font-size:12px;color:var(--ink);border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;white-space:nowrap;display:inline-block}
 .price{font-size:19px;font-weight:655;letter-spacing:-.012em;white-space:nowrap}
 .price .cur{font-size:14px;font-weight:600;color:var(--ink-2);margin-right:1px}
-/* rhythm: three weights of break */
-.break-major{border:0;border-top:2px solid var(--ink);margin:0}
-.break-mid{border:0;border-top:1px solid var(--line-2);margin:0}
-
-/* HEADER */
-.hdr{position:sticky;top:0;z-index:30;background:var(--paper);border-bottom:1px solid var(--line)}
+.rule2{border:0;border-top:2px solid var(--ink);margin:44px 0 0}
+.hdr{position:sticky;top:0;z-index:30;border-bottom:1px solid var(--line);background:var(--paper)}
 .hdr-in{max-width:1080px;margin:0 auto;padding:0 20px;height:58px;display:flex;align-items:center;gap:4px}
 .logo{display:flex;align-items:center;gap:9px;margin-right:auto}
 .wordmark{font-size:21px;letter-spacing:-.02em;line-height:1}
@@ -58,62 +51,276 @@ h3.sub{font-size:clamp(19px,3.4vw,23px);letter-spacing:-.02em;font-weight:655}
 .nav-d{display:flex;gap:24px;margin-right:16px}
 .nav-d a{font-size:15px;font-weight:520;color:var(--ink-2)}
 .nav-d a:hover{color:var(--ink)}
+.nav-d a[aria-current]{color:var(--ink);font-weight:580}
 .icon-btn{width:44px;height:44px;display:grid;place-items:center;background:none;border:0;border-radius:var(--r-ctl);color:var(--ink);cursor:pointer}
 .icon-btn:hover{background:#EFEFEA}
 .acct{font-size:15px;font-weight:550;color:var(--ink-2);margin-right:10px}
-@media(max-width:920px){.nav-d,.acct{display:none}}
-
-/* ═══ HERO + KILL GRID (the signature) ═══ */
-.hero{display:grid;grid-template-columns:1fr 380px;gap:48px;align-items:start;padding:48px 0 40px}
-@media(max-width:900px){.hero{grid-template-columns:1fr;gap:30px;padding:36px 0 32px}}
+.acct:hover{color:var(--ink)}
+.crumb{font-family:var(--font-mono);font-size:12.5px;color:var(--ink-3);padding:22px 0 0}
+.crumb a{color:var(--link)}
+.pagetop{padding:14px 0 8px}
+.metastrip{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-family:var(--font-mono);font-size:12.5px;color:var(--ink-3);margin:16px 0 0}
+.metastrip b{color:var(--ink);font-weight:500}
+.v{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;border:1px solid;border-radius:4px;padding:3px 8px;white-space:nowrap}
+.v.s{border-color:var(--brand);color:var(--brand);background:var(--brand-tint)}
+.v.p{border-color:var(--warn-b);color:var(--warn-t);background:var(--warn-f)}
+.v.k{border-color:var(--kill);color:var(--kill)}
+.facts{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:var(--r-card);overflow:hidden;background:var(--surface);margin:24px 0}
+.facts div{padding:17px var(--pad)}
+.facts div+div{border-left:1px solid var(--line)}
+.facts span{display:block;font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-bottom:5px}
+.facts b{font-size:24px;font-weight:680;letter-spacing:-.022em}
+.evidence{border-left:2px solid var(--brand);background:var(--brand-tint);padding:15px 17px;border-radius:0 var(--r-card) var(--r-card) 0;margin:18px 0}
+.evidence p{font-size:15.5px;color:var(--ink);line-height:1.55;margin-bottom:9px;max-width:64ch}
+.evidence .src{font-family:var(--font-mono);font-size:12px;color:var(--ink-3)}
+.evidence .src a{color:var(--link)}
+.checkrow{display:grid;grid-template-columns:32px 1fr auto;gap:0 16px;padding:16px 0;border-bottom:1px solid var(--line);align-items:baseline}
+.checkrow:last-child{border-bottom:0}
+.checkrow .i{font-family:var(--font-mono);font-size:12.5px;color:var(--ink-3)}
+.checkrow h5{font-size:16.5px;font-weight:635;letter-spacing:-.014em;margin-bottom:5px}
+.checkrow p{font-size:14.5px;color:var(--ink-2);line-height:1.52;max-width:64ch}
+.checkrow .srcs{font-family:var(--font-mono);font-size:12px;color:var(--ink-3);margin-top:8px}
+.checkrow .srcs a{color:var(--link)}
+.incard .checkrow{padding:15px var(--pad)}
+.two{display:grid;grid-template-columns:1.55fr 1fr;gap:36px;align-items:start}
+.buybox{position:sticky;top:calc(var(--h-header) + 16px);padding:22px var(--pad)}
+.buybox .p{font-size:34px;font-weight:690;letter-spacing:-.028em;line-height:1}
+.buybox .p .cur{font-size:22px;font-weight:600;color:var(--ink-2)}
+.buybox .per{font-family:var(--font-mono);font-size:12.5px;color:var(--ink-3);margin:7px 0 12px}
+.buybox .why{font-size:13.5px;color:var(--ink-2);line-height:1.5;margin-bottom:16px}
+.buybox ul{list-style:none;border-top:1px solid var(--line);padding-top:13px;margin-top:15px}
+.buybox li{font-size:13.5px;color:var(--ink-2);padding:4px 0}
+.buybox li b{color:var(--ink);font-weight:600}
+.tags{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 0}
+.docs{display:grid;grid-template-columns:repeat(2,1fr);gap:0 32px;border-top:1px solid var(--line-2);margin-top:20px}
+.docitem{padding:14px 0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:26px 1fr;gap:0 12px}
+.docitem .i{font-family:var(--font-mono);font-size:12px;color:var(--ink-3);padding-top:3px}
+.docitem h5{font-size:15px;font-weight:620;letter-spacing:-.012em;margin-bottom:3px}
+.docitem p{font-size:14px;color:var(--ink-2);line-height:1.45}
+.files{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:20px}
+.file{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:16px}
+.file .fn{font-family:var(--font-mono);font-size:12.5px;color:var(--brand);margin-bottom:7px;word-break:break-all}
+.file h5{font-size:15px;font-weight:620;margin-bottom:4px;letter-spacing:-.012em}
+.file p{font-size:14px;color:var(--ink-2);line-height:1.45}
+.rows{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);overflow:hidden}
+.row{display:grid;grid-template-columns:1fr auto;gap:4px 22px;padding:18px var(--pad);border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row:hover{background:#FCFCFA}
+.row h3{grid-column:1;font-size:17.5px;font-weight:640;letter-spacing:-.016em;line-height:1.3;margin:6px 0 5px;margin-bottom:5px}
+.row .d{grid-column:1;font-size:14.5px;color:var(--ink-2);line-height:1.5;max-width:56ch;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.row .proof{grid-column:1;font-family:var(--font-mono);font-size:12.5px;color:var(--ink-3);display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.row .proof b{color:var(--ink);font-weight:500}
+.row .side{grid-column:2;grid-row:1 / span 4;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:10px}
+.view{font-size:14px;font-weight:600;color:var(--link);white-space:nowrap}
+.bars{display:flex;flex-direction:column;gap:3px;margin:20px 0;align-items:flex-end;height:44px;margin-top:16px}
+.barline{display:grid;grid-template-columns:1fr 48px;gap:14px;align-items:center}
+.barline .t{display:flex;align-items:center;gap:12px;min-width:0}
+.barline .lab{font-size:14.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto;max-width:52%}
+.barline .bar{flex:1;height:9px;background:var(--dead);border-radius:2px;min-width:24px}
+.barline .bar i{display:block;height:100%;background:var(--kill);border-radius:2px;opacity:.82}
+.barline .n{font-family:var(--font-mono);font-size:12.5px;color:var(--ink-3);text-align:right}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.chip{font-family:var(--font-mono);font-size:12.5px;color:var(--ink);border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 13px;cursor:pointer;white-space:nowrap}
+.chip[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}
+.klrow{display:grid;grid-template-columns:1fr auto;gap:4px 20px;padding:17px var(--pad);border-bottom:1px solid var(--line)}
+.klrow:last-child{border-bottom:0}
+.klrow:hover{background:#FCFCFA}
+.klrow h4{grid-column:1;font-size:16.5px;font-weight:625;letter-spacing:-.014em;line-height:1.3;margin-bottom:6px;max-width:58ch}
+.klrow p{grid-column:1;font-size:14.5px;color:var(--ink-2);line-height:1.5;max-width:64ch;margin-bottom:9px}
+.klrow .m{grid-column:1;font-family:var(--font-mono);font-size:12px;color:var(--ink-3)}
+.klrow .m a{color:var(--link)}
+.klrow .side{grid-column:2;grid-row:1 / span 3;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.ladder{display:flex;flex-direction:column;gap:9px;margin:22px 0}
+.lrow{display:grid;grid-template-columns:86px 1fr 78px;gap:16px;align-items:center;padding:13px 16px;border:1px solid var(--line);border-radius:var(--r-card);background:var(--surface)}
+.lrow b{font-size:19px;font-weight:670;letter-spacing:-.018em}
+.lrow .bar{height:10px;background:var(--dead);border-radius:2px}
+.lrow .bar i{display:block;height:100%;background:var(--brand);border-radius:2px;opacity:.85}
+.lrow .n{font-family:var(--font-mono);font-size:12.5px;color:var(--ink-3);text-align:right}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:22px 0}
+.comp{padding:20px var(--pad)}
+.comp .h{font-size:12px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);margin-bottom:11px}
+.comp .big{font-size:27px;font-weight:685;letter-spacing:-.024em;margin-bottom:5px}
+.comp .sub{font-size:13.5px;color:var(--ink-2);line-height:1.5}
+.comp dl{margin-top:15px;border-top:1px solid var(--line);padding-top:12px}
+.comp dt{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3);margin-top:9px}
+.comp dd{font-size:14.5px;color:var(--ink)}
+.catrow{display:grid;grid-template-columns:1fr auto;gap:4px 20px;padding:16px var(--pad);border-bottom:1px solid var(--line)}
+.catrow:last-child{border-bottom:0}
+.catrow:hover{background:#FCFCFA}
+.catrow h4{grid-column:1;font-size:16.5px;font-weight:635;letter-spacing:-.014em;margin-bottom:4px}
+.catrow p{grid-column:1;font-size:14px;color:var(--ink-2);line-height:1.48;max-width:66ch}
+.catrow .n{grid-column:2;grid-row:1 / span 2;font-family:var(--font-mono);font-size:13px;color:var(--ink-3);white-space:nowrap}
+.faq details{border-bottom:1px solid var(--line);padding:16px 0}
+.faq summary{font-size:16.5px;font-weight:620;letter-spacing:-.014em;cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:16px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary:after{content:"+";color:var(--ink-3);font-weight:400;font-size:20px;line-height:1}
+.faq details[open] summary:after{content:"–"}
+.faq p{font-size:15px;color:var(--ink-2);line-height:1.62;max-width:66ch;margin-top:11px}
+.emailbox{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:28px var(--pad);margin:44px 0}
+.emailbox p{font-size:15.5px;color:var(--ink-2);max-width:52ch;line-height:1.55;margin:8px 0 18px}
+.emailbox form{display:flex;gap:10px;flex-wrap:wrap;max-width:470px}
+.emailbox input{flex:1;min-width:210px;height:46px;border:1px solid var(--line);border-radius:var(--r-ctl);padding:0 14px;font:inherit;font-size:15px;background:var(--paper)}
+.emailbox .fine{font-family:var(--font-mono);font-size:12px;color:var(--ink-3);margin-top:13px}
+.closing{border-top:2px solid var(--ink);margin-top:46px;padding:34px 0 0}
+.closing p{font-size:16.5px;color:var(--ink-2);line-height:1.55;max-width:56ch;margin:14px 0 22px}
+.ctarow{display:flex;gap:12px;flex-wrap:wrap}
+footer{border-top:1px solid var(--line);margin-top:44px}
+.f-top{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:32px;padding:40px 0 32px}
+.f-brand p{font-size:14.5px;color:var(--ink-2);line-height:1.5;max-width:34ch;margin:12px 0 18px}
+.f-stats{display:flex;gap:24px}
+.f-stats div span{display:block;font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-bottom:3px}
+.f-stats div b{font-size:19px;font-weight:670;letter-spacing:-.02em}
+.f-col h6{font-size:12px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px}
+.f-col a{display:block;font-size:14.5px;color:var(--ink-2);padding:5px 0}
+.f-col a:hover{color:var(--ink)}
+.f-bottom{border-top:1px solid var(--line);padding:22px 0 40px}
+.f-bottom p{font-size:13px;color:var(--ink-3);line-height:1.6;max-width:76ch;margin-bottom:8px}
+.f-bottom summary{font-size:13.5px;color:var(--ink-2);cursor:pointer;font-weight:550;margin:10px 0}
+.dotfield{display:grid;grid-template-columns:repeat(20,1fr);gap:4px;max-width:340px}
+.dotfield i{aspect-ratio:1;background:var(--dead);border-radius:50%;display:block}
+.dotfield i.alive{background:var(--brand)}
+.sigcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:22px var(--pad)}
+.sigcard .hd{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap;justify-content:space-between}
+.sigcard .fig{font-size:clamp(34px,7vw,52px);font-weight:710;letter-spacing:-.035em;line-height:.95}
+.sigcard .cap{font-size:15px;color:var(--ink-2);line-height:1.55;max-width:40ch;margin-top:10px}
+.sigcard .key{font-family:var(--font-mono);font-size:12px;color:var(--ink-3);margin-top:14px;padding-top:12px;border-top:1px solid var(--line);display:flex;gap:16px;flex-wrap:wrap}
+.sigcard .key span{display:flex;align-items:center;gap:7px}
+.sw9{width:9px;height:9px;border-radius:50%;display:inline-block}
+.gates{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:18px 0 8px}
+.gate{border:1px solid var(--brand-soft);background:var(--brand-tint);border-radius:6px;padding:9px 8px;text-align:center}
+.gate.k{border-color:#EBC9C5;background:#FDF4F3}
+.gate b{display:block;font-family:var(--font-mono);font-size:11px;color:var(--brand);letter-spacing:.06em}
+.gate.k b{color:var(--kill)}
+.gate span{display:block;font-size:11.5px;color:var(--ink-2);margin-top:5px;line-height:1.25}
+.cascade{display:flex;flex-direction:column;gap:2px;margin:22px 0}
+.step{display:grid;grid-template-columns:150px 1fr auto;gap:16px;align-items:center;padding:9px 0}
+.step .lab{font-size:14.5px;font-weight:560}
+.step .track{height:26px;background:var(--dead);border-radius:3px;position:relative;overflow:hidden}
+.step .track i{position:absolute;inset:0 auto 0 0;background:var(--brand);opacity:.9;border-radius:3px}
+.step .track b{position:absolute;right:9px;top:50%;transform:translateY(-50%);font-family:var(--font-mono);font-size:11.5px;color:var(--kill)}
+.step .n{font-family:var(--font-mono);font-size:13px;color:var(--ink-3);text-align:right;min-width:52px}
+.causegrid{display:grid;grid-template-columns:repeat(44,1fr);gap:1.5px}
+.causegrid i{aspect-ratio:1;border-radius:.5px;display:block}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-family:var(--font-mono);font-size:12px;color:var(--ink-3);margin-top:16px;padding-top:13px;border-top:1px solid var(--line)}
+.legend span{display:flex;align-items:center;gap:7px}
+.legend b{color:var(--ink);font-weight:500}
+.swb{width:10px;height:10px;border-radius:2px;display:inline-block}
+.matrix{border:1px solid var(--line);border-radius:var(--r-card);overflow:hidden;background:var(--surface);margin:22px 0}
+.mrow{display:grid;grid-template-columns:96px 1fr;gap:0;border-bottom:1px solid var(--line)}
+.mrow:last-child{border-bottom:0}
+.mrow .p{padding:14px var(--pad);font-weight:670;font-size:17px;letter-spacing:-.016em;border-right:1px solid var(--line);display:flex;align-items:center}
+.mrow .cells{display:flex;gap:3px;padding:14px var(--pad);align-items:center;flex-wrap:wrap}
+.mrow .cells i{width:14px;height:20px;background:var(--brand);opacity:.85;border-radius:2px;display:block}
+.mrow .cells em{font-family:var(--font-mono);font-size:12px;color:var(--ink-3);font-style:normal;margin-left:8px}
+.mosaic{display:flex;flex-wrap:wrap;gap:6px;margin:22px 0}
+.mtile{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;justify-content:space-between;min-height:78px}
+.mtile:hover{border-color:var(--brand);background:var(--brand-tint)}
+.mtile b{font-size:14.5px;font-weight:620;letter-spacing:-.012em;line-height:1.25}
+.mtile span{font-family:var(--font-mono);font-size:12px;color:var(--ink-3);margin-top:8px}
+.reader{display:grid;grid-template-columns:230px 1fr;gap:30px;align-items:start}
+.toc{position:sticky;top:calc(var(--h-header) + 16px);border:1px solid var(--line);border-radius:var(--r-card);background:var(--surface);overflow:hidden}
+.toc a{display:flex;gap:10px;padding:9px 15px;font-size:13.5px;color:var(--ink-2);border-bottom:1px solid var(--line)}
+.toc a:last-child{border-bottom:0}
+.toc a .i{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3)}
+.toc a[aria-current]{background:var(--brand-tint);color:var(--ink);font-weight:600}
+.sheet{border:1px solid var(--line);border-radius:var(--r-card);background:var(--surface);overflow:hidden}
+.sheet-top{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:baseline;padding:15px var(--pad);border-bottom:1px solid var(--line);font-family:var(--font-mono);font-size:12.5px;color:var(--ink-3)}
+.sheet-body{padding:24px var(--pad)}
+.sheet-body p{font-size:15.5px;color:var(--ink-2);line-height:1.65;max-width:66ch;margin-bottom:15px}
+.sheet-body h4{font-size:19px;font-weight:650;letter-spacing:-.018em;margin:24px 0 10px}
+.elide{color:var(--ink-3);font-style:italic;font-size:15px;margin-bottom:20px;line-height:1.55}
+.srclist{list-style:none;margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
+.srclist li{display:flex;gap:12px;font-size:14px;color:var(--ink-2);line-height:1.5;padding:5px 0}
+.srclist .i{font-family:var(--font-mono);font-size:12px;color:var(--ink-3)}
+.srclist a{color:var(--link)}
+.essay p{font-size:18px;line-height:1.68;color:var(--ink);max-width:56ch;margin-bottom:20px}
+.essay p.quiet{color:var(--ink-2)}
+.sign{font-size:16px;color:var(--ink-2);margin-top:26px;padding-top:18px;border-top:1px solid var(--line-2);max-width:56ch}
+.sign b{color:var(--ink);font-weight:620}
+.twocard{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:26px}
+.tc{padding:20px var(--pad)}
+.tc h4{font-size:17px;font-weight:640;letter-spacing:-.014em;margin-bottom:7px}
+.tc p{font-size:14.5px;color:var(--ink-2);line-height:1.55;margin-bottom:12px}
+.owned{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px var(--pad);border-bottom:1px solid var(--line)}
+.owned:last-child{border-bottom:0}
+.owned h4{font-size:16px;font-weight:620;letter-spacing:-.012em;margin-bottom:3px}
+.owned .m{font-family:var(--font-mono);font-size:12px;color:var(--ink-3)}
+.legal{display:grid;grid-template-columns:1fr 230px;gap:34px;align-items:start}
+.legal h4{font-size:17.5px;font-weight:640;margin:28px 0 9px;letter-spacing:-.014em}
+.legal p{font-size:15.5px;color:var(--ink-2);line-height:1.68;max-width:68ch;margin-bottom:11px}
+.legal .toc a{font-size:13.5px}
+.err{text-align:center;padding:64px 0 40px}
+.err .code{font-family:var(--font-mono);font-size:13px;color:var(--ink-3);letter-spacing:.12em;margin-bottom:18px}
+.err h1{margin:0 auto 14px;max-width:20ch}
+.err p{margin:0 auto 26px}
+.strip{background:var(--ink);color:var(--on-dark)}
+.strip-in{max-width:1080px;margin:0 auto;padding:0 20px;min-height:44px;display:flex;align-items:center;gap:14px}
+.strip :focus-visible{outline:2px solid var(--link-on-dark);outline-offset:2px}
+.ribbon a{display:flex;align-items:center;gap:14px;width:100%;padding:9px 0;min-height:44px}
+.ribbon .tag{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--kill-on-dark);border:1px solid var(--kill-on-dark);border-radius:4px;padding:3px 8px;flex:0 0 auto}
+.ribbon .tag.s{color:var(--brand-on-dark);border-color:var(--brand-on-dark)}
+.ribbon .txt{font-size:14.5px;line-height:1.35;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ribbon .go{margin-left:auto;font-family:var(--font-mono);font-size:12px;color:var(--on-dark-2);flex:0 0 auto}
+.filterstrip{position:sticky;top:0;z-index:20}
+.filterstrip .strip-in{gap:8px;overflow-x:auto;scrollbar-width:none;padding-top:9px;padding-bottom:9px}
+.filterstrip .strip-in::-webkit-scrollbar{display:none}
+.dchip{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:12px;color:var(--on-dark-2);background:none;border:1px solid var(--on-dark-line);border-radius:999px;padding:7px 13px;cursor:pointer;white-space:nowrap;transition:transform .06s ease}
+.dchip .n{color:#6E747A}
+.dchip[aria-pressed=true]{background:var(--on-dark);color:var(--ink);border-color:var(--on-dark)}
+.dchip[aria-pressed=true] .n{color:var(--ink-2)}
+.btn:active,.chip:active,.dchip:active,.row:active,.klrow:active,.catrow:active{transform:scale(.985)}
+.btn,.chip,.dchip,.row,.klrow,.catrow,.tile,.htile{transition:transform .06s ease,background-color .12s ease,border-color .12s ease}
+a,button,.chip,.dchip,.row,.klrow{touch-action:manipulation}
+::selection{background:var(--brand-tint);color:var(--ink)}
+input,textarea{caret-color:var(--brand)}
+h1,h2,h3{text-wrap:balance}
+p,li,.lede,.d,.desc{text-wrap:pretty}
+.row,.klrow,.catrow,.docitem{content-visibility:auto;contain-intrinsic-size:auto 140px}
+.filter-sheet,.toc{overscroll-behavior:contain}
+[id]{scroll-margin-top:calc(var(--h-header) + 16px)}
+main,footer,.filterbar,.hdr{background:var(--paper)}
+main{display:block;padding-bottom:1px}
+h2.eyebrow{font-size:12px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin:0}
+.break-major{border:0;border-top:2px solid var(--ink);margin:0}
+.break-mid{border:0;border-top:1px solid var(--line-2);margin:0}
+.hero{display:grid;grid-template-columns:1fr 400px;gap:56px;align-items:center;padding:52px 0 44px}
 .kicker{font-family:var(--font-mono);font-size:13px;color:var(--ink-3);margin-bottom:15px}
-h1{font-size:clamp(33px,6vw,54px);line-height:1.05;letter-spacing:-.03em;font-weight:690;max-width:14ch;margin-bottom:18px}
 .hero .sub{font-size:17.5px;line-height:1.55;color:var(--ink-2);max-width:44ch;margin-bottom:26px}
 .cta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
 .gridwrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:18px}
-.killgrid{display:grid;grid-template-columns:repeat(38,1fr);gap:1.5px;margin-bottom:16px}
-.killgrid i{aspect-ratio:1;background:var(--dead);border-radius:.5px;display:block}
-.killgrid i.alive{background:var(--brand)}
-.gridkey{display:flex;gap:18px;flex-wrap:wrap;font-family:var(--font-mono);font-size:12px;color:var(--ink-3)}
+.ratio{display:grid;grid-template-columns:repeat(10,1fr);gap:7px;margin:18px 0 20px;max-width:300px}
+.ratio i{aspect-ratio:1;background:var(--dead);border-radius:50%;display:block}
+.ratio i.alive{background:var(--brand)}
+.ratiofig{font-size:clamp(38px,7vw,54px);font-weight:715;letter-spacing:-.035em;line-height:1}
+.ratiosub{font-size:15px;color:var(--ink-2);line-height:1.5;margin-top:8px;max-width:34ch}
+.gridkey{display:flex;gap:20px;flex-wrap:wrap;font-family:var(--font-mono);font-size:12px;color:var(--ink-3)}
 .gridkey span{display:flex;align-items:center;gap:7px}
 .gridkey b{color:var(--ink);font-weight:500}
-.sw{width:9px;height:9px;border-radius:2px;display:inline-block}
+.sw{width:10px;height:10px;border-radius:50%;display:inline-block}
 .sw.dead{background:var(--dead)}
 .sw.alive{background:var(--brand)}
 .gridcap{font-size:13.5px;color:var(--ink-2);line-height:1.5;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
-
-/* SOURCE STRIP — reframed with context */
 .srcstrip{padding:20px 0 24px}
 .srcstrip .lbl{font-size:14.5px;color:var(--ink-2);margin-bottom:12px}
 .srcchips{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.srcchip{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:12.5px;color:var(--ink-2);
-  background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+.srcchip{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:12.5px;color:var(--ink-2);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
 .srcchip .dot{width:5px;height:5px;border-radius:50%;background:var(--brand);flex:0 0 auto}
-
-/* SHELF / KILL split */
 .split{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:var(--r-card);overflow:hidden;background:var(--surface);margin:8px 0 12px}
-@media(max-width:720px){.split{grid-template-columns:1fr}}
 .split > div{padding:22px var(--pad)}
 .split > div + div{border-left:1px solid var(--line)}
-@media(max-width:720px){.split > div + div{border-left:0;border-top:1px solid var(--line)}}
 .split b.n{display:block;font-size:32px;font-weight:690;letter-spacing:-.026em;line-height:1;margin-bottom:6px}
 .split .lbl{font-family:var(--font-mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-bottom:12px}
 .split p{font-size:14.5px;color:var(--ink-2);line-height:1.5;margin-bottom:12px;max-width:38ch}
-
-/* WHAT SURVIVED tiles */
 .sechead{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:6px}
 .three{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px}
-@media(max-width:860px){.three{grid-template-columns:1fr}}
 .htile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:var(--pad);display:flex;flex-direction:column;position:relative}
 .htile:hover{border-color:var(--line-2)}
-.htile h4{font-size:18px;font-weight:645;letter-spacing:-.016em;line-height:1.25;margin:11px 0 8px}
+.htile h3{font-size:18px;font-weight:645;letter-spacing:-.016em;line-height:1.25;margin:11px 0 8px}
 .htile p{font-size:14.5px;color:var(--ink-2);line-height:1.5;flex:1;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .htile .foot{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--line);margin-top:16px;padding-top:13px}
 .proof{font-family:var(--font-mono);font-size:12.5px;color:var(--ink-3)}
 .proof b{color:var(--ink);font-weight:500}
 .new{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--brand);border:1px solid var(--brand-soft);background:#F2F8F7;border-radius:4px;padding:2px 7px}
-
-/* ═══ ONE FILTER SYSTEM ═══ */
 .filterbar{position:sticky;top:58px;z-index:25;background:var(--paper);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .fb-in{max-width:1080px;margin:0 auto;padding:11px 20px;display:flex;gap:9px;align-items:center}
 .fld{display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-ctl);padding:0 12px;height:40px}
@@ -126,15 +333,12 @@ h1{font-size:clamp(33px,6vw,54px);line-height:1.05;letter-spacing:-.03em;font-we
 .drop.on .n{color:#B9BDC2}
 .fb-right{margin-left:auto;display:flex;align-items:center;gap:11px}
 .fb-mob{display:none}
-@media(max-width:980px){.fb-in{display:none}.fb-mob{display:flex;gap:10px;align-items:center;padding:10px 20px;max-width:1080px;margin:0 auto}.fb-mob .grow{flex:1;justify-content:space-between}}
 .badge{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--ink);color:#fff;font-family:var(--font-mono);font-size:12px}
 .active-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 0 0}
 .pill{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;font-weight:550;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 8px 6px 12px}
 .pill button{border:0;background:none;cursor:pointer;color:var(--ink-3);display:grid;place-items:center;width:18px;height:18px;border-radius:50%}
 .pill button:hover{background:#EFEFEA;color:var(--ink)}
 .clear{font-size:13.5px;color:var(--link);font-weight:550;background:none;border:0;cursor:pointer}
-
-/* FEATURED */
 .featured{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:26px var(--pad) 22px;margin:26px 0 30px}
 .featured h3{font-size:clamp(23px,4.4vw,29px);line-height:1.15;letter-spacing:-.022em;font-weight:660;margin:13px 0 11px}
 .featured .d{font-size:16px;line-height:1.55;color:var(--ink-2);max-width:52ch;margin-bottom:20px}
@@ -147,41 +351,23 @@ h1{font-size:clamp(33px,6vw,54px);line-height:1.05;letter-spacing:-.03em;font-we
 .featured .foot{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding-top:18px;gap:16px;flex-wrap:wrap}
 .price-lg{font-size:26px;font-weight:685;letter-spacing:-.015em}
 .price-lg .cur{font-size:18px;font-weight:600;color:var(--ink-2);margin-right:1px}
-
-/* CATALOGUE ROWS */
-.rows{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);overflow:hidden}
-.row{display:grid;grid-template-columns:1fr auto;gap:4px 22px;padding:18px var(--pad);border-bottom:1px solid var(--line)}
-.row:last-child{border-bottom:0}
-.row:hover{background:#FCFCFA}
 .row .top{grid-column:1;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:7px}
-.row h3{grid-column:1;font-size:17.5px;font-weight:640;letter-spacing:-.016em;line-height:1.3;margin-bottom:5px}
-.row .d{grid-column:1;font-size:14.5px;color:var(--ink-2);line-height:1.5;max-width:56ch;margin-bottom:10px;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.row .proof{grid-column:1;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
-.row .side{grid-column:2;grid-row:1 / span 4;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:10px}
-.view{font-size:14px;font-weight:600;color:var(--link);white-space:nowrap}
 .market{font-family:var(--font-mono);font-size:12px;color:var(--ink-3);border:1px solid var(--line);border-radius:5px;padding:2px 7px;white-space:nowrap}
 .more-row{display:flex;justify-content:center;padding:24px 0 6px}
 .more{font-size:15px;font-weight:600;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-ctl);padding:12px 20px;cursor:pointer;color:var(--ink)}
 .more:hover{border-color:var(--line-2)}
 .spread{font-family:var(--font-mono);font-size:12.5px;color:var(--ink-3);text-align:center;padding-bottom:6px}
-
-/* ═══ ENGAGEMENT BANDS ═══ */
 .band{border-top:2px solid var(--ink);border-bottom:1px solid var(--line);padding:30px 0;margin:34px 0}
 .band-in{display:grid;grid-template-columns:auto 1fr;gap:30px;align-items:start}
-@media(max-width:720px){.band-in{grid-template-columns:1fr;gap:16px}}
 .band .fig{font-size:clamp(40px,9vw,68px);font-weight:715;letter-spacing:-.04em;line-height:.92}
 .band .fig.dead{color:var(--kill)}
-.band h4{font-size:19px;font-weight:650;letter-spacing:-.018em;margin-bottom:8px}
+.band h3{font-size:19px;font-weight:650;letter-spacing:-.018em;margin-bottom:8px}
 .band p{font-size:16px;color:var(--ink-2);line-height:1.55;max-width:54ch}
 .band .src{font-family:var(--font-mono);font-size:12.5px;color:var(--ink-3);margin-top:12px}
 .band .src a{color:var(--link)}
-.bars{display:flex;gap:3px;align-items:flex-end;height:44px;margin-top:16px}
 .bars i{flex:1;max-width:26px;background:var(--dead);border-radius:1px}
 .bars i.hot{background:var(--kill);opacity:.85}
 .barkey{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3);margin-top:8px}
-
-/* SAMPLE (promoted) */
 .sample{margin:8px 0 4px}
 .sample .meta{font-family:var(--font-mono);font-size:12.5px;color:var(--ink-3);margin:10px 0 20px}
 .doc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);overflow:hidden}
@@ -189,9 +375,8 @@ h1{font-size:clamp(33px,6vw,54px);line-height:1.05;letter-spacing:-.03em;font-we
 .doc-top .nm{font-size:14.5px;font-weight:620}
 .doc-top .of{font-family:var(--font-mono);font-size:12.5px;color:var(--ink-3)}
 .doc-body{padding:var(--pad)}
-.elide{font-size:15px;color:var(--ink-3);font-style:italic;margin-bottom:20px;line-height:1.55}
 .check-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
-.check-h h4{font-size:19px;font-weight:650;letter-spacing:-.018em}
+.check-h h3{font-size:19px;font-weight:650;letter-spacing:-.018em}
 .flag{font-family:var(--font-mono);font-size:11px;letter-spacing:.09em;border:1px solid #C9A227;color:#8A6D0B;background:#FCF8E8;border-radius:4px;padding:3px 8px}
 .doc-body p{font-size:15.5px;color:var(--ink-2);line-height:1.6;max-width:64ch;margin-bottom:14px}
 .cite{font-family:var(--font-mono);font-size:12.5px;color:var(--ink-3);margin-bottom:20px}
@@ -201,62 +386,68 @@ h1{font-size:clamp(33px,6vw,54px);line-height:1.05;letter-spacing:-.03em;font-we
 .doc-foot{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:17px var(--pad);border-top:1px solid var(--line)}
 .doc-foot .fine{font-family:var(--font-mono);font-size:12px;color:var(--ink-3)}
 .othersrc{margin-top:22px}
-.othersrc h5{font-family:var(--font-mono);font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);margin-bottom:12px}
+.othersrc h3{font-family:var(--font-mono);font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);margin-bottom:12px}
 .othersrc ol{list-style:none;display:flex;flex-direction:column;gap:9px}
 .othersrc li{display:flex;gap:12px;font-size:14.5px;color:var(--ink-2);line-height:1.45}
 .othersrc .i{font-family:var(--font-mono);font-size:12.5px;color:var(--ink-3);flex:0 0 auto;padding-top:2px}
 .othersrc a{color:var(--link)}
-
-/* MARKETS */
 .mkt-h{display:flex;align-items:baseline;gap:12px;margin:40px 0 6px;flex-wrap:wrap}
 .mkt-tag{font-family:var(--font-mono);font-size:12px;color:var(--ink-3);border:1px solid var(--line);border-radius:5px;padding:2px 7px}
-
-/* EMAIL */
-.emailbox{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:28px var(--pad);margin:44px 0}
-.emailbox p{font-size:15.5px;color:var(--ink-2);max-width:52ch;line-height:1.55;margin:8px 0 18px}
-.emailbox form{display:flex;gap:10px;flex-wrap:wrap;max-width:470px}
-.emailbox input{flex:1;min-width:210px;height:46px;border:1px solid var(--line);border-radius:var(--r-ctl);padding:0 14px;font:inherit;font-size:15px;background:var(--paper)}
-.emailbox .fine{font-family:var(--font-mono);font-size:12px;color:var(--ink-3);margin-top:13px}
-
-/* 14 DOCS + FILES */
-.docs{display:grid;grid-template-columns:repeat(2,1fr);gap:0 32px;margin-top:20px;border-top:1px solid var(--line-2)}
-@media(max-width:760px){.docs{grid-template-columns:1fr}}
-.docitem{padding:14px 0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:26px 1fr;gap:0 12px}
-.docitem .i{font-family:var(--font-mono);font-size:12px;color:var(--ink-3);padding-top:3px}
-.docitem h5{font-size:15.5px;font-weight:620;letter-spacing:-.012em;margin-bottom:3px}
-.docitem p{font-size:14px;color:var(--ink-2);line-height:1.45}
-.files{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:20px}
-@media(max-width:860px){.files{grid-template-columns:1fr}}
-.file{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:16px}
-.file .fn{font-family:var(--font-mono);font-size:12.5px;color:var(--brand);margin-bottom:7px;word-break:break-all}
-.file h5{font-size:15.5px;font-weight:620;margin-bottom:5px;letter-spacing:-.012em}
-.file p{font-size:14px;color:var(--ink-2);line-height:1.45}
+.docitem h3{font-size:15.5px;font-weight:620;letter-spacing:-.012em;margin-bottom:3px}
+.file h3{font-size:15.5px;font-weight:620;margin-bottom:5px;letter-spacing:-.012em}
 .files-note{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center;margin-top:18px}
 .files-note p{font-size:15px;color:var(--ink-2);max-width:60ch;line-height:1.5}
-.pillx{font-family:var(--font-mono);font-size:12px;color:var(--ink);border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;white-space:nowrap}
-
-/* CLOSE */
 .close{border-top:2px solid var(--ink);margin-top:48px;padding:34px 0 8px}
 .close h2{max-width:18ch}
 .close p{font-size:16.5px;color:var(--ink-2);line-height:1.55;max-width:56ch;margin:14px 0 22px}
 .guarantees{display:flex;gap:10px;flex-wrap:wrap;margin:24px 0 16px}
 .klog{font-size:15px;color:var(--ink-2);line-height:1.55;max-width:62ch}
+.f-col .colh{font-size:12px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px}
 
-/* FOOTER */
-footer{border-top:1px solid var(--line);margin-top:44px}
-.f-top{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:32px;padding:40px 0 32px}
+/* ── RESPONSIVE ── */
+@media(max-width:920px){.nav-d,.acct{display:none}}
+@media(max-width:640px){.facts{grid-template-columns:1fr}}
+@media(max-width:640px){.facts div+div{border-left:0;border-top:1px solid var(--line)}}
+@media(max-width:640px){.checkrow{grid-template-columns:32px 1fr}.checkrow .v,.checkrow .go{grid-column:2;margin-top:9px}}
+@media(max-width:900px){.two{grid-template-columns:1fr;gap:26px}}
+@media(max-width:760px){.docs{grid-template-columns:1fr}}
+@media(max-width:860px){.files{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.files{grid-template-columns:1fr}}
+@media(max-width:640px){.barline .lab{max-width:none;white-space:normal}.barline .t{flex-wrap:wrap}.barline .bar{flex:1 0 100%}}
+@media(max-width:700px){.klrow{grid-template-columns:1fr}.klrow .side{grid-column:1;grid-row:auto;align-items:flex-start;flex-direction:row;flex-wrap:wrap;margin-bottom:8px}}
+@media(max-width:760px){.compare{grid-template-columns:1fr}}
 @media(max-width:860px){.f-top{grid-template-columns:1fr 1fr;gap:28px}}
 @media(max-width:520px){.f-top{grid-template-columns:1fr}}
-.f-brand p{font-size:14.5px;color:var(--ink-2);line-height:1.5;max-width:34ch;margin:12px 0 18px}
-.f-stats{display:flex;gap:24px}
-.f-stats div span{display:block;font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-bottom:3px}
-.f-stats div b{font-size:19px;font-weight:670;letter-spacing:-.02em}
-.f-col h6{font-size:12px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px}
-.f-col a{display:block;font-size:14.5px;color:var(--ink-2);padding:5px 0}
-.f-col a:hover{color:var(--ink)}
-.f-bottom{border-top:1px solid var(--line);padding:22px 0 40px}
-.f-bottom p{font-size:13px;color:var(--ink-3);line-height:1.6;max-width:76ch;margin-bottom:8px}
-.f-bottom summary{font-size:13.5px;color:var(--ink-2);cursor:pointer;font-weight:550;margin:10px 0}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+@media(max-width:640px){.gates{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:700px){.step{grid-template-columns:1fr;gap:5px;padding:11px 0;border-bottom:1px solid var(--line)}}
+@media(max-width:860px){.reader{grid-template-columns:1fr;gap:18px}}
+@media(max-width:760px){.twocard{grid-template-columns:1fr}}
+@media(max-width:860px){.legal{grid-template-columns:1fr;gap:20px}}
+@media(hover:hover){.ribbon a:hover .go{color:var(--on-dark)}}
+@media(max-width:640px){.ribbon .txt{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.ribbon .go{display:none}}
+@media(max-width:520px){.d,.desc{hyphens:auto}}
+@media (hover:hover) and (pointer:fine){
+  .row:hover,.klrow:hover,.catrow:hover{background:#FCFCFA}
+  .btn:hover{background:#000}
+  .tile:hover,.htile:hover,.mtile:hover{border-color:var(--line-2)}
+  .tlink:hover{text-decoration:underline}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media print{
+  .hdr,.strip,.filterbar,.btn,.more,.emailbox,footer nav,.chips,.dchip{display:none!important}
+  body{font-size:11pt}
+  .card,.rows,.sigcard{break-inside:avoid;border:1px solid #ccc}
+  a[href^="http"]::after{content:" (" attr(href) ")";font-size:9pt;color:#555}
+}
+@media(min-width:921px){.icon-btn.menu{display:none}}
+@media(max-width:900px){.hero{grid-template-columns:1fr;gap:30px;padding:36px 0 32px}}
+@media(max-width:720px){.split{grid-template-columns:1fr}}
+@media(max-width:720px){.split > div + div{border-left:0;border-top:1px solid var(--line)}}
+@media(max-width:860px){.three{grid-template-columns:1fr}}
+@media(max-width:980px){.fb-in{display:none}.fb-mob{display:flex;gap:10px;align-items:center;padding:10px 20px;max-width:1080px;margin:0 auto}.fb-mob .grow{flex:1;justify-content:space-between}}
+@media(max-width:720px){.band-in{grid-template-columns:1fr;gap:16px}}
+@media(max-width:860px){.files{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -264,6 +455,7 @@ footer{border-top:1px solid var(--line);margin-top:44px}
 <a class="skip" href="#main">Skip to content</a>
 
 <!-- 1 · HEADER -->
+<div class="strip ribbon"><div class="strip-in"><a href="/kill-log"><span class="tag">Killed today</span><span class="txt">Subscription box for allotment growers — repeat purchase collapses once the season ends</span><span class="go">Read the verdict →</span></a></div></div>
 <header class="hdr"><div class="hdr-in">
   <a class="logo" href="/" aria-label="Mumchimp home">
     <svg width="26" height="24" viewBox="0 0 26 24" fill="none" aria-hidden="true">
@@ -273,7 +465,7 @@ footer{border-top:1px solid var(--line);margin-top:44px}
   <!-- SLOT: "Today" nav item when the daily edition ships -->
   <a class="acct" href="/account">Account</a>
   <button class="icon-btn" aria-label="Search"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="9" cy="9" r="6.25" stroke="currentColor" stroke-width="1.7"/><path d="m13.8 13.8 4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
-  <button class="icon-btn" aria-label="Menu"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M2.5 5.5h15M2.5 10h15M2.5 14.5h15" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+  <button class="icon-btn menu" aria-label="Menu"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M2.5 5.5h15M2.5 10h15M2.5 14.5h15" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
 </div></header>
 
 <main id="main">
@@ -282,7 +474,7 @@ footer{border-top:1px solid var(--line);margin-top:44px}
   <!-- 2 · HERO + KILL GRID -->
   <section class="hero">
     <div>
-      <p class="kicker num">From £19.99 · 68 packs in the catalogue</p>
+      <p class="kicker num">From £19.99 · 74 packs in the catalogue</p>
       <h1>Business ideas with the research already done.</h1>
       <p class="sub">The buyer, the price, the margins and the plan, put through an AI built to kill the idea first.</p>
       <div class="cta-row">
@@ -291,12 +483,14 @@ footer{border-top:1px solid var(--line);margin-top:44px}
       </div>
     </div>
     <figure class="gridwrap">
-      <div class="killgrid" id="killgrid" role="img" aria-label="1,444 ideas researched. 1,364 killed on cited evidence, 68 on the shelf."></div>
+      <p class="ratiofig num">6 in 100</p>
+      <p class="ratiosub">or fewer survive the checks. Every square below is a hundredth of what we researched.</p>
+      <div class="ratio" role="img" aria-label="Six in one hundred ideas survive the checks"><i></i><i></i><i></i><i></i><i></i><i></i><i class="alive"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="alive"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="alive"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="alive"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="alive"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="alive"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
       <div class="gridkey">
+        <span><i class="sw alive"></i><b class="num">68</b> available now</span>
         <span><i class="sw dead"></i><b class="num">1,364</b> killed</span>
-        <span><i class="sw alive"></i><b class="num">68</b> survived</span>
       </div>
-      <figcaption class="gridcap">Every idea we have ever researched, one square each. The teal ones are what you can buy.</figcaption>
+      <figcaption class="gridcap">1,444 ideas researched so far. Every kill is published with the check it failed. <a class="tlink" href="/kill-log">Read the kill log</a></figcaption>
     </figure>
   </section>
 
@@ -315,7 +509,7 @@ footer{border-top:1px solid var(--line);margin-top:44px}
   <!-- 4 · SHELF / KILLED -->
   <div class="split">
     <div>
-      <p class="lbl">On the shelf now</p>
+      <p class="lbl">Available now</p>
       <b class="n num">68</b>
       <p>Passed all six checks. Every claim sourced, every number traceable.</p>
       <a class="tlink" href="#catalog">Browse the catalogue →</a>
@@ -331,22 +525,22 @@ footer{border-top:1px solid var(--line);margin-top:44px}
 
   <!-- 5 · WHAT SURVIVED -->
   <section style="margin-top:44px">
-    <div class="sechead"><h2 class="sec">Newest on the shelf</h2><a class="tlink" href="/pricing">Why prices differ</a></div>
+    <div class="sechead"><h2 class="sec">Newest available now</h2><a class="tlink" href="/pricing">Why prices differ</a></div>
     <p class="lede">Same 14 documents in every pack. Bigger opportunity, higher price.</p>
     <div class="three">
       <a class="htile" href="/pack/357dd857f40be34c">
         <div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><span class="eyebrow">Professional services</span><span class="new">Added Fri</span></div>
-        <h4>R&amp;D tax credit claim builder</h4>
+        <h3>R&amp;D tax credit claim builder</h3>
         <p>Drafts HMRC R&amp;D claim narratives from product docs and papers, so a UK deep-tech startup files in days rather than weeks and keeps the whole benefit.</p>
         <span class="foot"><span class="proof num"><b>23</b> sources</span><span class="price num"><span class="cur">£</span>19.99</span></span></a>
       <a class="htile" href="/pack/42ff14cd66a735f3">
         <div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><span class="eyebrow">Professional services</span><span class="new">Added Thu</span></div>
-        <h4>Noise report checks for acoustic consultancies</h4>
+        <h3>Noise report checks for acoustic consultancies</h3>
         <p>Turns sound-meter readings and site notes into checked draft appendices for noise assessments under BS 4142, for owner-run UK consultancies.</p>
         <span class="foot"><span class="proof num"><b>12×</b> payback · <b>19</b> sources</span><span class="price num"><span class="cur">£</span>79.99</span></span></a>
       <a class="htile" href="/pack/96a6e230dc6ea48f">
         <div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><span class="eyebrow">Professional services</span><span class="new">Added Wed</span></div>
-        <h4>AI project risk packs</h4>
+        <h3>AI project risk packs</h3>
         <p>A complete AI risk register per project for UK agencies, mapped to the ICO's AI framework, so the client signs faster.</p>
         <span class="foot"><span class="proof num"><b>38</b> sources</span><span class="price num"><span class="cur">£</span>29.99</span></span></a>
     </div>
@@ -361,7 +555,7 @@ footer{border-top:1px solid var(--line);margin-top:44px}
 
 <div class="filterbar">
   <div class="fb-in">
-    <label class="fld"><svg width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="9" cy="9" r="6.25" stroke="currentColor" stroke-width="1.7"/><path d="m13.8 13.8 4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><input placeholder="Search 68 packs" aria-label="Search the catalogue"></label>
+    <label class="fld"><svg width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="9" cy="9" r="6.25" stroke="currentColor" stroke-width="1.7"/><path d="m13.8 13.8 4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><input placeholder="Search 74 packs" aria-label="Search the catalogue"></label>
     <button class="drop">Category <span class="n num">10</span> <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     <button class="drop on">What you're good at <span class="n num">1</span> <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     <button class="drop">Price <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -376,7 +570,7 @@ footer{border-top:1px solid var(--line);margin-top:44px}
 
 <div class="wrap">
   <div class="active-row">
-    <span class="pill">I can build <button aria-label="Remove filter"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></span>
+    <span class="pill">I can build <button aria-label="Remove filter"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></span>
     <button class="clear">Clear all</button>
   </div>
 
@@ -385,7 +579,7 @@ footer{border-top:1px solid var(--line);margin-top:44px}
     <span class="eyebrow">Specialist niches</span>
     <h3>Abandoned-vendor alerts for UK software operations managers</h3>
     <p class="d">A weekly intelligence feed showing operations managers which third-party libraries and vendors in their stack have quietly stopped shipping security fixes.</p>
-    <div class="stat"><span class="big num">13×</span><span class="lbl">the price back in month one, modelled</span></div>
+    <div class="stat"><span class="big num">13×</span><span class="lbl">payback</span></div>
     <div class="spark-row">
       <div class="spark" aria-hidden="true"><i style="height:40%"></i><i style="height:65%"></i><i style="height:30%"></i><i style="height:80%"></i><i style="height:55%"></i><i style="height:100%"></i><i style="height:45%"></i><i style="height:70%"></i><i style="height:35%"></i><i style="height:60%"></i><i style="height:85%"></i><i style="height:50%"></i><i style="height:75%"></i><i style="height:40%"></i><i style="height:65%"></i><i style="height:90%"></i><i style="height:55%"></i><i style="height:30%"></i></div>
       <span class="mono num">30 sources</span>
@@ -406,7 +600,7 @@ footer{border-top:1px solid var(--line);margin-top:44px}
     <a class="row" href="/pack/a8333b00e91eec66">
       <span class="top"><span class="eyebrow">Trades and site work</span></span>
       <h3>Material price cover</h3>
-      <p class="d">A per-job micro-hedge: a self-employed tradesperson pays a small premium to lock today's material prices behind a fixed quote, four to twelve weeks out.</p>
+      <p class="d">A per-job small cover: a self-employed tradesperson pays a small premium to lock today's material prices behind a fixed quote, four to twelve weeks out.</p>
       <p class="proof num"><b>17×</b> payback · <b>28</b> sources</p>
       <span class="side"><span class="price num"><span class="cur">£</span>49.99</span><span class="view">View →</span></span></a>
 
@@ -430,8 +624,8 @@ footer{border-top:1px solid var(--line);margin-top:44px}
     <div class="band-in">
       <p class="fig dead num">411</p>
       <div>
-        <h4>The check that kills most ideas isn't the one people expect</h4>
-        <p>Of 1,364 kills, 411 died on a single question: can the payer actually pay? Not whether the problem is real — whether the person who has it has the money to fix it. It is the most common cause of death on this shelf by a wide margin.</p>
+        <h3>The check that kills most ideas isn't the one people expect</h3>
+        <p>Of 1,364 kills, 411 died on a single question: can the payer actually pay? Not whether the problem is real — whether the person who has it has the money to fix it. It is the most common cause of death on sale by a wide margin.</p>
         <div class="bars" aria-hidden="true">
           <i class="hot" style="height:100%"></i><i style="height:62%"></i><i style="height:48%"></i><i style="height:41%"></i><i style="height:33%"></i><i style="height:21%"></i>
         </div>
@@ -451,10 +645,10 @@ footer{border-top:1px solid var(--line);margin-top:44px}
       <div class="doc-top"><span class="nm">Gig Deactivation Reversal Dossier — Everything we read, once</span><span class="of num">Check 3 of 6</span></div>
       <div class="doc-body">
         <p class="elide">…appeal engine. The UK gig-deactivation appeal niche therefore appears open in these passages.</p>
-        <div class="check-h"><h4>Can the payer actually pay?</h4><span class="flag">UNVERIFIABLE</span></div>
+        <div class="check-h"><h3>Can the payer actually pay?</h3><span class="flag">UNVERIFIABLE</span></div>
         <p>The ASHE earnings tables contain only cookie consent screens with no actual wage data, and the remaining passages either describe generic financial-hardship concepts or US-specific retirement withdrawal rules. No passage provides the earnings or disposable income of UK gig workers aged 18–27, so affordability of a £49.99 one-time fee cannot be determined from this evidence.</p>
         <p class="cite num">1 <a href="#">ons.gov.uk</a></p>
-        <h4 style="font-size:19px;font-weight:650;letter-spacing:-.018em;margin-bottom:12px">The strongest case against this idea</h4>
+        <h3 style="font-size:19px;font-weight:650;letter-spacing:-.018em;margin-bottom:12px">The strongest case against this idea</h3>
         <p>The passages contain no evidence that a third-party appeal-writing service for gig deactivations is banned by UK law or requires legal qualification; UK employment tribunals explicitly permit lay representatives, and no passage shows acquisition costs exceeding a £49–99 fee. No single provider controls 80%+ of UK deactivation-appeal distribution, and the closest free alternatives are fragmented — none cover the niche end to end.</p>
         <div class="quote"><span>Worker filing the appeal themselves using the platform's own internal review form.</span>What people pay for this problem today.</div>
       </div>
@@ -462,7 +656,7 @@ footer{border-top:1px solid var(--line);margin-top:44px}
     </div>
 
     <div class="othersrc">
-      <h5>The other 5 sources behind this one check</h5>
+      <h3>The other 5 sources behind this one check</h3>
       <ol>
         <li><span class="i">2</span><span><a href="#">ons.gov.uk</a> — Earnings and hours worked by industry and occupation, ASHE table 29</span></li>
         <li><span class="i">3</span><span><a href="#">ons.gov.uk</a> — ASHE estimates of gross basic weekly and annual earnings, England 2024 and 2025</span></li>
@@ -474,7 +668,7 @@ footer{border-top:1px solid var(--line);margin-top:44px}
   </section>
 
   <!-- 11 · CATALOGUE, SECOND CHUNK -->
-  <h3 class="sub" style="margin:44px 0 16px">More on the shelf</h3>
+  <h3 class="sub" style="margin:44px 0 16px">More available now</h3>
   <div class="rows">
     <a class="row" href="/pack/64c58072e2585c2b">
       <span class="top"><span class="eyebrow">Professional services</span></span>
@@ -513,7 +707,7 @@ footer{border-top:1px solid var(--line);margin-top:44px}
     <div class="band-in">
       <p class="fig num">2,847</p>
       <div>
-        <h4>Nothing here rests on a number we can't show you</h4>
+        <h3>Nothing here rests on a number we can't show you</h3>
         <p>Every figure in every pack links back to the page it came from — tribunal decisions, ONS tables, Companies House filings, council policy documents. Where a claim couldn't be verified, the pack says so and marks it, rather than filling the gap.</p>
         <p class="src num">Average 32 sources per pack · <a href="/how-it-works">how the filter works</a></p>
       </div>
@@ -521,7 +715,7 @@ footer{border-top:1px solid var(--line);margin-top:44px}
   </section>
 
   <!-- 13 · MARKETS -->
-  <div class="mkt-h"><h2 class="sec">Built for the US market</h2><span class="mkt-tag">11 packs</span></div>
+  <div class="mkt-h"><h2 class="sec">Built for the US</h2><span class="mkt-tag">11 packs</span></div>
   <p class="lede" style="margin-bottom:18px">The buyers, the numbers and the legal steps all follow US rules. Read them anywhere; build them there.</p>
   <div class="rows">
     <a class="row" href="/pack/d6f72b9dc9a45c45">
@@ -538,7 +732,7 @@ footer{border-top:1px solid var(--line);margin-top:44px}
       <span class="side"><span class="price num"><span class="cur">£</span>79.99</span><span class="view">View →</span></span></a>
   </div>
 
-  <div class="mkt-h"><h2 class="sec">Built for the US · CA market</h2><span class="mkt-tag">1 pack</span></div>
+  <div class="mkt-h"><h2 class="sec">Built for the US · CA</h2><span class="mkt-tag">1 pack</span></div>
   <p class="lede" style="margin-bottom:18px">The buyers, the numbers and the legal steps all follow California rules. Read them anywhere; build them there.</p>
   <div class="rows">
     <a class="row" href="/pack/4303a89c2a5c0f00">
@@ -553,7 +747,7 @@ footer{border-top:1px solid var(--line);margin-top:44px}
   <section class="emailbox">
     <h2 class="sec">The next survivor can come to you.</h2>
     <p>Most ideas die in the filter. When one survives, you get one email. That's the whole list.</p>
-    <form><input type="email" placeholder="you@example.com" aria-label="Email address" required>
+    <form><input type="email" name="email" placeholder="you@example.com" aria-label="Email address" autocomplete="email" inputmode="email" enterkeyhint="go" spellcheck="false" autocapitalize="off" required>
       <button class="btn" type="button">Put it in the queue</button></form>
     <p class="fine">One email, only if a pack ships. No newsletter. Unsubscribe in one click.</p>
     <!-- SLOT: same component becomes the daily-edition signup by swapping strings -->
@@ -564,30 +758,30 @@ footer{border-top:1px solid var(--line);margin-top:44px}
     <div class="sechead"><h2 class="sec">What you actually get</h2><span class="mono num">14 documents · 6 files</span></div>
     <p class="lede">The same fourteen documents sit inside every pack, whatever it costs.</p>
     <div class="docs">
-      <div class="docitem"><span class="i num">01</span><div><h5>Where this starts</h5><p>The opportunity on one page: what it is, what checked out, and what we do not claim.</p></div></div>
-      <div class="docitem"><span class="i num">02</span><div><h5>What you would be selling</h5><p>The thing that changes hands for money, written as an offer a buyer could accept today.</p></div></div>
-      <div class="docitem"><span class="i num">03</span><div><h5>The field: who is already there</h5><p>The people already selling into this, what they charge, and where they leave the door open.</p></div></div>
-      <div class="docitem"><span class="i num">04</span><div><h5>The numbers</h5><p>Pricing and the numbers behind it. Anything we could not verify is marked missing, never made up.</p></div></div>
-      <div class="docitem"><span class="i num">05</span><div><h5>What would sink this</h5><p>The case against, at full strength, so you meet the objection here rather than from a customer.</p></div></div>
-      <div class="docitem"><span class="i num">06</span><div><h5>What you build</h5><p>What to build, in what order, on what stack. Includes the non-goals for v1 and what would kill this.</p></div></div>
-      <div class="docitem"><span class="i num">07</span><div><h5>How the first customers find you</h5><p>Named channels, the beachhead to start in, and the signals that say stop.</p></div></div>
-      <div class="docitem"><span class="i num">08</span><div><h5>How it runs once it works</h5><p>Delivery, capacity limits, the compliance you cannot skip, and where the manual work sits.</p></div></div>
-      <div class="docitem"><span class="i num">09</span><div><h5>Your first fortnight</h5><p>Six steps for days one to seven: confirm the buyer, size the smallest paid offer, pick one channel.</p></div></div>
-      <div class="docitem"><span class="i num">10</span><div><h5>The toolkit</h5><p>The named tools, services and suppliers this runs on, with what each one is actually for.</p></div></div>
-      <div class="docitem"><span class="i num">11</span><div><h5>Copy you can paste</h5><p>Launch copy you can send today: listing page, outreach, social. Claim-checked like the research.</p></div></div>
-      <div class="docitem"><span class="i num">12</span><div><h5>How to know in 30 days</h5><p>The one-month test: what to run, what number to watch, and the reading that says walk away.</p></div></div>
-      <div class="docitem"><span class="i num">13</span><div><h5>Everything we read, once</h5><p>Each check, what it found, and the source behind it, without hunting through the plans.</p></div></div>
-      <div class="docitem"><span class="i num">14</span><div><h5>Every check, in full</h5><p>Every check this pack faced, each verdict, and a clickable source behind every claim.</p></div></div>
+      <div class="docitem"><span class="i num">01</span><div><h3>Where this starts</h3><p>The opportunity on one page: what it is, what checked out, and what we do not claim.</p></div></div>
+      <div class="docitem"><span class="i num">02</span><div><h3>What you would be selling</h3><p>The thing that changes hands for money, written as an offer a buyer could accept today.</p></div></div>
+      <div class="docitem"><span class="i num">03</span><div><h3>The field: who is already there</h3><p>The people already selling into this, what they charge, and where they leave the door open.</p></div></div>
+      <div class="docitem"><span class="i num">04</span><div><h3>The numbers</h3><p>Pricing and the numbers behind it. Anything we could not verify is marked missing, never made up.</p></div></div>
+      <div class="docitem"><span class="i num">05</span><div><h3>What would sink this</h3><p>The case against, at full strength, so you meet the objection here rather than from a customer.</p></div></div>
+      <div class="docitem"><span class="i num">06</span><div><h3>What you build</h3><p>What to build, in what order, what to build it with. Includes what to leave out at first and what would kill this.</p></div></div>
+      <div class="docitem"><span class="i num">07</span><div><h3>How the first customers find you</h3><p>Named channels, the first group to sell to, and the signals that say stop.</p></div></div>
+      <div class="docitem"><span class="i num">08</span><div><h3>How it runs once it works</h3><p>Delivery, capacity limits, the compliance you cannot skip, and where the manual work sits.</p></div></div>
+      <div class="docitem"><span class="i num">09</span><div><h3>Your first fortnight</h3><p>Six steps for days one to seven: confirm the buyer, size the smallest paid offer, pick one channel.</p></div></div>
+      <div class="docitem"><span class="i num">10</span><div><h3>The toolkit</h3><p>The named tools, services and suppliers this runs on, with what each one is actually for.</p></div></div>
+      <div class="docitem"><span class="i num">11</span><div><h3>Copy you can paste</h3><p>Launch copy you can send today: listing page, outreach, social. Checked against the sources, like the research.</p></div></div>
+      <div class="docitem"><span class="i num">12</span><div><h3>How to know in 30 days</h3><p>The one-month test: what to run, what number to watch, and the reading that says walk away.</p></div></div>
+      <div class="docitem"><span class="i num">13</span><div><h3>Everything we read, once</h3><p>Each check, what it found, and the source behind it, without hunting through the plans.</p></div></div>
+      <div class="docitem"><span class="i num">14</span><div><h3>Every check, in full</h3><p>Every check this pack faced, each verdict, and a clickable source behind every claim.</p></div></div>
     </div>
 
     <p class="eyebrow" style="margin-top:34px">What lands in your folder</p>
     <div class="files">
-      <div class="file"><p class="fn">index.html</p><h5>The pack, readable</h5><p>Open this first and read the whole pack in order in your browser. No install, no account.</p></div>
-      <div class="file"><p class="fn">Complete_Pack.pdf</p><h5>The pack, typeset for print</h5><p>Every document in one printable PDF. Open it on a phone, or put it in front of someone.</p></div>
-      <div class="file"><p class="fn">First_Fortnight.html</p><h5>Your first fortnight, on one page</h5><p>A single sheet to print and work from. Days one to fourteen, nothing else on it.</p></div>
-      <div class="file"><p class="fn">Assumptions.csv</p><h5>Every assumption, as a spreadsheet</h5><p>Every number the financial model rests on, in a file your spreadsheet opens directly.</p></div>
-      <div class="file"><p class="fn">Marketing_Assets.txt</p><h5>Marketing copy, ready to paste</h5><p>The launch copy as plain text, so it goes straight into an email, a listing or a post.</p></div>
-      <div class="file"><p class="fn">manifest.jsonld</p><h5>The machine-readable record</h5><p>What this pack is, in structured data, so a tool can read it as easily as you can.</p></div>
+      <div class="file"><p class="fn">index.html</p><h3>The pack, readable</h3><p>Open this first and read the whole pack in order in your browser. No install, no account.</p></div>
+      <div class="file"><p class="fn">Complete_Pack.pdf</p><h3>The pack, typeset for print</h3><p>Every document in one printable PDF. Open it on a phone, or put it in front of someone.</p></div>
+      <div class="file"><p class="fn">First_Fortnight.html</p><h3>Your first fortnight, on one page</h3><p>A single sheet to print and work from. Days one to fourteen, nothing else on it.</p></div>
+      <div class="file"><p class="fn">Assumptions.csv</p><h3>Every assumption, as a spreadsheet</h3><p>Every number the financial model rests on, in a file your spreadsheet opens directly.</p></div>
+      <div class="file"><p class="fn">Marketing_Assets.txt</p><h3>Marketing copy, ready to paste</h3><p>The launch copy as plain text, so it goes straight into an email, a listing or a post.</p></div>
+      <div class="file"><p class="fn">manifest.jsonld</p><h3>A version other software can read</h3><p>What this pack is, in structured data, so a tool can read it as easily as you can.</p></div>
     </div>
     <div class="files-note">
       <p>A web page you can read, a PDF you can print and a spreadsheet you can open. Yours to keep, edit, or paste anywhere. No login, no subscription.</p>
@@ -598,7 +792,7 @@ footer{border-top:1px solid var(--line);margin-top:44px}
   <!-- 16 · CLOSE -->
   <section class="close">
     <h2 class="sec">Every idea walks into a room built to destroy it.</h2>
-    <p>A claim without a source dies before it reaches this shelf. Every pack here came out the other side.</p>
+    <p>A claim without a source dies before it ever goes on sale. Every pack here came out the other side.</p>
     <a class="btn" href="/how-it-works">See how the filter works <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 8h11M9.5 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
     <div class="guarantees">
       <span class="pillx">14-day money back</span><span class="pillx">Every claim sourced</span><span class="pillx">One-time payment</span>
@@ -619,12 +813,12 @@ footer{border-top:1px solid var(--line);margin-top:44px}
         <p>Business ideas that survived the filter. Fully sourced, ready to build.</p>
         <div class="f-stats"><div><span>Killed</span><b class="num">1,364</b></div><div><span>Researched</span><b class="num">1,444</b></div></div>
       </div>
-      <div class="f-col"><h6>Store</h6>
+      <div class="f-col"><p class="colh">Store</p>
         <a href="/">Catalogue</a><a href="/ideas">Categories</a><a href="/how-it-works">How it works</a>
         <a href="/kill-log">Kill log</a><a href="/about">Who makes this</a><a href="/faq">FAQ</a></div>
-      <div class="f-col"><h6>Legal</h6>
+      <div class="f-col"><p class="colh">Legal</p>
         <a href="/terms">Terms of Service</a><a href="/privacy">Privacy Policy</a><a href="/refund">Refund Policy</a></div>
-      <div class="f-col"><h6>Contact</h6>
+      <div class="f-col"><p class="colh">Contact</p>
         <a href="mailto:support@mumchimp.com">support@mumchimp.com</a>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
           <a class="btn sm" href="/">Browse</a><a class="tlink" href="/kill-log" style="align-self:center">See what we killed</a></div></div>
@@ -638,16 +832,6 @@ footer{border-top:1px solid var(--line);margin-top:44px}
   </div>
 </footer>
 
-<script>
-(function(){
-  var g=document.getElementById('killgrid'); if(!g) return;
-  var TOTAL=1444, ALIVE=68, alive={}, seed=20260817;
-  function rnd(){ seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff; }
-  var n=0; while(n<ALIVE){ var i=Math.floor(rnd()*TOTAL); if(!alive[i]){alive[i]=1;n++;} }
-  var f=document.createDocumentFragment();
-  for(var k=0;k<TOTAL;k++){ var c=document.createElement('i'); if(alive[k]) c.className='alive'; f.appendChild(c); }
-  g.appendChild(f);
-})();
-</script>
+
 </body>
 </html>

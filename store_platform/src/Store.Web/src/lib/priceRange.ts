@@ -140,7 +140,7 @@ export function priceSentence(range: PriceRange): string {
     return `Every pack is ${formatGbp(range.min)}. One payment, no subscription.`;
   }
   return (
-    `${range.modeCount} of the ${range.total} packs on the shelf are ${formatGbp(range.mode)}. ` +
+    `${range.modeCount} of the ${range.total} packs available now are ${formatGbp(range.mode)}. ` +
     `They run ${range.label}, priced per pack, and the price is on the pack's own page. ` +
     // A colon, not `--` and not a dash. There is no markdown parser between here and the DOM,
     // so `--` printed literally on /pricing as two hyphens (desktop-pricing-fold.png,

@@ -13,6 +13,8 @@
     "typecheck": "tsc --noEmit",
     "verify": "npm run typecheck && npm run lint",
     "test": "vitest run",
+    "parity:components": "node scripts/component_parity.mjs",
+    "parity:pixels": "node scripts/visual_regression.mjs",
     "test:e2e": "playwright test",
     "test:e2e:coreloop": "playwright test --project=coreloop"
   },
@@ -40,6 +42,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.11",
     "jsdom": "^29.1.1",
+    "pixelmatch": "^6.0.0",
+    "pngjs": "^7.0.0",
     "tailwindcss": "^4",
     "typescript": "^6",
     "vitest": "^4.1.8"

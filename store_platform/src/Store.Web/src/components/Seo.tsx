@@ -29,7 +29,7 @@ const SITE = BRAND.name;
  */
 const DEFAULT_DESCRIPTION =
   'Mumchimp sells sourced business opportunity packs. Each is an idea passed by the ' +
-  'engine: build spec, GTM plan, operations and unit economics, and a QA report with ' +
+  'engine: build spec, a plan for your first customers, operations and the numbers, and a QA report with ' +
   'every claim sourced. Instant download.';
 
 export interface SeoProps {

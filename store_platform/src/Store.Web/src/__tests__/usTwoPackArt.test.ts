@@ -120,14 +120,26 @@ describe('US-2 — Pack cards with pack art', () => {
       page.slice(cardStart, cardEnd === -1 ? undefined : cardEnd)
       + readSource('../components/discovery/PackRow.tsx');
     const figures = cardBody.match(/<PackFigure\b[^/]*\/>/g) ?? [];
-    // Three variants now: row, card, and the drawing's three-up tile `PackTileGrid`.
-    expect(figures.length, 'every card variant must render the lead figure').toBe(3);
-    ['row', 'spotlight'].forEach((weight) => {
-      expect(
-        figures.some((f) => f.includes(`weight="${weight}"`)),
-        `the ${weight} variant must carry the lead figure`,
-      ).toBe(true);
-    });
+    /* ONE MOUNT, NOT THREE (2026-08-18, the founder's live-defect fix prompt, D4).
+       The rule this pins did not soften, it moved: every card variant must state the pack's
+       own evidence, and the SHAPE of that statement is now fixed by the drawing rather than
+       by this test. `mockups/index.html`'s rows and tiles print one mono proof line --
+       `<b>41</b> sources`, or `<b>17x</b> payback . <b>28</b> sources` -- and only the
+       featured card carries the big `.stat` figure the `PackFigure` component draws. Three
+       different sentences for the same fact were live on the shelf the day this changed
+       (`38 sources`, `16 cited sources behind it`, `2x the price back in month one,
+       modelled`), which is exactly the drift the "one device" note above is about.
+       So: the spotlight keeps `PackFigure`; the row and the tile carry `CardProof`. */
+    expect(figures.length, 'only the spotlight carries the big lead figure').toBe(1);
+    expect(
+      figures.some((f) => f.includes('weight="spotlight"')),
+      'the spotlight variant must carry the lead figure',
+    ).toBe(true);
+    const proofMounts = cardBody.match(/<CardProof\b/g) ?? [];
+    expect(
+      proofMounts.length,
+      'the row and the tile must each state the pack evidence through the one proof component',
+    ).toBe(2);
 
     /*
      * NOT A SECOND PRICE. The figure is one step of the six-step scale above the price it shares
@@ -138,7 +150,7 @@ describe('US-2 — Pack cards with pack art', () => {
     const packRow = readSource('../components/discovery/PackRow.tsx');
     const figureComponent = packRow.slice(packRow.indexOf('export function PackFigure('));
     /* THE SIZE IS THE DRAWING'S NOW, NOT A TAILWIND STEP. The spotlight figure renders as the
-       drawing's `.stat > .big` (mockup.css: 44px, weight 685) against `.price-lg` at 26px, so the
+       drawing's `.stat > .big` (mumchimp.css: 44px, weight 685) against `.price-lg` at 26px, so the
        rule this pins -- the figure outweighs the price it shares a card with -- is carried by the
        copied stylesheet instead of by a utility class. Matching `text-display` here would fail on
        a card that is drawn exactly like the drawing, which is what it did on 2026-08-18. */
@@ -174,8 +186,12 @@ describe('US-2 — Pack cards with pack art', () => {
     // and that is unchanged. The noun is not the rule: the founder changed it from "rules" to
     // "market" the same day, because the subtitle beside it already argues that the buyers and
     // the numbers travel with the country too, not only its statute book.
+    // THE NOUN IS GONE (2026-08-18, D7: "`US . CA market` -> `US . CA`"). The rule this pins is
+    // still "in WORDS, never a flag emoji or a bare country code", and `marketLabel` is what
+    // carries it. `mockups/index.html:163` draws `.market` as a bordered mono chip, and a chip
+    // that reads "US . CA market" states its own column heading inside itself.
     expect(readSource('../components/discovery/PackRow.tsx'), 'the market chip must still be stated in words').toMatch(
-      /\{marketLabel\(pack\.market\)\} market/,
+      /\{marketLabel\(pack\.market\)\}/,
     );
     expect(page, 'the market chip must render only when it differs from the reader\'s').toMatch(
       /pack\.market !== viewerMarket/,
@@ -216,7 +232,7 @@ describe('US-2 — Pack cards with pack art', () => {
       expect(packLeadStat(base)).toEqual({
         kind: 'sources',
         figure: '34',
-        label: 'cited sources behind it',
+        label: 'sources',
       });
     });
 

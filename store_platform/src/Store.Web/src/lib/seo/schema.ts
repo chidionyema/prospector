@@ -78,7 +78,7 @@ export function organizationNode(description: string): Record<string, unknown> |
       'business opportunity research',
       'market validation',
       'go-to-market strategy',
-      'unit economics',
+      'the numbers',
       'small business ideas',
       'side hustle ideas',
     ],

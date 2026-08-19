@@ -151,7 +151,7 @@ const EXCEPT = [
  * words were all there, so the ledger said 100%, and the founder saw a section that looked
  * nothing like the drawing.
  *
- * So this counts the drawing's own class names -- only the ones `mockup.css` actually styles,
+ * So this counts the drawing's own class names -- only the ones `mumchimp.css` actually styles,
  * which is the drawing's visual vocabulary -- and asks whether the built page uses them at all.
  * A class the drawing uses and the build never emits is a section built in different markup.
  * MISSING is that. THIN is the same defect at partial strength: the build emits it, but for a
@@ -207,9 +207,9 @@ async function styleParity(page, html, cssClasses) {
 
 const ALL = process.argv.includes('--all');
 const only = process.argv.slice(2).filter((a) => a !== '--all');
-/* The drawing's visual vocabulary is exactly the classes `mockup.css` styles. Tailwind utilities
+/* The drawing's visual vocabulary is exactly the classes `mumchimp.css` styles. Tailwind utilities
    and one-off ids are not part of it, so they are never reported. */
-const MOCKUP_CSS = await readFile(path.join(process.cwd(), 'src/styles/mockup.css'), 'utf8');
+const MOCKUP_CSS = await readFile(path.join(process.cwd(), 'src/styles/mumchimp.css'), 'utf8');
 const CSS_CLASSES = new Set([...MOCKUP_CSS.matchAll(/\.([a-zA-Z][\w-]*)/g)].map((m) => m[1]));
 
 const browser = await chromium.launch();

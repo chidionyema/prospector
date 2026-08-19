@@ -80,6 +80,7 @@ from prospector.config import load_config
 from prospector.operator import make_operator
 from prospector.pack_floors import claim_safe_marketing
 from prospector.plain_text import plain_lines, to_plain_text
+from prospector.trimming import cap_words
 
 # Env-overridable so a backfill can be pointed at staging. This script PATCHes live
 # catalogue rows; a hardcoded production constant means there is no way to rehearse
@@ -154,8 +155,11 @@ def catalog_payload(listing: Dict[str, Any]) -> Dict[str, Any]:
         # No [:n] slice: _card_line already enforces length by DROPPING an over-long line,
         # and a slice here would reintroduce the mid-clause cut that enforcement prevents.
         "cardLine": to_plain_text(listing.get("card_line"), collapse=True),
-        "headline": to_plain_text(listing.get("headline"), collapse=True)[:140],
-        "subhead": to_plain_text(listing.get("subhead"), collapse=True)[:280],
+        # `cap_words`, the same cutter bridge.py uses, because the docstring above promises
+        # this function mirrors it. It did not: these two lines were bare slices, which is the
+        # "second, quietly different sanitiser on the catalogue" the docstring warns against.
+        "headline": cap_words(to_plain_text(listing.get("headline"), collapse=True), 140),
+        "subhead": cap_words(to_plain_text(listing.get("subhead"), collapse=True), 280),
         "whatYouGet": plain_lines(listing.get("what_you_get"))[:5],
         "theProblem": to_plain_text(listing.get("the_problem"), collapse=True),
         "marketSize": to_plain_text(listing.get("market_size"), collapse=True),

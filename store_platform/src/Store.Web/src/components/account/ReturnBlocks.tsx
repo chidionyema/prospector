@@ -73,8 +73,8 @@ function Block({
           that gave its cards the 8px CONTROL corner, which is the sort of difference nobody names
           but everybody sees: the same shelf rows look softer on the catalogue than they do here. */}
       {/* `.rows` is the drawing's own surface, border and 12px corner for a list of rows
-          (`mockup.css:333`), so the utilities holding the same three properties are removed rather
-          than layered: mockup.css is imported into the components layer (globals.css:8) and a
+          (`mumchimp.css`), so the utilities holding the same three properties are removed rather
+          than layered: mumchimp.css is imported into the components layer (globals.css:8) and a
           utility on the same element wins whatever the specificity. The horizontal padding goes
           too, because `.owned` pads each row itself. */}
       <ul className="rows mt-4">{children}</ul>
@@ -120,7 +120,7 @@ export function ReturnBlocks() {
               : `${cart.lines.length} packs you picked out and have not bought yet.`
           }
           moreHref="/"
-          moreLabel="Back to the shelf"
+          moreLabel="Back to the catalogue"
         >
           {cart.lines.map((line) => (
             <PackLine key={line.id} id={line.id} title={line.title} price={line.price} />
@@ -133,11 +133,11 @@ export function ReturnBlocks() {
           title="New since your last visit"
           lead={
             fresh.length === 1
-              ? 'One pack has cleared the checks and reached the shelf since you were last here.'
-              : `${fresh.length} packs have cleared the checks and reached the shelf since you were last here.`
+              ? 'One pack has cleared the checks and gone on sale since you were last here.'
+              : `${fresh.length} packs have cleared the checks and gone on sale since you were last here.`
           }
           moreHref="/"
-          moreLabel="See the whole shelf"
+          moreLabel="See the whole catalogue"
         >
           {/* Ten at most. The point of the block is a reason to click, and a list long enough to
               scroll is the shelf, which is one link away and better at being the shelf. */}
