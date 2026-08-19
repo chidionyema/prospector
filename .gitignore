@@ -177,3 +177,8 @@ signals/pending/
 # Signals the engine DISCOVERED. The hand-authored ones beside them stay tracked: they are
 # inputs a person wrote, not output a tick produced.
 signals/discovered_*
+
+# Stray test output. `test_log.jsonl` and `test_log2.jsonl` were COMMITTED at the repo root and
+# referenced by nothing -- four lines between them, naming a Gemini provider this estate no
+# longer configures. Deleted 2026-08-19; ignored so a run cannot re-commit them.
+test_log*.jsonl

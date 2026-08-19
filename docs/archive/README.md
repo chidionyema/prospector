@@ -34,6 +34,19 @@ Written 15–20 June 2026, when the store was pre-launch, in Stripe TEST mode, w
 - `HANDOVER.md`, `HANDOVER_BRIDGE_TO_LAUNCH.md` — build-ready specs for an agent continuing the
   build. Useful as design rationale; wrong as instructions.
 
+### `2026-08/`
+
+Moved here 2026-08-19 from the repo ROOT, where they sat beside `README.md` and `RUN.md` reading
+as current procedure. Neither is referenced by any tracked file.
+
+- `GENERATION_PROCESS.md` — a map of the generation path written 2026-06-22. Its headline number
+  is false today: it reports "50 candidates vetted -> 0 PASS -> 0 published", and the live
+  catalogue carries 75 published packs. Its `file:line` citations were gathered by subagents in
+  June and have drifted; the file says so itself.
+- `POSTMORTEM_ZERO_YIELD_2026-06-28.md` — the postmortem for that zero-yield fortnight. The bug
+  it describes (a silent fallback to a broken query generator) was fixed on 2026-06-28. Kept for
+  the reasoning, not the state.
+
 ## Adding to this archive
 
 Move the file here rather than banner it in place, and say in its notice **which specific claim
