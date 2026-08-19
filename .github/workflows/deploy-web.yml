@@ -149,6 +149,10 @@ jobs:
         run: |
           set -euo pipefail
           : "${FLY_API_TOKEN:?set repo secret FLY_API_TOKEN (flyctl tokens create deploy)}"
+          # `$DRY` is either empty or the single word `--dry-run`, and must vanish when
+          # empty. Quoting it passes an empty string as a second argument, which the
+          # deploy script reads as an unknown flag.
+          # shellcheck disable=SC2086
           bash store_platform/scripts/deploy_web.sh "$TARGET" $DRY
 
       # `flyctl deploy` exiting 0 means the machines took the image, not that the site serves.

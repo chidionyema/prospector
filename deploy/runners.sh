@@ -227,10 +227,23 @@ cmd_autoscale() {
   queued="$(gh api "repos/$GH_REPO/actions/runs?status=queued&per_page=100" \
               --jq '.workflow_runs | length' 2>/dev/null || true)"
 
-  local machines busy_names
+  local machines
   machines="$(fly machines list -a "$APP" --json 2>/dev/null || echo '[]')"
-  busy_names="$(gh api "repos/$GH_REPO/actions/runners" \
-                  --jq '.runners[] | select(.busy) | .name' 2>/dev/null || true)"
+
+  # THE BUSY LIST IS THE ONLY THING STANDING BETWEEN THIS AND A KILLED BUILD, so its exit status
+  # is captured separately. This used to end in `|| true`, which made an empty result ambiguous:
+  # "nobody is busy" and "the call failed" produced the same empty string, and the scale-down
+  # branch below reads an absent name as safe to stop. The call fails easily -- `actions/runners`
+  # needs admin scope, and GITHUB_TOKEN does not have it -- so the ambiguous case was the LIKELY
+  # one, not the rare one. The function's own comment already promised "a machine is only stopped
+  # when GitHub says its runner is NOT busy"; this is what makes that true.
+  local busy_names="" busy_ok=1
+  if busy_names="$(gh api "repos/$GH_REPO/actions/runners" \
+                     --jq '.runners[] | select(.busy) | .name' 2>/dev/null)"; then
+    busy_ok=0
+  else
+    busy_names=""
+  fi
 
   local started stopped
   started="$(printf '%s' "$machines" | jq -r '[.[] | select(.state=="started")] | .[].id')"
@@ -263,6 +276,10 @@ cmd_autoscale() {
     done
     [ "$need" -gt 0 ] && echo "  wanted $need more machine(s) than the pool holds; raise the" \
                               "pool with: deploy/runners.sh up $max"
+  elif [ "$want" -lt "$n_started" ] && [ -n "$queued" ] && [ "$busy_ok" -ne 0 ]; then
+    echo "  $(( n_started - want )) machine(s) look spare, but GitHub would not say which runners"
+    echo "  are busy, so none are stopped. Scale-down needs that list; without it a stop can kill"
+    echo "  a running job. Fix: give this caller a token that can read repo runners (admin scope)."
   elif [ "$want" -lt "$n_started" ] && [ -n "$queued" ]; then
     local excess=$(( n_started - want ))
     for id in $started; do
