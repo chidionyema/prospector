@@ -66,7 +66,12 @@ def test_a_failed_job_does_not_end_the_fleet() -> None:
     without the guard one red build would take the runner off the fleet until something noticed."""
     body = _body()
     assert "set -euo pipefail" in body
-    assert re.search(r"\./run\.sh \|\| true", body), (
+    # ARGUMENTS ARE ALLOWED BETWEEN THE COMMAND AND THE GUARD. This regex used to demand the
+    # literal `./run.sh || true`, so it went red the moment the call gained `${RUN_ARG}` --
+    # entrypoint.sh had the guard the whole time and main was red on a spelling. What the test
+    # is actually about is that the guard is on the SAME command, so the `[^|\n]*` stops at a
+    # pipe or a newline and a `|| true` on some later line still fails.
+    assert re.search(r"\./run\.sh[^|\n]*\|\| true", body), (
         "run.sh runs under `set -e` with no `|| true`, so a failing CI job ends the container"
     )
 
