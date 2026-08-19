@@ -160,11 +160,19 @@ async function shoot(page, url, selectors) {
              drawing's is inline text, so identical output computes two different words. */
           rec.style[p] = p === 'display' && cs[p] === 'inline-block' ? 'block' : cs[p];
         }
+        /* VERTICAL KEEPS ITS MARGIN, HORIZONTAL DOES NOT. A vertical margin is a rhythm decision
+           and the drawings make it deliberately. A horizontal one is usually `auto`, and
+           `getComputedStyle` reports the USED value of an auto margin, which is whatever the rest
+           of the row left over. `mumchimp.css:48` sets `.logo{margin-right:auto}`: the drawing
+           computed 436.109px and the built page 447.641px, on all ten pages at both widths, because
+           our nav says "Good for" where the drawing says "Categories". That is copy, and it was 20
+           of the 751 hard findings. Horizontal padding and border are still real style claims and
+           are still compared. */
         const side = {
           boxTop: px(cs.marginTop) + px(cs.borderTopWidth) + px(cs.paddingTop),
-          boxRight: px(cs.marginRight) + px(cs.borderRightWidth) + px(cs.paddingRight),
+          boxRight: px(cs.borderRightWidth) + px(cs.paddingRight),
           boxBottom: px(cs.marginBottom) + px(cs.borderBottomWidth) + px(cs.paddingBottom),
-          boxLeft: px(cs.marginLeft) + px(cs.borderLeftWidth) + px(cs.paddingLeft),
+          boxLeft: px(cs.borderLeftWidth) + px(cs.paddingLeft),
         };
         for (const p of len) {
           if (p in side) rec.len[p] = side[p];

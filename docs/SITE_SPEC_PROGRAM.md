@@ -1934,6 +1934,25 @@ It deliberately ignores absolute y, `font-family`, padding against margin (compa
 side, so the breadcrumb's `-my-3 py-3` tap target does not read as a defect) and `inline-block`
 against `block` (CSS blockifies flex children by itself).
 
+It also ignores HORIZONTAL margins, and keeps vertical ones. A vertical margin is a rhythm decision
+the drawings make deliberately. A horizontal one is usually `auto`, and `getComputedStyle` reports
+the USED value of an auto margin, which is whatever the rest of the row left over. `mumchimp.css:48`
+sets `.logo{margin-right:auto}`: the drawing computed 436.109px against the built page's 447.641px,
+on all ten pages at both widths, because our nav says "Good for" where the drawing says
+"Categories". That is copy wearing a layout number, and it was 20 of the first run's 751 hard
+findings. Horizontal padding and border are real style claims and are still compared. Dropping them
+took the totals from 751 hard to 724.
+
+**Read a finding before fixing it: the harness pairs the FIRST match of each selector.** If a page's
+first `.btn` is a primary call to action and the drawing's first `.btn` is a secondary one, the
+harness reports a colour defect that is not one. Worked example, and the reason this warning is
+here: `.tlink` reports `color: rgb(86, 91, 98)` drawn against `rgb(36, 71, 201)` built. The built
+value is correct -- `mumchimp.css:27` is `.tlink{color:var(--link)}` and `--link` is `#2447C9` in the
+bundle's own `:root`. The drawing's first `.tlink` on that page is grey because that particular
+instance is styled grey, not because the token differs. Changing our link colour to match would
+break every other link on the site. The harness says WHERE to look; the drawing says what it should
+be.
+
 **Why it is not a CI job.** The built page in CI is built against `https://api.example.com`, so it
 has no catalogue: the shelf, the kill log and the hero counts all render empty. The comparison only
 means anything against the live API. It runs locally, before shipping a storefront change:

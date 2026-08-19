@@ -16,28 +16,28 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 
 | Page | Width | Hard | Baseline | Absent | Baseline | Soft |
 | --- | --- | --- | --- | --- | --- | --- |
-| index | 390 | 49 | 49 | 18 | 18 | 59 |
-| index | 1280 | 55 | 55 | 17 | 17 | 24 |
-| ideas | 390 | 18 | 18 | 3 | 3 | 10 |
-| ideas | 1280 | 19 | 19 | 3 | 3 | 8 |
-| how-it-works | 390 | 50 | 50 | 6 | 6 | 17 |
-| how-it-works | 1280 | 52 | 52 | 6 | 6 | 22 |
-| kill-log | 390 | 55 | 55 | 20 | 20 | 25 |
-| kill-log | 1280 | 55 | 55 | 21 | 21 | 24 |
-| faq | 390 | 28 | 28 | 5 | 5 | 4 |
-| faq | 1280 | 28 | 28 | 5 | 5 | 6 |
-| pricing | 390 | 34 | 34 | 5 | 5 | 19 |
-| pricing | 1280 | 34 | 34 | 5 | 5 | 14 |
-| about | 390 | 25 | 25 | 2 | 2 | 1 |
-| about | 1280 | 25 | 25 | 2 | 2 | 2 |
-| account | 390 | 32 | 32 | 30 | 30 | 5 |
-| account | 1280 | 32 | 32 | 30 | 30 | 5 |
-| refund | 390 | 41 | 41 | 4 | 4 | 11 |
-| refund | 1280 | 41 | 41 | 4 | 4 | 14 |
-| sample | 390 | 39 | 39 | 9 | 9 | 18 |
-| sample | 1280 | 39 | 39 | 9 | 9 | 16 |
+| index | 390 | 48 | 48 | 18 | 18 | 59 |
+| index | 1280 | 49 | 49 | 17 | 17 | 24 |
+| ideas | 390 | 17 | 17 | 3 | 3 | 10 |
+| ideas | 1280 | 18 | 18 | 3 | 3 | 8 |
+| how-it-works | 390 | 49 | 49 | 6 | 6 | 17 |
+| how-it-works | 1280 | 51 | 51 | 6 | 6 | 22 |
+| kill-log | 390 | 54 | 54 | 20 | 20 | 25 |
+| kill-log | 1280 | 52 | 52 | 21 | 21 | 24 |
+| faq | 390 | 27 | 27 | 5 | 5 | 4 |
+| faq | 1280 | 27 | 27 | 5 | 5 | 6 |
+| pricing | 390 | 33 | 33 | 5 | 5 | 19 |
+| pricing | 1280 | 33 | 33 | 5 | 5 | 14 |
+| about | 390 | 24 | 24 | 2 | 2 | 1 |
+| about | 1280 | 24 | 24 | 2 | 2 | 2 |
+| account | 390 | 31 | 31 | 30 | 30 | 5 |
+| account | 1280 | 31 | 31 | 30 | 30 | 5 |
+| refund | 390 | 40 | 40 | 4 | 4 | 11 |
+| refund | 1280 | 40 | 40 | 4 | 4 | 14 |
+| sample | 390 | 38 | 38 | 9 | 9 | 18 |
+| sample | 1280 | 38 | 38 | 9 | 9 | 16 |
 
-**Totals: hard 751, absent 204, soft 304.**
+**Totals: hard 724, absent 204, soft 304.**
 **No page is worse than its baseline.**
 
 ## Findings
@@ -83,7 +83,6 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.klog` **borderBottomColor**: drawing `rgb(86, 91, 98)` / built `rgb(231, 231, 225)`
 - HARD `.klog` **boxTop**: drawing `14px` / built `41px`
 - HARD `.lede` **boxBottom**: drawing `0px` / built `16px`
-- HARD `.logo` **boxRight**: drawing `112.375px` / built `109.797px`
 - HARD `.more` **lineHeight**: drawing `normal` / built `22.5`
 - HARD `.othersrc a` **fontWeight**: drawing `400` / built `550`
 - HARD `.othersrc a` **fontSize**: drawing `14.5px` / built `12px`
@@ -184,9 +183,9 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.close` **backgroundColor**: drawing `rgb(250, 250, 247)` / built `rgba(0, 0, 0, 0)`
 - HARD `.close` **maxWidth**: drawing `none` / built `1080`
 - HARD `.close` **boxTop**: drawing `84px` / built `146px`
-- HARD `.close` **boxRight**: drawing `0px` / built `120px`
+- HARD `.close` **boxRight**: drawing `0px` / built `20px`
 - HARD `.close` **boxBottom**: drawing `8px` / built `96px`
-- HARD `.close` **boxLeft**: drawing `0px` / built `120px`
+- HARD `.close` **boxLeft**: drawing `0px` / built `20px`
 - HARD `.close h2` **maxWidth**: drawing `372.031px` / built `385.376px`
 - HARD `.close p` **maxWidth**: drawing `580.658px` / built `624.551px`
 - HARD `.close p` **boxTop**: drawing `14px` / built `16px`
@@ -200,10 +199,7 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.emailbox .fine` **boxBottom**: drawing `18px` / built `0px`
 - HARD `.emailbox input` **color**: drawing `rgb(0, 0, 0)` / built `rgb(23, 25, 28)`
 - HARD `.eyebrow` **display**: drawing `block` / built `inline`
-- HARD `.fb-in` **boxRight**: drawing `120px` / built `20px`
-- HARD `.fb-in` **boxLeft**: drawing `120px` / built `20px`
 - HARD `.fb-mob .grow` **lineHeight**: drawing `normal` / built `21.75`
-- HARD `.fb-right` **boxLeft**: drawing `191.078px` / built `154.266px`
 - HARD `.fld` **textAlign**: drawing `start` / built `left`
 - HARD `.fld svg` **textAlign**: drawing `start` / built `left`
 - HARD `.hero` **backgroundColor**: drawing `rgb(250, 250, 247)` / built `rgba(0, 0, 0, 0)`
@@ -215,7 +211,6 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.klog` **borderBottomColor**: drawing `rgb(86, 91, 98)` / built `rgb(231, 231, 225)`
 - HARD `.klog` **boxTop**: drawing `14px` / built `41px`
 - HARD `.lede` **boxBottom**: drawing `0px` / built `16px`
-- HARD `.logo` **boxRight**: drawing `436.109px` / built `447.641px`
 - HARD `.more` **lineHeight**: drawing `normal` / built `22.5`
 - HARD `.othersrc a` **fontWeight**: drawing `400` / built `550`
 - HARD `.othersrc a` **fontSize**: drawing `14.5px` / built `12px`
@@ -225,8 +220,6 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.srcchips` **boxTop**: drawing `0px` / built `10px`
 - HARD `.srcstrip` **backgroundColor**: drawing `rgb(250, 250, 247)` / built `rgba(0, 0, 0, 0)`
 - HARD `.srcstrip .lbl` **boxTop**: drawing `0px` / built `16px`
-- HARD `.wrap` **boxRight**: drawing `120px` / built `20px`
-- HARD `.wrap` **boxLeft**: drawing `120px` / built `20px`
 - HARD `h3.sub` **boxBottom**: drawing `0px` / built `12px`
 - ABSENT `.active-row`: drawing `yes` / built `MISSING`
 - ABSENT `.badge`: drawing `yes` / built `MISSING`
@@ -280,7 +273,6 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.crumb a` **display**: drawing `inline` / built `block`
 - HARD `.icon-btn` **fontSize**: drawing `13.3333px` / built `16px`
 - HARD `.icon-btn` **lineHeight**: drawing `normal` / built `24`
-- HARD `.logo` **boxRight**: drawing `112.375px` / built `109.797px`
 - HARD `.nav-d a` **fontWeight**: drawing `520` / built `580`
 - HARD `.nav-d a` **color**: drawing `rgb(86, 91, 98)` / built `rgb(23, 25, 28)`
 - HARD `.nav-d a` **borderTopColor**: drawing `rgb(86, 91, 98)` / built `rgb(23, 25, 28)`
@@ -315,7 +307,6 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.crumb a` **display**: drawing `inline` / built `block`
 - HARD `.icon-btn` **fontSize**: drawing `13.3333px` / built `16px`
 - HARD `.icon-btn` **lineHeight**: drawing `normal` / built `24`
-- HARD `.logo` **boxRight**: drawing `388.109px` / built `447.25px`
 - HARD `.nav-d a` **fontWeight**: drawing `520` / built `580`
 - HARD `.nav-d a` **color**: drawing `rgb(86, 91, 98)` / built `rgb(23, 25, 28)`
 - HARD `.nav-d a` **borderTopColor**: drawing `rgb(86, 91, 98)` / built `rgb(23, 25, 28)`
@@ -358,7 +349,6 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.evidence` **boxBottom**: drawing `33px` / built `31px`
 - HARD `.icon-btn` **fontSize**: drawing `13.3333px` / built `16px`
 - HARD `.icon-btn` **lineHeight**: drawing `normal` / built `24`
-- HARD `.logo` **boxRight**: drawing `112.375px` / built `109.797px`
 - HARD `.rule2` **color**: drawing `rgb(128, 128, 128)` / built `rgb(23, 25, 28)`
 - HARD `.rule2` **borderBottomColor**: drawing `rgb(128, 128, 128)` / built `rgb(23, 25, 28)`
 - HARD `.rule2` **boxTop**: drawing `46px` / built `2px`
@@ -435,7 +425,6 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.icon-btn` **fontSize**: drawing `13.3333px` / built `16px`
 - HARD `.icon-btn` **lineHeight**: drawing `normal` / built `24`
 - HARD `.incard .checkrow` **gridTemplateColumns**: drawing `32px 856.156px 77.8438px` / built `32px 870.406px 63.5938px`
-- HARD `.logo` **boxRight**: drawing `388.109px` / built `446.844px`
 - HARD `.rule2` **color**: drawing `rgb(128, 128, 128)` / built `rgb(23, 25, 28)`
 - HARD `.rule2` **borderBottomColor**: drawing `rgb(128, 128, 128)` / built `rgb(23, 25, 28)`
 - HARD `.rule2` **boxTop**: drawing `46px` / built `2px`
@@ -529,7 +518,6 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.icon-btn` **lineHeight**: drawing `normal` / built `24`
 - HARD `.lede` **boxTop**: drawing `16px` / built `20px`
 - HARD `.lede.big` **boxTop**: drawing `16px` / built `20px`
-- HARD `.logo` **boxRight**: drawing `112.375px` / built `109.797px`
 - HARD `.mono` **display**: drawing `block` / built `inline`
 - HARD `.mono` **boxBottom**: drawing `14px` / built `0px`
 - HARD `.pagetop` **maxWidth**: drawing `none` / built `768`
@@ -630,7 +618,6 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.icon-btn` **lineHeight**: drawing `normal` / built `24`
 - HARD `.lede` **boxTop**: drawing `16px` / built `20px`
 - HARD `.lede.big` **boxTop**: drawing `16px` / built `20px`
-- HARD `.logo` **boxRight**: drawing `388.109px` / built `447.078px`
 - HARD `.mono` **display**: drawing `block` / built `inline`
 - HARD `.mono` **boxBottom**: drawing `14px` / built `0px`
 - HARD `.pagetop` **maxWidth**: drawing `none` / built `768`
@@ -643,9 +630,7 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.strip` **position**: drawing `sticky` / built `static`
 - HARD `.strip-in` **gap**: drawing `8px` / built `14px`
 - HARD `.strip-in` **boxTop**: drawing `9px` / built `0px`
-- HARD `.strip-in` **boxRight**: drawing `20px` / built `120px`
 - HARD `.strip-in` **boxBottom**: drawing `9px` / built `0px`
-- HARD `.strip-in` **boxLeft**: drawing `20px` / built `120px`
 - HARD `.tlink` **color**: drawing `rgb(36, 71, 201)` / built `rgb(86, 91, 98)`
 - HARD `.tlink` **borderTopColor**: drawing `rgb(36, 71, 201)` / built `rgb(86, 91, 98)`
 - HARD `.tlink` **borderBottomColor**: drawing `rgb(36, 71, 201)` / built `rgb(86, 91, 98)`
@@ -722,7 +707,6 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.crumb a` **display**: drawing `inline` / built `block`
 - HARD `.icon-btn` **fontSize**: drawing `13.3333px` / built `16px`
 - HARD `.icon-btn` **lineHeight**: drawing `normal` / built `24`
-- HARD `.logo` **boxRight**: drawing `112.375px` / built `109.797px`
 - HARD `.tlink` **fontWeight**: drawing `550` / built `500`
 - HARD `.tlink` **color**: drawing `rgb(86, 91, 98)` / built `rgb(36, 71, 201)`
 - HARD `.tlink` **borderTopColor**: drawing `rgb(86, 91, 98)` / built `rgb(36, 71, 201)`
@@ -762,7 +746,6 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.crumb a` **display**: drawing `inline` / built `block`
 - HARD `.icon-btn` **fontSize**: drawing `13.3333px` / built `16px`
 - HARD `.icon-btn` **lineHeight**: drawing `normal` / built `24`
-- HARD `.logo` **boxRight**: drawing `388.109px` / built `447.469px`
 - HARD `.tlink` **fontWeight**: drawing `550` / built `500`
 - HARD `.tlink` **color**: drawing `rgb(86, 91, 98)` / built `rgb(36, 71, 201)`
 - HARD `.tlink` **borderTopColor**: drawing `rgb(86, 91, 98)` / built `rgb(36, 71, 201)`
@@ -799,7 +782,6 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.facts span` **gap**: drawing `normal` / built `6`
 - HARD `.icon-btn` **fontSize**: drawing `13.3333px` / built `16px`
 - HARD `.icon-btn` **lineHeight**: drawing `normal` / built `24`
-- HARD `.logo` **boxRight**: drawing `112.375px` / built `109.797px`
 - HARD `.lrow b` **fontWeight**: drawing `670` / built `655`
 - HARD `.lrow b` **lineHeight**: drawing `28.5px` / built `22.8px`
 - HARD `.matrix` **borderTopColor**: drawing `rgb(23, 25, 28)` / built `rgb(231, 231, 225)`
@@ -860,7 +842,6 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.facts span` **gap**: drawing `normal` / built `6`
 - HARD `.icon-btn` **fontSize**: drawing `13.3333px` / built `16px`
 - HARD `.icon-btn` **lineHeight**: drawing `normal` / built `24`
-- HARD `.logo` **boxRight**: drawing `388.109px` / built `447.641px`
 - HARD `.lrow b` **fontWeight**: drawing `670` / built `655`
 - HARD `.lrow b` **fontSize**: drawing `19px` / built `23px`
 - HARD `.matrix` **borderTopColor**: drawing `rgb(23, 25, 28)` / built `rgb(231, 231, 225)`
@@ -908,7 +889,6 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.icon-btn` **fontSize**: drawing `13.3333px` / built `16px`
 - HARD `.icon-btn` **lineHeight**: drawing `normal` / built `24`
 - HARD `.lede` **boxTop**: drawing `0px` / built `12px`
-- HARD `.logo` **boxRight**: drawing `112.375px` / built `109.797px`
 - HARD `.rule2` **color**: drawing `rgb(128, 128, 128)` / built `rgb(23, 25, 28)`
 - HARD `.rule2` **borderBottomColor**: drawing `rgb(128, 128, 128)` / built `rgb(23, 25, 28)`
 - HARD `.sign` **color**: drawing `rgb(23, 25, 28)` / built `rgb(86, 91, 98)`
@@ -939,7 +919,6 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.icon-btn` **fontSize**: drawing `13.3333px` / built `16px`
 - HARD `.icon-btn` **lineHeight**: drawing `normal` / built `24`
 - HARD `.lede` **boxTop**: drawing `0px` / built `12px`
-- HARD `.logo` **boxRight**: drawing `388.109px` / built `447.641px`
 - HARD `.rule2` **color**: drawing `rgb(128, 128, 128)` / built `rgb(23, 25, 28)`
 - HARD `.rule2` **borderBottomColor**: drawing `rgb(128, 128, 128)` / built `rgb(23, 25, 28)`
 - HARD `.sign` **color**: drawing `rgb(23, 25, 28)` / built `rgb(86, 91, 98)`
@@ -967,17 +946,17 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 ### account at 390
 
 - HARD `.btn` **textAlign**: drawing `start` / built `center`
-- HARD `.btn` **color**: drawing `rgb(23, 25, 28)` / built `rgb(255, 255, 255)`
-- HARD `.btn` **backgroundColor**: drawing `rgb(255, 255, 255)` / built `rgb(23, 25, 28)`
-- HARD `.btn` **borderTopColor**: drawing `rgb(231, 231, 225)` / built `rgb(255, 255, 255)`
-- HARD `.btn` **borderBottomColor**: drawing `rgb(231, 231, 225)` / built `rgb(255, 255, 255)`
+- HARD `.btn` **color**: drawing `rgb(23, 25, 28)` / built `rgb(20, 112, 106)`
+- HARD `.btn` **borderTopColor**: drawing `rgb(231, 231, 225)` / built `rgb(20, 112, 106)`
+- HARD `.btn` **borderBottomColor**: drawing `rgb(231, 231, 225)` / built `rgb(20, 112, 106)`
 - HARD `.btn` **display**: drawing `flex` / built `inline-flex`
+- HARD `.btn` **boxBottom**: drawing `11px` / built `23px`
 - HARD `.btn.sm` **textAlign**: drawing `start` / built `center`
-- HARD `.btn.sm` **color**: drawing `rgb(23, 25, 28)` / built `rgb(255, 255, 255)`
-- HARD `.btn.sm` **backgroundColor**: drawing `rgb(255, 255, 255)` / built `rgb(23, 25, 28)`
-- HARD `.btn.sm` **borderTopColor**: drawing `rgb(231, 231, 225)` / built `rgb(255, 255, 255)`
-- HARD `.btn.sm` **borderBottomColor**: drawing `rgb(231, 231, 225)` / built `rgb(255, 255, 255)`
+- HARD `.btn.sm` **color**: drawing `rgb(23, 25, 28)` / built `rgb(20, 112, 106)`
+- HARD `.btn.sm` **borderTopColor**: drawing `rgb(231, 231, 225)` / built `rgb(20, 112, 106)`
+- HARD `.btn.sm` **borderBottomColor**: drawing `rgb(231, 231, 225)` / built `rgb(20, 112, 106)`
 - HARD `.btn.sm` **display**: drawing `flex` / built `inline-flex`
+- HARD `.btn.sm` **boxBottom**: drawing `11px` / built `23px`
 - HARD `.icon-btn` **fontSize**: drawing `13.3333px` / built `16px`
 - HARD `.icon-btn` **lineHeight**: drawing `normal` / built `24`
 - HARD `.lede` **fontSize**: drawing `15.5px` / built `17.5px`
@@ -985,7 +964,6 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.lede` **maxWidth**: drawing `585.337px` / built `662.402px`
 - HARD `.lede` **boxTop**: drawing `0px` / built `16px`
 - HARD `.lede` **boxBottom**: drawing `18px` / built `0px`
-- HARD `.logo` **boxRight**: drawing `112.375px` / built `109.797px`
 - HARD `.num` **fontWeight**: drawing `400` / built `670`
 - HARD `.num` **color**: drawing `rgb(139, 144, 150)` / built `rgb(23, 25, 28)`
 - HARD `.num` **borderTopColor**: drawing `rgb(139, 144, 150)` / built `rgb(23, 25, 28)`
@@ -1055,7 +1033,6 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.lede` **maxWidth**: drawing `585.337px` / built `662.402px`
 - HARD `.lede` **boxTop**: drawing `0px` / built `16px`
 - HARD `.lede` **boxBottom**: drawing `18px` / built `0px`
-- HARD `.logo` **boxRight**: drawing `388.109px` / built `447.641px`
 - HARD `.num` **fontWeight**: drawing `400` / built `670`
 - HARD `.num` **color**: drawing `rgb(139, 144, 150)` / built `rgb(23, 25, 28)`
 - HARD `.num` **borderTopColor**: drawing `rgb(139, 144, 150)` / built `rgb(23, 25, 28)`
@@ -1129,7 +1106,6 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.legal p` **lineHeight**: drawing `26.04px` / built `15.6px`
 - HARD `.legal p` **gap**: drawing `normal` / built `0`
 - HARD `.legal p` **maxWidth**: drawing `663.382px` / built `489.6px`
-- HARD `.logo` **boxRight**: drawing `112.375px` / built `109.797px`
 - HARD `.mono` **color**: drawing `rgb(139, 144, 150)` / built `rgb(86, 91, 98)`
 - HARD `.mono` **borderTopColor**: drawing `rgb(139, 144, 150)` / built `rgb(86, 91, 98)`
 - HARD `.mono` **borderBottomColor**: drawing `rgb(139, 144, 150)` / built `rgb(86, 91, 98)`
@@ -1188,7 +1164,6 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.legal p` **lineHeight**: drawing `26.04px` / built `15.6px`
 - HARD `.legal p` **gap**: drawing `normal` / built `0`
 - HARD `.legal p` **maxWidth**: drawing `663.382px` / built `489.6px`
-- HARD `.logo` **boxRight**: drawing `388.109px` / built `447.641px`
 - HARD `.mono` **color**: drawing `rgb(139, 144, 150)` / built `rgb(86, 91, 98)`
 - HARD `.mono` **borderTopColor**: drawing `rgb(139, 144, 150)` / built `rgb(86, 91, 98)`
 - HARD `.mono` **borderBottomColor**: drawing `rgb(139, 144, 150)` / built `rgb(86, 91, 98)`
@@ -1243,7 +1218,6 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.icon-btn` **lineHeight**: drawing `normal` / built `24`
 - HARD `.lede` **boxTop**: drawing `16px` / built `24px`
 - HARD `.lede.big` **boxTop**: drawing `16px` / built `24px`
-- HARD `.logo` **boxRight**: drawing `112.375px` / built `109.797px`
 - HARD `.metastrip` **boxTop**: drawing `0px` / built `16px`
 - HARD `.num` **boxTop**: drawing `0px` / built `16px`
 - HARD `.reader` **boxTop**: drawing `30px` / built `0px`
@@ -1312,7 +1286,6 @@ PNGs, but it reports rather than gates, for the reason recorded in 11.9.
 - HARD `.icon-btn` **lineHeight**: drawing `normal` / built `24`
 - HARD `.lede` **boxTop**: drawing `16px` / built `24px`
 - HARD `.lede.big` **boxTop**: drawing `16px` / built `24px`
-- HARD `.logo` **boxRight**: drawing `388.109px` / built `447.641px`
 - HARD `.metastrip` **boxTop**: drawing `0px` / built `16px`
 - HARD `.num` **boxTop**: drawing `0px` / built `16px`
 - HARD `.reader` **boxTop**: drawing `30px` / built `0px`
