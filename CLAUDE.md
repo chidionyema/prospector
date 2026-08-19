@@ -189,10 +189,17 @@ here cannot change what production executes. The live answer is a command, never
 .venv/bin/python scripts/live_checkout.py --update   # roll production forward and restart
 ```
 
-**There is exactly one store**, pinned by `PROSPECTOR_STORE_DIR`. `config.store_root()` is the one
-resolver. Never write `Path(__file__).parent.parent / "store"` — a path derived from `__file__`
-follows the CODE, and a daemon writing one health file while a probe reads another can never see a
-provider recover.
+**Production's store is canonical, and it is not on this laptop** (founder ruling 2026-08-19).
+The Fly engine writes `/data/store` on volume `vol_42kyqo6g0kdzew14`. The laptop `store/` is a copy
+the cutover stopped updating: measured 2026-08-19 21:11Z, 166,013 ledger rows stamped that day on
+Fly against 0 on the laptop. A reader that resolves `config.store_root()` in a laptop process is
+reading the dead copy and will report a confident zero. Ask production — `scripts/engine_failover.py`
+is how the console's drain view already does it.
+
+**Within one process there is still exactly one store**, pinned by `PROSPECTOR_STORE_DIR` and
+resolved only by `config.store_root()`. Never write `Path(__file__).parent.parent / "store"` — a
+path derived from `__file__` follows the CODE, and a daemon writing one health file while a probe
+reads another can never see a provider recover.
 
 **Never `git add -A` in a worktree.** `store/` and `storage/` are tracked runtime state that
 pytest writes to. Stage explicit paths.
