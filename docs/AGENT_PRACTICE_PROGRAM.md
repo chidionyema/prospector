@@ -45,6 +45,27 @@ nobody has.
 **It is graded where the founder looks.** A probe that only answers when someone thinks to run it
 is prose with extra steps. Every row above appears on `/processes`.
 
+## Graded against Anthropic's own guidance
+
+Source: <https://code.claude.com/docs/en/best-practices>, read 2026-08-19. Where it and this
+estate disagree, the disagreement is written down rather than settled by preference.
+
+| its practice | us, measured 2026-08-19 |
+|---|---|
+| "Keep CLAUDE.md concise. Bloated files cause Claude to ignore your actual instructions" | **13,496 tokens injected every session** — 5,819 global, 7,677 project. This is the estate's largest single instruction-following risk and the likeliest reason a rule "stopped working" |
+| "For workflows only relevant sometimes, use skills. Claude loads them on demand" | 0 project skills before today. Two of the longest CLAUDE.md sections are now `/where-production-runs` and `/worktree-and-gate`, cutting the project file from 7,677 to 5,443 tokens |
+| "Hooks are deterministic; CLAUDE.md instructions are advisory" | 12 hooks wired, all ten of the session ones self-testing and graded. Ahead of the guidance here |
+| "Give Claude a check it can run" | `scripts/popdd_verify.py`, `scripts/process_audit.py`, `ops/state_probe.sh`, `scripts/live_checkout.py`. Strong |
+| "Use subagents for investigation; scope it or it fills your context" | Standing rule, and the delegation trigger is mechanical (second exploratory read → subagent) |
+| "Custom subagents in `.claude/agents/`" | none. Open — the review and recon prompts are retyped each session instead |
+| "`/clear` between unrelated tasks; manage context aggressively" | Enforced by measurement: `context-guard-hook.py` nudges at 140K, and 38 of the last 40 sessions still ran past it |
+| "Add an adversarial review step in a fresh context" | Not standard practice here yet. Open |
+| "Explore, plan, code, commit — plan mode for multi-file or unfamiliar work" | Partly. "Plan and claim before code" is a rule, but plan mode itself is rarely used |
+
+Two places this estate deliberately goes further, both for reasons that are written down: every
+claim ships with its receipt (proof-of-claim discipline, 2026-06-22), and every enforcement is
+itself graded, because hooks fail open.
+
 ## Ledger
 
 Shipped:

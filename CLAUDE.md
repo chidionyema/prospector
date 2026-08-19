@@ -101,161 +101,44 @@ Pluggable modules:
 - **The DRAIN stays trusted-only, and that asymmetry is deliberate.** `run.py::_cmd_resume` runs the same classifier at the default `trusted_only=True`, because re-vetting a `provisional` row on a provisional brain re-stamps it `provisional`: the row does not move, the money is spent, and the drain's CLI load helps keep the trusted brain benched (measured 2026-08-06: provisional −14 / defer +13 over 30 minutes, net −1). Generation may run into a provisional tail; the drain may not. One shared function, one parameter — so the two can never disagree by accident.
 - **Price is a rung, and evidence and action are separate decisions.** `price_comparables` retrieves cited willingness-to-pay anchors by default; letting them MOVE a price is a second, explicitly-enabled switch. Same flag for both is how a catalogue re-prices itself the day a feature merges.
 
-## Where production runs (changed again 2026-08-18 — read this before editing a branch)
+## Where production runs, and how to work in a worktree
 
-**Production runs on Fly, in the `prospector-engine` app.** Not this checkout, and no longer the
-laptop checkout either. `~/.prospector/ACTIVE` names the side that is serving; `engine_failover.py`
-is its writer. Editing a branch here cannot change what production executes.
+Both used to be long sections here, injected into every session. They are skills now, because
+they matter to some sessions and to none of the others: **`/where-production-runs`** and
+**`/worktree-and-gate`**. Load the one you need. What stays here is only what a session can get
+wrong without ever opening them.
 
-The live answer is a command, never this paragraph:
-
-```bash
-.venv/bin/python scripts/live_checkout.py            # machine state, deployed commit, CI on it
-.venv/bin/python scripts/live_checkout.py --update   # build origin/main and release it to Fly
-```
-
-Both are console buttons. The probe reads the commit out of the image itself
-(`/app/GIT_SHA`, written by `deploy/engine/Dockerfile` from the build argument
-`deploy/targets/fly.sh` passes). An image built without it reports "cannot tell which commit
-production runs", which is a problem rather than a silence — measured 2026-08-18, every release
-up to v15 was in exactly that state, so `fly releases` gave a version number that mapped to no
-commit at all.
-
-`--update` builds from `/Users/chidionyema/Documents/code/prospector-live`, a clean checkout
-detached at `origin/main`, and refuses if it has local code changes. `fly deploy` uploads a
-working tree, so building from this shared developer checkout would ship whatever branch a
-session left checked out. A fix reaches production through a PR, not through an edit on the box.
-
-Why it changed twice: production first ran from this shared developer checkout, on whatever branch
-a session had left it on. On 2026-08-17 that was `integrate/minimax-into-main`, 75 commits behind
-`origin/main`, so the daemon executed 17-hour-old code — visible only by running `lsof` on the pid.
-The 2026-08-18 cutover moved the engine to Fly and took the same question with it.
-
-**State did NOT move, and two traps guard that.**
-
-`PROSPECTOR_STORE_DIR` on both plists pins the catalogue, ledger, dossiers and scheduler files to
-`/Users/chidionyema/Documents/code/prospector/store`. That is the canonical store. There is exactly
-one.
-
-1. **Git does not carry secrets.** The live checkout has no `.env` of its own. The first thing the
-   move did was bench every MiniMax tier with `ProviderExhaustedError: All operators in ('minimax',
-   'minimax_m27') unavailable — check API keys and credentials`, because the key file was simply not
-   there. `.env` and `.lux/keys/agent.pem` are symlinks back to this checkout, and the probe checks
-   both.
-2. **A store path derived from `__file__` follows the CODE, not the store.** Four constants did
-   exactly that, so for twenty minutes the provider health marks, the retrieval cache and the
-   scheduler audit trail were written beside the new code while the ledger went to the canonical
-   store. `config.store_root()` is the one resolver now; anything needing a store path at module
-   level calls it — the health file records which brains are benched, and a daemon writing one
-   copy while a probe reads another can never see a provider recover.
-
-   **The trap is the two-step form, not the one-liner.** This rule used to end "never write
-   `Path(__file__).parent.parent / "store"` again", and the sibling sweep was a regex for exactly
-   that string. It found 2. An AST walk on 2026-08-19 found 40, because almost nobody writes it
-   on one line:
-
-   ```python
-   ROOT = Path(__file__).resolve().parents[1]   # line 43, looks harmless
-   ...
-   DOSSIERS = ROOT / "store" / "dossiers"       # line 49, the actual bug
-   ```
-
-   A regex over one line cannot see a name bound on another. Do not sweep for this by grepping.
-   `tests/unit/test_no_store_path_is_derived_from_file.py` is the check: it tracks the names, so
-   it catches both forms and any third one, and its allow-list carries a reason per entry.
-   Issue #371 has the full list and what was fixed.
-
-## Working in a git worktree
-
-**As of 2026-08-17 there is NO pre-commit gate in this checkout. Nothing stops a bad commit
-locally. Run the gate yourself.** This paragraph has now been wrong in both directions, which
-is exactly why the two commands below exist — read them, never this prose.
-
-Measured 2026-08-17: `git config --get core.hooksPath` is empty, and
-`.git/hooks/` contains only `pre-commit.DISABLED-2026-08-14` and `pre-commit.sample`. There is
-no `pre-commit` file, so `git commit` runs no gate.
-
-History, because both states have happened: the founder disabled the gate on 2026-08-14 by
-moving `.git/hooks/pre-commit` aside. On 2026-08-15 at 18:57 someone set `core.hooksPath` to
-`.git/hooks-active`, which symlinked `pre-commit` to `.lux/hooks/pre-commit` — and
-**`core.hooksPath` overrides the hooks directory entirely, so moving the old hook aside did
-nothing while it was set.** That cost a session on 2026-08-16: a commit failed with only
-"exit code 1" while the doc said no gate could have refused it. The setting has since been
-unset again.
-
-Check which it is, never trust this paragraph:
+**Production is not this checkout.** The scheduler and consumer run from
+`/Users/chidionyema/Documents/code/prospector-live`, detached at `origin/main`. Editing a branch
+here cannot change what production executes. The live answer is a command, never a paragraph:
 
 ```bash
-git config --get core.hooksPath          # set => THAT directory wins, not .git/hooks
-ls -la "$(git rev-parse --git-path hooks)"/pre-commit
+.venv/bin/python scripts/live_checkout.py            # daemon cwd, live HEAD vs origin/main, secrets
+.venv/bin/python scripts/live_checkout.py --update   # roll production forward and restart
 ```
 
-To actually disable it: `git config --unset core.hooksPath` (and only then does moving
-`.git/hooks/pre-commit` aside take effect). To enable: point `core.hooksPath` at a directory
-whose `pre-commit` links to `.lux/hooks/pre-commit`.
+**There is exactly one store**, pinned by `PROSPECTOR_STORE_DIR`. `config.store_root()` is the one
+resolver. Never write `Path(__file__).parent.parent / "store"` — a path derived from `__file__`
+follows the CODE, and a daemon writing one health file while a probe reads another can never see a
+provider recover.
 
-This cost a session on 2026-08-16: a commit failed with only "exit code 1", and the doc said no
-gate could have refused it. The gate had refused it, on one test out of 4124.
+**Never `git add -A` in a worktree.** `store/` and `storage/` are tracked runtime state that
+pytest writes to. Stage explicit paths.
 
-**The gate CAN pass, and the number that said otherwise is dead.** This file used to carry "the
-suite measures ~3185s serially against a 2400s ceiling, so the gate cannot pass". That sentence
-was prose, not a measurement, and it was quoted as fact in a session on 2026-08-16 before anyone
-checked it. `pytest.ini:42` sets `addopts = -n auto --dist loadfile`, so nothing runs serially.
-Two timings, both real: the gate's own python-lane commands on clean `main` (`0e1e939`) measured
-**1.7s of ruff plus 445.5s of pytest, 3925 passed and 3 skipped — 7m25s against the 2400s
-ceiling at `scripts/popdd_verify.py:86`, 19% of it**; the merged tree on 2026-08-16, timed while
-four CI jobs shared the box, measured **1281.41s, 4612 passed and 3 skipped — 21m21s, 53% of the
-ceiling**. Both pass. If you are about to repeat a timing claim from this paragraph, time it
-again: the suite grows, and the ceiling does not.
-
-**Install it where git actually LOOKS.** `core.hooksPath` is set in `.git/config` to
-`.git/hooks-active`, which makes `.git/hooks/` inert as a DIRECTORY — anything written there is
-never read, so the re-enable line this file carried until 2026-08-15
-(`ln -s ../../.lux/hooks/pre-commit .git/hooks/pre-commit`) was silently a no-op. The live
-control point is:
-
-```bash
-# ON. Two deliberate choices. The target is ABSOLUTE, because the link lives in
-# .git/hooks-active/ and a relative target would resolve against THAT directory. And it is the
-# MAIN checkout's copy, not `--show-toplevel`, because hooks-active sits in the COMMON git dir
-# and is shared by every worktree — one link, so the gate cannot be half-on.
-ln -sfn "$(dirname "$(cd "$(git rev-parse --git-common-dir)" && pwd -P)")/.lux/hooks/pre-commit" \
-        "$(git rev-parse --git-path hooks)/pre-commit"
-# OFF
-rm "$(git rev-parse --git-path hooks)/pre-commit"
-```
-
-Two things the gate now depends on, both of which fail by accusing something else. **`ruff` runs
-REPO-WIDE** (`scripts/popdd_verify.py:166`), so one unformatted file anywhere walls every commit
-in every worktree — `main` itself carried 12 such errors until they were cleared for this
-(2b38ca3), and a worktree still sitting on an older base will fail ruff until it rebases. And
-**every worktree needs `.venv` and `.lux/keys/agent.pem`**, neither of which `git worktree add`
-creates; without them the gate is BLOCKED over a missing interpreter or an unsigned receipt.
-`./scripts/setup_worktree.sh <path>` is the only correct way to make a worktree, and now it is
-load-bearing rather than a convenience.
-
-The wedge risk is smaller but not gone: the gate runs INSIDE the hook, so `git commit` holds
-`.git/index.lock` for the whole run — now bounded at ~7.5 minutes rather than the 49 minutes that
-blocked three sessions on 2026-08-14. `_run_step` kills the process GROUP and drains the pipes,
-which is what fixed that specific hang. Preflight a change without committing:
-`.venv/bin/python scripts/popdd_verify.py --staged`.
-
-**One session, one worktree** still stands, for the index rather than the gate: sessions sharing
-this checkout share one `.git/index`, and `git worktree add` succeeds even while that index is
-locked, which is exactly the point. `scripts/popdd_verify.py::single_flight` still refuses a
-second gate run in the same tree in under a second when you invoke it by hand
-(pinned by `tests/unit/test_popdd_gate_cannot_wedge.py`).
-
-For a Python-only change, skip `node_modules`: the `cp -Rc` clone is the slow part of setup
-(>5 min) and the web lane never runs on a diff that contains no web files.
-
-This checkout is often shared by two concurrent sessions, so a worktree is how you merge, build or test without touching another session's tree and index. But `git worktree add` produces a tree that **looks** complete and is not, and each gap fails by accusing something else. Always run:
+**Make worktrees with the script, not by hand.** `git worktree add` produces a tree that looks
+complete and is not, and each gap fails by accusing something else:
 
 ```bash
 git worktree add --detach ../my-worktree <ref>
 ./scripts/setup_worktree.sh ../my-worktree
 ```
 
-It fixes four traps, each of which misdirects the diagnosis (detail: memory `worktree-setup-is-a-script-now.md`): **`node_modules` cannot be symlinked** (Turbopack rejects any symlink leaving the project root, same filesystem or not — use `cp -Rc`, an APFS copy-on-write clone); **`.lux/keys/agent.pem` is untracked**, so the shared POPDD hook runs then fails for want of a signing key, reading as a gate violation; **`.venv` is absent while `.lux/hooks/pre-commit:67` pins `.venv/bin/python` relative to cwd**, so commits die with `POPDD gate BLOCKED` over a missing interpreter (a symlink is fine here — `node_modules` is the odd one out); **`store/` and `storage/` are tracked runtime state that pytest writes to**, so never `git add -A` in a worktree.
+**Whether a pre-commit gate exists is a command, not a sentence** — this file has been wrong in
+both directions:
 
-Two more traps that outlive the setup script: `npm run build 2>&1 | tail` reports **tail's** exit status, so a failed build reads as `exit 0` — capture the build's own status before any pipe. And anything reading `<root>/.git/…` as a directory is a bug: in a worktree `.git` is a **file** containing `gitdir:`. Ask git instead (`git rev-parse --git-path hooks`, `--git-common-dir`), which also honours `core.hooksPath`; `tests/unit/test_popdd_gate_lanes.py` had exactly this defect and reported the POPDD gate uninstalled in a checkout where it was installed and working.
+```bash
+git config --get core.hooksPath          # set => THAT directory wins, not .git/hooks
+ls -la "$(git rev-parse --git-path hooks)"/pre-commit
+```
+
+Preflight without committing: `.venv/bin/python scripts/popdd_verify.py --staged`.
