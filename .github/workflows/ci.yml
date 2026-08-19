@@ -730,6 +730,13 @@ jobs:
       - name: Lint
         run: npm run lint -- --cache
 
+      # CSS has never had a lane. `stylelint.config.mjs` runs the possible-errors half of
+      # stylelint over the two stylesheets this repo is allowed to write (the shipped bundle
+      # mumchimp.css is byte-locked and deliberately ignored): duplicate properties, unknown
+      # units, invalid hex, a shorthand that silently wipes the longhand above it.
+      - name: Lint CSS
+        run: npm run lint:css
+
       # The 523 vitest tests had NO enforcement point anywhere: this job ran typecheck +
       # build only, and the pre-commit gate ran pytest, which cannot see a .tsx. A storefront
       # unit test could go red and reach main with every check green.
