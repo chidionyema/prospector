@@ -49,6 +49,7 @@ import argparse
 import json
 import math
 import re
+import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
@@ -57,7 +58,14 @@ NAME = "L1"
 DOC_REF = "docs/COMMERCIAL_READINESS_PROGRAM.md §26.7, §28.4 (L1), §13 (the 20% bar)"
 
 REPO = Path(__file__).resolve().parents[2]
-CACHE_DIR = REPO / "store" / "_cache"
+sys.path.insert(0, str(REPO))
+
+# The store is where PROSPECTOR_STORE_DIR says, never where this file sits. A path
+# derived from __file__ follows the CODE; production moved off this checkout on
+# 2026-08-17 and the state did not. One resolver: prospector.config.store_root().
+from prospector.config import store_root  # noqa: E402
+
+CACHE_DIR = store_root() / "_cache"
 
 # Stopwords. Deliberately the same list `retrieval.py:52` uses for fixture matching plus the
 # handful of query-scaffolding words our own templates emit ("how", "much", "do", "pay"), which

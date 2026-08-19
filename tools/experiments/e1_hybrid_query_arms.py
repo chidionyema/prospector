@@ -56,7 +56,12 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+# The store is where PROSPECTOR_STORE_DIR says, never where this file sits. A path
+# derived from __file__ follows the CODE; production moved off this checkout on
+# 2026-08-17 and the state did not. One resolver: prospector.config.store_root().
 import _corpus as corpus  # noqa: E402  - sibling helper, path set above
+
+from prospector.config import store_root  # noqa: E402
 
 NAME = "E1"
 DOC_REF = ("docs/COMMERCIAL_READINESS_PROGRAM.md §3 (row E1), §18.3 'What this changes about "
@@ -302,8 +307,7 @@ def _quiet_now() -> bool:
     contrast survives. What does not survive is an unqualified cost or latency number. If the
     competition is severe enough to stop the moat answering, the dead-arm abort catches it.
     """
-    from pathlib import Path as _P
-    sched = _P(__file__).resolve().parents[2] / "store" / "scheduler"
+    sched = store_root() / "scheduler"
     return (sched / "PAUSE").exists() or (sched / "PAUSE_GENERATION").exists()
 
 
@@ -498,8 +502,7 @@ def run(args: list[str]) -> dict[str, Any]:
         print("  PREFLIGHT ONLY — nothing was billed. Re-run with --live to measure.")
         return out
 
-    from pathlib import Path as _P
-    sched = _P(__file__).resolve().parents[2] / "store" / "scheduler"
+    sched = store_root() / "scheduler"
     if not ((sched / "PAUSE").exists() or (sched / "PAUSE_GENERATION").exists()) \
             and not ns.quiet_daemon_ok:
         raise SystemExit(

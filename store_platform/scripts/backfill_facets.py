@@ -55,9 +55,13 @@ from typing import Any, Dict, Optional, Tuple
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
+# The store is where PROSPECTOR_STORE_DIR says, never where this file sits. A path
+# derived from __file__ follows the CODE; production moved off this checkout on
+# 2026-08-17 and the state did not. One resolver: prospector.config.store_root().
 from prospector import facets as facet_vocab  # noqa: E402
+from prospector.config import store_root  # noqa: E402
 
-DOSSIER_DIR = REPO_ROOT / "store" / "dossiers"
+DOSSIER_DIR = store_root() / "dossiers"
 OUTPUT_PATH = REPO_ROOT / "store_platform" / "data" / "facets-backfill.json"
 DEFAULT_CATALOG_URL = "https://prospector-store-api.fly.dev/catalog"
 

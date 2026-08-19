@@ -21,9 +21,16 @@ import collections
 import glob
 import json
 import statistics
+import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO))
+
+# The store is where PROSPECTOR_STORE_DIR says, never where this file sits. A path
+# derived from __file__ follows the CODE; production moved off this checkout on
+# 2026-08-17 and the state did not. One resolver: prospector.config.store_root().
+from prospector.config import store_root  # noqa: E402
 
 
 def main() -> int:
@@ -39,7 +46,7 @@ def main() -> int:
     ungrounded_cits: list[int] = []
     dossiers = 0
 
-    for f in glob.glob(str(REPO / "store" / "dossiers" / "*.json")):
+    for f in glob.glob(str(store_root() / "dossiers" / "*.json")):
         try:
             d = json.loads(Path(f).read_text())
         except Exception:

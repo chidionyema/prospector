@@ -37,6 +37,11 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# The store is where PROSPECTOR_STORE_DIR says, never where this file sits. A path
+# derived from __file__ follows the CODE; production moved off this checkout on
+# 2026-08-17 and the state did not. One resolver: prospector.config.store_root().
+from prospector.config import store_root  # noqa: E402
+
 DEFAULTS: dict[str, Any] = {
     "enabled": False,
     "embed_model": "nomic-embed-text",
@@ -311,7 +316,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         try:
             db = str(Path(cfg.store_dir) / "prospector.db")  # type: ignore[union-attr]
         except Exception:  # noqa: BLE001
-            db = str(Path(__file__).resolve().parent.parent / "store" / "prospector.db")
+            db = str(store_root() / "prospector.db")
 
     host, model = str(mcfg["ollama_host"]), str(mcfg["embed_model"])
     try:

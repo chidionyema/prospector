@@ -48,12 +48,16 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# The store is where PROSPECTOR_STORE_DIR says, never where this file sits. A path
+# derived from __file__ follows the CODE; production moved off this checkout on
+# 2026-08-17 and the state did not. One resolver: prospector.config.store_root().
+from prospector.config import store_root  # noqa: E402
 from tools.verify_pass_shelf_coverage import _passes, _shelf_ids  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 # The ledger follows the STORE, not this file: production runs from a different checkout
 # and both must append to the same history (config.store_root, 2026-08-17).
-STORE = Path(os.environ.get("PROSPECTOR_STORE_DIR") or REPO / "store")
+STORE = Path(os.environ.get("PROSPECTOR_STORE_DIR") or store_root())
 LEDGER = STORE / "ops" / "pack_recovery.jsonl"
 DOSSIERS = STORE / "dossiers"
 # The interpreter that is ALREADY running this script, never a path built from the checkout
