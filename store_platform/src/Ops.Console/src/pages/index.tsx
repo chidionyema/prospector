@@ -433,7 +433,14 @@ function Verdict({ s }: { s: Status }) {
   } else if (!producer && !consumer) {
     tone = 'bad';
     headline = 'Not running.';
-    detail = `Producer: ${s.heartbeats.producer.why} Consumer: ${s.heartbeats.consumer.why}`;
+    // Joined with a separator, not a space. Each `why` is a full sentence, so a bare space
+    // ran them together: "...how long it has been silent Consumer: ...". The `??` is the
+    // belt to the API's braces -- the type says `why: string`, and the API omitted it
+    // anyway, which is how the operator got the word "undefined" in the headline.
+    detail = [
+      `Producer: ${s.heartbeats.producer.why ?? 'no reason reported'}`,
+      `Consumer: ${s.heartbeats.consumer.why ?? 'no reason reported'}`,
+    ].join(' · ');
   } else if (paused.length) {
     tone = 'warn';
     headline = paused.some((p) => p.scope === 'all') ? 'Paused — everything.' : 'Partly paused.';
