@@ -16,6 +16,7 @@
  * answer into a week. Monospace with the source visible is honest and complete; a prettier
  * renderer is a later commit that touches only this file.
  */
+import { useRouter } from 'next/router';
 import { useState } from 'react';
 
 import Shell from '@/components/Shell';
@@ -43,7 +44,19 @@ function size(bytes: number): string {
 }
 
 export default function Docs() {
-  const [open, setOpen] = useState<string | null>(null);
+  // `?open=incidents/INC-....json` opens that document directly. The Incidents page links here
+  // that way, and a link that lands on the right page and then does nothing is the same
+  // "built and unreachable" defect as having no page at all.
+  //
+  // Derived, not copied into state by an effect. The query string is empty on the first render
+  // and arrives at hydration, so an effect is the obvious way to do this and is also the one
+  // eslint refuses. `undefined` means "nobody has clicked yet, the URL decides"; `null` means
+  // the operator closed it and the URL must not reopen it.
+  const router = useRouter();
+  const fromUrl = typeof router.query.open === 'string' ? router.query.open : null;
+  const [picked, setPicked] = useState<string | null | undefined>(undefined);
+  const open = picked === undefined ? fromUrl : picked;
+  const setOpen = setPicked;
 
   const index = useOps<DocsIndex>('docs');
   // The second read is skipped until something is selected — `useOps` takes a null view for

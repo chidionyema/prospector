@@ -38,6 +38,7 @@ export const VIEWS = [
   'shelf',
   'method',
   'docs',
+  'incidents',
   'content_rules',
   'orders',
   'order',

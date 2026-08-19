@@ -79,12 +79,19 @@ def _today() -> str:
     return _dt.date.today().isoformat()
 
 
-def load() -> list[dict]:
-    """Every record on disk, oldest first. A malformed file is a finding, never a crash."""
+def load(directory: Path | None = None) -> list[dict]:
+    """Every record on disk, oldest first. A malformed file is a finding, never a crash.
+
+    `directory` defaults to INCIDENT_DIR. It is a parameter so the ops console and its tests read
+    records through THIS function instead of writing a second directory walk that would drift
+    from it — the judgement in `validate` and `overdue` is worth nothing if two callers disagree
+    about which files are records.
+    """
     out: list[dict] = []
-    if not INCIDENT_DIR.is_dir():
+    root = Path(directory) if directory else INCIDENT_DIR
+    if not root.is_dir():
         return out
-    for path in sorted(INCIDENT_DIR.glob("INC-*.json")):
+    for path in sorted(root.glob("INC-*.json")):
         try:
             rec = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:

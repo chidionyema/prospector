@@ -1,0 +1,34 @@
+{
+  "id": "INC-2026-08-19-mutation-check-never-mutated",
+  "title": "Two mutation checks passed without mutating anything, and I read both as proof",
+  "opened": "2026-08-19",
+  "severity": "medium",
+  "state": "open",
+  "first_order": {
+    "what_broke": "A new test is only proven when it has been seen red, so each new fence was checked by breaking the code it guards and re-running. Twice in one session the break never took effect, and the run that followed graded the unmutated file. Both times the terminal showed a clean pass, and both times I reported a conclusion drawn from it. Once the conclusion was too generous: a python patch script assumed 12 spaces of indent before `py=false; dn=false; wb=false; cn=false` in .github/workflows/ci.yml when the real indent is 10, str.index raised, the shell carried on, and '17 passed' was reported as proof the CI filter tests could fail. Once it was too harsh: `sed -i '' 's/router.query.open/router.query.openX/'` without the g flag replaced the first of two occurrences on the single line `typeof router.query.open === 'string' ? router.query.open : null`, so the page still read the query string, the fence still passed, and I reported the fence as vacuous when it was not.",
+    "receipt": "Session transcript 2026-08-19: the ci.yml mutation reported '17 passed' before the indent was measured with `grep -n 'py=false' | sed 's/ /·/g'` and found to be `··········py=false`; re-running with the correct indent gave '3 failed, 14 passed'. The docs.tsx mutation reported 'Tests 8 passed (8)'; re-running with `s///g` gave 'Tests 1 failed | 7 passed (8)' and the message '/docs?open — docs.tsx never reads it'."
+  },
+  "second_order": {
+    "sweep_command": "git grep -nE 'sed -i' -- . | rg \"s[/|#][^/|#]*[/|#][^/|#]*[/|#]\" | rg -v \"g'|g\\\"|g;|g$|g \"",
+    "siblings_found": 0,
+    "note": "No committed script performs a first-match-only in-place substitution; the single hit is the docstring of the fix itself. That is the honest count and it is also the point: the defect does not live in committed code, it lives in the ad-hoc shell a session types to prove a test. Nothing in the repo could have caught it, which is why the mechanism had to be a new tool rather than a rule."
+  },
+  "third_order": {
+    "tier": "refuse",
+    "mechanism": "scripts/prove_test_fails.py. It counts the occurrences of the target text before editing, replaces every one, asserts the original is gone, runs the command, restores the files in a finally block, and INVERTS the exit code so that a mutation the command survives exits 1. A replacement that matches nothing, or one that leaves the original text behind, exits 2 before the command is ever run. Pinned by tests/unit/test_prove_test_fails.py, one test per failure mode.",
+    "landed_on": "2026-08-19"
+  },
+  "grade": {
+    "signature": "a mutation check reported as proof when the mutation did not apply, or applied to only some occurrences",
+    "window_days": 30,
+    "before": 2,
+    "verdict": "unproven"
+  },
+  "cause_chain": [
+    "A python patch script raised on a wrong indent assumption, the shell continued, and the test run that followed graded the unmutated file.",
+    "A sed substitution without the g flag replaced one of two occurrences on the same line, leaving the guarded behaviour intact.",
+    "The proof step was ad-hoc shell typed fresh each time, so it had no receipt of its own: nothing printed whether the edit landed.",
+    "A passing run after a failed edit is indistinguishable from a passing run after a successful edit, so the reader cannot tell 'the test is vacuous' from 'the mutation never happened'.",
+    "CLASS: a verification step that produces no evidence of having run is not verification. When the check and the thing being checked share one exit code, every way the check can fail silently is reported as a property of the subject. The fix is for the checking tool to assert its own precondition and to invert the result, so that 'nothing happened' can never be spelled the same way as 'it passed'."
+  ]
+}
