@@ -53,12 +53,22 @@ env:
   DOTNET_VERSION: "9.0.x"
   FLY_APP: prospector-store-api
 
+# WHY THESE JOBS DO NOT RUN ON THE SELF-HOSTED FLEET.
+# On 2026-08-19 a merge to main sat undeployed for twelve hours. Nothing had failed: the deploy
+# run was QUEUED behind feature-branch CI, because deploys asked for the same `heavy` label as
+# every other job and the fleet is three machines. Sessions push branches faster than three
+# runners drain them, so a deploy is always last in a queue it shares.
+# A deploy job here is a checkout, a toolchain and `flyctl deploy`, which builds on Fly's remote
+# builder — it needs a runner, not a big one. GitHub-hosted runners are a separate queue, so a
+# deploy can no longer wait behind our own CI. Set `CI_DEPLOY_RUNS_ON` to move them back,
+# without another code change.
+# Pinned by tests/unit/test_deploys_do_not_share_the_ci_queue.py.
 jobs:
   # The image build compiles, so a compile error already fails the deploy. It does NOT run xunit —
   # gate the suite here rather than discover a regression against live buyers. This is the money
   # rail: fulfilment, checkout and the content pointer all live in this app.
   test:
-    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_DEPLOY_RUNS_ON || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -93,7 +103,7 @@ jobs:
   deploy:
     needs: test
     if: ${{ !inputs.dry_run }}
-    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_DEPLOY_RUNS_ON || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master

@@ -88,6 +88,19 @@ DEFAULT_DB_KEEP = 30
 # confirmed on R2, so a sick git cannot delete the good copies on its way past.
 DEFAULT_BUNDLE_KEEP = 14
 
+# How many dated ledger snapshots to keep. Until 2026-08-19 the answer was "all of them":
+# db/ had DEFAULT_DB_KEEP and repo/ had DEFAULT_BUNDLE_KEEP, and the one series that grows
+# every single day had no ceiling at all. Measured on the bucket that morning, 19 days in:
+#
+#   ledger/     17 objects   220.4 MB      db/      9 objects     6.1 MB
+#
+# About 13 MB a day, so 4.7 GB a year, in a bucket whose whole point is that nobody turns
+# it off. 30 is generous rather than tight, because the ledger is APPEND-ONLY: every
+# snapshot is a superset of the one before it, so the newest copy alone reconstructs the
+# whole log. The older copies buy exactly one thing — a window in which a truncation that
+# nobody noticed can still be undone — and a month is that window.
+DEFAULT_LEDGER_KEEP = 30
+
 # A DIFFERENT bucket from R2_BUCKET (prospector-packs), on purpose. The delivery bucket is
 # reachable by the storefront's credentials and could have a public r2.dev domain attached in
 # the Cloudflare dashboard — nothing in this repo would show it, so nothing in this repo can
@@ -401,7 +414,8 @@ def _dossier_key(path: Path) -> str:
 
 
 def sync(s3, bucket: str, *, dry_run: bool = False,
-         db_keep: int = DEFAULT_DB_KEEP) -> tuple[int, int, str, str]:
+         db_keep: int = DEFAULT_DB_KEEP,
+         ledger_keep: int = DEFAULT_LEDGER_KEEP) -> tuple[int, int, str, str]:
     """Mirror dossiers, append a dated ledger snapshot and a dated db snapshot.
 
     Returns (uploaded, skipped, ledger_key, db_key).
@@ -440,6 +454,10 @@ def sync(s3, bucket: str, *, dry_run: bool = False,
                                ExtraArgs={"ContentType": "application/gzip"})
             finally:
                 tmp_path.unlink(missing_ok=True)
+            # After the upload, never before — the same prune-after-write rule the db
+            # snapshots follow, so a bad local file cannot delete the good copies on its
+            # way past. _prune_ledger_snapshots adds a size check on top of it.
+            _prune_ledger_snapshots(s3, bucket, keep=ledger_keep)
 
     # The catalogue index. Until 2026-08-07 this file was in the backup ONLY as ad-hoc
     # migration copies somebody made by hand before a schema change (.pre-market.bak,
@@ -545,6 +563,53 @@ def _prune_db_snapshots(s3, bucket: str, *, keep: int) -> list[str]:
         s3.delete_object(Bucket=bucket, Key=key)
     if stale:
         print(f"  pruned {len(stale)} db snapshot(s), keeping the newest {keep}")
+    return stale
+
+
+def _prune_ledger_snapshots(s3, bucket: str, *, keep: int) -> list[str]:
+    """Delete all but the newest `keep` dated ledger snapshots. `keep<=0` disables pruning.
+
+    Same dated-key sort as the db snapshots, and one guard they do not need.
+
+    THE SHRINK GUARD. The ledger is append-only, so a snapshot that is SMALLER than one it
+    is about to replace means the local file lost records — the exact failure this copy
+    exists to survive, and the reason these keys are dated instead of overwritten. Pruning
+    on that day would delete the good copies while the short one arrives. So when the newest
+    object is smaller than the largest object queued for deletion, nothing is deleted and
+    the run says why. The bucket grows for a day; it does not lose the only good copy.
+    """
+    if keep <= 0:
+        return []
+    sizes: dict[str, int] = {}
+    token = None
+    while True:
+        kwargs = {"Bucket": bucket, "Prefix": LEDGER_PREFIX, "MaxKeys": 1000}
+        if token:
+            kwargs["ContinuationToken"] = token
+        page = s3.list_objects_v2(**kwargs)
+        for obj in page.get("Contents", []):
+            sizes[obj["Key"]] = int(obj.get("Size") or 0)
+        if not page.get("IsTruncated"):
+            break
+        token = page.get("NextContinuationToken")
+
+    keys = sorted(sizes)
+    if len(keys) <= keep:
+        return []
+    stale = keys[:-keep]
+    newest = sizes[keys[-1]]
+    biggest_doomed = max(sizes[k] for k in stale)
+    if newest < biggest_doomed:
+        print(
+            f"  REFUSED to prune {len(stale)} ledger snapshot(s): the newest is "
+            f"{newest} bytes but {biggest_doomed} bytes was kept earlier. The ledger is "
+            "append-only, so it has lost records. Nothing deleted.",
+            file=sys.stderr,
+        )
+        return []
+    for key in stale:
+        s3.delete_object(Bucket=bucket, Key=key)
+    print(f"  pruned {len(stale)} ledger snapshot(s), keeping the newest {keep}")
     return stale
 
 
@@ -781,6 +846,9 @@ def main() -> int:
     parser.add_argument("--db-keep", type=int, default=DEFAULT_DB_KEEP,
                         help=f"dated db snapshots to retain, 0 = keep every one "
                              f"(default {DEFAULT_DB_KEEP})")
+    parser.add_argument("--ledger-keep", type=int, default=DEFAULT_LEDGER_KEEP,
+                        help="how many dated ledger snapshots to keep; 0 disables pruning "
+                             f"(default {DEFAULT_LEDGER_KEEP})")
     parser.add_argument("--skip-mirror", action="store_true",
                         help="do not push the git mirror")
     parser.add_argument("--mirror-only", action="store_true",
@@ -814,7 +882,7 @@ def main() -> int:
     mirror_bytes = 0
     if not args.verify_only:
         uploaded, skipped, ledger_key, db_key = _retry_on_skew(
-            sync, s3, bucket, db_keep=args.db_keep
+            sync, s3, bucket, db_keep=args.db_keep, ledger_keep=args.ledger_keep
         )
         if args.skip_mirror:
             pass

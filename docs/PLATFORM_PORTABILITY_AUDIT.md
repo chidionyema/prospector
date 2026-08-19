@@ -270,6 +270,15 @@ Seven of these are installed and snapshotted nowhere in `ops/launchd/`: the thre
 `actions.runner.chidionyema-prospector.mumchimp-mac{,-2,-3,-4}` agents, correctly gone since the
 runners moved to Fly (task #6), never removed from the snapshot.
 
+**What counts as the stack, since the laptop does not distinguish.** Founder, 2026-08-19:
+*"prospector and hermes agent and the surface area around them is the stack, the dependencies"*.
+So the two `ai.hermes.*` jobs above are in scope and must migrate. `com.haworks.*` and
+`com.tie.*` are not, and neither are Adobe, ExpressVPN and Steam. Nothing on this machine records
+that distinction: 36 agents sit in one flat directory, and the only thing separating a stack job
+from somebody else's is the prefix of its label. A migration script that takes "the launchd jobs"
+takes four projects, and one that hand-picks them will miss the next one added. The label prefix
+is the de-facto namespace, so it should become the declared one.
+
 **F4a — Three copies of our own code run off-repo, each pinned at a different commit.**
 
 | Copy | What runs it | Drift, measured 2026-08-19 |

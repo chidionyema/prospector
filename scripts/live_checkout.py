@@ -6,9 +6,14 @@ Why this exists (2026-08-17): production ran from the shared developer checkout
 session left it on. On 2026-08-17 it was 75 commits behind origin/main, so the daemon
 executed 17-hour-old code, and nobody could tell without running lsof by hand.
 
-Production now runs from a dedicated checkout pinned to origin/main. Runtime state does
-not move: PROSPECTOR_STORE_DIR (config.py, "redirects every store read/write") keeps the
-catalogue, ledger, dossiers and scheduler files in the canonical store directory.
+Production now runs from a dedicated checkout pinned to origin/main, and since the
+2026-08-18 cutover it runs on Fly, so --update builds that checkout and releases the image.
+
+State moved with it. Production's store is /data/store on the Fly volume vol_42kyqo6g0kdzew14,
+and that is the canonical one (founder ruling 2026-08-19). The STORE constant below is the
+LAPTOP store, which this script only uses to check the pre-cutover launchd plists still agree
+with each other. Do not read it as production's store: measured 2026-08-19, Fly's ledger took
+166,013 rows that day and the laptop copy took 0.
 
 Report by default. --update fast-forwards the live checkout to origin/main and restarts
 the daemons. It refuses to touch a checkout with local modifications.
@@ -29,6 +34,8 @@ from pathlib import Path
 
 DEV = Path("/Users/chidionyema/Documents/code/prospector")
 LIVE = Path("/Users/chidionyema/Documents/code/prospector-live")
+#: The LAPTOP store, used only to check the pre-cutover launchd plists against each other.
+#: Production's store is /data/store on Fly; see the module docstring.
 STORE = DEV / "store"
 JOBS = ("com.prospector.scheduler", "com.prospector.consumer", "com.prospector.ops-console")
 # untracked files the daemon needs that git will never bring across

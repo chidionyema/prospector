@@ -1015,6 +1015,24 @@ def _decay_sweep_budget(cfg) -> int:
 _UNLIST_TIMEOUT_S = 180
 
 
+def _proc_tail(proc) -> str:
+    """The last 300 characters a subprocess said, WITHOUT dropping the stream that says why.
+
+    This was `(proc.stdout or proc.stderr)`, which discards stderr whenever stdout is non-empty --
+    and a python script that prints progress and then raises does exactly that, so the tail logged
+    beside "killed pack(s) may still be selling" was the progress and not the traceback. Same
+    defect, same day, as `scripts/worktree_snapshot.py::git`; memory
+    `a-step-that-discards-the-stderr-explaining-its-own-death`.
+
+    On success stdout alone, because it is the report. On failure both, stderr last, because the
+    tail is cut from the END and the reason is what must survive the cut.
+    """
+    if proc.returncode == 0:
+        return (proc.stdout or "").strip()[-300:]
+    both = "\n".join(x for x in (proc.stdout, proc.stderr) if x and x.strip())
+    return both.strip()[-300:]
+
+
 def _unlist_pass(cfg) -> dict | None:
     """Drain `pending_unlist.jsonl` against Store.Api. Never raises. None if nothing is queued.
 
@@ -1062,7 +1080,7 @@ def _unlist_pass(cfg) -> dict | None:
               file=sys.stderr, flush=True)
         return out
 
-    out = {"rc": proc.returncode, "tail": (proc.stdout or proc.stderr).strip()[-300:]}
+    out = {"rc": proc.returncode, "tail": _proc_tail(proc)}
     # CRITICAL on BOTH paths: below it never reaches launchd.err.log (verified 2026-08-05), and a
     # shelf actuator whose success is invisible is how this loop stayed unwired for two months.
     if proc.returncode == 0:
@@ -1163,7 +1181,7 @@ def _recover_pass(cfg) -> dict | None:
         except OSError:
             pass                               # cadence is an optimisation, not a correctness rail
 
-    out = {"rc": proc.returncode, "tail": (proc.stdout or proc.stderr).strip()[-300:]}
+    out = {"rc": proc.returncode, "tail": _proc_tail(proc)}
     logger.info("Pack recovery: %s", out["tail"])
     return out
 

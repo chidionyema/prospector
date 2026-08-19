@@ -52,12 +52,22 @@ env:
   FLY_APP: prospector-engine
   CONSOLE_URL: https://prospector-engine.fly.dev
 
+# WHY THESE JOBS DO NOT RUN ON THE SELF-HOSTED FLEET.
+# On 2026-08-19 a merge to main sat undeployed for twelve hours. Nothing had failed: the deploy
+# run was QUEUED behind feature-branch CI, because deploys asked for the same `heavy` label as
+# every other job and the fleet is three machines. Sessions push branches faster than three
+# runners drain them, so a deploy is always last in a queue it shares.
+# A deploy job here is a checkout, a toolchain and `flyctl deploy`, which builds on Fly's remote
+# builder — it needs a runner, not a big one. GitHub-hosted runners are a separate queue, so a
+# deploy can no longer wait behind our own CI. Set `CI_DEPLOY_RUNS_ON` to move them back,
+# without another code change.
+# Pinned by tests/unit/test_deploys_do_not_share_the_ci_queue.py.
 jobs:
   # The image build runs `next build`, so a broken console fails the deploy on its own. What it
   # does NOT run is the console's own test suite, and that suite is the thing that pins the
   # sign-in limiter and the fail-closed default on a box that now answers the open internet.
   test:
-    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_DEPLOY_RUNS_ON || 'ubuntu-latest' }}
     defaults:
       run:
         working-directory: store_platform/src/Ops.Console
@@ -75,7 +85,7 @@ jobs:
   deploy:
     needs: test
     if: ${{ !inputs.dry_run }}
-    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_DEPLOY_RUNS_ON || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
