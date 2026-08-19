@@ -163,7 +163,7 @@ function JobWatch({ job, onFinished }: { job: string; onFinished: () => void }) 
       {live.error ? <Problem>{live.error}</Problem> : null}
       <div className="text-[12px] text-muted">{live.data?.note ?? ''}</div>
       {ended && receipt?.message ? (
-        <pre className="scroll-x mt-1 max-h-56 overflow-y-auto rounded-sm bg-surface3 px-2 py-1.5 font-mono text-[11px]">
+        <pre tabIndex={0} className="scroll-x mt-1 max-h-56 overflow-y-auto rounded-sm bg-surface3 px-2 py-1.5 font-mono text-[11px]">
           {receipt.message}
         </pre>
       ) : null}
@@ -341,7 +341,7 @@ export default function Tools() {
                     </div>
                   </div>
                   <div className="wrap-any mt-1 font-mono text-[11px] text-subtle">{t.path}</div>
-                  <pre className="scroll-x mt-2 rounded-sm bg-surface3 px-2 py-1.5 font-mono text-[11px]">
+                  <pre tabIndex={0} className="scroll-x mt-2 rounded-sm bg-surface3 px-2 py-1.5 font-mono text-[11px]">
                     {t.command}
                   </pre>
                   <div className="mt-1 text-[12px] text-muted">{RISK_NOTE[t.risk]}</div>

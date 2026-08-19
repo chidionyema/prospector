@@ -93,7 +93,15 @@ class TestADryRunDoesNotMintWaybackCaptures(unittest.TestCase):
     """
 
     def setUp(self):
-        os.environ["STORE_INTERNAL_API_KEY"] = "test-internal-key"
+        # `patch.dict` and not a raw `os.environ[...] =`: a raw assignment in setUp survives
+        # the test and every test after it in the same xdist worker, and the test that then
+        # fails is somebody else's. On 2026-08-19 a process-wide PROSPECTOR_STORE_DIR left
+        # behind by `ops/automations/log_rotation.py` failed eight tests in three unrelated
+        # files, on CI only. `tests/conftest.py` now fails the leaking test by name, which is
+        # how this one was found.
+        env = patch.dict(os.environ, {"STORE_INTERNAL_API_KEY": "test-internal-key"})
+        env.start()
+        self.addCleanup(env.stop)
         self._tmp = tempfile.TemporaryDirectory()
         self.store_dir = Path(self._tmp.name)
         self.cfg = MagicMock()
@@ -150,7 +158,15 @@ class TestADryRunDoesNotMintWaybackCaptures(unittest.TestCase):
 
 class TestDryRunMintsNothing(unittest.TestCase):
     def setUp(self):
-        os.environ["STORE_INTERNAL_API_KEY"] = "test-internal-key"
+        # `patch.dict` and not a raw `os.environ[...] =`: a raw assignment in setUp survives
+        # the test and every test after it in the same xdist worker, and the test that then
+        # fails is somebody else's. On 2026-08-19 a process-wide PROSPECTOR_STORE_DIR left
+        # behind by `ops/automations/log_rotation.py` failed eight tests in three unrelated
+        # files, on CI only. `tests/conftest.py` now fails the leaking test by name, which is
+        # how this one was found.
+        env = patch.dict(os.environ, {"STORE_INTERNAL_API_KEY": "test-internal-key"})
+        env.start()
+        self.addCleanup(env.stop)
         self._tmp = tempfile.TemporaryDirectory()
         self.store_dir = Path(self._tmp.name)
         self.cfg = MagicMock()
@@ -301,7 +317,15 @@ class TestPublishWrapperDryRun(unittest.TestCase):
     """`publish()` must not leave the traces that mean "this pack went live"."""
 
     def setUp(self):
-        os.environ["STORE_INTERNAL_API_KEY"] = "test-internal-key"
+        # `patch.dict` and not a raw `os.environ[...] =`: a raw assignment in setUp survives
+        # the test and every test after it in the same xdist worker, and the test that then
+        # fails is somebody else's. On 2026-08-19 a process-wide PROSPECTOR_STORE_DIR left
+        # behind by `ops/automations/log_rotation.py` failed eight tests in three unrelated
+        # files, on CI only. `tests/conftest.py` now fails the leaking test by name, which is
+        # how this one was found.
+        env = patch.dict(os.environ, {"STORE_INTERNAL_API_KEY": "test-internal-key"})
+        env.start()
+        self.addCleanup(env.stop)
         self._tmp = tempfile.TemporaryDirectory()
         self.store_dir = Path(self._tmp.name)
         self.cfg = MagicMock()

@@ -247,7 +247,16 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
           </Link>
           {/* Renders nothing until there is something in it, see CartButton. */}
           <CartButton />
-          <button type="button" className="icon-btn" aria-label="Search" onClick={openSearch}>
+          {/* "Search the catalogue", not "Search". Below 980px `mumchimp.css:436` sets
+              `.fb-in{display:none}`, so the shelf toolbar's own trigger is not rendered on a
+              phone and THIS button is the only search control the reader has -- which is the job
+              the docblock above hands it. The name is what `e2e/discovery.spec.ts:254,266` scopes
+              to `header` to prove that both dispatch paths work, and the redraw renamed it to the
+              bare verb, so those two tests have been failing on live since 2026-08-19. A specific
+              accessible name is also the better one: "Search" alone tells a screen-reader user
+              nothing about what is being searched. Invisible to the drawing -- `parity.mjs` drops
+              aria-label, and the button renders an icon, not this text. */}
+          <button type="button" className="icon-btn" aria-label="Search the catalogue" onClick={openSearch}>
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <circle cx="9" cy="9" r="6.25" stroke="currentColor" strokeWidth="1.7" />
               <path d="m13.8 13.8 4 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />

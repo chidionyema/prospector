@@ -36,6 +36,7 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
 import urllib.error
@@ -72,6 +73,12 @@ class CannotEstablish(Exception):
     """The check could not run. Reported as `unknown`, never as clean."""
 
 
+# The kinds `verify_copy` can actually perform. The loader refuses anything else, so a typo
+# like `sqllite` fails when the declaration is read rather than after the money database has
+# already been downloaded at 03:00.
+VERIFY_KINDS = ("nonempty", "sqlite", "tgz")
+
+
 @dataclass
 class Source:
     """One thing that must exist in two places."""
@@ -80,8 +87,31 @@ class Source:
     key: str
     fetch: list[str]
     why: str = ""
-    verify: str = "nonempty"
+    # No default on purpose. `nonempty` was the default until 2026-08-19, so a source added
+    # without thinking about verification silently got a size check — and a size check is
+    # believed, which is worse than no check at all. Every source states its own kind.
+    verify: str = ""
     keep: int = DEFAULT_KEEP
+    max_age_hours: float = DEFAULT_MAX_AGE_HOURS
+
+
+@dataclass
+class Watched:
+    """A prefix some OTHER job writes, graded for freshness and nothing else.
+
+    Deliberately not a `Source`. `take_backup` and `_prune` both take a `Source`, so a watched
+    prefix cannot be fetched and — this is the point — cannot have its objects deleted. `prune`
+    keeps the newest `keep` copies and deletes the rest; aimed at `dossiers/` it would delete
+    4,450 of the 4,480 dossiers that are the engine's only offsite copy. The type is the guard.
+
+    `writer` names the job that fills the prefix, so a stale finding says who to go and look at
+    instead of leaving the reader to work it out.
+    """
+
+    name: str
+    prefix: str
+    why: str = ""
+    writer: str = ""
     max_age_hours: float = DEFAULT_MAX_AGE_HOURS
 
 
@@ -91,6 +121,7 @@ class Declaration:
 
     storage: dict[str, Any] = field(default_factory=dict)
     sources: list[Source] = field(default_factory=list)
+    watched: list[Watched] = field(default_factory=list)
 
 
 def load_dotenv(path: Path) -> None:
@@ -151,19 +182,55 @@ def load_declaration(path: Path) -> Declaration:
             raise CannotEstablish(
                 f"source {entry['name']} needs a `fetch:` command as a list of arguments"
             )
+        kind = str(entry.get("verify") or "")
+        if not kind:
+            raise CannotEstablish(
+                f"source {entry['name']} must state `verify:` — one of {', '.join(VERIFY_KINDS)}. "
+                "There is no default: an unstated kind used to mean a size check, and a size "
+                "check passes a download that stopped halfway."
+            )
+        if kind not in VERIFY_KINDS:
+            raise CannotEstablish(
+                f"source {entry['name']} declares `verify: {kind}`, which this automation "
+                f"cannot perform. Valid kinds: {', '.join(VERIFY_KINDS)}."
+            )
         sources.append(
             Source(
                 name=str(entry["name"]),
                 key=str(entry["key"]),
                 fetch=[str(part) for part in fetch],
                 why=str(entry.get("why") or ""),
-                verify=str(entry.get("verify") or "nonempty"),
+                verify=kind,
                 keep=int(entry.get("keep") or DEFAULT_KEEP),
                 max_age_hours=float(entry.get("max_age_hours") or default_age),
             )
         )
 
-    return Declaration(storage=storage, sources=sources)
+    watched: list[Watched] = []
+    for entry in raw.get("watch") or []:
+        if not isinstance(entry, dict) or not entry.get("name") or not entry.get("prefix"):
+            raise CannotEstablish(
+                f"every `watch:` entry needs `name:` and `prefix:`: {entry!r}"
+            )
+        wprefix = str(entry["prefix"]).strip()
+        if not wprefix:
+            # An empty prefix lists the WHOLE bucket, so every watched entry would grade the
+            # same newest object and all of them would go green together off one healthy job.
+            raise CannotEstablish(
+                f"watch entry {entry['name']} has an empty `prefix:`; that lists the whole "
+                "bucket and grades every entry off the same object."
+            )
+        watched.append(
+            Watched(
+                name=str(entry["name"]),
+                prefix=wprefix,
+                why=str(entry.get("why") or ""),
+                writer=str(entry.get("writer") or ""),
+                max_age_hours=float(entry.get("max_age_hours") or default_age),
+            )
+        )
+
+    return Declaration(storage=storage, sources=sources, watched=watched)
 
 
 def _endpoint_clock_offset(endpoint: str) -> float | None:
@@ -273,7 +340,23 @@ def verify_copy(path: Path, kind: str) -> None:
                 f"the copy failed PRAGMA integrity_check: {verdict[0] if verdict else 'no result'}"
             )
         return
-    raise CannotEstablish(f"unknown verify kind `{kind}` on {path.name}")
+    if kind == "tgz":
+        # `nonempty` graded the key ring until 2026-08-19, and a byte count is not a verdict.
+        # A download that stopped halfway and a gzip stream that ends mid-member are both
+        # larger than zero bytes, so both were recorded as that night's backup. Opening the
+        # archive and reading its index is what proves it can be unpacked on the day a
+        # restore needs it.
+        try:
+            with tarfile.open(path, "r:*") as archive:
+                members = archive.getnames()
+        except (tarfile.TarError, EOFError, OSError) as exc:
+            raise CannotEstablish(f"the copy does not open as a tar archive: {exc}") from exc
+        if not members:
+            raise CannotEstablish(f"the archive opened but holds no members: {path.name}")
+        return
+    raise CannotEstablish(
+        f"unknown verify kind `{kind}` on {path.name}; valid kinds: {', '.join(VERIFY_KINDS)}"
+    )
 
 
 def _dated_key(prefix: str, source: Source, stamp: str) -> str:
@@ -396,6 +479,46 @@ def check(client: Any, bucket: str, prefix: str, sources: list[Source]) -> list[
     return report
 
 
+def check_watched(client: Any, bucket: str, entries: list[Watched]) -> list[dict[str, Any]]:
+    """Read-only, and read-only by construction. How old is the newest object under each prefix
+    another job is supposed to be filling?
+
+    A watched prefix is graded from the bucket root, ignoring `storage.prefix` — these are not
+    this automation's own copies, they are somebody else's, and their layout is not ours to
+    assume."""
+    now = datetime.now(timezone.utc)
+    report: list[dict[str, Any]] = []
+    for item in entries:
+        copies = _list_copies(client, bucket, item.prefix)
+        writer = f" — {item.writer} writes it" if item.writer else ""
+        if not copies:
+            report.append({
+                "where": f"{bucket}/{item.prefix}*",
+                "what": f"{item.name}: nothing at all under {bucket}/{item.prefix}{writer}",
+                "source": item.name, "age_hours": None, "fresh": False, "watched": True,
+            })
+            continue
+        newest = copies[-1]
+        age_h = max(0.0, (now - newest["LastModified"]).total_seconds() / 3600.0)
+        fresh = age_h <= item.max_age_hours
+        entry: dict[str, Any] = {
+            "where": f"{bucket}/{newest['Key']}",
+            "source": item.name,
+            "age_hours": round(age_h, 2),
+            "bytes": newest.get("Size"),
+            "copies": len(copies),
+            "fresh": fresh,
+            "watched": True,
+        }
+        if not fresh:
+            entry["what"] = (
+                f"{item.name}: newest object is {age_h:.1f}h old, older than the declared "
+                f"{item.max_age_hours:.0f}h{writer}"
+            )
+        report.append(entry)
+    return report
+
+
 def run(config_path: Path, *, fix: bool = False) -> dict[str, Any]:
     ran_at = datetime.now(timezone.utc).isoformat()
     probe = f"python -m ops.automations.{AUTOMATION} --config {config_path}"
@@ -412,6 +535,7 @@ def run(config_path: Path, *, fix: bool = False) -> dict[str, Any]:
                 take_backup(client, bucket, prefix, source) for source in decl.sources
             ]
         report = check(client, bucket, prefix, decl.sources)
+        report += check_watched(client, bucket, decl.watched)
     except CannotEstablish as exc:
         result.update({"status": "unknown", "reason": str(exc)})
         return result

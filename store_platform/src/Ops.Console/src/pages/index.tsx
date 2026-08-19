@@ -263,7 +263,9 @@ export default function Now() {
             {data.providers.tiers.map((t) => (
               <Pill key={t.name} tone={t.state === 'live' ? 'ok' : t.state === 'dead' ? 'bad' : 'warn'}>
                 {t.name}
-                <span className="text-[11px] opacity-70">
+                {/* No `opacity-70` here: it blended ok-strong to 3.65:1 on the tinted
+                    ground, which axe flags and a phone in sunlight proves. */}
+                <span className="text-[11px]">
                   {t.state === 'live' ? 'live' : `${t.state}${t.dead_for_s ? ` ${duration(t.dead_for_s)}` : ''}`}
                 </span>
               </Pill>
@@ -431,7 +433,14 @@ function Verdict({ s }: { s: Status }) {
   } else if (!producer && !consumer) {
     tone = 'bad';
     headline = 'Not running.';
-    detail = `Producer: ${s.heartbeats.producer.why} Consumer: ${s.heartbeats.consumer.why}`;
+    // Joined with a separator, not a space. Each `why` is a full sentence, so a bare space
+    // ran them together: "...how long it has been silent Consumer: ...". The `??` is the
+    // belt to the API's braces -- the type says `why: string`, and the API omitted it
+    // anyway, which is how the operator got the word "undefined" in the headline.
+    detail = [
+      `Producer: ${s.heartbeats.producer.why ?? 'no reason reported'}`,
+      `Consumer: ${s.heartbeats.consumer.why ?? 'no reason reported'}`,
+    ].join(' · ');
   } else if (paused.length) {
     tone = 'warn';
     headline = paused.some((p) => p.scope === 'all') ? 'Paused — everything.' : 'Partly paused.';

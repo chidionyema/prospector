@@ -204,12 +204,19 @@ const MARKET_LABELS: Record<string, string> = {
 
 /** Display label for a market code. Falls back to the code itself (upper-cased) so a
  *  newly opened market renders sensibly without a front-end deploy. A subdivision like
- *  "us-tx" renders as "US · TX". */
+ *  "us-tx" renders as "US (TX)".
+ *
+ *  THE BRACKETS ARE LOAD-BEARING. This used to be "US · TX", and the shelf count line joins
+ *  its parts with the same `·`. Live on 2026-08-19 that read
+ *  "5 US · GA packs · 2 US · FL packs · 1 US · CA packs", which no reader can parse: the
+ *  separator between items and the separator inside an item were the same character. A label
+ *  that appears inside a `·`-joined series must not contain a `·`.
+ *  Pinned by `src/lib/__tests__/marketLabel.test.ts`. */
 export function marketLabel(code?: string): string {
   if (!code) return '';
   const [root, sub] = code.toLowerCase().split('-');
   const base = MARKET_LABELS[root] ?? root.toUpperCase();
-  return sub ? `${base} · ${sub.toUpperCase()}` : base;
+  return sub ? `${base} (${sub.toUpperCase()})` : base;
 }
 
 /**

@@ -1,9 +1,89 @@
 """Shared fixtures for the prospector test suite."""
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from prospector.config import Config, load_config
+
+# Variables pytest itself owns and rewrites around every test. PYTEST_CURRENT_TEST carries the
+# node id AND the phase, so it reads "…(setup)" at the start of a test and "…(teardown)" at the
+# end — a difference on every single test, which would make the guard below fire 5852 times and
+# mean nothing. Measured 2026-08-19: with this set empty, every test in the suite errored.
+_PYTEST_OWNED_ENV = frozenset({"PYTEST_CURRENT_TEST"})
+
+
+def _env_snapshot() -> dict:
+    return {k: v for k, v in os.environ.items() if k not in _PYTEST_OWNED_ENV}
+
+
+def pytest_runtest_setup(item):
+    """Record the environment before anything in this test has touched it.
+
+    A plain hook rather than a wrapper: pytest calls this before the item's fixtures are set up,
+    which is exactly the moment wanted.
+    """
+    item._prospector_env_before = _env_snapshot()
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_runtest_teardown(item, nextitem):
+    """Restore os.environ after every test, and fail the test that left it changed.
+
+    WHAT THIS PREVENTS. A leaked environment variable poisons every LATER test in the same xdist
+    worker, and the victim is what fails. On 2026-08-19 nine tests failed on the CI runner and
+    passed on every developer box, in two files (`test_exemplar_eligibility.py`,
+    `test_lint_receipt_survives_revet.py`) that had not changed. The variable was
+    PROSPECTOR_STORE_DIR, and `Config.store_dir` gives it precedence over `cfg.store["dir"]` —
+    which is the exact redirect those tests use to point the store at `tmp_path`. With the
+    variable set, the redirect is silently ignored and the tests read somebody else's store.
+    Setting it by hand reproduced six of the nine failures on the same assertions.
+
+    It was CI-only because `pytest.ini` runs `-n auto --dist loadfile`: the worker count follows
+    the CPU count, so which files share a process differs between the runner and a laptop. A
+    defect invisible on every developer box is the kind that needs a machine, not a rule.
+
+    WHY A HOOK AND NOT AN AUTOUSE FIXTURE. This was first written as a fixture declared at the top
+    of this file, on the theory that first-set-up means last-torn-down. Measured: it fired on a
+    test whose only env write was `monkeypatch.setenv`, because monkeypatch's undo ran AFTER that
+    fixture's teardown. Fixture ordering is not something to reason about here. Every fixture
+    finalizer, monkeypatch included, runs inside `pytest_runtest_teardown`, so a wrapper around
+    that hook is last by construction.
+
+    The restore happens before the failure is raised, so the leaking test is named and the tests
+    after it still run against a clean environment. A failure raised in teardown is reported as an
+    ERROR against that test rather than a FAILURE — the body already ran — which is why the guard
+    test asserts on "1 error".
+    """
+    try:
+        return (yield)
+    finally:
+        before = getattr(item, "_prospector_env_before", None)
+        after = _env_snapshot()
+        if before is not None and after != before:
+            added = sorted(k for k in after if k not in before)
+            removed = sorted(k for k in before if k not in after)
+            changed = sorted(k for k in before if k in after and before[k] != after[k])
+            keep = {k: v for k, v in os.environ.items() if k in _PYTEST_OWNED_ENV}
+            os.environ.clear()
+            os.environ.update(before)
+            os.environ.update(keep)
+            parts = []
+            if added:
+                parts.append("set " + ", ".join(added))
+            if changed:
+                parts.append("changed " + ", ".join(changed))
+            if removed:
+                parts.append("unset " + ", ".join(removed))
+            raise AssertionError(
+                "this test leaked the environment to every later test in its worker: "
+                + "; ".join(parts)
+                + ". Use the `monkeypatch` fixture (monkeypatch.setenv / delenv), which restores "
+                "the variable itself. A raw `os.environ[...] = ...` survives the test, and the "
+                "test that fails next is not this one."
+            )
+
 
 
 @pytest.fixture(autouse=True)

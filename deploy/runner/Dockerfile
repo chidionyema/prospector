@@ -43,11 +43,20 @@ FROM ubuntu:24.04
 #                            one, so the Linux runners differing here fails as
 #                            "python3: command not found", exit 127, AFTER a successful deploy.
 #                            Stdlib only -- no pip, no venv; anything needing packages uses uv.
+#   openssh-client         - a deploy key is the only credential that reads a PRIVATE repository
+#                            in ANOTHER account without handing the job a personal access token,
+#                            and a deploy key speaks SSH and nothing else. The hermes-config gate
+#                            fetches its hermes-agent submodule that way. Missing, it failed as a
+#                            BARE exit 127 with no message at all: the step wrote
+#                            `ssh-keyscan ... 2>/dev/null`, and the shell's own
+#                            "command not found" goes to that same stderr. Run 32267152679,
+#                            job 96114329207, 17ms, no output.
 #   sudo                   - some third-party actions call it; without it they fail late
 #   locales, tzdata        - test output that compares formatted dates otherwise differs
 #                            between this runner and the Macs
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates curl git jq tar unzip zstd sudo locales tzdata python3 \
+      openssh-client \
       libicu74 liblttng-ust1 libssl3 gnupg xz-utils \
     && locale-gen en_GB.UTF-8 \
     && rm -rf /var/lib/apt/lists/*

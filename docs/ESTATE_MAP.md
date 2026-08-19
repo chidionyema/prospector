@@ -175,9 +175,28 @@ perfectly healthy machine. That 404 has been read as an outage more than once, i
 views from `prospector/ops/console_api.py`. There is no separate console app and no laptop tunnel:
 the Streamlit control centre was deleted permanently, and the tunnel was killed.
 
-**Hermes** — `prospector-hermes`, 3 GB volume `hermes_state` at `/data` (27 MB used). It is the
-Telegram surface, and the front door is the gateway, not the cockpit. Under supervisord it runs
-cockpit, coordinator, otto-server, progress, rsi and submodule-backup.
+**Hermes** — HALF MIGRATED. Do not read this section as a description of where Hermes runs.
+
+`prospector-hermes` exists on Fly with a 3 GB volume `hermes_state` at `/data`, and a machine has
+been `started` since 2026-08-18. That is all that is true of it. Measured 2026-08-19:
+
+- The app has emitted **no application logs at all** since it was created — only `New SSH session`
+  lines. Nothing is running on it.
+- **No committed file in this repo describes it.** Five of the six `prospector-*` apps have a
+  `fly.toml`; this one has none, so it cannot be reviewed, rebuilt, or moved off Fly.
+  `scripts/fly_estate_probe.py` is the probe that says so, and it exits non-zero today.
+- The **laptop still runs all eleven Hermes launchd jobs** — `ai.hermes.gateway`,
+  `ai.hermes.coordinator`, `ai.hermes.otto-server`, `ai.hermes.idle-engine`, `ai.hermes.rsi`,
+  `ai.hermes.progress`, `ai.hermes.watchdog`, `ai.hermes.runaway-reaper`,
+  `ai.hermes.submodule-backup`, `ai.hermes.selfcheck`, `ai.hermes.keepawake`. Hermes is still an
+  on-premises dependency.
+
+This paragraph previously asserted that the Fly app runs "cockpit, coordinator, otto-server,
+progress, rsi and submodule-backup" under supervisord. That was prose written from an intention,
+never from a probe, and it stood for a day while the opposite was true. It is the exact failure
+the estate rule names: state is a probe, not a paragraph.
+
+The Telegram surface is still the gateway rather than the cockpit. Where it RUNS is task R7, open.
 
 Two things about the console, both learned the hard way on 2026-08-18:
 
@@ -204,16 +223,33 @@ fly ssh console -a prospector-engine -C "sh -lc 'find /app/store_platform/src/Op
 Everything ships from GitHub Actions. Four workflows: `ci.yml`, `deploy-api.yml`, `deploy-web.yml`,
 `e2e-live-smoke.yml`.
 
-The runners are **four self-hosted runners on the laptop** — `mumchimp-mac`, `-2`, `-3`, `-4`, with
-labels `self-hosted,macOS,X64,heavy` (`-4` is `light`). Self-hosted minutes are free. **Do not flip
-CI to GitHub-hosted.** Deleting `CI_RUNS_ON` is an emergency lever, not a convenience.
+**CI runs on the Fly app `prospector-ci`** (lhr), which registers two Linux container runners
+labelled `self-hosted,X64,heavy,Linux,container,fly`. R8 is done; it landed in #335.
 
-`prospector-ci` exists on Fly and is suspended. It is the intended home for the runners (R8). That
-work is not done, and it is blocked on one decision: where the runner registration credential
-lives. When it happens, that app gets `GITHUB_RUNNER_PAT` and `RUNNER_LABELS` and **nothing else** —
-a runner executes code from every pull request, including one an outsider opened, so it must never
-hold a money key. The PAT must be fine-grained, *Only select repositories → prospector*,
-*Repository → Administration → Read and write*, and nothing more.
+The laptop's `mumchimp-mac`, `-2` and `-3` are **offline by founder decision. Do not start them.**
+`mumchimp-mac-4` stays online with the `light` label. A queued pull request is almost always the
+Fly fleet being busy, not a dead runner — that misreading cost a session on 2026-08-19, when an
+agent read three offline Mac jobs as halved capacity and told the founder to `launchctl kickstart`
+them.
+
+Never trust this paragraph. Ask:
+
+```bash
+gh api repos/chidionyema/prospector/actions/runners \
+  --jq '.runners[] | "\(.name) \(.status) busy=\(.busy) \(.labels|map(.name)|join(","))"'
+fly status -a prospector-ci
+```
+
+`scripts/process_audit.py` grades the same question on `/processes`, and `scripts/estate_map.py`
+reports how many online runners are on Fly and how many on the laptop.
+
+Self-hosted minutes are free. **Do not flip CI to GitHub-hosted.** Deleting `CI_RUNS_ON` is an
+emergency lever, not a convenience.
+
+The runner app holds `GITHUB_RUNNER_PAT` and `RUNNER_LABELS` and **nothing else** — a runner
+executes code from every pull request, including one an outsider opened, so it must never hold a
+money key. The PAT is fine-grained, *Only select repositories → prospector*, *Repository →
+Administration → Read and write*, and nothing more.
 
 Deploy credentials are per-app Fly tokens, because a Fly deploy token is scoped to its app:
 `FLY_API_TOKEN` (web), `FLY_API_TOKEN_API`, `FLY_API_TOKEN_ENGINE`.

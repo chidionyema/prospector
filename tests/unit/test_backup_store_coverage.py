@@ -44,7 +44,11 @@ class FakeS3:
         keys = sorted(k for k in self.objects if k.startswith(Prefix))
         return {
             "Contents": [
-                {"Key": k, "ETag": '"%s"' % hashlib.md5(self.objects[k]).hexdigest()}  # noqa: S324
+                {
+                    "Key": k,
+                    "ETag": '"%s"' % hashlib.md5(self.objects[k]).hexdigest(),  # noqa: S324
+                    "Size": len(self.objects[k]),
+                }
                 for k in keys
             ],
             "IsTruncated": False,
@@ -266,6 +270,71 @@ def test_prune_is_a_no_op_below_the_threshold_and_when_disabled(store):
     assert bs._prune_db_snapshots(s3, "b", keep=5) == []
     assert bs._prune_db_snapshots(s3, "b", keep=0) == []
     assert len(s3.objects) == 2
+
+
+def test_ledger_prune_keeps_the_newest_n(store):
+    s3 = FakeS3()
+    for i, day in enumerate(["2026-08-01", "2026-08-02", "2026-08-03", "2026-08-04"]):
+        s3.objects[f"ledger/prospector-{day}.jsonl.gz"] = b"x" * (10 + i)
+    stale = bs._prune_ledger_snapshots(s3, "b", keep=2)
+    assert stale == [
+        "ledger/prospector-2026-08-01.jsonl.gz",
+        "ledger/prospector-2026-08-02.jsonl.gz",
+    ]
+    assert sorted(s3.objects) == [
+        "ledger/prospector-2026-08-03.jsonl.gz",
+        "ledger/prospector-2026-08-04.jsonl.gz",
+    ]
+
+
+def test_ledger_prune_is_a_no_op_below_the_threshold_and_when_disabled(store):
+    s3 = FakeS3()
+    for day in ["2026-08-01", "2026-08-02"]:
+        s3.objects[f"ledger/prospector-{day}.jsonl.gz"] = b"xxx"
+    assert bs._prune_ledger_snapshots(s3, "b", keep=5) == []
+    assert bs._prune_ledger_snapshots(s3, "b", keep=0) == []
+    assert len(s3.objects) == 2
+
+
+def test_ledger_prune_refuses_when_the_newest_snapshot_shrank(store, capsys):
+    """The ledger is append-only. A snapshot smaller than one already kept means records
+    were lost, which is the one failure the older copies exist to survive."""
+    s3 = FakeS3()
+    s3.objects["ledger/prospector-2026-08-01.jsonl.gz"] = b"x" * 500
+    s3.objects["ledger/prospector-2026-08-02.jsonl.gz"] = b"x" * 900
+    s3.objects["ledger/prospector-2026-08-03.jsonl.gz"] = b"x" * 40
+    assert bs._prune_ledger_snapshots(s3, "b", keep=1) == []
+    assert len(s3.objects) == 3
+    assert s3.deleted == []
+    assert "REFUSED to prune" in capsys.readouterr().err
+
+
+def test_ledger_prune_never_touches_the_db_or_the_dossiers(store):
+    s3 = FakeS3()
+    bs.sync(s3, "b")
+    for day in ["2026-07-01", "2026-07-02"]:
+        s3.objects[f"ledger/prospector-{day}.jsonl.gz"] = b"x"
+    bs._prune_ledger_snapshots(s3, "b", keep=1)
+    assert [k for k in s3.deleted if not k.startswith("ledger/")] == []
+    assert len([k for k in s3.objects if k.startswith("dossiers/")]) == 3
+    assert len([k for k in s3.objects if k.startswith("db/")]) == 1
+
+
+def test_sync_prunes_the_ledger_series(store):
+    """The regression this whole change exists for: before 2026-08-19 sync() pruned db/ and
+    repo/ and left ledger/ to grow without a ceiling."""
+    s3 = FakeS3()
+    for day in ["2026-07-01", "2026-07-02", "2026-07-03"]:
+        s3.objects[f"ledger/prospector-{day}.jsonl.gz"] = b"x"
+    bs.sync(s3, "b", ledger_keep=1)
+    # sync() writes today's snapshot, which sorts newest, so keep=1 keeps that one and the
+    # three seeded July keys all go.
+    assert sorted(k for k in s3.deleted if k.startswith("ledger/")) == [
+        "ledger/prospector-2026-07-01.jsonl.gz",
+        "ledger/prospector-2026-07-02.jsonl.gz",
+        "ledger/prospector-2026-07-03.jsonl.gz",
+    ]
+    assert len([k for k in s3.objects if k.startswith("ledger/")]) == 1
 
 
 def test_pruning_never_touches_the_ledger_or_the_dossiers(store):
