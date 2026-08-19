@@ -371,12 +371,25 @@ def check_hooks(rows: list[dict]) -> list[str]:
         if not os.path.exists(script):
             problems.append(f"{event} hook is configured but {script} does not exist")
 
-    missing = [r["name"] for r in rows
-               if not r["skipped"] and post_commit_state(r["repo"])[0] != "ok"]
+    # A directory whose git metadata was pruned is not a repo with a missing hook. It is a
+    # leftover, and no hook can be installed into a git dir that no longer exists. Counting it
+    # here made a check that could never go green, and a check that can never go green is one
+    # nobody reads: `--check-hooks` reported BROKEN on wt-cardsub and wt-site-pr indefinitely
+    # while every real trigger was wired. Orphans are estate hygiene, reported by
+    # scripts/process_audit.py under "orphaned directories", so they are noted here and not
+    # counted as an enforcement failure.
+    orphaned, missing = [], []
+    for r in rows:
+        if r["skipped"] or post_commit_state(r["repo"])[0] == "ok":
+            continue
+        (orphaned if hooks_dir(r["repo"]) is None else missing).append(r["name"])
     if missing:
         problems.append(f"post-commit refresh hook missing in {len(missing)} repo(s): "
                         + ", ".join(sorted(missing)[:8])
                         + (" …" if len(missing) > 8 else ""))
+    if orphaned:
+        print("[graphify] note: %d orphaned worktree dir(s) skipped, git metadata pruned: %s"
+              % (len(orphaned), ", ".join(sorted(orphaned)[:8])))
     return problems
 
 
