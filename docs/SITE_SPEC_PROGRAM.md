@@ -1631,7 +1631,7 @@ page: the H1 (`Business ideas with the research already done.`) and the three sa
 Its header records where the rest already lives, so there is one home per kind and no second copy:
 the six check names stay in `lib/checks.ts` (`COMMON_CHECKS`), the proof-line format stays in
 `components/ui/ProofLine.tsx`, and variant-keyed copy stays in `lib/copyConfig.ts`. Call sites now
-reading from it: `pages/index.tsx`, `pages/faq.tsx`, `pages/collections/index.tsx` and
+reading from it: `pages/index.tsx`, `pages/faq.tsx`, `pages/ideas/index.tsx` and
 `pages/pack/[id].tsx`.
 
 **Founder's acceptance bar, verbatim:** *"Report the diff percentage per page. Do not report done

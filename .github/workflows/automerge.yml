@@ -29,6 +29,17 @@
 # `workflow_dispatch` and `repository_dispatch` DO create a run when triggered with
 # GITHUB_TOKEN. So after a merge lands this workflow dispatches main's CI, and dispatches the
 # engine deploy when the merged files are ones deploy-engine.yml itself watches.
+#
+# WHY A GREEN PR IS NOT ENOUGH ON ITS OWN. A PR run proves the PR's own merge ref, which is the
+# base main had WHEN THE RUN STARTED. Two branches can each be green against an older main and
+# still break main when both land: nothing ever ran their combination. Measured 2026-08-19: main
+# went red on three tests, each introduced by a separate PR (#372, #373, #377) that was green on
+# its own base, and every open PR then inherited those three failures. Seventeen pull requests
+# read as broken because of a merge order nobody checked. So this workflow now refuses to merge a
+# PR that sits behind main. It updates the branch instead and dispatches CI on it, and the run
+# that comes back tests the actual combination. That dispatch is why the job also accepts
+# `workflow_dispatch` runs below: a run this workflow started must be able to finish the merge,
+# and a GITHUB_TOKEN push starts nothing by itself.
 name: Auto-merge green PRs
 
 on:
@@ -51,7 +62,9 @@ jobs:
   merge:
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'pull_request'
+      (github.event.workflow_run.event == 'pull_request' ||
+       (github.event.workflow_run.event == 'workflow_dispatch' &&
+        github.event.workflow_run.triggering_actor.login == 'github-actions[bot]'))
     runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     steps:
       - name: Merge every open PR this run proved green
@@ -101,6 +114,49 @@ jobs:
               if (pr.draft)                        { core.info('  skipping: still a draft'); continue }
               if (pr.base.ref !== 'main')          { core.info(`  skipping: targets ${pr.base.ref}`); continue }
               if (labels.some(n => HOLD.has(n)))   { core.info('  skipping: held by a label'); continue }
+
+              // BEHIND MAIN IS A REFUSAL, NOT A DETAIL. `pulls.merge` happily lands a stale
+              // branch: its `sha` guard only checks the head did not MOVE, never that the base
+              // did. compareCommits is the explicit question -- how many commits does main have
+              // that this head does not -- rather than `mergeable_state`, which GitHub computes
+              // lazily and reports `unknown` on a first read.
+              const {data: cmp} = await github.rest.repos.compareCommits(
+                {owner, repo, base: 'main', head: pr.head.sha})
+              if (cmp.behind_by > 0) {
+                // MERGE, NOT REBASE, AND NOT BY CHOICE. PUT .../pulls/{n}/update-branch takes
+                // exactly one body parameter, `expected_head_sha`, and "updates the pull request
+                // branch with the latest upstream changes by MERGING HEAD from the base branch"
+                // (GitHub REST docs, checked 2026-08-19). "Update with rebase" is a web-UI
+                // button with no REST equivalent. A rebase would also rewrite a branch another
+                // session may have checked out, so the merge is the safer of the two anyway --
+                // and main never sees it, because the merge below squashes.
+                core.info(`  behind main by ${cmp.behind_by} - updating the branch, not merging`)
+                try {
+                  // expected_head_sha for the same reason the merge below passes `sha`: if
+                  // someone pushed while this job was deciding, the update must fail rather
+                  // than land on a head this run never saw.
+                  await github.rest.pulls.updateBranch(
+                    {owner, repo, pull_number: pr.number, expected_head_sha: pr.head.sha})
+                } catch (e) {
+                  // 422 is the conflict case: git cannot do it, a person must.
+                  core.error(`could not update #${pr.number}: ${e.message}`)
+                  stuck.push(`#${pr.number} (behind main, update failed: ${e.message})`)
+                  try {
+                    await github.rest.issues.addLabels(
+                      {owner, repo, issue_number: pr.number, labels: ['needs-rebase']})
+                  } catch (le) {
+                    core.warning(`could not label #${pr.number}: ${le.message}`)
+                  }
+                  continue
+                }
+                // The update was pushed with GITHUB_TOKEN, so it started no run of its own.
+                // Dispatch is the documented exception, and the `if` above lets the run it
+                // produces come back here and merge.
+                await github.rest.actions.createWorkflowDispatch(
+                  {owner, repo, workflow_id: 'ci.yml', ref: pr.head.ref})
+                core.info(`  dispatched CI on ${pr.head.ref}; the green run merges it`)
+                continue
+              }
 
               const files = await github.paginate(github.rest.pulls.listFiles,
                                                   {owner, repo, pull_number: pr.number, per_page: 100})

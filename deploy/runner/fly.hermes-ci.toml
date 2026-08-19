@@ -1,0 +1,29 @@
+# The Hermes CI fleet.
+#
+# A self-hosted runner is registered to ONE repository - `chidionyema` is a user account, not an
+# organisation, so there is no shared pool and the Prospector runners physically cannot take a
+# hermes-config job. This is that second fleet. Same image, same entrypoint; the only difference
+# is which repository it registers with, which is why it is a config file and not a flag.
+#
+# It runs on RUNNER_TOKEN rather than GITHUB_RUNNER_PAT (see deploy/runner/entrypoint.sh), so the
+# container holds a credential that can be one runner on one repository and nothing else.
+app = "hermes-ci"
+primary_region = "lhr"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  GITHUB_REPO = "chidionyema/hermes-config"
+  # No `heavy` label. The Prospector fleet carries it because a 4000-test suite needs the big
+  # machine; the Hermes gate is tests/run.sh and two pytest files.
+  RUNNER_LABELS = "self-hosted,Linux,X64,container,fly"
+
+[[restart]]
+  policy = "always"
+
+# Smaller than the Prospector runners, and deliberately. Their shared-cpu-4x/8gb is sized for
+# pytest -n auto over 4000 tests; the Hermes gate is a venv build and a short suite.
+[[vm]]
+  size = "shared-cpu-2x"
+  memory = "4gb"
