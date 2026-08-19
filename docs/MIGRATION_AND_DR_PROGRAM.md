@@ -209,6 +209,50 @@ or it is decoration. Until then, the command that answers "did the backup run?" 
 fly ssh console -a prospector-engine -C 'cat /data/store/ops/receipts/backup_store.py.json'
 ```
 
+### 0.4 The twelve gaps graded against the eight requirements
+
+The M-series was written before the bar was stated, so it was never checked against it. Doing that
+check is the point of this section, and it finds that **two of the eight requirements have no M at
+all**, which no amount of progress on M1–M12 would ever close.
+
+| Req | What it demands | M-series coverage | Grade |
+|---|---|---|---|
+| **B1** | Everything moves — engine, Hermes, jobs, Fly apps, domain, third-party deps, logs | M1 inventory, M9 DNS, M10 logs, M11 datastores | **PARTIAL.** Third-party accounts are not a class in any M: Stripe, Cloudflare R2, GoDaddy, Telegram, GitHub and the model providers each hold credentials, webhooks and state that no inventory names. |
+| **B2** | Thirty minutes | none | **NOT COVERED.** No M starts a clock. M6's drills are the only place one could run, and none of them times the whole cutover. A bar nobody has ever measured against is a wish. |
+| **B3** | No downtime | M3 money adapter, M12 redundancy | **PARTIAL.** Both are about *being able* to run elsewhere. Neither covers the cutover itself — draining in flight work, running both sides at once, and the DNS TTL that decides how long the old address keeps taking traffic (M9 records two 3600s TTLs, so today the floor is an hour). |
+| **B4** | Driven from the ops dashboard | M5 Continuity panel | **COVERED as scope.** Unbuilt, and §0.2 ranks it last for the emergency and first for the routine migration. Both are true; the doc must not pick one and drop the other. |
+| **B5** | Prove it, and see progress live | M5 (partly) | **PARTIAL.** M5 shows progress. Nothing defines the proof: what artefact says a step *succeeded*. §0.3 answers it for jobs — a receipt with a timestamp and an exit code — and that answer should be the migration's too. |
+| **B6** | Any destination, on-prem or cloud | M3, plus the engine's three existing adapters | **PARTIAL.** The engine can move. The money path cannot, and the managed-container shape has no adapter at all (task #34). |
+| **B7** | Reusable on any project, not just prospector | none | **NOT COVERED.** Every one of M1–M12 is written against this estate's paths, app names and jobs. Nothing in the series produces anything a second project could run. |
+| **B8** | Probe and audit any system | none | **NOT COVERED.** M1 is a hand-assembled inventory of what we already know we have. B8 asks for a tool that walks an unfamiliar system and reports what it found — the opposite direction, and the harder one. |
+
+**The finding, stated plainly.** M1–M12 is a good plan for moving *prospector*. The founder asked
+for something that moves *any* estate and can audit one it has never seen. B7 and B8 are not
+refinements of the existing twelve; they are a different deliverable, and pretending otherwise is
+how a programme reports 80% complete against a bar it cannot reach.
+
+**What follows from that, and what does not.** It does not follow that we should stop and build a
+generic tool first — B0 is still the head of the queue, and a portable framework with no proven
+restore behind it protects nothing. What follows is a constraint on *how* M1–M12 get built: every
+one of them lands as a script that takes the estate as input rather than hard-coding it, and reads
+its target names from a declared file rather than from the code. That is close to free while
+writing, and expensive to retrofit afterwards. **M13 and M14 are therefore added below** rather
+than pushed to a later phase, and they are graded honestly as UNSTARTED.
+
+- **M13 — the estate is data, not code.** One declared file names every app, host, datastore, DNS
+  zone, third-party account and scheduled job. M1's inventory becomes a *reader* of that file, and
+  every other M takes its targets from it. Closes B7. **P1, M.**
+- **M14 — a prober that can be pointed at an estate it has never seen.** Walks what it is given —
+  a Fly org, a host, a repo, a domain — and emits the same shape M13 declares, so an unknown
+  system can be audited and then migrated by the same machinery. Closes B8. **P2, L.**
+
+**Second and third order effects.** Second order: making every M script take its targets as input
+costs a little on each one and delays none of them materially. Third order: it forces the estate's
+own names out of the code and into a file, which is the same change M2's bootstrap and M9's DNS
+work already need — so the three converge rather than compete. The risk to state out loud is that
+M14 is genuinely large and unproven, and it is the requirement most likely to be quietly dropped;
+it is ranked P2 for exactly that reason, not because it is optional.
+
 ---
 
 ## 1. Why this exists — the measurement that started it
