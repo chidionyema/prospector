@@ -66,8 +66,49 @@ against each deploy workflow's own `on.push.paths`. It fails when:
 - a required dispatch input is not supplied, or automerge sends one the workflow does not declare,
 - automerge stops being gated on a **successful** CI run.
 
-Adding a new deployable component therefore means three edits, and the suite names the two you
-forgot: the workflow, the entry in automerge's `DEPLOYS`, and a row in the table above.
+Adding a new deployable component therefore means four edits, and the suite names the ones you
+forgot: the workflow, its entry in automerge's `DEPLOY` map, its entry in automerge's `INPUTS`
+map, and a row in the table above.
+
+## Where the jobs run
+
+Three labels, and they are not three pools. Every runner carries `self-hosted`, so a job that
+asks for `self-hosted` can land on any machine that is online.
+
+| Repo variable | Value | Which machines that reaches |
+| --- | --- | --- |
+| `CI_RUNS_ON` | `self-hosted` | every online runner |
+| `CI_LIGHT_RUNS_ON` | `self-hosted` | every online runner |
+| `CI_HEAVY_RUNS_ON` | `heavy` | the two Linux containers on Fly |
+
+The live list is a command:
+
+```bash
+gh api /repos/chidionyema/prospector/actions/runners \
+  --jq '.runners[] | "\(.name)\t\(.os)\t\(.status)\t\([.labels[].name]|join(","))"'
+```
+
+**The pool is not homogeneous, and that is the trap.** On 2026-08-19 the three macOS runners
+`mumchimp-mac`, `mumchimp-mac-2` and `mumchimp-mac-3` were stopped at the founder's instruction,
+which left `heavy` meaning "a Linux container" and `self-hosted` meaning "a Linux container or
+`mumchimp-mac-4`". A step that works on one operating system and not the other now decides its own
+outcome by which machine happened to be free.
+
+That is not hypothetical. `actions/setup-dotnet` installs to `/usr/share/dotnet` on Linux, which
+our containers cannot create, and `deploy-api.yml` could not run at all until it was told to
+install under `$HOME` instead
+(`docs/incidents/INC-2026-08-19-deploy-api-could-not-install-dotnet.json`).
+`tests/unit/test_dotnet_installs_where_it_can_write.py` refuses the next instance.
+
+Write every job so it does not care which of the six it gets. Do not install into a system
+directory, and do not assume a tool the image happens to carry.
+
+To bring a stopped Mac runner back:
+
+```bash
+launchctl enable gui/501/actions.runner.chidionyema-prospector.mumchimp-mac
+(cd ~/actions-runner && ./svc.sh start)
+```
 
 ## What this does not cover
 
