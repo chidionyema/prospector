@@ -224,7 +224,7 @@ describe('US-2 — Pack cards with pack art', () => {
       expect(stat).toEqual({
         kind: 'price_multiple',
         figure: '17×',
-        label: 'the price back in month one, modelled',
+        label: 'payback',
       });
     });
 

@@ -178,7 +178,7 @@ export default function LiveKillCard({ className }: LiveKillCardProps) {
           Every pack in the catalogue came through this
         </span>
         <Link
-          href="/kill-log"
+          href="/kill-log" prefetch={false}
           className="inline-flex items-center gap-1 py-3 text-meta font-medium text-accent transition-colors hover:text-accent-hover"
         >
           Read the kill log

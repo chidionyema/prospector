@@ -106,7 +106,7 @@ export default function HeroRatio({ packCount, className }: HeroRatioProps) {
             claim is narrowed to the one the data supports and the drawing's words survive. */}
         {researchedLabel} ideas researched so far. Every kill we publish carries the check it
         failed.{' '}
-        <Link className="tlink" href="/kill-log">
+        <Link className="tlink" href="/kill-log" prefetch={false}>
           Read the kill log
         </Link>
       </figcaption>

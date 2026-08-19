@@ -28,7 +28,7 @@ import { useCardImpressions } from '@/lib/useCardImpressions';
  *
  * WHAT THIS REPLACES. Three formats used to render packs: `lead` and `mid` and `row` weights of
  * `PackCard` (the home shelf ran all three in ONE vertical section, `index.tsx:1686-1755`), plus
- * `DossierCard`, a fourth format used by `PackGrid` on /collections/<slug> and by `SimilarPacks` on the
+ * `DossierCard`, a fourth format used by `PackGrid` on /ideas/<slug> and by `SimilarPacks` on the
  * pack page. `mid` and `DossierCard` are both deleted; every surface that browsed packs -- the
  * catalogue tail, the other-market groups, the landing grids, the related rail -- now renders
  * THIS.
@@ -134,6 +134,7 @@ export function PackRow({
   // a rendered line rather than at a word count guessed from a column width.
   const line = cardLine(repairTruncation(pack.oneLine) || sub, Infinity);
   const price = formatPriceForMarket(pack.price, cur);
+  const offMarket = Boolean(pack.market) && packMarket(pack) !== viewerMarket;
 
   /* THE DRAWING'S ROW (`mockups/index.html`, `.rows > a.row`). It emits the drawing's own class
      names, which `src/styles/mumchimp.css` styles: a two-column grid, the text in column one and
@@ -146,10 +147,18 @@ export function PackRow({
       onClick={() => trackCardClick(pack.id, position)}
       className={cx('row', className)}
     >
-      {cat.tagged && (
+      {(cat.tagged || offMarket) && (
         <span className="top">
-          <span className="eyebrow">{cat.label.toUpperCase()}</span>
+          {cat.tagged && <span className="eyebrow">{cat.label.toUpperCase()}</span>}
           {viewed && <span className="new">Seen</span>}
+          {/* The market note. It is the one thing on the row that is about the READER rather
+              than the pack, and a buyer who misses it buys research written for another country.
+              It sits in the eyebrow, NOT in `.proof`: the proof line has exactly two forms
+              ("41 sources", "17x payback . 28 sources") and anything else inside it is a third.
+              "US . CA", not "US . CA market": the word restated what the border already says. */}
+          {offMarket && pack.market && (
+            <span className="market">{marketLabel(pack.market)}</span>
+          )}
         </span>
       )}
       <h3>{listHeading(heading)}</h3>
@@ -160,15 +169,7 @@ export function PackRow({
           the 44px `.stat` device on the featured card, not for a 12.5px row. The longest of them
           also carried `truncate` (nowrap), which is what pushed the line past the right edge of
           the card at 390px. `CardProof` renders the drawing's own two forms and nothing else. */}
-      <CardProof sources={pack.sourceCount} payback={paybackMultiple(pack)}>
-        {/* The market note stays. It is the one thing on the row that is about the READER rather
-            than the pack, and a buyer who misses it buys research written for another country.
-            "US · CA", not "US · CA market": the word restated what the border already says
-            and was the widest token on the narrowest row (fix prompt D7). */}
-        {pack.market && packMarket(pack) !== viewerMarket && (
-          <span className="market">{marketLabel(pack.market)}</span>
-        )}
-      </CardProof>
+      <CardProof sources={pack.sourceCount} payback={paybackMultiple(pack)} />
       <span className="side">
         <PriceText className="price num">{price}</PriceText>
         <span className="view">View &rarr;</span>

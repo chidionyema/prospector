@@ -321,7 +321,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
               <div key={check.id} className="checkrow">
                 <span className="i num">{String(i + 1).padStart(2, '0')}</span>
                 <div>
-                  <h5>{check.name}</h5>
+                  <h3>{check.name}</h3>
                   {example ? (
                     <p>
                       <strong className="font-semibold text-text">{example.title}</strong>
@@ -346,7 +346,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
                 {/* `.tlink.go`: the drawing's row action. `.go` carries no desktop rule of its own
                     -- it exists so the mobile breakpoint can move the action out of the third
                     column and under the body (`.checkrow .v,.checkrow .go{grid-column:2}`). */}
-                <Link href="/kill-log" className="tlink go">
+                <Link href="/kill-log" prefetch={false} className="tlink go">
                   See kills
                 </Link>
               </div>
@@ -454,7 +454,7 @@ export default function HowItWorks({ distribution }: { distribution: GateBar[] }
             the sources behind that argument where there were any.
           </p>
           <Link
-            href="/kill-log"
+            href="/kill-log" prefetch={false}
             className={buttonClasses({ size: 'lg' })}
           >
             Read the kill log{' '}

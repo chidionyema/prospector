@@ -158,7 +158,7 @@ describe('banned words', () => {
 /** URL paths, wire keys and analytics sources are names the code joins on, never copy. */
 const withoutNames = (line: string) =>
   line
-    .replace(/\/collections\b/g, '')
+    .replace(/\/ideas\b/g, '')
     .replace(/business-ideas-for-operators|marketplace-and-broker-ideas|productised-service-ideas|vertical-software-ideas/g, '')
     .replace(/shelf-end/g, '');
 
@@ -244,7 +244,7 @@ describe('the sweep cannot pass vacuously', () => {
   });
 
   it('exempts names without exempting sentences', () => {
-    expect(withoutNames(`<Link href="/collections">`)).not.toMatch(/collection/i);
+    expect(withoutNames(`<Link href="/ideas">`)).not.toMatch(/collection/i);
     expect(withoutNames(`source="homepage-shelf-end"`)).not.toMatch(/\bshelf\b/i);
     expect(withoutNames(`The shape of the collection`)).toMatch(/collection/i);
     expect(withoutNames(`packs on the shelf`)).toMatch(/\bshelf\b/i);

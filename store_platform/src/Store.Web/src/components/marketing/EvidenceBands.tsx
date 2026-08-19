@@ -24,6 +24,21 @@ import { RESEARCH_STATS } from '@/lib/stats';
  */
 import { GATE_LABELS } from '@/lib/gateLabels';
 
+/*
+ * THE KEY NAMES ONE BAR, NOT SIX (2026-08-19).
+ *
+ * It printed all six canonical gate names joined by "·". Measured on the live page at 1280 with
+ * Playwright: `.barkey` rendered 518x124px -- five wrapped lines of 11.5px mono under a 44px-tall
+ * chart -- and at 390 it rendered 310x198px. It read as a paragraph, not a key, and no label sat
+ * under the bar it named, so it told a reader nothing about which bar was which anyway.
+ *
+ * Short labels are not the way back. They were removed on 2026-08-18 because this file and the
+ * kill log then named the same cause of death two different ways. The canonical names stay.
+ *
+ * So the key names the bar the copy is about and says what the rest are. Pairing each label with
+ * its own bar needs a CSS rule that `mumchimp.css` does not have, and this build writes no CSS.
+ */
+
 const byGate = (killTotals as { byGate: Record<string, number> }).byGate;
 const gates = Object.entries(byGate)
   .sort((a, b) => b[1] - a[1])
@@ -54,9 +69,12 @@ export function KillGateBand() {
               />
             ))}
           </div>
-          <p className="barkey">{gates.map(([g]) => GATE_LABELS[g] ?? g).join(' · ')}</p>
+          <p className="barkey">
+            Tallest bar: {GATE_LABELS[top[0]] ?? top[0]}. The five after it are the next commonest
+            causes, in order.
+          </p>
           <p className="src num">
-            Every kill published with its reason · <Link href="/kill-log">read the kill log</Link>
+            Every kill published with its reason · <Link href="/kill-log" prefetch={false}>read the kill log</Link>
           </p>
         </div>
       </div>

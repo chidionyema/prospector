@@ -11,6 +11,66 @@
    footer follows every page's <h1> and an <h6> there skips four levels (axe `heading-order`).
    Same declarations as `.f-col h6` in the copied stylesheet, so the look is identical. */
 @layer components {
+
+  /* FOUR DEVIATIONS FROM THE SHIPPED STYLESHEET, each one measured against a check in
+     `verify.mjs`. The bundle stays byte-identical; the deviation lives here, which is what
+     `src/__tests__/stylesheetIsShippedVerbatim.test.ts` asks for. */
+
+  /* C6 fails any element whose box sits outside the viewport (`r.left < -2`). The skip link
+     measured `{left: -9999, width: 113.27}` on all eight pages. Same result on screen --
+     invisible until focused -- with the box inside the viewport. mumchimp.css:11-12. */
+  .skip {
+    left: 0;
+    top: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .skip:focus {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* `content-visibility: auto` skips layout for off-screen subtrees, so `innerText` returns ""
+     for every row below the fold. C16 read 14 empty `.proof` lines and C18 read 0 rows of kill
+     reasoning because of this one rule. Measured both ways: empty `.proof` = 14 with the rule,
+     0 with it off; `.klrow p` over 40 chars = 0 with the rule, 40 with it off. The rule is a
+     rendering hint with no visual effect, so turning it off changes nothing a reader sees.
+     mumchimp.css:266. */
+  .row,
+  .klrow,
+  .catrow,
+  .docitem {
+    content-visibility: visible;
+  }
+
+  /* C16 wants the proof line to read `41 sources` or `17x payback . 28 sources`. The markup
+     already says exactly that, with literal separators. `display: flex` makes each run its own
+     flex item, and `innerText` puts a newline between flex items, so the line came back as
+     "2\npayback .\n38\nsources". The separators are in the text, so the 9px gap was doubling
+     spacing that was already there. mumchimp.css:99. */
+  .row .proof {
+    display: block;
+  }
+
+  /* C3 forbids a heading jump, and every `.checkrow` / `.klrow` row heading followed an h2 as an
+     h5 / h4. mumchimp.css:68 and :116 styled only those two levels, so the heading could not be
+     raised in the markup without losing its type. Same declarations, at the level the document
+     outline needs. */
+  .checkrow h3 {
+    font-size: 16.5px;
+    font-weight: 635;
+    letter-spacing: -0.014em;
+    margin-bottom: 5px;
+  }
+  .klrow h3 {
+    grid-column: 1;
+    font-size: 16.5px;
+    font-weight: 625;
+    letter-spacing: -0.014em;
+    line-height: 1.3;
+    margin-bottom: 6px;
+    max-width: 58ch;
+  }
   /* THE ONE REAL COLLISION, AND IT SURVIVES INTO THE SHIPPED STYLESHEET. Both drawings declare `.bars`: index.html
      draws a row of kill-gate columns, pack-detail.html draws a stack of score bars, and
      pack-detail wins. mumchimp.css:103 ships `flex-direction:column` with mumchimp.css:356 `i{flex:1;max-width:26px}`, which is the merged pair. Scoping index's version to the band it lives
@@ -631,8 +691,8 @@ section {
   Measured at 1440x900 on 2026-08-14 (`fold-idx.png`, `fold-slug.png`): `PageHero` closes with
   `md:pb-16` (64px) and the `Section` under it opens with `md:py-24` (96px), so 160px of white
   plus the band's own `border-b` rule sat between a page's headline and the thing that headline
-  introduces. On /collections the search field started at y=495 and the first category row at y=639, on
-  a 900px viewport; on /collections/b2c-business-ideas the first card cleared the fold by 90px. Every
+  introduces. On /ideas the search field started at y=495 and the first category row at y=639, on
+  a 900px viewport; on /ideas/b2c-business-ideas the first card cleared the fold by 90px. Every
   route with a hero paid it, because both numbers live in `blocks.tsx`.
 
   The two paddings were never meant to add up -- each is right on its own, one closing a band and
