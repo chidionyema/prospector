@@ -276,7 +276,14 @@ def hooks_dir(repo: str) -> str | None:
     if not out:
         return None
     path = out.strip()
-    return path if os.path.isabs(path) else os.path.join(repo, path)
+    path = path if os.path.isabs(path) else os.path.join(repo, path)
+    # An ORPHANED worktree still looks like a repo: the directory is there and `.git` is there,
+    # but it is a file whose `gitdir:` points at metadata that has been pruned. git then answers
+    # `rev-parse --git-path` with the literal `.git/hooks`, and joining that gives a path whose
+    # first component is a FILE. Measured 2026-08-19 on wt-cardsub and wt-site-pr: the sweep died
+    # with NotADirectoryError and reported the hooks as broken estate-wide, every 30 minutes.
+    # Resolving the answer against the disk is the check that distinguishes the two cases.
+    return path if os.path.isdir(os.path.dirname(path)) or os.path.isdir(path) else None
 
 
 def post_commit_state(repo: str) -> tuple[str, str | None]:

@@ -1162,6 +1162,8 @@ def _read_method(cfg: Any, args: dict) -> dict:
 # --------------------------------------------------------------------------- #
 
 _FAILOVER_SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "engine_failover.py"
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_AUDIT_SCRIPT = _REPO_ROOT / "scripts" / "process_audit.py"
 
 
 def _failover(*argv: str, timeout: int = 120) -> str:
@@ -1280,7 +1282,23 @@ def _read_content_rules(cfg, args: dict) -> dict:
     return content_breaches.breach_report(cfg)
 
 
+def _read_processes(cfg, args: dict) -> dict:
+    """Every automated process on this estate, graded -- see scripts/process_audit.py.
+
+    Exit 1 is the NORMAL answer here, not a failure to read. The script exits non-zero whenever
+    something is failing, which is exactly the state this page exists to show; treating that as an
+    error would blank the page at the only moment it matters.
+    """
+    proc = subprocess.run(
+        [sys.executable, str(_AUDIT_SCRIPT), "--json"],
+        cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=240)
+    if not proc.stdout.strip():
+        raise RuntimeError(f"process_audit.py produced nothing: {proc.stderr[-400:]}")
+    return json.loads(proc.stdout)
+
+
 READS: dict[str, Callable[[Any, dict], Any]] = {
+    "processes": _read_processes,
     "engine_location": _read_engine_location,
     "method": _read_method,
     "shelf": _read_shelf,
@@ -2642,6 +2660,8 @@ TOOLS: list[dict] = [
        cmd=".venv/bin/python -m prospector.run report"),
     _t("prospector/run.py", "System diagnostics", False, "/tools",
        cmd=".venv/bin/python -m prospector.run diagnose"),
+    _t("scripts/process_audit.py", "Grade every automated job on this estate", False,
+       "/processes", cmd=".venv/bin/python scripts/process_audit.py"),
     _t("prospector/run.py", "Operator state and quotas", False, "/engine",
        cmd=".venv/bin/python -m prospector.run operators"),
     _t("prospector/run.py", "Manage ambition lanes", True, "/tools",
