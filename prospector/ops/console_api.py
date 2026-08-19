@@ -3145,6 +3145,13 @@ TOOLS: list[dict] = [
        "/processes", cmd=".venv/bin/python scripts/workflow_health.py"),
     _t("scripts/main_red.py", "Why is main red, and what fixes it?", False,
        "/processes", cmd=".venv/bin/python scripts/main_red.py"),
+    # Registered 2026-08-19. It landed as a script with no row here, which failed
+    # test_console_tool_registry_has_no_drift and turned main red; the green guard then reverted
+    # an unrelated commit (#463) that happened to be the head. A tool is not shipped until the
+    # operator can see it.
+    _t("scripts/pr_triage.py",
+       "Why is every PR red? A broken test, a dead machine, or a cancelled run", False,
+       "/processes", cmd=".venv/bin/python scripts/pr_triage.py"),
     _t("prospector/run.py", "Operator state and quotas", False, "/engine",
        cmd=".venv/bin/python -m prospector.run operators"),
     _t("prospector/run.py", "Manage ambition lanes", True, "/tools",
