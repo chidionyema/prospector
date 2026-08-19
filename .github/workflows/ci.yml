@@ -973,6 +973,38 @@ jobs:
           NEXT_PUBLIC_API_URL: https://api.example.com
           NEXT_PUBLIC_SITE_URL: https://www.example.com
 
+      # THE FOURTH MISSING ENFORCEMENT POINT IN THIS JOB, and the reason is the same shape as the
+      # three above: nothing here has ever rendered a page. `npm run build` proves the app
+      # compiles; it measures no geometry and opens no viewport.
+      #
+      # What that cost. On 2026-08-19 the home page shipped with the hero figure rendering at
+      # every width. Below 901px the hero is one column (`mumchimp.css:432`), so the figure
+      # stacked under the headline and pushed the first pack card to y=1288 on a 400px phone --
+      # a shop opening with no product on screen, on every phone size we test. It was caught by
+      # `e2e/discovery.spec.ts`, which runs in `e2e-live-smoke.yml` AGAINST PRODUCTION, after the
+      # deploy. The storefront stayed red for 30 hours. A check that only runs after deployment
+      # cannot prevent a bad deployment.
+      #
+      # `e2e/fold-budget.spec.ts` is the pre-deploy half. It boots the build above and asserts
+      # the shelf reaches the first screen on three phone widths. There is no API behind that
+      # server, so every assertion anchors on chrome that renders whether or not the catalogue
+      # answers -- which is enough, because this class of defect is always "something above the
+      # shelf grew".
+      #
+      # `--only-shell` skips the ~180MB of ffmpeg and headed-mode assets; this gate never records
+      # video. Invoked by path rather than by `--project=` on purpose: #398 rewrites
+      # `playwright.config.ts`, and a path cannot conflict with a project list.
+      - name: Install Chromium for the fold gate
+        run: npx playwright install --with-deps --only-shell chromium
+
+      - name: Fold gate (pre-deploy geometry)
+        run: |
+          npm run start -- --port 3111 &
+          for i in $(seq 1 40); do curl -sf -o /dev/null http://localhost:3111/ && break; sleep 2; done
+          npx playwright test e2e/fold-budget.spec.ts --reporter=list
+        env:
+          WEB_BASE_URL: http://localhost:3111
+
   # ──────────────────────────────────────────────────────────────────
   # The Ops Console — the operator's admin surface, and a separate Next app from the
   # storefront above. It had NO lane at all: no job in any of the four workflow files
