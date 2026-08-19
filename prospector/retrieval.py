@@ -2042,7 +2042,7 @@ class DiskCache(SearchProvider):
         base = f"{query}|{k}|{max_chars}"
         if self.key_salt:
             base = f"{base}|{self.key_salt}"
-        h = hashlib.sha1(base.encode()).hexdigest()[:20]
+        h = hashlib.sha1(base.encode(), usedforsecurity=False).hexdigest()[:20]
         return self.cache_dir / f"{h}.json"
 
     def _age_s(self, p: Path, fetched_at: float | None) -> float | None:
