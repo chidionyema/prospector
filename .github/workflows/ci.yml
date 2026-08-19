@@ -205,52 +205,60 @@ jobs:
 
           match() { printf '%s\n' "$files" | grep -qE "$1"; }
 
-          # A change to the pipeline itself used to run EVERY lane. The reasoning was that a
-          # broken workflow gates itself out of the jobs that would catch it, and that part is
-          # true. The cost was never measured. A pull request touching only ci.yml queued five
-          # heavy jobs, and heavy jobs run on three of the four runners: mumchimp-mac-4 carries
-          # `light` only. Measured 2026-08-18 with five runs queued and mac-4 idle, #321
-          # (ci.yml + doc_lint.py) and #318 (ci.yml only) each held five heavy slots for lanes
-          # with nothing to build, while main's own run waited behind them. Fixing CI was the
-          # most expensive thing CI could be asked to do, so CI fixes landed last.
+          # EVERY LANE IS DECIDED BY THE FILES, AND THE WORKFLOW DIFF ONLY EVER ADDS TO THAT.
           #
-          # A lane now runs when the workflow diff NAMES it. That keeps what the old rule was
-          # protecting -- an edit to the dotnet job still runs dotnet -- and drops the lanes the
-          # edit does not touch. Python is unconditional, because `guard` and `ci-ok` are
-          # python-lane jobs and any workflow edit can move them.
-          if match '^\.github/'; then
-            echo "workflow changed — python always, other lanes only if the diff names them"
-            echo "python=true" >> "$GITHUB_OUTPUT"
-            wf=$(git diff "$base"...HEAD -- .github/ || true)
-            names() { printf '%s\n' "$wf" | grep -qE "$1"; }
-            if names 'dotnet|Store\.(Api|Catalog|Tests)|\.cs\b|csproj'; then
-              echo "dotnet=true" >> "$GITHUB_OUTPUT"
-            else echo "dotnet=false" >> "$GITHUB_OUTPUT"; fi
-            if names 'nextjs|Store\.Web'; then
-              echo "web=true" >> "$GITHUB_OUTPUT"
-            else echo "web=false" >> "$GITHUB_OUTPUT"; fi
-            if names 'ops-console|Ops\.Console'; then
-              echo "console=true" >> "$GITHUB_OUTPUT"
-            else echo "console=false" >> "$GITHUB_OUTPUT"; fi
-            exit 0
-          fi
+          # These four are computed first and unconditionally, so a pull request that changes a
+          # workflow AND some code still grades the code. That was not true until 2026-08-19: the
+          # `.github/` rule below was an early `exit 0`, so on a mixed diff it decided dotnet, web
+          # and console from the TEXT of the workflow diff and threw the actual file list away.
+          # Run 32226199534 is the receipt — the pull request changed
+          # store_platform/src/Ops.Console/src/pages/queue.tsx and two api route files, and the
+          # ops-console job reported `skipped`. Nothing typechecked the console, and the run was
+          # green. That is the same defect the Ops.Console rule at the bottom of this block was
+          # added to fix in the first place, arriving by a different door.
+          py=false; dn=false; wb=false; cn=false
 
           # Python: engine sources, tests, deps, and the config/prompt files the engine reads.
-          if match '\.py$|^requirements|^pytest\.ini$|^config\.yaml$|^prompts/|^tests/|^scripts/'; then
-            echo "python=true" >> "$GITHUB_OUTPUT"; else echo "python=false" >> "$GITHUB_OUTPUT"; fi
+          if match '\.py$|^requirements|^pytest\.ini$|^config\.yaml$|^prompts/|^tests/|^scripts/'; then py=true; fi
 
-          if match '^store_platform/src/Store\.(Api|Catalog|Tests)/|\.cs$|\.csproj$|\.sln$'; then
-            echo "dotnet=true" >> "$GITHUB_OUTPUT"; else echo "dotnet=false" >> "$GITHUB_OUTPUT"; fi
+          if match '^store_platform/src/Store\.(Api|Catalog|Tests)/|\.cs$|\.csproj$|\.sln$'; then dn=true; fi
 
-          if match '^store_platform/src/Store\.Web/'; then
-            echo "web=true" >> "$GITHUB_OUTPUT"; else echo "web=false" >> "$GITHUB_OUTPUT"; fi
+          if match '^store_platform/src/Store\.Web/'; then wb=true; fi
 
           # The Ops Console is a SECOND Next app, and until 2026-08-17 no job built it. The
           # `web` filter above matches `Store.Web` only, so a pull request that changed the
           # console reported `nextjs skipping` and shipped with nothing typechecked. PR #289
           # changed `Ops.Console/src/pages/shelf.tsx` and CI produced no console result at all.
-          if match '^store_platform/src/Ops\.Console/'; then
-            echo "console=true" >> "$GITHUB_OUTPUT"; else echo "console=false" >> "$GITHUB_OUTPUT"; fi
+          if match '^store_platform/src/Ops\.Console/'; then cn=true; fi
+
+          # A change to the pipeline itself used to run EVERY lane. The reasoning was that a
+          # broken workflow gates itself out of the jobs that would catch it, and that part is
+          # true. The cost was never measured. A pull request touching only ci.yml queued five
+          # heavy jobs. Measured 2026-08-18 with five runs queued, #321 (ci.yml + doc_lint.py)
+          # and #318 (ci.yml only) each held five heavy slots for lanes with nothing to build,
+          # while main's own run waited behind them. Fixing CI was the most expensive thing CI
+          # could be asked to do, so CI fixes landed last.
+          #
+          # A lane also runs when the workflow diff NAMES it. That keeps what the old rule was
+          # protecting -- an edit to the dotnet job still runs dotnet -- and drops the lanes the
+          # edit does not touch. Python is unconditional here, because `guard` and `ci-ok` are
+          # python-lane jobs and any workflow edit can move them.
+          if match '^\.github/'; then
+            echo "workflow changed — python always, other lanes if the diff names them"
+            py=true
+            wf=$(git diff "$base"...HEAD -- .github/ || true)
+            names() { printf '%s\n' "$wf" | grep -qE "$1"; }
+            if names 'dotnet|Store\.(Api|Catalog|Tests)|\.cs\b|csproj'; then dn=true; fi
+            if names 'nextjs|Store\.Web'; then wb=true; fi
+            if names 'ops-console|Ops\.Console'; then cn=true; fi
+          fi
+
+          {
+            echo "python=$py"
+            echo "dotnet=$dn"
+            echo "web=$wb"
+            echo "console=$cn"
+          } >> "$GITHUB_OUTPUT"
 
       - name: What will run
         run: |
