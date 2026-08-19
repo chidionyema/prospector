@@ -1,3 +1,7 @@
+"""The engine bridge, end to end: a PriceDecision must mint the provider Price and the
+catalogue row together, because a drift between them charges the buyer and then fails the
+fulfilment fence.
+"""
 import os
 import sys
 import unittest

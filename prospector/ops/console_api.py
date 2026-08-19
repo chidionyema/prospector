@@ -1172,6 +1172,66 @@ def _repo_root() -> Path:
 _METHOD_STALE_H = 36
 
 
+#: How old the rework snapshot may be before this reader regenerates it. Regenerating is one
+#: `git log` and measured 0.44s on 2026-08-19, so the cheap thing is to just do it.
+_REWORK_STALE_H = 6
+
+
+def _read_rework() -> dict:
+    """The guard on the cost numbers above.
+
+    Every efficiency metric on this page improves if the work gets sloppier. An agent that skips
+    a test and ships the first guess uses fewer tokens, fewer round trips and less context, and
+    the scoreboard would call that progress right up until production broke. So the cost numbers
+    are only readable next to a number that gets WORSE when quality drops.
+
+    `scripts/rework_metrics.py` is that number, and it deliberately reads a different source --
+    git history, not session transcripts -- because a metric and its guard sharing a source can
+    fail together.
+
+    Regenerated here rather than by a scheduled job. It costs one `git log` call, and a snapshot
+    written by a job nobody watches is the staleness problem this console keeps hitting. If the
+    regenerate fails (no git history in the container, no origin/main), whatever file exists is
+    served with its age attached, and if there is no file the page says so instead of showing a
+    blank card.
+    """
+    path = _repo_root() / "store" / "ops" / "rework_metrics.json"
+    fresh = path.exists() and (time.time() - path.stat().st_mtime) / 3600.0 < _REWORK_STALE_H
+    if not fresh:
+        script = _repo_root() / "scripts" / "rework_metrics.py"
+        try:
+            subprocess.run([sys.executable, str(script)], cwd=str(_repo_root()),
+                           capture_output=True, text=True, timeout=120)
+        except (OSError, subprocess.SubprocessError):
+            pass  # fall through to whatever is on disk; the age below tells the truth
+    if not path.exists():
+        return {"present": False,
+                "note": "No rework snapshot, and it could not be generated here. Run: "
+                        ".venv/bin/python scripts/rework_metrics.py",
+                "generator": ".venv/bin/python scripts/rework_metrics.py"}
+    try:
+        snap = json.loads(path.read_text())
+    except (OSError, ValueError) as exc:
+        return {"present": False, "note": f"unreadable rework snapshot: {exc}"}
+    age_h = (time.time() - path.stat().st_mtime) / 3600.0
+    return {
+        "present": True,
+        "age_hours": round(age_h, 1),
+        "stale": age_h >= _REWORK_STALE_H,
+        "generated_at": snap.get("generated_at"),
+        "headline": snap.get("headline", {}),
+        # A shallow clone answers a 180-day question with whatever it has and says nothing.
+        # The reader has to carry that, or a five-day window renders as a monthly rate.
+        "coverage_note": snap.get("coverage_note", ""),
+        "shallow_clone": snap.get("shallow_clone", False),
+        # Six months of history exists; six months of it on a phone does not. The trend is what
+        # matters and six months of months is enough to see one.
+        "by_month": (snap.get("by_month") or [])[-6:],
+        "examples": (snap.get("examples") or [])[:5],
+        "note": snap.get("note", ""),
+    }
+
+
 def _read_method(cfg: Any, args: dict) -> dict:
     """How the agents are working: founder stop rate, complaint clusters, live rules.
 
@@ -1181,9 +1241,12 @@ def _read_method(cfg: Any, args: dict) -> dict:
     """
     path = _repo_root() / "store" / "ops" / "method_metrics.json"
     if not path.exists():
+        # The rework guard still travels. It comes from git, not from transcripts, so a
+        # missing transcript scoreboard is no reason to hide it.
         return {"present": False,
                 "note": "No scoreboard yet. Run:  python3 ~/.claude/scripts/reflect.py --json",
-                "generator": "python3 ~/.claude/scripts/reflect.py --json"}
+                "generator": "python3 ~/.claude/scripts/reflect.py --json",
+                "rework": _read_rework()}
     try:
         snap = json.loads(path.read_text())
     except (OSError, ValueError) as exc:
@@ -1206,6 +1269,13 @@ def _read_method(cfg: Any, args: dict) -> dict:
         "headline": head,
         "stops": snap.get("stops", {}),
         "efficiency": snap.get("efficiency", {}),
+        # Per session, because a monthly average cannot say whether a change helped.
+        # Only the most recent rows travel: the console is a dashboard, not an export.
+        "compliance": snap.get("compliance", {}),
+        "sessions": (snap.get("sessions") or [])[:12],
+        # The counterweight. Read the two together: cost falling while rework rises
+        # means the method got cheaper by getting worse.
+        "rework": _read_rework(),
         "predictions": snap.get("predictions", []),
         "themes": themes,
         "mechanisms": snap.get("mechanisms", []),
@@ -1224,6 +1294,8 @@ def _read_method(cfg: Any, args: dict) -> dict:
 # --------------------------------------------------------------------------- #
 
 _FAILOVER_SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "engine_failover.py"
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_AUDIT_SCRIPT = _REPO_ROOT / "scripts" / "process_audit.py"
 
 
 def _failover(*argv: str, timeout: int = 120) -> str:
@@ -1400,7 +1472,23 @@ def _read_content_rules(cfg, args: dict) -> dict:
     return content_breaches.breach_report(cfg)
 
 
+def _read_processes(cfg, args: dict) -> dict:
+    """Every automated process on this estate, graded -- see scripts/process_audit.py.
+
+    Exit 1 is the NORMAL answer here, not a failure to read. The script exits non-zero whenever
+    something is failing, which is exactly the state this page exists to show; treating that as an
+    error would blank the page at the only moment it matters.
+    """
+    proc = subprocess.run(
+        [sys.executable, str(_AUDIT_SCRIPT), "--json"],
+        cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=240)
+    if not proc.stdout.strip():
+        raise RuntimeError(f"process_audit.py produced nothing: {proc.stderr[-400:]}")
+    return json.loads(proc.stdout)
+
+
 READS: dict[str, Callable[[Any, dict], Any]] = {
+    "processes": _read_processes,
     "engine_location": _read_engine_location,
     "method": _read_method,
     "shelf": _read_shelf,
@@ -2841,6 +2929,8 @@ TOOLS: list[dict] = [
        cmd=".venv/bin/python -m prospector.run report"),
     _t("prospector/run.py", "System diagnostics", False, "/tools",
        cmd=".venv/bin/python -m prospector.run diagnose"),
+    _t("scripts/process_audit.py", "Grade every automated job on this estate", False,
+       "/processes", cmd=".venv/bin/python scripts/process_audit.py"),
     _t("prospector/run.py", "Operator state and quotas", False, "/engine",
        cmd=".venv/bin/python -m prospector.run operators"),
     _t("prospector/run.py", "Manage ambition lanes", True, "/tools",

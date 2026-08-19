@@ -1,5 +1,18 @@
 #!/usr/bin/env python3
-"""Which worktrees are safe to delete? Report by default, --fix removes them.
+"""Which worktrees are safe to delete, and which have drifted from main? Report by default.
+
+DIVERGENCE, added 2026-08-19. Founder: "need to address branch and worktree divergence from main
+branch, need constant refresh". The cost is measured rather than hypothetical: two developer
+checkouts sat 60 commits behind origin/main, and the CLAUDE.md the agent harness injects comes
+from whichever one a session was started in. An agent read a pre-Fly copy, graded this Mac's
+launchd jobs as the production process table, and reported an outage while the engine was ruling
+verdicts in lhr. A branch that drifts is not just harder to merge; it briefs every session that
+opens in it with an older estate.
+
+--refresh fast-forwards only. A worktree with no local commits is moved to origin/main, which
+cannot conflict and cannot lose work. A branch that HAS local commits is reported with its exact
+rebase command and never touched: rebasing another session's unfinished work automatically is how
+work disappears.
 
 WHY THIS EXISTS. Founder, 2026-08-18: "worktrees not cleaned up etc". Measured the same day:
 26 worktrees existed in this checkout. Each one is a tree a session can edit by mistake, and a
@@ -28,6 +41,7 @@ USAGE
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 from pathlib import Path
 
@@ -90,14 +104,32 @@ def dirty(path: Path) -> list[str]:
     return paths
 
 
+def divergence(path: Path) -> tuple[int, int]:
+    """(behind, ahead) against origin/main. (-1, -1) when it cannot be measured."""
+    code, out = git(["rev-list", "--left-right", "--count", "origin/main...HEAD"], cwd=path)
+    if code != 0 or not out:
+        return -1, -1
+    parts = out.split()
+    if len(parts) != 2 or not all(x.isdigit() for x in parts):
+        return -1, -1
+    return int(parts[0]), int(parts[1])
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--fix", action="store_true", help="remove the worktrees marked safe")
+    ap.add_argument("--refresh", action="store_true",
+                    help="fetch origin/main, then fast-forward every worktree that has no local "
+                         "commits; branches with local commits are reported, never rebased")
+    ap.add_argument("--json", action="store_true", help="machine-readable report, for the audit")
     ap.add_argument("--all-sessions", action="store_true",
                     help="also consider worktrees owned by another agent session")
     args = ap.parse_args()
 
     git(["worktree", "prune"])
+    # Every number below is "as of the last fetch". Under --refresh, make that now.
+    if args.refresh:
+        git(["fetch", "--quiet", "origin", "main"])
     here = Path.cwd().resolve()
     # A scratchpad path carries the owning session id: /private/tmp/claude-*/<slug>/<session>/...
     # Another session's tree may be clean and merged and still be in active use, and pulling the
@@ -154,6 +186,27 @@ def main() -> int:
             continue
         safe.append((path, branch, head))
 
+    # Divergence is measured for the KEEP set only. The SAFE set is already an ancestor of
+    # origin/main by definition, and it is on its way out.
+    drift = []
+    for path, branch, head, why in keep:
+        if not path.exists():
+            continue
+        behind, ahead = divergence(path)
+        if behind > 0:
+            drift.append({"path": str(path), "branch": branch, "head": head,
+                          "behind": behind, "ahead": ahead,
+                          "clean": not dirty(path),
+                          "action": ("fast-forward" if ahead == 0 else "rebase")})
+
+    if args.json:
+        print(json.dumps({
+            "safe": [{"path": str(p_), "branch": b, "head": h} for p_, b, h in safe],
+            "keep": [{"path": str(p_), "branch": b, "head": h, "why": w} for p_, b, h, w in keep],
+            "drift": drift,
+        }, indent=2))
+        return 0
+
     print(f"worktree gc — {len(safe) + len(keep)} worktrees\n")
     print(f"SAFE TO REMOVE ({len(safe)}): clean, merged into origin/main, not in use")
     for path, branch, head in safe:
@@ -163,10 +216,39 @@ def main() -> int:
     for path, branch, head, why in keep:
         print(f"  {head}  {branch:<40} {why}")
     print()
+    print(f"BEHIND origin/main ({len(drift)}):")
+    for d in drift:
+        state = "clean" if d["clean"] else "DIRTY"
+        print(f"  {d['head']}  {d['branch']:<40} {d['behind']} behind, {d['ahead']} ahead, "
+              f"{state}, needs {d['action']}")
+    print()
+
+    if args.refresh:
+        moved, stuck = 0, 0
+        for d in drift:
+            # Fast-forward only, and only a clean tree. A branch carrying local commits needs a
+            # rebase, which can conflict and can lose work, and it may belong to a session that is
+            # using it right now. Print the command and let its owner run it.
+            if d["action"] != "fast-forward" or not d["clean"]:
+                stuck += 1
+                print(f"  SKIPPED {d['branch']}: {d['ahead']} local commit(s), "
+                      f"{'clean' if d['clean'] else 'uncommitted work'} — run it yourself:")
+                print(f"          git -C {d['path']} rebase origin/main")
+                continue
+            code, _ = git(["merge", "--ff-only", "origin/main"], cwd=Path(d["path"]))
+            if code == 0:
+                moved += 1
+                print(f"  fast-forwarded {d['branch']} to origin/main")
+            else:
+                stuck += 1
+                print(f"  FAILED to fast-forward {d['branch']}")
+        print(f"\nrefreshed {moved}, left alone {stuck}")
+        return 0
 
     if not args.fix:
-        print("report only. To remove the safe ones:")
+        print("report only. To remove the safe ones, or to close the gap to main:")
         print("  .venv/bin/python scripts/worktree_gc.py --fix")
+        print("  .venv/bin/python scripts/worktree_gc.py --refresh")
         return 0
 
     removed = 0

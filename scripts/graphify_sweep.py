@@ -276,7 +276,14 @@ def hooks_dir(repo: str) -> str | None:
     if not out:
         return None
     path = out.strip()
-    return path if os.path.isabs(path) else os.path.join(repo, path)
+    path = path if os.path.isabs(path) else os.path.join(repo, path)
+    # An ORPHANED worktree still looks like a repo: the directory is there and `.git` is there,
+    # but it is a file whose `gitdir:` points at metadata that has been pruned. git then answers
+    # `rev-parse --git-path` with the literal `.git/hooks`, and joining that gives a path whose
+    # first component is a FILE. Measured 2026-08-19 on wt-cardsub and wt-site-pr: the sweep died
+    # with NotADirectoryError and reported the hooks as broken estate-wide, every 30 minutes.
+    # Resolving the answer against the disk is the check that distinguishes the two cases.
+    return path if os.path.isdir(os.path.dirname(path)) or os.path.isdir(path) else None
 
 
 def post_commit_state(repo: str) -> tuple[str, str | None]:
@@ -364,12 +371,25 @@ def check_hooks(rows: list[dict]) -> list[str]:
         if not os.path.exists(script):
             problems.append(f"{event} hook is configured but {script} does not exist")
 
-    missing = [r["name"] for r in rows
-               if not r["skipped"] and post_commit_state(r["repo"])[0] != "ok"]
+    # A directory whose git metadata was pruned is not a repo with a missing hook. It is a
+    # leftover, and no hook can be installed into a git dir that no longer exists. Counting it
+    # here made a check that could never go green, and a check that can never go green is one
+    # nobody reads: `--check-hooks` reported BROKEN on wt-cardsub and wt-site-pr indefinitely
+    # while every real trigger was wired. Orphans are estate hygiene, reported by
+    # scripts/process_audit.py under "orphaned directories", so they are noted here and not
+    # counted as an enforcement failure.
+    orphaned, missing = [], []
+    for r in rows:
+        if r["skipped"] or post_commit_state(r["repo"])[0] == "ok":
+            continue
+        (orphaned if hooks_dir(r["repo"]) is None else missing).append(r["name"])
     if missing:
         problems.append(f"post-commit refresh hook missing in {len(missing)} repo(s): "
                         + ", ".join(sorted(missing)[:8])
                         + (" …" if len(missing) > 8 else ""))
+    if orphaned:
+        print("[graphify] note: %d orphaned worktree dir(s) skipped, git metadata pruned: %s"
+              % (len(orphaned), ", ".join(sorted(orphaned)[:8])))
     return problems
 
 

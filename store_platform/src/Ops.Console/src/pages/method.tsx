@@ -51,6 +51,52 @@ type MethodView = {
     orphaned_mechanisms: number;
     output_tokens_per_call: number | null;
   };
+  compliance?: {
+    sessions: number;
+    unit?: string;
+    sessions_over_85k_resident?: number;
+    sessions_over_140k_resident?: number;
+    median_peak_resident?: number;
+    readonly_streaks?: number;
+    median_calls_per_request?: number;
+    notes?: Record<string, string>;
+    note?: string;
+  };
+  sessions?: {
+    session: string;
+    date: string | null;
+    requests: number;
+    tool_calls: number;
+    calls_per_request: number;
+    peak_resident: number;
+    readonly_streaks: number;
+    output_tokens: number;
+  }[];
+  rework?: {
+    present: boolean;
+    note?: string;
+    generator?: string;
+    age_hours?: number;
+    stale?: boolean;
+    coverage_note?: string;
+    shallow_clone?: boolean;
+    headline?: {
+      month?: string;
+      fix_share?: number | null;
+      labelled_share?: number | null;
+      labelled?: number;
+    };
+    by_month?: {
+      month: string;
+      commits: number;
+      labelled: number;
+      rework: number;
+      fix_share: number | null;
+      labelled_share: number | null;
+      partial?: boolean;
+    }[];
+    examples?: { sha: string; date: string; subject: string; file: string }[];
+  };
   efficiency?: {
     unit: string;
     note: string;
@@ -180,6 +226,63 @@ export default function Method() {
         </Card>
       ) : null}
 
+      {data.compliance?.sessions ? (
+        <Card title="Session discipline">
+          <Note>
+            One row per session, because a monthly average cannot say whether a change helped.
+            The thresholds are the founder&rsquo;s own: take the /clear safe point at ~85K
+            resident context, immediately at ~140K. Cost per request scales with resident size,
+            so the tail of a long session is where the money goes.
+          </Note>
+          <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-4">
+            <Row label="Sessions graded">{data.compliance.sessions}</Row>
+            <Row label="Past 85K">{data.compliance.sessions_over_85k_resident ?? '—'}</Row>
+            <Row label="Past 140K">{data.compliance.sessions_over_140k_resident ?? '—'}</Row>
+            <Row label="Median peak">
+              {(data.compliance.median_peak_resident ?? 0).toLocaleString()}
+            </Row>
+          </div>
+          {data.sessions?.length ? (
+            <Scroll>
+              <table className="mt-3 w-full text-[13px]">
+                <thead className="text-subtle">
+                  <tr>
+                    <th className="py-1 text-left font-[520]">date</th>
+                    <th className="py-1 text-left font-[520]">session</th>
+                    <th className="py-1 text-right font-[520]">round trips</th>
+                    <th className="py-1 text-right font-[520]">peak resident</th>
+                    <th className="py-1 text-right font-[520]">read-only runs</th>
+                    <th className="py-1 text-right font-[520]">output tokens</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.sessions.map((s) => (
+                    <tr key={s.session} className="border-t border-border">
+                      <td className="py-1.5 font-mono">{s.date ?? '—'}</td>
+                      <td className="py-1.5 font-mono text-subtle">{s.session}</td>
+                      <td className="py-1.5 text-right">{s.requests.toLocaleString()}</td>
+                      <td
+                        className={
+                          'py-1.5 text-right font-[560] ' +
+                          (s.peak_resident >= 140000 ? 'text-bad-strong' : '')
+                        }
+                      >
+                        {s.peak_resident.toLocaleString()}
+                      </td>
+                      <td className="py-1.5 text-right">{s.readonly_streaks}</td>
+                      <td className="py-1.5 text-right">{s.output_tokens.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Scroll>
+          ) : null}
+          {data.compliance.notes
+            ? Object.values(data.compliance.notes).map((n) => <Note key={n}>{n}</Note>)
+            : null}
+        </Card>
+      ) : null}
+
       {data.efficiency?.by_month?.length ? (
         <Card title="Tokens per move">
           <Note>
@@ -210,6 +313,98 @@ export default function Method() {
             </table>
           </Scroll>
           <Note>{data.efficiency.note}</Note>
+        </Card>
+      ) : null}
+
+      {data.rework ? (
+        <Card title="Rework — the guard on the numbers above">
+          <Note>
+            Every number above this card improves if the work gets sloppier. Skip a test, ship
+            the first guess, and the tokens, round trips and context all fall. So the cost
+            numbers only mean something read next to one that gets worse when quality drops.
+            This one comes from git history rather than session transcripts, on purpose: a
+            metric and its guard sharing a source can fail together.
+          </Note>
+          {data.rework.present ? (
+            <>
+              <Note>
+                Cost down and this flat or down means the method improved. Cost down and this up
+                means it got cheaper by getting worse.
+              </Note>
+              {data.rework.coverage_note ? <Note>{data.rework.coverage_note}</Note> : null}
+              <Scroll>
+                <table className="mt-2 w-full text-[13px]">
+                  <thead className="text-subtle">
+                    <tr>
+                      <th className="py-1 text-left font-[520]">month</th>
+                      <th className="py-1 text-right font-[520]">commits</th>
+                      <th className="py-1 text-right font-[520]">labelled</th>
+                      <th className="py-1 text-right font-[520]">labelled %</th>
+                      <th className="py-1 text-right font-[520]">fix</th>
+                      <th className="py-1 text-right font-[520]">fix % of labelled</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(data.rework.by_month ?? []).map((m) => (
+                      <tr key={m.month} className="border-t border-border">
+                        <td className="py-1.5 font-mono">
+                          {m.month}
+                          {m.partial ? <span className="text-subtle"> (partial)</span> : null}
+                        </td>
+                        <td className="py-1.5 text-right">{m.commits.toLocaleString()}</td>
+                        <td className="py-1.5 text-right">{m.labelled.toLocaleString()}</td>
+                        <td className="py-1.5 text-right text-subtle">{m.labelled_share ?? '\u2014'}</td>
+                        <td className="py-1.5 text-right">{m.rework.toLocaleString()}</td>
+                        <td
+                          className={
+                            'py-1.5 text-right font-[560] ' +
+                            ((m.fix_share ?? 0) >= 50 ? 'text-warn-strong' : '')
+                          }
+                        >
+                          {m.fix_share ?? '\u2014'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Scroll>
+              <Note>
+                The denominator is the commits carrying a conventional type prefix, not all
+                commits. Against all commits this number tracked prefix adoption rather than
+                quality &mdash; 37% of June&apos;s commits were labelled against 60% of
+                August&apos;s. A month with a low labelled % is a thin sample whatever the
+                share says.
+              </Note>
+              <Note>
+                Two earlier versions of this metric were measured and thrown away, both recorded
+                in scripts/rework_metrics.py. &quot;A fix touching a file another commit touched
+                in the last fortnight&quot; sounds like the definition of rework and has no
+                discriminating power here: 96% of August&apos;s fixes did it, and so did 93.5% of
+                all commits. In a repository this hot, everything touches recent code.
+              </Note>
+              {(data.rework.examples ?? []).length ? (
+                <Scroll>
+                  <table className="mt-2 w-full text-[13px]">
+                    <tbody>
+                      {(data.rework.examples ?? []).map((e) => (
+                        <tr key={e.sha} className="border-t border-border align-top">
+                          <td className="py-1.5 pr-3 font-mono text-subtle whitespace-nowrap">
+                            {e.date}
+                          </td>
+                          <td className="py-1.5">
+                            {e.subject}
+                            <div className="font-mono text-[12px] text-subtle">via {e.file}</div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </Scroll>
+              ) : null}
+            </>
+          ) : (
+            <Note>{data.rework.note}</Note>
+          )}
         </Card>
       ) : null}
 

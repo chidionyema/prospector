@@ -1,3 +1,6 @@
+"""Pull the features the free-prescreen AUC experiment scores, from stored dossiers into a flat
+table. Read-only over `store/`; writes only into this experiment's own directory.
+"""
 import json, glob, os, collections, statistics
 
 OUT = os.path.dirname(os.path.abspath(__file__))
