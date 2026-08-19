@@ -75,7 +75,109 @@ def spawn_refresh(repo: str) -> int | None:
         return None
 
 
+def compose_line(row: dict, repo: str, spawn=None) -> str | None:
+    """The session's one line about this graph, or None when there is nothing to say.
+
+    Pulled out of main() on 2026-08-19 so it can be tested. This is the only thing the hook
+    puts in front of an agent, and getting it wrong is expensive in a specific way: a STALE
+    graph reported as FRESH means every session trusts leads built from code that has moved,
+    and nothing downstream would catch it -- the hook fails silent, so a wrong line and no
+    line are indistinguishable from the outside.
+
+    `spawn` is injected so the selftest can exercise the STALE branches without starting a
+    real refresh.
+    """
+    spawn = spawn or spawn_refresh
+    name, state = row["name"], row["state"]
+    if state == "SKIP":
+        return None
+
+    query_hint = ('Ask the graph before grepping: `graphify query "<question>" --budget 2000` '
+                  "— local BFS over graphify-out/graph.json, 0 tokens of inference. Treat its "
+                  "output as LEADS with paths to verify, never as proof.")
+
+    if state == "FRESH":
+        return f"[graphify] {name} — graph FRESH. {query_hint}"
+    if state == "ABSENT":
+        return (f"[graphify] {name} — NO GRAPH ({row['reason']}). Not auto-built: a first build "
+                f"runs the community labeller, the one path that can spend tokens. Build it "
+                f"deliberately with `python3 {SWEEP} --fix --bootstrap --only {repo}`.")
+
+    pid = spawn(repo)
+    if pid is None:
+        return (f"[graphify] {name} — graph STALE ({row['reason']}) and the refresh could "
+                f"NOT be started. Run `python3 {SWEEP} --fix --only {repo}` by hand.")
+    return (f"[graphify] {name} — graph was STALE ({row['reason']}). A detached, "
+            f"LLM-free `graphify update` is running now (pid {pid}, log "
+            f"{REFRESH_LOG}); it costs CPU, not tokens. Answers from the graph in the "
+            f"next few minutes may predate this refresh. {query_hint}")
+
+
+def selftest() -> int:
+    """Check what this hook tells a session. Graded by scripts/process_audit.py.
+
+    Never spawns a refresh: `spawn` is a stub, so the STALE branches are exercised without
+    touching a graph or starting a process.
+    """
+    failures: list[str] = []
+
+    def check(name, got, want):
+        if got != want:
+            failures.append(f"  {name}: want {want!r}, got {got!r}")
+
+    spawned: list[str] = []
+
+    def fake_spawn(repo):
+        spawned.append(repo)
+        return 4242
+
+    def dead_spawn(repo):
+        return None
+
+    repo = "/tmp/example-repo"
+
+    # SKIP means say nothing at all. A hook that narrates a repo it does not manage is noise
+    # on every session start in every unrelated checkout.
+    check("SKIP is silent",
+          compose_line({"name": "x", "state": "SKIP", "reason": "-"}, repo, fake_spawn), None)
+
+    fresh = compose_line({"name": "prospector", "state": "FRESH", "reason": "-"}, repo, fake_spawn)
+    check("FRESH says FRESH", "graph FRESH" in (fresh or ""), True)
+    check("FRESH does not spawn a refresh", spawned, [])
+
+    # ABSENT must be REPORTED, never built. A first build runs the community labeller, which is
+    # the one path that can spend tokens, and "enforcement is free" has to stay absolute.
+    absent = compose_line({"name": "p", "state": "ABSENT", "reason": "no graph.json"},
+                          repo, fake_spawn)
+    check("ABSENT is reported", "NO GRAPH" in (absent or ""), True)
+    check("ABSENT says how to build it deliberately", "--bootstrap" in (absent or ""), True)
+    check("ABSENT does not spawn anything", spawned, [])
+
+    stale = compose_line({"name": "p", "state": "STALE", "reason": "12 commits behind"},
+                         repo, fake_spawn)
+    check("STALE spawns exactly one refresh", spawned, [repo])
+    check("STALE reports the pid", "pid 4242" in (stale or ""), True)
+    check("STALE says it costs CPU, not tokens", "not tokens" in (stale or ""), True)
+
+    # A refresh that could not start must say so and hand over the manual command. Reporting it
+    # as running would be the prose-drift this hook exists to kill.
+    dead = compose_line({"name": "p", "state": "STALE", "reason": "old"}, repo, dead_spawn)
+    check("failed spawn is admitted", "could NOT be started" in (dead or ""), True)
+    check("failed spawn gives the manual command", "--fix --only" in (dead or ""), True)
+
+    total = 11
+    if failures:
+        print(f"graphify session hook selftest: {len(failures)}/{total} FAILED")
+        print("\n".join(failures))
+        return 1
+    print(f"graphify session hook selftest: {total}/{total} passed")
+    return 0
+
+
 def main() -> None:
+    if "--selftest" in sys.argv:
+        sys.exit(selftest())
+
     # Per-process off switch — see the note in graphify_query_hook.py. Disables this process
     # only; the wiring stays visible to --check-hooks and to the state probe.
     if os.environ.get("GRAPHIFY_HOOK_OFF") == "1":
@@ -98,31 +200,9 @@ def main() -> None:
     except Exception:
         _fail_silent()
 
-    name = row["name"]
-    state = row["state"]
-    if state == "SKIP":
+    line = compose_line(row, repo)
+    if line is None:
         _fail_silent()
-
-    query_hint = ('Ask the graph before grepping: `graphify query "<question>" --budget 2000` '
-                  "— local BFS over graphify-out/graph.json, 0 tokens of inference. Treat its "
-                  "output as LEADS with paths to verify, never as proof.")
-
-    if state == "FRESH":
-        line = f"[graphify] {name} — graph FRESH. {query_hint}"
-    elif state == "ABSENT":
-        line = (f"[graphify] {name} — NO GRAPH ({row['reason']}). Not auto-built: a first build "
-                f"runs the community labeller, the one path that can spend tokens. Build it "
-                f"deliberately with `python3 {SWEEP} --fix --bootstrap --only {repo}`.")
-    else:
-        pid = spawn_refresh(repo)
-        if pid is None:
-            line = (f"[graphify] {name} — graph STALE ({row['reason']}) and the refresh could "
-                    f"NOT be started. Run `python3 {SWEEP} --fix --only {repo}` by hand.")
-        else:
-            line = (f"[graphify] {name} — graph was STALE ({row['reason']}). A detached, "
-                    f"LLM-free `graphify update` is running now (pid {pid}, log "
-                    f"{REFRESH_LOG}); it costs CPU, not tokens. Answers from the graph in the "
-                    f"next few minutes may predate this refresh. {query_hint}")
 
     print(json.dumps({
         "hookSpecificOutput": {
