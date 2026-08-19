@@ -31,6 +31,10 @@ def _run(stdin: str, env_extra: dict[str, str] | None = None, path: str = "") ->
 
     env = dict(os.environ)
     env.pop(guard.OVERRIDE, None)
+    # THE AUTO-FIX IS OFF UNLESS A TEST ASKS FOR IT, and this is a safety fence, not tidiness.
+    # A rescue runs a real `git push`. A test that left it on, with the real git on PATH, would
+    # push a branch to the real origin from the test suite.
+    env[guard.NO_AUTOFIX] = "1"
     if path:
         env["PATH"] = path
     env.update(env_extra or {})
@@ -191,6 +195,147 @@ def test_every_created_branch_in_one_push_is_checked_not_just_the_first(fake_gh)
     got = _run(text, path=path)
     assert got.returncode == 1
     assert "feat/one" in got.stdout and "feat/two" in got.stdout
+
+
+# --------------------------------------------------------------------------------------------
+# IT FIXES THE PUSH, it does not only refuse it.
+#
+# Every test here runs against a FAKE git as well as a fake gh. The rescue really does run
+# `git push`, so a test that let the real git through would push to the real origin.
+# --------------------------------------------------------------------------------------------
+
+
+@pytest.fixture()
+def fake_estate(tmp_path: Path):
+    """A fake `git` and `gh` that record every call, so the fix can be inspected command by
+    command. `feat/dead` has a merged PR; any name with a suffix is free."""
+    bin_dir = tmp_path / "estate"
+    bin_dir.mkdir()
+    log = tmp_path / "calls.log"
+
+    common = f'''#!/usr/bin/env python3
+import json, sys, pathlib
+argv = sys.argv[1:]
+pathlib.Path({str(log)!r}).open("a").write(" ".join(argv) + "\\n")
+'''
+
+    (bin_dir / "gh").write_text(common + '''
+if argv[:2] == ["pr", "list"]:
+    head = argv[argv.index("--head") + 1]
+    # A name with a numeric suffix is one the guard invented: free by construction.
+    print("[]" if head.rsplit("-", 1)[-1].isdigit() else '[{"number": 364, "state": "MERGED"}]')
+elif argv[:2] == ["pr", "create"]:
+    print("https://github.com/o/r/pull/999")
+sys.exit(0)
+''')
+    (bin_dir / "git").write_text(common + '''
+if argv[:1] == ["ls-remote"]:
+    print("")          # nothing on the remote by that name
+elif argv[:1] == ["log"]:
+    print("feat: the rescued commit")
+sys.exit(0)
+''')
+    for name in ("gh", "git"):
+        (bin_dir / name).chmod(0o755)
+    return f"{bin_dir}:/usr/bin:/bin", log
+
+
+def _calls(log: Path) -> list[str]:
+    return log.read_text().splitlines() if log.exists() else []
+
+
+def test_it_pushes_the_work_to_a_free_name_and_opens_a_draft_pr(fake_estate):
+    """The whole point. Founder, 2026-08-19: "the guard could auto fix also". Detection was never
+    the hard part — the manual recovery is what went wrong, because the cherry-pick conflicted."""
+    path, log = fake_estate
+    got = _run(
+        f"refs/heads/feat/dead {SHA} refs/heads/feat/dead {ZERO}",
+        env_extra={guard.NO_AUTOFIX: "0"},
+        path=path,
+    )
+    assert got.returncode == 1, got.stdout          # the ORIGINAL push still must not happen
+    assert "DID IT FOR YOU" in got.stdout
+    assert "feat/dead-2" in got.stdout
+    assert "pull/999" in got.stdout
+
+    calls = _calls(log)
+    assert any(c.startswith(f"push --no-verify origin {SHA}:refs/heads/feat/dead-2") for c in calls), calls
+
+
+def test_the_pr_it_opens_is_a_draft(fake_estate):
+    """This repo auto-merges on green. A hook that opened an ordinary PR could ship code to main
+    that no human asked to ship, which would be a worse bug than the one being fixed."""
+    path, log = fake_estate
+    _run(f"refs/heads/feat/dead {SHA} refs/heads/feat/dead {ZERO}",
+         env_extra={guard.NO_AUTOFIX: "0"}, path=path)
+    create = [c for c in _calls(log) if c.startswith("pr create")]
+    assert create and "--draft" in create[0], create
+
+
+def test_the_fix_never_touches_the_working_tree(fake_estate):
+    """It pushes `<sha>:refs/heads/<name>`, which needs no local branch. A hook that moved HEAD
+    under a running `git push` would be the worse bug."""
+    path, log = fake_estate
+    _run(f"refs/heads/feat/dead {SHA} refs/heads/feat/dead {ZERO}",
+         env_extra={guard.NO_AUTOFIX: "0"}, path=path)
+    forbidden = ("checkout", "reset", "branch -m", "rebase", "cherry-pick", "commit")
+    assert not [c for c in _calls(log) if c.startswith(forbidden)], _calls(log)
+
+
+def test_a_rescue_that_fails_falls_back_to_the_recipe_and_claims_nothing(tmp_path: Path):
+    """Half a fix reported as a whole one is worse than no fix. When the push fails the message
+    says so and prints the manual steps."""
+    bin_dir = tmp_path / "broken"
+    bin_dir.mkdir()
+    (bin_dir / "gh").write_text(
+        '#!/bin/sh\ncase "$*" in *--head*-[0-9]*) echo "[]";; *pr\\ list*) '
+        'echo \'[{"number": 364, "state": "MERGED"}]\';; esac\nexit 0\n')
+    (bin_dir / "git").write_text(
+        '#!/bin/sh\ncase "$1" in ls-remote) echo "";; push) echo "denied" >&2; exit 1;; esac\nexit 0\n')
+    for name in ("gh", "git"):
+        (bin_dir / name).chmod(0o755)
+
+    got = _run(f"refs/heads/feat/dead {SHA} refs/heads/feat/dead {ZERO}",
+               env_extra={guard.NO_AUTOFIX: "0"}, path=f"{bin_dir}:/usr/bin:/bin")
+    assert got.returncode == 1
+    assert "could not rescue" in got.stdout
+    assert "DID IT FOR YOU" not in got.stdout
+    assert "cherry-pick" in got.stdout
+
+
+def test_the_rescue_push_cannot_re_enter_the_guard(fake_estate):
+    """The fix is itself a push. Without the fence the guard would inspect its own rescue, decide
+    the new branch is being created, and ask GitHub about it forever."""
+    path, _log = fake_estate
+    got = _run(f"refs/heads/feat/dead {SHA} refs/heads/feat/dead {ZERO}",
+               env_extra={guard.RECURSION: "1"}, path=path)
+    assert got.returncode == 0
+
+
+def test_a_free_name_must_be_free_on_both_the_remote_and_in_the_pr_list():
+    """Checking only one of the two lands on a name a CLOSED pr already burned — the exact failure
+    being fixed, recreated by the fix."""
+    seen = []
+
+    def run(cmd, **kw):
+        seen.append(cmd)
+        if cmd[0] == "git":                                   # -2 exists on the remote
+            out = "abc refs/heads/feat/x-2" if cmd[-1] == "feat/x-2" else ""
+            return subprocess.CompletedProcess(cmd, 0, out, "")
+        taken = '[{"number": 9}]' if cmd[cmd.index("--head") + 1] == "feat/x-3" else "[]"
+        return subprocess.CompletedProcess(cmd, 0, taken, "")
+
+    assert guard.fresh_name("feat/x", run=run) == "feat/x-4"
+
+
+def test_off_by_one_variable(fake_estate):
+    """Somebody will want the refusal without the fix. One variable, and the tests rely on it."""
+    path, log = fake_estate
+    got = _run(f"refs/heads/feat/dead {SHA} refs/heads/feat/dead {ZERO}",
+               env_extra={guard.NO_AUTOFIX: "1"}, path=path)
+    assert got.returncode == 1
+    assert "DID IT FOR YOU" not in got.stdout
+    assert not [c for c in _calls(log) if c.startswith("push")]
 
 
 # --------------------------------------------------------------------------------------------
