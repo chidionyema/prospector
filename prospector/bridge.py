@@ -38,6 +38,7 @@ from .plain_text import publish_pass_document as prose_pass_document
 from .price_comparables import anchors_from_tags
 from .price_rationale import write_rationale
 from .pricing import price_for
+from .trimming import cap_words
 
 logger = logging.getLogger("prospector.bridge")
 
@@ -90,29 +91,10 @@ def _card_field(raw: Any) -> str:
     return nodash(prose_pass(to_plain_text(raw, collapse=True)))
 
 
-def _cap_words(text: str, cap: int) -> str:
-    """Cap a single-line catalogue field at `cap` chars WITHOUT cutting a word in half.
-
-    A bare `text[:cap]` ends wherever the cap happens to land. On 2026-08-08 that shipped a
-    subhead ending "to a true hourly wag" (pack 8ce5270ade208070). `check_truncation`
-    (pack_linter.py:229) is built to catch precisely that shape — `len(final) == cap` with a
-    word character on both sides of the cut — so a hard slice does not merely read badly, it
-    is GUARANTEED to unlist the pack. `cardLine` above takes the stricter route this repo
-    prefers, drop rather than truncate, because the card can fall back to the pack title.
-    `headline` and `subhead` have no fallback, so the better failure is a clean short line.
-
-    Cut back to the last word boundary and drop the punctuation the cut exposes. A single
-    token longer than the whole cap has no boundary to retreat to; it keeps the hard slice and
-    stays visible to the linter rather than being silently disguised.
-    """
-    t = (text or "").strip()
-    if len(t) <= cap:
-        return t
-    head = t[:cap]
-    cut = head.rfind(" ")
-    if cut <= 0:
-        return head
-    return head[:cut].rstrip(" ,;:")
+# Compatibility re-export. The cutter moved to `trimming.cap_words` so the three other
+# writers of a capped catalogue field could reach it without importing the bridge. `run.py` and
+# `tests/unit/test_bridge_card_field_caps.py` still import `_cap_words` from here.
+_cap_words = cap_words
 
 
 # Catalogue keys that are IDENTIFIERS, ENUMS or NUMBERS rather than prose. They pass

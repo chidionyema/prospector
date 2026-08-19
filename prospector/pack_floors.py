@@ -11,7 +11,7 @@ import re
 from typing import Any, Dict, List, Sequence
 
 from .plain_text import publish_pass, to_plain_text
-from .trimming import as_phrase
+from .trimming import as_phrase, cap_words
 
 # The two places the executive summary sends a buyer NEXT.
 #
@@ -255,8 +255,11 @@ def claim_safe_marketing(
     return [
         {
             "type": "listing_page",
-            "headline": title[:140],
-            "subhead": (one or title)[:280],
+            # `cap_words`, never a bare slice. A hard cut here is worse than it looks: it
+            # cuts mid-word, AND it destroys the untruncated source that `check_truncation`
+            # needs to see the cut at all, so the linter cannot flag what this line did.
+            "headline": cap_words(title, 140),
+            "subhead": cap_words(one or title, 280),
             "copy": copy,
             "what_you_get": [
                 "Blueprint / build spec",
