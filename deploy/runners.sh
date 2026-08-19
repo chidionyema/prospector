@@ -168,8 +168,28 @@ MSG
   # [env], and that is the only difference, so it gets its own file rather than a flag.
   local cfg="$HERE/runner/fly.$APP.toml"
   [ -f "$cfg" ] || cfg="$HERE/runner/fly.toml"
+
+  # STAMP THE IMAGE WITH THE COMMIT IT WAS BUILT FROM.
+  #
+  # Fly reports a deployment id and a layer digest. Neither maps back to a commit, so nothing
+  # could answer "is the fleet running the image this repository describes?" without opening an
+  # SSH session to a machine and looking. On 2026-08-19 that gap cost a day: openssh-client was
+  # added to the Dockerfile, the fleet went on running the image without it, and the hermes
+  # gate kept dying at exit 127 with no output while every screen showed a healthy fleet.
+  #
+  # `-dirty` is deliberate. This deploys the WORKING TREE, so a stamp naming a clean commit
+  # that the tree does not match would be a lie, and scripts/ci_fleet_probe.py would report a
+  # fleet as current that nobody can reproduce.
+  local image_sha
+  image_sha="$(git -C "$REPO_ROOT" log -1 --format=%H -- deploy/runner 2>/dev/null || echo unknown)"
+  if [ -n "$(git -C "$REPO_ROOT" status --porcelain -- deploy/runner 2>/dev/null)" ]; then
+    image_sha="${image_sha}-dirty"
+  fi
+  say "stamping the image RUNNER_IMAGE_SHA=$image_sha"
+
   fly deploy "$REPO_ROOT" --config "$cfg" -a "$APP" \
-    --dockerfile "$HERE/runner/Dockerfile" --strategy immediate --yes
+    --dockerfile "$HERE/runner/Dockerfile" --strategy immediate --yes \
+    --env "RUNNER_IMAGE_SHA=$image_sha"
 
   say "scaling to $n"
   fly scale count "$n" -a "$APP" -r "$REGION" --yes

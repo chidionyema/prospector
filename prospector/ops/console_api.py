@@ -3305,6 +3305,13 @@ TOOLS: list[dict] = [
     _t("scripts/deploy_status.py", "Start stopped CI runners when deploys are queued behind them",
        True, "/deploys", cmd=".venv/bin/python scripts/deploy_status.py --fix", risk="external",
        danger="starts Fly machines on prospector-ci; only acts when runs are actually queued"),
+    # Registered 2026-08-19. `ci_capacity.py` answers whether CI FITS; this answers whether it
+    # can RUN AT ALL. The two are separate questions and the estate has been wrong about the
+    # second one twice in a day: a fleet scaled up whose machines were left stopped, and an
+    # autoscale workflow that failed on every one of its five runs while nothing said so.
+    _t("scripts/ci_fleet_probe.py",
+       "Can CI actually run? Machines against runners, for every fleet", False, "/engine",
+       cmd=".venv/bin/python scripts/ci_fleet_probe.py", risk="external"),
     _t("scripts/launchd_plists.py", "Record the current job definitions", True, "/engine",
        cmd="python3 scripts/launchd_plists.py --snapshot",
        danger="overwrites the tracked copies with whatever is live, so run --check first "
