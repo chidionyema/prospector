@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 import plistlib
@@ -342,50 +343,56 @@ def grade_launchd(docs: set[str]) -> list[tuple[str, str, str]]:
 
 
 def grade_workflows(docs: set[str]) -> list[tuple[str, str, str]]:
-    """One (grade, filename, detail) row per GitHub workflow."""
-    code, out = sh(
-        ["gh", "run", "list", "--limit", "200", "--json",
-         "workflowName,conclusion,status,createdAt,event"], timeout=90)
-    runs: list[dict] = []
-    gh_error = None
-    if code != 0:
-        gh_error = (out.strip().splitlines() or ["gh failed"])[0]
-    else:
-        try:
-            runs = json.loads(out)
-        except ValueError as exc:
-            gh_error = str(exc)
+    """One (grade, filename, detail) row per GitHub workflow.
 
-    newest: dict[str, dict] = {}
-    for run in runs:
-        name = run.get("workflowName", "")
-        if name not in newest or run.get("createdAt", "") > newest[name].get("createdAt", ""):
-            newest[name] = run
+    The measurement is `scripts/workflow_health.py`, not a second count of the same fact. Two
+    things it fixes here, both of which produced wrong rows on this page.
 
+    DEAD is not FAILING. A workflow GitHub cannot START concludes instantly having run ZERO
+    jobs: no log, no annotation, no red check on any pull request. It looks exactly like a
+    workflow with a broken test, so `ci-autoscale.yml` sat in this list among the ordinary reds
+    for thirty consecutive runs and the CI pool was never scaled automatically once.
+
+    And NEVER-RAN was largely a lie. The old version read one global `gh run list --limit 200`,
+    a window that on a busy repository does not reach back to a workflow triggered weekly -- so
+    on 2026-08-19 it reported `deploy-api.yml`, `escape-hatch-drill.yml` and
+    `weekly-estate-review.yml` as never having run when all three had. Health is asked per
+    workflow now, through the workflows API, which has no such window.
+    """
+    spec = importlib.util.spec_from_file_location("workflow_health", ROOT / "scripts" / "workflow_health.py")
+    wfh = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(wfh)
+    try:
+        report = wfh.grade(wfh._repo(None), 5)
+    except Exception as exc:  # noqa: BLE001 -- "could not ask GitHub" is a WARN, never a green
+        return [(WARN, f.name, f"could not ask GitHub ({type(exc).__name__}: {exc})".replace("\n", " ")[:160])
+                for f in sorted(WORKFLOW_DIR.glob("*.y*ml"))]
+
+    by_path = {r["path"]: r for r in report["workflows"]}
     rows: list[tuple[str, str, str]] = []
     for f in sorted(WORKFLOW_DIR.glob("*.y*ml")):
-        text = f.read_text(encoding="utf-8")
-        m = re.search(r"^name:\s*(.+)$", text, re.M)
-        name = m.group(1).strip().strip("\"'") if m else f.stem
-        run = newest.get(name)
-        if gh_error:
-            rows.append((WARN, f.name, f"could not ask GitHub ({gh_error})"))
+        row = by_path.get(f".github/workflows/{f.name}")
+        if row is None:
+            # GitHub does not know this file yet: a workflow added on a branch and not on main.
+            rows.append((WARN, f.name, "GitHub has no workflow for this file yet"))
             continue
-        if run is None:
-            # A workflow that never ran leaves no red run anywhere. This is the only place it shows.
-            rows.append((BAD, f.name, f"NEVER-RAN -- no run of '{name}' in the last 200"))
-            continue
-        concl = run.get("conclusion") or run.get("status") or "?"
-        detail = f"last {concl} ({run.get('event')}) {run.get('createdAt', '')[:16]}"
-        if concl in ("failure", "timed_out", "startup_failure"):
-            rows.append((BAD, f.name, f"FAILING -- {detail}"))
+        verdict, graded = row["verdict"], row["runs_graded"]
+        if verdict.startswith("DEAD"):
+            rows.append((BAD, f.name, f"DEAD -- {graded}/{graded} runs produced ZERO jobs, so "
+                                      f"GitHub could not start it. Run `actionlint {f.name}`."))
+        elif verdict == "failing every run":
+            plural = "run" if graded == 1 else "runs"
+            rows.append((BAD, f.name, f"FAILING -- the last {graded} {plural} all failed"))
+        elif "produced zero jobs" in verdict:
+            rows.append((BAD, f.name, f"DEGRADED -- {verdict}"))
+        elif verdict == "no recent runs":
+            rows.append((WARN, f.name, "no runs at all in the window"))
         elif f.name not in docs:
-            rows.append((BAD, f.name, f"UNDOCUMENTED, absent from {INVENTORY.name} -- {detail}"))
+            rows.append((BAD, f.name, f"UNDOCUMENTED, absent from {INVENTORY.name} -- "
+                                      f"{graded} recent runs, ok"))
         else:
-            rows.append((OK, f.name, detail))
+            rows.append((OK, f.name, f"{graded} recent runs, ok"))
     return rows
-
-
 
 
 # A worktree this far behind origin/main is not "a bit stale". It is a different estate: the
