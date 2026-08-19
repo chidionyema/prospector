@@ -26,7 +26,8 @@ turn two. This estate learned it the expensive way on 2026-08-19 — see the las
 | An incident and the trap it revealed | `~/.claude/projects/<slug>/memory/` one file per fact | indexed by `MEMORY.md` |
 
 Load order for instructions: managed policy, then `~/.claude/CLAUDE.md`, then `./CLAUDE.md`, then
-`./CLAUDE.local.md`. They concatenate — nothing overrides anything, so a contradiction between two
+`./CLAUDE.local.md`.  <!-- doc-lint-ok: optional, absent here by choice -->
+They concatenate — nothing overrides anything, so a contradiction between two
 files is a contradiction the agent has to guess its way out of. Root `CLAUDE.md` is re-read after
 `/compact`; nested files and path-scoped rules are not.
 

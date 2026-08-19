@@ -99,13 +99,28 @@ migration and lives outside this repo. `docs/ENGINE_MIGRATION_PROGRAM.md` is the
 
 ## GitHub Actions runners
 
-Four self-hosted runners are declared; historically only some are loaded, which is deliberate —
-they are spare capacity, started by hand when CI queues.
+**CI runs on the Fly app `prospector-ci`** (lhr), which registers two Linux container runners
+carrying the `heavy` label. That is where every heavy job lands. This Mac is not CI.
 
-`actions.runner.chidionyema-prospector.mumchimp-mac`,
-`actions.runner.chidionyema-prospector.mumchimp-mac-2`,
-`actions.runner.chidionyema-prospector.mumchimp-mac-3`,
-`actions.runner.chidionyema-prospector.mumchimp-mac-4`
+Four `actions.runner.chidionyema-prospector.mumchimp-mac*` launchd jobs are installed here.
+Measured 2026-08-19: `-mac`, `-mac-2` and `-mac-3` are **offline on purpose — do not start
+them**; `-mac-4` is online and carries the `light` label. The earlier version of this paragraph
+called the offline three "spare capacity, started by hand when CI queues", and on 2026-08-19 an
+agent read that and told the founder to `launchctl kickstart` all three. They are off by a
+founder decision. A queued pull request is normally capacity — every online runner busy — not a
+dead runner.
+
+The live answer is a command, never this paragraph:
+
+```bash
+gh api repos/chidionyema/prospector/actions/runners \
+  --jq '.runners[] | "\(.name) \(.status) busy=\(.busy) \(.labels|map(.name)|join(","))"'
+fly status -a prospector-ci
+```
+
+`scripts/process_audit.py` asks the same question in its **CI runners** section, so the answer is
+on the ops console rather than in anyone's head. It grades an offline Mac runner OK (that is the
+decision) and an offline *Fly* runner WARN (that is capacity that used to exist).
 
 ## Estate agents (`~/.hermes`, `~/.claude`)
 
@@ -180,7 +195,7 @@ Recorded here rather than in a chat, because that is where the last inventory we
    `~/Library/LaunchAgents` and runs hourly, but no `ops/launchd/*.json` describes it, so a
    rebuild of the estate's plists would not recreate it.
 2. **`com.tie.ai-review` points at a script that is gone.** Its command is
-   `the-introduction-exchange/consensus/engine.py`, which does not exist on disk. Hence exit 2.
+   `the-introduction-exchange/consensus/engine.py`, which does not exist on disk.  <!-- doc-lint-ok: the absence IS the finding --> Hence exit 2.
    Retiring the job is the owner's call.
 3. **Both `com.haworks.*` jobs exit 78 (`EX_CONFIG`) because their `WorkingDirectory`,
    `~/Documents/code/haworks-platform`, does not exist.** The repo was moved or deleted. Same

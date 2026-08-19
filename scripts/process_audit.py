@@ -220,6 +220,66 @@ def grade_fly() -> list[tuple[str, str, str]]:
     return rows
 
 
+
+def grade_ci_runners() -> list[tuple[str, str, str]]:
+    """Ask GitHub which runners can actually take a job.
+
+    This row exists because of a wrong instruction given on 2026-08-19. A PR sat queued, this
+    Mac's four `actions.runner.*` launchd jobs showed three NOT LOADED, and the obvious-looking
+    conclusion was that CI had no runners. CI runs on the Fly app `prospector-ci`. The three
+    Macs are offline on purpose, and the queue was capacity: every online runner was busy.
+
+    The launchd section below cannot answer this. It measures jobs on this Mac, and the answer
+    is not on this Mac. So the question goes to the only place that knows -- the GitHub API,
+    which sees every runner of every kind and whether it is free.
+    """
+    rc, out = sh(["gh", "api", "repos/chidionyema/prospector/actions/runners",
+                  "--jq", '.runners[] | "\(.name)\t\(.status)\t\(.busy)\t'
+                          '\(.labels|map(.name)|join(\",\"))"'], timeout=60)
+    if rc != 0 or not out.strip():
+        return [(WARN, "CI runners", "cannot ask GitHub (gh missing, unauthenticated or offline)")]
+
+    online, busy, rows = [], [], []
+    for line in out.splitlines():
+        parts = line.split("\t")
+        if len(parts) < 4:
+            continue
+        name, status, is_busy, labels = parts[0], parts[1], parts[2], parts[3]
+        where = "Fly" if "fly" in labels else "this Mac"
+        if status != "online":
+            # The two cases are not the same, and grading them the same is how this row would
+            # go unread. A Mac runner offline is the estate's own decision. A Fly runner
+            # offline is capacity that used to be there and is not -- either an autostopped
+            # machine or one that died, and if every Fly runner goes that way, heavy jobs
+            # queue forever with nothing on this Mac able to take them.
+            if where == "Fly":
+                rows.append((WARN, f"runner {name}",
+                             "offline (Fly) -- autostopped or gone: fly status -a prospector-ci"))
+            else:
+                rows.append((OK, f"runner {name}",
+                             "offline (this Mac) -- off by design, CI runs on prospector-ci"))
+            continue
+        online.append(name)
+        if is_busy == "true":
+            busy.append(name)
+        rows.append((OK, f"runner {name}",
+                     f"online ({where}), {'BUSY' if is_busy == 'true' else 'free'} -- {labels}"))
+
+    if not online:
+        head = (BAD, "CI runners", "NO runner online -- every workflow will queue forever. "
+                                   "CI runs on the Fly app prospector-ci, not on this Mac: "
+                                   "fly status -a prospector-ci")
+    elif len(busy) == len(online):
+        head = (WARN, "CI runners",
+                f"all {len(online)} online runner(s) BUSY -- a queued PR is capacity, not a "
+                f"dead runner. Do not start the local actions.runner.* jobs; they are off by "
+                f"design and CI lives on the Fly app prospector-ci")
+    else:
+        head = (OK, "CI runners",
+                f"{len(online)} online, {len(busy)} busy -- CI runs on the Fly app prospector-ci")
+    return [head] + rows
+
+
 def grade_launchd(docs: set[str]) -> list[tuple[str, str, str]]:
     """One (grade, label, detail) row per launchd job we own."""
     declared, installed, loaded, receipts = (
@@ -266,7 +326,10 @@ def grade_launchd(docs: set[str]) -> list[tuple[str, str, str]]:
             # one GitHub runner of four is meant to be up at a time, and the ngrok tunnel is off on
             # purpose. An alarm that cries about six deliberate choices is an alarm nobody reads,
             # and the first real outage arrives in a list already full of noise.
-            rows.append((WARN, label, f"NOT LOADED, launchd is not running it -- {detail}"))
+            why = ("; off by design -- CI runs on the Fly app prospector-ci"
+                   if label.startswith("actions.runner.") else "")
+            rows.append((WARN, label,
+                         f"NOT LOADED, launchd is not running it -- {detail}{why}"))
         elif label in loaded and label not in declared:
             rows.append((BAD, label, f"UNDECLARED, no ops/launchd JSON -- {detail}"))
         elif label not in docs:
@@ -716,6 +779,7 @@ def main() -> int:
     sections = [
         # Production first, and it is not this Mac. Everything below this line is estate support.
         ("production (Fly)", grade_fly()),
+        ("CI runners", grade_ci_runners()),
         ("launchd jobs on this Mac", grade_launchd(docs)),
         ("GitHub workflows", grade_workflows(docs)),
         ("enforcement", grade_enforcement()),

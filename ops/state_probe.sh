@@ -61,6 +61,11 @@ echo "  The live process table is a command, never this text:"
 echo "      fly ssh console -a prospector-engine -C \"supervisorctl status\""
 echo "  This Mac's com.prospector.* launchd jobs are pre-2026-08-18 leftovers. Do not read them as"
 echo "  production and do not restart them. scripts/process_audit.py grades them SUPERSEDED."
+echo "  CI        prospector-ci (Fly, lhr) -- 2 Linux container runners, label 'heavy'. CI does"
+echo "            NOT run on this Mac. The actions.runner.* jobs here are offline ON PURPOSE;"
+echo "            do not start them. A queued pull request is usually capacity, not a dead"
+echo "            runner. Ask, never guess:"
+echo "      gh api repos/chidionyema/prospector/actions/runners --jq '.runners[] | \"\\(.name) \\(.status) busy=\\(.busy)\"'"
 
 for repo in "$HOME/Documents/code/prospector" \
             "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Documents/code/prospector" \
