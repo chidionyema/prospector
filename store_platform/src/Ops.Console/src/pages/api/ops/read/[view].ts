@@ -39,6 +39,7 @@ export const VIEWS = [
   'method',
   'docs',
   'incidents',
+  'shares',
   'content_rules',
   'orders',
   'order',
@@ -68,6 +69,7 @@ const ALLOWED_ARGS: Record<string, string[]> = {
   deliveries: ['state', 'limit'],
   disputes: ['days'],
   docs: ['name'],
+  shares: ['files'],
   console_log: ['limit'],
 };
 

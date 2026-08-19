@@ -477,6 +477,45 @@ def _read_incidents(cfg, args: dict) -> dict:
     return incidents_view(_repo_root())
 
 
+def _read_shares(cfg, args: dict) -> dict:
+    """Every share link, live and dead, plus what this repo is willing to serve.
+
+    Registered 2026-08-19. Founder: "not deep linnk but every file sheeable", "needs to be
+    seanles". The listing NEVER carries a token — `share._public` strips it — so this view is
+    safe to render, log and screenshot.
+    """
+    from . import share as _share
+
+    root = _repo_root()
+    out = _share.list_shares(_store_ops_dir(cfg))
+    out["allow_list_source"] = _share.allow_list_source(root)
+    out["shareable_count"] = len(_share.shareable_files(root))
+    out["scopes"] = list(_share.SCOPES)
+    out["max_days"] = _share.MAX_DAYS
+    out["default_days"] = _share.DEFAULT_DAYS
+    if args.get("files"):
+        out["files"] = _share.shareable_files(root)
+    return out
+
+
+def _read_share_open(cfg, args: dict) -> dict:
+    """THE ONE VIEW THAT ANSWERS WITHOUT A CONSOLE SESSION.
+
+    It is a read like any other so the public route can spawn the same process the console does,
+    but it is deliberately NOT in the console's `VIEWS` allow-list on the Next side — the public
+    route names this view and only this view, so a bug in the public handler cannot reach `money`
+    or `spend`. The token is the entire credential; everything the caller may see is decided
+    inside `share.open_share`, not here.
+    """
+    from . import share as _share
+
+    return _share.open_share(
+        _store_ops_dir(cfg), _repo_root(),
+        str(args.get("token") or ""), str(args.get("name") or ""),
+        viewer=str(args.get("viewer") or "anonymous"),
+    )
+
+
 def _read_metrics(cfg, args: dict) -> dict:
     from .metrics import snapshot
 
@@ -1504,6 +1543,8 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
     "metrics": _read_metrics,
     "docs": _read_docs,
     "incidents": _read_incidents,
+    "shares": _read_shares,
+    "share_open": _read_share_open,
     "runs": _read_runs,
     "run": _read_run,
     "candidate": _read_candidate,
@@ -2826,6 +2867,62 @@ def _act_daemon_restart(cfg, payload: dict, preview: bool) -> dict:
     return restart(cfg, label, actor=str(payload.get("actor") or "console"))
 
 
+def _act_share_create(cfg, payload: dict, preview: bool) -> dict:
+    """Mint a link. The token comes back ONCE, in the confirmed response, and never again.
+
+    The preview is not decoration. It is where the operator sees, before anything is minted, how
+    many files the link would expose and which fence answered — a `repo` share of 1,900 files and
+    a `file` share of one look identical in a form and could not be less alike.
+    """
+    from . import share as _share
+
+    scope = str(payload.get("scope") or "file").strip()
+    target = str(payload.get("target") or "").strip()
+    days = payload.get("days", _share.DEFAULT_DAYS)
+    note = str(payload.get("note") or "").strip()
+    root = _repo_root()
+
+    if scope not in _share.SCOPES:
+        raise ValueError(f"scope must be one of {', '.join(_share.SCOPES)}")
+    if preview:
+        if scope == "file":
+            covered = [target] if target and not _share.is_denied(target) else []
+        else:
+            covered = [f for f in _share.shareable_files(root)
+                       if scope == "repo" or f == target.strip("/")
+                       or f.startswith(target.strip("/") + "/")]
+        return {
+            "action": "share.create", "scope": scope, "target": target, "days": days,
+            "covers": len(covered), "sample": covered[:20],
+            "allow_list_source": _share.allow_list_source(root),
+            "note": "Anyone holding the link can read every file listed above, with no login, "
+                    "until it expires or you revoke it. Nothing outside that list is reachable "
+                    "through it.",
+        }
+    return _share.mint(_store_ops_dir(cfg), root, scope=scope, target=target,
+                       days=days, note=note, actor="console")
+
+
+def _act_share_revoke(cfg, payload: dict, preview: bool) -> dict:
+    """Kill a link now. Revoking something already revoked is a no-op, not an error."""
+    from . import share as _share
+
+    share_id = str(payload.get("id") or "").strip()
+    if not share_id:
+        raise ValueError("which share? pass its id")
+    if preview:
+        rows = [r for r in _share.list_shares(_store_ops_dir(cfg))["shares"]
+                if r["id"] == share_id]
+        if not rows:
+            raise ValueError(f"no share {share_id!r}")
+        row = rows[0]
+        return {"action": "share.revoke", "id": share_id, "scope": row["scope"],
+                "target": row["target"], "status": row["status"], "reads": row["reads"],
+                "note": "The link stops working immediately. This cannot be undone; mint a new "
+                        "one if you need to share again."}
+    return _share.revoke(_store_ops_dir(cfg), share_id, actor="console")
+
+
 ACTIONS: dict[str, Callable[[Any, dict, bool], dict]] = {
     "shelf.repair_copy": _act_shelf_repair_copy,
     "shelf.publish_pending": _act_shelf_publish_pending,
@@ -2839,6 +2936,8 @@ ACTIONS: dict[str, Callable[[Any, dict, bool], dict]] = {
     "config.restore": _act_config_restore,
     "catalogue.set_listing": _act_catalogue_listing,
     "deliveries.resend": _act_delivery_resend,
+    "share.create": _act_share_create,
+    "share.revoke": _act_share_revoke,
     "tools.run": _act_tools_run,
     "tools.undo": _act_tools_undo,
     "engine.switch": _act_engine_switch,
