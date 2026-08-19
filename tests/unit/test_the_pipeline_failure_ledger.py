@@ -1,0 +1,414 @@
+"""Every way the delivery pipeline can break is written down here, with the test that proves it.
+
+FOUNDER DIRECTIVE, 2026-08-20: "we eed bsolte proof, we need to suinulte all that ould go wrong
+all edge cases now and prove it is stable and trustworthy while we have capacity to do so. so the
+onl thing that can ever go wrong is apacity, not a nillin things at once."
+
+That is the goal state this file encodes. "Too many things can go wrong" is a feeling, and a
+feeling cannot be closed. A LIST can. Each row below names one failure mode of the pipeline and
+either points at the test that simulates it, or admits the mode is unguarded and names the issue
+tracking it. The open list is ratcheted: it may shrink, and adding to it is a deliberate edit that
+shows up in a diff.
+
+WHY A LEDGER AND NOT A DOCUMENT. A document goes stale silently -- on 2026-08-19 a docstring in
+this repo described ten standby machines that had already been repaired, and a session acted on
+it. This file cannot go stale in that direction: `test_every_proven_mode_has_a_live_proof` opens
+each proof file, and `test_every_workflow_is_named_by_the_ledger` fails the moment a workflow
+appears that no row accounts for. You cannot add an automated actor to this pipeline without
+saying, here, how it can hurt us.
+
+WHAT THIS FILE IS NOT. It does not re-test the modes. Each proof file does that. This file tests
+that the proofs EXIST and that the enumeration is complete, which is the part no individual test
+can check about itself.
+"""
+from __future__ import annotations
+
+import re
+from pathlib import Path
+from typing import NamedTuple
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[2]
+WORKFLOWS = ROOT / ".github" / "workflows"
+
+
+class Mode(NamedTuple):
+    """One way the pipeline can break."""
+
+    id: str
+    what_goes_wrong: str
+    surfaces: tuple[str, ...]  # the workflow files or scripts this mode lives in
+    proof: str | None  # repo-relative path to the test that simulates it
+    issue: int | None  # tracking issue, required when proof is None
+    why_open: str | None  # what is missing, required when proof is None
+
+
+# ---------------------------------------------------------------- the ledger
+#
+# Ordered by where the failure happens: merge, then main, then observation, then deploy, then
+# capacity. Every entry was paid for by an incident unless marked otherwise.
+
+LEDGER: tuple[Mode, ...] = (
+    # ---- at the merge
+    Mode(
+        "merge-over-a-red-check",
+        "A pull request is merged while its own ci-ok is failing. Nothing in GitHub refuses it: "
+        "both branch-protection endpoints answer 403 on this plan, so ci-ok is a required check "
+        "in name only. Six PRs went in this way on 2026-08-19 and main was red for over an hour.",
+        (".github/workflows/automerge.yml",),
+        None,
+        475,
+        "Only a person or GitHub Pro can refuse this. rule-guard.py fences a typed `gh pr merge`; "
+        "nothing sees a merge made in the GitHub web UI. The candidates are on the incident "
+        "record docs/incidents/INC-2026-08-19-merged-over-a-red-check.json.",
+    ),
+    Mode(
+        "merge-of-a-branch-behind-main",
+        "A PR that is green on its own merge ref is merged while behind main, and the combination "
+        "breaks main. The PR was never tested against what main actually contains.",
+        (".github/workflows/automerge.yml",),
+        "tests/unit/test_automerge_rescues_a_stale_pr.py",
+        None,
+        None,
+    ),
+    Mode(
+        "merge-robot-finishes-green-having-merged-nothing",
+        "The merge step swallows its own failure with `|| true` and reports success. A workflow "
+        "that silently does nothing is worse than one that is absent, because it is trusted.",
+        (".github/workflows/automerge.yml",),
+        "tests/unit/test_automerge_reports_what_it_could_not_merge.py",
+        None,
+        None,
+    ),
+    Mode(
+        "one-merge-strands-every-other-pr",
+        "A merge to main leaves every open PR behind main, and none of them can merge until a "
+        "person updates each branch by hand.",
+        (".github/workflows/automerge.yml",),
+        "tests/unit/test_automerge_rescues_stranded_prs.py",
+        None,
+        None,
+    ),
+    Mode(
+        "a-throw-mid-script-drops-everything-below-it",
+        "An unhandled error part way through a github-script step silently skips the rest of the "
+        "step. On 2026-08-19 checks.listForRef threw 403 above the CI dispatch, so the merge of "
+        "#451 landed on main and main was never graded.",
+        (".github/workflows/automerge.yml",),
+        "tests/unit/test_a_workflow_step_cannot_hide_its_own_failure.py",
+        None,
+        None,
+    ),
+    Mode(
+        "a-permissions-block-denies-a-call-the-job-makes",
+        "An explicit `permissions:` block is a whitelist: every scope it does not name is set to "
+        "none, and a job-level block replaces the top-level one outright. The call fails with 403 "
+        "at run time, not at lint time.",
+        (".github/workflows/automerge.yml", ".github/workflows/e2e-live-smoke.yml"),
+        "tests/unit/test_a_workflow_permission_block_covers_its_api_calls.py",
+        None,
+        None,
+    ),
+    # ---- on main
+    Mode(
+        "the-green-guard-reverts-the-head-not-the-cause",
+        "main-green-guard.yml reverts the commit at main's HEAD when CI fails twice. The HEAD is "
+        "not necessarily the cause. On 2026-08-19 it reverted #463, three commits past the commit "
+        "that actually broke the build, filed an issue blaming it, and left main red because the "
+        "broken file was never touched.",
+        (".github/workflows/main-green-guard.yml",),
+        None,
+        475,
+        "The guard has no test of any kind, and it holds `contents: write` on main. The fix needs "
+        "no test execution: before reverting commit X, fetch main's CI run on X's parent and "
+        "compare the failing job; if it fails there too, X is provably innocent.",
+    ),
+    Mode(
+        "a-push-lands-straight-on-main",
+        "Someone or something pushes to main without a pull request, so no CI verdict ever "
+        "covered the code that main now contains.",
+        (".github/workflows/ci.yml",),
+        "tests/unit/test_main_push_guard.py",
+        None,
+        None,
+    ),
+    Mode(
+        "a-red-main-blocks-every-pull-request",
+        "ci.yml's changes gate refuses to build any PR while main is red, so a red main stops the "
+        "whole repository. The one escape is the fixes-main label, and PR labels in the event "
+        "payload are frozen at dispatch, so the label must exist before the run starts.",
+        (".github/workflows/ci.yml",),
+        "tests/unit/test_no_pr_builds_while_main_is_red.py",
+        None,
+        None,
+    ),
+    # ---- observing it
+    Mode(
+        "a-tool-calls-main-green-from-a-stale-run",
+        "A probe reads the newest CI run and reports green, when that run tested an older commit "
+        "than main's HEAD.",
+        ("scripts/main_red.py",),
+        "tests/unit/test_main_red_never_reports_a_stale_green.py",
+        None,
+        None,
+    ),
+    Mode(
+        "a-run-with-no-jobs-is-read-as-a-verdict",
+        "GitHub refuses to build a push made with the default GITHUB_TOKEN: it creates a run with "
+        "conclusion action_required and ZERO jobs. It sorts newest, so any tool reading 'the "
+        "latest run at this head' reports a green PR as pending, or a red one as unknown.",
+        (".github/workflows/automerge.yml", "scripts/pr_triage.py"),
+        "tests/unit/test_pr_triage_reads_the_cause_not_the_colour.py",
+        None,
+        None,
+    ),
+    Mode(
+        "a-workflow-github-cannot-start-reports-nothing",
+        "A workflow subscribing to an event GitHub does not have produces runs with no jobs and "
+        "no red check anywhere. The alarm is silent in exactly the way a healthy alarm is.",
+        (".github/workflows/ci.yml",),
+        "tests/unit/test_workflow_triggers_are_real.py",
+        None,
+        None,
+    ),
+    Mode(
+        "a-dead-or-disabled-workflow-reports-healthy",
+        "A workflow that is disabled, or whose last run is ancient, is reported green because "
+        "nothing failed. Absence of red is not presence of green.",
+        (".github/workflows/e2e-live-smoke.yml",),
+        "tests/unit/test_workflow_health_never_reports_a_dead_workflow_green.py",
+        None,
+        None,
+    ),
+    Mode(
+        "a-pull-request-changes-code-whose-lane-never-runs",
+        "ci.yml's changes filter decides which lanes run. A path it does not match ships "
+        "ungraded, and the PR is green because nothing looked at it.",
+        (".github/workflows/ci.yml",),
+        "tests/unit/test_ci_change_filter_grades_every_lane.py",
+        None,
+        None,
+    ),
+    # ---- shipping it
+    Mode(
+        "production-ships-a-commit-ci-never-passed",
+        "A deploy is dispatched for a commit whose CI run failed or never concluded.",
+        (
+            ".github/workflows/deploy-engine.yml",
+            ".github/workflows/deploy-web.yml",
+            ".github/workflows/deploy-api.yml",
+        ),
+        "tests/unit/test_deploy_gate_on_ci_verdict.py",
+        None,
+        None,
+    ),
+    Mode(
+        "main-goes-green-and-a-component-never-deploys",
+        "The merge dispatches some deploys and not others, so web and API changes reach main and "
+        "stop there. Production sits a day behind, green all the way.",
+        (
+            ".github/workflows/deploy-engine.yml",
+            ".github/workflows/deploy-web.yml",
+            ".github/workflows/deploy-api.yml",
+        ),
+        "tests/unit/test_every_deploy_ships_on_green_main.py",
+        None,
+        None,
+    ),
+    Mode(
+        "a-deploy-queues-behind-our-own-ci",
+        "Deploys and CI share a runner label set, so a deploy waits for the build queue it is "
+        "supposed to follow. On 2026-08-19 a merge sat undeployed for twelve hours.",
+        (
+            ".github/workflows/deploy-engine.yml",
+            ".github/workflows/deploy-web.yml",
+            ".github/workflows/deploy-api.yml",
+        ),
+        "tests/unit/test_deploys_do_not_share_the_ci_queue.py",
+        None,
+        None,
+    ),
+    Mode(
+        "production-runs-code-that-is-not-main",
+        "The deploy succeeded and the process is still executing an older checkout, so every "
+        "instrument says shipped and none of them looked at what is running.",
+        (".github/workflows/deploy-engine.yml",),
+        "tests/unit/test_live_checkout_deploy_gap.py",
+        None,
+        None,
+    ),
+    # ---- the drills that watch the rest
+    Mode(
+        "an-alarm-that-runs-after-the-thing-it-guards",
+        "A scheduled check that runs after a deploy cannot prevent that deploy, and a live smoke "
+        "reported red to nobody for thirty hours.",
+        (
+            ".github/workflows/e2e-live-smoke.yml",
+            ".github/workflows/dns-drift-drill.yml",
+            ".github/workflows/escape-hatch-drill.yml",
+            ".github/workflows/weekly-estate-review.yml",
+        ),
+        "tests/unit/test_an_alarm_must_run_when_the_thing_it_alarms_on_fails.py",
+        None,
+        None,
+    ),
+    # ---- capacity: the one the founder has accepted
+    Mode(
+        "the-fleet-cannot-hold-the-work",
+        "There are fewer usable runners than queued jobs, so builds wait. This is the ONE failure "
+        "mode the founder has accepted as permanent: it is visible, it is a money decision, and "
+        "it degrades rather than corrupts. Everything else in this ledger must be guarded so that "
+        "this is the only thing left that can go wrong.",
+        (".github/workflows/ci-fleet-watch.yml",),
+        "tests/unit/test_ci_capacity.py",
+        None,
+        None,
+    ),
+    Mode(
+        "a-machine-that-registers-as-a-runner-cannot-hold-a-job",
+        "A Fly standby machine registers with GitHub and is stopped by the platform mid-build. "
+        "Every count says twelve; the number that can work is two. The build dies as 'the "
+        "self-hosted runner lost communication with the server', which reads as a flaky test.",
+        (".github/workflows/ci-fleet-watch.yml", "scripts/ci_fleet_probe.py"),
+        "tests/unit/test_a_standby_machine_is_not_capacity.py",
+        None,
+        None,
+    ),
+    Mode(
+        "an-agent-push-destroys-another-agents-in-flight-run",
+        "ci.yml sets cancel-in-progress for every ref that is not main, so a push cancels the run "
+        "that was about to merge someone else's work. 49 of 195 runs on 2026-08-19 were cancelled.",
+        (".github/workflows/ci.yml",),
+        "tests/unit/test_dead_branch_push_guard.py",
+        None,
+        None,
+    ),
+    Mode(
+        "a-run-is-cancelled-for-a-pull-request-that-is-still-open",
+        "cancel-ci-on-pr-close.yml cancels runs when a PR closes. It holds actions: write, so a "
+        "wrong match kills a live build, and a cancelled run is indistinguishable from a failure "
+        "in every listing.",
+        (".github/workflows/cancel-ci-on-pr-close.yml",),
+        None,
+        475,
+        "The workflow has no test of any kind. It needs the same treatment as the green guard: "
+        "prove it only ever cancels runs whose head branch belongs to the closed PR, and never a "
+        "run on main.",
+    ),
+)
+
+# The modes with no proof, as of 2026-08-20. This set is a RATCHET: removing an entry is the
+# point of the exercise, and adding one must be a deliberate, reviewable edit rather than a
+# regression that slips in. See test_the_open_list_does_not_grow.
+OPEN_BASELINE = frozenset(
+    {
+        "merge-over-a-red-check",
+        "the-green-guard-reverts-the-head-not-the-cause",
+        "a-run-is-cancelled-for-a-pull-request-that-is-still-open",
+    }
+)
+
+# Workflows that grade or ship nothing and hold no write scope still have to be named, but a
+# purely advisory workflow does not need its own failure mode. Nothing is exempt today; this
+# exists so that adding an exemption is explicit rather than a silent gap in the sweep.
+EXEMPT_WORKFLOWS: frozenset[str] = frozenset()
+
+
+def _ids() -> list[str]:
+    return [m.id for m in LEDGER]
+
+
+def test_the_ledger_is_not_empty_and_ids_are_unique():
+    """A broken constant must fail loudly, not make every other test in this file vacuous."""
+    assert len(LEDGER) >= 15, f"the ledger has shrunk to {len(LEDGER)} rows; that is a deletion"
+    assert len(set(_ids())) == len(LEDGER), "two rows share an id"
+
+
+@pytest.mark.parametrize("mode", [m for m in LEDGER if m.proof], ids=lambda m: m.id)
+def test_every_proven_mode_has_a_live_proof(mode: Mode):
+    """The proof must be a real test file that really contains tests.
+
+    This is the check that stops the ledger going stale the way a document does: a proof that was
+    renamed, merged away or emptied fails here instead of quietly continuing to look guarded.
+    """
+    path = ROOT / mode.proof
+    assert path.exists(), (
+        f"{mode.id}: the proof {mode.proof} is not on disk. Either the test was renamed and this "
+        f"row needs updating, or the guard was deleted and this mode is now OPEN."
+    )
+    body = path.read_text(encoding="utf-8")
+    assert re.search(r"^\s*def test_", body, re.M), (
+        f"{mode.id}: {mode.proof} exists but defines no test function, so it proves nothing"
+    )
+
+
+@pytest.mark.parametrize("mode", [m for m in LEDGER if not m.proof], ids=lambda m: m.id)
+def test_every_open_mode_names_an_issue_and_says_what_is_missing(mode: Mode):
+    """An admitted gap with no ticket is a gap nobody is going to close."""
+    assert mode.issue, f"{mode.id} has no proof and no tracking issue"
+    assert mode.why_open and len(mode.why_open) > 40, (
+        f"{mode.id} must say what is missing, in enough detail that the next session can act on "
+        f"it without re-deriving the incident"
+    )
+
+
+def test_the_open_list_does_not_grow():
+    """The ratchet. The point of the exercise is for this set to shrink to nothing."""
+    open_now = {m.id for m in LEDGER if not m.proof}
+    added = open_now - OPEN_BASELINE
+    assert not added, (
+        f"new unguarded failure modes: {sorted(added)}. If that is deliberate, add them to "
+        f"OPEN_BASELINE in the same commit and say why in the message."
+    )
+    closed = OPEN_BASELINE - open_now
+    assert not closed, (
+        f"{sorted(closed)} now has a proof — good. Remove it from OPEN_BASELINE so the ratchet "
+        f"tightens, otherwise the next gap can take its place for free."
+    )
+
+
+def _workflow_files() -> list[Path]:
+    return sorted(p for p in WORKFLOWS.glob("*.yml") if p.name not in EXEMPT_WORKFLOWS)
+
+
+def test_there_are_workflows_to_grade():
+    """Guards the glob: an empty sweep must not read as full coverage."""
+    assert len(_workflow_files()) >= 10, "the workflow glob found almost nothing; check the path"
+
+
+@pytest.mark.parametrize("wf", _workflow_files(), ids=lambda p: p.name)
+def test_every_workflow_is_named_by_the_ledger(wf: Path):
+    """Exhaustiveness. You cannot add an automated actor without saying how it can hurt us.
+
+    This is the test that makes the enumeration complete by construction rather than by
+    somebody's memory of what the pipeline contains.
+    """
+    rel = f".github/workflows/{wf.name}"
+    named_by = [m.id for m in LEDGER if rel in m.surfaces]
+    assert named_by, (
+        f"{rel} is not named by any row in the ledger. Every workflow in this pipeline must have "
+        f"at least one written-down way it can break, with either a proof or an issue. Add a Mode "
+        f"for it in {Path(__file__).name}."
+    )
+
+
+@pytest.mark.parametrize("wf", _workflow_files(), ids=lambda p: p.name)
+def test_a_workflow_that_can_write_is_covered_by_a_proof_or_an_admitted_gap(wf: Path):
+    """A workflow holding contents: write or actions: write can damage the estate on its own.
+
+    main-green-guard.yml reverts commits on main and had no test of any kind until this ledger
+    said so out loud. The scope is read from the file rather than from a list here, so granting a
+    new write scope drags the workflow into this check automatically.
+    """
+    text = wf.read_text(encoding="utf-8")
+    writes = sorted(set(re.findall(r"^\s*(contents|actions|issues|packages):\s*write\s*$", text, re.M)))
+    if not writes:
+        pytest.skip(f"{wf.name} holds no write scope")
+
+    rel = f".github/workflows/{wf.name}"
+    rows = [m for m in LEDGER if rel in m.surfaces]
+    assert rows, f"{rel} holds {writes} and is not in the ledger at all"
+    assert any(m.proof for m in rows) or any(m.issue for m in rows), (
+        f"{rel} holds {writes} but every row naming it is silent: no proof, no issue"
+    )
