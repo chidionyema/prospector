@@ -6,7 +6,7 @@
   "detected_by": "founder",
   "first_order": {
     "what_broke": "The founder said the agent produces alerts instead of work. Task c53a1e4b2841 on 2026-08-18 is the shape of it. claude -p timed out at 900s, so the coordinator fell back to MiniMax, which has no tool runtime and printed its tool calls as prose. verify() then ran the acceptance test, got exit 0 with no output, and closed the task done with the reason 'acceptance test passed (ground truth); fingerprint resolved. (exit 0, no output)'. Nothing was done.",
-    "receipt": "coordinator.db events, kind=verify, payload contains '(exit 0, no output)' and ok=true, on a task whose result carries an executor fallback marker: 208 tasks, first 2026-07, most recent 2026-08-18. The acceptance test on c53a1e4b2841 was `python3 ~/.hermes/tests/test_resilience_ticks_unreadable.py >/dev/null 2>&1 && grep -q 'Failed to read ticks.jsonl' ~/.hermes/scripts/resilience.py` — silent by construction on both halves.",
+    "receipt": "coordinator.db events, kind=verify, payload contains '(exit 0, no output)' and ok=true, on a task whose result carries an executor fallback marker: 208 tasks, first 2026-07, most recent 2026-08-18. The acceptance test on c53a1e4b2841 was `python3 ~/.hermes/tests/test_resilience_ticks_unreadable.py >/dev/null 2>&1 && grep -q 'Failed to read ticks.jsonl' ~/.hermes/scripts/resilience.py` \u2014 silent by construction on both halves.",
     "fixed_by": "~/.hermes 3861d76"
   },
   "cause_chain": [
@@ -18,9 +18,9 @@
   ],
   "second_order": {
     "sweep_command": "rg -n 'returncode == 0|rc == 0|exit 0' ~/.hermes/scripts/*.py scripts/*.py | rg -v 'test_'",
-    "siblings_found": null,
+    "siblings_found": 36,
     "siblings_fixed": 0,
-    "note": "NOT YET RUN. Every place that reads an exit code as a verdict without requiring the command to say something is a candidate."
+    "note": "RUN 2026-08-19. 74 hit lines after dropping tests and comments; 57 of those do not inspect the command's output on the same expression; 36 of the 57 are real verdict sites, where exit 0 alone decides pass/ok/healthy/running and the command could succeed having done nothing. Re-derive with the sweep_command, then `| rg -v 'stdout|stderr|output|\\.out\\b'` for the 57. The 21 excluded from the 57 by review are sites where the exit code only gates whether to USE the output (scripts/ops_status.py:98,176,251,252,329,375,442; scripts/live_checkout.py:566,571; ~/.hermes/scripts/resilience.py:198,283; ~/.hermes/scripts/diagnostics.py:184,197; ~/.hermes/scripts/coordinator.py:1361; ~/.hermes/scripts/estate_watchdog.py:296), sites where distinct exit codes are the explicit contract (~/.hermes/scripts/sandbox.py:67, git diff --cached --quiet), sites that also require a second condition (scripts/popdd_verify.py:630; ~/.hermes/scripts/hermes_subprocess.py:41), and the three scripts/prune_branches.py prints, where the command is destructive so exit 0 genuinely means it acted. siblings_fixed stays 0: most of the 36 live in ~/.hermes/scripts, a different repo, and the fix is one shared helper plus a guard, not 36 diffs. Tracked as issue #429."
   },
   "third_order": {
     "tier": "refuse",
@@ -35,6 +35,6 @@
     "window_days": 14,
     "verdict": "unproven"
   },
-  "issue": null,
+  "issue": 429,
   "state": "open"
 }
