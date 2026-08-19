@@ -193,7 +193,7 @@ def image_staleness(machines: list[dict], expected: str | None) -> str | None:
     )
 
 
-def grade(fleet: dict, fly: str | None, gh: str | None) -> dict:
+def grade(fleet: dict, fly: str | None, gh: str | None, image_only: bool = False) -> dict:
     app, repo = fleet["app"], fleet["repo"]
     lo, hi = capacity()
     # A fleet is autoscaled only if it holds a PAT: `deploy/runners.sh autoscale` starts
@@ -251,9 +251,25 @@ def grade(fleet: dict, fly: str | None, gh: str | None) -> dict:
                     f"no machines at all — nothing can run a {repo or app} job. "
                     f"PROSPECTOR_RUNNER_APP={app} deploy/runners.sh up 1"
                 )
-            stale = image_staleness(machines, expected_image_sha())
-            if stale:
-                out["problems"].append(stale)
+            # AN UNKNOWN EXPECTATION IS A PROBLEM, NOT A PASS. image_staleness() returns
+            # None both when every machine is current and when there is nothing to compare
+            # against, and those two must not look the same to an operator. `origin/main`
+            # fails to resolve on a shallow clone — which is the default `actions/checkout`
+            # gives you — so a scheduled run would have graded nothing and gone green. The
+            # same reasoning as unstamped machines, one level up.
+            expected = expected_image_sha()
+            if expected is None:
+                out["problems"].append(
+                    "cannot tell whether the fleet is current: `git log origin/main -- "
+                    "deploy/runner` resolved nothing, so there is no image commit to compare "
+                    "against. In CI that means a shallow checkout — use fetch-depth: 0 and "
+                    "fetch origin main. This is reported rather than skipped because a "
+                    "staleness check that accepts an unknown has stopped checking."
+                )
+            else:
+                stale = image_staleness(machines, expected)
+                if stale:
+                    out["problems"].append(stale)
 
         # NAMES AND DIGESTS ONLY. There is no code path in this file that can read a value.
         secrets, err = _json_out([fly, "secrets", "list", "-a", app, "--json"])
@@ -277,6 +293,16 @@ def grade(fleet: dict, fly: str | None, gh: str | None) -> dict:
                     "no runner credential on the app, so a machine can never register. "
                     f"PROSPECTOR_RUNNER_APP={app} deploy/runners.sh up 1 mints one."
                 )
+
+    # THE HALF THAT NEEDS NO GITHUB CREDENTIAL.
+    # Reading a repository's self-hosted runners needs the `administration` permission, which
+    # GITHUB_TOKEN cannot be granted at all — only a personal access token can. So a scheduled
+    # job that asks the whole question is red every day for a credential reason, and a check
+    # that cries wolf daily is a check the operator stops reading. `--image-only` grades what
+    # FLY_API_TOKEN alone can answer: is the fleet running the image this repository describes.
+    # The rest stays a console button until a scoped PAT exists as a repository secret.
+    if image_only:
+        return out
 
     if gh is None:
         out["problems"].append("gh is not on PATH, so the repository's runners cannot be read")
@@ -377,11 +403,17 @@ def grade(fleet: dict, fly: str | None, gh: str | None) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Grade the self-hosted CI runner fleets.")
     ap.add_argument("--json", action="store_true", help="machine-readable, for the ops console")
+    ap.add_argument(
+        "--image-only",
+        action="store_true",
+        help="grade only whether each fleet runs the image this repository describes; "
+        "needs flyctl and no GitHub credential, so a scheduled job can ask it",
+    )
     args = ap.parse_args()
 
     fly, gh = (_cli("fly") or _cli("flyctl")), _cli("gh")
     fleets = discover_fleets()
-    graded = [grade(f, fly, gh) for f in fleets]
+    graded = [grade(f, fly, gh, image_only=args.image_only) for f in fleets]
     degraded = [g for g in graded if g["problems"]]
 
     if args.json:

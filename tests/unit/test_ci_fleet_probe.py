@@ -79,11 +79,14 @@ def test_a_mixed_fleet_names_both_populations():
     assert "unstamped" in problem
 
 
-def test_no_expectation_raises_no_alarm():
+def test_no_expectation_compares_nothing_and_says_so_one_level_up():
     """`git log` can fail — a shallow clone, no origin/main, git not on PATH.
 
-    A probe that reports a fault when it could not work out what to compare against trains the
-    operator to ignore it, which costs more than the check is worth.
+    image_staleness() itself stays quiet: with nothing to compare against it has no finding to
+    report, and inventing one here would mean every caller had to special-case it. The alarm
+    belongs to the CALLER, and grade() raises it — see the test below. That split matters
+    because `actions/checkout` is shallow by default, so a scheduled run with no history would
+    otherwise have graded nothing and gone green.
     """
     mod = _load()
     assert mod.image_staleness([_machine(None)], None) is None
@@ -105,4 +108,92 @@ def test_the_deploy_script_actually_writes_the_stamp_the_probe_reads():
     assert "log -1 --format=%H -- deploy/runner" in body, (
         "the stamp must be the commit that last touched deploy/runner/, which is what "
         "expected_image_sha() compares it against"
+    )
+
+
+def test_grade_reports_that_it_could_not_work_out_what_to_compare_against():
+    """The branch the shallow-checkout case lands in, exercised without a fly or a network.
+
+    Before this, `expected is None` and "every machine current" were the same green. In CI that
+    is the difference between a check and a decoration.
+    """
+    mod = _load()
+    mod._json_out = lambda cmd: ([_machine(EXPECTED)], "") if "machine" in cmd else ([], "")
+    mod.expected_image_sha = lambda: None
+    out = mod.grade(
+        {"app": "prospector-ci", "repo": "chidionyema/prospector", "config": "x"},
+        fly="/usr/bin/true",
+        gh=None,
+        image_only=True,
+    )
+    assert any("cannot tell whether the fleet is current" in p for p in out["problems"]), out
+
+
+# ── The check must actually be ASKED, and asked somewhere that can answer ──────────────────
+#
+# A probe wired to nothing is the defect this whole exercise exists to close: the stale image
+# was findable on 2026-08-19 by anyone who thought to look, and nobody thought to look. These
+# pin the schedule the same way the test above pins the stamp.
+
+WATCH = REPO_ROOT / ".github" / "workflows" / "ci-fleet-watch.yml"
+
+
+def _watch() -> dict:
+    import yaml
+
+    assert WATCH.exists(), (
+        f"{WATCH.name} is gone. The fleet probe then grades nothing on its own: it becomes a "
+        f"console button somebody has to think to press, which is how the fleet ran a day-old "
+        f"image while every screen read healthy."
+    )
+    doc = yaml.safe_load(WATCH.read_text())
+    # `on:` is the YAML boolean True. Accept either spelling rather than depending on the loader.
+    doc["on"] = doc.get("on", doc.get(True))
+    return doc
+
+
+def test_a_schedule_actually_asks_the_question():
+    doc = _watch()
+    assert "schedule" in (doc["on"] or {}), (
+        "ci-fleet-watch must run on a schedule. On workflow_dispatch alone it is a button, and "
+        "the fault it catches is one nobody knows to look for."
+    )
+    scripts = "\n".join(
+        step.get("run", "") for job in doc["jobs"].values() for step in job.get("steps", [])
+    )
+    assert "ci_fleet_probe.py --image-only" in scripts, (
+        "the workflow must invoke `scripts/ci_fleet_probe.py --image-only`. Without --image-only "
+        "it asks for the repository's runner list, which needs the `administration` permission "
+        "GITHUB_TOKEN cannot hold — so it would be red every morning for a credential reason, "
+        "and a check that cries wolf daily is a check nobody reads."
+    )
+
+
+def test_the_watch_does_not_run_on_the_fleet_it_grades():
+    """The states worth catching are the ones where the fleet cannot run a job."""
+    for job_id, job in _watch()["jobs"].items():
+        runs_on = str(job.get("runs-on", ""))
+        assert "self-hosted" not in runs_on and "CI_RUNS_ON" not in runs_on, (
+            f"job `{job_id}` runs on the fleet it is grading ({runs_on!r}). A dead or "
+            f"mis-imaged fleet cannot report that it is dead or mis-imaged. Hardcode a hosted "
+            f"runner here even though every other workflow in this repo uses vars.CI_RUNS_ON."
+        )
+
+
+def test_the_watch_checks_out_enough_history_to_have_an_expectation():
+    """A shallow checkout has no origin/main, and then there is nothing to compare against.
+
+    grade() now reports that rather than passing, so this would go RED rather than silently
+    green — but red-for-the-wrong-reason every morning is its own way of killing a check.
+    """
+    steps = [s for job in _watch()["jobs"].values() for s in job.get("steps", [])]
+    checkout = [s for s in steps if str(s.get("uses", "")).startswith("actions/checkout")]
+    assert checkout, "no checkout step — expected_image_sha() reads this repository's git log"
+    assert any(str((s.get("with") or {}).get("fetch-depth")) == "0" for s in checkout), (
+        "actions/checkout must set fetch-depth: 0. The default is a shallow single-ref clone "
+        "with no origin/main, so `git log origin/main -- deploy/runner` resolves nothing."
+    )
+    assert any("fetch" in s.get("run", "") and "origin" in s.get("run", "") for s in steps), (
+        "fetch origin main explicitly: fetch-depth 0 deepens the checked-out ref, it does not "
+        "guarantee a refs/remotes/origin/main to compare against"
     )

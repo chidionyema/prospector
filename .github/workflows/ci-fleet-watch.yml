@@ -1,0 +1,87 @@
+# Is the runner fleet built from the deploy/runner/ this repository describes?
+#
+# WHY THIS EXISTS. 2026-08-19, chidionyema/hermes-config run 32268561071: a gate step died with
+# `Process completed with exit code 127` and no other output. `ssh-keyscan` was not on the runner.
+# openssh-client had been added to deploy/runner/Dockerfile that same hour — the FLEET was still
+# running the older image. Nothing said so. Fly reported 18 healthy machines and GitHub reported
+# runners online, and both were telling the truth. The image was simply not the one the repository
+# describes, and no screen anywhere compared the two.
+#
+# `deploy/runners.sh` now stamps RUNNER_IMAGE_SHA onto every machine at deploy time and
+# `scripts/ci_fleet_probe.py::image_staleness` grades it. That made the answer OBTAINABLE. This
+# workflow is what makes it ASKED — a probe that only runs when somebody presses a console button
+# is a probe that reports the fault after the fault has already cost the day.
+#
+# WHERE IT RUNS. `ubuntu-latest`, hardcoded, never `vars.CI_RUNS_ON`. A check on the fleet must not
+# run on the fleet: the states worth catching are exactly the ones where the fleet cannot run a job
+# and so could never report on itself.
+#
+# WHY `--image-only`. Reading a repository's self-hosted runners needs the `administration`
+# permission, which GITHUB_TOKEN cannot be granted — only a personal access token can, and this
+# repository holds no such secret. Asking the whole question here would fail every day for a
+# credential reason, and a check that is red every morning is a check nobody reads. This asks the
+# half FLY_API_TOKEN can answer. The runner-list half stays the ops console button until a
+# repository-scoped PAT exists.
+
+name: ci fleet watch
+
+on:
+  schedule:
+    # 06:30 UTC daily, before the UK working day and before e2e-live-smoke at 07:00, so a stale
+    # fleet is known before the first agent pushes against it.
+    - cron: "30 6 * * *"
+  push:
+    branches: [main]
+    # The moment the image's source changes on main, the fleet is by definition behind it. This
+    # run is the one that says so, instead of the next person's exit 127.
+    paths:
+      - "deploy/runner/**"
+      - "deploy/runners.sh"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-fleet-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # fetch-depth 0 and the explicit fetch are both load-bearing: expected_image_sha() asks
+      # `git log origin/main -- deploy/runner`, and on a shallow single-ref checkout there is no
+      # origin/main and no history, so it would return None and the probe would grade nothing
+      # while still exiting 0. A staleness check that cannot work must not look like a pass.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Is the fleet running the image this repository describes?
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          : "${FLY_API_TOKEN:?set the repository secret FLY_API_TOKEN — it must read every fleet in deploy/runner/, not one app}"
+          set +e
+          python3 scripts/ci_fleet_probe.py --image-only | tee /tmp/fleet.txt
+          status=${PIPESTATUS[0]}
+          set -e
+          {
+            echo '## CI fleet image'
+            echo '```'
+            cat /tmp/fleet.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$status" -ne 0 ]; then
+            echo "::error title=The runner fleet is not running this repository's image::Rebuild with \`deploy/runners.sh up\`. Check \`gh run list --status in_progress\` first: that deploy uses --strategy immediate and kills in-flight jobs."
+            exit 1
+          fi
