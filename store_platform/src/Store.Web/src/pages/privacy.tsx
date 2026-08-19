@@ -8,7 +8,7 @@
 import React from 'react';
 import Link from 'next/link';
 import LegalDoc, { LegalHeading, LegalText, LegalList } from '@/components/LegalDoc';
-import { LEGAL } from '@/lib/config';
+import { LEGAL, traderIdentity } from '@/lib/config';
 import { textLinkClass } from '@/components/ui';
 
 /**
@@ -31,7 +31,7 @@ export default function PrivacyPage() {
         Protection Act 2018). We never sell your personal data.
       </LegalText>
       <LegalText>
-        Our registered details: {LEGAL.legalName}, {LEGAL.address}. Contact for privacy
+        Our registered details: {traderIdentity()}. Contact for privacy
         matters:{' '}
         <a href={`mailto:${LEGAL.contactEmail}`} className={textLinkClass()}>
           {LEGAL.contactEmail}
@@ -216,7 +216,7 @@ export default function PrivacyPage() {
         <a href={`mailto:${LEGAL.contactEmail}`} className={textLinkClass()}>
           {LEGAL.contactEmail}
         </a>
-        . Operator: {LEGAL.legalName}, {LEGAL.address}. See also our{' '}
+        . Operator: {traderIdentity()}. See also our{' '}
         <Link href="/terms" className={textLinkClass()}>
           Terms of Service
         </Link>{' '}
