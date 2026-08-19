@@ -3152,6 +3152,13 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     "scripts/worktree_gc.py": "reports and removes merged git worktrees; a developer's disk, and "
                               "it refuses to touch another session's tree, so it has no meaning "
                               "off the machine that made them",
+    "scripts/worktree_census.py": "reports which git worktrees hold commits no remote has; the "
+                                  "same developer's disk as worktree_gc.py. Production runs from "
+                                  "a detached mirror of main with no worktrees at all, so this "
+                                  "button would always answer nothing",
+    "scripts/guard_dead_branch_push.py": "a git pre-push hook; git fires it, and it acts on the "
+                                         "push happening in that terminal. There is no push to "
+                                         "guard from an ops page",
     "scripts/estate_census.py": "counts tracked files that nothing else refers to; a repo-health "
                                 "reading for whoever is deleting dead code, not an action on the "
                                 "running platform",
