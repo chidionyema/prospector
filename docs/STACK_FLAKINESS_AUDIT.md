@@ -35,6 +35,11 @@ not a proposal at all: it is already merged and has never worked.
 Nothing here is a new build. Every fix below is either a sequencing change, a one-line guard, or a
 line moved from "done" back to "not done".
 
+**Those nine are the ones that had evidence.** Section 12 is the complete register: all
+**thirty-nine** solutions proposed anywhere in this programme, graded the same way. Its headline is
+that **thirteen of the fifteen tools picked are not installed and three appear nowhere in the
+repository**, so most of the register is UNPROVEN by L11 test 3 rather than by opinion.
+
 ---
 
 ## 1. Exhibit A — the autoscaler has never run
@@ -361,6 +366,105 @@ Nothing below is a new system. Every line is a sequencing change or a one-line g
 8. Point the inventory at a second, non-prospector estate. Until then B8 reads UNMET.
 9. Scope the engine's Fly token to one app; audit its use of the live Stripe key.
 
+## 12. Every solution proposed, graded
+
+Sections 1 to 6 graded the nine solutions that had evidence behind them. The founder asked to see
+**all** of them. This is the complete register: every solution proposed anywhere in the migration
+and stack work, each graded against the four L11 tests, with its adoption state measured rather
+than assumed.
+
+**The headline of this section is the adoption column.** Of the fifteen tools picked in the
+research pass, **thirteen are not installed on this machine and three of them appear nowhere in the
+repository at all**. Measured 2026-08-19:
+
+```
+steampipe ABSENT   cloudquery ABSENT   mise ABSENT      litestream ABSENT
+restic    ABSENT   dagu       ABSENT   vector ABSENT    tofu       ABSENT
+sops      ABSENT   pumba      ABSENT   toxiproxy ABSENT psql       ABSENT
+uv        /Users/chidionyema/.local/bin/uv          age  /usr/local/bin/age
+terraform /usr/local/bin/terraform     <- note: the PICK was OpenTofu, not Terraform
+
+rg -il 'healthchecks.io|hc-ping|dagu|litestream' over the repo  ->  no matches
+```
+
+So the honest grade for most of the register is UNPROVEN, and that is not a criticism of the picks.
+It is L11 test 3 applied consistently: **nothing measures them, because none of them has been run
+here even once.** A pick made from documentation is a hypothesis about this estate, not a solution
+in it.
+
+### 12a. Shipped or merged — graded on evidence
+
+| # | Solution | State | Grade | Justification |
+|---|---|---|---|---|
+| S1 | CI autoscaler | merged | **FLAKY, proven dead** | Section 1. `on: workflow_job` is not a trigger. 40 of 40 runs never started |
+| S8 | Runner secret hygiene | live | **SOUND** | Only `GITHUB_RUNNER_PAT` and `RUNNER_LABELS` reach a runner app; values piped, never in argv (`deploy/runners.sh:52,150`) |
+| S9 | Storefront legal pages | live | **SOUND** | `privacy.tsx`, `terms.tsx`, `refund.tsx` render |
+| P1 | DNS zone committed and diffed daily (M9) | PR #397 open | **UNPROVEN** | The zone is exported and diffed. Nothing yet fails when the diff is non-empty, and the two 3600s TTLs are still live (task #99) |
+| P2 | Guards as PreToolUse hooks | live, unversioned | **FLAKY** | Section 4. They work; they exist in exactly one place and no repository |
+
+### 12b. Decided by the founder, not yet built
+
+| # | Solution | Grade | Justification |
+|---|---|---|---|
+| P3 | Postgres for the money path (#93) | **UNPROVEN** | The decision is right and the reason is recorded. It adds a datastore whose restore has never been drilled, so it inherits S5 until #80 runs |
+| P4 | SQLite stays for the engine | **UNPROVEN** | Same. The cost accepted was two backup paths and two drills; zero drills exist |
+| P5 | Dagu on `prospector-engine` (#95) | **FLAKY** | Section 3 |
+| P6 | Healthchecks on `prospector-engine` (#95) | **FLAKY** | Section 2. Superseded by #97 |
+| P7 | Delete the dead scripts in a second pass | **SOUND** | Report mode first, delete only what has been confirmed run. The sequencing is the safety |
+
+### 12c. The fifteen tool picks — all UNPROVEN, each with the specific thing to check first
+
+Every one of these came from a single research pass. Not one has been run against this estate. The
+right next action for each is not "adopt", it is the one cheap test named in the last column.
+
+| # | Pick | For | Grade | The first thing that would prove or kill it here |
+|---|---|---|---|---|
+| T1 | Steampipe | M1 inventory | **UNPROVEN** | Does a Fly.io plugin exist? Fly is our largest resource class. If not, the pick misses the point of M1 |
+| T2 | CloudQuery | M1 later | **UNPROVEN** | Deferred by design. Nothing to check until drift history is wanted |
+| T3 | mise | M2 toolchain | **UNPROVEN** | Bootstrap paradox: `mise bootstrap` needs mise. What installs mise on a bare machine, and is that step in the repo? |
+| T4 | uv | M2 Python lock | **UNPROVEN** | Installed and used, but `origin/main` has **no `uv.lock`, no `pyproject.toml`, no `.python-version`** — only `requirements.txt` and `requirements-local.txt`. So the lock M2 depends on does not exist yet |
+| T5 | Litestream | #94, RPO to seconds | **UNPROVEN** | Replication is silent by design. What alerts when it stops? Without that it is S2 again in another costume |
+| T6 | restic | offsite | **UNPROVEN** | Same silence question, plus: restore one file from it, timed, before trusting it |
+| T7 | Dagu | 31 launchd jobs | **FLAKY** | Section 3. Design fault, not adoption doubt |
+| T8 | Healthchecks.io | drill and job alerting | **FLAKY** | Section 2, if it runs on the machine it watches. SOUND if it runs anywhere else |
+| T9 | s6-overlay replacing supervisord | container supervision | **SOUND design, UNPROVEN here** | The strongest pick in the list, and it is measurable now: `deploy/engine/supervisord.conf` runs **seven** programs in one container (`scheduler`, `consumer`, `watchdog`, `backup`, `offsite-backup`, `restore-drill`, `ops-console`). supervisord stays up when one dies, so the machine reads healthy with a dead daemon inside. That is exactly the silent-failure class |
+| T10 | SOPS + age | secrets in git | **UNPROVEN, with a real hole** | The age private key cannot live in the repo it protects, so a new laptop must obtain it some other way. **Until that path is written down, SOPS does not solve the migration bar, it relocates it.** This is the single most important unanswered question in M2 |
+| T11 | octoDNS | DNS as code (#99) | **UNPROVEN** | Needs a working GoDaddy API credential. Prove a no-op plan against live DNS before any apply |
+| T12 | OpenTofu | IaC | **UNPROVEN, and drifting** | The pick was OpenTofu. What is installed on this machine is **Terraform**. Nothing has been written in either |
+| T13 | Vector to Loki or OpenObserve | M10 logs (#84) | **SOUND design, UNPROVEN here** | Shipping logs off the platform that made them is exactly what the 30-minute bar needs. Unchosen: Loki or OpenObserve, and where it runs — if it runs on `prospector-engine` it is S2 again |
+| T14 | Pumba, Toxiproxy | M7 chaos | **UNPROVEN** | Chaos tooling is worthless before the drills exist. Correct order: #80 and #81 first |
+| T15 | Playwright synthetic buy | M8 (#88) | **UNPROVEN** | Two Playwright files exist on `origin/main`. Nothing runs one on a schedule, so nothing proves a buyer can buy |
+
+### 12d. The M-series gaps as a programme
+
+| Gap | Task | Grade | Justification |
+|---|---|---|---|
+| M1 inventory | #78 | **UNPROVEN** | Depends on T1 |
+| M2 bootstrap | #82 | **FLAKY as scoped** | It cannot succeed while the guards are unversioned (section 4) and the secret restore path is unwritten (T10). Both are prerequisites, not details |
+| M3 money-path adapter | #86 | **UNPROVEN** | Not started |
+| M4 backup proof | #80 | **UNPROVEN** | The keystone. Everything about the 30-minute bar is a wish until this runs a clock |
+| M5 Continuity panel | #85 | **UNPROVEN** | A panel showing unmeasured state would be worse than no panel. Sequence after M4 |
+| M6 five drills | #81 | **UNPROVEN** | Depends on T7 and T8, both FLAKY as placed |
+| M7 chaos | #87 | **UNPROVEN** | See T14 |
+| M8 end-to-end buy | #88 | **UNPROVEN** | See T15 |
+| M9 DNS | #77 | **UNPROVEN** | PR #397 open, TTLs unchanged |
+| M10 logs | #84 | **UNPROVEN** | See T13 |
+| M11 datastores named | #79 | **UNPROVEN** | Naming them is cheap and unblocks M4. Do it first |
+| M12 redundancy verdict | #83 | **UNPROVEN** | S3 says the answer for the engine today is "none" |
+
+### 12e. What this register changes
+
+Three things, and none of them is a new build.
+
+1. **M11 (#79) and M4 (#80) come first**, before any tool is installed. Naming every datastore and
+   timing one real restore is the measurement that turns eleven UNPROVEN rows into graded ones.
+2. **T10, the age key path, is a blocker on M2**, not a detail inside it. Write it down before
+   adopting SOPS.
+3. **Each tool gets its one cheap test before adoption**, from the last column above. A pick that
+   fails its test costs an afternoon now instead of a migration later.
+
+---
+
 ## 11. Ledger
 
 | Date | What | Evidence |
@@ -370,3 +474,4 @@ Nothing below is a new system. Every line is a sequencing change or a one-line g
 | 2026-08-19 | Earlier inference that the autoscaler killed a CI job WITHDRAWN | the workflow cannot execute |
 | 2026-08-19 | L11 "No flaky solutions" added to the manifesto | `docs/PLATFORM_MANIFESTO.md` |
 | 2026-08-19 | S1 class closed by a guard; `ci-autoscale.yml` made valid, manual-only | `tests/unit/test_workflow_triggers_are_real_events.py`, 13 passed |
+| 2026-08-19 | Section 12 added: the complete register of all 39 proposed solutions, graded | 13 of 15 picked binaries ABSENT; `rg` finds no reference to dagu, litestream or healthchecks; `origin/main` has no `uv.lock`; `supervisord.conf` runs 7 programs in one container |
