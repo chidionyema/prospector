@@ -2751,6 +2751,11 @@ TOOLS: list[dict] = [
        False, "/audit", cmd=".venv/bin/python scripts/incident.py check"),
     _t("scripts/incident.py", "What takes longest and what repeats, with recommendations", False,
        "/audit", cmd=".venv/bin/python scripts/incident.py friction"),
+    # --- registered 2026-08-19. Hermes lives in ~/.hermes, a different repo, but the operator
+    # should not have to know that: the founder's ask was "make this visible in ops".
+    _t("~/.hermes/scripts/hermes_selfcheck.py", "Is Hermes actually healthy? six invariants, "
+       "not liveness", False, "/audit",
+       cmd="/usr/local/bin/python3 ~/.hermes/scripts/hermes_selfcheck.py"),
     _t("scripts/copy_audit.sh", "Copy audit across the marketing and pack lanes", False, "/shelf",
        cmd="bash scripts/copy_audit.sh"),
     _t("scripts/backfill_packs_parallel.sh", "Backfill P5 pack artefacts into listed packs", True,
