@@ -153,12 +153,15 @@ def test_search_failure_still_increments_web_calls(web_calls_snapshot, monkeypat
         f"Exa failure did not increment web_calls (we lose observability on errors): delta={d}"
 
 
-def test_search_writes_audit_row():
+def test_search_writes_audit_row(monkeypatch):
     """Every search call writes exactly one audit row with the required shape."""
-    import os
-
     from prospector.retrieval import ExaSearchProvider
-    os.environ["EXA_API_KEY"] = "test-key"
+
+    # `monkeypatch.setenv` and not a raw `os.environ[...] =`, which is what this was until
+    # 2026-08-19: a raw write outlives the test and reaches every later test in the same
+    # xdist worker. `test_fallback_records_actual_provider` below sets the same key the same
+    # way. `tests/conftest.py` now fails the leaking test by name.
+    monkeypatch.setenv("EXA_API_KEY", "test-key")
     fake_item = MagicMock(url="https://example.com/x", highlights=None, text="hi")
     with patch("exa_py.Exa") as MockExa:
         MockExa.return_value.search.return_value = MagicMock(results=[fake_item])

@@ -367,7 +367,13 @@ def get_exemplars(store: Store, op: Optional[Operator] = None, n: int = 5) -> st
         cand = (dossier or {}).get("candidate", {}) if dossier else {}
         one_liner = cand.get("one_liner", "") or w.get("one_liner", "")
         title = cand.get("title", "") or w.get("title", "")
-        comp = w.get("composite", 0)
+        # `or 0.0`, matching the sort key three lines above, and for the same reason: the index
+        # column is `composite REAL` and store.py writes NULL for a dossier saved without a score
+        # (store.py:372). `.get("composite", 0)` does not cover that — a default only applies to a
+        # MISSING key, not to a key present with value None — so `float(None)` raised TypeError and
+        # took the whole generation call down. The sort survived the same row and the format line
+        # did not, which is how one row could stop the daemon generating anything at all.
+        comp = w.get("composite") or 0.0
         exemplars.append(f"PASS (Score {float(comp):.1f}): {title} - {one_liner}")
 
     # 2. Decisive Kills (Feedback on what to avoid)

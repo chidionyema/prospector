@@ -27,8 +27,21 @@ function walk(dir: string, out: string[] = []): string[] {
 
 const ALL = walk(SRC);
 const PAGES = ALL.filter((f) => f.includes('/pages/') && !f.includes('/pages/api/'));
-/** Screens an operator reads. `_app` is a wrapper and `login` has nothing read yet to stamp. */
-const SCREENS = PAGES.filter((f) => !/_app\.tsx$|login\.tsx$/.test(f));
+/**
+ * Screens an operator reads. Four exclusions, each for a different reason:
+ *
+ *   `_app` and `_document` are Next wrappers, not screens: neither renders data of its own, so
+ *      neither can read through the hook or carry an as-of stamp.
+ *   `login` has nothing read yet to stamp, because reading is what it gates.
+ *   `pages/s/` is the PUBLIC share view. It is not an operator screen at all: it has no session,
+ *      so it cannot use `useOps` (which calls the authed `/api/ops/read` door), and wrapping it in
+ *      the Shell would show an outsider the estate's navigation. The exclusion is narrow and its
+ *      narrowness is pinned by `share.test.ts`, which asserts that page reaches exactly one
+ *      session-less route and imports neither Shell nor the ops client.
+ */
+const SCREENS = PAGES.filter(
+  (f) => !/_app\.tsx$|_document\.tsx$|login\.tsx$|\/pages\/s\//.test(f),
+);
 
 describe('one data path', () => {
   it('no page or component reaches the filesystem or spawns anything', () => {

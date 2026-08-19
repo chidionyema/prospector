@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { Breadcrumbs } from '@/components/ui';
 import { cx } from '@/components/ui/cx';
 import { CartButton } from '@/components/cart/CartButton';
-import { LEGAL, BRAND } from '@/lib/config';
+import { LEGAL, BRAND, traderIdentity } from '@/lib/config';
 import { SEARCH_OPEN_EVENT } from '@/lib/searchEvent';
 import { RESEARCH_STATS } from '@/lib/stats';
 import { tightDecimal } from '@/components/ui/Money';
@@ -247,7 +247,16 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
           </Link>
           {/* Renders nothing until there is something in it, see CartButton. */}
           <CartButton />
-          <button type="button" className="icon-btn" aria-label="Search" onClick={openSearch}>
+          {/* "Search the catalogue", not "Search". Below 980px `mumchimp.css:436` sets
+              `.fb-in{display:none}`, so the shelf toolbar's own trigger is not rendered on a
+              phone and THIS button is the only search control the reader has -- which is the job
+              the docblock above hands it. The name is what `e2e/discovery.spec.ts:254,266` scopes
+              to `header` to prove that both dispatch paths work, and the redraw renamed it to the
+              bare verb, so those two tests have been failing on live since 2026-08-19. A specific
+              accessible name is also the better one: "Search" alone tells a screen-reader user
+              nothing about what is being searched. Invisible to the drawing -- `parity.mjs` drops
+              aria-label, and the button renders an icon, not this text. */}
+          <button type="button" className="icon-btn" aria-label="Search the catalogue" onClick={openSearch}>
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <circle cx="9" cy="9" r="6.25" stroke="currentColor" strokeWidth="1.7" />
               <path d="m13.8 13.8 4 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
@@ -390,6 +399,14 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
             <p>
               &copy; 2026 {BRAND.name}. All rights reserved. {BRAND.name} packs are sold for
               information only, not financial, legal, or investment advice.
+            </p>
+            <p>
+              {/* The trader, named on the shop front rather than three clicks into the legal
+                  pages. reg 6 of the E-Commerce Regulations 2002 says "easily, directly and
+                  permanently accessible", and a footer is the only surface on this site that is
+                  all three. Baymard's abandonment list puts "didn't trust the site" at 19% of
+                  abandoners, and an anonymous seller asking for 99.99 is that finding. */}
+              Operated by {traderIdentity()}.
             </p>
             <details>
               <summary>Read the full disclaimer</summary>

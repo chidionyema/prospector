@@ -1,0 +1,234 @@
+# Main must be green. If it is not, put it back.
+#
+# WHY THIS EXISTS. Founder, 2026-08-19: "main should always be green, if broken should revert to
+# last working version so builds are never blocked", and "we need to be able to recover in the
+# event of main being red also, cant have prs queuing up".
+#
+# A red main is not one team's problem. Every open branch inherits the failure, so every PR goes
+# red for a reason that has nothing to do with its diff, and every session then spends time
+# diagnosing somebody else's breakage. On 2026-08-19 thirteen of seventeen open PRs were red for
+# three failures, none of which was in the PR that failed.
+#
+# PREVENTION IS ISSUE #404, NOT THIS FILE. automerge.yml merges any PR whose head sha CI passed
+# without checking whether the branch is behind main, so two individually-green branches make
+# main red. That is the cause. This file is the RECOVERY, and it exists because prevention will
+# never be perfect and a red main must not be allowed to sit.
+#
+# WHAT IT DOES.
+#   attempt 1 fails  ->  re-run the failed jobs once, and stop.
+#   attempt 2 fails  ->  revert the commit the run tested, push, dispatch CI, open an issue.
+#
+# The single re-run is deliberate. The two known infrastructure failure classes in this estate --
+# a 429 downloading actions, and a runner dropping mid-job -- both pass on a re-run, and neither
+# is anybody's code. Reverting on the first failure would revert good work for a network blip.
+#
+# EVERY RISK OF AN AUTO-REVERT, AND WHAT ANSWERS IT.
+#
+#   Reverting good work.        A revert is an ordinary commit. `git revert` of the revert
+#                               restores it, and the issue this opens names the sha to use.
+#   Reverting a flake.          The re-run above.
+#   Racing a human fix.         Refuses if main's HEAD has moved since the failing run.
+#   Ping-pong.                  Refuses to revert a commit that is itself a revert.
+#   A revert storm.             Refuses if this workflow already reverted within the last hour.
+#   A silent revert.            The issue is opened BEFORE the push. If the issue cannot be
+#                               opened, nothing is reverted -- work never disappears quietly.
+#   A conflicting revert.       `git revert` conflicts abort the job and open an issue. Nothing
+#                               is forced, nothing is resolved by a machine.
+#   Reverting a merge commit.   Handled with `-m 1`; a merge with no first parent is refused.
+#   Triggering a deploy.        The push uses GITHUB_TOKEN, which does not start workflow runs,
+#                               so no deploy fires from a revert. CI is then dispatched
+#                               explicitly, and ONLY CI.
+#   Recursing into itself.      Same rule: the revert push starts no workflow_run, so this guard
+#                               cannot trigger itself. The dispatched CI is a separate event.
+#   Two guards at once.         `concurrency` with no cancel-in-progress.
+#
+# WHAT IT DOES TO PRODUCTION. Nothing directly. It changes `main` and dispatches CI. Deploys are
+# separate workflows and are not dispatched here.
+
+name: Main green guard
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+concurrency:
+  group: main-green-guard
+  cancel-in-progress: false
+
+permissions:
+  contents: write # to push the revert
+  actions: write # to re-run failed jobs and dispatch CI after the revert
+  issues: write # a revert is never silent
+
+jobs:
+  # Attempt 1: give it one re-run. Most red mains in this estate are infrastructure, not code.
+  rerun:
+    if: >
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.run_attempt == 1
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const run_id = context.payload.workflow_run.id
+            await github.rest.actions.reRunWorkflowFailedJobs({
+              owner: context.repo.owner, repo: context.repo.repo, run_id,
+            })
+            core.notice(
+              `main is red on run ${run_id}. Re-running the failed jobs once. ` +
+              'If it fails again the breaking commit is reverted.')
+
+  # Attempt 2 or later: it is real. Put main back.
+  revert:
+    if: >
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.run_attempt > 1
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 50
+
+      - name: Decide whether reverting is the right thing to do
+        id: decide
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo
+            const run = context.payload.workflow_run
+            const sha = run.head_sha
+
+            const refuse = (why) => {
+              core.notice(`not reverting: ${why}`)
+              core.setOutput('go', 'no')
+              core.setOutput('why', why)
+            }
+
+            // Someone may already be fixing it. Never race a human.
+            const {data: head} = await github.rest.repos.getBranch({owner, repo, branch: 'main'})
+            if (head.commit.sha !== sha) {
+              return refuse(`main has moved to ${head.commit.sha.slice(0, 8)} since the failing ` +
+                            `run tested ${sha.slice(0, 8)}; assume that is the fix`)
+            }
+
+            const {data: commit} = await github.rest.repos.getCommit({owner, repo, ref: sha})
+            const subject = commit.commit.message.split('\n')[0]
+
+            // A revert of a revert is how a loop starts.
+            if (/^revert/i.test(subject)) {
+              return refuse(`${sha.slice(0, 8)} is itself a revert ("${subject}"); a human decides ` +
+                            'what happens next')
+            }
+
+            // A merge with no first parent cannot be reverted safely.
+            const parents = commit.parents.length
+            if (parents === 0) return refuse('the commit has no parent')
+
+            // One revert per hour. A storm is worse than a red main.
+            const since = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+            const {data: recent} = await github.rest.repos.listCommits(
+              {owner, repo, sha: 'main', since, per_page: 20})
+            const already = recent.find(c =>
+              c.commit.message.startsWith('Revert') &&
+              c.commit.message.includes('main-green-guard'))
+            if (already) {
+              return refuse(`this guard already reverted ${already.sha.slice(0, 8)} within the ` +
+                            'last hour; stopping rather than reverting again')
+            }
+
+            core.setOutput('go', 'yes')
+            core.setOutput('sha', sha)
+            core.setOutput('subject', subject)
+            core.setOutput('author', commit.commit.author.name || 'unknown')
+            core.setOutput('parents', String(parents))
+            core.setOutput('run_url', run.html_url)
+
+      - name: Say why nothing was reverted
+        if: steps.decide.outputs.go != 'yes'
+        run: |
+          echo "main is red and this guard stood down."
+          echo "reason: ${{ steps.decide.outputs.why }}"
+
+      # The issue is opened BEFORE the push, on purpose. If GitHub refuses the issue, the revert
+      # never happens -- a revert nobody was told about is how work disappears.
+      - name: Open the issue first, so the revert can never be silent
+        if: steps.decide.outputs.go == 'yes'
+        id: issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo
+            const sha = '${{ steps.decide.outputs.sha }}'
+            const {data: issue} = await github.rest.issues.create({
+              owner, repo,
+              title: `main was red: ${sha.slice(0, 8)} reverted by the green guard`,
+              body: [
+                `\`main\` failed CI twice on \`${sha}\`, so the green guard reverted it. A red main`,
+                'blocks every open PR, so it is put back first and diagnosed second.',
+                '',
+                `- **commit** \`${sha}\` — ${{ toJSON(steps.decide.outputs.subject) }}`,
+                `- **author** ${{ toJSON(steps.decide.outputs.author) }}`,
+                `- **failing run** ${{ steps.decide.outputs.run_url }}`,
+                '',
+                '## Nothing is lost',
+                '',
+                'The revert is an ordinary commit. To bring the work back once it is fixed:',
+                '',
+                '```bash',
+                `git revert <the revert sha>     # restores ${sha.slice(0, 8)}`,
+                '```',
+                '',
+                '## Before re-landing it',
+                '',
+                'Rebase on current `main` and let CI run against the combination, not against the',
+                'base this branch was cut from. That gap is issue #404 and is the reason most red',
+                'mains in this repo were never anybody\'s bug.',
+              ].join('\n'),
+            })
+            core.setOutput('number', String(issue.number))
+            core.notice(`opened #${issue.number}`)
+
+      - name: Revert it and push
+        if: steps.decide.outputs.go == 'yes'
+        env:
+          SHA: ${{ steps.decide.outputs.sha }}
+          PARENTS: ${{ steps.decide.outputs.parents }}
+          ISSUE: ${{ steps.issue.outputs.number }}
+        run: |
+          set -euo pipefail
+          git config user.name "main-green-guard"
+          git config user.email "actions@github.com"
+          MAINLINE=""
+          if [ "$PARENTS" -gt 1 ]; then MAINLINE="-m 1"; fi
+          # --no-edit keeps the default "Revert ..." subject, which the storm guard above matches.
+          if ! git revert --no-edit $MAINLINE "$SHA"; then
+            git revert --abort || true
+            echo "::error::the revert conflicts and a machine must not resolve it; see #$ISSUE"
+            exit 1
+          fi
+          git commit --amend --no-edit -m "$(git log -1 --pretty=%s)
+
+          Reverted by main-green-guard because CI failed twice on $SHA and a red
+          main blocks every open pull request. Nothing is lost: see #$ISSUE for how
+          to bring the work back.
+
+          Refs #$ISSUE"
+          git push origin main
+
+      - name: Start CI on the reverted main
+        if: steps.decide.outputs.go == 'yes'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // The push above used GITHUB_TOKEN, which starts no workflow runs. That is what stops
+            // this guard recursing, and it is also why CI has to be asked for by name.
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner, repo: context.repo.repo,
+              workflow_id: 'ci.yml', ref: 'main',
+            })
+            core.notice('main reverted and CI dispatched')

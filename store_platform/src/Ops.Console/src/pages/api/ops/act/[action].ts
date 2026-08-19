@@ -33,6 +33,8 @@ export const ACTIONS = [
   'shelf.publish_pending',
   'shelf.regate',
   'daemon.restart',
+  'share.create',
+  'share.revoke',
   'tools.run',
   'tools.undo',
   'deliveries.resend',

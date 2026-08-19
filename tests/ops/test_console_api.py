@@ -509,3 +509,238 @@ def test_a_browser_supplied_value_is_never_tilde_expanded():
     argv = api._tool_argv(tool, {"p": "~/secrets"})
 
     assert argv[-1] == "~/secrets", argv
+
+
+# --------------------------------------------------------------------------- #
+# Sharing a repo file with somebody who has no console session
+# --------------------------------------------------------------------------- #
+# `tests/ops/test_share.py` is where the fence itself is tested — the deny-list, path escapes,
+# expiry, revocation. What is tested HERE is the gateway wrapping it: that the listing carries no
+# key material, that minting still goes through the same confirmation fence as every other write,
+# and that the one view answering without a session is registered and reachable by name.
+def test_the_share_listing_never_carries_a_token():
+    """The listing is rendered in a browser, logged and screenshotted. If a token survived into
+    it, every one of those becomes a place the credential leaked to."""
+    doc, code = api.dispatch(["read", "shares"])
+    assert code == 0, doc.get("error")
+    body = json.dumps(doc["data"])
+    assert "token_sha256" not in body
+    assert '"token"' not in body
+
+
+def test_the_share_listing_says_which_fence_answered_and_how_much_it_covers():
+    """`git ls-files` is exact; the tree walk is what runs in the engine image, where
+    `.dockerignore` removes `.git/`. An operator about to hand out a repo-wide link needs to know
+    which one produced the number, because they do not always agree."""
+    doc, _ = api.dispatch(["read", "shares"])
+    data = doc["data"]
+    assert data["allow_list_source"] in ("git ls-files", "tree walk + deny-list")
+    assert data["shareable_count"] > 0
+    assert data["max_days"] >= data["default_days"] >= 1
+
+
+def test_the_file_list_is_only_sent_when_asked_for():
+    """It is thousands of paths. Shipping it on every poll of the share screen would make the
+    cheapest view on the console the most expensive one."""
+    doc, _ = api.dispatch(["read", "shares"])
+    assert "files" not in doc["data"]
+    doc, _ = api.dispatch(["read", "shares", "--arg", "files=1"])
+    assert doc["data"]["files"] and ".env" not in doc["data"]["files"]
+
+
+def test_the_public_view_is_registered_but_refuses_a_token_it_never_minted():
+    """The public Next route names this view as a literal. If it were not registered the share
+    door would 404 for everyone, and the failure would look like a bad link rather than a missing
+    handler."""
+    assert "share_open" in api.READS
+    doc, code = api.dispatch(["read", "share_open", "--arg", "token=never-minted"])
+    assert code != 0
+    assert doc["ok"] is False
+    assert doc["data"] in (None, {}, [])
+
+
+def test_minting_a_link_goes_through_the_same_confirmation_fence_as_every_other_write():
+    """A link is a credential. Minting one with a single unconfirmed call is exactly the shape of
+    write this console refuses everywhere else."""
+    doc, code = api.dispatch([
+        "act", "share.create",
+        "--payload", json.dumps({"scope": "file", "target": "README.md", "days": 1}),
+    ])
+    assert code == 4
+    assert doc["error_kind"] == "ConfirmationRequired"
+
+
+def test_the_preview_says_how_many_files_the_link_would_expose():
+    """A `repo` share and a `file` share look identical in a form. The count is the difference,
+    and it is shown before anything is minted."""
+    doc, code = api.dispatch([
+        "act", "share.create",
+        "--payload", json.dumps({"scope": "repo", "target": "", "days": 1}), "--preview",
+    ])
+    assert code == 0, doc.get("error")
+    data = doc["data"]
+    assert data["covers"] > 1
+    assert data["sample"] and all(api_share().is_denied(f) == "" for f in data["sample"])
+
+
+def test_a_preview_mints_nothing(_no_production_writes):
+    api.dispatch([
+        "act", "share.create",
+        "--payload", json.dumps({"scope": "file", "target": "README.md", "days": 1}), "--preview",
+    ])
+    assert not (_no_production_writes / "shares.json").exists(), "the preview minted a live link"
+
+
+def test_a_scope_the_engine_does_not_have_is_refused_by_name():
+    doc, code = api.dispatch([
+        "act", "share.create",
+        "--payload", json.dumps({"scope": "everything", "target": ""}), "--preview",
+    ])
+    assert code != 0
+    assert "scope must be one of" in doc["error"]
+
+
+def test_a_link_can_be_minted_then_revoked_through_the_gateway(cfg, _no_production_writes):
+    """The whole round trip on the operator's side, through `dispatch` rather than through
+    `share.py` directly — a fence that only holds when called from Python is not a fence."""
+    payload = {"scope": "file", "target": "README.md", "days": 1, "note": "gateway test"}
+    token = api._valid_tokens(cfg, "share.create", payload)[0]
+    doc, code = api.dispatch([
+        "act", "share.create", "--payload", json.dumps(payload), "--confirm", token,
+    ])
+    assert code == 0, doc.get("error")
+    minted = doc["data"]
+    assert minted["path"] == f"/s/{minted['token']}"
+
+    opened, code = api.dispatch(["read", "share_open", "--arg", f"token={minted['token']}"])
+    assert code == 0, opened.get("error")
+    assert opened["data"]["kind"] == "file"
+
+    rpayload = {"id": minted["id"]}
+    rtoken = api._valid_tokens(cfg, "share.revoke", rpayload)[0]
+    doc, code = api.dispatch([
+        "act", "share.revoke", "--payload", json.dumps(rpayload), "--confirm", rtoken,
+    ])
+    assert code == 0, doc.get("error")
+
+    doc, code = api.dispatch(["read", "share_open", "--arg", f"token={minted['token']}"])
+    assert code != 0, "a revoked link still opened"
+
+
+def api_share():
+    from prospector.ops import share
+
+    return share
+# --- Every heartbeat record carries a reason -------------------------------------------------
+#
+# The console's front page renders `Producer: ${why} · Consumer: ${why}` as the incident headline.
+# `_heartbeats` set `why` in only two of its four branches, so a stale beat that HAD promised a
+# wake time fell through with the field absent -- and the operator read the literal word
+# "undefined" at the top of the page, during an incident, in the largest type on the screen.
+#
+# Seen live on 2026-08-19: "Producer: generating -- ... Consumer: undefined".
+#
+# This test is parameterised over the branches rather than pinning the one that broke, because the
+# class of failure is "a new branch forgets it".
+
+
+def _hb_dir(monkeypatch, tmp_path):
+    """Point `_heartbeats` at a scratch scheduler directory."""
+    from prospector.scheduler import paths as _paths
+
+    sched = tmp_path / "scheduler"
+    sched.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(_paths, "scheduler_dir", lambda cfg: sched)
+    return sched
+
+
+@pytest.mark.parametrize(
+    "beat,label",
+    [
+        (None, "no heartbeat file at all"),
+        ({"pid": 1, "ts": 0, "phase": "sleeping", "next_check": 1.0}, "stale, and it promised a wake time"),
+        ({"pid": 1, "ts": 0, "phase": "sleeping"}, "stale, with no promise"),
+        ({"pid": 1, "ts": 0, "phase": "generating"}, "a working phase, which promises nothing"),
+        ({"pid": 1, "phase": "sleeping"}, "a beat with no timestamp"),
+        ({"pid": 1, "ts": None, "phase": "waiting", "beat_every_s": 60}, "a null timestamp"),
+        ("{ not json", "a file that is not JSON"),
+    ],
+)
+def test_every_heartbeat_branch_reports_a_reason(monkeypatch, tmp_path, beat, label):
+    sched = _hb_dir(monkeypatch, tmp_path)
+    if beat is not None:
+        body = beat if isinstance(beat, str) else json.dumps(beat)
+        for name in ("heartbeat.json", "consumer_heartbeat.json"):
+            (sched / name).write_text(body)
+
+    out = api._heartbeats(object())
+
+    for role, rec in out.items():
+        why = rec.get("why")
+        assert isinstance(why, str) and why.strip(), f"{role} has no `why` when {label}: {rec!r}"
+        # A reason that renders "None" or "undefined" is the same defect wearing a different word.
+        assert "None" not in why, f"{role} printed a None into its reason when {label}: {why}"
+        assert "undefined" not in why, f"{role} printed undefined when {label}: {why}"
+
+
+def test_a_duration_never_prints_none(monkeypatch):
+    """`_hb_dur` is the only place a raw number becomes words. It is fed `None` in real life."""
+    assert "None" not in api._hb_dur(None)
+    assert api._hb_dur(45) == "45s"
+    assert api._hb_dur(600) == "10m"
+    assert api._hb_dur(7200) == "2h"
+    assert api._hb_dur(200_000) == "2d"
+
+
+def test_no_heartbeat_shape_can_produce_a_missing_reason(monkeypatch, tmp_path):
+    """The guard above enumerates the branches that exist TODAY. This one does not.
+
+    The founder's question was what happens when a new branch is added. A parameterised list of
+    seven known shapes answers that badly: a new branch is reached by a new INPUT shape, and a new
+    input shape is exactly what an enumerated list does not have. So this sweeps the product of
+    every field `_heartbeats` reads, including the values that are absent, null, zero and the
+    wrong type, and asserts the one property that must hold whatever branch runs: the record
+    carries a sentence, and the sentence does not contain a placeholder word.
+
+    A new branch that forgets `why` fails here without anyone remembering to add a case.
+    """
+    sched = _hb_dir(monkeypatch, tmp_path)
+    now = time.time()
+    ABSENT = object()
+
+    pids = [ABSENT, None, 0, 1, 999_999_999]
+    stamps = [ABSENT, None, 0, now, now - 999_999, "not-a-number"]
+    phases = [ABSENT, None, "", "sleeping", "generating", "draining", "a phase nobody wrote yet"]
+    promises = [ABSENT, None, 0, now + 100, now - 999_999, "soon"]
+    # "fast" is not decoration: a non-numeric cadence raised an uncaught ValueError and
+    # blanked the whole incident page. The sweep is where that now fails.
+    cadences = [ABSENT, None, 0, 60, "60", "fast"]
+
+    checked = 0
+    for pid in pids:
+        for ts in stamps:
+            for phase in phases:
+                for promised in promises:
+                    for every in cadences:
+                        body = {}
+                        for key, val in (("pid", pid), ("ts", ts), ("phase", phase),
+                                         ("next_check", promised), ("beat_every_s", every)):
+                            if val is not ABSENT:
+                                body[key] = val
+                        text = json.dumps(body)
+                        for name in ("heartbeat.json", "consumer_heartbeat.json"):
+                            (sched / name).write_text(text)
+
+                        out = api._heartbeats(object())
+                        checked += 1
+                        for role, rec in out.items():
+                            why = rec.get("why")
+                            assert isinstance(why, str) and why.strip(), (
+                                f"{role} reported no reason for {text}: {rec!r}")
+                            for placeholder in ("None", "undefined", "NaN"):
+                                assert placeholder not in why, (
+                                    f"{role} printed {placeholder} for {text}: {why}")
+
+    # If a refactor collapses the sweep to a handful of cases it stops being a sweep, and it would
+    # go on passing. The count is part of the assertion.
+    assert checked >= 1000, f"the sweep only covered {checked} shapes"

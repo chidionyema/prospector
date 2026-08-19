@@ -11,6 +11,7 @@ Three decisions, each with a way to be expensive or destructive if it goes wrong
 The script is bash, so the test runs it for real with `fly` and `gh` replaced by stubs on PATH
 and reads what it tried to do. Nothing here talks to Fly or GitHub.
 """
+
 from __future__ import annotations
 
 import json
@@ -26,8 +27,15 @@ RUNNERS = REPO / "deploy" / "runners.sh"
 CFG = REPO / "ops" / "config" / "ci_capacity.yaml"
 
 
-def _stub_bin(tmp_path: Path, machines: list[dict], busy: list[str], queued: str | None) -> Path:
-    """A PATH directory whose `fly` and `gh` answer from fixtures and log every call."""
+def _stub_bin(
+    tmp_path: Path, machines: list[dict], busy: list[str] | None, queued: str | None
+) -> Path:
+    """A PATH directory whose `fly` and `gh` answer from fixtures and log every call.
+
+    `busy=None` means the `actions/runners` call FAILS, which is different from an
+    empty list and is the case that matters most. That endpoint needs admin scope,
+    and the GITHUB_TOKEN the autoscale workflow runs with does not have it.
+    """
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     calls = tmp_path / "calls.log"
@@ -43,10 +51,15 @@ def _stub_bin(tmp_path: Path, machines: list[dict], busy: list[str], queued: str
     # `gh api` with no queue fixture exits non-zero, which is how "cannot read GitHub" is spelled.
     gh = ["#!/usr/bin/env bash", f'echo "gh $*" >> {calls}']
     if queued is None:
-        gh.append("case \"$*\" in *actions/runs*) exit 1 ;; esac")
+        gh.append('case "$*" in *actions/runs*) exit 1 ;; esac')
     else:
         gh.append(f"case \"$*\" in *actions/runs*) echo '{queued}'; exit 0 ;; esac")
-    gh.append(f"case \"$*\" in *actions/runners*) printf '%s' '{chr(10).join(busy)}'; exit 0 ;; esac")
+    if busy is None:
+        gh.append('case "$*" in *actions/runners*) exit 1 ;; esac')
+    else:
+        gh.append(
+            f"case \"$*\" in *actions/runners*) printf '%s' '{chr(10).join(busy)}'; exit 0 ;; esac"
+        )
     gh.append("exit 0")
     (bin_dir / "gh").write_text("\n".join(gh) + "\n")
 
@@ -59,8 +72,14 @@ def _stub_bin(tmp_path: Path, machines: list[dict], busy: list[str], queued: str
 def _run(tmp_path: Path, machines, busy, queued) -> tuple[str, str]:
     bin_dir = _stub_bin(tmp_path, machines, busy, queued)
     env = dict(os.environ, PATH=f"{bin_dir}:{os.environ['PATH']}")
-    proc = subprocess.run(["bash", str(RUNNERS), "autoscale"], cwd=REPO, env=env,
-                          capture_output=True, text=True, timeout=120)
+    proc = subprocess.run(
+        ["bash", str(RUNNERS), "autoscale"],
+        cwd=REPO,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
     calls = (tmp_path / "calls.log").read_text() if (tmp_path / "calls.log").exists() else ""
     return proc.stdout + proc.stderr, calls
 
@@ -87,9 +106,11 @@ def test_an_empty_queue_stops_idle_machines_but_never_a_busy_one(tmp_path):
     # fleet is resized, and a hardcoded 1 would then fail for a reason that has nothing to do with
     # the behaviour under test.
     lo = int(re.search(r"^autoscale_min:\s*(\d+)", CFG.read_text(), re.M).group(1))
-    out, calls = _run(tmp_path, _machines(started=lo + 2, stopped=0), busy=["runner-s0"], queued="0")
+    out, calls = _run(
+        tmp_path, _machines(started=lo + 2, stopped=0), busy=["runner-s0"], queued="0"
+    )
     assert f"want={lo}" in out, out
-    assert "machine stop s0" not in calls, calls     # busy, so it must be walked past
+    assert "machine stop s0" not in calls, calls  # busy, so it must be walked past
     assert "machine stop s1" in calls, calls
 
 
@@ -107,3 +128,29 @@ def test_the_ceiling_is_the_config_not_the_queue(tmp_path):
     want_max = int(re.search(r"^autoscale_max:\s*(\d+)", cfg, re.M).group(1))
     out, _ = _run(tmp_path, _machines(started=0, stopped=10), busy=[], queued="50")
     assert f"want={want_max}" in out, out
+
+
+@pytest.mark.skipif(not RUNNERS.exists(), reason="runners.sh not in this checkout")
+def test_an_unreadable_busy_list_never_stops_a_machine(tmp_path):
+    """The empty-string ambiguity that could have killed a build.
+
+    The busy-runner call used to end in `|| true`, so "GitHub refused the call" and "nobody is
+    busy" both produced an empty string. Scale-down reads an absent runner name as safe to stop,
+    so a failed read looked exactly like a fully idle pool. That endpoint (`actions/runners`)
+    needs admin scope and the workflow's GITHUB_TOKEN does not have it, so the ambiguous case was
+    the likely one, not the rare one.
+
+    An empty queue against three started machines is the strongest possible pull to scale down.
+    Nothing may be stopped while the busy list is unknown.
+    """
+    out, calls = _run(tmp_path, _machines(started=3, stopped=0), busy=None, queued="0")
+    assert "machine stop" not in calls, calls
+    assert "would not say which runners" in out, out
+
+
+@pytest.mark.skipif(not RUNNERS.exists(), reason="runners.sh not in this checkout")
+def test_a_readable_empty_busy_list_still_scales_down(tmp_path):
+    """The other half: refusing on a FAILED read must not also refuse on a genuinely idle pool,
+    or the fix above would just be scale-down switched off."""
+    out, calls = _run(tmp_path, _machines(started=3, stopped=0), busy=[], queued="0")
+    assert "machine stop" in calls, calls

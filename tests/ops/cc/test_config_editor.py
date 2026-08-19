@@ -5,6 +5,7 @@ write/backup, and certification state.
 """
 from __future__ import annotations
 
+import os
 import time
 
 import prospector.ops.config_editor as ce
@@ -158,9 +159,11 @@ class TestMtimeConflict:
         fake = tmp_path / "config.yaml"
         fake.write_text("thresholds:\n  confidence_floor: 0.6\n")
         old_mtime = fake.stat().st_mtime
-        # Modify the file after the "load"
-        time.sleep(0.05)
+        # Modify the file after the "load". The mtime is SET, not slept for: a 0.05s sleep
+        # measured two identical mtimes on the CI runner on 2026-08-19, which failed this test
+        # on a filesystem timestamp granularity that is not what mtime_conflict does.
         fake.write_text("thresholds:\n  confidence_floor: 0.8\n")
+        os.utime(fake, (old_mtime + 1, old_mtime + 1))
         new_mtime = fake.stat().st_mtime
         assert new_mtime > old_mtime
         # Monkeypatch get_config_mtime for this test

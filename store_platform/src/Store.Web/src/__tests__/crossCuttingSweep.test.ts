@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
@@ -272,5 +272,87 @@ describe('a sector with nothing in it is disabled, not hidden', () => {
     // The count still prints. `counts[cat.key]` is undefined for a sector no pack occupies, and
     // React renders undefined as nothing, so the disabled chip would have carried no number.
     expect(page).toContain('{counts[cat.key] ?? 0}');
+  });
+});
+
+/** Every `.ts`/`.tsx` under `src/`, so a rule cannot be re-declared -- or a required fact
+ *  re-typed -- in a file this test never thought to name. A fixed file list is the same defect as
+ *  a per-caller bound. */
+function sourceFiles(dir: string, found: string[] = []): string[] {
+  for (const entry of readdirSync(join(SRC, dir), { withFileTypes: true })) {
+    const rel = dir ? `${dir}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) sourceFiles(rel, found);
+    else if (/\.tsx?$/.test(entry.name)) found.push(rel);
+  }
+  return found;
+}
+
+describe('a shop-wide rule is declared once', () => {
+  it('declares CREDIBLE_MULTIPLE_CEILING in lib/payback.ts and nowhere else', () => {
+    // 2026-08-19. `lib/packStat.ts` carried a second `const CREDIBLE_MULTIPLE_CEILING = 20;`, with
+    // a near-copy of the founder's argument above it, and then re-checked the bound twice on
+    // values `paybackEquation` had already bounded. Nothing failed, because the two numbers agreed
+    // -- which is the whole trap. `lib/payback.ts:80` states the principle the site is built on:
+    // "A ceiling enforced per-caller is a ceiling the next caller forgets." The second copy makes
+    // the first one optional, and the day the ceiling moves the shelf and the pack page start
+    // making different claims about the same pack.
+    const files = sourceFiles('');
+    expect(files.length, 'the source walk found nothing; this test would pass vacuously')
+      .toBeGreaterThan(100);
+    expect(files, 'the walk missed the file that owns the rule').toContain('lib/payback.ts');
+
+    const declaration = /^\s*(?:export\s+)?(?:const|let|var)\s+CREDIBLE_MULTIPLE_CEILING\b/m;
+    const owners = files.filter((file) => declaration.test(read(file)));
+    expect(owners).toEqual(['lib/payback.ts']);
+  });
+});
+
+describe('the trader is identified on the shop front, not only in the small print', () => {
+  /*
+   * 2026-08-19. A persona teardown grepped all ten public pages of the live site for a company
+   * number, a Companies House registration or a named limited company and found none. The footer
+   * read "(c) 2026 Mumchimp. All rights reserved." and gave one email address.
+   *
+   * The data was not missing. `LEGAL.companyNumber` was confirmed against Companies House on
+   * 2026-08-16, with the note that five DISSOLVED companies share the name "ByteSync", which is
+   * why the number was recorded rather than the name alone. It was then rendered on zero pages,
+   * and `legalName`/`address` reached only /terms, /privacy and /refund.
+   *
+   * That is the class: a fact held in config, required by law to be published, and rendered
+   * nowhere -- invisible to every screenshot, every typecheck and every unit test, because
+   * nothing was wrong, something was absent. reg 6 of the Electronic Commerce (EC Directive)
+   * Regulations 2002 requires the name, geographic address and registration number to be easily,
+   * directly and permanently accessible; the Consumer Contracts Regulations 2013 require trader
+   * identity and geographic address before a distance contract is concluded. These tests fail if
+   * the identity leaves the footer, or if a caller re-implements the sentence instead of asking
+   * for it.
+   */
+
+  it('names the company number, the legal name and the address in one sentence', async () => {
+    const { traderIdentity, LEGAL } = await import('../lib/config');
+    const line = traderIdentity();
+    expect(line).toContain(LEGAL.legalName);
+    expect(line).toContain(LEGAL.address);
+    expect(LEGAL.companyNumber, 'the registration number is the fact the name alone cannot carry')
+      .toMatch(/^\d{6,8}$/);
+    expect(line).toContain(`company number ${LEGAL.companyNumber}`);
+  });
+
+  it('renders that sentence in the footer of every marketing page', () => {
+    const layout = codeOnly(read('components/marketing/MarketingLayout.tsx'));
+    expect(layout).toContain('traderIdentity()');
+    // In `.f-bottom`, the block that renders on every page, and not in a route-specific panel.
+    const footer = layout.slice(layout.indexOf('f-bottom'));
+    expect(footer, 'the identity moved out of the always-rendered footer').toContain(
+      'traderIdentity()',
+    );
+  });
+
+  it('is asked for, never re-typed: no file inlines the registration number', async () => {
+    const { LEGAL } = await import('../lib/config');
+    const offenders = sourceFiles('').filter(
+      (file) => file !== 'lib/config.ts' && read(file).includes(LEGAL.companyNumber),
+    );
+    expect(offenders).toEqual([]);
   });
 });

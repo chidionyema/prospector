@@ -33,6 +33,7 @@ import shutil
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 # --- the estate, declared -------------------------------------------------------------------
 # Everything below is a NAME plus how to prove it. Adding a component means adding a row here,
@@ -44,7 +45,9 @@ FLY_APPS = {
     "prospector-store-web": "mumchimp.com, the storefront a buyer sees",
     "prospector-searxng": "private search the engine grounds against",
     "prospector-hermes": "the operator surface: Telegram, coordinator, Otto",
-    "prospector-ci": "intended home of the GitHub Actions runners (R8, not done)",
+    "prospector-ci": "runs CI. Two Linux container runners, label 'heavy'. CI does NOT run "
+                     "on the laptop; the actions.runner.* jobs there are off by founder "
+                     "decision",
 }
 
 # tie-* are a separate, older product kept deliberately. Listed so nobody deletes them tidying up.
@@ -189,15 +192,32 @@ def probe_laptop_jobs() -> dict:
 
 
 def probe_runners() -> dict:
+    """Which runners can take a job, and WHERE they are.
+
+    The where is the point. This row used to end "all on the laptop until R8 lands", which was
+    true when it was written and false from #335 onward -- CI has run on the Fly app
+    prospector-ci since then. On 2026-08-19 a pull request sat queued, an agent read the laptop's
+    three offline runner jobs as the whole picture, and told the founder to start them. They are
+    off by founder decision. So the label decides the location and nothing here asserts it.
+    """
     rc, out = run(["gh", "api", "repos/chidionyema/prospector/actions/runners", "--jq",
-                   ".runners[] | \"\\(.name) \\(.status) busy=\\(.busy)\""])
+                   ".runners[] | \"\\(.name) \\(.status) busy=\\(.busy) "
+                   "labels=\\(.labels|map(.name)|join(\",\"))\""])
     if rc != 0:
         return {"state": "unknown", "note": out.splitlines()[0] if out else "gh did not answer",
                 "runners": []}
     rs = [row for row in out.splitlines() if row.strip()]
     online = [r for r in rs if " online" in r]
-    return {"state": "ok" if online else "fail", "runners": rs,
-            "note": f"{len(online)} of {len(rs)} online -- all on the laptop until R8 lands"}
+    fly = [r for r in online if "fly" in r]
+    busy = [r for r in online if "busy=true" in r]
+    # No online runner anywhere is the only real failure: every workflow then queues forever.
+    # An offline LAPTOP runner is a decision, not a fault.
+    note = (f"{len(online)} of {len(rs)} online ({len(fly)} on the Fly app prospector-ci, "
+            f"{len(online) - len(fly)} on the laptop), {len(busy)} busy. CI runs on "
+            f"prospector-ci; the laptop's actions.runner.* jobs are off by founder decision "
+            f"and a queued pull request is usually capacity, not a dead runner")
+    return {"state": "ok" if online else "fail", "runners": rs, "note": note,
+            "online": len(online), "on_fly": len(fly), "busy": len(busy)}
 
 
 def probe_volume_usage(app: str, path: str = "/data") -> dict:
@@ -215,6 +235,9 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--json", action="store_true", help="machine readable")
     ap.add_argument("--quick", action="store_true", help="skip anything that shells into a machine")
+    ap.add_argument("--snapshot", action="store_true",
+                    help="also write the JSON to <store>/ops/estate_map.json, which is what the "
+                         "SessionStart probe renders")
     args = ap.parse_args()
 
     started = time.time()
@@ -223,7 +246,7 @@ def main() -> int:
                     if os.environ.get("FLY_MACHINE_ID") else "this laptop"}
 
     report["fly_apps"] = probe_fly_apps()
-    report["machines"] = {a: probe_machines(a) for a in FLY_APPS if a != "prospector-ci"}
+    report["machines"] = {a: probe_machines(a) for a in FLY_APPS}
     report["secrets"] = {a: probe_secret_names(a) for a in FLY_APPS}
     report["endpoints"] = probe_endpoints()
     report["laptop_jobs"] = probe_laptop_jobs()
@@ -232,6 +255,22 @@ def main() -> int:
         report["storage"] = {a: probe_volume_usage(a)
                              for a in ("prospector-engine", "prospector-store-api", "prospector-hermes")}
     report["took_s"] = round(time.time() - started, 1)
+
+    if args.snapshot:
+        # store_root(), never a path derived from __file__: the store is pinned by
+        # PROSPECTOR_STORE_DIR and does not move with the code. A snapshot written beside the
+        # code is a snapshot the probe never reads.
+        try:
+            # Run as `scripts/estate_map.py`, sys.path[0] is scripts/, so the package is not
+            # importable without this. Nothing else in the file needs it.
+            sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+            from prospector.config import store_root
+            out = Path(store_root()) / "ops" / "estate_map.json"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            print(f"snapshot -> {out}", file=sys.stderr)
+        except Exception as exc:  # noqa: BLE001 -- a failed snapshot must not fail the map
+            print(f"snapshot FAILED: {exc}", file=sys.stderr)
 
     if args.json:
         print(json.dumps(report, indent=2, sort_keys=True))

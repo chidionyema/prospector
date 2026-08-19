@@ -4,8 +4,11 @@
 # (ops/automations/stranded_packs.py) contains none of them, so another startup points this at its
 # own directories and gets the same check.
 
-# Where the engine writes one file per ruled candidate.
-dossier_dir: store/dossiers
+# Where the engine writes one file per ruled candidate, RELATIVE TO THE STORE DIRECTORY
+# (PROSPECTOR_STORE_DIR, or `<checkout>/store` when that is unset). It was `store/dossiers`
+# relative to the checkout until 2026-08-19, which sent the probe to /app/store/dossiers on the
+# engine while the store was the volume at /data/store.
+dossier_dir: dossiers
 
 # Which of those files means "this pack passed every research gate". Kills are `<id>.kill.json`
 # and deferred rows are `<id>.defer.json`; neither is stranded revenue, so neither is counted.
