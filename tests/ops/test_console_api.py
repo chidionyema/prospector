@@ -631,3 +631,116 @@ def api_share():
     from prospector.ops import share
 
     return share
+# --- Every heartbeat record carries a reason -------------------------------------------------
+#
+# The console's front page renders `Producer: ${why} · Consumer: ${why}` as the incident headline.
+# `_heartbeats` set `why` in only two of its four branches, so a stale beat that HAD promised a
+# wake time fell through with the field absent -- and the operator read the literal word
+# "undefined" at the top of the page, during an incident, in the largest type on the screen.
+#
+# Seen live on 2026-08-19: "Producer: generating -- ... Consumer: undefined".
+#
+# This test is parameterised over the branches rather than pinning the one that broke, because the
+# class of failure is "a new branch forgets it".
+
+
+def _hb_dir(monkeypatch, tmp_path):
+    """Point `_heartbeats` at a scratch scheduler directory."""
+    from prospector.scheduler import paths as _paths
+
+    sched = tmp_path / "scheduler"
+    sched.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(_paths, "scheduler_dir", lambda cfg: sched)
+    return sched
+
+
+@pytest.mark.parametrize(
+    "beat,label",
+    [
+        (None, "no heartbeat file at all"),
+        ({"pid": 1, "ts": 0, "phase": "sleeping", "next_check": 1.0}, "stale, and it promised a wake time"),
+        ({"pid": 1, "ts": 0, "phase": "sleeping"}, "stale, with no promise"),
+        ({"pid": 1, "ts": 0, "phase": "generating"}, "a working phase, which promises nothing"),
+        ({"pid": 1, "phase": "sleeping"}, "a beat with no timestamp"),
+        ({"pid": 1, "ts": None, "phase": "waiting", "beat_every_s": 60}, "a null timestamp"),
+        ("{ not json", "a file that is not JSON"),
+    ],
+)
+def test_every_heartbeat_branch_reports_a_reason(monkeypatch, tmp_path, beat, label):
+    sched = _hb_dir(monkeypatch, tmp_path)
+    if beat is not None:
+        body = beat if isinstance(beat, str) else json.dumps(beat)
+        for name in ("heartbeat.json", "consumer_heartbeat.json"):
+            (sched / name).write_text(body)
+
+    out = api._heartbeats(object())
+
+    for role, rec in out.items():
+        why = rec.get("why")
+        assert isinstance(why, str) and why.strip(), f"{role} has no `why` when {label}: {rec!r}"
+        # A reason that renders "None" or "undefined" is the same defect wearing a different word.
+        assert "None" not in why, f"{role} printed a None into its reason when {label}: {why}"
+        assert "undefined" not in why, f"{role} printed undefined when {label}: {why}"
+
+
+def test_a_duration_never_prints_none(monkeypatch):
+    """`_hb_dur` is the only place a raw number becomes words. It is fed `None` in real life."""
+    assert "None" not in api._hb_dur(None)
+    assert api._hb_dur(45) == "45s"
+    assert api._hb_dur(600) == "10m"
+    assert api._hb_dur(7200) == "2h"
+    assert api._hb_dur(200_000) == "2d"
+
+
+def test_no_heartbeat_shape_can_produce_a_missing_reason(monkeypatch, tmp_path):
+    """The guard above enumerates the branches that exist TODAY. This one does not.
+
+    The founder's question was what happens when a new branch is added. A parameterised list of
+    seven known shapes answers that badly: a new branch is reached by a new INPUT shape, and a new
+    input shape is exactly what an enumerated list does not have. So this sweeps the product of
+    every field `_heartbeats` reads, including the values that are absent, null, zero and the
+    wrong type, and asserts the one property that must hold whatever branch runs: the record
+    carries a sentence, and the sentence does not contain a placeholder word.
+
+    A new branch that forgets `why` fails here without anyone remembering to add a case.
+    """
+    sched = _hb_dir(monkeypatch, tmp_path)
+    now = time.time()
+    ABSENT = object()
+
+    pids = [ABSENT, None, 0, 1, 999_999_999]
+    stamps = [ABSENT, None, 0, now, now - 999_999, "not-a-number"]
+    phases = [ABSENT, None, "", "sleeping", "generating", "draining", "a phase nobody wrote yet"]
+    promises = [ABSENT, None, 0, now + 100, now - 999_999, "soon"]
+    # "fast" is not decoration: a non-numeric cadence raised an uncaught ValueError and
+    # blanked the whole incident page. The sweep is where that now fails.
+    cadences = [ABSENT, None, 0, 60, "60", "fast"]
+
+    checked = 0
+    for pid in pids:
+        for ts in stamps:
+            for phase in phases:
+                for promised in promises:
+                    for every in cadences:
+                        body = {}
+                        for key, val in (("pid", pid), ("ts", ts), ("phase", phase),
+                                         ("next_check", promised), ("beat_every_s", every)):
+                            if val is not ABSENT:
+                                body[key] = val
+                        text = json.dumps(body)
+                        for name in ("heartbeat.json", "consumer_heartbeat.json"):
+                            (sched / name).write_text(text)
+
+                        out = api._heartbeats(object())
+                        checked += 1
+                        for role, rec in out.items():
+                            why = rec.get("why")
+                            assert isinstance(why, str) and why.strip(), (
+                                f"{role} reported no reason for {text}: {rec!r}")
+                            for placeholder in ("None", "undefined", "NaN"):
+                                assert placeholder not in why, (
+                                    f"{role} printed {placeholder} for {text}: {why}")
+
+    # If a refactor collapses the sweep to a handful of cases it stops being a sweep, and it would
+    # go on passing. The count is part of the assertion.
+    assert checked >= 1000, f"the sweep only covered {checked} shapes"

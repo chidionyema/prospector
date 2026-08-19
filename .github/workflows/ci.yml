@@ -1243,6 +1243,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Lint CSS
+        run: npm run lint:css
+
       - name: Unit tests (vitest)
         run: npm test
 
@@ -1282,6 +1285,30 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # axe-core against the console's own screens. It runs WITHOUT the Python gateway here, so
+      # most panels render their stated-problem branch rather than data. That is deliberate: an
+      # operator meets those states during an outage, which is the worst moment for an unreadable
+      # one. On its first run this found three serious defects -- no `lang` on <html>, a stat
+      # placeholder at 2.56:1, and scroll containers a keyboard could not enter.
+      #
+      # AFTER the build, always: the Playwright webServer runs `next start`, which serves the
+      # build directory. Before it, the server never comes up and every test errors in setup.
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Accessibility (axe-core)
+        run: npm run test:a11y
+        env:
+          CI: "true"
+
+      # The console is operated from a phone. This is the spec that caught /config
+      # scrolling 7px sideways on one unbreakable JSON value, and until now it ran
+      # on laptops only -- a gate nothing schedules is a gate that stops running.
+      - name: Phone widths (390 and 320)
+        run: npm run test:e2e
+        env:
+          CI: "true"
 
   # ──────────────────────────────────────────────────────────────────
   # The single check branch protection requires.

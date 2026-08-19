@@ -39,6 +39,11 @@ const PAGES = ALL.filter((f) => f.includes('/pages/') && !f.includes('/pages/api
  *      session-less route and imports neither Shell nor the ops client.
  */
 const SCREENS = PAGES.filter((f) => !/_app\.tsx$|login\.tsx$|\/pages\/s\//.test(f));
+ * Screens an operator reads. `_app` and `_document` are Next wrappers, not screens: neither
+ * renders data, so neither can read through the hook or carry an as-of stamp. `login` has
+ * nothing read yet to stamp.
+ */
+const SCREENS = PAGES.filter((f) => !/_app\.tsx$|_document\.tsx$|login\.tsx$/.test(f));
 
 describe('one data path', () => {
   it('no page or component reaches the filesystem or spawns anything', () => {

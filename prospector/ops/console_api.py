@@ -255,7 +255,7 @@ def _heartbeats(cfg) -> dict:
             rec["ts"] = ts
             age = _age_s(ts, now)
             rec["age_s"] = age
-            every = float(body.get("beat_every_s") or default_every)
+            every = _hb_secs(body.get("beat_every_s"), default_every)
             # Three missed beats, floored at 5 minutes: below that a single slow cycle reads as a
             # dead role, which is the false alarm that trains an operator to ignore the panel.
             rec["stale_after_s"] = max(every * 3.0, 300.0)
@@ -287,8 +287,76 @@ def _heartbeats(cfg) -> dict:
             rec.update({"age_s": None, "stale": True, "alive": False,
                         "why": "no heartbeat file — the role has never run, or store/ is not the "
                                "one the daemon writes to"})
+        # EVERY record carries a `why`, whatever branch built it.
+        #
+        # Only two of the four branches above set one. A stale beat that HAD a `next_check`
+        # promise, or a phase outside `_WORKING_PHASES`, fell through with no `why` at all -- so
+        # the field was simply absent from the JSON, the console's `Heartbeat.why: string` read
+        # `undefined`, and the incident headline on the front page rendered the literal word:
+        # "Producer: generating -- ... Consumer: undefined". The operator meets that sentence at
+        # the exact moment the sentence is the thing they need.
+        #
+        # This is filled here, after the branches, rather than in each one, because the class of
+        # failure is "a new branch forgets it". A default set at the end cannot be forgotten.
+        if not rec.get("why"):
+            rec["why"] = _hb_why(rec)
         out[role] = rec
     return out
+
+
+def _hb_secs(value: Any, default: float) -> float:
+    """A cadence out of the heartbeat file, coerced, never trusted.
+
+    `float(body.get("beat_every_s") or default)` raised ValueError on any non-numeric string, and
+    nothing caught it: one malformed heartbeat 500\'d /api/ops/read/status, so the operator got a
+    blank incident page instead of a wrong number. That is the same class as the `undefined` this
+    file was just fixed for -- the panel fails at the exact moment it is the thing being read.
+    A heartbeat is written by another process, so its contents are input, not a promise.
+    """
+    try:
+        secs = float(value)
+    except (TypeError, ValueError):
+        return float(default)
+    return secs if secs > 0 else float(default)
+
+
+def _hb_why(rec: dict) -> str:
+    """The fallback sentence for a heartbeat whose branch did not write one.
+
+    It is built from the numbers already in the record, so it says something true and specific
+    rather than a generic placeholder. Order matters: the most decisive fact first.
+    """
+    if rec.get("read_error"):
+        return f"the heartbeat file could not be read: {rec['read_error']}"
+    age = rec.get("age_s")
+    late = rec.get("late_s")
+    if rec.get("stale"):
+        if isinstance(late, (int, float)) and late > 0:
+            return (f"{_hb_dur(late)} past the wake time it promised itself, which is over the "
+                    f"{_hb_dur(rec.get('stale_after_s'))} allowed")
+        if isinstance(age, (int, float)):
+            return (f"last beat {_hb_dur(age)} ago, over the "
+                    f"{_hb_dur(rec.get('stale_after_s'))} this role allows itself")
+        return "the heartbeat carries no timestamp, so its age cannot be measured"
+    if not rec.get("pid"):
+        return "the beat is fresh but names no pid, so there is no process to check"
+    if not _pid_alive(rec.get("pid")):
+        return f"the beat is fresh but pid {rec.get('pid')} is gone — the role died mid-cycle"
+    return f"beating: last beat {_hb_dur(age)} ago"
+
+
+def _hb_dur(seconds: Any) -> str:
+    """Seconds as something an operator reads at a glance. `None` never prints as "None"."""
+    if not isinstance(seconds, (int, float)):
+        return "an unknown time"
+    s = int(seconds)
+    if s < 90:
+        return f"{s}s"
+    if s < 5400:
+        return f"{s // 60}m"
+    if s < 172800:
+        return f"{s // 3600}h"
+    return f"{s // 86400}d"
 
 
 def _pid_alive(pid: Any) -> bool:
