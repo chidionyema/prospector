@@ -90,11 +90,22 @@ reads as noise". A memory file does not close it, because the next invalid workf
 by a different agent in a different session. A machine can refuse it: `actionlint` parses every
 workflow file and rejects an unknown trigger, and it is one CI step.
 
-**Decision — proposed, not taken.** Add `actionlint` to the CI gate, and separately decide what the
-autoscaler should be triggered by, since the trigger it wants does not exist. The honest options are
-a `schedule:` cron (GitHub delays these by 5–15 minutes under load, so the pool would lag the queue)
-or leaving the pool at a fixed floor and deleting the workflow. **This is founder-decidable and it
-is cheap either way.** Filed as tasks below.
+**Decision — taken, in this commit.** The class is closed with a guard, not a note:
+`tests/unit/test_workflow_triggers_are_real_events.py` parses every workflow file and fails if any
+`on:` key is not an event GitHub accepts as a trigger. It runs in the python lane every branch
+already has to pass, so it reaches every agent, and it handles the YAML 1.1 trap where a bare `on:`
+key parses as the boolean `True` — a reader that misses that passes every file vacuously, which is
+the same defect wearing a different hat. This is preferred to an `actionlint` CI step because it
+needs no new workflow and no new tool in the image.
+
+`ci-autoscale.yml` is now `on: workflow_dispatch`. That makes the file valid and stops the false red
+runs while changing no automatic behaviour — the scaler did not run before and does not run now.
+
+**Decision — NOT taken, and it is the founder's.** What should start the scaler automatically. A
+`schedule:` cron is simple but GitHub delays crons by 5–15 minutes under load, so the pool lags the
+queue. `workflow_run:` on the CI workflow is prompt but reacts to runs rather than jobs, so it
+cannot see per-job queueing. The third option is to keep a fixed floor and delete the workflow. Each
+has a different monthly cost, so it is a spending decision, not an engineering one.
 
 ---
 
@@ -338,8 +349,9 @@ did not read. Named so it is not lost.
 
 Nothing below is a new system. Every line is a sequencing change or a one-line guard.
 
-1. `actionlint` in the CI gate, so an unrunnable workflow is refused. Closes the S1 class.
-2. Decide the autoscaler: cron trigger, or delete it. It is dead either way today.
+1. ~~A guard so an unrunnable workflow is refused.~~ **Done in this commit** —
+   `tests/unit/test_workflow_triggers_are_real_events.py`. Closes the S1 class.
+2. Decide what triggers the autoscaler: cron, `workflow_run`, or delete it. It is manual-only today.
 3. S2 before S3: the off-box dead-man's switch lands before 31 jobs move onto one Fly machine.
 4. The 22 agent guards become tracked files with an installer, and a probe asserts every hook in
    `settings.json` resolves. Fix the `checkout_currency.py` hook in the same pass.
@@ -357,3 +369,4 @@ Nothing below is a new system. Every line is a sequencing change or a one-line g
 | 2026-08-19 | Autoscaler proven never to have run | 35 push-triggered runs, 0 jobs, 0 `workflow_job` runs |
 | 2026-08-19 | Earlier inference that the autoscaler killed a CI job WITHDRAWN | the workflow cannot execute |
 | 2026-08-19 | L11 "No flaky solutions" added to the manifesto | `docs/PLATFORM_MANIFESTO.md` |
+| 2026-08-19 | S1 class closed by a guard; `ci-autoscale.yml` made valid, manual-only | `tests/unit/test_workflow_triggers_are_real_events.py`, 13 passed |
