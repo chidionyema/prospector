@@ -65,11 +65,52 @@ a real pipeline, no blind spots. Two strands remain.
 
 | # | Strand | Why it is not done |
 | --- | --- | --- |
-| 4 | Give Hermes a leader lease so only one environment is live | Design settled — reuse the `host:pid:uuid` lease from the Prospector queue, `docs/decisions/0002`. Not written |
-| 5 | Move Hermes to `~/Documents/code/hermes` and give it Prospector's pipeline | `~/.hermes` still has no `.github/workflows/` at all. Until it does, Hermes has no CI, so nothing about it can be graded the way Prospector is |
+| 4 | Give Hermes a leader lease so only one environment is live | Design settled — an object in the existing `prospector-backup` R2 bucket, holder `host:pid:uuid`, short TTL, renewed by the primary and acquired by the laptop only once it expires. R2 is the only storage both environments reach. A bare pid will not do: a pid only means something on the machine that minted it. Not written |
+| 5 | Move Hermes to `~/Documents/code/hermes` and give it Prospector's pipeline | `~/.hermes` has no `.github/workflows/` at all, measured 2026-08-19. Until it has CI, nothing about Hermes can be graded the way Prospector is |
 
 A lease matters more than the move. Two live environments with no lease is the failure the
 founder named ("we cant have 2 ennvironents running"), and the move alone does not fix it.
+
+### Two findings, measured 2026-08-19
+
+**The Fly Hermes coordinator database sits on the image filesystem, and a deploy erases it.**
+
+```
+fly ssh console -a prospector-hermes -C "ls -la /Users/chidionyema/.hermes/coordinator.db"
+  -rw------- 1 root root 176128 Aug 18 22:46          <- a real file, not a symlink
+fly ssh console -a prospector-hermes -C "ls -la /data/db"
+  ls: cannot access '/data/db': No such file or directory
+```
+
+`deploy/hermes/entrypoint.sh` in the Hermes checkout already contains the fix — create
+`/data/db`, move each database onto the volume, symlink it back. Its own comment records the
+measurement that produced it, taken at 09:40 on 2026-08-18. The machine was last updated at
+08:39 UTC, one minute earlier. **The fix exists in source and has never been deployed.** A
+written fix that was never shipped reads exactly like a shipped one to anyone reading the
+file.
+
+The database is real work: `integrity_check ok`, 12 tasks, 125 events, 48 telemetry rows, 25
+in the progress outbox. A copy is held off the machine.
+
+Order matters and it is the opposite of the obvious one. Deploying first destroys the
+database, because the entrypoint only copies a database onto the volume when the volume has
+none, and the fresh image has no work in it. Seed the volume, then deploy.
+
+**Two coordinators run at once, on databases that cannot be reconciled.**
+
+```
+FLY   supervisorctl status -> cockpit, coordinator, otto-server, progress, rsi,
+                              submodule-backup RUNNING; gateway STOPPED
+MAC   launchctl list       -> ai.hermes.coordinator, ai.hermes.otto-server,
+                              ai.hermes.gateway all with live pids
+```
+
+The double-answer fence in `entrypoint.sh` covers the **gateway only**, through
+`HERMES_GATEWAY_AUTOSTART=0`. That fence is correct and it is doing its job: one Telegram
+long-poller, held back deliberately. Nothing fences the coordinator. The two coordinators
+hold separate databases on separate machines, so "keep them in sync" is not available as an
+option — there is nothing to sync, there are two estates. Only a lease closes this, which is
+strand 4.
 
 ---
 
