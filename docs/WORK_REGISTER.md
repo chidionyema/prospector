@@ -65,8 +65,8 @@ a real pipeline, no blind spots. Two strands remain.
 
 | # | Strand | State |
 | --- | --- | --- |
-| 4 | Give Hermes a leader lease so only one environment is live | **DONE.** `scripts/hermes_lease.py` renews `hermes/leader.json` in the `prospector-backup` R2 bucket — the only storage both machines reach. A holder plus a renewal time plus a TTL, not a lock, so a leader whose machine vanishes stops holding the estate after one TTL. Identity is a uuid in `state/machine_id`, never a pid. `ai.hermes.lease-guard` runs `acquire --enforce` every 300s on the laptop and stops any Hermes daemon that comes back on a non-leader. 10 tests, no network, mutation-proved |
-| 5 | Give Hermes Prospector's pipeline | **Partly done.** `deploy.sh` now refuses a dirty tree, refuses a HEAD that is not `origin/main`, and runs `tests/run.sh` first — that gate bites today. `.github/workflows/gate.yml` is the first CI this repo has ever had. It cannot run yet: see below |
+| 4 | Give Hermes a leader lease so only one environment is live | **DONE.** In the Hermes repo, `scripts/hermes_lease.py` renews `hermes/leader.json` in the `prospector-backup` R2 bucket — the only storage both machines reach. A holder plus a renewal time plus a TTL, not a lock, so a leader whose machine vanishes stops holding the estate after one TTL. Identity is a uuid in `state/machine_id`, never a pid. `ai.hermes.lease-guard` runs `acquire --enforce` every 300s on the laptop and stops any Hermes daemon that comes back on a non-leader. 10 tests, no network, mutation-proved |  <!-- doc-lint-ok: paths in the hermes-agent repo, not this one -->
+| 5 | Give Hermes Prospector's pipeline | **Partly done.** `deploy.sh` now refuses a dirty tree, refuses a HEAD that is not `origin/main`, and runs the Hermes repo's `tests/run.sh` first — that gate bites today. the Hermes repo's `.github/workflows/gate.yml` is the first CI that repo has ever had. It cannot run yet: see below |  <!-- doc-lint-ok: paths in the hermes-agent repo, not this one -->
 
 Proof the lease works end to end, read from the laptop while Fly holds it:
 
@@ -120,7 +120,7 @@ fly ssh console -a prospector-hermes -C "ls -la /data/db"
   ls: cannot access '/data/db': No such file or directory
 ```
 
-`deploy/hermes/entrypoint.sh:26-40` already contained the fix, and had never been deployed. A
+The Hermes repo's `deploy/hermes/entrypoint.sh`, lines 26-40, already contained the fix, and had never been deployed. A  <!-- doc-lint-ok: paths in the hermes-agent repo, not this one -->
 written fix that was never shipped reads exactly like a shipped one to anyone reading the file.
 
 The repair order is the opposite of the obvious one. The entrypoint only copies a database onto
@@ -164,12 +164,12 @@ selfcheck and gateway. Watchdog and selfcheck went too, because they exist to re
 others. Still loaded on the Mac and correct to leave: `keepawake`, `idle-engine`,
 `runaway-reaper`.
 
-**Turning it off is not a fence, so a fence was added.** `scripts/check_single_environment.sh`
+**Turning it off is not a fence, so a fence was added.** `scripts/check_single_environment.sh`  <!-- doc-lint-ok: paths in the hermes-agent repo, not this one -->
 in the Hermes repo fails when any daemon Fly's supervisord runs is also loaded on this Mac.
 `verify_estate.sh` calls it as a `SOLO` section and a non-zero exit fails the whole probe. The
 primary is declared in `config/primary_environment`, so failing over to the laptop is a
 one-line edit rather than a code change.
-`scripts/test_verify_estate_single_environment.sh` proves the fence can fail: it stubs
+`scripts/test_verify_estate_single_environment.sh` proves the fence can fail: it stubs  <!-- doc-lint-ok: paths in the hermes-agent repo, not this one -->
 `launchctl` on `PATH`, so it needs no real daemon. `GATE: PASS`, 4 checks.
 
 **A third finding fell out of the second: `HERMES_GATEWAY_AUTOSTART` was decorative.**
