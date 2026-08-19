@@ -235,71 +235,40 @@ This is also the sellability finding. A buyer's first act is putting a new engin
 machine. If that takes days of tribal knowledge, the asset is worth materially less than the code
 suggests, and the diligence question "can your team be onboarded?" has no good answer.
 
-**F4 — Three copies of our code run off-repo, each pinned at a different commit, and the
-check that would have said so was dead. CONFIRMED, measured 2026-08-19.**
+**F4 — The automation census. Nine dependencies of the stack live outside every repo, and
+the check that watches them was dead. CONFIRMED, measured 2026-08-19.**
 
-F4 was written as "six installed jobs are tracked nowhere" with the identity of the six marked
-UNPROVEN. Measuring it found something worse than an inventory gap, so the finding is restated.
+F4 was first written as "six installed jobs are tracked nowhere", identity UNPROVEN. The first
+measurement said seven and I scoped the finding by LABEL PREFIX — treating `com.chidionyema.*`
+and `com.estate.*` as other people's projects. That was wrong, and the founder said so:
+*"well these are dependencies costsentinel, graphify-sweep, reflect ... also lux, popdd etc, you
+didnt audit properly"*. He is right. `com.chidionyema.graphify-sweep` runs
+`~/Documents/code/prospector/scripts/graphify_sweep.py` — it is prospector. A prefix is the SHAPE
+of the evidence; what the job executes is its CONTENT. This is the full census, resolved through
+the wrapper, of all 36 installed agents.
 
-**The count first.** 36 plists installed in `~/Library/LaunchAgents/`, 27 tracked in
-`ops/launchd/` on `origin/main`. Excluding Adobe, ExpressVPN and Steam, **seven** estate jobs are
-installed and snapshotted nowhere — not six. Six of the seven are loaded right now.
+**Method.** Every `~/Library/LaunchAgents/*.plist` parsed with `plutil`; 8 of them run the real
+command after a `--` separator behind `~/.hermes/scripts/launchd_receipt.py`, so the wrapper is
+resolved and the TARGET is what is classified; each target's directory asked `git rev-parse
+--show-toplevel`. Environment variables were read for KEY NAMES only, never values.
 
-| Installed, not snapshotted | Runs | Is that target in git? |
+| Where the target lives | Jobs | Which |
 |---|---|---|
-| `com.prospector-control.failover-watch` | `~/.prospector/bin/failover check`, every 60s | installer is: `deploy/install_failover_watch.sh` |
-| `com.prospector-control.standby-sync` | same launcher, `sync`, every 900s | same |
-| `com.prospector-control.receipt-bridge` | same launcher, `receipts`, every 900s | same |
-| `com.prospector.log-rotation` | `ops.automations.log_rotation --fix`, every 6h | yes: `deploy/com.prospector.log-rotation.plist` |
-| `com.prospector.process-audit` | `scripts/process_audit.py --quiet --alert`, hourly | script yes, plist nowhere |
-| `ai.hermes.lease-guard` | `~/.hermes/scripts/lease-guard.sh`, every 300s | yes, in `chidionyema/hermes-config` |
-| `ai.hermes.selfcheck` | `~/.hermes/scripts/hermes_selfcheck.py`, hourly | yes, in `chidionyema/hermes-config` |
+| `~/.hermes` (own repo, `chidionyema/hermes-config`) | 12 | cockpit, coordinator, gateway, idle-engine, lease-guard, ngrok, otto-server, progress, rsi, runaway-reaper, selfcheck, submodule-backup, watchdog |
+| `~/Documents/code/prospector` (this repo) | 5 | consumer, log-rotation, offsite-backup, scheduler, watchdog, **graphify-sweep** |
+| `~/Documents/code/prospector-live` (stale checkout) | 4 | backup, live-update, process-audit, ops-console |
+| `~/.claude/scripts` (**git repo with no remote**) | 2 | **costsentinel**, **reflect** |
+| `~/.prospector/bin` (**not in any repo**) | 3 | failover-watch, standby-sync, receipt-bridge |
+| `~/Documents/code/signalengine` | 1 | signalengine daemon |
+| genuinely another business | 3 | haworks ×2 (`/usr/local/bin/haworks-*`), tie ×1 |
+| third-party vendor | 3 | Adobe, ExpressVPN, Steam |
+| macOS binary | 1 | keepawake (`/usr/bin/caffeinate`) |
 
-Four tracked plists are installed nowhere: the `actions.runner.chidionyema-prospector.mumchimp-mac{,-2,-3,-4}`
-agents, correctly gone since the runners moved to Fly (task #6), never removed from the snapshot.
-
-**Now the real finding.** Chasing what those jobs execute turned up three separate copies of our
-own code, none of them this repo, each pinned at a different commit, and nothing on a schedule
-compares any of them to `origin/main`:
-
-| Copy | What runs it | Measured drift, 2026-08-19 |
-|---|---|---|
-| `/Users/chidionyema/Documents/code/prospector-live` | 9 laptop launchd jobs (4 loaded) | **44 commits behind `origin/main`** |
-| `~/.prospector/bin/engine_failover.frozen.py` | the 3 `com.prospector-control.*` DR jobs | **514 lines vs 735 on `origin/main`, 225 lines different**, 3 merged commits behind |
-| the `prospector-engine` Fly image | production | graded by `scripts/live_checkout.py`, the only one of the three that is graded at all |
-
-The frozen failover copy is deliberate and the reasoning in `deploy/install_failover_watch.sh:14`
-is right: *"The plist runs a LAUNCHER, not a path into a checkout. A disaster-recovery tool that
-lives"* in a checkout dies with the checkout. The defect is that freezing was implemented and
-re-freezing was not. So the failover watcher that runs every 60 seconds is executing a copy of
-itself taken before the Fly cutover — it predates `#327`, the commit whose subject is *"make
-grounding, the ops dashboard and the merge queue work after the Fly cutover"*. **The apparatus
-that exists to survive this machine dying does not know the machine already moved.**
-
-**Two jobs are failing right now, and both failures are invisible.**
-
-- `com.prospector.process-audit`, last exit **2**, every hour: `can't open file
-  '/Users/chidionyema/Documents/code/prospector-live/scripts/process_audit.py': No such file or
-  directory`. That file landed on `origin/main` at 2026-08-19 10:13; the live checkout is 44
-  commits behind, so the job's entry point does not exist there.
-- `com.prospector.backup`, last exit **78** (`EX_CONFIG`). `store/backup.log` ends 2026-08-17
-  09:38 on a `PASS` line. It has written nothing since. Tasks #92 and #109 own it.
-
-**And this is the class.** `scripts/process_audit.py:700` runs
-`["scripts/launchd_plists.py", "--check"]` as one of its checks — it is the only caller of the
-drift detector in the estate. Run by hand today, `--check` works perfectly and exits FAIL with 14
-findings, naming all seven untracked jobs. It has been telling nobody, hourly, since its runner
-died. **The detector was never silent. Its runner was dead, and nothing watches runners.**
-
-`--check` could not catch its own runner either, and the reason is exact. `broken_programs()`
-already validates that a job's program and `WorkingDirectory` exist on disk — that is how it
-catches the two dead `com.haworks.*` jobs. But it tests `argv[0]`, and `argv[0]` is the Python
-interpreter. Every job in this estate is `python <script>`, so the guard validated the one
-argument that never goes missing, and `process-audit`'s missing script sat in `argv[5]`.
-
-Graded under L11: clause 2, it can fail silently. Every one of these failures is written to a log
-file on the machine that produced it, read by nobody. F4 and F9 are the same finding seen from two
-ends, and F9 is what fixes the reporting half.
+Seven of these are installed and snapshotted nowhere in `ops/launchd/`: the three
+`com.prospector-control.*`, `com.prospector.log-rotation`, `com.prospector.process-audit`,
+`ai.hermes.lease-guard`, `ai.hermes.selfcheck`. Four snapshotted jobs are installed nowhere: the
+`actions.runner.chidionyema-prospector.mumchimp-mac{,-2,-3,-4}` agents, correctly gone since the
+runners moved to Fly (task #6), never removed from the snapshot.
 
 **What counts as the stack, since the laptop does not distinguish.** Founder, 2026-08-19:
 *"prospector and hermes agent and the surface area around them is the stack, the dependencies"*.
@@ -310,10 +279,83 @@ from somebody else's is the prefix of its label. A migration script that takes "
 takes four projects, and one that hand-picks them will miss the next one added. The label prefix
 is the de-facto namespace, so it should become the declared one.
 
-*Fixed in this pass:* `broken_programs()` now checks every absolute `.py`/`.sh` argument, not just
-`argv[0]`, with a regression test built from this exact plist. *Needs a human:* rolling
-`prospector-live` forward is the console's `Update live checkout` button — it is production, so an
-agent is refused it.
+**F4a — Three copies of our own code run off-repo, each pinned at a different commit.**
+
+| Copy | What runs it | Drift, measured 2026-08-19 |
+|---|---|---|
+| `~/Documents/code/prospector-live` | 4 laptop jobs incl. the ops console | **44 commits behind `origin/main`** |
+| `~/.prospector/bin/engine_failover.frozen.py` | the 3 DR jobs | **514 lines vs 735 on main, 225 different**, 3 commits behind |
+| the `prospector-engine` Fly image | production | the only one of the three that is graded |
+
+The frozen failover copy is deliberate, and `deploy/install_failover_watch.sh:14` is right that a
+disaster-recovery tool living inside a checkout dies with the checkout. The defect is that
+freezing was implemented and re-freezing was not. The watcher running every 60 seconds predates
+`#327`, whose subject is *"make grounding, the ops dashboard and the merge queue work after the
+Fly cutover"*. **The apparatus that exists to survive this machine does not know the machine
+already moved.**
+
+**F4b — Nine dependencies of the stack are in no repository at all.** Each is a thing a new
+laptop needs and no clone provides: `~/.prospector/bin/failover` and its frozen engine copy;
+`~/.local/bin/graphify`; `/usr/local/bin/node`; the `.lux/keys/agent.pem` signing key; the
+Tailscale address `100.93.240.113` that the ops console binds to; `~/.hermes/scripts/launchd_receipt.py`;
+the 23 untracked files under `.lux/`; the four vendored Crux DLLs of F11; and the installed
+plists themselves.
+
+**F4c — The agent guard scripts are a git repo with no remote.** `~/.claude/scripts` is its own
+repository (`2b683ab`), 11 files dirty, **and `git remote -v` is empty**. That directory is where
+LAW 0 says every cross-session guard must live — the push fence, the rule guard, the cost
+sentinel, `reflect.py` — and two launchd jobs run out of it. It is backed up by nothing and
+pushed nowhere.
+
+Worse when read file by file: **six of the eleven were untracked**, and three of those six are
+live `PreToolUse` hooks refusing work in every session at the moment they were measured —
+`dupe-work-fence.py`, `pr-freeze.py` and `scope-guard.py` — plus `directives.py`, the founder-
+directive index. They existed in exactly one place: uncommitted, on one laptop's disk.
+
+**Half-fixed in this pass.** All eleven are now committed (`b95e629`), after a scan for secret-
+shaped literals found none. That removes "uncommitted", not "unbacked": `git remote -v` is
+still empty, so the repository exists on this machine only. Giving it a remote pushes the
+estate's guard machinery to a hosting account and is the founder's call, not mine. Task #100
+owns the rest and is the cheapest item in the whole F4 group.
+
+**F4d — LUX is mostly untracked and the POPDD gate is currently switched off.** Of the files
+under `.lux/`, **3 are tracked and 23 are not** — the spec registry's receipts and the signing
+key. POPDD's code IS tracked (`scripts/popdd_verify.py`, `popdd_agent.py`, two tests), but
+measured right now `git config --get core.hooksPath` is unset and there is no `pre-commit` in the
+hooks directory, so **the gate refuses nothing on this machine today**. A gate that is off is
+indistinguishable from a gate that passes, which is L11 clause 2.
+
+**F4e — The console password sits in a launchd plist in clear text.** `com.prospector.ops-console`
+carries `CONTROL_CENTER_PASSWORD` in its `EnvironmentVariables` (name only — the value was never
+read). `launchd_plists.py` redacts secret-shaped keys before snapshotting, so the tracked copy is
+clean; the installed plist on disk is not. Filed with F5.
+
+**F4f — Two jobs are failing right now, and the detector that would say so was dead.**
+
+- `com.prospector.process-audit`, exit **2**, hourly: `can't open file
+  '.../prospector-live/scripts/process_audit.py'`. That file landed on main at 2026-08-19 10:13
+  and the live checkout is 44 commits behind.
+- `com.prospector.backup`, exit **78** (`EX_CONFIG`); `store/backup.log` ends 2026-08-17 09:38 on
+  a `PASS`. Tasks #92 and #109.
+
+`scripts/process_audit.py:700` runs `launchd_plists.py --check` and is its **only** caller in the
+estate. Run by hand today it works and exits FAIL with 14 findings. It has been telling nobody,
+hourly, since its runner died. The detector was never silent; its runner was dead, and nothing
+watches runners.
+
+`--check` could not catch its own runner either. `broken_programs()` validated
+`ProgramArguments[0]` — the Python interpreter. Every job here is `python <script>`, so it checked
+the one argument that never goes missing, and the missing script sat at index 5. **Fixed in this
+pass** (`scripts/launchd_plists.py`, with a regression test built from that plist and proven to
+fail against the previous code). *Needs a human:* rolling `prospector-live` forward is the
+console's `Update live checkout` button — an agent is refused it.
+
+**What F4 means for the bar.** A 30-minute migration reads the repo and reproduces the stack. On
+this machine the repo describes maybe half of it: the schedule lives in `~/Library/LaunchAgents`,
+the DR tool in `~/.prospector/bin`, the guards in a remote-less repo under `~/.claude`, the
+receipt wrapper in `~/.hermes`, and the running code in a checkout 44 commits stale. Every one of
+those is a thing that would simply not exist on the new laptop, and nothing today would tell you
+which.
 
 **F5 — Secrets live in at least four places. FLAKY (no source of truth).**
 Laptop `.env`; 15 Fly secrets on `prospector-engine` alone; 3 GitHub repo secrets; `~/.hermes/`.
@@ -510,6 +552,42 @@ defensible the day an advisory names a Crux package rather than one of its depen
 Cheap and independent of that decision: delete the four unreachable nupkgs, or add the
 `PackageVersion` lines if they were meant to be used. That is a measurement away from being a
 one-line PR and needs no founder input.
+
+**F12 — Our CI falls back to a platform we cannot pay for, and says so in a message that
+blames the code. CONFIRMED, measured 2026-08-19.**
+
+The founder asked why the build had been broken two days running. Part of the answer is a finding
+in its own right, and it is not a test.
+
+Every job in `ci.yml` is scheduled with
+`runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}`. When those repo
+variables are absent the job goes to GitHub's hosted runners, and **GitHub-hosted Actions minutes
+are not payable on this account**. The jobs then fail before running a single step, with:
+
+> The job was not started because recent account payments have failed or your spending limit needs
+> to be increased.
+
+Measured across the last 40 failing runs, that happened in exactly one window — runs
+`32294852235` (19:46:12Z) and `32295066869` (19:48:33Z) — and the three `CI_*_RUNS_ON` variables
+were created at **19:49:40Z**, one minute after the last one. Since then CI has run on the Fly
+runners (`runner-8576715b121d68` and siblings) and PR #445's jobs are green. So the window closed
+by itself, and nobody wrote down that it had happened.
+
+**What it does NOT explain:** the two days of red. Those runs had runners and ran their steps —
+they are real failures, covered by F10 and by `docs/STACK_FLAKINESS_AUDIT.md`. This finding is a
+different defect that was hiding inside the same red tick.
+
+**The class:** *a fallback that points at a platform we cannot use*. It is the same shape as F4a's
+frozen failover copy — a safety net configured once and never checked against the world it now
+lives in. It fails at the worst moment, and its error message accuses the account rather than the
+config, so the reader goes to Billing instead of to `runs-on`. Three variables deleted or renamed
+puts every branch back into this state with no warning.
+
+**The guard is one line and it is not written**, because the founder parked CI work
+(*"forget cicd for now ... revisit it as last step"*). Recorded here so it is not rediscovered: the
+`guard` job should assert `vars.CI_RUNS_ON` is non-empty and fail with the real reason. The
+alternative — deleting the `|| 'ubuntu-latest'` fallback so an unset variable produces an obviously
+invalid label — is smaller still. Task #104 is the nearest home for it.
 
 ## 6. What the ops console can already do
 
