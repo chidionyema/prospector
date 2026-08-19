@@ -92,7 +92,7 @@ pools:
     # for while it is running jobs. box.heavy_slots, not this number, is what bounds the CPU
     # arithmetic, so widening the band does not oversubscribe anything.
     runners: 2
-    ephemeral: 4
+    ephemeral: 10
     variable: CI_HEAVY_RUNS_ON
     # LABEL `fly`, NOT `heavy` OR `self-hosted`, SINCE 2026-08-19. mumchimp-mac-4 was online
     # carrying `self-hosted`, the same label the Linux fleet carries, so GitHub scheduled
@@ -127,7 +127,7 @@ pools:
     # nothing, and it is how a light job gets its own capacity again the moment one is added.
     # Same band, same fleet: these machines carry both labels.
     runners: 2
-    ephemeral: 4
+    ephemeral: 10
     variable: CI_LIGHT_RUNS_ON
     # Same fleet, same label, same reason as heavy above.
     label: fly
@@ -149,9 +149,14 @@ pools:
 # autoscale_min  machines kept started at all times. 2, not 0: a cold start costs a job about a
 #                minute, and the first job of the morning should not pay it. Set 0 to pay
 #                nothing overnight and accept that delay.
-# autoscale_max  the ceiling, 6 by founder decision on 2026-08-19. Never higher than the
+# autoscale_max  the ceiling, 12 since 2026-08-19. Raising it does not raise the bill: Fly
+#                charges per second a machine is RUNNING and the job count is fixed, so twelve
+#                runners burn the same machine-seconds as six and finish in half the wall
+#                clock. Idle machines are stopped and bill only rootfs storage. The queue that
+#                forced this was ten branches deep across several concurrent sessions, against
+#                six runners. Never higher than the
 #                machines the pool actually holds --
 #                `deploy/runners.sh up <n>` is what creates them; autoscale only starts and
 #                stops what is already there, and says so when it wants more than exists.
 autoscale_min: 2
-autoscale_max: 6
+autoscale_max: 12
