@@ -19,23 +19,6 @@ ENGINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../engine" && pwd)"
 # file rather than a wrong context. It cost one cutover attempt at 02:27 on 2026-08-18.
 REPO_ROOT="$(cd "$ENGINE_DIR/../.." && pwd)"
 
-# The Fly CLI ships under TWO names, and this file only ever knew one of them. A laptop
-# `brew install flyctl` provides both `fly` and `flyctl`; the superfly/flyctl-actions
-# setup-flyctl action, which is what CI uses, provides only `flyctl`. Every call site below
-# says `fly`, so on a runner the adapter died at the first call with
-# `deploy/targets/fly.sh: line 106: fly: command not found`, exit 127.
-#
-# That is why the escape-hatch drill had never once completed a run. R3 -- "we are not locked
-# in" -- rested on a weekly job that could not have passed on any Sunday, and nothing said so,
-# because a scheduled workflow that has never run looks exactly like one that has never
-# failed. Measured 2026-08-19 by dispatching it by hand.
-#
-# One shim rather than thirty edited call sites: less to get wrong, and `command -v fly` in
-# t_preflight still answers yes, because a function satisfies it.
-if ! command -v fly >/dev/null 2>&1 && command -v flyctl >/dev/null 2>&1; then
-  fly() { command flyctl "$@"; }
-fi
-
 # The CLI answers to two names and the environment decides which one exists. Homebrew's
 # `flyctl` formula installs both `flyctl` and a `fly` symlink; the `superfly/flyctl-actions/
 # setup-flyctl` action used by .github/workflows/escape-hatch-drill.yml and deploy-engine.yml
