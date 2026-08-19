@@ -4,7 +4,7 @@
  *
  * WHY A FILE AND NOT A GREP. One CTA was live on five pages in three different wordings at once,
  * and the divergence was invisible from any one of them: the hero link ended in "no email
- * needed", the pack rail ended in "first", and /faq and /collections ended after "free", one of
+ * needed", the pack rail ended in "first", and /faq and /ideas ended after "free", one of
  * them with a trailing arrow. Nobody chose that. It is what happens when a CTA is typed at the
  * call site.
  *
@@ -44,6 +44,6 @@ export const SITE_COPY = {
   /** `mockups/pack-detail.html:529`, the buy rail's link under the button. */
   sampleLinkPanel: 'Read a full pack free first',
 
-  /** Every other entry point: /faq, /collections, the pack page's mobile bar. */
+  /** Every other entry point: /faq, /ideas, the pack page's mobile bar. */
   sampleLink: 'Read a full pack free',
 } as const;

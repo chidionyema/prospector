@@ -10,7 +10,15 @@
  * re-downloads the script. Returns `null` when the key is absent (e.g. local dev without
  * Stripe) so funding screens can degrade to a clear "not configured" state instead of throwing.
  */
-import { loadStripe, type Stripe } from '@stripe/stripe-js';
+// `/pure`, not the default entry. The default entry injects the Stripe.js <script> one tick
+// after the MODULE is imported, and `lib/checkout/usePackCheckout` imports `stripeConfigured`
+// from here, so every marketing page pulled js.stripe.com plus the m.stripe.network fraud
+// iframe, which polls. The pure entry has the same API and injects nothing until `loadStripe`
+// is actually called, which only `EmbeddedCheckoutPanel` does.
+// The TYPE comes from the package root (a type-only import emits no runtime code, so it cannot
+// inject anything); the VALUE comes from `/pure`, which has no `Stripe` type export.
+import type { Stripe } from '@stripe/stripe-js';
+import { loadStripe } from '@stripe/stripe-js/pure';
 
 const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 

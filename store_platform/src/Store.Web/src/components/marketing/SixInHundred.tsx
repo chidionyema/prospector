@@ -95,7 +95,7 @@ export function SixInHundred({ className, label }: SixInHundredProps) {
               <b>{TOTAL - survivors}</b> killed
             </span>
             <span>
-              <Link href="/kill-log" className="tlink">
+              <Link href="/kill-log" prefetch={false} className="tlink">
                 Read what killed them
               </Link>
             </span>

@@ -54,26 +54,13 @@ describe('the FAQ is ordered by purchase blocker', () => {
     expect(new Set(FAQS.map((f) => f.category))).toEqual(new Set(['packs', 'payment', 'process']));
   });
 
-  it('asks whether the answer helped, and sends the vote somewhere', () => {
-    // The control used to set a piece of React state that nothing read: 26 buttons collecting a
-    // vote thrown away on the next navigation. It is back because the founder wants it, and it is
-    // wired because a control that reports nothing is worse than no control.
+  it('carries no helpfulness widget', () => {
+    // DELETED (founder, 2026-08-18, fix list A2): "Was this helpful? Yes/No is still on the FAQ.
+    // Delete the component, not just its label." The two tests that used to stand here asserted
+    // the control existed and that it reported its vote; both are superseded.
     const code = codeOnly(PAGE);
-    expect(code).toContain('Was this helpful?');
-    expect(code).toContain("track('faq_helpful'");
-    // Keyed by the question text. An index would re-point every historic vote the next time this
-    // list is reordered, and step 7 reordered it.
-    expect(code).toContain('questionSlug(item.question)');
-    // Not the loop index. `AccordionItem` gets `i` from the map above it, and keying on it would
-    // have been the shorter thing to write.
-    expect(code).not.toContain('track(\'faq_helpful\', `${i}');
-  });
-
-  it('sends nothing when a vote is withdrawn', () => {
-    // `next` is null on a second click of the same answer. Firing there would count one reader's
-    // single opinion twice, once as a vote and once as its retraction.
-    const code = codeOnly(PAGE);
-    expect(code).toContain('if (next) track(');
+    expect(code).not.toContain('Was this helpful');
+    expect(code).not.toContain('faq_helpful');
   });
 
   it('keeps the four group filters and the human line', () => {

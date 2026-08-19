@@ -19,7 +19,7 @@ export const GATE_LABELS: Record<string, string> = {
   min_composite: 'Scored below the bar overall',
   incumbency: 'Incumbents already own the space',
   moat_ungrounded: 'The defensibility claim was not evidence-backed',
-  adversarial_decisive: 'It did not survive the second round of checks',
+  adversarial_decisive: 'It failed the second round of checks',
   value_durability: 'The value would not last',
   payer_solvency: 'The payer cannot actually pay',
   source_or_die: 'Its own claims could not be sourced',

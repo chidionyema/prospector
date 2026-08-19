@@ -26,9 +26,9 @@ export function SourcedFigure({ id, className }: { id: string; className?: strin
         target="_blank"
         rel="noopener noreferrer nofollow"
         className={textLinkClass('whitespace-nowrap')}
+        aria-label={`${source.publisher}, opens the source in a new tab`}
       >
         {source.publisher}
-        <span className="sr-only">, opens the source in a new tab</span>
       </a>
       {/* The date travels with the price because a price is perishable. A figure checked eight
           months ago and rendered as present tense is the next version of the same problem. */}

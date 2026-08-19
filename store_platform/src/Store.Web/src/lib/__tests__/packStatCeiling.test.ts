@@ -33,7 +33,7 @@ describe('the lead multiple has a ceiling', () => {
     expect(stat).toEqual({
       kind: 'price_multiple',
       figure: '20×',
-      label: 'the price back in month one, modelled',
+      label: 'payback',
     });
   });
 

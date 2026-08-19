@@ -55,7 +55,7 @@ export default function NotFound() {
             <Link className="btn" href="/">
               Browse the catalogue <Icon name="arrowRight" size={16} />
             </Link>
-            <Link className="btn ghost" href="/kill-log">
+            <Link className="btn ghost" href="/kill-log" prefetch={false}>
               Read the kill log
             </Link>
           </div>

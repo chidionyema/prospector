@@ -133,7 +133,11 @@ export function packLeadStat(pack: Pack): PackLeadStat | null {
     return {
       kind: 'price_multiple',
       figure: `${payback.multiple}×`,
-      label: 'the price back in month one, modelled',
+      /* ONE WORD, and it is the proof line's word (2026-08-18). The label was "the price back in
+         month one, modelled", a sentence written for this 44px device and for nothing else, so
+         the same fact read one way here and another way ("17x payback") three rows below it. The
+         founder's fix list bans the sentence by name. */
+      label: 'payback',
     };
   }
 
