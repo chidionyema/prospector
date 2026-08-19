@@ -562,11 +562,29 @@ jobs:
       # this would only ever have broken locally.
       #
       # Measured 2026-08-19 on origin/main: "No known vulnerabilities found". This goes in green.
+      #
+      # `uv pip freeze`, not `python -m pip freeze`. The shared venv above is built by
+      # `uv venv`, and uv does not install pip into a venv it creates. So the first form is a
+      # ModuleNotFoundError in the only environment this step ever runs in:
+      #
+      #   .../ci-venvs/py3.14-e49c923ecd1f4b82/bin/python: No module named pip
+      #
+      # `set -eu` does not set pipefail, so the failing command was the LEFT side of a pipe and
+      # the step's status came from grep instead. It went red either way, but on the wrong
+      # command, which is why the log reads as a scan failure rather than a missing module.
       - name: Dependency advisory scan
         run: |
-          set -eu
-          python -m pip freeze | grep -vE '^-e|@ ' > /tmp/frozen.txt
-          wc -l < /tmp/frozen.txt | xargs echo "packages audited:"
+          set -euo pipefail
+          uv pip freeze > /tmp/all-packages.txt
+          # grep exits 1 when it filters everything out, which under pipefail would read as a
+          # scan failure rather than an empty list. The floor below is what actually grades it.
+          grep -vE '^-e|@ ' /tmp/all-packages.txt > /tmp/frozen.txt || true
+          n="$(wc -l < /tmp/frozen.txt | tr -d ' ')"
+          echo "packages audited: $n of $(wc -l < /tmp/all-packages.txt | tr -d ' ')"
+          # A scan of an empty list passes and reports nothing. Measured on origin/main the
+          # venv holds 121 packages, so under 20 means uv read a different environment rather
+          # than that this repo got smaller.
+          [ "$n" -ge 20 ] || { echo "::error::froze $n packages, so this is not the venv the suite runs"; exit 1; }
           uvx pip-audit -r /tmp/frozen.txt
       # ────────────────────────────────────────────────────────────
 
