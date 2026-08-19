@@ -159,10 +159,28 @@ def measure(commits: list[dict]) -> dict:
         })
 
     latest = months[-1] if months else {}
+
+    # A shallow clone truncates the window without saying so. Measured 2026-08-19: a worktree
+    # shallow to 2026-08-14 answered a 180-day request with 5 days of history and bucketed it
+    # as the month "2026-08" -- a partial month read as a monthly rate is a wrong number, not a
+    # missing one. The oldest commit actually seen is the honest bound, so it travels, and the
+    # month containing it is flagged partial.
+    oldest = commits[-1]["iso"] if commits else None
+    shallow = _git(["rev-parse", "--is-shallow-repository"]).strip() == "true"
+    for m in months:
+        m["partial"] = bool(oldest) and m["month"] == oldest[:7] and (shallow or len(months) == 1)
+
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "window_days": WINDOW_DAYS,
         "fast_window_days": FAST_WINDOW_DAYS,
+        "oldest_commit": oldest,
+        "shallow_clone": shallow,
+        "coverage_note": (
+            f"History starts at {oldest[:10] if oldest else '?'}"
+            + (" because this clone is SHALLOW -- the earliest month is a partial window and "
+               "its percentages are not a monthly rate. `git fetch --unshallow` to fix."
+               if shallow else ". Earlier months are outside the requested window.")),
         "headline": {
             "month": latest.get("month"),
             "fix_share": latest.get("fix_share"),
@@ -210,8 +228,9 @@ def main() -> int:
 
     print(f"REWORK  {args.ref}  last {args.days}d  ->  {out}")
     print(f"{'month':<9}{'commits':>9}{'fix':>6}{'fix %':>8}{'recent':>8}{'recent %':>10}")
+    print(snap["coverage_note"])
     for m in snap["by_month"]:
-        print(f"{m['month']:<9}{m['commits']:>9}{m['rework']:>6}"
+        print(f"{m['month'] + ('*' if m.get('partial') else ''):<9}{m['commits']:>9}{m['rework']:>6}"
               f"{m['fix_share'] if m['fix_share'] is not None else '-':>8}"
               f"{m['fast_rework']:>8}"
               f"{m['fast_rework_share'] if m['fast_rework_share'] is not None else '-':>10}")

@@ -72,6 +72,27 @@ type MethodView = {
     readonly_streaks: number;
     output_tokens: number;
   }[];
+  rework?: {
+    present: boolean;
+    note?: string;
+    generator?: string;
+    age_hours?: number;
+    stale?: boolean;
+    coverage_note?: string;
+    shallow_clone?: boolean;
+    fast_window_days?: number;
+    headline?: { month?: string; fix_share?: number | null; fast_rework_share?: number | null };
+    by_month?: {
+      month: string;
+      commits: number;
+      rework: number;
+      fast_rework: number;
+      fix_share: number | null;
+      fast_rework_share: number | null;
+      partial?: boolean;
+    }[];
+    examples?: { sha: string; date: string; subject: string; file: string }[];
+  };
   efficiency?: {
     unit: string;
     note: string;
@@ -288,6 +309,87 @@ export default function Method() {
             </table>
           </Scroll>
           <Note>{data.efficiency.note}</Note>
+        </Card>
+      ) : null}
+
+      {data.rework ? (
+        <Card title="Rework — the guard on the numbers above">
+          <Note>
+            Every number above this card improves if the work gets sloppier. Skip a test, ship
+            the first guess, and the tokens, round trips and context all fall. So the cost
+            numbers only mean something read next to one that gets worse when quality drops.
+            This one comes from git history rather than session transcripts, on purpose: a
+            metric and its guard sharing a source can fail together.
+          </Note>
+          {data.rework.present ? (
+            <>
+              <Note>
+                Cost down and rework flat or down means the method improved. Cost down and
+                rework up means it got cheaper by getting worse.
+              </Note>
+              {data.rework.coverage_note ? <Note>{data.rework.coverage_note}</Note> : null}
+              <Scroll>
+                <table className="mt-2 w-full text-[13px]">
+                  <thead className="text-subtle">
+                    <tr>
+                      <th className="py-1 text-left font-[520]">month</th>
+                      <th className="py-1 text-right font-[520]">commits</th>
+                      <th className="py-1 text-right font-[520]">fix</th>
+                      <th className="py-1 text-right font-[520]">fix %</th>
+                      <th className="py-1 text-right font-[520]">recent rework %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(data.rework.by_month ?? []).map((m) => (
+                      <tr key={m.month} className="border-t border-border">
+                        <td className="py-1.5 font-mono">
+                          {m.month}
+                          {m.partial ? <span className="text-subtle"> (partial)</span> : null}
+                        </td>
+                        <td className="py-1.5 text-right">{m.commits.toLocaleString()}</td>
+                        <td className="py-1.5 text-right">{m.rework.toLocaleString()}</td>
+                        <td className="py-1.5 text-right">{m.fix_share ?? '—'}</td>
+                        <td
+                          className={
+                            'py-1.5 text-right font-[560] ' +
+                            ((m.fast_rework_share ?? 0) >= 25 ? 'text-warn-strong' : '')
+                          }
+                        >
+                          {m.fast_rework_share ?? '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Scroll>
+              <Note>
+                Recent rework counts a fix that touches a file some other commit touched within
+                the previous {data.rework.fast_window_days ?? 14} days. That is rework of recent
+                work, not an old bug being repaired.
+              </Note>
+              {(data.rework.examples ?? []).length ? (
+                <Scroll>
+                  <table className="mt-2 w-full text-[13px]">
+                    <tbody>
+                      {(data.rework.examples ?? []).map((e) => (
+                        <tr key={e.sha} className="border-t border-border align-top">
+                          <td className="py-1.5 pr-3 font-mono text-subtle whitespace-nowrap">
+                            {e.date}
+                          </td>
+                          <td className="py-1.5">
+                            {e.subject}
+                            <div className="font-mono text-[12px] text-subtle">via {e.file}</div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </Scroll>
+              ) : null}
+            </>
+          ) : (
+            <Note>{data.rework.note}</Note>
+          )}
         </Card>
       ) : null}
 
