@@ -16,6 +16,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/ci_capacity.py"
+CFG = ROOT / "ops/config/ci_capacity.yaml"
 
 
 def run(root: Path) -> subprocess.CompletedProcess:
@@ -134,10 +135,15 @@ def test_a_registered_but_offline_runner_does_not_count_as_capacity(monkeypatch,
     holds' while a CI run sat queued for 25 minutes. Three of the five were the laptop's Mac
     runners, offline since the estate moved to Fly. Counting registration measured GitHub's
     record; the queue measured the fleet."""
-    runners = [_runner("mac-1", "heavy", "offline"),
-               _runner("mac-2", "heavy", "offline"),
-               _runner("mac-3", "heavy", "offline"),
-               _runner("fly-1", "heavy", "online", busy=True)]
+    # The label comes from the config, not from a string typed here. It moved from `heavy` to
+    # `fly` on 2026-08-19 when a macOS runner sharing `self-hosted` started stealing Linux jobs,
+    # and a hardcoded label would fail this test for a reason that has nothing to do with what it
+    # measures.
+    label = re.search(r"^\s+label:\s*(\S+)", CFG.read_text(), re.M).group(1)
+    runners = [_runner("mac-1", label, "offline"),
+               _runner("mac-2", label, "offline"),
+               _runner("mac-3", label, "offline"),
+               _runner("fly-1", label, "online", busy=True)]
     rc, text = _live_report(monkeypatch, capsys, runners)
     assert rc == 1, "an all-but-one-offline fleet was reported as holding"
     assert "1 online" in text, text
