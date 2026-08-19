@@ -355,6 +355,39 @@ was emitted and nothing consumed it.** Observability here is not a missing vendo
 rule — *emitting is not observing, and a signal with no consumer is not evidence.* That belongs in
 `PLATFORM_MANIFESTO.md` as a law, because a fourth instance is otherwise certain.
 
+**F10 — We are building scripts to survive our process instead of fixing it. CONFIRMED.**
+
+Founder, 2026-08-19: *"we are building a lot of scrits to ange pipeline and i just wonder if our
+proces is broke."* It measures, and the number is worse than the intuition:
+
+```
+16 scripts reference gh run / gh workflow / gh pr / actions/runs / workflow_run / runner
+6,505 lines of code
+```
+`branch-pr-guard.py`, `dupe-work-fence.py`, `pr-freeze.py`, `pr-why.py`, `push-pr-fence.py`,
+`rule-guard.py`, `tool-drip-guard.py`, `blocker_probe.py`, `ci_fleet_probe.py`, `ci_local.py`,
+`popdd_verify.py`, `seed_action_cache.sh`, `site_spec_probe.py`, `verify_engine_change.sh`, and two
+more. **6,505 lines is 39% of all bespoke ops code in this estate (16,637), written to work around
+a pipeline that is still only 55% green.**
+
+Every one is individually justified — each closed a real incident, and several are mine. That is
+what makes it a process finding rather than a code-quality one: **the local decision was correct
+every time, and the aggregate is a system nobody can move.** Each guard is load-bearing, so a
+migration must carry all 16, which is the opposite of portable.
+
+The pattern is a merge queue rebuilt by hand, badly: `push-pr-fence` serialises pushes,
+`dupe-work-fence` allocates work, `pr-freeze` gates merging, `branch-pr-guard` scopes ownership.
+GitHub's own merge queue does all four — and per `~/.claude/CLAUDE.md` it is unavailable because
+this account gets `403 Upgrade to GitHub Pro` on both `/branches/main/protection` and `/rulesets`.
+**So the honest root cause of F10 is a £dozens-per-month plan tier, and the estate has been paying
+for it in 6,505 lines of Python instead.** That is a founder decision, not an engineering one
+(§10), and it is the cheapest single item in this entire audit.
+
+Grade: **the guards are SOUND individually and the process around them is FLAKY**, by L11 rule 4 —
+each one moves the failure rather than removing it.
+
+---
+
 **F11 — Four .NET dependencies are binaries whose source is in another private repo.
 CONFIRMED. Blocks selling, not bootstrapping.**
 
@@ -403,39 +436,6 @@ defensible the day an advisory names a Crux package rather than one of its depen
 Cheap and independent of that decision: delete the four unreachable nupkgs, or add the
 `PackageVersion` lines if they were meant to be used. That is a measurement away from being a
 one-line PR and needs no founder input.
-
-**F10 — We are building scripts to survive our process instead of fixing it. CONFIRMED.**
-
-Founder, 2026-08-19: *"we are building a lot of scrits to ange pipeline and i just wonder if our
-proces is broke."* It measures, and the number is worse than the intuition:
-
-```
-16 scripts reference gh run / gh workflow / gh pr / actions/runs / workflow_run / runner
-6,505 lines of code
-```
-`branch-pr-guard.py`, `dupe-work-fence.py`, `pr-freeze.py`, `pr-why.py`, `push-pr-fence.py`,
-`rule-guard.py`, `tool-drip-guard.py`, `blocker_probe.py`, `ci_fleet_probe.py`, `ci_local.py`,
-`popdd_verify.py`, `seed_action_cache.sh`, `site_spec_probe.py`, `verify_engine_change.sh`, and two
-more. **6,505 lines is 39% of all bespoke ops code in this estate (16,637), written to work around
-a pipeline that is still only 55% green.**
-
-Every one is individually justified — each closed a real incident, and several are mine. That is
-what makes it a process finding rather than a code-quality one: **the local decision was correct
-every time, and the aggregate is a system nobody can move.** Each guard is load-bearing, so a
-migration must carry all 16, which is the opposite of portable.
-
-The pattern is a merge queue rebuilt by hand, badly: `push-pr-fence` serialises pushes,
-`dupe-work-fence` allocates work, `pr-freeze` gates merging, `branch-pr-guard` scopes ownership.
-GitHub's own merge queue does all four — and per `~/.claude/CLAUDE.md` it is unavailable because
-this account gets `403 Upgrade to GitHub Pro` on both `/branches/main/protection` and `/rulesets`.
-**So the honest root cause of F10 is a £dozens-per-month plan tier, and the estate has been paying
-for it in 6,505 lines of Python instead.** That is a founder decision, not an engineering one
-(§10), and it is the cheapest single item in this entire audit.
-
-Grade: **the guards are SOUND individually and the process around them is FLAKY**, by L11 rule 4 —
-each one moves the failure rather than removing it.
-
----
 
 ## 6. What the ops console can already do
 
