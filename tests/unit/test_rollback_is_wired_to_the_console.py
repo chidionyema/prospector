@@ -16,8 +16,11 @@ and rolls FORWARD onto it while telling the operator it went back.
 """
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -207,3 +210,136 @@ def test_a_service_with_no_rollback_tells_the_page_what_does_put_it_back():
     route = api._rollback_route("engine-standby")
     assert route["rollback_tool_id"] is None
     assert "live_checkout" in route["rollback_how"]
+
+
+# --------------------------------------------------------------------------------------------
+# The refusals a rollback makes before it reaches flyctl at all.
+#
+# Founder, 2026-08-20: "need to have tests for all edge cases, every conceivable edge case".
+# Everything above pins how a TARGET is chosen. These pin what happens when the machine running
+# the button is not in a position to choose one - no flyctl, an unreadable app, a name nobody
+# knows - because each of those reaches the operator as a message, and a wrong message during an
+# outage costs more than the outage.
+# --------------------------------------------------------------------------------------------
+
+def test_an_unknown_service_is_refused_and_lists_the_real_ones(capsys):
+    assert rollback_now.rollback("stroe-web", check_only=True) == 2
+    err = capsys.readouterr().err
+    assert "unknown service" in err
+    for name in rollback_now.SERVICES:
+        assert name in err
+
+
+def test_a_service_that_cannot_be_rolled_back_is_refused_with_its_stated_reason(capsys):
+    name = next(iter(rollback_now.NO_ROLLBACK))
+    assert rollback_now.rollback(name, check_only=True) == 2
+    err = capsys.readouterr().err
+    assert "no image rollback" in err
+    assert rollback_now.NO_ROLLBACK[name][:40] in err
+
+
+def test_no_flyctl_on_the_host_is_refused_not_crashed(monkeypatch, capsys):
+    """The console runs under launchd, whose PATH omits /usr/local/bin."""
+    monkeypatch.setattr(rollback_now, "find_fly", lambda: None)
+    assert rollback_now.rollback("store-web", check_only=True) == 2
+    assert "no flyctl on PATH" in capsys.readouterr().err
+
+
+def test_an_app_flyctl_cannot_read_is_refused_with_flyctls_own_words(monkeypatch, capsys):
+    monkeypatch.setattr(rollback_now, "find_fly", lambda: "/usr/local/bin/flyctl")
+    monkeypatch.setattr(rollback_now, "_releases", lambda fly, app: ([], "Error: App not found"))
+    assert rollback_now.rollback("store-web", check_only=True) == 2
+    err = capsys.readouterr().err
+    assert "cannot read releases for prospector-store-web" in err
+    assert "App not found" in err
+
+
+def _stub_releases(monkeypatch, rows):
+    monkeypatch.setattr(rollback_now, "find_fly", lambda: "/usr/local/bin/flyctl")
+    monkeypatch.setattr(rollback_now, "_releases", lambda fly, app: (rows, ""))
+
+
+def test_check_mode_prints_the_command_and_runs_nothing(monkeypatch, capsys):
+    _stub_releases(monkeypatch, [_rel(2, "NEW"), _rel(1, "OLD")])
+
+    def explode(*a, **k):
+        raise AssertionError("--check must never invoke flyctl")
+    monkeypatch.setattr(rollback_now.subprocess, "run", explode)
+    assert rollback_now.rollback("store-web", check_only=True) == 0
+    out = capsys.readouterr().out
+    assert "deployment-OLD" in out
+    assert "nothing was rolled back" in out
+
+
+def test_a_rollback_that_deploys_but_does_not_answer_is_not_reported_as_success(monkeypatch,
+                                                                               capsys):
+    """The worst possible lie is "rolled back" while the service is still down."""
+    _stub_releases(monkeypatch, [_rel(2, "NEW"), _rel(1, "OLD")])
+    monkeypatch.setattr(rollback_now.subprocess, "run",
+                        lambda *a, **k: type("P", (), {"returncode": 0})())
+    monkeypatch.setattr(rollback_now, "_probe_all", lambda name, svc: (False, ["  FAIL x"]))
+    assert rollback_now.rollback("store-web", check_only=False) == 1
+    assert "ROLLED BACK, BUT NOT HEALTHY" in capsys.readouterr().err
+
+
+def test_a_failing_flyctl_returns_its_own_exit_code(monkeypatch, capsys):
+    _stub_releases(monkeypatch, [_rel(2, "NEW"), _rel(1, "OLD")])
+    monkeypatch.setattr(rollback_now.subprocess, "run",
+                        lambda *a, **k: type("P", (), {"returncode": 137})())
+    assert rollback_now.rollback("store-web", check_only=False) == 137
+    assert "flyctl exited 137" in capsys.readouterr().err
+
+
+def test_a_successful_rollback_that_answers_its_checks_exits_zero(monkeypatch, capsys):
+    _stub_releases(monkeypatch, [_rel(2, "NEW"), _rel(1, "OLD")])
+    monkeypatch.setattr(rollback_now.subprocess, "run",
+                        lambda *a, **k: type("P", (), {"returncode": 0})())
+    monkeypatch.setattr(rollback_now, "_probe_all", lambda name, svc: (True, ["  ok   x"]))
+    assert rollback_now.rollback("store-web", check_only=False) == 0
+    assert "rolled store-web back to v1" in capsys.readouterr().out
+
+
+def test_every_refusal_happens_before_flyctl_is_ever_run(monkeypatch):
+    """A refusal that has already shelled out is a refusal that already cost something."""
+    monkeypatch.setattr(rollback_now, "find_fly", lambda: "/usr/local/bin/flyctl")
+
+    ran = []
+    monkeypatch.setattr(rollback_now, "_run", lambda *a, **k: ran.append(a) or
+                        type("P", (), {"returncode": 1, "stdout": "", "stderr": "no"})())
+    rollback_now.rollback("stroe-web", check_only=True)
+    assert ran == []
+
+
+# --- what `flyctl releases --json` can hand back on a bad day -------------------------------
+
+@pytest.mark.parametrize("text", ["", "not json", "null", '{"Version": 3}', "[]", "   "])
+def test_junk_release_output_is_no_releases_never_a_guess(text):
+    assert rollback_now.parse_releases(text) == []
+
+
+def test_a_release_row_with_no_version_sorts_last_and_never_becomes_the_current_one():
+    rows = rollback_now.parse_releases(json.dumps([
+        {"Status": "complete", "ImageRef": "registry.fly.io/app:deployment-NOVER"},
+        _rel(4, "NEW"), _rel(3, "OLD")]))
+    assert rows[0]["Version"] == 4
+    target, why = rollback_now.choose_target(rows)
+    assert target["Version"] == 3, why
+
+
+def test_duplicate_versions_still_resolve_a_target():
+    rows = [_rel(2, "NEW"), _rel(1, "OLD"), _rel(1, "OLD")]
+    target, why = rollback_now.choose_target(rows)
+    assert target is not None and target["ImageRef"].endswith("OLD"), why
+
+
+def test_non_dict_rows_are_dropped_rather_than_crashing_the_sort():
+    rows = rollback_now.parse_releases(json.dumps([_rel(2, "NEW"), "a string", 7, None,
+                                                   _rel(1, "OLD")]))
+    assert [r["Version"] for r in rows] == [2, 1]
+
+
+def test_every_older_release_failed_is_refused_with_the_reason():
+    rows = [_rel(3, "NEW"), _rel(2, "MID", status="failed"), _rel(1, "OLD", status="failed")]
+    target, why = rollback_now.choose_target(rows)
+    assert target is None
+    assert "no earlier release completed" in why

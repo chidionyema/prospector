@@ -3508,6 +3508,14 @@ TOOLS: list[dict] = [
        True, "/deploys", cmd=".venv/bin/python scripts/rollback_now.py searxng", risk="external",
        danger="puts prospector-searxng back on its previous image. Measured 2026-08-20 it has "
               "only ever had ONE release, so this refuses until it has been deployed twice"),
+    # The scheduled half of the drill. Registered 2026-08-20 because a Deploy button and a Roll
+    # back button are two controls with no feedback: measured that day, nothing on this estate
+    # made an HTTP request to mumchimp.com except the drill, and the drill only ran when someone
+    # clicked it. `external` and writes=False: it changes nothing here, but a Telegram alert
+    # cannot be unsent, which is what "the local half only" says on the button.
+    _t("scripts/service_health.py",
+       "Ask every deployed service whether it is still serving (alerts on the second failure)",
+       False, "/deploys", cmd=".venv/bin/python scripts/service_health.py", risk="external"),
     # Registered 2026-08-19. `ci_capacity.py` answers whether CI FITS; this answers whether it
     # can RUN AT ALL. The two are separate questions and the estate has been wrong about the
     # second one twice in a day: a fleet scaled up whose machines were left stopped, and an
