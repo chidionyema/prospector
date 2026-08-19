@@ -232,3 +232,46 @@ def test_every_import_in_the_engine_is_declared(source):
         f"them. On this machine they are installed; on a clean install the process starts "
         f"fine and dies at the first call that reaches them."
     )
+
+
+# --------------------------------------------------------------------------- #
+# Added 2026-08-19, after CI went red on two guards that were green here.
+#
+# The console tool catalogue gained its first row outside this checkout — the Hermes self-check
+# at `~/.hermes/scripts/hermes_selfcheck.py`. Two guards asserted every catalogued tool is on
+# disk. That file is on the laptop and is not on a runner, so the suite passed here and failed
+# there, on a push that had not touched either guard.
+#
+# The individual fix was to scope both guards to what the repo ships. THIS is the mechanism, and
+# the difference matters: scoping fixes the two guards we know about, and the same fault returns
+# with the next test anyone writes against the catalogue. A scrubbed HOME reproduces a runner on
+# the machine that introduced the fault, which is what this file is for.
+# --------------------------------------------------------------------------- #
+def test_the_console_tool_catalogue_does_not_change_answer_with_HOME(monkeypatch, tmp_path):
+    """Every row the repo SHIPS must exist whoever's HOME is set, and rows it does not ship must
+    move with HOME rather than being silently hung off the repo root.
+
+    The second half is the bug underneath the red CI run: `root / "~/.hermes/..."` yields
+    `<repo>/~/.hermes/...`, a path that exists nowhere, so the console reported the tool missing
+    and refused to run it. That one is invisible to a guard that only counts what exists.
+    """
+    from prospector.ops import console_api as api
+
+    root = api._repo_root()
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    for tool in api.TOOLS:
+        resolved = api._tool_on_disk(root, tool["path"])
+        if str(resolved).startswith(str(root)):
+            assert resolved.exists(), (
+                f"{tool['id']} names {tool['path']}, which this repo ships, and it is not here"
+            )
+        else:
+            assert resolved.is_absolute() and "~" not in str(resolved), (
+                f"{tool['id']}: {tool['path']} resolved to {resolved} — an out-of-repo tool "
+                "must expand against HOME, never join to the repo root"
+            )
+            assert str(resolved).startswith(str(tmp_path)), (
+                f"{tool['id']} resolved to {resolved}, which ignored HOME — so whether this "
+                "button works depends on which machine reads the catalogue"
+            )

@@ -122,6 +122,14 @@ type Status = {
     warnings: string[];
     day: string;
   };
+  incidents?: {
+    total?: number;
+    open?: number;
+    unguarded?: number;
+    overdue_grades?: number;
+    blocked?: number;
+    error?: string;
+  };
 };
 
 export default function Now() {
@@ -205,6 +213,42 @@ export default function Now() {
               ))}
             </div>
           ) : null}
+        </Card>
+      ) : null}
+
+      {/* An incident with nothing armed behind it is the estate's own backlog of "this will happen
+          again". It belongs on the page an operator already looks at, because the failure mode of
+          the incident loop is not that records are wrong — it is that nobody opens them. */}
+      {data?.incidents ? (
+        <Card
+          title="Incidents"
+          right={<Link className="underline" href="/incidents">incidents</Link>}
+        >
+          {data.incidents.error ? (
+            <Note>Could not read the incident records: {data.incidents.error}</Note>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <Stat label="open" value={data.incidents.open ?? null} note={`of ${data.incidents.total ?? 0} recorded`} />
+              <Stat
+                label="nothing armed"
+                value={data.incidents.unguarded ?? null}
+                tone={data.incidents.unguarded ? 'bad' : 'ok'}
+                note="no mechanism landed"
+              />
+              <Stat
+                label="grade overdue"
+                value={data.incidents.overdue_grades ?? null}
+                tone={data.incidents.overdue_grades ? 'bad' : 'ok'}
+                note="window has closed"
+              />
+              <Stat
+                label="record incomplete"
+                value={data.incidents.blocked ?? null}
+                tone={data.incidents.blocked ? 'warn' : 'ok'}
+                note="cannot close yet"
+              />
+            </div>
+          )}
         </Card>
       ) : null}
 

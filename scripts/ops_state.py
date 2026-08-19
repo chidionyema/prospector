@@ -29,6 +29,12 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+# The store is where PROSPECTOR_STORE_DIR says, never where this file sits. A path
+# derived from __file__ follows the CODE; production moved off this checkout on
+# 2026-08-17 and the state did not. One resolver: prospector.config.store_root().
+from prospector.config import store_root  # noqa: E402
 
 
 def _sh(cmd: list[str] | str, timeout: float = 25.0) -> tuple[int, str]:
@@ -56,7 +62,7 @@ def p_src1() -> str:
 
 
 def p_dat3() -> str:
-    p = ROOT / "store" / "prospector.jsonl"
+    p = store_root() / "prospector.jsonl"
     if not p.exists():
         return "UNREACHABLE: no store/prospector.jsonl"
     n = p.stat().st_size
@@ -64,7 +70,7 @@ def p_dat3() -> str:
 
 
 def p_dat5() -> str:
-    p = ROOT / "store" / "backup.log"
+    p = store_root() / "backup.log"
     if not p.exists():
         return "UNREACHABLE: no store/backup.log"
     lines = [ln for ln in p.read_text(errors="replace").splitlines() if ln.strip()]
@@ -72,7 +78,7 @@ def p_dat5() -> str:
 
 
 def _errlog_count(pattern: str) -> str:
-    p = ROOT / "store" / "scheduler" / "launchd.err.log"
+    p = store_root() / "scheduler" / "launchd.err.log"
     if not p.exists():
         return "UNREACHABLE: no store/scheduler/launchd.err.log"
     rx = re.compile(pattern)

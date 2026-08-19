@@ -52,6 +52,13 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO))
+
+# The store is where PROSPECTOR_STORE_DIR says, never where this file sits. A path
+# derived from __file__ follows the CODE; production moved off this checkout on
+# 2026-08-17 and the state did not. One resolver: prospector.config.store_root().
+from prospector.config import store_root  # noqa: E402
+
 GRN, RED, YEL, DIM, OFF = "\033[32m", "\033[31m", "\033[33m", "\033[2m", "\033[0m"
 
 
@@ -129,7 +136,7 @@ def count_dossiers() -> tuple[int, int]:
     `gate-*` test stubs; a "everything that is not a kill is a pass" count scoops those up and
     reports 135 passes where there are 62 -- which then halves the measured cost per pass and
     invents a 76-idea gap between what passed and what reached the shelf."""
-    d = REPO / "store" / "dossiers"
+    d = store_root() / "dossiers"
     if not d.is_dir():
         return (0, 0)
     return (len(list(d.glob("*.pass.json"))), len(list(d.glob("*.kill.json"))))
@@ -141,7 +148,7 @@ def money(x: float) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--ledger", default=str(REPO / "store" / "prospector.jsonl"))
+    ap.add_argument("--ledger", default=str(store_root() / "prospector.jsonl"))
     ap.add_argument("--api", default="https://api.mumchimp.com")
     ap.add_argument("--gbp-usd", type=float, default=1.27, help="FX for pricing the shelf in USD")
     args = ap.parse_args()

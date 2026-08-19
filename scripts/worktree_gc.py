@@ -21,7 +21,15 @@ branch that looks alive when its work has already merged. docs/WAYS_OF_WORKING.m
 SAFE TO REMOVE means all three, never fewer:
   1. it is not the worktree you are standing in
   2. it has no uncommitted work (store/ and storage/ are runtime state, ignored here)
-  3. its HEAD is already an ancestor of origin/main, so nothing would be lost
+  3. nothing would be lost: either its HEAD is an ancestor of origin/main, or its branch is
+     the head of a MERGED pull request
+
+THE SECOND HALF OF RULE 3 IS THE LOAD-BEARING ONE. This repo squash-merges, so a merged
+branch's commits never become ancestors of origin/main -- the squash is a new commit with a
+new sha. Ancestry alone therefore reports every merged branch as unfinished work, forever.
+Measured 2026-08-19: 35 worktrees, "SAFE TO REMOVE (0)", while `fix/session-check-script-exists`
+at 1a90fb41 had merged as PR #367 twenty minutes earlier. A gc that can never mark anything
+safe is why 35 accumulated.
 
 Anything failing one of those is KEPT and the reason is printed. A worktree holding unmerged
 commits is somebody's unfinished work, and this script will never delete it.
@@ -63,6 +71,25 @@ def worktrees() -> list[dict]:
     if cur:
         trees.append(cur)
     return trees
+
+
+def merged_branches() -> tuple[set[str], str | None]:
+    """Branch names whose pull request is MERGED, in ONE call.
+
+    Asked per worktree this would be 35 round trips to GitHub. Asked once it is one, so the
+    whole check costs about a second. Returns the set and, when the call fails, the reason --
+    the caller degrades to sha-ancestry rather than guessing that nothing is merged.
+    """
+    try:
+        p = subprocess.run(
+            ["gh", "pr", "list", "--state", "merged", "--limit", "300",
+             "--json", "headRefName", "--jq", ".[].headRefName"],
+            cwd=ROOT, capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return set(), f"{type(exc).__name__}"
+    if p.returncode != 0:
+        return set(), (p.stderr.strip().splitlines() or ["gh failed"])[0]
+    return {ln.strip() for ln in p.stdout.splitlines() if ln.strip()}, None
 
 
 def dirty(path: Path) -> list[str]:
@@ -123,6 +150,11 @@ def main() -> int:
     main_tree = worktrees()[0].get("worktree") if worktrees() else None
 
     safe, keep = [], []
+    merged, gh_error = merged_branches()
+    if gh_error:
+        print(f"note: could not list merged PRs ({gh_error}); "
+              "falling back to sha-ancestry, which misses every squash-merged branch\n")
+
     for wt in worktrees():
         path = Path(str(wt.get("worktree")))
         head = str(wt.get("HEAD", ""))[:8]
@@ -146,8 +178,11 @@ def main() -> int:
             keep.append((path, branch, head, f"{len(d)} uncommitted file(s), first {d[0]}"))
             continue
         code, _ = git(["merge-base", "--is-ancestor", str(wt.get("HEAD")), "origin/main"])
-        if code != 0:
-            keep.append((path, branch, head, "holds commits not in origin/main"))
+        if code != 0 and branch not in merged:
+            why = "holds commits not in origin/main"
+            if gh_error:
+                why += f" (could not ask GitHub whether it merged: {gh_error})"
+            keep.append((path, branch, head, why))
             continue
         safe.append((path, branch, head))
 

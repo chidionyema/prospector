@@ -18,6 +18,7 @@ export const VIEWS = [
   'engine_location',
   'status',
   'queue',
+  'drain',
   'providers',
   'routing',
   'spend',
@@ -36,6 +37,8 @@ export const VIEWS = [
   'pack',
   'shelf',
   'method',
+  'docs',
+  'incidents',
   'content_rules',
   'orders',
   'order',
@@ -50,6 +53,7 @@ export const VIEWS = [
 const ALLOWED_ARGS: Record<string, string[]> = {
   status: ['lookback_h'],
   queue: ['lookback_h'],
+  drain: ['side'],
   metrics: ['window_days'],
   runs: ['days'],
   run: ['run_id', 'days'],
@@ -63,6 +67,7 @@ const ALLOWED_ARGS: Record<string, string[]> = {
   sales: ['days'],
   deliveries: ['state', 'limit'],
   disputes: ['days'],
+  docs: ['name'],
   console_log: ['limit'],
 };
 

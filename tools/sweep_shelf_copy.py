@@ -210,7 +210,7 @@ def pull_live(api_url: str, dry: bool) -> int:
 
 #: The rollback. Written BEFORE each live PATCH, one row per pack: once the live `oneLine`
 #: is overwritten no GET projects the old one, so this file is the only copy of it.
-PUSH_LOG = ROOT / "store" / "shelf_copy_log.jsonl"
+PUSH_LOG = store_root() / "shelf_copy_log.jsonl"
 
 
 def push_live(api_url: str, key: str, dry: bool) -> int:

@@ -168,7 +168,24 @@ def _read_status(cfg, args: dict) -> dict:
     except Exception as exc:  # StaleProcessGlobal and friends are information, not a crash
         out["routing"] = {"error": f"{exc}", "error_kind": type(exc).__name__}
     out["spend"] = _spend_headline(cfg)
+    out["incidents"] = _incident_headline()
     return out
+
+
+def _incident_headline() -> dict:
+    """Counts only, for the Now page. The records themselves are the `incidents` view.
+
+    Wrapped because this is the ONE view polled every 30 seconds by the front page: a malformed
+    incident record, or a checkout with no `scripts/` at all, must cost a line on one card and
+    never the whole screen. `load()` already treats a malformed file as a finding rather than an
+    exception, so this only catches the case where the script itself cannot be reached.
+    """
+    try:
+        from .incidents_view import incidents_view
+
+        return incidents_view(_repo_root())["headline"]
+    except Exception as exc:  # noqa: BLE001 — a broken record must not blank the Now page
+        return {"error": f"{exc}", "error_kind": type(exc).__name__}
 
 
 def _supervisor_view() -> dict:
@@ -430,6 +447,34 @@ def _read_data(cfg, args: dict) -> dict:
     from .data import data_view
 
     return data_view(cfg)
+
+
+def _read_docs(cfg, args: dict) -> dict:
+    """The repo's own documentation, in the console. Index by default, one doc with `name=`.
+
+    Registered 2026-08-19: the founder asked twice whether docs were reachable from ops and the
+    answer was no. Reads are confined to `docs/` by `docs_view._safe`, which resolves first and
+    checks containment second so a `..` or a symlink cannot leave the tree.
+    """
+    from .docs_view import doc_view, docs_index
+
+    name = str(args.get("name") or "").strip()
+    if name:
+        return doc_view(_repo_root(), name)
+    return docs_index(_repo_root())
+
+
+def _read_incidents(cfg, args: dict) -> dict:
+    """What broke, what stops it repeating, and what is still unguarded.
+
+    Registered 2026-08-19. The rollup existed only as terminal output from
+    `scripts/incident.py check`, so an operator without a checkout could not see that a record
+    had no mechanism or that a mechanism was past its grading window. The judgement stays in
+    that script — this view calls it, so the page and the CI gate can never disagree.
+    """
+    from .incidents_view import incidents_view
+
+    return incidents_view(_repo_root())
 
 
 def _read_metrics(cfg, args: dict) -> dict:
@@ -926,13 +971,30 @@ def _act_delivery_resend(cfg, payload: dict, preview: bool) -> dict:
     return receipt
 
 
+def _tool_on_disk(root: Path, rel: str) -> Path:
+    """Where a catalogued tool actually lives.
+
+    `root / rel` is wrong for the estate tools, and wrong SILENTLY. Most rows are repo-relative,
+    but some name a tool outside this checkout — `~/.hermes/scripts/hermes_selfcheck.py`. Joined
+    to the repo root that becomes `<repo>/~/.hermes/...`, which never exists, so the console
+    reported the tool missing and the run action refused it. The Hermes self-check button was
+    registered on 2026-08-19 and could not have run on any day since.
+
+    Same shape as the store resolver incident: a path built from the wrong base answers a
+    different question and says nothing about it. Expand first, then join only what is still
+    relative.
+    """
+    expanded = Path(rel).expanduser()
+    return expanded if expanded.is_absolute() else root / expanded
+
+
 def _read_tools(cfg, args: dict) -> dict:
     """The operator CLI catalogue. See `TOOLS` for why it is a table and not a directory scan."""
     root = _repo_root()
     out = []
     for tool in TOOLS:
         rel = tool["path"]
-        out.append({**tool, "exists": (root / rel).exists()})
+        out.append({**tool, "exists": _tool_on_disk(root, rel).exists()})
     return {"root": str(root), "tools": out,
             "note": "Run any of these with the `tools.run` action, using the tool's `id`. What "
                     "makes it safe is the preview, the confirmation token and the rollback "
@@ -1197,6 +1259,64 @@ def _read_engine_location(cfg, args: dict) -> dict:
     return json.loads(_failover(*argv, timeout=180))
 
 
+#: The sides the drain ledger can be read from. "active" resolves through the same marker the
+#: failover watchdog uses, so the console and the watchdog can never disagree about which box is
+#: production.
+DRAIN_SIDES = ("active", "fly", "laptop")
+
+
+def _drain_ledger(cfg, *, side: str = "active", reset: bool = False) -> dict:
+    """The drain's give-up ledger, read from the side the engine is ACTUALLY running on.
+
+    This goes through `scripts/engine_failover.py drain` instead of reading the local store, and
+    that indirection is the whole point of the view. Production moved to Fly on 2026-08-17, so
+    `config.store_root()` in this process resolves to the LAPTOP store, which is idle. On
+    2026-08-19 that store held an empty ledger while the Fly engine carried 253 rows, 251 of them
+    permanently retired, and said so in its log once a minute
+    (`docs/incidents/INC-2026-08-19-drain-retired-on-our-own-outages.json`). A console pointed at
+    the wrong box does not show less than the truth. It shows a confident zero, which is worse.
+    """
+    if side not in DRAIN_SIDES:
+        raise ValueError(f"unknown side {side!r}; expected one of {', '.join(DRAIN_SIDES)}")
+    argv = ["drain", "--side", side, "--json"]
+    if reset:
+        argv.append("--reset")
+    data = json.loads(_failover(*argv, timeout=180))
+
+    warnings: list[str] = []
+    if data.get("error"):
+        warnings.append(f"Could not read the {data.get('side')} ledger: {data['error']}")
+    if data.get("side") != data.get("active_side"):
+        warnings.append(
+            f"These numbers come from the {data.get('side')} side, but the engine is running on "
+            f"{data.get('active_side')}. Nothing here describes production.")
+    if not data.get("max_attempts"):
+        warnings.append(
+            "schedule.max_resume_attempts is 0, so the give-up cap is off and no row can be "
+            "retired. `retired` stays empty while that holds, however stuck the queue is.")
+    if data.get("retired_count"):
+        warnings.append(
+            f"{data['retired_count']} candidate(s) have spent their whole re-vet budget and have "
+            "left the drainable population for good. The drain will log them as excluded and "
+            "never touch them again. Read the incident record before assuming they are genuinely "
+            "unrulable — until PR #356 an outage spent that budget like a real attempt.")
+    data["warnings"] = warnings
+    data["incident"] = "docs/incidents/INC-2026-08-19-drain-retired-on-our-own-outages.json"
+    return data
+
+
+def _read_drain(cfg, args: dict) -> dict:
+    """How much work the drain has permanently given up on, and on which box.
+
+    A row leaves the drainable population after `schedule.max_resume_attempts` completed re-vets
+    that did not resolve it. Until PR #356 an infrastructure DEFER — a MiniMax quota outage, a
+    retrieval failure — spent that budget like a real attempt, so 251 candidates were retired for
+    our own downtime. The counter is blind to infrastructure defers now, but nothing hands back a
+    budget already spent. That is what `drain.reset` is for.
+    """
+    return _drain_ledger(cfg, side=str(args.get("side") or "active"))
+
+
 def _act_engine_arm(cfg, payload: dict, preview: bool) -> dict:
     if preview:
         st = json.loads(_failover("status", "--json"))
@@ -1309,12 +1429,15 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
     "content_rules": _read_content_rules,
     "status": _read_status,
     "queue": _read_queue,
+    "drain": _read_drain,
     "providers": _read_providers,
     "routing": _read_routing,
     "spend": _read_spend,
     "money": _read_money,
     "data": _read_data,
     "metrics": _read_metrics,
+    "docs": _read_docs,
+    "incidents": _read_incidents,
     "runs": _read_runs,
     "run": _read_run,
     "candidate": _read_candidate,
@@ -1779,6 +1902,76 @@ def _act_pause_disarm(cfg, payload: dict, preview: bool) -> dict:
                   nonce=str(payload.get("nonce") or ""))
 
 
+def _act_drain_reset(cfg, payload: dict, preview: bool) -> dict:
+    """Hand every retired row its re-vet budget back by clearing the attempt ledger.
+
+    `drain_state.load` returns `{}` for a missing file and calls that "a real value"
+    (`prospector/drain_state.py:130-131`), so deleting the ledger IS the reset. There is no
+    separate un-retire path to write, and writing one would be a second definition of the same
+    fact.
+
+    It runs against the ACTIVE side, not this laptop. Resetting the laptop ledger while Fly's
+    stayed full would be the same lie the read view exists to remove.
+
+    The ledger is copied beside itself first. The counts are the only record of which rows had
+    been worked and how often, and losing them costs re-vet money rather than correctness.
+
+    This is deliberately not scoped to "only the retired rows". A row sitting at 4 of 5 got there
+    the same way the retired ones did, and leaving it one outage short of retirement would keep
+    exactly the bug this reset undoes.
+    """
+    side = str(payload.get("side") or "active").strip()
+    if side not in DRAIN_SIDES:
+        raise ValueError(f"unknown side {side!r}; expected one of {', '.join(DRAIN_SIDES)}")
+
+    before = _drain_ledger(cfg, side=side)
+    if before.get("error"):
+        raise RuntimeError(f"cannot read the {before.get('side')} ledger, so it will not be "
+                           f"cleared: {before['error']}")
+
+    if preview:
+        rows, retired = before.get("rows", 0), before.get("retired_count", 0)
+        return {
+            "action": "drain.reset",
+            "side": before.get("side"),
+            "active_side": before.get("active_side"),
+            "ledger_path": before.get("ledger_path"),
+            "store_dir": before.get("store_dir"),
+            "rows": rows,
+            "retired_count": retired,
+            "histogram": before.get("histogram"),
+            "max_attempts": before.get("max_attempts"),
+            "warnings": before.get("warnings"),
+            "effect": (
+                f"Deletes {before.get('ledger_path')} on {before.get('side')}. {retired} retired "
+                f"row(s) become drainable again and all {rows} row(s) go back to zero attempts. "
+                "The next tick starts working them, which costs re-vet money."
+                if rows else
+                f"Nothing to do: {before.get('ledger_path')} holds no rows on "
+                f"{before.get('side')}."),
+            "cost": ("Roughly one re-vet per released row. MiniMax was measured at about "
+                     "$0.0004 per check on 2026-08-19."),
+            "backup": "<ledger>.bak-<UTC timestamp>, beside the ledger",
+            "reversible": "Yes — copy the backup back over the ledger.",
+        }
+
+    after = _drain_ledger(cfg, side=side, reset=True)
+    if after.get("error"):
+        raise RuntimeError(f"the reset failed on {after.get('side')}: {after['error']}")
+    return {
+        "action": "drain.reset",
+        "side": after.get("side"),
+        "ledger_path": after.get("ledger_path"),
+        "removed": after.get("removed"),
+        "rows_released": before.get("rows", 0),
+        "retired_released": before.get("retired_count", 0),
+        "backup": after.get("backup"),
+        "note": ("every row now reads as untried; the next tick picks them up"
+                 if after.get("removed") else
+                 "there was no ledger on disk, so every row already read as untried"),
+    }
+
+
 def _act_routing_set(cfg, payload: dict, preview: bool) -> dict:
     from .routing import routing_problems, routing_view
 
@@ -2110,6 +2303,11 @@ def _tool_argv(tool: dict, payload: dict) -> list[str]:
     """
     argv: list[str] = []
     for part in shlex.split(tool["command"]):
+        # THE CHILD RUNS WITHOUT A SHELL, so nothing expands `~` on the way in. Expanded here,
+        # before substitution, so it applies to the catalogued command only and never to a value
+        # the browser sent.
+        if part.startswith("~"):
+            part = str(Path(part).expanduser())
         missing: list[str] = []
 
         def _fill(match, _missing=missing):
@@ -2162,7 +2360,7 @@ def _act_tools_run(cfg, payload: dict, preview: bool) -> dict:
     root = _repo_root()
     if not tool["run"]:
         raise ValueError(f"{tool['path']} is not runnable from the console. {tool['danger']}")
-    if not (root / tool["path"]).exists():
+    if not _tool_on_disk(root, tool["path"]).exists():
         raise ValueError(f"{tool['path']} is not on disk. The catalogue is hand-kept, so this "
                          f"means the tool was renamed or deleted and the table was not updated.")
 
@@ -2570,6 +2768,7 @@ ACTIONS: dict[str, Callable[[Any, dict, bool], dict]] = {
     "pause.arm": _act_pause_arm,
     "pause.disarm": _act_pause_disarm,
     "routing.set_moat_primary": _act_routing_set,
+    "drain.reset": _act_drain_reset,
     "config.set": _act_config_set,
     "config.restore": _act_config_restore,
     "catalogue.set_listing": _act_catalogue_listing,
@@ -2815,10 +3014,25 @@ TOOLS: list[dict] = [
     _t("scripts/doc_lint.py", "Find docs that point at something no longer there", False,
        "/audit"),
     # --- registered 2026-08-18 with the incident loop; docs/INCIDENT_PROCESS.md ---
+    # Moved from /audit to /incidents on 2026-08-19, when that page was built. `screen` is not
+    # part of the tool id, so the ids these rows have always had are unchanged and a browser
+    # holding one between preview and confirm still resolves it.
     _t("scripts/incident.py", "Incidents: what broke, what class it belongs to, was the fix graded",
-       False, "/audit", cmd=".venv/bin/python scripts/incident.py check"),
+       False, "/incidents", cmd=".venv/bin/python scripts/incident.py check"),
     _t("scripts/incident.py", "What takes longest and what repeats, with recommendations", False,
-       "/audit", cmd=".venv/bin/python scripts/incident.py friction"),
+       "/incidents", cmd=".venv/bin/python scripts/incident.py friction"),
+    # `external` because it creates GitHub issues, which no local snapshot can roll back.
+    _t("scripts/incident.py", "Open a ticket for every incident with no mechanism behind it",
+       True, "/incidents", risk="external",
+       cmd=".venv/bin/python scripts/incident.py ticket",
+       danger="opens real GitHub issues; run the dry run first"),
+    _t("scripts/incident.py", "Show what a ticket run would open, without opening anything",
+       False, "/incidents", cmd=".venv/bin/python scripts/incident.py ticket --dry-run"),
+    # --- registered 2026-08-19. Hermes lives in ~/.hermes, a different repo, but the operator
+    # should not have to know that: the founder's ask was "make this visible in ops".
+    _t("~/.hermes/scripts/hermes_selfcheck.py", "Is Hermes actually healthy? six invariants, "
+       "not liveness", False, "/audit",
+       cmd="/usr/local/bin/python3 ~/.hermes/scripts/hermes_selfcheck.py"),
     _t("scripts/copy_audit.sh", "Copy audit across the marketing and pack lanes", False, "/shelf",
        cmd="bash scripts/copy_audit.sh"),
     _t("scripts/backfill_packs_parallel.sh", "Backfill P5 pack artefacts into listed packs", True,
@@ -2863,6 +3077,9 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     "scripts/seed_action_cache.sh": "fills the self-hosted runners' action cache; CI plumbing, "
                                     "run once on the runner box, not from an ops page",
     "scripts/setup_worktree.sh": "makes a git worktree usable; a developer's machine, not ops",
+    "scripts/prove_test_fails.py": "edits source files to prove a test goes red, then puts them "
+                                  "back; it belongs to whoever is writing the test, and "
+                                  "pointing it at a running estate would mutate live code",
     "scripts/session_check.py": "asks whether an agent session left work behind — uncommitted, "
                                "unpushed, a branch with no PR; a session's own hygiene, and there "
                                "is no session to check from an ops page",
@@ -2875,6 +3092,8 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     "scripts/test_impacted.py": "picks the tests a local edit can affect; a developer's loop",
     "scripts/verify_engine_change.sh": "the pre-commit proof that an engine change is safe",
     "tools/commit_mine.sh": "commits exactly the named paths; a developer's git helper",
+    "tools/backfill_human_register.py": "a one-off repair that back-filled the human register after a schema change; kept for the record, not for re-running",
+    "tools/register_repair_probe.py": "reports rows the human register cannot resolve; a developer's diagnostic, and it names local paths an operator has no access to",
     # Claude Code hooks — the harness fires these, they have no operator-facing run
     "scripts/graphify_query_hook.py": "a UserPromptSubmit hook; the harness fires it",
     "scripts/graphify_session_hook.py": "a SessionStart hook; the harness fires it",

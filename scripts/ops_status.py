@@ -43,6 +43,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+# The store is where PROSPECTOR_STORE_DIR says, never where this file sits. A path
+# derived from __file__ follows the CODE; production moved off this checkout on
+# 2026-08-17 and the state did not. One resolver: prospector.config.store_root().
+from prospector.config import store_root  # noqa: E402
 
 DONE, OPEN, MANUAL, ACCEPTED = "DONE", "OPEN", "MANUAL", "ACCEPTED"
 
@@ -195,7 +201,7 @@ def c_dat2():
 
 
 def c_dat3():
-    p = ROOT / "store" / "prospector.jsonl"
+    p = store_root() / "prospector.jsonl"
     if not p.exists():
         return MANUAL, "store/prospector.jsonl absent"
     mb = p.stat().st_size / 1e6

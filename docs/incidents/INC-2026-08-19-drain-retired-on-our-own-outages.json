@@ -1,0 +1,38 @@
+{
+  "id": "INC-2026-08-19-drain-retired-on-our-own-outages",
+  "opened": "2026-08-19",
+  "title": "The drain permanently retired 251 candidates because our own brains were down",
+  "severity": "high",
+  "detected_by": "production",
+  "first_order": {
+    "what_broke": "The live engine logged 'No backlogged candidate the drain can work on. Excluded: 251 stalled (>= 5 unresolved re-vets)' once a minute. Those 251 rows were not rows the pipeline cannot rule on. They were rows whose five re-vets were each spent on a MiniMax quota outage or a retrieval failure. Every one of them had lost its entire budget to our own downtime, and nothing would ever hand it back.",
+    "receipt": "fly ssh console -a prospector-engine -C 'cat /data/store/scheduler/drain_attempts.json' pulled a 5821-byte ledger at 05:52Z on 2026-08-19. Histogram of its 253 rows: attempts=1 -> 1 row, attempts=4 -> 1 row, attempts=5 -> 251 rows. The cap is 5 (drain_state.DEFAULT_MAX_ATTEMPTS, and config.yaml schedule.max_resume_attempts on the live box). Copy kept at scratchpad/drain_attempts.prod-2026-08-19.json and on the box as /data/store/scheduler/drain_attempts.json.bak-20260819.",
+    "fixed_by": "PR #356 (code), plus a manual ledger reset on 2026-08-19 for the 251 rows already retired"
+  },
+  "cause_chain": [
+    "drain_state.record_unresolved incremented a row's counter on every COMPLETED re-vet that did not resolve it, and at 5 the row left the drainable population for good.",
+    "Every DEFER this pipeline emits is an infrastructure DEFER. verify.py:1105 (the vet time budget ran out) and verify.py:1151 (retrieval_failed) both write a finished dossier with Decision.DEFER and neither raises, so run.py's completion loop counted them as attempts the row had used.",
+    "The module docstring ASSERTED that an outage could never spend a row's budget, and named the two paths that return before a verdict as proof. It missed the third, which is the common one. An assertion in a docstring is checked by nobody.",
+    "The counter was never separated from the reason. One integer answered two different questions: 'how many times have we tried this row' and 'how many times has this row refused to resolve'.",
+    "CLASS: a give-up counter that cannot tell OUR failure from THE WORK's failure will retire the work. Any retry budget spent by an outage is a budget that measures uptime, not merit."
+  ],
+  "second_order": {
+    "sweep_command": "ls store/*.json store/scheduler/*.json  &&  rg -n 'def record_|\\+= 1' --glob 'prospector/**/*.py' | rg -i 'attempt|retry|fail'",
+    "siblings_found": 0,
+    "siblings_fixed": 0,
+    "note": "I looked, and the class is unique here. Two things had to be true for a sibling: the counter must PERSIST across processes, and hitting it must EXCLUDE work permanently. Every other attempt counter in prospector/ is an in-process retry loop that resets on the next run — artifacts.py:677, gemini_cli.py:146, shelf_copy_repair.py:116. The only other persisted exclusion in the store is store/retired_passes.json, written by tools/retire_rotted_passes.py, and it retires on EVIDENCE (dead citation URLs read out of the pack's own *.lint.json record, 'never inferred') rather than on a failure count, so an outage cannot spend it. provider_health.json marks brains dead on a failure count, but every mark carries a dead_until and expires (health.py:54), which is the same defence by a different route."
+  },
+  "third_order": {
+    "tier": "refuse",
+    "mechanism": "drain_state.infrastructure_defer(dossier) — run.py skips BOTH the increment and the forget when a DEFER came from infrastructure, so the row keeps its budget and stays drainable. This is a refusal, not a test: the code will not count the attempt, whoever calls it. Four tests came with it and three fail without the fix.",
+    "landed_on": "2026-08-18"
+  },
+  "grade": {
+    "signature": "a drain attempt counter incremented by an infrastructure DEFER",
+    "before": 251,
+    "after": null,
+    "window_days": 14,
+    "verdict": "unproven"
+  },
+  "state": "open"
+}

@@ -54,7 +54,13 @@ from typing import Any, Optional
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from prospector.config import load_config  # noqa: E402
+# The store is where PROSPECTOR_STORE_DIR says, never where this file sits. A path
+# derived from __file__ follows the CODE; production moved off this checkout on
+# 2026-08-17 and the state did not. One resolver: prospector.config.store_root().
+from prospector.config import (
+    load_config,  # noqa: E402
+    store_root,  # noqa: E402
+)
 from prospector.models import Candidate, ScoreResult  # noqa: E402
 from prospector.price_rationale import write_rationale  # noqa: E402
 from prospector.pricing import price_for  # noqa: E402
@@ -115,7 +121,7 @@ def load_plan() -> tuple[list[dict], list[dict], list[str]]:
     packs = _get_json(f"{STORE_API}/catalog")
 
     dossiers: dict[str, dict] = {}
-    for f in glob.glob(str(REPO / "store" / "dossiers" / "*.json")):
+    for f in glob.glob(str(store_root() / "dossiers" / "*.json")):
         try:
             d = json.load(open(f))
         except Exception:

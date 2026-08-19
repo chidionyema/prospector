@@ -22,6 +22,10 @@ export const ACTIONS = [
   'pause.arm',
   'pause.disarm',
   'routing.set_moat_primary',
+  // Clears the drain's give-up ledger on the ACTIVE side, handing every retired
+  // candidate its re-vet budget back. See
+  // docs/incidents/INC-2026-08-19-drain-retired-on-our-own-outages.json.
+  'drain.reset',
   'config.set',
   'config.restore',
   'catalogue.set_listing',

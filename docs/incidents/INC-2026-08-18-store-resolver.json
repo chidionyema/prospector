@@ -13,18 +13,19 @@
     "paths.store_root() read PROSPECTOR_STORE_ROOT, which nothing outside the test suite sets, and fell back to a path derived from __file__.",
     "Two resolvers existed for one concept: config.store_root() reads PROSPECTOR_STORE_DIR and is the one the plists and the Fly machine set.",
     "A rule written as prose with no sweep and no guard. On 2026-08-17 four __file__-derived store constants were fixed and the rule was written into CLAUDE.md. Nothing searched for a fifth, and nothing would have failed if one existed.",
-    "CLASS: a rule that lives only in prose is enforced only by whoever remembers it."
+    "The sweep for siblings was a regex over single lines, and the bug's normal shape spans two lines. So the sweep reported 2 where an AST walk reports 40, and the record closed on a number that was measuring something else.",
+    "CLASS: a sibling sweep written as a regex can only find the instances that happen to share the syntax of the one that was noticed. When the defect is semantic - a value derived from the wrong source - the sweep has to be semantic too, or the count it produces is not a measure of the class, and a low count reads as containment."
   ],
   "second_order": {
-    "sweep_command": "rg -n 'def store_root|Path\\(__file__\\).*store' prospector/ scripts/ tools/",
-    "siblings_found": 2,
-    "siblings_fixed": 1,
-    "note": "One resolver beyond config.store_root(). The 2026-08-17 pass fixed four call sites but never swept for other RESOLVERS, which is the level the bug lived at. register_baseline.py:18 hardcodes pathlib.Path(\"/Users/chidionyema/Documents/code/prospector/store/dossiers\") instead of config.store_root(). Found 2026-08-18 by the doc-rot sweep, not by the store-resolver sweep, which is the point: it is report-only so it loses no data, but it reads the wrong store on any box that is not this laptop."
+    "sweep_command": ".venv/bin/python -m pytest tests/unit/test_no_store_path_is_derived_from_file.py  (the regex it replaced, rg -n 'def store_root|Path\\(__file__\\).*store' prospector/ scripts/ tools/, found 2 of the 40 and is kept here only to show why)",
+    "siblings_found": 40,
+    "siblings_fixed": 30,
+    "note": "CORRECTED 2026-08-19. This field read 2. An AST walk of the repo found 40 expressions joining a __file__-derived path with a store or storage segment. The original sweep was a regex over ONE LINE, and almost every real offender is written in two steps: `ROOT = Path(__file__).resolve().parents[1]` on one line and `ROOT / \"store\" / \"dossiers\"` on another. A regex over one line cannot see a name bound on another, so the count was not slightly low, it was measuring a different thing. 30 were rewritten to prospector.config.store_root(); the writers among them were tools/retire_rotted_passes.py (manifest and the sqlite DB), tools/sweep_shelf_copy.py, tools/recover_stranded_passes.py, four backfills under tools/ and two under scripts/, and store_platform/scripts/backfill_facets.py. The readers were scripts/ops_state.py, scripts/ops_status.py, scripts/store_audit.py, scripts/watch_engine.py, scripts/unit_economics.py, scripts/pack_banner_probe.py, tools/meta_shape_monitor.py and seven sites across five files under tools/experiments/. The remaining 10 are on an allow-list, each with the reason it is correct: the resolver itself, the migration tool that must run without the package, the tracked repo ledger under storage/, and four fences that name the repo store in order to prove nothing was written there. Tracked as issue #371."
   },
   "third_order": {
     "tier": "test",
-    "mechanism": "tests/unit/test_one_store_resolver.py::test_no_third_resolver_appears fails if any module grows its own store_root. Heal was not available: nothing can repair a file already written to a layer that is about to be deleted. Refuse was not available either: no PreToolUse guard can see a runtime path resolution.",
-    "landed_on": null
+    "mechanism": "tests/unit/test_no_store_path_is_derived_from_file.py walks every .py in the repo as an AST, collects the module-level names bound to any expression mentioning __file__, and fails on any division of such a name by the string 'store' or 'storage'. It sees the two-step form the original regex could not, and it will see a third form because it tracks names rather than matching text. The allow-list is a dict of path -> reason: a further test asserts every allowed file still contains an offender, so an entry cannot outlive its reason and quietly exempt the next one written there, and another asserts each reason is long enough to be one. There is an anti-vacuity test on the source walk itself. Mutation-checked: restoring `MANIFEST = ROOT / \"store\" / \"retired_passes.json\"` in tools/retire_rotted_passes.py turns it red.\n\nThe test this record originally landed, tests/unit/test_one_store_resolver.py::test_no_third_resolver_appears, is named for this check and does not perform it: it asserts the two KNOWN resolvers agree and never looks for a third. That is the S1 class from ADR 0002, a check that cannot fail, inside the mechanism for a different incident.",
+    "landed_on": "2026-08-19"
   },
   "grade": {
     "signature": "a module-level store path derived from __file__",

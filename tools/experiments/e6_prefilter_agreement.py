@@ -49,6 +49,7 @@ from __future__ import annotations
 
 import json
 import math
+import sys
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -64,7 +65,14 @@ FALSE_DROPS_ALLOWED = 0  # "at no PASS loss"
 MIN_ROWS_TO_RULE = 100
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_LOG_DIR = REPO_ROOT / "store" / "prescreen_shadow"
+sys.path.insert(0, str(REPO_ROOT))
+
+# The store is where PROSPECTOR_STORE_DIR says, never where this file sits. A path
+# derived from __file__ follows the CODE; production moved off this checkout on
+# 2026-08-17 and the state did not. One resolver: prospector.config.store_root().
+from prospector.config import store_root  # noqa: E402
+
+DEFAULT_LOG_DIR = store_root() / "prescreen_shadow"
 
 
 def describe() -> str:
@@ -305,7 +313,7 @@ def run(args: list[str]) -> dict[str, Any]:
     print(f"  keep-rate at which bar is reachable: <= {needed_keep_rate:.1%}")
 
     hist = _historical_prescreen_rates(
-        REPO_ROOT / "store" / "scheduler" / "batch_diagnostics.jsonl")
+        store_root() / "scheduler" / "batch_diagnostics.jsonl")
     print("\n-- ARITHMETIC CEILING (the one that settles it) --")
     if hist.get("available"):
         lo, hi = hist["reject_rate_ci95"]

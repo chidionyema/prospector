@@ -1,0 +1,42 @@
+{
+  "id": "INC-2026-08-19-unreadable-coordinator",
+  "opened": "2026-08-19",
+  "title": "the estate's main autonomous process wrote a 0-byte log for 60 days",
+  "severity": "high",
+  "detected_by": "founder",
+  "first_order": {
+    "what_broke": "logs/coordinator.log held 0 bytes, last written 20 June 2026, while the coordinator ran continuously. The coordinator was not unlogged — it wrote every event to the `events` table in coordinator.db — but the only way to see what it was doing was to open SQLite and know the schema. No log scraper, no watchdog and no human reading a log file could see anything at all.",
+    "receipt": "ls -l ~/.hermes/logs/coordinator.log -> 0 bytes, 20 Jun 10:27, with the process running as pid 98214. After the fix and a restart: 285 bytes and growing, one JSON line per event.",
+    "fixed_by": "~/.hermes 50a3e8f"
+  },
+  "cause_chain": [
+    "The daemon branch of _cli() calls run_daemon() and prints nothing. The 20 print() calls in coordinator.py are all on CLI subcommand paths a human types.",
+    "The wrapper also exec'd python without -u. stdout under launchd is a FILE, so CPython block-buffers at 8KB and a process that never exits never flushes. So even once the daemon printed, the log would have stayed empty. Two independent causes, either one sufficient — which is why fixing only the buffering left the log at 0 bytes and the diagnosis had to continue.",
+    "Structured state went to a database and human-readable state went nowhere. That is a reasonable choice for a tool and a bad one for a daemon, because it makes observation require a schema.",
+    "This is why both other 2026-08-19 defects survived for weeks: the only way to inspect Hermes was to read its database by hand, so nobody did it routinely, so nothing was noticed until the founder asked.",
+    "CLASS: a long-running process whose only output is structured state in a private store is unobservable by every generic tool. The estate had 25 health scripts and 16 launchd jobs and not one of them could see inside this one."
+  ],
+  "second_order": {
+    "sweep_command": "rg -n 'exec .*python' ~/.hermes/scripts/*.sh | rg -v 'python3? -u'",
+    "siblings_found": 1,
+    "siblings_fixed": 1,
+    "note": "RUN 2026-08-19. Of the exec'd python wrappers, only coordinator-daemon.sh and cockpit-daemon.sh are long-lived; the rest are one-shot and flush on exit, so -u there is noise. cockpit-daemon.sh had the same missing -u and was fixed in the same commit."
+  },
+  "third_order": {
+    "tier": "test",
+    "mechanism": "tests/test_long_lived_daemons_are_unbuffered.py in ~/.hermes — an explicit list of never-returning wrappers, each of which must exec python with -u. The list is explicit rather than inferred because guessing which wrapper never returns is the same class of implicit rule.",
+    "landed_on": "2026-08-19",
+    "note": "The stronger mechanism is the one that also landed: scripts/hermes_selfcheck.py carries `the coordinator is observable` as an invariant, so an empty log now fails a check that runs hourly instead of waiting for someone to look."
+  },
+  "grade": {
+    "signature": "logs/coordinator.log at 0 bytes, or unwritten for more than 2 days, while the coordinator runs",
+    "before": 60,
+    "after": 0,
+    "window_days": 14,
+    "verdict": "proven",
+    "graded_on": "2026-08-19",
+    "note": "before = days the log sat empty. after = measured immediately post-restart, 285 bytes and growing. The hourly self-check regrades it every hour from now on."
+  },
+  "issue": null,
+  "state": "closed"
+}

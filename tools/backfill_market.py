@@ -25,6 +25,13 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT))
+
+# The store is where PROSPECTOR_STORE_DIR says, never where this file sits. A path
+# derived from __file__ follows the CODE; production moved off this checkout on
+# 2026-08-17 and the state did not. One resolver: prospector.config.store_root().
+from prospector.config import store_root  # noqa: E402
+
 DEFAULT_CUTOVER = "2026-07-30T00:00:00Z"
 
 
@@ -62,7 +69,7 @@ def main() -> int:
     ap.add_argument("--market", default="uk", help="Market code to stamp (default: uk)")
     ap.add_argument("--cutover", default=DEFAULT_CUTOVER,
                     help=f"Only rows created before this ISO timestamp (default: {DEFAULT_CUTOVER})")
-    ap.add_argument("--store-dir", default=str(REPO_ROOT / "store"),
+    ap.add_argument("--store-dir", default=str(store_root()),
                     help="Store directory (default: <repo>/store)")
     ap.add_argument("--apply", action="store_true",
                     help="Actually perform the backfill (default is a dry run)")

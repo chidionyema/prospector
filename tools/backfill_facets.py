@@ -47,14 +47,18 @@ from typing import Any, Dict, List, Optional, Tuple
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
+# The store is where PROSPECTOR_STORE_DIR says, never where this file sits. A path
+# derived from __file__ follows the CODE; production moved off this checkout on
+# 2026-08-17 and the state did not. One resolver: prospector.config.store_root().
 from prospector import facet_derive, facets  # noqa: E402
+from prospector.config import store_root  # noqa: E402
 
 # Env-overridable so a backfill can be pointed at staging. This script PATCHes live
 # catalogue rows; a hardcoded production constant means there is no way to rehearse
 # one except against the real store.
 DEFAULT_API_URL = os.environ.get("STORE_API_URL", "https://api.mumchimp.com")
 HAND_RESOLVED = REPO_ROOT / "store_platform" / "data" / "facets-backfill.json"
-DOSSIER_DIR = REPO_ROOT / "store" / "dossiers"
+DOSSIER_DIR = store_root() / "dossiers"
 
 SINGLE = ("sector", "payer", "effort", "commitment", "mechanism")
 

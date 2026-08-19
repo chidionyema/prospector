@@ -37,9 +37,16 @@ def test_store_root_still_wins_so_a_fixture_can_redirect(monkeypatch, tmp_path):
     assert paths.store_root() == tmp_path / "fixture"
 
 
-def test_no_third_resolver_appears(monkeypatch, tmp_path):
-    """Every store path in the package must come from one of the two agreeing resolvers. A module
-    that derives its own from __file__ is how this bug arrived, twice."""
+def test_store_path_composes_from_the_agreed_root(monkeypatch, tmp_path):
+    """Every path store_path() builds hangs off the one resolved root.
+
+    RENAMED 2026-08-19. This was called `test_no_third_resolver_appears`, and it never looked for
+    a third resolver: it asserts the two KNOWN ones agree, which they do by construction here.
+    A check named for something it does not do is worse than no check, because the name is what
+    the next reader trusts. The search for other resolvers is
+    tests/unit/test_no_store_path_is_derived_from_file.py, which walks the repo as an AST and
+    found 30 that this test could never have seen.
+    """
     monkeypatch.delenv("PROSPECTOR_STORE_ROOT", raising=False)
     monkeypatch.setenv("PROSPECTOR_STORE_DIR", str(tmp_path / "one"))
     importlib.reload(paths)

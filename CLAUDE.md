@@ -16,6 +16,10 @@
 > every session is bound by, the portability target matrix and its drills, and the measured
 > automation audit. Read it before proposing anything structural.
 >
+> `docs/decisions/` holds the decisions that are settled, with the evidence that settled them.
+> ADR 0002 is the live one: the engine stays Python, and the bug rate is fixed by standards and
+> their enforcement (S1–S6), not by a rewrite. Read it before proposing either.
+>
 > **When something breaks, the fix is half the job.** `docs/INCIDENT_PROCESS.md` is the other
 > half: sweep for the siblings, land a mechanism that refuses the whole class, and grade it
 > afterwards. Records: `docs/incidents/*.json`. Gate: `.venv/bin/python scripts/incident.py check`.
@@ -139,9 +143,24 @@ one.
    exactly that, so for twenty minutes the provider health marks, the retrieval cache and the
    scheduler audit trail were written beside the new code while the ledger went to the canonical
    store. `config.store_root()` is the one resolver now; anything needing a store path at module
-   level calls it. Never write `Path(__file__).parent.parent / "store"` again — the health file
-   records which brains are benched, and a daemon writing one copy while a probe reads another can
-   never see a provider recover.
+   level calls it — the health file records which brains are benched, and a daemon writing one
+   copy while a probe reads another can never see a provider recover.
+
+   **The trap is the two-step form, not the one-liner.** This rule used to end "never write
+   `Path(__file__).parent.parent / "store"` again", and the sibling sweep was a regex for exactly
+   that string. It found 2. An AST walk on 2026-08-19 found 40, because almost nobody writes it
+   on one line:
+
+   ```python
+   ROOT = Path(__file__).resolve().parents[1]   # line 43, looks harmless
+   ...
+   DOSSIERS = ROOT / "store" / "dossiers"       # line 49, the actual bug
+   ```
+
+   A regex over one line cannot see a name bound on another. Do not sweep for this by grepping.
+   `tests/unit/test_no_store_path_is_derived_from_file.py` is the check: it tracks the names, so
+   it catches both forms and any third one, and its allow-list carries a reason per entry.
+   Issue #371 has the full list and what was fixed.
 
 ## Working in a git worktree
 

@@ -279,6 +279,39 @@ tools exist only as memorised command lines".
 if refused, the nonce. Every write this console makes lands here, alongside the writes Streamlit
 and the Telegram surface make. One log, three surfaces.
 
+### 3.11 `/docs` — the repo's own documents
+
+Every `.md` and `.json` under `docs/`, read without a checkout. Served by
+`prospector/ops/docs_view.py` and confined to the docs tree by `_safe`, which resolves the name
+first and checks containment second, so neither `..` nor a symlink can leave it. Rendered as plain
+text: the console has no markdown dependency, and adding one to ship a reader is the scope creep
+that turns a same-day answer into a week.
+
+`?open=<name>` opens one document directly. That parameter exists because `/incidents` deep-links
+records into this page, and the first version of the link was inert — it landed here and nothing
+happened, because the page kept its selection in local state. `tests/pages.test.ts` now fails any
+query-string link whose target page never reads the parameter.
+
+### 3.12 `/incidents` — what broke, and what stops it happening again
+
+Founder, 2026-08-18: "we need extreme visibility into what could go wrong, also need incident
+report." Records were already readable as raw JSON on `/docs`. Readable is not a report: which
+incidents are open, which have no mechanism behind them, which have a mechanism nobody has graded,
+and which are past their grading window existed only in the terminal output of
+`scripts/incident.py check`.
+
+The page shows the headline counts, the split by mechanism tier (heal, refuse, test, memory —
+strongest first), and every record worst-first with the one next action for each.
+
+**The judgement is not written in the console.** `prospector/ops/incidents_view.py` calls
+`validate`, `overdue`, `needs_ticket` and `rollup` from `scripts/incident.py`, which is the same
+code the CI gate runs. A console that graded incidents by its own rules would eventually disagree
+with the build about the same file, and both would look green.
+
+The headline counts also appear on `/` inside the `status` read, because the failure mode of an
+incident loop is not that the records are wrong — it is that nobody opens them. That block is
+wrapped: a malformed record costs a line on one card, never the front page.
+
 ---
 
 ## 4. The API surface
