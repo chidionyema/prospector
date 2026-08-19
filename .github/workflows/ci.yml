@@ -108,9 +108,21 @@ on:
 #
 # Main is not a branch whose result can be superseded. Every commit on it is what production and
 # every pull request is graded against, so every commit on it gets graded.
+#
+# A pull request's run is not superseded either, and that is the change here. This used to read
+# `cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}`, so any push to a PR branch killed
+# that branch's in-flight run. `automerge.yml` merges a PR the moment its CI run CONCLUDES green,
+# and a cancelled run concludes nothing, so a branch pushed more often than the ~25 minute python
+# job takes could never merge. Measured 2026-08-19 over the last 60 runs: 7 success, 16 failure,
+# 16 CANCELLED, with 22 pull requests open and nothing landing. Several agents share this repo and
+# cannot see each other, so each found "CI is red", pushed a fix, and cancelled the run that was
+# about to merge someone else's fix.
+#
+# The cost of keeping runs alive is runner capacity, not money: the runners are self-hosted on
+# Fly and their minutes are free, and `ci-autoscale.yml` adds machines when the queue grows.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: false
 
 env:
   PYTHON_VERSION: "3.14"
