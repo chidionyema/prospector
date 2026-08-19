@@ -37,11 +37,27 @@ a session had left it on. On 2026-08-17 that was `integrate/minimax-into-main`, 
 `origin/main`, so the daemon executed 17-hour-old code — visible only by running `lsof` on the pid.
 The 2026-08-18 cutover moved the engine to Fly and took the same question with it.
 
-**State did NOT move, and two traps guard that.**
+**State moved with it. Production's store is on Fly, and the laptop copy is a dead branch.**
 
-`PROSPECTOR_STORE_DIR` on both plists pins the catalogue, ledger, dossiers and scheduler files to
-`/Users/chidionyema/Documents/code/prospector/store`. That is the canonical store. There is exactly
-one.
+Founder ruling, 2026-08-19: **production is canonical.** The engine on Fly writes to `/data/store`,
+which is `vol_42kyqo6g0kdzew14` — a 20GB encrypted volume attached to machine `80d34da6636478`, so
+a deploy preserves it. That is the store the business's ledger, dossiers and catalogue live in.
+
+`/Users/chidionyema/Documents/code/prospector/store` still exists and is still what
+`PROSPECTOR_STORE_DIR` pins on the laptop plists, so any laptop-side process — the ops console, the
+runs view, `scripts/ops_status.py`, anything resolving through `config.store_root()` in a local
+process — reads it. Measured 2026-08-19 21:11Z, that copy is not production: Fly's
+`prospector.jsonl` carried **166,013 rows stamped today**, the laptop's carried **0**, and its
+`scheduler/heartbeat.json` had not been written since `2026-08-18T02:13:33Z` (pid 47458, the
+process the cutover stopped). Totals: 1,186,185 ledger lines and 3,585 dossiers on Fly, against
+909,257 and 2,931 on the laptop.
+
+A laptop reader therefore does not show less than the truth. It shows a confident zero, which is
+worse — the same defect `_drain_ledger` was already fixed for by going through
+`scripts/engine_failover.py` instead of the local store (`prospector/ops/console_api.py:1459`).
+Anything that answers "how is the business doing" must read production, not `store_root()`.
+
+Two traps still guard the store path itself, and both survive the move unchanged.
 
 1. **Git does not carry secrets.** The live checkout has no `.env` of its own. The first thing the
    move did was bench every MiniMax tier with `ProviderExhaustedError: All operators in ('minimax',
@@ -50,8 +66,8 @@ one.
    both.
 2. **A store path derived from `__file__` follows the CODE, not the store.** Four constants did
    exactly that, so for twenty minutes the provider health marks, the retrieval cache and the
-   scheduler audit trail were written beside the new code while the ledger went to the canonical
-   store. `config.store_root()` is the one resolver now; anything needing a store path at module
+   scheduler audit trail were written beside the new code while the ledger went to the store
+   `PROSPECTOR_STORE_DIR` named. `config.store_root()` is the one resolver now; anything needing a store path at module
    level calls it — the health file records which brains are benched, and a daemon writing one
    copy while a probe reads another can never see a provider recover.
 
