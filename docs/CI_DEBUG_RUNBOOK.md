@@ -228,6 +228,30 @@ Then prove it landed. A dispatch that succeeds is still a shape:
 fly releases -a prospector-engine | head -3
 ```
 
+### "Lots of workflows say they need manual approval"
+
+They do not need approving, and approving them changes nothing. This is the **ghost run** wearing
+its UI costume: GitHub renders a zero-job `action_required` run as "This workflow requires
+approval from a maintainer".
+
+Measured 2026-08-19: three runs in that state. Every one had `actor: github-actions[bot]`,
+`conclusion: action_required` and **zero jobs**, and every one was created 3–5 seconds AFTER a
+`workflow_dispatch` run at the same head that was the real, running one. Repo settings were not
+the cause and are clean: `allowed_actions: all`, fork access `none`, no environment reviewers.
+
+```bash
+gh api "repos/chidionyema/prospector/actions/runs?per_page=100"   -q '.workflow_runs[]|select(.conclusion=="action_required")|.name+" | "+.actor.login+" | "+.head_branch'
+gh api repos/chidionyema/prospector/actions/runs/<id>/jobs -q .total_count    # 0 == ghost
+```
+
+The cause: `automerge.yml` updates PR branches with `secrets.GITHUB_TOKEN`, and GitHub refuses to
+build a push made with that token — it mints the approval-shaped stub instead. automerge already
+compensates with a `workflow_dispatch`, so nothing is blocked. The real cost is that the ghost
+sorts NEWEST, so any tool reading "the latest run at this head" reports a green PR as pending.
+
+The clean fix is to push branch updates with `GITHUB_RUNNER_PAT` instead. A PAT push starts a real
+run, which removes both the ghost and the compensating dispatch. Not landed.
+
 ### "A run exists but has no jobs / there is no check at all"
 
 That is a **ghost run**. GitHub refuses to build a push made with the default `GITHUB_TOKEN`,
