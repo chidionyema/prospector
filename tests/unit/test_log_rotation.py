@@ -458,3 +458,51 @@ def test_a_bare_run_still_works_without_the_variable_set(tmp_path, monkeypatch):
     result = run(config, tmp_path)
     assert result["status"] == "findings", result
     assert any("backup.log" in f["where"] for f in result["findings"]), result["findings"]
+
+
+def test_a_file_git_tracks_is_never_pruned(tmp_path, monkeypatch):
+    """The first --fix run deleted six committed files: ~/.hermes/backups/*.bak are in git
+    and the declaration named them by glob. `git checkout` brought them back, so nothing was
+    lost that time. Skipping a `.git` path segment protects the object store and says nothing
+    about a tracked file in an ordinary directory."""
+    import subprocess
+
+    from ops.automations.log_rotation import _tracked_under
+    _tracked_under.cache_clear()
+
+    repo = tmp_path / "repo"
+    (repo / "backups").mkdir(parents=True)
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    committed = repo / "backups" / "state.db.bak"
+    scratch = repo / "backups" / "scratch.db.bak"
+    for path in (committed, scratch):
+        path.write_text("x")
+        _aged(path, days=90)
+    subprocess.run(["git", "-C", str(repo), "add", "backups/state.db.bak"], check=True)
+
+    found = resolve_prune(PruneTarget(path=str(repo / "backups" / "*.bak"),
+                                      older_than_days=30), tmp_path)
+    assert found == [scratch], found
+    _tracked_under.cache_clear()
+
+
+def test_when_git_cannot_answer_nothing_is_pruned(tmp_path, monkeypatch):
+    """Cannot-establish is a refusal, not a green light. If the tool that knows what is in
+    version control will not answer, deleting anyway is the incident this fence prevents,
+    with the evidence removed."""
+    import subprocess as sp
+
+    from ops.automations import log_rotation as engine
+    engine._tracked_under.cache_clear()
+
+    old = tmp_path / "old.log"
+    old.write_text("x")
+    _aged(old, days=90)
+
+    def broken(*a, **kw):
+        raise OSError("git is not installed")
+    monkeypatch.setattr(engine.subprocess, "run", broken)
+
+    assert engine.resolve_prune(PruneTarget(path=str(tmp_path / "*.log"),
+                                            older_than_days=30), tmp_path) == []
+    engine._tracked_under.cache_clear()

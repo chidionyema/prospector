@@ -109,6 +109,9 @@ prune:
       think was running", and it is cheap.
     keep_newest: 10
 
+  # These are git-TRACKED in ~/.hermes. The first --fix run deleted six of them and
+  # `git checkout` brought them all back, which is why resolve_prune now refuses any file
+  # git tracks. The target stays declared so an UNtracked .bak still ages out.
   - path: ~/.hermes/backups/*.bak
     why: >
       One-off snapshots taken by hand during migrations. Five of them are dated 2026-06-22.

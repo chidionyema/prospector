@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import gzip
+import functools
 import json
 import os
 import shutil
@@ -255,6 +256,41 @@ def _bound(entry: dict[str, Any]) -> str:
     return " + ".join(parts) or "no bound"
 
 
+@functools.lru_cache(maxsize=64)
+def _tracked_under(directory: str) -> frozenset[str] | None:
+    """Absolute paths git tracks in the repository containing `directory`.
+
+    Returns an EMPTY set when the directory is not in a repository — nothing is tracked
+    there, so nothing is protected by this fence. Returns None when the answer cannot be
+    established at all, and the caller then deletes nothing: an unanswerable question about
+    whether a file is in version control is not permission to delete it.
+
+    Added 2026-08-19 after the first --fix run deleted six files that git tracked:
+    ~/.hermes/backups/*.bak are committed, and the declaration named them by glob. They
+    came back with one `git checkout`, so nothing was lost — but the next such target
+    might be in a repo with no remote, and the fence has to exist before that happens,
+    not after.
+
+    Skipping a `.git` path segment was never enough. That protects the object store; it
+    says nothing about a tracked file sitting in an ordinary directory, which is what a
+    log-shaped glob will find.
+    """
+    try:
+        top = subprocess.run(["git", "-C", directory, "rev-parse", "--show-toplevel"],
+                             capture_output=True, text=True, timeout=20)
+        if top.returncode != 0:
+            return frozenset()          # not a repository: a real answer, not a failure
+        root_dir = top.stdout.strip()
+        listed = subprocess.run(["git", "-C", root_dir, "ls-files", "-z"],
+                                capture_output=True, text=True, timeout=60)
+        if listed.returncode != 0:
+            return None
+        return frozenset(str(Path(root_dir) / rel)
+                         for rel in listed.stdout.split("\0") if rel)
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
 def resolve_prune(target: PruneTarget, root: Path) -> list[Path]:
     """Every regular file the target names. Three structural fences, none of them optional:
 
@@ -278,6 +314,9 @@ def resolve_prune(target: PruneTarget, root: Path) -> list[Path]:
         if path.is_symlink() or not path.is_file():
             continue
         if any(path.match(pat) for pat in target.exclude):
+            continue
+        tracked = _tracked_under(str(path.parent))
+        if tracked is None or str(path) in tracked:
             continue
         out.append(path)
     return sorted(out)
