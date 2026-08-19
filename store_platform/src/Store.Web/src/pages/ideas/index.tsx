@@ -105,7 +105,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
       },
     };
   } catch (error) {
-    console.error('/collections: catalog fetch failed:', error);
+    console.error('/ideas: catalog fetch failed:', error);
     return { props: { total: 0, categories: [], variant } };
   }
 };
@@ -133,7 +133,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
 
   return (
     <MarketingLayout
-      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Good for' }]}
+      breadcrumbs={[{ href: '/', label: 'Catalogue' }, { href: '#', label: 'Categories' }]}
       breadcrumbsWidth="7xl"
     >
       <Seo
@@ -141,12 +141,12 @@ export default function IdeasHub({ categories, total, variant }: Props) {
         description="Browse researched business ideas by industry. Every pack cites a source for every claim."
         jsonLd={graph(
           itemListNode(
-            categories.map((c) => ({ name: c.h1, path: `/collections/${c.slug}` })),
+            categories.map((c) => ({ name: c.h1, path: `/ideas/${c.slug}` })),
             'Business idea categories',
           ),
           breadcrumbNode([
             { name: 'Mumchimp', path: '/' },
-            { name: 'Business ideas', path: '/collections' },
+            { name: 'Business ideas', path: '/ideas' },
           ]),
         )}
       />
@@ -160,9 +160,9 @@ export default function IdeasHub({ categories, total, variant }: Props) {
        * heading described one sixth of what was under it.
        *
        * It also left the site calling this one destination three things at once: the nav item says
-       * "Categories", the pack breadcrumb says "Browse by category", the URL says `/collections`, and the
-       * h1 said "ideas by industry". The URL is the one that cannot move cheaply -- `/collections` and
-       * all fourteen `/collections/<slug>` pages are emitted into the sitemap (`sitemap.xml.tsx:26,110`)
+       * "Categories", the pack breadcrumb says "Browse by category", the URL says `/ideas`, and the
+       * h1 said "ideas by industry". The URL is the one that cannot move cheaply -- `/ideas` and
+       * all fourteen `/ideas/<slug>` pages are emitted into the sitemap (`sitemap.xml.tsx:26,110`)
        * and are built to rank for "business ideas" -- so the fix is the words, and the h1 now
        * carries BOTH nouns: the search phrase the URL targets, and the one the chrome uses.
        *
@@ -172,7 +172,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
        */}
       <PageHero
         width="7xl"
-        eyebrow="Good for"
+        eyebrow="Categories"
         title="Find one that suits how you work."
         /*
          * THE WORDS ARE THE FOUNDER'S AND THEY STAY (2026-08-15), and this is the promised fix.
@@ -192,7 +192,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
          */
         lead={
           total > 0
-            ? `${total} researched packs, sorted six ways.`
+            ? `${total} packs, researched and sorted six ways.`
             : 'Researched packs, sorted six ways.'
         }
         aside={
@@ -297,9 +297,13 @@ export default function IdeasHub({ categories, total, variant }: Props) {
         )}
 
         {filtered.length > 0 && (
-          <h2 className={search ? 'mb-4 text-meta font-semibold text-text' : 'sr-only'}>
-            {search ? `${filtered.length} matching categor${filtered.length === 1 ? 'y' : 'ies'}` : 'All categories'}
-          </h2>
+          search ? (
+            <h2 className="mb-4 text-meta font-semibold text-text">
+              {`${filtered.length} matching categor${filtered.length === 1 ? 'y' : 'ies'}`}
+            </h2>
+          ) : (
+            <h2 aria-label="All categories" />
+          )
         )}
 
         {/*
@@ -333,7 +337,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
         {filtered.length > 0 ? (
           <CategoryGraph
             grouped={!search}
-            filterPath={(slug) => `/collections/${slug}`}
+            filterPath={(slug) => `/ideas/${slug}`}
             categories={
               filtered.map((cat) => ({
                 kind: cat.slug,
@@ -402,7 +406,7 @@ export default function IdeasHub({ categories, total, variant }: Props) {
         <div className="closing">
           <p>
             Categories appear once enough packs have cleared the checks to fill them. Ideas that failed are in the{' '}
-            <Link href="/kill-log" className={textLinkClass('font-medium')}>
+            <Link href="/kill-log" prefetch={false} className={textLinkClass('font-medium')}>
               kill log
             </Link>{' '}
             with the sourced reason why.

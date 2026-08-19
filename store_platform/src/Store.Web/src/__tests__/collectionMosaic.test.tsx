@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { CollectionMosaic, bandFor, type MosaicTile } from '@/components/marketing/CollectionMosaic';
 
 /**
- * THE MOSAIC (MASTER-BRIEF §7 `/collections`).
+ * THE MOSAIC (MASTER-BRIEF §7 `/ideas`).
  *
  * Three properties, and each one is a defect the brief names: tiles sized by pack count, the SHORT
  * display name rendered rather than the SEO h1 the live page truncated to "Busin…", and every tile
@@ -63,8 +63,8 @@ describe('the mosaic', () => {
   });
 
   it('links every tile to a pre-filtered catalogue URL', () => {
-    expect(html).toContain('href="/collections/big"');
-    expect(html).not.toContain('/ideas/');
+    expect(html).toContain('href="/ideas/big"');
+    expect(html).not.toContain('/collections/');
   });
 
   it('states the count on every tile, and gets the singular right', () => {

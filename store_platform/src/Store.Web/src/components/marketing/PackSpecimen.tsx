@@ -199,7 +199,7 @@ export function PackSpecimen({ className }: { className?: string }) {
           <p className="elide">…{sentenceTail(plainEnglish(PRECEDING?.rationale ?? ''))}</p>
 
           <div className="check-h">
-            <h4>{FAILED?.name}</h4>
+            <h3>{FAILED?.name}</h3>
             {/* The caps are in the VALUE, not in a class. `__tests__/weightAndCasePolicy.test.ts`
                 bans `text-transform`: a CSS-uppercased string is copied, read aloud and indexed in
                 its original case, so the markup and the screen would disagree. */}
@@ -244,14 +244,14 @@ export function PackSpecimen({ className }: { className?: string }) {
            than one source and open every one. The link is `SourceChip`, which is the only way this
            site draws an openable source (`__tests__/sourceChipIsTheOnlyOne.test.ts`). */
         <div className="othersrc">
-          <h5>The other {restSources.length} sources behind this one check</h5>
+          <h3>The other {restSources.length} sources behind this one check</h3>
           <ol>
             {restSources.map((s, i) => {
               const title = slugTitle(s.url);
               return (
                 <li key={s.url}>
                   <span className="i">{i + 2}</span>
-                  <span>
+                  <span className="min-w-0 break-words">
                     <SourceChip url={s.url} host={sourceHost(s.url)} variant="link" />
                     {title ? `, ${title}` : ''}
                   </span>

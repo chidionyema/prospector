@@ -24,7 +24,7 @@ function existsRelative(relativePath: string): boolean {
  */
 describe('N3 - Bespoke category icons', () => {
   const componentExists = existsRelative('../components/marketing/BespokeIcon.tsx');
-  const page = readSource('../pages/collections/index.tsx');
+  const page = readSource('../pages/ideas/index.tsx');
 
   it('declares a BespokeIcon component', () => {
     expect(
@@ -64,12 +64,12 @@ describe('N3 - Bespoke category icons', () => {
   });
 
   /*
-   * WAS: "/collections page renders BespokeIcon in the category rows" -- asserting `<BespokeIcon` in
-   * `pages/collections/index.tsx`. That assertion was green for months against a page on which the
+   * WAS: "/ideas page renders BespokeIcon in the category rows" -- asserting `<BespokeIcon` in
+   * `pages/ideas/index.tsx`. That assertion was green for months against a page on which the
    * icons never once drew a category shape, and this is the receipt:
    *
    *   `ICON_MAP` (BespokeIcon.tsx:132) is keyed on short kinds -- `evenings`, `developers`,
-   *   `marketplace`, `trades`, `b2b`. `/collections` passed the LANDING SLUG -- `evening-business-ideas`,
+   *   `marketplace`, `trades`, `b2b`. `/ideas` passed the LANDING SLUG -- `evening-business-ideas`,
    *   `business-ideas-for-developers`, `marketplace-and-broker-ideas` (landings.ts:67-242). Not one
    *   of the 16 slugs is a key in that map, so every call took `?? DefaultIcon` (BespokeIcon.tsx:166)
    *   and all 14 rendered tiles drew the SAME mark. The test could not see it because it looked for
@@ -86,9 +86,9 @@ describe('N3 - Bespoke category icons', () => {
    * and its shapes are intact and still tested (the three cases above), and the page does not claim
    * an identification it cannot make. Flagged to the founder rather than removed quietly, per the
    * no-silent-feature-removal rule -- the shapes are still here the day a designer draws the
-   * missing seven and the map is keyed on something `/collections` actually passes.
+   * missing seven and the map is keyed on something `/ideas` actually passes.
    */
-  it('/collections does not decorate its rows with an icon that cannot identify a category', () => {
+  it('/ideas does not decorate its rows with an icon that cannot identify a category', () => {
     if (!componentExists) return;
     const iconSource = readSource('../components/marketing/BespokeIcon.tsx');
     const mapBody = iconSource.slice(iconSource.indexOf('const ICON_MAP'));

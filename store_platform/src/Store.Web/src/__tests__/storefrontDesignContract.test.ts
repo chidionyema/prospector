@@ -665,7 +665,7 @@ describe('Design contract — primary CTAs', () => {
      *
      *   #171717 vs #52525b -> 2.32:1     (needs 3.00:1 when colour is the only cue)
      *
-     * So 20 links across /terms, /refund, /privacy, /faq and /collections were, on a phone, ink-coloured
+     * So 20 links across /terms, /refund, /privacy, /faq and /ideas were, on a phone, ink-coloured
      * words in a grey paragraph with nothing marking them as clickable. `textLinkClass` pairs the
      * accent with an underline that is always drawn, so the cue never depends on a hover.
      */

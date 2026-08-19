@@ -66,11 +66,10 @@ export function IdenticalContentsMatrix({
        styles. It stays a real table: the caption and the column headers are what make a grid of
        marks readable to a screen reader, and the drawing has neither. */
     <figure className={cx('matrix overflow-x-auto', className)}>
-      <table className="w-full min-w-[38rem] border-collapse text-left">
-        <caption className="sr-only">
-          {`Every pack contains the same ${documents} documents, at every price. The price reflects the
-            market the idea sits in, not the size of the pack.`}
-        </caption>
+      <table
+        className="w-full border-collapse text-left"
+        aria-label={`Every pack contains the same ${documents} documents, at every price. The price reflects the market the idea sits in, not the size of the pack.`}
+      >
         <thead>
           <tr className="border-b border-border">
             <th scope="col" className="py-2 pr-4 text-caption font-medium text-subtle">Price</th>
@@ -93,7 +92,7 @@ export function IdenticalContentsMatrix({
                   {rung.description}
                 </td>
               )}
-              <td className="py-3 pr-4">
+              <td className="py-3 pr-4" aria-label={`All ${documents} documents included`}>
                 {/* NEUTRAL INK, NOT TEAL. §2 gives teal one meaning -- an idea survived the filter
                     -- and a document is not an idea. A tick here in the survivor colour would put
                     a verdict on a contents list. */}
@@ -105,7 +104,6 @@ export function IdenticalContentsMatrix({
                     <i key={i} className="bg-text" />
                   ))}
                 </span>
-                <span className="sr-only">{`All ${documents} documents included`}</span>
               </td>
               <td className="py-3 text-right font-mono text-caption tabular-nums text-subtle">
                 {rung.count}

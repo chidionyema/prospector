@@ -78,7 +78,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
           {range ? priceSentence(range) : 'One payment, yours forever. The price is on each pack\'s own page.'}{' '}
           If a pack survives the checks
           it is listed. If it does not, it is in the{' '}
-          <Link href="/kill-log" className={textLinkClass()}>
+          <Link href="/kill-log" prefetch={false} className={textLinkClass()}>
             kill log
           </Link>
           .
@@ -188,7 +188,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
               <li key={item.section} className="docitem">
                 <span className="i num">{String(i + 1).padStart(2, '0')}</span>
                 <div className="min-w-0">
-                  <h5>{item.title}</h5>
+                  <h3>{item.title}</h3>
                   <p>{item.desc}</p>
                 </div>
               </li>
@@ -231,7 +231,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
               <div key={item.title} className="checkrow">
                 <span aria-hidden className="i">×</span>
                 <div className="min-w-0">
-                  <h5>{item.title}</h5>
+                  <h3>{item.title}</h3>
                   <p>{item.body}</p>
                 </div>
               </div>
@@ -296,7 +296,7 @@ export default function PricingPage({ range, ladder }: { range: PriceRange | nul
                   `kill-log-totals.json`, so this one number drifted the moment the engine ran
                   again -- on the page whose whole subject is what the price buys. */}
               origin. The {killTotals.killed.toLocaleString('en-GB')} ideas we killed are in the{' '}
-              <Link href="/kill-log" className={textLinkClass()}>
+              <Link href="/kill-log" prefetch={false} className={textLinkClass()}>
                 kill log
               </Link>
               .

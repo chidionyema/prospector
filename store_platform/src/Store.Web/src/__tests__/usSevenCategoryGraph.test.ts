@@ -11,9 +11,9 @@ function existsRelative(relativePath: string): boolean {
 }
 
 /**
- * US-7 — Category graph on /collections.
+ * US-7 — Category graph on /ideas.
  *
- * The audit (§4.5) found the /collections page rendered 16 category cards in a single
+ * The audit (§4.5) found the /ideas page rendered 16 category cards in a single
  * column, each one nearly identical to the next. The descriptions were repetitive
  * (every one restated "£49 per pack · every claim sourced"), and the buyer could
  * not tell "Business ideas for developers" from "Business ideas for operators"
@@ -23,9 +23,9 @@ function existsRelative(relativePath: string): boolean {
  * by relatedness. Tapping a node filters the catalogue. The graph falls back
  * to the existing flat list when the SVG cannot be rendered.
  */
-describe('US-7 — Category graph on /collections', () => {
+describe('US-7 — Category graph on /ideas', () => {
   const graphExists = existsRelative('../components/discovery/CategoryGraph.tsx');
-  const page = readSource('../pages/collections/index.tsx');
+  const page = readSource('../pages/ideas/index.tsx');
 
   it('declares a CategoryGraph component', () => {
     expect(graphExists, 'components/discovery/CategoryGraph.tsx must exist').toBe(true);
@@ -98,24 +98,24 @@ describe('US-7 — Category graph on /collections', () => {
     ).toBe(true);
   });
 
-  it('/collections page renders the CategoryGraph', () => {
-    // The /collections page must use the graph, not just the flat list.
+  it('/ideas page renders the CategoryGraph', () => {
+    // The /ideas page must use the graph, not just the flat list.
     if (!graphExists) return;
     const usesGraph = /<CategoryGraph\b/.test(page) || /CategoryGraph\b/.test(page);
     expect(
       usesGraph,
-      'pages/collections/index.tsx must render <CategoryGraph> (or import + use it)',
+      'pages/ideas/index.tsx must render <CategoryGraph> (or import + use it)',
     ).toBe(true);
   });
 
-  it('/collections page keeps the flat-list fallback', () => {
+  it('/ideas page keeps the flat-list fallback', () => {
     // The audit: "falls back to the existing flat list if the graph cannot be
     // rendered." The page must still render the existing list of category cards,
     // either as a fallback inside CategoryGraph or as a sibling surface.
     const keepsFlatList = /All categories/.test(page);
     expect(
       keepsFlatList,
-      'pages/collections/index.tsx must keep the "All categories" flat list as a fallback',
+      'pages/ideas/index.tsx must keep the "All categories" flat list as a fallback',
     ).toBe(true);
   });
 });

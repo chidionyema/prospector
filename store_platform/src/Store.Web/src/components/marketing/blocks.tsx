@@ -184,7 +184,7 @@ export function PageHero({
   /**
    * A SECOND COLUMN, beside the headline, on large screens only.
    *
-   * WHY THIS EXISTS (2026-08-16, founder on /collections and /kill-log: "right first row/ish empty no
+   * WHY THIS EXISTS (2026-08-16, founder on /ideas and /kill-log: "right first row/ish empty no
    * content, looks odd on desktop", and "the empty hero only happens on desktop... its the right
    * section only"). Both halves of that report are exactly right, and the second half is the
    * diagnosis. The measure below is `max-w-[46rem]` and every page that reported this sets the
@@ -226,7 +226,7 @@ export function PageHero({
   // `animate-settle`, not `animate-rise`. A page hero is by definition the largest thing above
   // the fold, so it is the LCP element on every route that uses this component, and `rise`
   // fades in from opacity 0 -- which is not LCP-eligible. Measured: /how-it-works 1824ms and
-  // /collections 1860ms LCP against 164ms and 208ms first paint (F-005).
+  // /ideas 1860ms LCP against 164ms and 208ms first paint (F-005).
   /* The breadcrumb reads "Catalogue / <page>". The eyebrow is already that page's own name on
      every page that sets one, so it is the default rather than a second thing to keep in step; a
      page with no eyebrow gets no crumb rather than an invented one. */
@@ -295,7 +295,7 @@ export function PageHero({
  *
  * All three pages that reported an empty right column have the same thing to put in it -- a short
  * enumeration the left column either names without showing (the six checks on /how-it-works) or
- * states as an undifferentiated run-on (the six sort axes on /collections, which a previous pass already
+ * states as an undifferentiated run-on (the six sort axes on /ideas, which a previous pass already
  * diagnosed as "not the sentence, it is that a 34-word enumeration is being drawn as one
  * paragraph of lead type. Fix the setting, not the words"). One component so the three cannot
  * drift into three treatments of the same object.

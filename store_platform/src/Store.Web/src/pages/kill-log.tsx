@@ -240,7 +240,7 @@ export default function KillLogPage({
           centred 62ch paragraph over a centred stat row gives the reader three different left
           edges to find in the first screen of a page that is otherwise a table. */}
       {/* TWO COLUMNS ON DESKTOP (2026-08-16, founder: "right first row/ish empty no content, looks
-          odd on desktop"). Same diagnosis as /collections and /how-it-works -- a 3xl measure inside a 6xl
+          odd on desktop"). Same diagnosis as /ideas and /how-it-works -- a 3xl measure inside a 6xl
           band leaves about 24rem of nothing to the right of the headline, and only above `lg`,
           which is why the report was desktop-only. This page does not use `PageHero`, so it takes
           the same grid by hand rather than adopting the component: the hero here is four blocks in
@@ -499,31 +499,36 @@ export default function KillLogPage({
             placeholder="Search kills by title, description, or reason…"
             className="mb-4"
           />
-          {/* THE DRAWING'S `.chips` RAIL (`mockups/kill-log.html`, `.chips{display:flex;gap:8px;
-              flex-wrap:wrap;margin:18px 0}` and `.chip[aria-pressed=true]` for the selected one).
-              The gap and the selected state were Tailwind utilities holding the same numbers. */}
-          <div className="chips">
-            <button
-              type="button"
-              onClick={() => setActive(null)}
-              aria-pressed={active === null}
-              className="chip"
-            >
-              {/* "All 400" directly under a headline saying 1,330 read as a contradiction. It is
-                  all of what is PUBLISHED, and the chip now says which. */}
-              All {publishedKills} published
-            </button>
-            {gates.map((label) => (
+          {/* THE DARK FILTER STRIP (`mumchimp.css:252-258`). These were pale `.chip` pills on
+              paper, which read as the same control as the Sort row below them and disappeared
+              into the page on a phone. The strip is `.strip.filterstrip > .strip-in`, it sticks
+              to the top of the viewport while the table scrolls, and its own `overflow-x:auto`
+              is what lets a long gate list scroll instead of widening the page. The count is a
+              `.n` inside the chip, not part of its label. */}
+          <div className="strip filterstrip">
+            <div className="strip-in flex-wrap">
               <button
-                key={label}
                 type="button"
-                onClick={() => setActive(label === active ? null : label)}
-                aria-pressed={label === active}
-                className="chip"
+                onClick={() => setActive(null)}
+                aria-pressed={active === null}
+                className="dchip"
               >
-                {label} {gateCounts[label]}
+                {/* "All 400" directly under a headline saying 1,330 read as a contradiction. It is
+                    all of what is PUBLISHED, and the chip now says which. */}
+                All published <span className="n num">{publishedKills}</span>
               </button>
-            ))}
+              {gates.map((label) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => setActive(label === active ? null : label)}
+                  aria-pressed={label === active}
+                  className="dchip"
+                >
+                  {label} <span className="n num">{gateCounts[label]}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -595,7 +600,7 @@ export default function KillLogPage({
                   className="klrow scroll-mt-24 cursor-pointer"
                   onClick={() => toggle(entry.slug, entry.gateLabel)}
                 >
-                    <h4>
+                    <h3>
                       <button
                         type="button"
                         aria-expanded={isOpen}
@@ -609,13 +614,15 @@ export default function KillLogPage({
                         /* `.klrow h4` owns the size, weight and leading. The mono/caption/muted
                            utilities that used to set them here are removed rather than layered:
                            mumchimp.css sits in `layer(components)` (globals.css:8), under the
-                           utilities, so leaving one in place makes the class inert. The
-                           strike-through stays -- it is what says "this one is dead". */
-                        className="text-left line-through decoration-kill/60"
+                           utilities, so leaving one in place makes the class inert. NO
+                           STRIKE-THROUGH: it is not in the drawing, it reads as a price
+                           correction rather than a verdict, and the row already says the idea
+                           was killed and on which gate. */
+                        className="text-left"
                       >
                         {entry.title}
                       </button>
-                    </h4>
+                    </h3>
                       {/* THE ARGUMENT IS THE ROW (MASTER-BRIEF §7). Before this, a row carried a
                           title and a cause label, and the reasoning was behind a click. That makes
                           400 rows of assertion: the reader is told an idea failed on incumbency and

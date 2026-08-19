@@ -587,7 +587,11 @@ function RecentlyViewed({
     .slice(0, 3)
     .map((id) => packs.find((p) => p.id === id))
     .filter((p): p is Pack => !!p);
-  if (items.length === 0) return null;
+  // A FULL STRIP OF THREE, OR NOTHING. A reader who has opened one pack got a labelled
+  // section with a single row in it, directly above the shelf -- two bordered row
+  // containers in one vertical run, which is what A10 forbids, and the shelf already
+  // marks that pack "Seen". The row list starts earning its own heading at three.
+  if (items.length < 3) return null;
 
   return (
     <div className="mb-8">
@@ -1699,7 +1703,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
         // DISTINCT FROM THE H1 (founder review, 2026-08-16, item 4). "survived a filter built to
         // kill them" moved to the H1 below because it read stronger there; leaving the same
         // string here would make the browser tab and the page heading identical, which is also
-        // how the two Mumchimp tabs (this page, `/collections`) looked alike next to each other. This
+        // how the two Mumchimp tabs (this page, `/ideas`) looked alike next to each other. This
         // line keeps the tab identifiable by its first few words even before the H1 loads.
         title={`Sourced business ideas, priced and ready to build${
           range ? `, ${range.uniform ? range.label + ' each' : 'from ' + formatGbp(range.min)}` : ''
@@ -2151,7 +2155,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
               {`We have researched ${RESEARCH_STATS.researched.toLocaleString('en-GB')} ideas. ${killsSummary()}, and the evidence behind it.`}
             </p>
             <Link
-              href="/kill-log"
+              href="/kill-log" prefetch={false}
               className="tlink"
             >
               Read the kill log
@@ -2364,7 +2368,7 @@ export default function Home({ packs, stats, flags, initialState, market, curren
           the deleted `CtaBand` carried -- browse the shelf -- with the method as the secondary. The
           kill figure is stated once here, by the terms column, and the standalone
           "Find your next business" band is REMOVED from this page (it survives on /how-it-works,
-          /collections and /collections/[slug], which is where `CtaBand` is still the right closing shape). */}
+          /ideas and /ideas/[slug], which is where `CtaBand` is still the right closing shape). */}
       {/* `band_view` (MASTER-BRIEF section 9). This is the closing band, below the whole shelf,
           so its count against the hero's says how many readers got to the end of the page. */}
       {/* THE SOURCES BAND (mockups/index.html section 12), after the shelf as drawn. The figure is

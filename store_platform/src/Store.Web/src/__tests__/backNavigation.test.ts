@@ -16,7 +16,7 @@ const read = (rel: string) => readFileSync(`${SRC}/${rel}`, 'utf8');
 
 const ROUTES = [
   'pages/about.tsx', 'pages/account/index.tsx', 'pages/faq.tsx',
-  'pages/how-it-works.tsx', 'pages/collections/index.tsx', 'pages/collections/[slug].tsx',
+  'pages/how-it-works.tsx', 'pages/ideas/index.tsx', 'pages/ideas/[slug].tsx',
   'pages/kill-log.tsx', 'pages/orders/[token].tsx', 'pages/orders/success.tsx',
   'pages/pricing.tsx', 'pages/sample.tsx',
 ];

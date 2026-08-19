@@ -26,17 +26,17 @@ export const MARKETING_NAV = [
   // returns home is a convention a reader does not have to be taught; a nav item is not free.
   //
   // The British spelling this comment used to defend still applies wherever the word survives
-  // (the footer, /collections' "Catalogue categories") -- "Catalogue", never "Catalog".
+  // (the footer, /ideas' "Catalogue categories") -- "Catalogue", never "Catalog".
   //
   // Deliberately removed from the LIST rather than filtered at the two render sites: `MARKETING_NAV`
   // feeds both the desktop row (:197) and the mobile sheet (:358), and a filter at one of them is
   // how the two drift apart.
-  // `/collections` is here rather than only in the sitemap because it is the hub every `/collections/<slug>`
+  // `/ideas` is here rather than only in the sitemap because it is the hub every `/ideas/<slug>`
   // landing hangs off: linked from the chrome, each landing is two clicks from the home page
   // instead of being reachable only from a sitemap and its siblings.
   // Label shortened from "Browse by category": at 14px the four-word item was wider than the
   // other three combined, so the nav read as one long phrase rather than four destinations.
-  { href: '/collections', label: 'Good for' },
+  { href: '/ideas', label: 'Categories' },
   { href: '/how-it-works', label: 'How it works' },
   // Promoted out of the footer (2026-08-06). This shop's entire claim is that most ideas are
   // rejected; the log of what got rejected and why is the evidence for that claim, and it was
@@ -53,13 +53,13 @@ export const MARKETING_NAV = [
  * (`/pack` sends people to `/how-it-works`, `/how-it-works` to `/kill-log`, `/kill-log` back to
  * the shelf) that is the single cheapest orientation cue available, and it was absent.
  *
- * PREFIX MATCH, EXCEPT FOR `/`. `/collections/<slug>` has to light up `Collections`, because a landing
+ * PREFIX MATCH, EXCEPT FOR `/`. `/ideas/<slug>` has to light up `Collections`, because a landing
  * page IS the categories section -- an exact match would leave a visitor on the busiest branch of
  * the site with no item lit at all. `/` is special-cased to an exact comparison for the opposite
  * reason: every path on the site starts with a slash, so a prefix rule would mark `Catalogue`
  * active on all five pages and the state would carry no information.
  *
- * Compared against `router.pathname`, the ROUTE pattern (`/collections/[slug]`), not `asPath`: `asPath`
+ * Compared against `router.pathname`, the ROUTE pattern (`/ideas/[slug]`), not `asPath`: `asPath`
  * carries the query string, so `/?search=1` -- which the header's own search button navigates to
  * from every other page -- would stop matching `/` and the item would go dark at the exact moment
  * the visitor arrived at the catalogue.
@@ -361,9 +361,9 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
             <div className="f-col">
               <p className="colh">Store</p>
               <Link href="/">Catalogue</Link>
-              <Link href="/collections">Good for</Link>
+              <Link href="/ideas">Categories</Link>
               <Link href="/how-it-works">How it works</Link>
-              <Link href="/kill-log">Kill log</Link>
+              <Link href="/kill-log" prefetch={false}>Kill log</Link>
               <Link href="/about">Who makes this</Link>
               <Link href="/faq">FAQ</Link>
             </div>
@@ -380,7 +380,7 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
                 <Link className="btn sm" href="/">
                   Browse
                 </Link>
-                <Link className="tlink" href="/kill-log" style={{ alignSelf: 'center' }}>
+                <Link className="tlink" href="/kill-log" prefetch={false} style={{ alignSelf: 'center' }}>
                   See what we killed
                 </Link>
               </div>

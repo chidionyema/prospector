@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { cx } from '@/components/ui/cx';
 
 /**
- * THE MOSAIC (MASTER-BRIEF §7 `/collections`): tiles sized by pack count.
+ * THE MOSAIC (MASTER-BRIEF §7 `/ideas`): tiles sized by pack count.
  *
  * A grid of equal tiles says every collection is the same size. They are not: measured against the
  * live shelf, the largest holds several times what the smallest does, and a reader choosing where
@@ -100,7 +100,7 @@ export function CollectionMosaic({ tiles, className }: CollectionMosaicProps) {
         return (
           <li key={tile.slug} className="flex" style={{ flex: tileFlex(tile.count) }}>
             <Link
-              href={`/collections/${tile.slug}`}
+              href={`/ideas/${tile.slug}`}
               title={tile.longName}
               /* The accessible name is the LONG one. A screen reader user hearing "Evenings, 12
                  packs" out of context has less than a sighted reader who can see the heading the
