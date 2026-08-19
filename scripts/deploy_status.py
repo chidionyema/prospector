@@ -102,8 +102,11 @@ DEPLOYABLES: list[dict] = [
         "paths": ["deploy/searxng/**"],
     },
     {
-        "name": "engine-local",
-        "what": "the daemons on this box, from prospector-live",
+        # The engine itself runs on Fly (`prospector-engine`, above). This checkout is the
+        # standby the estate falls back to, so how far behind it is still matters - but it is
+        # not what production runs, and naming it that sends someone to the wrong box.
+        "name": "engine-standby",
+        "what": "the laptop standby checkout (prospector-live), used on failover",
         "app": None,
         "workflow": None,
         "checkout": True,
