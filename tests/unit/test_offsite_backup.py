@@ -10,8 +10,10 @@ No network. The storage client is a stub, and the sources are throwaway files.
 
 from __future__ import annotations
 
+import io
 import json
 import sqlite3
+import tarfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -21,6 +23,7 @@ from ops.automations.offsite_backup import (
     EXIT_FINDINGS,
     EXIT_OK,
     EXIT_UNKNOWN,
+    VERIFY_KINDS,
     CannotEstablish,
     Source,
     _expand,
@@ -89,7 +92,8 @@ def _declaration(tmp_path: Path, **overrides) -> Path:
             "prefix": "offsite/",
         },
         "max_age_hours": 24,
-        "sources": [{"name": "money-db", "key": "money-db/store.db", "fetch": ["true"]}],
+        "sources": [{"name": "money-db", "key": "money-db/store.db", "fetch": ["true"],
+                     "verify": "nonempty"}],
     }
     body.update(overrides)
     path = tmp_path / "decl.yaml"
@@ -209,6 +213,60 @@ def test_an_unknown_verify_kind_is_unknown_not_a_pass(tmp_path):
         verify_copy(_sqlite_file(tmp_path / "store.db"), "vibes")
 
 
+def _keyring_tgz(path: Path) -> Path:
+    """What /internal/backup/keyring returns: a gzipped tar holding the key ring XML."""
+    body = b"<key id='a5' />"
+    with tarfile.open(path, "w:gz") as archive:
+        info = tarfile.TarInfo("keys/key-a5.xml")
+        info.size = len(body)
+        archive.addfile(info, io.BytesIO(body))
+    return path
+
+
+def test_a_good_key_ring_archive_passes(tmp_path):
+    verify_copy(_keyring_tgz(tmp_path / "keyring.tgz"), "tgz")
+
+
+def test_a_truncated_key_ring_archive_is_rejected(tmp_path):
+    # The failure `nonempty` could never see: the download stopped halfway, so the file is
+    # far larger than zero bytes and completely unusable.
+    whole = _keyring_tgz(tmp_path / "keyring.tgz").read_bytes()
+    torn = tmp_path / "torn.tgz"
+    torn.write_bytes(whole[: len(whole) // 2])
+
+    with pytest.raises(CannotEstablish):
+        verify_copy(torn, "tgz")
+
+
+def test_an_archive_holding_nothing_is_not_a_key_ring(tmp_path):
+    empty = tmp_path / "empty.tgz"
+    with tarfile.open(empty, "w:gz"):
+        pass
+
+    with pytest.raises(CannotEstablish, match="no members"):
+        verify_copy(empty, "tgz")
+
+
+def test_the_key_ring_is_graded_by_opening_it_not_by_its_size():
+    """The guard on the declaration, not on the code.
+
+    A working `tgz` kind buys nothing if the key ring is declared `nonempty` again. Losing
+    the Data Protection ring does not lose data, it makes every grant token and cookie
+    undecryptable, so a restore reading from a half-downloaded archive looks successful and
+    hands every buyer a broken link.
+    """
+    import yaml
+
+    declared = yaml.safe_load(
+        (Path(__file__).resolve().parents[2] / "ops/config/offsite_backup.yaml").read_text()
+    )
+    keyring = [s for s in declared["sources"] if s["name"] == "data-protection-keys"]
+    assert keyring, "the key ring source is gone from the declaration"
+    assert keyring[0]["verify"] == "tgz", (
+        "the key ring is graded by size again; a truncated download would count as a backup"
+    )
+
+
 # --- taking a backup ----------------------------------------------------------------------
 
 def test_a_failed_fetch_uploads_nothing(tmp_path):
@@ -267,6 +325,46 @@ def test_a_missing_source_key_is_unknown(tmp_path):
 
     with pytest.raises(CannotEstablish, match="needs `name:` and `key:`"):
         load_declaration(path)
+
+
+def test_a_source_that_states_no_verify_kind_is_refused(tmp_path):
+    """The trap one level under the key ring: `verify:` used to DEFAULT to a size check, so
+    the next source anyone adds — Hermes state is the one queued — would silently be graded
+    by its byte count without anybody choosing that. There is no default now."""
+    path = _declaration(tmp_path, sources=[
+        {"name": "hermes-state", "key": "hermes/coordinator.db", "fetch": ["true"]},
+    ])
+
+    with pytest.raises(CannotEstablish, match="must state `verify:`"):
+        load_declaration(path)
+
+
+def test_a_verify_kind_the_code_cannot_perform_is_refused_at_load(tmp_path):
+    """A typo used to survive the read, download the money database, and only then fail. It
+    is refused when the declaration is parsed, before any work and before the nightly run."""
+    path = _declaration(tmp_path, sources=[
+        {"name": "money-db", "key": "money-db/store.db", "fetch": ["true"],
+         "verify": "sqllite"},
+    ])
+
+    with pytest.raises(CannotEstablish, match="cannot perform"):
+        load_declaration(path)
+
+
+def test_every_kind_the_registry_names_can_actually_be_performed(tmp_path):
+    """`VERIFY_KINDS` is what the loader accepts. If it names a kind `verify_copy` does not
+    implement, the loader waves through a source nothing can grade — the same believed-check
+    defect wearing the opposite hat."""
+    real = tmp_path / "real"
+    real.write_bytes(b"not empty")
+
+    for kind in VERIFY_KINDS:
+        try:
+            verify_copy(real, kind)
+        except CannotEstablish as exc:
+            assert "unknown verify kind" not in str(exc), (
+                f"VERIFY_KINDS names `{kind}` but verify_copy has no branch for it"
+            )
 
 
 def test_exit_codes_are_distinct(tmp_path, monkeypatch, capsys):

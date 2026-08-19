@@ -36,6 +36,7 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
 import urllib.error
@@ -72,6 +73,12 @@ class CannotEstablish(Exception):
     """The check could not run. Reported as `unknown`, never as clean."""
 
 
+# The kinds `verify_copy` can actually perform. The loader refuses anything else, so a typo
+# like `sqllite` fails when the declaration is read rather than after the money database has
+# already been downloaded at 03:00.
+VERIFY_KINDS = ("nonempty", "sqlite", "tgz")
+
+
 @dataclass
 class Source:
     """One thing that must exist in two places."""
@@ -80,7 +87,10 @@ class Source:
     key: str
     fetch: list[str]
     why: str = ""
-    verify: str = "nonempty"
+    # No default on purpose. `nonempty` was the default until 2026-08-19, so a source added
+    # without thinking about verification silently got a size check — and a size check is
+    # believed, which is worse than no check at all. Every source states its own kind.
+    verify: str = ""
     keep: int = DEFAULT_KEEP
     max_age_hours: float = DEFAULT_MAX_AGE_HOURS
 
@@ -151,13 +161,25 @@ def load_declaration(path: Path) -> Declaration:
             raise CannotEstablish(
                 f"source {entry['name']} needs a `fetch:` command as a list of arguments"
             )
+        kind = str(entry.get("verify") or "")
+        if not kind:
+            raise CannotEstablish(
+                f"source {entry['name']} must state `verify:` — one of {', '.join(VERIFY_KINDS)}. "
+                "There is no default: an unstated kind used to mean a size check, and a size "
+                "check passes a download that stopped halfway."
+            )
+        if kind not in VERIFY_KINDS:
+            raise CannotEstablish(
+                f"source {entry['name']} declares `verify: {kind}`, which this automation "
+                f"cannot perform. Valid kinds: {', '.join(VERIFY_KINDS)}."
+            )
         sources.append(
             Source(
                 name=str(entry["name"]),
                 key=str(entry["key"]),
                 fetch=[str(part) for part in fetch],
                 why=str(entry.get("why") or ""),
-                verify=str(entry.get("verify") or "nonempty"),
+                verify=kind,
                 keep=int(entry.get("keep") or DEFAULT_KEEP),
                 max_age_hours=float(entry.get("max_age_hours") or default_age),
             )
@@ -273,7 +295,23 @@ def verify_copy(path: Path, kind: str) -> None:
                 f"the copy failed PRAGMA integrity_check: {verdict[0] if verdict else 'no result'}"
             )
         return
-    raise CannotEstablish(f"unknown verify kind `{kind}` on {path.name}")
+    if kind == "tgz":
+        # `nonempty` graded the key ring until 2026-08-19, and a byte count is not a verdict.
+        # A download that stopped halfway and a gzip stream that ends mid-member are both
+        # larger than zero bytes, so both were recorded as that night's backup. Opening the
+        # archive and reading its index is what proves it can be unpacked on the day a
+        # restore needs it.
+        try:
+            with tarfile.open(path, "r:*") as archive:
+                members = archive.getnames()
+        except (tarfile.TarError, EOFError, OSError) as exc:
+            raise CannotEstablish(f"the copy does not open as a tar archive: {exc}") from exc
+        if not members:
+            raise CannotEstablish(f"the archive opened but holds no members: {path.name}")
+        return
+    raise CannotEstablish(
+        f"unknown verify kind `{kind}` on {path.name}; valid kinds: {', '.join(VERIFY_KINDS)}"
+    )
 
 
 def _dated_key(prefix: str, source: Source, stamp: str) -> str:
