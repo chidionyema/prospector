@@ -1144,6 +1144,10 @@ def _read_method(cfg: Any, args: dict) -> dict:
         "headline": head,
         "stops": snap.get("stops", {}),
         "efficiency": snap.get("efficiency", {}),
+        # Per session, because a monthly average cannot say whether a change helped.
+        # Only the most recent rows travel: the console is a dashboard, not an export.
+        "compliance": snap.get("compliance", {}),
+        "sessions": (snap.get("sessions") or [])[:12],
         "predictions": snap.get("predictions", []),
         "themes": themes,
         "mechanisms": snap.get("mechanisms", []),

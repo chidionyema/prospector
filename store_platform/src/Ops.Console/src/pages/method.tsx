@@ -51,6 +51,27 @@ type MethodView = {
     orphaned_mechanisms: number;
     output_tokens_per_call: number | null;
   };
+  compliance?: {
+    sessions: number;
+    unit?: string;
+    sessions_over_85k_resident?: number;
+    sessions_over_140k_resident?: number;
+    median_peak_resident?: number;
+    readonly_streaks?: number;
+    median_calls_per_request?: number;
+    notes?: Record<string, string>;
+    note?: string;
+  };
+  sessions?: {
+    session: string;
+    date: string | null;
+    requests: number;
+    tool_calls: number;
+    calls_per_request: number;
+    peak_resident: number;
+    readonly_streaks: number;
+    output_tokens: number;
+  }[];
   efficiency?: {
     unit: string;
     note: string;
@@ -177,6 +198,63 @@ export default function Method() {
               </div>
             ))}
           </div>
+        </Card>
+      ) : null}
+
+      {data.compliance?.sessions ? (
+        <Card title="Session discipline">
+          <Note>
+            One row per session, because a monthly average cannot say whether a change helped.
+            The thresholds are the founder&rsquo;s own: take the /clear safe point at ~85K
+            resident context, immediately at ~140K. Cost per request scales with resident size,
+            so the tail of a long session is where the money goes.
+          </Note>
+          <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-4">
+            <Row label="Sessions graded">{data.compliance.sessions}</Row>
+            <Row label="Past 85K">{data.compliance.sessions_over_85k_resident ?? '—'}</Row>
+            <Row label="Past 140K">{data.compliance.sessions_over_140k_resident ?? '—'}</Row>
+            <Row label="Median peak">
+              {(data.compliance.median_peak_resident ?? 0).toLocaleString()}
+            </Row>
+          </div>
+          {data.sessions?.length ? (
+            <Scroll>
+              <table className="mt-3 w-full text-[13px]">
+                <thead className="text-subtle">
+                  <tr>
+                    <th className="py-1 text-left font-[520]">date</th>
+                    <th className="py-1 text-left font-[520]">session</th>
+                    <th className="py-1 text-right font-[520]">round trips</th>
+                    <th className="py-1 text-right font-[520]">peak resident</th>
+                    <th className="py-1 text-right font-[520]">read-only runs</th>
+                    <th className="py-1 text-right font-[520]">output tokens</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.sessions.map((s) => (
+                    <tr key={s.session} className="border-t border-border">
+                      <td className="py-1.5 font-mono">{s.date ?? '—'}</td>
+                      <td className="py-1.5 font-mono text-subtle">{s.session}</td>
+                      <td className="py-1.5 text-right">{s.requests.toLocaleString()}</td>
+                      <td
+                        className={
+                          'py-1.5 text-right font-[560] ' +
+                          (s.peak_resident >= 140000 ? 'text-bad-strong' : '')
+                        }
+                      >
+                        {s.peak_resident.toLocaleString()}
+                      </td>
+                      <td className="py-1.5 text-right">{s.readonly_streaks}</td>
+                      <td className="py-1.5 text-right">{s.output_tokens.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Scroll>
+          ) : null}
+          {data.compliance.notes
+            ? Object.values(data.compliance.notes).map((n) => <Note key={n}>{n}</Note>)
+            : null}
         </Card>
       ) : null}
 
