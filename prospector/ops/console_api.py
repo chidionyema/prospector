@@ -3048,6 +3048,10 @@ TOOLS: list[dict] = [
        cmd=".venv/bin/python -m prospector.run diagnose"),
     _t("scripts/process_audit.py", "Grade every automated job on this estate", False,
        "/processes", cmd=".venv/bin/python scripts/process_audit.py"),
+    _t("scripts/checkout_currency.py", "Is the shared checkout on main (stale rules brief every session)",
+       False, "/processes", cmd=".venv/bin/python scripts/checkout_currency.py"),
+    _t("scripts/rework_metrics.py", "Rework rate: the guard beside the cost scoreboard",
+       False, "/method", cmd=".venv/bin/python scripts/rework_metrics.py"),
     _t("scripts/workflow_health.py", "Are any CI workflows dead or disabled?", False,
        "/processes", cmd=".venv/bin/python scripts/workflow_health.py"),
     _t("scripts/main_red.py", "Why is main red, and what fixes it?", False,
@@ -3300,6 +3304,10 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
                                   "same developer's disk as worktree_gc.py. Production runs from "
                                   "a detached mirror of main with no worktrees at all, so this "
                                   "button would always answer nothing",
+    "scripts/worktree_snapshot.py": "copies uncommitted work out of the git worktrees on this "
+                                    "developer laptop. Production is a detached mirror of main "
+                                    "with no worktrees, so there is nothing here for it to "
+                                    "snapshot",
     "scripts/guard_dead_branch_push.py": "a git pre-push hook; git fires it, and it acts on the "
                                          "push happening in that terminal. There is no push to "
                                          "guard from an ops page",
