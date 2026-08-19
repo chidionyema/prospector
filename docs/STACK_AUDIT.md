@@ -22,7 +22,22 @@ log has no error in it.
 
 Proven, not assumed: `launchctl kickstart gui/501/com.prospector.backup` reproduces exit 78
 immediately and writes **nothing** to the log, so the failure is at spawn, before the script
-runs. Every binary in the plist exists and executes by hand
+runs. The unified log names the failing component:
+
+```
+launchd[1] [gui/501/com.prospector.backup [14778]:] xpcproxy exited due to exit(78)
+launchd[1] [gui/501/com.prospector.backup [14778]:] exited due to exit(78), ran for 32ms
+```
+
+**`xpcproxy` is the setup step launchd runs before `exec`.** It dies in 32 ms, so the failure
+is launchd being unable to prepare the process — not the script, which passes when run by hand.
+Every path in the plist (`ProgramArguments`, `WorkingDirectory`, `StandardOutPath`) lives under
+`~/Documents`, which needs Full Disk Access for a launchd agent. `com.signalengine.daemon` does
+not disprove this: it holds a pid from an earlier launch, and the block hits new spawns only.
+
+**This needs a founder action** — granting Full Disk Access is a system security setting, not
+something an agent should change. The durable fix is C1 and C2: a job whose silence pages, and
+a scheduler that is not launchd. Every binary in the plist exists and executes by hand
 (`.venv/bin/python --version` -> `Python 3.14.6`, exit 0). **The cause is not yet proven.**
 The leading hypothesis is macOS TCC refusing launchd access under `~/Documents`, but
 `com.signalengine.daemon` runs a `~/Documents` venv and holds a live pid, which weakens it.
@@ -491,11 +506,13 @@ M3 (money-path adapter), M7 (chaos), M8 (end-to-end buy), M9 (DNS, shipped), M11
 4. **Postgres for the money path** (section 4a). **DECIDED 2026-08-19: yes.** Founder on
    running orders, entitlements and identity on one SQLite file on one volume: "come on this
    is irresponsible". Tracked as task #93.
-5. **One database as the target** (section 4a). Recommendation: yes — the engine follows the
-   money path onto Postgres once that is proven, rather than keeping SQLite permanently.
-   ~10 production call sites. Founder has stated the concern ("requires maintaining 2
-   databases, this is concerning") but has not ruled. **OPEN, and it should be decided after
-   Postgres is running and drilled on the money path, not before.**
+5. **Does the engine follow onto Postgres?** **DECIDED 2026-08-19: no. SQLite stays for the
+   engine.** So the estate runs two datastores by choice, and the reasons are the ones section
+   4a already states: the engine's data is 99.6% files, so moving 2.5 MB of rows removes no
+   storage discipline; 48 test files build a real store from a temp file with no service in
+   CI; and `t_pack` stays a file copy in every target adapter. The cost accepted is two backup
+   paths and two restore drills — **both of which must therefore be automated and drilled, not
+   documented.** That is tasks #94 (Litestream) and #80 (M4).
 
 ## 10. Ledger
 
