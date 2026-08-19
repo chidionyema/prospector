@@ -29,6 +29,7 @@ stdout redirection has exactly this property, and every writer in this estate is
 from __future__ import annotations
 
 import argparse
+import contextlib
 import functools
 import gzip
 import json
@@ -444,6 +445,39 @@ def check(decl: Declaration, root: Path) -> tuple[list[dict[str, Any]], list[dic
     return looked, findings
 
 
+@contextlib.contextmanager
+def _default_store_dir(root: Path):
+    """Give the declaration a $PROSPECTOR_STORE_DIR for the length of ONE run, then put the
+    environment back exactly as it was.
+
+    Why the default exists. A developer running this by hand has no PROSPECTOR_STORE_DIR; the
+    scheduled job does, and it points at the canonical store rather than at whatever checkout
+    the process happens to run from. Defaulting it keeps both honest: the declaration names the
+    store, and a bare `python -m ops.automations.log_rotation` still works.
+
+    Why it is scoped instead of set. This was `os.environ.setdefault(...)` in `run()`, which
+    changes the environment of the whole PROCESS and never changes it back. In a one-shot CLI
+    that is invisible. Under pytest it is not: `pytest.ini` runs `-n auto --dist loadfile`, so
+    one worker process runs many test files in turn, and `Config.store_dir` gives
+    PROSPECTOR_STORE_DIR precedence over `cfg.store["dir"]` — which is the exact redirect the
+    store-backed tests use to point at their own tmp_path. On 2026-08-19 this line set the
+    variable to a test's tmp_path (`repo_root` is monkeypatched here, so `root` was that
+    tmp_path) and eight later tests in three unrelated files then read that directory as the
+    catalogue and failed on CI, on assertions that pass on any laptop. The leaking test passed.
+
+    The general rule this is an instance of: a process-wide default set by library code is a
+    side effect on every caller, including the ones that have not run yet.
+    """
+    had = os.environ.get("PROSPECTOR_STORE_DIR")
+    if had is None:
+        os.environ["PROSPECTOR_STORE_DIR"] = str(root / "store")
+    try:
+        yield
+    finally:
+        if had is None:
+            os.environ.pop("PROSPECTOR_STORE_DIR", None)
+
+
 def run(config_path: Path, start: Path, *, fix: bool = False) -> dict[str, Any]:
     ran_at = datetime.now(timezone.utc).isoformat()
     probe = f"python -m ops.automations.{AUTOMATION} --config {config_path}"
@@ -458,23 +492,19 @@ def run(config_path: Path, start: Path, *, fix: bool = False) -> dict[str, Any]:
     try:
         decl = load_declaration(config_path)
         root = repo_root(start)
-        # A developer running this by hand has no PROSPECTOR_STORE_DIR; the scheduled job
-        # does, and it points at the canonical store rather than at whatever checkout the
-        # process happens to run from. Defaulting it here keeps both honest: the declaration
-        # names the store, and a bare "python -m ops.automations.log_rotation" still works.
-        os.environ.setdefault("PROSPECTOR_STORE_DIR", str(root / "store"))
-        looked, findings = check(decl, root)
-
-        if fix and findings:
-            keep_by_path = {f["where"]: f["keep"] for f in findings}
-            rotated = [rotate(Path(where), keep) for where, keep in keep_by_path.items()]
-            result["rotated"] = rotated
+        with _default_store_dir(root):
             looked, findings = check(decl, root)
 
-        prunes = check_prune(decl, root)
-        if fix and any(e["doomed"] for e in prunes):
-            result["pruned"] = [prune(e) for e in prunes if e["doomed"]]
+            if fix and findings:
+                keep_by_path = {f["where"]: f["keep"] for f in findings}
+                rotated = [rotate(Path(where), keep) for where, keep in keep_by_path.items()]
+                result["rotated"] = rotated
+                looked, findings = check(decl, root)
+
             prunes = check_prune(decl, root)
+            if fix and any(e["doomed"] for e in prunes):
+                result["pruned"] = [prune(e) for e in prunes if e["doomed"]]
+                prunes = check_prune(decl, root)
     except CannotEstablish as exc:
         result.update(status="unknown", reason=str(exc))
         return result

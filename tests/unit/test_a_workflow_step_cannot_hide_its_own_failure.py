@@ -138,7 +138,7 @@ def test_a_comment_about_the_defect_is_not_the_defect():
     """The fix quotes the line it replaced. Grading that quote would wall the fix itself.
 
     This is not hypothetical: it happened the first time this guard ran against the patched
-    hermes-config gate, which carries `# THIS LINE ONCE READ \`... 2>/dev/null\`` above the
+    hermes-config gate, which carries `# THIS LINE ONCE READ \\`... 2>/dev/null\\`` above the
     corrected command. Same class as memory ``a-source-scan-that-reads-comments-grades-the-prose``.
     """
     lines = list(_logical_lines("  # once read: foo 2>/dev/null\n  foo 2>&1\n"))

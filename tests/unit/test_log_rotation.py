@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import gzip
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -557,3 +558,43 @@ def test_the_tracked_file_list_is_read_once_per_repository(tmp_path, monkeypatch
     # not an AttributeError in the setup. A guard that dies before it measures proves nothing.
     for cache in (engine._tracked_under, engine._repo_top, engine._tracked_in_repo):
         getattr(cache, "cache_clear", lambda: None)()
+
+
+def test_a_run_does_not_leave_prospector_store_dir_set_behind_it(tmp_path, monkeypatch):
+    """The default is scoped to one run. Setting it process-wide broke eight OTHER tests.
+
+    `run()` gives the declaration a `$PROSPECTOR_STORE_DIR` when the caller has none. That used
+    to be `os.environ.setdefault(...)`, which never puts the environment back. On 2026-08-19 CI
+    ran this file's `test_fix_rotates_what_is_over_and_leaves_the_rest` — which monkeypatches
+    `repo_root` to its own `tmp_path` — and the variable was left pointing at that tmp_path for
+    the rest of the xdist worker. `Config.store_dir` gives the variable precedence over
+    `cfg.store["dir"]`, so four tests in `test_market_threading.py`, three in `test_blue_sky.py`
+    and one in `test_audit_isolation.py` then read a dead temp directory as the catalogue. The
+    traceback named this test's tmp_path; the test itself passed.
+
+    It reproduced on no laptop, because `-n auto --dist loadfile` puts different files in the
+    same worker on a runner than on a developer box.
+    """
+    import ops.automations.log_rotation as engine
+
+    monkeypatch.delenv("PROSPECTOR_STORE_DIR", raising=False)
+    monkeypatch.setattr(engine, "repo_root", lambda _start: tmp_path)
+    _log(tmp_path / "noisy.log", 3)
+
+    assert main(["--config", str(_declaration(tmp_path))]) == EXIT_FINDINGS
+    assert "PROSPECTOR_STORE_DIR" not in os.environ, (
+        "a run left the variable set for every later caller in this process"
+    )
+
+
+def test_a_run_does_not_overwrite_a_store_dir_the_caller_already_set(tmp_path, monkeypatch):
+    """The scoping must not become a reset. The scheduled job sets the variable deliberately."""
+    import ops.automations.log_rotation as engine
+
+    theirs = str(tmp_path / "canonical-store")
+    monkeypatch.setenv("PROSPECTOR_STORE_DIR", theirs)
+    monkeypatch.setattr(engine, "repo_root", lambda _start: tmp_path)
+    _log(tmp_path / "noisy.log", 3)
+
+    assert main(["--config", str(_declaration(tmp_path))]) == EXIT_FINDINGS
+    assert os.environ["PROSPECTOR_STORE_DIR"] == theirs
