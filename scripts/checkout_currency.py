@@ -51,7 +51,14 @@ RUNTIME = ("store/", "storage/", "graphify-out/", ".popdd/", ".backfill-logs/", 
 def git(repo: Path, *args: str, timeout: int = 300) -> tuple[int, str]:
     p = subprocess.run(["git", *args], cwd=str(repo), capture_output=True, text=True,
                        timeout=timeout, check=False)
-    return p.returncode, (p.stdout or p.stderr).strip()
+    # Stdout alone on success (callers parse a sha, a count, a date); BOTH on failure, because
+    # `stdout or stderr` drops the reason whenever stdout is non-empty -- and this script's own
+    # --fix path runs `git fetch`, `git checkout -f` and `git push`, every one of which can print
+    # progress to stdout and then fail. Pinned by
+    # tests/unit/test_a_failure_keeps_the_reason_it_failed.py.
+    if p.returncode == 0:
+        return 0, (p.stdout or "").strip()
+    return p.returncode, "\n".join(x for x in (p.stdout, p.stderr) if x and x.strip()).strip()
 
 
 def tracked_edits(repo: Path) -> list[str]:

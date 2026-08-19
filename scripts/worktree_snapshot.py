@@ -52,7 +52,16 @@ def git(args: list[str], cwd: Path, env: dict | None = None, timeout: int = 300)
     p = subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, text=True,
                        timeout=timeout, check=False,
                        env={**os.environ, **(env or {})})
-    return p.returncode, (p.stdout or p.stderr).strip()
+    # ON SUCCESS return stdout ALONE, because callers parse it as a value -- a tree sha, a commit
+    # sha, a date -- and git writes warnings to stderr on successful commands too.
+    # ON FAILURE return BOTH, because `stdout or stderr` discards the reason whenever stdout is
+    # non-empty. Measured 2026-08-19: a `git push` of 17 snapshot refs was REJECTED, the pre-push
+    # hook had already written one line to stdout, so the rejection printed nothing and the run
+    # read as a success. The backup had not happened, and the next step was to delete the work it
+    # existed to protect. Pinned by tests/unit/test_a_failure_keeps_the_reason_it_failed.py.
+    if p.returncode == 0:
+        return 0, (p.stdout or "").strip()
+    return p.returncode, "\n".join(x for x in (p.stdout, p.stderr) if x and x.strip()).strip()
 
 
 def branch_name(wt: Path) -> str:
