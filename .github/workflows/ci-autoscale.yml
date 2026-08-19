@@ -11,9 +11,30 @@
 # failure mode, and the job is a few seconds long.
 name: CI autoscale
 
+# THIS WORKFLOW HAS NEVER RUN, AND NOTHING SAID SO. `on: workflow_job:` was here from the
+# first commit. `workflow_job` is a webhook event, not a workflow trigger. GitHub created a run
+# for every one of them and concluded it `failure` with ZERO jobs -- no log, no annotation, no
+# red check on any pull request. Measured 2026-08-19: the last 30 runs of this workflow, 30
+# failures, `total_count: 0` jobs on each. The pool it claims to size was sized by hand the
+# whole time. `actionlint` now runs in CI's `guard` job so no workflow can ship unstartable
+# again.
+#
+# AND IT STAYS MANUAL FOR NOW, ON PURPOSE. Fixing the trigger alone would make this WORSE than
+# doing nothing. `deploy/runners.sh autoscale` protects an in-flight build by asking GitHub
+# which runners are busy (`GET /repos/{o}/{r}/actions/runners`), and that endpoint needs repo
+# ADMIN. `secrets.GITHUB_TOKEN` cannot have it at any `permissions:` setting, and this repo has
+# no admin PAT secret (`gh secret list` 2026-08-19: FLY_API_TOKEN, FLY_API_TOKEN_API,
+# FLY_API_TOKEN_ENGINE, and nothing else). With the busy list empty every started machine reads
+# as idle, so the scale-down loop stops machines mid-build. That is not theory: machine
+# floral-butterfly-8382 was stopped at 14:50:51Z with 15 minutes of PR #425's python job still
+# to run, and the job died 26m8s in with steps 6-18 concluding `null`.
+#
+# So the trigger is `workflow_dispatch` -- valid, startable, and it fires only when a person
+# asks. Automatic scaling turns back on when TWO things are true: PR #423 lands the scale-down
+# safety in `deploy/runners.sh`, and a repo-admin PAT exists as a secret. Adding that PAT is a
+# founder decision, tracked as an issue, not something a session should mint.
 on:
-  workflow_job:
-    types: [queued, completed]
+  workflow_dispatch:
 
 # The newest reading of the queue is the only one worth acting on, so a superseded scaler run is
 # cancelled rather than queued behind. Scaling is idempotent, so losing an intermediate run
@@ -27,9 +48,6 @@ permissions:
 
 jobs:
   scale:
-    # Never react to this workflow's own jobs. Without this the scaler answers its own
-    # workflow_job events forever.
-    if: github.event.workflow_job.workflow_name != 'CI autoscale'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
