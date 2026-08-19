@@ -113,8 +113,71 @@ def merged_tree_equals_upstream(branch: str, upstream_tree: str) -> bool:
     return bool(first) and first == upstream_tree
 
 
+def _added_lines(base: str, branch: str) -> dict[str, list[str]]:
+    """Every line this branch adds, by file, from ONE `git diff` instead of one per file.
+
+    Short lines are dropped -- a bare `)` or `import os` matches everywhere and would score any
+    branch as absorbed. Runtime state is dropped for the same reason it is everywhere else here:
+    `store/` and `signals/` are written by every run and say nothing about the code.
+    """
+    added: dict[str, list[str]] = {}
+    path: str | None = None
+    # `--no-renames` is not a detail. The per-file diff this replaced passed a single
+    # pathspec, which turns rename detection OFF for that file, so a renamed file counted
+    # its whole body as added. One combined diff turns it back ON and would quietly change
+    # the metric -- measured on `archive/site-build-bundle-2026-08-18`, two renames moved
+    # the total from 8703 added lines to 8344. This is a speed fix; the number it reports
+    # must not move with it.
+    for ln in git("diff", "-U0", "--no-renames", base, branch).splitlines():
+        if ln.startswith("+++ "):
+            target = ln[4:].strip()
+            if target == "/dev/null":
+                path = None                      # the branch deletes this file; it adds nothing
+            else:
+                path = target[2:] if target.startswith("b/") else target
+                if path.startswith(("store/", "storage/", "signals/")):
+                    path = None
+            continue
+        if path is None or not ln.startswith("+") or ln.startswith("+++"):
+            continue
+        text = ln[1:].strip()
+        if len(text) > 12:
+            added.setdefault(path, []).append(text)
+    return added
+
+
+def _upstream_blobs(paths: list[str]) -> dict[str, str]:
+    """main's copy of many files from ONE `git cat-file --batch`, not one `git show` each.
+
+    Read as BYTES on purpose. `--batch` frames each object with a byte length, and decoding the
+    stream first would desynchronise that walk on the first non-ASCII character -- every file
+    after it would be read from the wrong offset.
+    """
+    if not paths:
+        return {}
+    p = subprocess.run(("git", "-C", str(REPO_ROOT), "cat-file", "--batch"),
+                       input="".join(f"{UPSTREAM}:{q}\n" for q in paths).encode(),
+                       capture_output=True, timeout=300)
+    out, i, blobs = p.stdout, 0, {}
+    for path in paths:
+        nl = out.find(b"\n", i)
+        if nl < 0:
+            break
+        header = out[i:nl]
+        if header.endswith(b" missing"):         # main does not have this file at all
+            i = nl + 1
+            continue
+        try:
+            size = int(header.rsplit(b" ", 1)[1])
+        except ValueError:
+            break
+        blobs[path] = out[nl + 1:nl + 1 + size].decode("utf-8", "replace")
+        i = nl + 1 + size + 1                    # +1 for the newline git writes after the object
+    return blobs
+
+
 def absorbed(branch: str) -> tuple[int, int]:
-    """(lines of this branch already on main, lines it added) — the conflict-proof read.
+    """(lines of this branch already on main, lines it added) -- the conflict-proof read.
 
     `merged_tree_equals_upstream` is exact but it answers only for a branch that merges cleanly.
     A branch that CONFLICTS reads as unmerged forever, and on 2026-08-17 that was wrong for
@@ -126,26 +189,24 @@ def absorbed(branch: str) -> tuple[int, int]:
     in main's copy of the same file? 100% means the work is in, whatever the merge says. A low
     number is the only case worth a human reading the diff.
 
-    Short lines are dropped -- a bare `)` or `import os` matches everywhere and would score any
-    branch as absorbed. Runtime state is dropped for the same reason it is everywhere else here:
-    `store/` and `signals/` are written by every run and say nothing about the code.
+    TWO SUBPROCESSES, NOT TWO PER FILE. This used to run `git diff -U0` and `git show` once for
+    each changed file. Measured 2026-08-19 on the branches that made it matter:
+    `snapshot/2026-08-19/wt-land18-74f4ed5c` has 229 changed files and took 23.5s by itself,
+    `archive/land-all-six-2026-08-18` 114 files and 9.1s. With ~200 branches kept, a
+    `--remote` report ran past 300 seconds and was killed before printing a single line -- so
+    the tool that exists to clear the branch backlog stopped finishing exactly as the backlog
+    grew. The cost of a cleanup tool must not scale with the mess it cleans.
     """
     base = git("merge-base", UPSTREAM, branch).strip()
     if not base:
         return (0, 0)
+    added = _added_lines(base, branch)
+    blobs = _upstream_blobs(list(added))
     present = total = 0
-    for path in git("diff", "--name-only", base, branch).split():
-        if path.startswith(("store/", "storage/", "signals/")):
-            continue
-        diff = git("diff", "-U0", base, branch, "--", path).splitlines()
-        added = [ln[1:].strip() for ln in diff
-                 if ln.startswith("+") and not ln.startswith("+++")]
-        added = [ln for ln in added if len(ln) > 12]
-        if not added:
-            continue
-        on_main = git("show", f"{UPSTREAM}:{path}")
-        total += len(added)
-        present += sum(1 for ln in added if ln in on_main)
+    for path, lines in added.items():
+        on_main = blobs.get(path, "")
+        total += len(lines)
+        present += sum(1 for ln in lines if ln in on_main)
     return (present, total)
 
 
@@ -275,6 +336,18 @@ def write_receipt(retired: list[tuple[str, str, str]], upstream_sha: str,
     return path
 
 
+def _tick(label: str, i: int, n: int) -> None:
+    """Say something while a long scan runs, on stderr so it never pollutes the report.
+
+    A tool that prints nothing for five minutes is indistinguishable from a hung one, and gets
+    killed by every caller that has a timeout. That is what happened on 2026-08-19: this script
+    was run twice, both times reached the caller's timeout with an empty stdout, and read as a
+    hang. It was not hanging, it was working -- silently, which is the same thing to the caller.
+    """
+    if i == n or i % 10 == 0:
+        print(f"  {label} {i}/{n}", file=sys.stderr, flush=True)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--fix", action="store_true",
@@ -295,7 +368,9 @@ def main() -> int:
     kept: list[tuple[str, str, str, str]] = []
     release: list[str] = []  # idle worktrees standing between a merged branch and its deletion
 
-    for name, sha, when in branches():
+    local = branches()
+    for i, (name, sha, when) in enumerate(local, 1):
+        _tick("local", i, len(local))
         if name in PROTECTED:
             continue
         if merged_tree_equals_upstream(name, upstream_tree):
@@ -322,7 +397,9 @@ def main() -> int:
     pr_heads: set[str] | None = None
     if args.remote:
         pr_heads = open_pr_heads()
-        for name, sha, when in remote_branches():
+        remote = remote_branches()
+        for i, (name, sha, when) in enumerate(remote, 1):
+            _tick("remote", i, len(remote))
             if pr_heads is not None and name in pr_heads:
                 remote_kept.append((name, sha, when, "heads an OPEN pull request"))
             elif name in live:
