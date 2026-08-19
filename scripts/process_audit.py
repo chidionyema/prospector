@@ -29,6 +29,7 @@ gate CI; `--quiet` prints only the problems.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import plistlib
 import re
@@ -383,10 +384,51 @@ def grade_enforcement() -> list[tuple[str, str, str]]:
 
     # The doc-lint ratchet only ratchets while its baseline is committed.
     baseline = ROOT / "docs" / "doc_lint_baseline.json"
-    rows.extend(_grade_instruction_checkouts())
-
     rows.append((OK if baseline.exists() else BAD, "doc lint baseline",
                  "present" if baseline.exists() else "MISSING, so the ratchet cannot tighten"))
+
+    rows.extend(_grade_state_probe())
+    rows.extend(_grade_instruction_checkouts())
+    return rows
+
+
+def _grade_state_probe() -> list[tuple[str, str, str]]:
+    """Is every session still being told where production is?
+
+    The SessionStart probe is the only mechanism that beats a stale CLAUDE.md, and it runs from an
+    installed copy outside the repo. Two ways it can fail quietly: the copy drifts from the
+    reviewed source, or a project directory loses its pointer and those sessions open blind. Both
+    are graded here, because an enforcement nobody grades is an enforcement nobody has.
+    """
+    rows: list[tuple[str, str, str]] = []
+    source = ROOT / "ops" / "state_probe.sh"
+    installed = Path.home() / ".claude" / "state-probe" / "prospector.sh"
+
+    if not source.exists():
+        return [(BAD, "state probe", f"MISSING from the repo at {source.relative_to(ROOT)}")]
+    if not installed.exists():
+        return [(BAD, "state probe", "NOT INSTALLED -- sessions open on prose, not live state; "
+                                     "run bash ops/state_probe.sh --install")]
+
+    src = hashlib.sha256(source.read_bytes()).hexdigest()
+    got = hashlib.sha256(installed.read_bytes()).hexdigest()
+    if src != got:
+        rows.append((BAD, "state probe", "INSTALLED COPY DRIFTED from ops/state_probe.sh -- "
+                                         "sessions are briefed by unreviewed text; re-run "
+                                         "bash ops/state_probe.sh --install"))
+    else:
+        rows.append((OK, "state probe", f"installed and matching source ({src[:12]})"))
+
+    projects = Path.home() / ".claude" / "projects"
+    targets = [d for d in projects.glob("*") if d.is_dir() and "-private-" not in d.name
+               and (d.name.endswith("code-prospector") or "-code-wt-" in d.name)]
+    blind = [d.name for d in targets if not (d / ".state-probe").exists()]
+    if blind:
+        rows.append((BAD, "state probe pointers",
+                     f"{len(blind)} project dir(s) have no .state-probe, so sessions started "
+                     f"there open blind: {', '.join(sorted(blind)[:3])}"))
+    else:
+        rows.append((OK, "state probe pointers", f"{len(targets)} project dir(s) wired"))
     return rows
 
 
