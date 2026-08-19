@@ -719,18 +719,60 @@ Every option below was rejected for cost, lock-in, or both. R7 is zero new recur
 Each step is one pull request. Each is independently useful. Each ships report-only first where
 it writes anything (P3).
 
-**Step 1 — Fix the backup. One line.**
-Correct the `--mirror-only` argument in `com.prospector.backup`. Regenerate the plist from the
-tracked declaration with `scripts/launchd_plists.py` rather than editing
-`~/Library/LaunchAgents/` by hand, so the tracked file and the installed file cannot drift again.
-Add a test that every flag in every `ops/launchd/*.json` `ProgramArguments` exists in the script
-it invokes. That test is what stops this class of failure, not the fix.
-*Verification:* the job runs and `store/backup.log` gains an entry dated today.
+**Step 1 — Fix the backup. CLOSED, and the premise was wrong.**
+Measured 2026-08-20: `--mirror-only` is a real flag (`scripts/backup_store.py:854`, and `:786` in
+the live checkout), so there was no bad argument to correct. The guard this step asked for already
+exists and is green: `tests/unit/test_launchd_checks_the_script_not_the_interpreter.py`, 4 passed.
 
-**Step 2 — Alert on a failed scheduled job.**
-Extend `prospector/scheduler/alerts.py` so a launchd job exiting non-zero raises. Today nothing
-does. This is why Step 1's defect survived at least a day.
-*Verification:* deliberately break a job in a worktree, confirm an alert fires.
+The job is still failing, for a different reason, and the difference is the whole point of this
+document. Run by hand with launchd's exact `ProgramArguments` it PASSES:
+
+    STORE_BACKUP PASS mirror=repo/2026-08-19T233340Z.bundle bytes=66664795   (2026-08-20 00:33)
+
+Under launchd the same argv exits 78. Nothing recorded that. All three channels are empty:
+`store/backup.log` (the job's own `StandardOutPath` AND `StandardErrorPath`) has an mtime of
+2026-08-17 09:38 and its last line is that day's PASS; the wrapper's receipt ledger
+`~/.hermes/state/capability_receipts.jsonl` has no `com.prospector.backup` row after 2026-08-19
+09:09, and every row it does have says `exit_code: 0`; and `launchctl list` is the only place in
+the estate that knows the number 78.
+
+A job whose stdout, stderr and receipt ledger are all silent about a failure it definitely had is
+not an under-logged job. It is an unobserved one, and no amount of shipping logs helps if the
+failing run emits none. That is why Step 2 is graded on a DURABLE RECORD rather than on log
+volume, and it is why `--mirror-only` under launchd stays open separately (task #92 proposes
+unloading this job entirely, since the store it guards is no longer canonical).
+
+**Step 2 — Alert on a failed scheduled job. DONE.**
+The instruction above was to extend `prospector/scheduler/alerts.py` because "today nothing does".
+Measured 2026-08-20, that was half wrong, and the wrong half is the interesting one.
+`scripts/process_audit.py` already grades every launchd job on this Mac AND every supervisord
+program inside `prospector-engine` (`grade_fly` marks non-RUNNING BAD, and marks "could not ask
+supervisorctl" BAD too), and it already had an `--alert` flag. The rail existed. It could not fire.
+
+`alert()` imported `~/.hermes/scripts/estate_alert.py` — a module in another project's checkout.
+On any host without Hermes, which includes `prospector-engine` where production runs, the import
+raised, the function returned the string `could not alert: No module named estate_alert`, and
+NOTHING GRADED THAT STRING. The audit printed it, exited 1 for the findings, and the estate went
+on being reported as watched. Same class as a workflow that can never run: the failure is
+indistinguishable from ordinary output.
+
+The fix routes through this repo's own alert door, `prospector.scheduler.alerts.emit_alert`, which
+is strictly wider than what it replaced: it appends the record to `alerts.jsonl` with an fsync
+BEFORE any sink is tried, and its Telegram sink loads the same Hermes sender this used to import,
+so nothing is lost where Hermes IS present. When every sink is missing there is still a receipt
+saying the estate was failing at this time. A broken alert path now returns
+`ALERT PATH BROKEN (<Type>: <msg>) -- N failing went unsent`, which no reader mistakes for success.
+
+Live evidence that made this a P0 rather than a tidy-up, all measured 2026-08-20:
+`com.prospector.backup` last exit 78, `com.prospector.process-audit` last exit 2, and the laptop
+backup silently dead since 2026-08-17 (see Step 1).
+
+*Verification:* `tests/unit/test_a_failing_job_must_raise.py`, 7 passed. Mutation-checked by
+restoring the old unreachable-import behaviour: 4 of the 7 fail, including
+`test_a_failing_audit_leaves_a_durable_record_with_no_sinks_at_all`. The tests deliberately do not
+assert a notification was delivered — no test can promise that, and one that mocked a sink into
+returning True would be testing the mock. They assert the durable record, under an autouse fixture
+that neutralises every sink, which is the permanent state of any host without Hermes.
 
 **Step 3 — Move the two `/tmp` loggers onto real disk.**
 `com.prospector.ops-console` and `com.prospector.control-center` to `store/logs/`. Add
@@ -744,12 +786,11 @@ with 558M of live state and zero references in its own repository cannot be oper
 restored.
 *Verification:* `fly config show -a prospector-engine` matches `deploy/engine/fly.toml`.
 
-**Step 5 — Back up the engine volume.**
-Add a third source to `ops/config/offsite_backup.yaml` for `prospector-engine:/data/store`.
-Config only if the existing engine already handles the fetch shape; a small engine change
-otherwise.
-*Verification:* a `money-db`-style receipt for the new source appears in
-`store/offsite_backup.log`.
+**Step 5 — Back up the engine volume. ALREADY CLOSED.**
+Measured 2026-08-20: `ops/config/offsite_backup.yaml` already declares three engine sources —
+`engine-ledger` (:121), `engine-store-db` (:130) and `repo-mirror` (:139) — each with
+`max_age_hours: 30`, and each written by the `[program:backup]` entry in
+`deploy/engine/supervisord.conf`. Nothing to add. The step was written against an older config.
 
 **Step 6 — The ingest endpoint, engine side.**
 `POST /internal/logs` on `prospector-engine`, private network only. Writes
