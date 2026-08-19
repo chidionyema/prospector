@@ -18,8 +18,18 @@
 `launchctl list` reports `com.prospector.backup` last exit **78**, and
 `store/backup.log` — the job's own `StandardOutPath` — has an mtime of `17 Aug 09:38`, two
 days stale. Exit 78 is `EX_CONFIG`: launchd could not spawn the job at all, which is why the
-log has no error in it. Every binary in the plist exists on disk, so this is the known
-`launchd cannot read ~/Documents` trap, not a missing file.
+log has no error in it.
+
+Proven, not assumed: `launchctl kickstart gui/501/com.prospector.backup` reproduces exit 78
+immediately and writes **nothing** to the log, so the failure is at spawn, before the script
+runs. Every binary in the plist exists and executes by hand
+(`.venv/bin/python --version` -> `Python 3.14.6`, exit 0). **The cause is not yet proven.**
+The leading hypothesis is macOS TCC refusing launchd access under `~/Documents`, but
+`com.signalengine.daemon` runs a `~/Documents` venv and holds a live pid, which weakens it.
+A second candidate: `.venv/pyvenv.cfg` records `executable = .../python@3.14/3.14.4_1/...`
+and only `3.14.6` exists in the Cellar, so the venv is stale in its recorded base even though
+`bin/python3.14` resolves through `/usr/local/opt`. The check that settles it is
+`log show --predicate 'process == "launchd"' --last 1h | grep com.prospector.backup`.
 
 Three jobs report the same status 78: `com.prospector.backup`,
 `com.haworks.continuous-review`, `com.haworks.test-coverage`.
