@@ -118,11 +118,9 @@ LEDGER: tuple[Mode, ...] = (
         "that actually broke the build, filed an issue blaming it, and left main red because the "
         "broken file was never touched.",
         (".github/workflows/main-green-guard.yml",),
+        "tests/unit/test_the_green_guard_reverts_the_cause_not_the_head.py",
         None,
-        475,
-        "The guard has no test of any kind, and it holds `contents: write` on main. The fix needs "
-        "no test execution: before reverting commit X, fetch main's CI run on X's parent and "
-        "compare the failing job; if it fails there too, X is provably innocent.",
+        None,
     ),
     Mode(
         "a-push-lands-straight-on-main",
@@ -290,24 +288,16 @@ LEDGER: tuple[Mode, ...] = (
         "wrong match kills a live build, and a cancelled run is indistinguishable from a failure "
         "in every listing.",
         (".github/workflows/cancel-ci-on-pr-close.yml",),
+        "tests/unit/test_a_pr_cleanup_cannot_cancel_a_live_build.py",
         None,
-        475,
-        "The workflow has no test of any kind. It needs the same treatment as the green guard: "
-        "prove it only ever cancels runs whose head branch belongs to the closed PR, and never a "
-        "run on main.",
+        None,
     ),
 )
 
 # The modes with no proof, as of 2026-08-20. This set is a RATCHET: removing an entry is the
 # point of the exercise, and adding one must be a deliberate, reviewable edit rather than a
 # regression that slips in. See test_the_open_list_does_not_grow.
-OPEN_BASELINE = frozenset(
-    {
-        "merge-over-a-red-check",
-        "the-green-guard-reverts-the-head-not-the-cause",
-        "a-run-is-cancelled-for-a-pull-request-that-is-still-open",
-    }
-)
+OPEN_BASELINE = frozenset({"merge-over-a-red-check"})
 
 # Workflows that grade or ship nothing and hold no write scope still have to be named, but a
 # purely advisory workflow does not need its own failure mode. Nothing is exempt today; this

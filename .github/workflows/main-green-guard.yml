@@ -141,12 +141,97 @@ jobs:
                             'last hour; stopping rather than reverting again')
             }
 
+            // THE HEAD IS NOT NECESSARILY THE CAUSE. 2026-08-19: #460 merged with its own CI
+            // already failing and broke main. Three commits later this guard reverted #463 --
+            // the HEAD, and innocent -- opened #468 blaming its author, and left main red,
+            // because the file that actually broke it was never touched.
+            //
+            // So before reverting, ask whether main was ALREADY failing this way one commit
+            // earlier. If the same job failed on the parent, this commit cannot be the cause.
+            //
+            // This only ever REFUSES on positive evidence. No run on the parent, a run still in
+            // flight, or an API that throws all fall through to the old behaviour: a red main
+            // blocks every open PR, and being unable to prove innocence is not proof of guilt.
+            const failingJobs = async (run_id) => {
+              const {data} = await github.rest.actions.listJobsForWorkflowRun(
+                {owner, repo, run_id, filter: 'latest', per_page: 100})
+              return new Set(
+                data.jobs.filter(j => j.conclusion === 'failure').map(j => j.name))
+            }
+            try {
+              const mine = await failingJobs(run.id)
+              const parent = commit.parents[0].sha
+              const {data: prior} = await github.rest.actions.listWorkflowRunsForRepo(
+                {owner, repo, branch: 'main', head_sha: parent, per_page: 20})
+              for (const p of prior.workflow_runs) {
+                if (p.conclusion !== 'failure') continue
+                const theirs = await failingJobs(p.id)
+                const shared = [...mine].filter(n => theirs.has(n))
+                if (shared.length) {
+                  core.setOutput('blame', parent)
+                  core.setOutput('blame_jobs', shared.join(', '))
+                  core.setOutput('blame_run', p.html_url)
+                  return refuse(
+                    `${sha.slice(0, 8)} is not the cause: ${parent.slice(0, 8)} already failed ` +
+                    `the same job(s) [${shared.join(', ')}]. Reverting the head would remove ` +
+                    'innocent work and leave main red.')
+                }
+              }
+            } catch (e) {
+              // Never let this check kill the job. An unhandled throw part way through a
+              // github-script step silently drops every line below it -- that is how the merge
+              // of #451 landed on main ungraded on 2026-08-19.
+              core.warning(`could not check the parent commit, proceeding: ${e.message}`)
+            }
+
             core.setOutput('go', 'yes')
             core.setOutput('sha', sha)
             core.setOutput('subject', subject)
             core.setOutput('author', commit.commit.author.name || 'unknown')
             core.setOutput('parents', String(parents))
             core.setOutput('run_url', run.html_url)
+
+      - name: Name the commit that really broke main
+        if: steps.decide.outputs.blame != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo
+            const blame = '${{ steps.decide.outputs.blame }}'
+            const title = `main is red, and ${blame.slice(0, 8)} is where it started`
+            // One issue per suspect. Every subsequent failed run on main would otherwise open
+            // another, and an alarm that repeats is an alarm people filter out.
+            const {data: open} = await github.rest.issues.listForRepo(
+              {owner, repo, state: 'open', per_page: 100})
+            if (open.some(i => i.title === title)) {
+              core.notice(`already reported: ${title}`)
+              return
+            }
+            const {data: issue} = await github.rest.issues.create({
+              owner, repo, title,
+              body: [
+                'The green guard stood down instead of reverting, because the commit at the head',
+                'of `main` is provably not the cause.',
+                '',
+                `- **failing job(s)** ${{ toJSON(steps.decide.outputs.blame_jobs) }}`,
+                `- **already failing at** \`${blame}\` — ${{ steps.decide.outputs.blame_run }}`,
+                `- **the run that triggered this** ${{ steps.decide.outputs.run_url }}`,
+                '',
+                'Reverting the head would have deleted innocent work and left `main` red, which',
+                'is what happened on 2026-08-19 to #463.',
+                '',
+                '## What to do',
+                '',
+                'Read the failing job, fix the cause, and open the PR with the `fixes-main` label',
+                'so it can build while main is red. The label must be on the PR BEFORE the run',
+                'starts: labels in the event payload are frozen at dispatch.',
+                '',
+                '```bash',
+                '.venv/bin/python scripts/main_red.py',
+                '```',
+              ].join('\n'),
+            })
+            core.notice(`opened #${issue.number}`)
 
       - name: Say why nothing was reverted
         if: steps.decide.outputs.go != 'yes'
