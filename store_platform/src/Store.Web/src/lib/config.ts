@@ -151,6 +151,26 @@ export const LEGAL = {
 } as const;
 
 /**
+ * WHO THE TRADER IS, in one sentence, for every surface that has to say it.
+ *
+ * The Electronic Commerce (EC Directive) Regulations 2002 reg 6 require the trader's name,
+ * geographic address and company registration number to be easily, directly and permanently
+ * accessible. On 2026-08-19 a persona teardown of the live site grepped all ten public pages for
+ * a company number and found none: `LEGAL.companyNumber` was confirmed against Companies House on
+ * 2026-08-16 and then rendered on exactly zero pages, while `legalName` and `address` reached only
+ * `/terms`, `/privacy` and `/refund`. The shop front named no trader at all.
+ *
+ * It is a FUNCTION here rather than a string at each render site for the reason `payback.ts:80`
+ * gives about the multiple ceiling: a rule enforced per-caller is a rule the next caller forgets.
+ * Four call sites branching on `companyNumber` being non-empty is four chances to print
+ * "(company number )" the day it is cleared. One branch, five readers.
+ */
+export function traderIdentity(): string {
+  const registration = LEGAL.companyNumber ? ` (company number ${LEGAL.companyNumber})` : '';
+  return `${LEGAL.legalName}${registration}, ${LEGAL.address}`;
+}
+
+/**
  * The API's real origin. Correct for server-side fetches, and for links the BROWSER NAVIGATES to
  * (`/download/{token}` answers with a 302 to a presigned URL and must be followed as a navigation,
  * so it cannot go through the proxy). Wrong for browser XHR, use API_FETCH_BASE for that.
