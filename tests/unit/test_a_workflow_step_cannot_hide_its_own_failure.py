@@ -92,6 +92,13 @@ def test_no_step_discards_the_stderr_that_would_explain_its_own_death():
     for where, script in steps:
         pipefail = "pipefail" in script
         for lineno, line in _logical_lines(script):
+            # A COMMENT ABOUT THE DEFECT IS NOT THE DEFECT. The fix for run 32268561071 explains
+            # itself in a comment quoting the line it replaced, and a scanner that reads prose
+            # flagged the explanation and passed the code. Only a whole-line comment is skipped:
+            # a trailing `# stderr-ok:` on a real command still has to be read, because that is
+            # how a step declares the redirect is deliberate.
+            if line.lstrip().startswith("#"):
+                continue
             if not DISCARDS_STDERR.search(line) or HANDLED.search(line):
                 continue
             # Without pipefail, a pipe already discards a non-final command's status, so the
@@ -125,3 +132,16 @@ def test_a_wrapped_command_is_judged_as_one_command():
     """`cmd \\` + `  || true` on the next line is handled, and must not be reported."""
     joined = dict(_logical_lines("ssh-keyscan github.com 2>/dev/null \\\n  || true\n"))
     assert HANDLED.search(joined[1]), joined
+
+
+def test_a_comment_about_the_defect_is_not_the_defect():
+    """The fix quotes the line it replaced. Grading that quote would wall the fix itself.
+
+    This is not hypothetical: it happened the first time this guard ran against the patched
+    hermes-config gate, which carries `# THIS LINE ONCE READ \`... 2>/dev/null\`` above the
+    corrected command. Same class as memory ``a-source-scan-that-reads-comments-grades-the-prose``.
+    """
+    lines = list(_logical_lines("  # once read: foo 2>/dev/null\n  foo 2>&1\n"))
+    graded = [text for _, text in lines if not text.lstrip().startswith("#")]
+    assert len(graded) == 1
+    assert not DISCARDS_STDERR.search(graded[0])
