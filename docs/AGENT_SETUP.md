@@ -49,6 +49,56 @@ Re-install after changing it:
 bash ops/state_probe.sh --install
 ```
 
+## The ethos problem, measured
+
+This estate writes rules faster than it writes checks. Counted across
+`docs/WAYS_OF_WORKING.md`, `docs/PLATFORM_MANIFESTO.md` and the programme docs on 2026-08-19:
+about thirty distinct founder complaints have produced a written rule, and roughly one in three
+has a machine standing behind it. The other two thirds rest on an agent remembering a sentence.
+
+That ratio is the ethos problem, and it is not fixed by writing better sentences. The tenets
+already say "self-healing first, guard second, memory file last", and the estate keeps reaching
+for the third option because it is the cheapest to produce and the only one that never fails
+loudly. A rule with no check does not fail. It just stops being followed, quietly, and the next
+incident reads as a new problem.
+
+**The rule about rules: a new rule ships with the check that catches its violation, or it ships
+labelled PROSE-ONLY with the reason no machine can check it.** Three legal answers, same as for a
+defect: make the system fix it, make a machine refuse it, or write it down and say plainly that
+writing it down is all you did.
+
+## Which Claude Code mechanism closes which rule
+
+The hook events are the lever, and the estate already uses twelve of them. These are the rules
+that are still prose and the event that would close each one. Every "not wired" below is a
+morning's work that `docs/WAYS_OF_WORKING.md` Part 7 already asked for.
+
+| Rule, and what it last cost | Event | Wired? |
+| --- | --- | --- |
+| W20 verify in production, after prod ran 17-hour-old code | SessionStart | partly: `ops/state_probe.sh` prints where production is, but not whether the live image matches `origin/main` |
+| W21 never leave work uncommitted, which the founder called irresponsible | SessionEnd | no. `scripts/session_check.py` exists and nothing fires it |
+| W7 claim before starting, after two sessions duplicated work | SessionStart | no |
+| W22 close browser sessions when UI work ends | SessionEnd | no |
+| W23 branch hygiene: 34 worktrees behind main, worst 719 commits | SessionStart or scheduled | measured by `scripts/worktree_gc.py`, graded by `scripts/process_audit.py`, not yet run on a schedule |
+| W6 check what exists before building, with 219 files referenced by nothing | UserPromptSubmit | partly: `graphify_query_hook.py` injects evidence, nothing refuses a duplicate |
+| W11 timebox at thirty minutes, against "5 hours sometimes" | Stop | no. No hook models elapsed time on one unchanged failure |
+| Recon delegation and batching | PreToolUse | yes: `tool-drip-guard.py` exits 2 on the third consecutive read-only call |
+| W18 push implies a pull request | PreToolUse and Stop | yes: `push-pr-fence.py` refuses the push, `branch-pr-guard.py` blocks the turn end |
+| Commits that stage runtime state or skip the gate | PreToolUse | yes: `rule-guard.py`, eight refusing rules |
+
+Two mechanisms this estate has never used at all, both of which would help:
+
+- **`.claude/agents/<name>.md`.** Subagent definitions with a pinned model and restricted tools.
+  The delegation rule, "before the second exploratory search, spawn a haiku recon agent", is
+  prose every session has to remember. As an agent definition it becomes configuration.
+- **`.claude/rules/<name>.md` with `paths:` frontmatter.** Rules that load only when matching
+  files are in context. `CLAUDE.md` is 239 lines here and 305 globally, against Anthropic's
+  200-line guidance, and every line is resident on every turn of every session.
+
+**One caveat worth stating plainly.** All twelve hooks live in `~/.claude/scripts/`. None is in a
+git repository, none goes through a pull request, and none has a test. The machines enforcing this
+estate's engineering standards are the only code here held to none of them.
+
 ## The incident this came from
 
 On 2026-08-19 an agent reported "production engine is down" while the engine was ruling verdicts in

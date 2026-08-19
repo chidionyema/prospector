@@ -409,11 +409,11 @@ are not being enforced by anything. Here is the honest split.
 | W7 claim before starting | nothing yet | duplicate work happens |
 | W11 timebox | words | never once self-enforced |
 | W15 no volatile UI tests | partly, advisory lanes | tests still get written |
-| W18 push implies PR | nothing | happened this week |
-| W20 verify in production | probes exist, running them is optional | prod ran stale code for 17 hours |
+| W18 push implies PR | `~/.claude/scripts/push-pr-fence.py` refuses the push; `branch-pr-guard.py` blocks the turn end | enforced since 2026-08-18 |
+| W20 verify in production | `scripts/live_checkout.py`, plus `ops/state_probe.sh` at every session start | the probe is automatic; running `live_checkout.py` is still optional |
 | W22 close browser sessions | nothing | founder complaint |
-| W10 batching | words | the single largest recurring cost |
-| W23 branch hygiene | `scripts/worktree_gc.py` | 26 worktrees found; 3 removable, 23 hold real work |
+| W10 batching | `~/.claude/scripts/tool-drip-guard.py` exits 2 on the third consecutive read-only call | enforced, and it fires |
+| W23 branch hygiene | `scripts/worktree_gc.py` reports drift and `--refresh` closes the safe gaps; `scripts/process_audit.py` grades it | measured 2026-08-19: 34 worktrees behind main, 19 by 25+ commits, worst 719 |
 | W6 check before building | words + `graphify query` | complained about twice in one day |
 | W26 proactive | nothing | founder complaint |
 | W27 research alternatives | nothing | founder complaint |
