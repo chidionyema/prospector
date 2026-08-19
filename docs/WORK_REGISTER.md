@@ -63,13 +63,50 @@ rebases. Neither branch should try to fix it twice.
 The founder's instruction was to treat Hermes the way Prospector is treated: one environment,
 a real pipeline, no blind spots. Two strands remain.
 
-| # | Strand | Why it is not done |
+| # | Strand | State |
 | --- | --- | --- |
-| 4 | Give Hermes a leader lease so only one environment is live | Design settled — an object in the existing `prospector-backup` R2 bucket, holder `host:pid:uuid`, short TTL, renewed by the primary and acquired by the laptop only once it expires. R2 is the only storage both environments reach. A bare pid will not do: a pid only means something on the machine that minted it. Not written |
-| 5 | Move Hermes to `~/Documents/code/hermes` and give it Prospector's pipeline | `~/.hermes` has no `.github/workflows/` at all, measured 2026-08-19. Until it has CI, nothing about Hermes can be graded the way Prospector is |
+| 4 | Give Hermes a leader lease so only one environment is live | **DONE.** `scripts/hermes_lease.py` renews `hermes/leader.json` in the `prospector-backup` R2 bucket — the only storage both machines reach. A holder plus a renewal time plus a TTL, not a lock, so a leader whose machine vanishes stops holding the estate after one TTL. Identity is a uuid in `state/machine_id`, never a pid. `ai.hermes.lease-guard` runs `acquire --enforce` every 300s on the laptop and stops any Hermes daemon that comes back on a non-leader. 10 tests, no network, mutation-proved |
+| 5 | Give Hermes Prospector's pipeline | **Partly done.** `deploy.sh` now refuses a dirty tree, refuses a HEAD that is not `origin/main`, and runs `tests/run.sh` first — that gate bites today. `.github/workflows/gate.yml` is the first CI this repo has ever had. It cannot run yet: see below |
 
-A lease matters more than the move. Two live environments with no lease is the failure the
-founder named ("we cant have 2 ennvironents running"), and the move alone does not fix it.
+Proof the lease works end to end, read from the laptop while Fly holds it:
+
+```
+LEASE   fly (185e352b061638, pid 696, id b3624093), 289s left
+ME      mac (chidis-MacBook-Pro.local, id fc887153)
+exit 0 from lease-guard.sh, config/primary_environment == "fly"
+```
+
+`check_single_environment.sh` reads that same file, so the fence and the lease cannot disagree.
+
+**The one thing CI still needs, and it is a founder action.** GitHub refuses hosted runners on
+this account:
+
+```
+gh run view 32251752287 --repo chidionyema/hermes-config
+  X The job was not started because recent account payments have failed or your
+    spending limit needs to be increased
+```
+
+Self-hosted minutes are free even on a private repo, and the Prospector tooling is already
+parameterised for a second fleet:
+
+```
+PROSPECTOR_RUNNER_APP=hermes-ci GITHUB_REPO=chidionyema/hermes-config deploy/runners.sh up 1
+```
+
+It needs a credential that can register runners on `hermes-config`, and there is none — `.env`
+has no `GITHUB_RUNNER_PAT`. A fine-grained token is the correct one and GitHub has no API to mint
+it:
+
+> https://github.com/settings/personal-access-tokens/new
+> Repository access: Only select repositories -> hermes-config
+> Permissions: Repository -> Administration -> Read and write
+> then: `echo "GITHUB_RUNNER_PAT=github_pat_..." >> ~/Documents/code/prospector/.env`
+
+The session's `gh` token *can* mint registration tokens for that repo, and it was deliberately not
+used: it carries `repo` scope across every repository, and `deploy/runners.sh` states the rule
+this would break — a CI runner runs pull-request code and must never hold a broad credential.
+
 
 ### Two findings, and what was done about them — 2026-08-19
 
