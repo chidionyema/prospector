@@ -488,11 +488,14 @@ M3 (money-path adapter), M7 (chaos), M8 (end-to-end buy), M9 (DNS, shipped), M11
    No new app, no new provider.
 3. **Delete passes.** **DECIDED 2026-08-19: delete once each has been confirmed run, and
    update the repo docs in the same pass.** Report mode still runs first.
-4. **Postgres for the money path** (section 4a). The audit's recommendation is yes.
-   It is a founder call because it touches the money rail. **OPEN.**
+4. **Postgres for the money path** (section 4a). **DECIDED 2026-08-19: yes.** Founder on
+   running orders, entitlements and identity on one SQLite file on one volume: "come on this
+   is irresponsible". Tracked as task #93.
 5. **One database as the target** (section 4a). Recommendation: yes — the engine follows the
    money path onto Postgres once that is proven, rather than keeping SQLite permanently.
-   ~10 production call sites. **OPEN.**
+   ~10 production call sites. Founder has stated the concern ("requires maintaining 2
+   databases, this is concerning") but has not ruled. **OPEN, and it should be decided after
+   Postgres is running and drilled on the money path, not before.**
 
 ## 10. Ledger
 
