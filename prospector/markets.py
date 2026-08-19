@@ -105,7 +105,7 @@ def config_fingerprint(cfg: Config, market: str) -> str:
         "thresholds": asdict(cfg.thresholds),
         "weights": cfg.weights,
     }, sort_keys=True, default=str)
-    return hashlib.sha1(material.encode()).hexdigest()[:16]
+    return hashlib.sha1(material.encode(), usedforsecurity=False).hexdigest()[:16]
 
 
 def readiness_path(cfg: Config, market: str) -> Path:
