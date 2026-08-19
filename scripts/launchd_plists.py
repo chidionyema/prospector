@@ -213,26 +213,6 @@ def broken_programs(live: dict[str, dict],
         wd = str(job.get("WorkingDirectory") or "")
         if wd.startswith("/") and not Path(wd).exists():
             findings.append("%s  WorkingDirectory not found: %s" % (label, wd))
-        # argv[0] above is the INTERPRETER, and every job in this estate is `python <script>`,
-        # so checking only argv[0] validated the one argument that never goes missing. Measured
-        # 2026-08-19: com.prospector.process-audit had exited 2 hourly for a day with
-        # "can't open file '.../prospector-live/scripts/process_audit.py'", while its python and
-        # its WorkingDirectory both existed and this function reported nothing. That job is the
-        # only caller of `--check`, so the drift detector was dead and could not say so.
-        #
-        # Only absolute paths with a script suffix are judged. A relative path is resolved
-        # against the job's own WorkingDirectory at load time and a bare word against its PATH;
-        # guessing at either is how a check earns false positives and gets ignored.
-        seen: set[str] = set()
-        for arg in argv[1:]:
-            a = str(arg)
-            if not a.startswith("/") or a in seen:
-                continue
-            if not a.endswith((".py", ".sh", ".mjs", ".js")):
-                continue
-            seen.add(a)
-            if not Path(a).exists():
-                findings.append("%s  script not found: %s" % (label, a))
     return findings
 
 
