@@ -31,6 +31,12 @@ from pathlib import Path
 from typing import Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT))
+
+# The store is where PROSPECTOR_STORE_DIR says, never where this file sits. A path
+# derived from __file__ follows the CODE; production moved off this checkout on
+# 2026-08-17 and the state did not. One resolver: prospector.config.store_root().
+from prospector.config import store_root  # noqa: E402
 
 
 def _audience_from_json(path: Path) -> Optional[str]:
@@ -58,7 +64,7 @@ def _audience_from_json(path: Path) -> Optional[str]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--store-dir", default=str(REPO_ROOT / "store"),
+    ap.add_argument("--store-dir", default=str(store_root()),
                     help="Store directory (default: <repo>/store)")
     ap.add_argument("--apply", action="store_true",
                     help="Actually perform the backfill (default is a dry run)")

@@ -71,6 +71,13 @@ NAME = "E3"
 DOC_REF = "docs/COMMERCIAL_READINESS_PROGRAM.md §3 (row E3), §16 'E3 — the methodology, recovered'"
 
 REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO))
+
+# The store is where PROSPECTOR_STORE_DIR says, never where this file sits. A path
+# derived from __file__ follows the CODE; production moved off this checkout on
+# 2026-08-17 and the state did not. One resolver: prospector.config.store_root().
+from prospector.config import store_root  # noqa: E402
+
 DEFAULT_LEVELS = (1, 4, 6, 8)
 # Per-call timeout. Generous: this measures the knee, and a call that is merely slow under
 # load is the SIGNAL, not a failure. Anything past this is a genuine hang.
@@ -189,7 +196,7 @@ def _worker(n: int, calls: int, warm_waves: int) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 def _quiet_state() -> dict[str, Any]:
-    sched = REPO / "store" / "scheduler"
+    sched = store_root() / "scheduler"
     return {
         "PAUSE": (sched / "PAUSE").exists(),
         "PAUSE_GENERATION": (sched / "PAUSE_GENERATION").exists(),

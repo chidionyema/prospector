@@ -43,13 +43,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+# The store is where PROSPECTOR_STORE_DIR says, never where this file sits. A path
+# derived from __file__ follows the CODE; production moved off this checkout on
+# 2026-08-17 and the state did not. One resolver: prospector.config.store_root().
 from prospector import paths  # noqa: E402
+from prospector.config import store_root  # noqa: E402
 from prospector.jsonl_atomic import append_jsonl  # noqa: E402
 
-DOSSIERS = ROOT / "store" / "dossiers"
+DOSSIERS = store_root() / "dossiers"
 RETIRED_DIR = DOSSIERS / "retired"
-MANIFEST = ROOT / "store" / "retired_passes.json"
-DB = ROOT / "store" / "prospector.db"
+MANIFEST = store_root() / "retired_passes.json"
+DB = store_root() / "prospector.db"
 
 
 def dead_urls(cid: str) -> list[str]:

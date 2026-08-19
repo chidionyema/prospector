@@ -27,10 +27,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+# The store is where PROSPECTOR_STORE_DIR says, never where this file sits. A path
+# derived from __file__ follows the CODE; production moved off this checkout on
+# 2026-08-17 and the state did not. One resolver: prospector.config.store_root().
+from prospector.config import store_root  # noqa: E402
+
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-SCHED = ROOT / "store" / "scheduler"
+SCHED = store_root() / "scheduler"
 AUDIT_DIR = SCHED / "audit"
 
 # ANSI. Kept to bold/dim/colour only, so the view survives any terminal.

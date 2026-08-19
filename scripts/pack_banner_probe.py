@@ -33,6 +33,12 @@ import zipfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO))
+
+# The store is where PROSPECTOR_STORE_DIR says, never where this file sits. A path
+# derived from __file__ follows the CODE; production moved off this checkout on
+# 2026-08-17 and the state did not. One resolver: prospector.config.store_root().
+from prospector.config import store_root  # noqa: E402
 
 #: The exact sentence `_DECISION_GLOSS[Decision.PASS]` used to emit unconditionally on every PASS.
 RETIRED_BANNER = "cleared every check we hold it to"
@@ -70,7 +76,7 @@ def main() -> int:
     ap.add_argument("--verbose", action="store_true", help="one row per offending pack")
     args = ap.parse_args()
 
-    live = sorted(p.stem for p in (REPO / "store" / "listings").glob("*.json"))
+    live = sorted(p.stem for p in (store_root() / "listings").glob("*.json"))
     if not live:
         print("no live listings under store/listings — nothing to probe", file=sys.stderr)
         return 1

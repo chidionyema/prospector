@@ -34,10 +34,15 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-DOSSIER_DIR = REPO_ROOT / "store" / "dossiers"
-LEDGER = REPO_ROOT / "store" / "prospector.jsonl"
+# The store is where PROSPECTOR_STORE_DIR says, never where this file sits. A path
+# derived from __file__ follows the CODE; production moved off this checkout on
+# 2026-08-17 and the state did not. One resolver: prospector.config.store_root().
+from prospector.config import store_root  # noqa: E402
+
+DOSSIER_DIR = store_root() / "dossiers"
+LEDGER = store_root() / "prospector.jsonl"
 BACKFILL = REPO_ROOT / "store_platform" / "data" / "facets-backfill.json"
-LISTINGS_DIR = REPO_ROOT / "store" / "listings"
+LISTINGS_DIR = store_root() / "listings"
 
 # Was `assert len(idx) >= 300` in tests/ops/cc/test_readers.py. The number is a floor
 # on a catalogue that only grows, not a measurement — it catches a reader silently returning

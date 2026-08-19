@@ -47,6 +47,11 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
+# The store is where PROSPECTOR_STORE_DIR says, never where this file sits. A path
+# derived from __file__ follows the CODE; production moved off this checkout on
+# 2026-08-17 and the state did not. One resolver: prospector.config.store_root().
+from prospector.config import store_root  # noqa: E402
+
 GRN, RED, YEL, DIM, OFF = "\033[32m", "\033[31m", "\033[33m", "\033[2m", "\033[0m"
 
 
@@ -103,7 +108,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--apply", action="store_true", help="actually spend and write (default: dry run)")
     ap.add_argument("--limit", type=int, default=0, help="stop after N dossiers (0 = all)")
-    ap.add_argument("--dossiers", default=str(REPO / "store" / "dossiers"))
+    ap.add_argument("--dossiers", default=str(store_root() / "dossiers"))
     args = ap.parse_args()
 
     todo = pending(Path(args.dossiers))
