@@ -13,6 +13,8 @@
     "typecheck": "tsc --noEmit",
     "verify": "npm run typecheck && npm run lint",
     "test": "vitest run",
+    "parity:components": "node scripts/component_parity.mjs",
+    "parity:pixels": "node scripts/visual_regression.mjs",
     "test:e2e": "playwright test",
     "test:e2e:coreloop": "playwright test --project=coreloop"
   },

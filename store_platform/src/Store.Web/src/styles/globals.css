@@ -422,16 +422,32 @@ body::before {
    than a brochure.
    `.font-serif` is gone from this selector deliberately, not aliased to the sans -- an alias
    leaves a class that silently does nothing. */
-h1, h2, h3 {
-  font-family: var(--font-sans);
-  /* 560, not 600, to match the weights the §3.2 scale tokens now carry (display/h1 560, h2 520).
-     A heading wearing no scale token used to render 600 while one wearing `text-h1` rendered
-     whatever the token said, so the same heading level had two weights depending on how it was
-     classed. 560 is only reachable because Switzer is a variable face -- see tokens.css. */
-  font-weight: 560;
-  /* The per-size --text-*--letter-spacing values in the theme block are the finer control; this
-     is the floor for headings that do not wear a scale token. */
-  letter-spacing: -0.01em;
+/* IN `@layer base` SO THE SHIPPED BUNDLE CAN REACH ITS OWN HEADINGS. This rule was unlayered,
+   and unlayered CSS beats every cascade layer regardless of specificity. `mumchimp.css` is
+   imported into `layer(components)` at the top of this file, so for as long as this rule sat
+   outside a layer it silently overrode the drawings' own heading weights on every page of the
+   site. Measured 2026-08-18 by `scripts/component_parity.mjs` on all ten pages at both widths:
+   `h2.sec` computed 560 in the build against 665 in the drawing, and `h3.sub` computed 560
+   against 655, twenty rows out of twenty. `h1` lost `letter-spacing:-.03em` to the -0.01em floor
+   the same way. The font SIZES were never affected, which is why nothing looked obviously broken:
+   `h1` measured 54px on both sides.
+   In `base` the order is base -> components -> utilities, so the bundle supplies the drawn weight,
+   a Tailwind utility such as `font-semibold` still overrides it, and the three
+   `:is(h1, h2, h3).text-*` rules below stay unlayered and still win where a scale token is worn. */
+@layer base {
+  h1, h2, h3 {
+    font-family: var(--font-sans);
+    /* 560, not 600, to match the weights the §3.2 scale tokens now carry (display/h1 560,
+       h2 520). A heading wearing no scale token used to render 600 while one wearing `text-h1`
+       rendered whatever the token said, so the same heading level had two weights depending on
+       how it was classed. 560 is only reachable because Switzer is a variable face -- see
+       tokens.css. This is now a FLOOR in the truest sense: it applies only where neither the
+       shipped bundle nor a utility has an opinion. */
+    font-weight: 560;
+    /* The per-size --text-*--letter-spacing values in the theme block are the finer control; this
+       is the floor for headings that do not wear a scale token. */
+    letter-spacing: -0.01em;
+  }
 }
 
 /* ...and this is what makes "the finer control" true (2026-08-14). Every rule in this file is

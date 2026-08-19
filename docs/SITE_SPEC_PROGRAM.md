@@ -1908,3 +1908,121 @@ The diff did not follow. `/about` at 1280 went 3.89% to 3.95% whole page and 3.9
 the fold. A page whose first 356 vertical pixels are now identical to the drawing measures very
 slightly WORSE than before. That is the clearest available evidence that the remaining number is
 copy, not geometry, and that more layout work will not move it.
+
+### 11.10 Parity step 4 decided: geometry gates, pixels report - DONE
+
+The founder's answer to 11.9 was that he did not know either, and asked for the best call. This is
+it, with the measurement behind it.
+
+**The pixel diff reports. `component_parity.mjs` gates.** A raw pixel diff between two documents
+whose words differ cannot converge. The proof is above: the top 100px of `/about` matches the
+drawing element for element, and 18.8% of the pixels in the y=20 band still differ, because the nav
+says "Good for" where the drawing says "Categories". Making the head of `/about` exact moved the
+number the wrong way. A gate that can never be green gets ignored, which is what happened to the 2%
+threshold for a week.
+
+**What the new harness grades.** `store_platform/src/Store.Web/scripts/component_parity.mjs` reads
+every selector out of the shipped bundle `store_platform/src/Store.Web/src/styles/mumchimp.css` and,
+for each one, compares the first matching element in the drawing against the first matching element
+in the built page, at 390 and 1280. The unit is a component the design system names. Three buckets:
+
+- `hard` - a computed-style difference on a component both documents render. A defect.
+- `absent` - a component one document renders and the other does not, `display:none` included.
+- `soft` - width or height past tolerance. Usually copy. Never gates.
+
+It deliberately ignores absolute y, `font-family`, padding against margin (compared as a sum per
+side, so the breadcrumb's `-my-3 py-3` tap target does not read as a defect) and `inline-block`
+against `block` (CSS blockifies flex children by itself).
+
+It also ignores HORIZONTAL margins, and keeps vertical ones. A vertical margin is a rhythm decision
+the drawings make deliberately. A horizontal one is usually `auto`, and `getComputedStyle` reports
+the USED value of an auto margin, which is whatever the rest of the row left over. `mumchimp.css:48`
+sets `.logo{margin-right:auto}`: the drawing computed 436.109px against the built page's 447.641px,
+on all ten pages at both widths, because our nav says "Good for" where the drawing says
+"Categories". That is copy wearing a layout number, and it was 20 of the first run's 751 hard
+findings. Horizontal padding and border are real style claims and are still compared. Dropping them
+took the totals from 751 hard to 724.
+
+**Read a finding before fixing it: the harness pairs the FIRST match of each selector.** If a page's
+first `.btn` is a primary call to action and the drawing's first `.btn` is a secondary one, the
+harness reports a colour defect that is not one. Worked example, and the reason this warning is
+here: `.tlink` reports `color: rgb(86, 91, 98)` drawn against `rgb(36, 71, 201)` built. The built
+value is correct -- `mumchimp.css:27` is `.tlink{color:var(--link)}` and `--link` is `#2447C9` in the
+bundle's own `:root`. The drawing's first `.tlink` on that page is grey because that particular
+instance is styled grey, not because the token differs. Changing our link colour to match would
+break every other link on the site. The harness says WHERE to look; the drawing says what it should
+be.
+
+**The next step for the harness: grade only what the stylesheet declares about a component.** Right
+now it compares every property in its list against whatever element matched, and for a selector that
+is a bare utility rather than a component that is meaningless. `mumchimp.css:9` is
+`.num{font-variant-numeric:tabular-nums}` and nothing else, so `.num` sits on a dozen unrelated
+elements. Its 48 hard findings contradict each other in both directions -- `letterSpacing` reads
+"drawing normal / built -0.38" on one page and "drawing -0.38 / built normal" on another, and
+`fontWeight` reads 670 against 400. `.tlink` (76 findings) declares only `color` and `font-weight`
+and has the same problem.
+
+Grading each selector on the properties its own rule declares would cut that noise without losing
+anything the gate has caught: defect 10 was found on `h2.sec`, and `mumchimp.css:14` declares
+`font-weight` there explicitly. Not done in this pass -- it is a second redesign of the comparator
+and wants its own before-and-after measurement.
+
+**Why it is not a CI job.** The built page in CI is built against `https://api.example.com`, so it
+has no catalogue: the shelf, the kill log and the hero counts all render empty. The comparison only
+means anything against the live API. It runs locally, before shipping a storefront change:
+
+```bash
+cd store_platform/src/Store.Web
+npm run parity:components          # grades against the baseline
+npm run parity:components -- --update-baseline
+npm run parity:pixels              # the PNGs, for looking at
+```
+
+**The gate is a ratchet, not a zero.** `docs/design/component_parity_baseline.json` records what
+each page measured. A page may improve or hold; it may not get worse. Same shape as
+`docs/doc_lint_baseline.json`. A bar of zero would be red on day one and would then be ignored.
+
+**A ratchet needs a probe that does not flap, and the first one did.** The first recorded baseline
+took `account` at 390 as 30 hard findings. Three runs before it and two after all returned 32, with
+no code change between any of them, and the two 32-runs produced byte-identical finding lists. A
+baseline of 30 would have called every later run a regression. The cause was that
+`component_parity.mjs` read computed styles straight after `networkidle`, while entrance animations
+and CSS transitions were still running, so it sometimes read an interpolated value instead of the
+resting one. It now injects `animation:none;transition:none` and waits 400ms before reading, which
+is what the pixel harness already did. The baseline was re-recorded afterwards.
+
+Proof the probe is now deterministic: two consecutive full runs, twenty page/width pairs each,
+produced byte-identical 1362-line reports (`diff` empty), and nineteen of the twenty pairs
+reproduced the flapping baseline's numbers exactly. Only `account@390` differed, at the value the
+outlier run had recorded.
+
+**It found two defects in its first run, both invisible to every other check.**
+
+**Defect 10 - the shipped stylesheet could not reach its own headings.** `globals.css` imports the
+bundle as `@import "./mumchimp.css" layer(components)`, and the `h1, h2, h3` element rule further
+down the same file was UNLAYERED. Unlayered CSS beats every cascade layer regardless of specificity,
+so `font-weight:560` overrode the drawings' own heading weights on every page of the site. Measured
+across all ten pages at both widths: `h2.sec` computed 560 against the drawing's 665, `h3.sub`
+computed 560 against 655. Twenty rows out of twenty. The font SIZES were never affected, which is
+why nothing looked obviously broken: `h1` measured 54px on both sides. The rule now sits in
+`@layer base`, so the bundle supplies the drawn weight, a utility such as `font-semibold` still
+overrides it, and the three `:is(h1, h2, h3).text-*` rules stay unlayered and still win where a
+scale token is worn. Pinned by
+`store_platform/src/Store.Web/src/__tests__/headingFloorIsLayered.test.ts`, which walks the real
+brace structure rather than grepping. Parity findings for those two selectors went from 20 to 0.
+
+**Defect 11 - the home hero carried its band's padding on top of its own.** Founder report,
+2026-08-18: "desktop landing page hero layout top margin and top margin of right panel are off".
+`mumchimp.css:274` sets `.hero{padding:52px 0 44px}`, and the `SectionBand` around it added
+`md:pt-14 md:pb-16`. Measured at 1280, drawing against built page: hero grid y=103 against y=159,
+right-hand panel y=155 against y=211, h1 y=297.2 against y=353.2, sub y=483.6 against y=539.6.
+Every row exactly 56px low, which is `pt-14`. The desktop band padding is now `md:pt-0 md:pb-0` and
+the two `[@media(max-height:820px)]:md:*` overrides are gone with it. The PHONE padding is
+untouched: `pt-8 pb-8` there was set by measuring where the first shelf card landed at 360x780,
+390x844 and 430x932, and the drawing's own media query drops `.hero` to `padding:36px 0 32px`
+below 900px anyway.
+
+Re-measured after the fix, same probe, same widths: header y=44 h=59, hero grid y=103 h=663,
+right-hand panel y=155 h=567, h1 y=297.2 h=168, sub y=483.6 h=54 -- every row identical on both
+documents. The only remaining difference is text width (h1 421px drawn against 436px built), which
+is the headline copy differing, not layout.
