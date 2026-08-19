@@ -35,6 +35,12 @@ import sys
 # A run in one of these states has not concluded, so it cannot be evidence either way.
 _UNCONCLUDED = {"queued", "in_progress", "waiting", "requested", "pending"}
 
+# Nor can a run that was called off. A run cancelled before its first job started also produced
+# zero jobs, and counting it would grade every busy repository as dead: CI here cancels an
+# in-flight run on every push to a branch. `skipped` is the same -- a job-level `if` that came
+# out false is not GitHub failing to start the workflow.
+_NO_EVIDENCE = {"cancelled", "skipped", "neutral", "stale", "action_required", None}
+
 
 def _gh(args: list[str]) -> object:
     """One `gh api` call returning parsed JSON. Raises RuntimeError with the real stderr."""
@@ -79,7 +85,10 @@ def grade(repo: str, runs_per_workflow: int) -> dict:
             )
             or []
         )
-        concluded = [r for r in runs if r.get("status") not in _UNCONCLUDED]
+        concluded = [
+            r for r in runs
+            if r.get("status") not in _UNCONCLUDED and r.get("conclusion") not in _NO_EVIDENCE
+        ]
         row = {
             "name": wf.get("name"),
             "path": wf.get("path"),

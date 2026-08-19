@@ -941,12 +941,31 @@ jobs:
       # checks. Measured 2026-08-19 in both web projects: "found 0 vulnerabilities", so this
       # goes in green.
       #
-      # --audit-level=high, not low. npm reports transitive advisories in build-only tooling
-      # that no request ever reaches, and a gate that fires on those gets switched off within a
-      # week. High and critical are the ones worth stopping a merge for.
+      # --audit-level=high, not low, and --omit=dev, not the whole tree. This comment used to
+      # promise the second half and the command did not do it, so the gate fired on exactly the
+      # build-only tooling it said it would ignore. Measured 2026-08-19: 10 high advisories, all
+      # of them under @lhci/cli or @storybook/nextjs-vite, none reachable by any request --
+      # 0 high advisories in the production tree. It had turned main red with no code change and
+      # was blocking every merge in the repository, including the fix for main's other red.
+      # A gate whose verdict comes from an outside advisory feed must only cover code we SHIP.
       - name: Dependency advisory scan
         working-directory: store_platform/src/Store.Web
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=high --omit=dev
+
+      # The same tree WITHOUT --omit=dev, reported and never enforced. Dropping the dev tree
+      # from the gate must not drop it from view: a build tool with a known hole is still worth
+      # knowing about, it is just not worth blocking every merge in the repository over.
+      - name: Dependency advisories in build tooling (report only)
+        working-directory: store_platform/src/Store.Web
+        continue-on-error: true
+        run: |
+          npm audit --audit-level=high > "$RUNNER_TEMP/audit-dev.txt" 2>&1 || true
+          {
+            echo "### Build-tooling advisories (not a gate)"
+            echo '```'
+            tail -20 "$RUNNER_TEMP/audit-dev.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build
         run: npm run build
@@ -1017,12 +1036,31 @@ jobs:
       # checks. Measured 2026-08-19 in both web projects: "found 0 vulnerabilities", so this
       # goes in green.
       #
-      # --audit-level=high, not low. npm reports transitive advisories in build-only tooling
-      # that no request ever reaches, and a gate that fires on those gets switched off within a
-      # week. High and critical are the ones worth stopping a merge for.
+      # --audit-level=high, not low, and --omit=dev, not the whole tree. This comment used to
+      # promise the second half and the command did not do it, so the gate fired on exactly the
+      # build-only tooling it said it would ignore. Measured 2026-08-19: 10 high advisories, all
+      # of them under @lhci/cli or @storybook/nextjs-vite, none reachable by any request --
+      # 0 high advisories in the production tree. It had turned main red with no code change and
+      # was blocking every merge in the repository, including the fix for main's other red.
+      # A gate whose verdict comes from an outside advisory feed must only cover code we SHIP.
       - name: Dependency advisory scan
         working-directory: store_platform/src/Ops.Console
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=high --omit=dev
+
+      # The same tree WITHOUT --omit=dev, reported and never enforced. Dropping the dev tree
+      # from the gate must not drop it from view: a build tool with a known hole is still worth
+      # knowing about, it is just not worth blocking every merge in the repository over.
+      - name: Dependency advisories in build tooling (report only)
+        working-directory: store_platform/src/Ops.Console
+        continue-on-error: true
+        run: |
+          npm audit --audit-level=high > "$RUNNER_TEMP/audit-dev.txt" 2>&1 || true
+          {
+            echo "### Build-tooling advisories (not a gate)"
+            echo '```'
+            tail -20 "$RUNNER_TEMP/audit-dev.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build
         run: npm run build
