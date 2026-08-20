@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Fly.io adapter. Everything in this repo that knows the word "fly" is in this file.
 #
-# Read deploy/PORTABILITY.md first. This implements the eight-verb contract described there.
-# A second platform is a copy of this file with different commands in the same eight functions.
+# Read deploy/PORTABILITY.md first. This implements the twelve-function contract described
+# there. A second platform is a copy of this file with different commands in the same twelve
+# functions. It said "eight" until 2026-08-20, when there had been twelve for weeks.
 
 set -euo pipefail
 
