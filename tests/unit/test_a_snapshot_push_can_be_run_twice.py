@@ -47,7 +47,10 @@ def git(cwd: Path, *args: str) -> str:
 def estate(tmp_path: Path, monkeypatch) -> Path:
     """A repo whose HEAD commit is BACKDATED, with a bare origin and one dirty worktree."""
     bare = tmp_path / "origin.git"
-    git(tmp_path, "init", "-q", "--bare", str(bare))
+    # -b main: see the note in test_worktree_snapshot_touches_nothing.py. `git init --bare`
+    # reads the machine's init.defaultBranch, so the same fixture builds a different repo
+    # on a runner than on a laptop.
+    git(tmp_path, "init", "-q", "--bare", "-b", "main", str(bare))
 
     main = tmp_path / "main"
     main.mkdir()

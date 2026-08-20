@@ -38,8 +38,23 @@ def _clean_git_env() -> dict[str, str]:
 
 
 def git(cwd: Path, *args: str) -> str:
-    p = subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, text=True, check=True,
+    """Run git, and on failure raise something that names the CAUSE, not just the status.
+
+    `check=True` with `capture_output=True` throws stderr away, so a failure in CI reads
+    "Command [...] returned non-zero exit status 128" and stops there. That exact message cost a
+    reproduction on a second machine to learn it meant "fatal: invalid reference: HEAD".
+
+    The TYPE must stay CalledProcessError: test_the_secret_is_not_in_the_snapshot asserts
+    `pytest.raises(subprocess.CalledProcessError)` on a git call that is SUPPOSED to fail, and an
+    AssertionError here turns that deliberate failure into a red test. The notes carry the cause --
+    CalledProcessError.__str__ prints only the exit status, and pytest renders notes."""
+    p = subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, text=True,
                        env=_clean_git_env())
+    if p.returncode:
+        e = subprocess.CalledProcessError(p.returncode, ["git", *args], p.stdout, p.stderr)
+        e.add_note(f"cwd: {cwd}")
+        e.add_note((p.stderr or p.stdout).strip() or "<no git output>")
+        raise e
     return p.stdout.strip()
 
 
@@ -178,7 +193,15 @@ def test_a_worktree_whose_objects_live_in_another_clone_is_still_pushed(tmp_path
     The assertion that matters is the one about the OTHER worktree. A test that only checked the
     cross-owned tree would pass on a fix that pushed it and silently dropped the rest.
     """
-    git(tmp_path, "init", "-q", "--bare", "origin.git")
+    # `-b main` is load-bearing, not tidiness. `git init --bare` names HEAD from the
+    # machine's init.defaultBranch, which is `master` on a GitHub runner and `main` on
+    # this estate's laptops. The fixture then pushes to refs/heads/main, so on the runner
+    # origin/HEAD pointed at a branch that never existed, every clone below came out
+    # EMPTY ("remote HEAD refers to nonexistent ref, unable to checkout"), and
+    # `worktree add --detach` failed with "fatal: invalid reference: HEAD" -- exit 128,
+    # reported by CI with no error text. Green on every developer machine, red on every
+    # runner. Reproduced 2026-08-20 by forcing `-b master` on a laptop.
+    git(tmp_path, "init", "-q", "--bare", "-b", "main", "origin.git")
     origin = tmp_path / "origin.git"
 
     seed = tmp_path / "seed"
