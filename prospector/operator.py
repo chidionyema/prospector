@@ -1758,36 +1758,10 @@ class FallbackOperator(Operator):
             provider="+".join(n for n, _ in self.operators))
 
 
-#: The tier names `_build_operator` can actually construct, in the order it tries them.
-#:
-#: THIS EXISTS SO A UI CANNOT OFFER A TIER THAT DOES NOT EXIST. The Control Center's operator
-#: selector offered `["", "mock", "claude"]` — one blank, one test double, and one adapter that
-#: was DELETED on 2026-08-15 and now raises here. The live value (`[minimax, claude_cli]`) was in
-#: none of them, so the widget fell to index 0 and staged the empty string on every render, with
-#: no interaction required. Any list of tier names written somewhere else drifts from this
-#: function; read this instead. Removed tiers stay absent deliberately — they raise below with
-#: the reason and the date, which is the message an operator needs.
-BUILDABLE_TIERS: tuple[str, ...] = (
-    "claude_cli", "minimax", "minimax_m27", "deepseek", "ollama", "openrouter", "mock",
-)
-
-
-#: The parts of the engine that can carry their own model pin.
-#:
-#: Each name is a chain that ALREADY exists as its own config roster, so this adds no new concept
-#: — it gives each roster a model to go with its provider list. `moat` is the verdict chain
-#: (`operator:`/`moat_primary:`), `noncritical` the cheap tail (`noncritical_operator:`),
-#: `artifact` the prose of the £49 deliverable (`artifact_operator:`), `marketing` the shelf copy
-#: (`marketing_operator:`), `grounding` the retrieval brain.
-#:
-#: WHY THIS EXISTS. Until 2026-08-19 there was one estate-wide `model:` and one `model_fast:`,
-#: and a name-prefix heuristic guessed which provider they were "for". Measured that day: the
-#: guess reached exactly one construction site (`ollama`), where its prefix table was empty, so
-#: the match was always False and the value always `None`. Setting `cfg.model` to a MiniMax name,
-#: a Claude name or an Ollama name changed the model of nothing. Both knobs are editable in the
-#: ops console, so an operator could set them, watch the write succeed, read the history row, and
-#: get no change at all. `tests/unit/test_component_models.py` fails if a pin stops arriving.
-COMPONENTS: tuple[str, ...] = ("moat", "noncritical", "artifact", "marketing", "grounding")
+#: Both tables now live in `prospector.tiers`, a leaf module with no imports, and are
+#: re-exported here so every existing `from prospector.operator import BUILDABLE_TIERS` keeps
+#: working. See that file for why.
+from .tiers import BUILDABLE_TIERS, COMPONENTS  # noqa: E402,F401
 
 
 def component_pin(cfg, component: str | None, kind: str) -> str:
@@ -1857,7 +1831,13 @@ def _build_operator(kind: str, cfg, fast: bool, component: str | None = None) ->
     from a string.
     """
     md = getattr(cfg, "model_defaults", None)
-    model = resolve_model(cfg, kind, component=component, fast=fast)
+    # There is deliberately no `model = resolve_model(...)` here. It was assigned on this line
+    # and never read by any branch below -- ruff F841, pre-existing on main and invisible there
+    # because the gate scopes ruff to the STAGED files and nobody had staged this one since.
+    # Each `kind` resolves its own pin instead, and does it in a shape `resolve_model` cannot:
+    # adapters like MiniMax take BOTH a full and a fast model and pick by `cheap=fast`, where
+    # `resolve_model` collapses the pair to one string. So the inline layering is the richer
+    # one, not a partial copy. `resolve_model` now has no call site anywhere in the repo.
     if kind == "claude_cli":
         # cfg.model is an API pin for a hosted tier; it must not leak to the claude CLI, whose
         # model names are different. But passing nothing is not free either: the CLI then uses
