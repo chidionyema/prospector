@@ -26,7 +26,6 @@ because of its own bug is worse than the hole it closes.
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
 from pathlib import Path
 
@@ -36,7 +35,10 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github" / "workflows" / "main-admission-guard.yml"
 
-pytestmark = pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")
+# `needs_tool`, not `skipif(shutil.which(...))`. The skipif spelling deleted this whole
+# file from CI without a word for as long as the fleet ran our own runner image, which
+# ships no language runtimes. tests/conftest.py::_require_tools carries the measurement.
+pytestmark = pytest.mark.needs_tool("node")
 
 ZERO = "0" * 40
 SHA = "abcdef1234567890abcdef1234567890abcdef12"

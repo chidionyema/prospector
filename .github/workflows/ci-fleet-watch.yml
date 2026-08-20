@@ -48,6 +48,20 @@ concurrency:
 
 jobs:
   watch:
+    # Gated for the same reason as ci-fleet-keeper's `keep`, and by the same switch: this
+    # account cannot start a GitHub-hosted job at all. Measured 2026-08-20 07:21, run
+    # 32343624520 — zero steps, log 404s, annotation "The job was not started because recent
+    # account payments have failed or your spending limit needs to be increased". Daily red on
+    # main, for a reason no code change can fix.
+    #
+    # It skips rather than moving to the fleet, because `test_the_watch_does_not_run_on_the_fleet
+    # _it_grades` is right: a mis-imaged fleet cannot report that it is mis-imaged. So while the
+    # switch is off this question is asked by hand — the ops console button, or
+    # `.venv/bin/python scripts/ci_fleet_probe.py --image-only`. ci-fleet-keeper's `announce`
+    # job says so once an hour, so the silence is not silent.
+    #
+    #   gh variable set HOSTED_RUNNERS_AVAILABLE --body yes    # after billing is fixed
+    if: vars.HOSTED_RUNNERS_AVAILABLE == 'yes'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

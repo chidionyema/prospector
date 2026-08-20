@@ -4,10 +4,16 @@ from __future__ import annotations
 import os
 
 import pytest
+from tool_gate import require_tool
 
 from prospector.config import Config, load_config
 
 
+# Taken verbatim from prospector-36's fix on `perf/engine-100x` (9c3310f9), not written
+# again here: the estate already owns this mechanism and two implementations of one class
+# are worse than none. Reproduced independently in this worktree before taking it — the
+# suite run under an inherited GIT_INDEX_FILE took a COPY of this branch's index from
+# 2,078 entries to 3, and reported `2 passed`.
 def _strip_inherited_git_env() -> list[str]:
     """Remove every GIT_* variable from this process before any test runs. Returns what went.
 
@@ -56,6 +62,8 @@ def _strip_inherited_git_env() -> list[str]:
 
 STRIPPED_GIT_ENV = _strip_inherited_git_env()
 
+
+
 # Variables pytest itself owns and rewrites around every test. PYTEST_CURRENT_TEST carries the
 # node id AND the phase, so it reads "…(setup)" at the start of a test and "…(teardown)" at the
 # end — a difference on every single test, which would make the guard below fire 5852 times and
@@ -67,12 +75,48 @@ def _env_snapshot() -> dict:
     return {k: v for k, v in os.environ.items() if k not in _PYTEST_OWNED_ENV}
 
 
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "needs_tool(*binaries): the test needs these commands on PATH. Missing locally => "
+        "skip. Missing in CI => ERROR, because in CI a missing tool is a hole in the gate.",
+    )
+
+
+def _require_tools(item) -> None:
+    """Gate a test on an external binary, and never let CI lose it silently.
+
+    WHY THIS IS A HOOK AND NOT `pytest.mark.skipif(shutil.which(...) is None)`. That is the
+    obvious spelling and it deleted 67 tests from CI without a word. `test_main_admission_guard.py`
+    and `test_pr_keeper.py` prove their workflows by running the workflow's own `github-script`
+    body in node against a stubbed Octokit — the only executable proof that main's protection
+    decides correctly. `deploy/runner/Dockerfile` ships no language runtimes on purpose, and
+    `ci.yml`'s python job did not call setup-node, so `shutil.which("node")` was None on every
+    run. 67 tests skipped, the job stayed green, and the gate that stops an unadmitted commit
+    reaching main was graded by nobody.
+
+    THE CLASS is a test that answers "the tool is missing" with the same colour as "the code is
+    correct". A skip is invisible in `-q` output, it is not an annotation, and no reviewer counts
+    them. It is the same shape as pytest exiting 0 on a run that collected nothing, and as an
+    empty log read as a clean negative.
+
+    So the skip survives where it is honest — a laptop without harper-cli, node or docker should
+    not be walled — and becomes an ERROR on a CI runner, where a missing tool is never a fact
+    about the world but a hole in the gate that somebody has to close. `ci.yml` installing the
+    tool is what keeps CI green; this makes deleting that step loud.
+    """
+    for marker in item.iter_markers("needs_tool"):
+        for tool in marker.args:
+            require_tool(tool)
+
+
 def pytest_runtest_setup(item):
     """Record the environment before anything in this test has touched it.
 
     A plain hook rather than a wrapper: pytest calls this before the item's fixtures are set up,
     which is exactly the moment wanted.
     """
+    _require_tools(item)
     item._prospector_env_before = _env_snapshot()
 
 

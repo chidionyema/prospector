@@ -35,6 +35,28 @@ permissions:
 
 jobs:
   keep:
+    # SKIPPED, not failed, while this account cannot start a GitHub-hosted job at all.
+    #
+    # Measured on this workflow's first ever scheduled run (2026-08-20 08:57, d443f0ab): the job
+    # ran zero steps, its log 404s, and the only record anywhere is the annotation, verbatim:
+    #
+    #   "The job was not started because recent account payments have failed or your spending
+    #    limit needs to be increased. Please check the 'Billing & plans' section in your settings"
+    #
+    # That also refutes the header's budget note above: there is no 2,000-minute reserve to
+    # spend, and `ci.yml`'s `|| 'ubuntu-latest'` fallback is not an escape hatch — it is an
+    # instant failure with no steps, which reads like nothing at all.
+    #
+    # A job that cannot start still counts as a FAILURE on main, once an hour, for ever, and
+    # main is never allowed to be red. No code fixes that: the fix is a billing decision, and
+    # money is the founder's alone. So the keeper waits behind a switch he owns.
+    #
+    #   gh variable set HOSTED_RUNNERS_AVAILABLE --body yes    # turn it back on, no code change
+    #   gh variable list                                       # the live answer, never this file
+    #
+    # Absent means "a GitHub-hosted job cannot start here", which is the true state today. It
+    # does not mean somebody forgot: the `announce` job below says so on every tick.
+    if: vars.HOSTED_RUNNERS_AVAILABLE == 'yes'
     runs-on: ubuntu-latest   # see header. NOT the fly pool.
     timeout-minutes: 10
     steps:
@@ -49,3 +71,30 @@ jobs:
           RUNNER_ADMIN_PAT: ${{ secrets.RUNNER_ADMIN_PAT }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: python3 scripts/ci_fleet_keeper.py --start
+
+  # The alarm, because a skipped job is silent and silence is what this estate keeps mistaking
+  # for health. It runs on the fleet — which works — states that the fleet has no self-heal
+  # right now, and SUCCEEDS, so the hourly tick is a green run carrying a reason instead of a
+  # red run carrying a billing message nobody can act on but the founder.
+  announce:
+    if: vars.HOSTED_RUNNERS_AVAILABLE != 'yes'
+    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'fly' }}
+    timeout-minutes: 5
+    steps:
+      - name: Say that the fleet keeper is off, and why
+        run: |
+          {
+            echo "## ci-fleet-keeper is OFF — the fleet has no self-heal"
+            echo
+            echo "A GitHub-hosted job cannot start on this account. Measured 2026-08-20 08:57:"
+            echo "zero steps, the job log 404s, and the annotation reads:"
+            echo
+            echo "> The job was not started because recent account payments have failed or your"
+            echo "> spending limit needs to be increased."
+            echo
+            echo "So a stopped CI machine stays stopped until somebody starts it by hand:"
+            echo '`.venv/bin/python scripts/ci_fleet_keeper.py --start`'
+            echo
+            echo "Turn the keeper back on after fixing billing, no code change needed:"
+            echo '`gh variable set HOSTED_RUNNERS_AVAILABLE --body yes`'
+          } >> "$GITHUB_STEP_SUMMARY"
