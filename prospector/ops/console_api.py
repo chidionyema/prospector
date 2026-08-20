@@ -1580,8 +1580,11 @@ def _act_engine_switch(cfg, payload: dict, preview: bool) -> dict:
     the engine is in.
     """
     to = str(payload.get("to") or "").strip()
-    if to not in ("fly", "laptop", "sshdocker"):
-        raise ValueError(f"unknown side {to!r}; expected fly, laptop or sshdocker")
+    # The list of platforms comes from the script, which reads deploy/targets/*.sh. A tuple typed
+    # here would have refused `k8s` on the day the adapter landed, with the file already on disk.
+    known = json.loads(_failover("targets", "--json", timeout=20))
+    if to not in known:
+        raise ValueError(f"unknown side {to!r}; expected one of {', '.join(known)}")
     reason = str(payload.get("reason") or "").strip()
     if not reason:
         raise ValueError("a reason is required — an unexplained engine move reads as an outage")

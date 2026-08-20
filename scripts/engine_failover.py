@@ -728,6 +728,34 @@ def cmd_drain(args) -> int:
     return 0 if data["ok"] else 1
 
 
+def deploy_targets() -> list[str]:
+    """Every platform the engine can be moved to, DISCOVERED from deploy/targets/*.sh.
+
+    Not a list typed out here. deploy/cutover.sh already answers this question by looking for the
+    file — `[ -f "$HERE/targets/$side.sh" ]` — so a second list is a second answer that drifts the
+    moment an adapter lands. Measured 2026-08-20: `deploy/targets/k8s.sh` was written, and both
+    this script and the ops console would still have refused `--to k8s` with the adapter sitting
+    on disk beside the three names they had memorised. Same rule as the estate inventory: read the
+    running world, never the declaration.
+
+    `tests/unit/test_every_deploy_target_implements_the_contract.py` fails if either caller starts
+    keeping its own list again.
+    """
+    here = Path(__file__).resolve().parents[1] / "deploy" / "targets"
+    return sorted(f.stem for f in here.glob("*.sh"))
+
+
+def cmd_targets(args) -> int:
+    """The console asks this rather than globbing the directory itself: one implementation, three
+    callers, exactly as _failover() in prospector/ops/console_api.py already assumes."""
+    names = deploy_targets()
+    if getattr(args, "json", False):
+        print(json.dumps(names))
+    else:
+        for n in names:
+            print(n)
+    return 0
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -759,8 +787,12 @@ def main() -> int:
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_drain)
 
+    s = sub.add_parser("targets", help="every platform the engine can be moved to")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(fn=cmd_targets)
+
     s = sub.add_parser("switch", help="move the engine to the other side, deliberately")
-    s.add_argument("--to", required=True, choices=["fly", "laptop", "sshdocker"])
+    s.add_argument("--to", required=True, choices=deploy_targets())
     s.add_argument("--from", dest="frm", default=None)
     s.set_defaults(fn=cmd_switch)
 
