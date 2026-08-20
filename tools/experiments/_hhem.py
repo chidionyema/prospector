@@ -5,12 +5,26 @@ See `_hhem_sidecar.py` for why this cannot be an import. This half does three th
 else: locate the sidecar interpreter, refuse loudly if it is gone, and cache scores on disk so a
 re-run of E15/E17 is free.
 
-The refusal matters more than the call. If the sidecar has been wiped from /tmp the honest output
-is "the instrument is missing", never a silently-degraded lexical fallback dressed up as a
+The refusal matters more than the call. If the sidecar interpreter is gone the honest output is
+"the instrument is missing", never a silently-degraded lexical fallback dressed up as a
 groundedness measurement. `SidecarMissing` is raised and the experiment stops.
 
-NEVER pip-install into the sidecar. A previous `numpy<2` pin broke transformers there outright;
-the environment is verified working and is treated as read-only.
+DO NOT casually pip-install into the sidecar; treat it as read-only. The environment is pinned and
+verified, and an unplanned upgrade there invalidates every published HHEM number at a stroke.
+
+The sidecar used to live under /tmp. macOS cleared /tmp on 2026-08-20 and destroyed it, which
+silently falsified the "reproduce with runner.py run E15" line published in every HHEM receipt --
+the experiment could no longer be re-run at all. It now lives under ~/.local/share, which survives
+a reboot. E-100, docs/ENGINE_100X_PROGRAM.md.
+
+One prohibition here was measured and found too broad. The old text read "NEVER pip-install into
+the sidecar; a previous numpy<2 pin broke transformers there outright." On the 2026-08-20 rebuild
+`numpy<2` was REQUIRED: torch 2.2.2 is built against the numpy 1.x C API and emits "Failed to
+initialize NumPy: _ARRAY_API not found" under numpy 2.x. Measured after installing numpy 1.26.4 --
+transformers 4.57.6 / torch 2.2.2 / numpy 1.26.4, HHEM loaded in 3.78s and scored 4 pairs in 2.96s
+(supported 0.868, contradicted 0.0038, identical 0.918, irrelevant 0.0011). The pin is a
+requirement of this torch build, not a hazard. What broke the earlier sidecar is not recorded and
+was not reproduced.
 """
 from __future__ import annotations
 
@@ -23,8 +37,26 @@ import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-SIDECAR_PYTHON = Path(os.environ.get("PROSPECTOR_ML_PYTHON",
-                                     "/tmp/prospector-ml-venv/bin/python3.12"))
+# Searched in order; the FIRST entry is also the fallback when none exists, so the error message
+# names the path a rebuild should target. The historical /tmp location is deliberately NOT listed:
+# it is the location this whole guard exists to forbid, and anyone who still has a sidecar there
+# can point at it with PROSPECTOR_ML_PYTHON.
+_SIDECAR_CANDIDATES = (
+    Path.home() / ".local/share/prospector-ml-venv/bin/python3.12",
+)
+
+
+def _resolve_sidecar_python() -> Path:
+    override = os.environ.get("PROSPECTOR_ML_PYTHON")
+    if override:
+        return Path(override)
+    for cand in _SIDECAR_CANDIDATES:
+        if cand.exists():
+            return cand
+    return _SIDECAR_CANDIDATES[0]
+
+
+SIDECAR_PYTHON = _resolve_sidecar_python()
 SIDECAR_SCRIPT = HERE / "_hhem_sidecar.py"
 CACHE_PATH = HERE / "_hhem_score_cache.json"
 MODEL_ID = "vectara/hallucination_evaluation_model"
@@ -49,16 +81,29 @@ def sidecar_status() -> dict:
     return status
 
 
-def require_sidecar() -> dict:
+def require_sidecar(script: Path | None = None) -> dict:
+    """Refuse loudly unless the sidecar interpreter AND the script that will run in it both exist.
+
+    `script` defaults to the HHEM sidecar so the original no-argument call site keeps working.
+    Other experiments (E101's `_verifier_sidecar.py`) pass their own, because "the interpreter is
+    fine but MY script is missing" is a different failure and must say so.
+    """
+    script = Path(script) if script is not None else SIDECAR_SCRIPT
     status = sidecar_status()
+    status["script"] = str(script)
+    status["script_exists"] = script.exists()
     if not status["exists"]:
         raise SidecarMissing(
             f"{SIDECAR_PYTHON} is gone. HHEM cannot run in the project venv "
             f"(python {sys.version.split()[0]}; no cp314 torch wheel, and torch dropped macOS "
             "x86_64 after 2.2). Recreate the sidecar deliberately — this experiment will NOT "
-            "install anything.")
+            "install anything. Rebuild:\n"
+            f"  /usr/local/opt/python@3.12/bin/python3.12 -m venv {SIDECAR_PYTHON.parent.parent}\n"
+            f"  {SIDECAR_PYTHON} -m pip install 'torch==2.2.2' 'transformers==4.57.6' "
+            "'numpy<2'\n"
+            "Then re-run. Any HHEM number published while this was missing is unreproducible.")
     if not status["script_exists"]:
-        raise SidecarMissing(f"{SIDECAR_SCRIPT} is missing")
+        raise SidecarMissing(f"{script} is missing")
     if status.get("probe_rc") != 0:
         raise SidecarMissing(
             f"sidecar interpreter exists but cannot import torch/transformers (rc="
