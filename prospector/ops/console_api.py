@@ -3421,6 +3421,16 @@ TOOLS: list[dict] = [
     # running three probes by hand and getting three different answers.
     _t("scripts/branch_backlog.py", "How much finished work is sitting unmerged on a branch?",
        False, "/audit"),
+    # --- registered 2026-08-19 ---
+    # It shipped in #460 with a `--json` flag whose own help text says "for the ops console", and
+    # was never added to this table. That is exactly the drift `test_console_tool_registry_has_no_drift`
+    # exists to catch, and it caught it: main went red the moment #460 merged, and stayed red,
+    # so every open pull request inherited a failure that had nothing to do with its own change.
+    # Sits beside `main_red.py` on /processes because they answer the two halves of one question:
+    # main_red says whether the branch everyone builds on is broken, this says whether the 27 red
+    # pull requests are 27 broken changes or one broken machine.
+    _t("scripts/pr_triage.py", "Why is every pull request red: a broken test or a broken machine?",
+       False, "/processes"),
 ]
 
 
