@@ -1663,7 +1663,90 @@ def _read_deploys(cfg, args: dict) -> dict:
         cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=300)
     if not proc.stdout.strip():
         raise RuntimeError(f"deploy_status.py produced nothing: {proc.stderr[-400:]}")
-    return json.loads(proc.stdout)
+    view = json.loads(proc.stdout)
+    for row in view.get("deployables", []):
+        row.update(_deploy_route(str(row.get("name") or "")))
+        row.update(_rollback_route(str(row.get("name") or "")))
+    return view
+
+
+#: The tool that ships one service. Named once, so the button lookup below and the registry
+#: row cannot drift apart.
+_DEPLOY_NOW = "scripts/deploy_now.py"
+
+
+def _deploy_route(name: str) -> dict:
+    """How the operator ships one deployable FROM THIS PAGE, or why there is no button.
+
+    The founder's instruction, 2026-08-19: "all our services must be deployable from the ops
+    dashboard". This page could say the storefront was behind main and offer nothing to do about
+    it, which meant shipping needed someone with a shell.
+
+    `deploy_tool_id` is the id of the TOOLS row that ships it, looked up by the command rather
+    than hardcoded, so renaming the row cannot leave a button pointing at nothing. When there is
+    no button, `deploy_how` says what does ship it — never silence.
+    """
+    for tool in TOOLS:
+        if tool["path"] == _DEPLOY_NOW and tool["command"].split()[-1] == name:
+            return {"deploy_tool_id": tool["id"], "deploy_how": tool["purpose"],
+                    "deploy_danger": tool["danger"]}
+
+    try:
+        scripts_dir = str(_REPO_ROOT / "scripts")
+        if scripts_dir not in sys.path:  # called once per deployable, per page read
+            sys.path.insert(0, scripts_dir)
+        import deploy_now  # type: ignore
+    except ImportError as exc:
+        # Narrow on purpose, and it says so rather than returning silence: this happens on a
+        # checkout older than the commit that added the script, which is exactly when the
+        # operator is looking at this page to roll that checkout forward.
+        return {"deploy_tool_id": None,
+                "deploy_how": f"this checkout has no deploy routes yet ({exc}); roll it forward "
+                              f"with scripts/live_checkout.py --update",
+                "deploy_danger": None}
+    route = deploy_now.routes().get(name, {})
+    if route.get("kind") == "manual":
+        return {"deploy_tool_id": None, "deploy_how": route["why"], "deploy_danger": None}
+    if route.get("kind") == "button":
+        return {"deploy_tool_id": None, "deploy_how": route["where"], "deploy_danger": None}
+    return {"deploy_tool_id": None,
+            "deploy_how": "no route: this can only be shipped from a terminal",
+            "deploy_danger": None}
+
+
+#: The tool that puts one service back on its previous image. Named once, for the same reason as
+#: _DEPLOY_NOW: the button lookup and the registry row cannot drift apart.
+_ROLLBACK_NOW = "scripts/rollback_now.py"
+
+
+def _rollback_route(name: str) -> dict:
+    """How the operator puts one deployable BACK from this page, or why there is no button.
+
+    Deploy and rollback are looked up the same way and rendered side by side on purpose. An
+    operator who can ship from a page and cannot unship from it will reach for a terminal at the
+    exact moment that costs the most.
+    """
+    for tool in TOOLS:
+        if tool["path"] == _ROLLBACK_NOW and tool["command"].split()[-1] == name:
+            return {"rollback_tool_id": tool["id"], "rollback_how": tool["purpose"],
+                    "rollback_danger": tool["danger"]}
+
+    try:
+        scripts_dir = str(_REPO_ROOT / "scripts")
+        if scripts_dir not in sys.path:  # called once per deployable, per page read
+            sys.path.insert(0, scripts_dir)
+        import rollback_now  # type: ignore
+    except ImportError as exc:
+        return {"rollback_tool_id": None,
+                "rollback_how": f"this checkout has no rollback routes yet ({exc}); roll it "
+                                f"forward with scripts/live_checkout.py --update",
+                "rollback_danger": None}
+    route = rollback_now.routes().get(name, {})
+    if route.get("kind") == "none":
+        return {"rollback_tool_id": None, "rollback_how": route["why"], "rollback_danger": None}
+    return {"rollback_tool_id": None,
+            "rollback_how": "no rollback route: this service cannot be put back from here",
+            "rollback_danger": None}
 
 
 READS: dict[str, Callable[[Any, dict], Any]] = {
@@ -3403,6 +3486,72 @@ TOOLS: list[dict] = [
     _t("scripts/deploy_status.py", "Start stopped CI runners when deploys are queued behind them",
        True, "/deploys", cmd=".venv/bin/python scripts/deploy_status.py --fix", risk="external",
        danger="starts Fly machines on prospector-ci; only acts when runs are actually queued"),
+    # --- registered 2026-08-19, on the founder's instruction that "all our services must be
+    # deployable from the ops dashboard". Before these, /deploys could say the storefront was
+    # behind main and offer nothing to do about it: shipping meant someone with a shell typing
+    # `gh workflow run`. Every route is in scripts/deploy_now.py and
+    # tests/unit/test_every_service_can_be_deployed_from_the_console.py fails when a deployable
+    # has no route and no button.
+    #
+    # `external` on all of them: a dispatch starts a GitHub run that deploys to Fly, and no
+    # local store snapshot can roll that back. The undo is a redeploy of the previous commit.
+    _t("scripts/deploy_now.py", "How does each service ship, and what can this page deploy?",
+       False, "/deploys", cmd=".venv/bin/python scripts/deploy_now.py --list"),
+    _t("scripts/deploy_now.py", "Deploy the engine now (and the admin console inside it)", True,
+       "/deploys", cmd=".venv/bin/python scripts/deploy_now.py engine", risk="external",
+       danger="deploys whatever is on main right now, including work merged since you looked at "
+              "this page. prospector-engine is one machine with strategy=immediate, so the "
+              "scheduler, consumer, watchdog and console all restart"),
+    _t("scripts/deploy_now.py", "Deploy the store API now", True, "/deploys",
+       cmd=".venv/bin/python scripts/deploy_now.py store-api", risk="external",
+       danger="deploys whatever is on main right now. Checkout and fulfilment restart"),
+    _t("scripts/deploy_now.py", "Deploy the storefront now", True, "/deploys",
+       cmd=".venv/bin/python scripts/deploy_now.py store-web", risk="external",
+       danger="deploys whatever is on main right now to mumchimp.com, the page buyers see"),
+    # searxng has no workflow, so this one builds from THIS checkout. deploy_now refuses when the
+    # shipping paths are dirty, which is what stops another session's uncommitted edit shipping.
+    _t("scripts/deploy_now.py", "Deploy the search endpoint (searxng) now", True, "/deploys",
+       cmd=".venv/bin/python scripts/deploy_now.py searxng", risk="external",
+       danger="no CI workflow exists for searxng, so this builds from the console host's "
+              "checkout; it refuses if the shipping paths are modified"),
+    # Rollback, 2026-08-20. Founder: "this is deploying to prod, needs to be absolutely rock solid
+    # and bulletproof, rollback also, verified with automated tests and a drill function in ops".
+    # A Deploy button with no Rollback button lets the operator break production from a web page
+    # and then need a shell to fix it, which is worse than having neither.
+    #
+    # These deploy an image that ALREADY EXISTS on Fly (the previous release's ImageRef), so they
+    # run in seconds, build nothing, and cannot pick up whatever is in the console host's working
+    # tree. `external` for the same reason as the deploy rows: no local store snapshot undoes them.
+    _t("scripts/rollback_now.py",
+       "Drill the rollback path: resolve every previous image and health-check every service",
+       False, "/deploys", cmd=".venv/bin/python scripts/rollback_now.py --drill"),
+    _t("scripts/rollback_now.py", "Roll the engine back to its previous image", True, "/deploys",
+       cmd=".venv/bin/python scripts/rollback_now.py engine", risk="external",
+       danger="puts prospector-engine back on the image it ran before the last deploy. The "
+              "scheduler, consumer, watchdog and console all restart. It does NOT change main: "
+              "the next merge touching the engine ships the current code again, so revert the "
+              "commit too"),
+    _t("scripts/rollback_now.py", "Roll the store API back to its previous image", True, "/deploys",
+       cmd=".venv/bin/python scripts/rollback_now.py store-api", risk="external",
+       danger="puts prospector-store-api back on its previous image. Checkout and fulfilment "
+              "restart, and a buyer mid-checkout retries. It does NOT change main - revert the "
+              "commit too"),
+    _t("scripts/rollback_now.py", "Roll the storefront back to its previous image", True,
+       "/deploys", cmd=".venv/bin/python scripts/rollback_now.py store-web", risk="external",
+       danger="puts mumchimp.com back on its previous image. Buyers see the older page within "
+              "seconds. It does NOT change main - revert the commit too"),
+    _t("scripts/rollback_now.py", "Roll the search endpoint (searxng) back to its previous image",
+       True, "/deploys", cmd=".venv/bin/python scripts/rollback_now.py searxng", risk="external",
+       danger="puts prospector-searxng back on its previous image. Measured 2026-08-20 it has "
+              "only ever had ONE release, so this refuses until it has been deployed twice"),
+    # The scheduled half of the drill. Registered 2026-08-20 because a Deploy button and a Roll
+    # back button are two controls with no feedback: measured that day, nothing on this estate
+    # made an HTTP request to mumchimp.com except the drill, and the drill only ran when someone
+    # clicked it. `external` and writes=False: it changes nothing here, but a Telegram alert
+    # cannot be unsent, which is what "the local half only" says on the button.
+    _t("scripts/service_health.py",
+       "Ask every deployed service whether it is still serving (alerts on the second failure)",
+       False, "/deploys", cmd=".venv/bin/python scripts/service_health.py", risk="external"),
     # Registered 2026-08-19. `ci_capacity.py` answers whether CI FITS; this answers whether it
     # can RUN AT ALL. The two are separate questions and the estate has been wrong about the
     # second one twice in a day: a fleet scaled up whose machines were left stopped, and an
