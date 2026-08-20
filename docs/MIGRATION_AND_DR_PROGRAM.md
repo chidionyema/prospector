@@ -10,6 +10,15 @@ decision gets changed or this page gets amended with the reasoning. Two rules fo
 bind new work: **nothing may be built that only one platform can run**, and **nothing holds state
 that is not a file we can copy**.
 
+> **START AT §10 AND §11 IF YOU ARE NEW, OR IF YOU ARE LOST.** Added 2026-08-20, because the
+> founder said *"i dont have a wwhole stack or architectuure or platfon plan. i dont knoww what th
+> eplatfornwill look like when we are done"* and *"we qre just stuck and nocler guidanc"*.
+> **§10 is the target platform** — ten planes, one contract each, and what "done" looks like in a
+> paragraph. **§11 is the requirements register** — 38 functional and 14 non-functional
+> requirements, each with the drill that proves it and the deliverable that builds it. §0–§9 grade
+> what is broken; §10–§11 say what we are building. When they disagree, §10 and §11 win.
+
+
 Founder directive, 2026-08-18/19:
 
 > *"id prefer you do the full staakc nigration a d disaster revocer autonated progran and include
@@ -1182,6 +1191,10 @@ Append here. One line per shipped item, with the receipt.
 | 2026-08-19 | — | `docs/ESTATE_MAP.md` Hermes section corrected from asserted to measured | PR #390 |
 | 2026-08-19 | M4 (part) | key-ring backup graded by opening the archive, not by its size — new `tgz` verify kind | PR #441; `26 passed` |
 | 2026-08-19 | M4 (part) | `verify:` has no default — a source that states no kind, or an unknown kind, is refused when the declaration is read | `29 passed`; mutation-proved (`2 failed` with the default restored) |
+| 2026-08-20 | §10 | the target platform: ten planes, one contract each, and what done looks like | this document; counts re-measured from the tables, not asserted |
+| 2026-08-20 | §11 | the requirements register: 38 functional, 14 non-functional, each with its drill and deliverable | 3 proven, 11 built-never-run, 34 not started, 4 blocked |
+| 2026-08-20 | §10.4 | the k8s adapter question answered: nothing calls it, it has never run, and a free local cluster exists | `kubectl config get-contexts` → `docker-desktop` |
+| 2026-08-20 | P5 / #355 | the engine can page the founder from a container — in-repo Telegram sender, no `$HOME` dependency | commit `47212af5`; 18 tests, 5 mutations caught |
 
 ---
 
@@ -1247,3 +1260,275 @@ survive a compaction, so the ledger in §8 and the gap list in §3 are the recor
 own context is not. Every shipped item gets a ledger line with its receipt, and anything parked
 gets the four lines LAW 16 requires — the question, what was established, the next command, and
 why it was put down.
+
+---
+
+## 10. The target platform — what it looks like when this is done
+
+Founder, 2026-08-20, verbatim: *"i dont have a wwhole stack or architectuure or platfon plan. i
+dont knoww what th eplatfornwill look like when we are done. this si a standadisation,
+cosilidaation porject also"*, and *"we qre just stuck and nocler guidanc"*, and *"fightong low
+level fires a;l dat"*.
+
+He is right, and §0–§9 above are the evidence. They grade what is BROKEN. Nothing in this document
+said what the finished thing IS, so every session picked up whichever gap was loudest and the
+programme reads as a fire queue. This section is the target. §11 is the register of requirements
+that reaches it. Neither existed before 2026-08-20.
+
+### 10.1 The one idea
+
+**Ten planes. Each plane has exactly one contract, one implementation per provider, and one drill
+that proves it.** A plane is swappable when a new provider means writing one adapter against a
+written contract, and nothing else in the estate learns the provider's name.
+
+That is already true for exactly one plane — compute — and it is why compute is the only part of
+this estate that can currently move. `deploy/PORTABILITY.md` writes down eleven verbs,
+`deploy/targets/*.sh` implements them per provider,
+`tests/unit/test_every_deploy_target_implements_the_contract.py` fails if an adapter drops a verb,
+and `scripts/engine_failover.py:731` DISCOVERS the adapter list from the filesystem so no second
+list can drift. Four adapters exist, and nothing outside that directory contains the word
+`kubectl`, `fly` or `launchctl`.
+
+**The whole programme is: do to the other nine planes what was already done to compute.** Not ten
+different designs. One pattern, applied ten times.
+
+### 10.2 The ten planes, and the state of each
+
+| # | Plane | What it carries | The contract that makes it swappable | Today |
+|---|---|---|---|---|
+| **P1** | **Compute** | engine, consumer, CI runners, searxng | `deploy/PORTABILITY.md` — 11 verbs, 4 adapters | **done in shape, unproven in use.** Only `fly` has ever run. §10.4 |
+| **P2** | **State** | catalogue, ledger, dossiers, packs, scheduler files | `config.store_root()` is the single resolver | **partial** — one resolver, no named datastore list, no proven restore (M4, M11) |
+| **P3** | **Secrets** | provider keys, bot tokens, the signing key, Stripe | none written | **absent** — `docs/SECRETS_PROGRAM.md` has a risk register, no contract, no fetch path (M2) |
+| **P4** | **Identity** | mumchimp.com, DNS, TLS, the Stripe account | `deploy/dns/mumchimp.com.zone` exists; no verb set | **manual** — the one plane with no substitute (M9) |
+| **P5** | **Observability** | logs, alerts, metrics, the tick digest | alert keys are declared; log shipping is not | **partial** — alerts reach a phone since #355; logs die with the box (M10) |
+| **P6** | **Work** | schedules, drains, backups, rotations, watchdogs | 5 launchd plists + `deploy/engine/periodic.sh` | **two implementations, no contract** — laptop plists and container cron share no definition |
+| **P7** | **Money** | Stripe, prices, the fulfilment fence | `bridge.py` mints price and catalogue row together | **locked to one provider** — no adapter (M3). Largest single item |
+| **P8** | **Delivery** | commit → gate → CI → image → release | POPDD gate + `.github/workflows` + `t_release` | **works, single-provider** — GitHub Actions only |
+| **P9** | **Control** | the ops console: every button a human presses | `prospector/ops/console_api.py` | **partial** — per-task buttons, no continuity panel (M5, B4, B5) |
+| **P10** | **Knowledge** | runbooks, decisions, the estate map, this document | none | **the consolidation problem.** 79 files in `docs/`. §10.5 |
+
+### 10.3 What "done" looks like, in one paragraph a person can hold
+
+One console page lists every plane and its current provider. Beside each is a green tick a machine
+put there, from a drill that ran this week. Changing any plane's provider is: write the adapter,
+run the drill, press the button. The thirty-minute move is that page, ten times, with the order and
+the dependencies already encoded — not ten terminals and a person remembering. Every number on it
+comes from a probe, never from a document. A new laptop is: clone, fetch secrets, run the probe,
+and the page goes green.
+
+### 10.4 The k8s adapter — answering the direct question
+
+Founder, 2026-08-20: *"the k8's adapter how is it being used?"*
+
+**It is not being used. Nothing calls it, and it has never run.** The measured state:
+
+- `deploy/targets/k8s.sh`, 269 lines, implements all twelve verbs (`t_name t_preflight t_provision
+  t_secrets t_release t_start t_stop t_exec t_put t_pack t_logs t_health`). Written 2026-08-20 in
+  answer to your earlier question, by copying the shape of `sshdocker.sh`.
+- It is already a legal destination with no further wiring, because `deploy_targets()`
+  (`scripts/engine_failover.py:731`) globs `deploy/targets/*.sh` rather than holding a list, and
+  `deploy/decommission.sh:35` sources by the same convention. `deploy/cutover.sh --to k8s` resolves
+  today.
+- What grades it is `tests/unit/test_every_deploy_target_implements_the_contract.py`, and that test
+  grades **shape, not behaviour**: every verb present, spelled the way `deploy/PORTABILITY.md`
+  spells it. It cannot tell whether any verb works.
+- It covers k3s, k0s, MicroK8s, kind, EKS and GKE identically, because the adapter only ever talks
+  to `kubectl`.
+
+**The cheap thing nobody has done:** `kubectl` is installed on this laptop and there is a live
+context, `docker-desktop`. A real k8s drill costs nothing and needs no cloud account. That is
+deliverable **D-P1.3** in §11, and it is the fastest way to turn P1 from shape into proof.
+
+**What k8s does NOT solve, and must not be adopted for:** it is a compute substrate, so it touches
+P1 and nothing else. It gives no secrets contract, no state restore, no DNS verb, no money adapter.
+`docs/STACK_AUDIT.md` §5 already ruled that the eleven-verb contract stays and neither Kamal nor
+Nomad gets adopted; k8s joined that contract instead of replacing it, which is why choosing it
+later costs one environment variable rather than a migration.
+
+### 10.5 Standardisation and consolidation — the part that was never named
+
+Founder: *"this si a standadisation, cosilidaation porject also"*. It is now a first-class goal
+with its own requirements (N-09..N-12 in §11), and here is the measurement that justifies it.
+
+**`docs/` holds 79 markdown files.** Four are runbooks under three different names
+(`docs/RUNBOOKS.md`, `docs/CI_DEBUG_RUNBOOK.md`, `docs/AMBITION_LANES_RUNBOOK.md`,
+`store_platform/GO_LIVE_RUNBOOK.md`). At least nine are dated snapshots never folded back
+(`NEXT_MOVE_2026-08-14/15/17`, `ENGINE_AUDIT_2026-08-10`, `BRANCH_CLEANUP_2026-08-09/17`, others).
+Platform architecture is spread across `PLATFORM_MANIFESTO.md`, `PLATFORM_KERNEL_PLAN.md`,
+`PLATFORM_PORTABILITY_AUDIT.md`, `STACK_AUDIT.md`, `RELIABILITY_ARCHITECTURE.md`,
+`ARCHITECTURE_SECURITY_BASELINE.md` and this file.
+
+That is the mechanism behind *"we qre just stuck"* and *"fightong low level fires a;l dat"*. With no
+single place that says what the platform is, a session opens the loudest document and works the
+loudest gap. Seventy-nine documents is not a documentation problem, it is the absence of a spine — and
+the fix is not deletion, it is **one spine plus a rule about where a new fact may land** (N-11).
+
+Three duplications outside `docs/` that the same rule has to reach: two job definitions with no
+shared contract (P6 above), two alert senders that had to be reconciled by hand for #355, and three
+estate inventories that never meet (M1).
+
+---
+
+## 11. The requirements register — functional, non-functional, and the deliverables that satisfy them
+
+Founder, 2026-08-20, verbatim: *"you entioned hernes, are you aware that is not just hernes, its
+the whole progran platfron/stack autontio/portability/nigration/ and inprovenents. i dont even thik
+you have conpiled a;l functinal and non functionals into deliverables"*, then *"so isecrets
+nangents"*, then *"ops integratios, runbbos docunettion"*.
+
+He was right that it had not been compiled. §0 held eight acceptance criteria in his words and §3
+held fifteen gaps in mine, and neither is a requirements register: a gap says what is broken, not
+what the system must do. This section is the register. It is the contract for the programme —
+everything in §6 delivers a row here, and a row with no deliverable is a hole stated out loud
+rather than a hole nobody noticed.
+
+**Hermes is one consumer of P3 and P6, not a subsystem of its own.** The correction is taken: the
+scope is the whole platform and stack. Hermes appears in this register only where it holds
+credentials (F-09) and jobs (F-18), same as any other component.
+
+### 11.1 How to read a row
+
+Every requirement has an **ID**, a **statement in the imperative**, the **drill that proves it**
+(not a document that claims it), and the **deliverable** that builds it. A requirement is met when
+its drill has run green **and is scheduled**, never when someone has written that it works. That
+rule is why the Today column in §10.2 is mostly "unproven" rather than "done": four of the ten
+planes have code that has never been executed against the thing it exists to control.
+
+`Ph` is the phase in §6. `St` is state: **✅** proven by a drill that runs, **◐** built but never
+run, **○** not started, **⛔** blocked on a decision in §7.
+
+### 11.2 Functional requirements — what the platform must DO
+
+#### P1 Compute
+
+| ID | Requirement | Proven by | Deliverable | Ph | St |
+|---|---|---|---|---|---|
+| F-01 | Every runtime component moves to any provider by writing one adapter against `deploy/PORTABILITY.md`, and nothing else in the estate learns the provider's name | contract test + a real move | D-P1.1 | 4 | ◐ |
+| F-02 | A whole move runs end to end with no human in a terminal | one recorded cutover | D-P1.2, D-P9.2 | 4 | ○ |
+| F-03 | The old provider is decommissioned only after the new one is proven serving | `deploy/decommission.sh` refuses without proof | D-P1.4 | 4 | ◐ |
+| F-04 | At least two substrates are proven, not one | a drill on k8s and on sshdocker | D-P1.3 | 4 | ○ |
+
+#### P2 State
+
+| ID | Requirement | Proven by | Deliverable | Ph | St |
+|---|---|---|---|---|---|
+| F-05 | Every datastore in the estate is named in one machine-readable inventory, generated by a probe | probe output diffed against reality | D-P2.1 (M11) | 1 | ○ |
+| F-06 | Every named datastore is backed up off-machine on a schedule, and a missed backup alerts | the weekly drill + a `backup_stale` alert key | D-P2.2 | 0 | ◐ |
+| F-07 | Every backup has been restored at least once into a scratch location, by a machine | restore drill, scheduled | D-P2.3 (M4) | 2 | ○ |
+| F-08 | State moves with compute inside the same cutover, to a stated RPO | cutover drill measures bytes and lag | D-P2.4 | 4 | ○ |
+
+#### P3 Secrets — a first-class plane, at the founder's instruction
+
+| ID | Requirement | Proven by | Deliverable | Ph | St |
+|---|---|---|---|---|---|
+| F-09 | Every secret in use is named in one inventory: what it is, who issues it, who consumes it, where it lives, when it was last rotated | probe enumerates consumers from source, not by hand | D-P3.1 | 1 | ○ |
+| F-10 | A new machine fetches every secret it needs without a human reading a value out of anything | new-laptop drill from a clean clone | D-P3.2 (M2) | 2 | ⛔ |
+| F-11 | A secret is rotated in one action, everywhere it is consumed, with the old one revoked | rotation drill on one low-risk key | D-P3.3 | 2 | ○ |
+| F-12 | No secret can reach git, a log line, argv or shell history — refused by a machine, not by care | a guard in the commit gate + a test | D-P3.4 | 1 | ◐ |
+| F-13 | The signing key has an off-machine escrow with a tested restore | restore the key from escrow into a scratch tree | D-P3.5 | 0 | ◐ |
+
+`docs/SECRETS_PROGRAM.md` holds the risk register R-K1..R-K5 and stays the detail. This register
+holds the requirement and the deliverable; the two are cross-linked and must not restate each other.
+
+#### P4 Identity — domain, DNS, TLS, accounts
+
+| ID | Requirement | Proven by | Deliverable | Ph | St |
+|---|---|---|---|---|---|
+| F-14 | DNS is declared as a file in the repo and applied by a verb, never typed into a web console | apply the zone to a test subdomain | D-P4.1 (M9) | 1 | ◐ |
+| F-15 | A DNS cutover is one command with a stated TTL cost, and is reversible | drill on a test subdomain, timed | D-P4.2 | 4 | ○ |
+| F-16 | TLS is issued and renewed with no human | expiry probe + renewal drill | D-P4.3 | 3 | ○ |
+| F-17 | Registrar, account recovery and billing owner are recorded with a tested recovery path | a person completes the path once | D-P4.4 | 1 | ⛔ |
+
+#### P5 Observability
+
+| ID | Requirement | Proven by | Deliverable | Ph | St |
+|---|---|---|---|---|---|
+| F-18 | Every alert that matters reaches a human off the machine that raised it | one real alert lands on the founder's phone | D-P5.1 (#355) | 3 | ◐ |
+| F-19 | Every declared alert key has a reachable sink — a rail that cannot go red where a human sees it is not a rail | `test_every_telegram_key_has_a_reachable_sink` | D-P5.1 | 3 | ✅ |
+| F-20 | Logs are shipped off the machine that made them and survive its destruction | destroy a machine, read its last hour | D-P5.2 (M10) | 3 | ○ |
+| F-21 | One probe answers "is the platform serving" across all ten planes | the probe, run on a schedule | D-P5.3 | 3 | ○ |
+| F-22 | The migration itself is observable step by step while it runs | live progress in the console during a drill | D-P9.2 (B5) | 3 | ○ |
+
+#### P6 Work — jobs and schedules
+
+| ID | Requirement | Proven by | Deliverable | Ph | St |
+|---|---|---|---|---|---|
+| F-23 | Every scheduled job is declared once, in one format, and rendered per substrate — launchd, cron, k8s CronJob | one declaration renders all three; a test diffs them | D-P6.1 | 2 | ○ |
+| F-24 | A job that stops running raises an alert without anyone noticing it stopped | kill a job, wait for the alert | D-P6.2 | 3 | ○ |
+| F-25 | Jobs move with the compute in the same cutover | cutover drill checks every job is running on the far side | D-P6.3 | 4 | ○ |
+
+#### P7 Money
+
+| ID | Requirement | Proven by | Deliverable | Ph | St |
+|---|---|---|---|---|---|
+| F-26 | The payment provider sits behind an adapter of the same shape as compute | a second adapter exists, even if unused | D-P7.1 (M3) | 4 | ⛔ |
+| F-27 | A buyer completes a purchase end to end on whichever substrate is serving | synthetic purchase drill (M8) | D-P7.2 | 5 | ○ |
+| F-28 | The fulfilment fence cannot be crossed by a price and a catalogue row that disagree | `bridge.py` mints both; test pins it | — | — | ✅ |
+
+#### P8 Delivery
+
+| ID | Requirement | Proven by | Deliverable | Ph | St |
+|---|---|---|---|---|---|
+| F-29 | A commit reaches production with no human step after review | a merge that lands in the running image | D-P8.1 | 3 | ◐ |
+| F-30 | The running image names the commit it was built from | `/app/GIT_SHA`, read by `scripts/live_checkout.py` | — | — | ✅ |
+| F-31 | The pipeline itself can move to another CI provider | render the pipeline for a second provider | D-P8.2 | 5 | ○ |
+
+#### P9 Control — the ops console
+
+| ID | Requirement | Proven by | Deliverable | Ph | St |
+|---|---|---|---|---|---|
+| F-32 | Every operation in this document has a console button; no runbook step is terminal-only | audit: every runbook step maps to a button | D-P9.1 (M5, B4) | 3 | ○ |
+| F-33 | A running migration shows live per-step progress, elapsed and remaining | watch a drill from the console | D-P9.2 (B5) | 3 | ○ |
+| F-34 | The console probes and audits an arbitrary system, not only prospector | point it at Hermes and get a plane table | D-P9.3 (B7, B8) | 6 | ○ |
+
+#### P10 Knowledge — runbooks, docs, ops integrations
+
+| ID | Requirement | Proven by | Deliverable | Ph | St |
+|---|---|---|---|---|---|
+| F-35 | One spine document names the platform and every other document is reachable from it | a link check that fails on an orphan doc | D-P10.1 | 1 | ○ |
+| F-36 | Every runbook step is either executable or names the exact command that is | a linter over the runbooks | D-P10.2 | 2 | ○ |
+| F-37 | Every third-party integration is named with its owner, credential, blast radius and substitute | the integration inventory, probe-generated | D-P10.3 | 1 | ○ |
+| F-38 | A fact lives in exactly one document, and the rule is enforced | duplicate-claim check in the gate | D-P10.4 (N-11) | 2 | ○ |
+
+### 11.3 Non-functional requirements — how well
+
+| ID | Requirement | The number | Proven by | St |
+|---|---|---|---|---|
+| N-01 | **Speed** — the whole move completes inside the founder's window | **30 minutes**, wall clock, measured | timed drill (B2) | ○ |
+| N-02 | **Availability** — no customer-visible downtime during a move | **0 failed requests** across the cutover | synthetic buyer during the drill (B3) | ○ |
+| N-03 | **Durability** — bounded data loss | **RPO ≤ 15 min, RTO ≤ 30 min** (proposed, needs your ruling) | restore drill measures both | ⛔ |
+| N-04 | **Self-healing** — components recover without a human | every failure class has a named recovery, or is alerted | chaos drill (M7) | ○ |
+| N-05 | **Low maintenance** — routine operation needs no agent | **0 manual steps/week** in steady state | count them for four weeks | ○ |
+| N-06 | **Security** — least privilege, no secret in the clear, every access auditable | 0 secrets in git/logs/argv; every key has an owner | the F-12 guard + the secrets probe | ◐ |
+| N-07 | **Cost** — bounded and measured, no orphaned resources | spend ledger + a zero-orphan sweep | `docs/COST_PROGRAM.md` measurements | ◐ |
+| N-08 | **Reusability** — nothing prospector-shaped in the migration tooling | it runs against Hermes unmodified (B7) | D-P9.3 drill | ○ |
+| N-09 | **Standardisation** — one contract per plane, ten contracts total | 10/10 planes have a written contract; today **1** | count in §10.2 | ○ |
+| N-10 | **Consolidation** — no two implementations of one capability | today: 2 job systems, 2 alert senders, 3 inventories | duplicate audit, scheduled | ○ |
+| N-11 | **One place per fact** — a fact lives in one document | today **79** documents, no spine | D-P10.1, D-P10.4 | ○ |
+| N-12 | **Auditability** — every claim on the console comes from a probe, never from a document | 0 hand-written status strings | the console's own test | ◐ |
+| N-13 | **Provability under stress** — load, chaos and security testing exist and run | the three suites, scheduled | M14, M15, M7 | ○ |
+| N-14 | **Portability breadth** — more than one destination is proven | **≥ 2 substrates** with a green drill; today **1** | D-P1.3 | ○ |
+
+### 11.4 Coverage — what this register makes visible
+
+Counting the rows above: **38 functional and 14 non-functional requirements. 3 are proven. 11 are
+built but never run. 34 are not started. 4 are blocked on a decision only you can make** (§7).
+
+Three of those blocks stop whole planes rather than single deliverables, which is why they are the
+most valuable thing you can clear:
+
+1. **Where secrets live so a new machine can fetch them** blocks F-10, and F-10 blocks the entire
+   new-laptop path. Cloud KMS is ruled out by name, so the shortlist is: an encrypted file in a
+   private repo with the age key in escrow; a password-manager CLI; or Fly/provider secrets plus
+   one bootstrap credential held off-machine.
+2. **Which second provider proves portability** blocks F-04 and N-14. The free answer is already on
+   this laptop: `docker-desktop` k8s, which costs nothing and needs no account.
+3. **RPO and RTO** (N-03) are unset, and every backup and restore deliverable is graded against
+   numbers that do not exist yet.
+
+### 11.5 The rule that keeps this register honest
+
+A requirement is met when its drill has run green **and is scheduled**. Not when the code exists,
+not when a test passes on shape, not when a document says so. Eleven of the rows above are `◐` —
+built and never run — and that column is the whole reason the programme felt like progress while
+the bar stayed unmet.
