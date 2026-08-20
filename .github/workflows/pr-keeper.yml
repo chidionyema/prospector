@@ -1,0 +1,218 @@
+# Keep the open pull requests moving, so no branch is red for a reason that is not its own.
+#
+# Two things stall a pull request through no fault of its author, and neither had an owner until
+# 2026-08-20.
+#
+# 1. IT IS BEHIND MAIN. Founder, 2026-08-20: "if every feature branch refreshed from main before
+#    raising a PR, less conflicts, less chance of red, less chance of main going red". A branch
+#    cut days ago is graded against a base it does not contain, so CI proves something about a
+#    tree that will never exist. The longer it sits behind, the worse the conflict when it lands,
+#    and a conflicted merge resolved in a hurry is how main goes red.
+#
+#    `automerge.yml` already updates a behind branch in two places -- but both require the branch
+#    to be GREEN first (`if (!green) continue`, automerge.yml:318), and both fire only after a CI
+#    run completes. So a branch that is behind AND not yet green is swept by nobody, and nothing
+#    at all happens at the moment a pull request is RAISED, which is the moment the founder named.
+#    This workflow takes exactly that complement and leaves the green ones to automerge.
+#
+# 2. ITS CI WAS REFUSED BECAUSE MAIN WAS RED. `ci.yml`'s `changes` job refuses to build anything
+#    while main is red or still building -- measured on job 96275945832: `##[error]main's CI is
+#    IN_PROGRESS at b0fe4adf.` That refusal is correct, and it is recorded as a FAILED run. When
+#    main later goes green, nothing re-runs it. On 2026-08-20 that is why every open pull request
+#    still read red for an hour after main had recovered: seven branches carrying a failure that
+#    belonged to a commit on a different branch.
+#
+# The distinction this workflow must never blur: it re-runs a build that was REFUSED, and never
+# one that FAILED. A real test failure is the author's to fix, and re-running it would only
+# launder a red into a second red while spending a runner.
+#
+# It cancels nothing. Every other option here queues -- `ci.yml` is `cancel-in-progress: false` --
+# so a dispatch costs time and never destroys another session's in-flight work.
+name: PR keeper
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: pr-keeper
+  cancel-in-progress: false
+
+permissions:
+  contents: write # pulls.updateBranch merges main into the head branch
+  pull-requests: write # to label and comment when the update cannot be done by git
+  actions: write # a GITHUB_TOKEN push starts no run, so CI has to be dispatched
+  issues: write # labels are written through the issues API
+
+jobs:
+  keep:
+    # On workflow_run, only main going green matters. A CI run finishing on some feature branch
+    # says nothing about whether anyone else was refused.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.conclusion == 'success')
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    steps:
+      - name: Refresh what is behind, re-run what was refused
+        uses: actions/github-script@v7
+        env:
+          # When main's own CI went green. Empty on the other triggers. A refusal is only stale
+          # if it was recorded BEFORE this moment; see the loop note where it is read.
+          MAIN_GREEN_AT: ${{ github.event.workflow_run.updated_at }}
+        with:
+          script: |
+            const {owner, repo} = context.repo
+            // Same set automerge.yml holds: a pull request parked on purpose is not stuck.
+            const HOLD = new Set(['hold', 'do-not-merge', 'wip'])
+            const report = []
+
+            let prs = []
+            if (context.eventName === 'pull_request') {
+              // Read it back rather than trusting the event payload. Labels in a pull_request
+              // payload are frozen at the moment the event fired, so a `hold` added seconds
+              // earlier would be invisible here -- the trap that shut the escape hatch on
+              // 2026-08-19.
+              const {data} = await github.rest.pulls.get(
+                {owner, repo, pull_number: context.payload.pull_request.number})
+              prs = [data]
+            } else {
+              const {data} = await github.rest.pulls.list(
+                {owner, repo, state: 'open', base: 'main', per_page: 100})
+              prs = data
+            }
+
+            for (const pr of prs) {
+              // EVERY call for a pull request sits inside this try. A best-effort keeper that
+              // throws on pull request three never reaches pull requests four to twenty, and the
+              // ones it never reached look exactly like the ones it decided to skip.
+              try {
+                if (pr.draft) continue
+                if ((pr.labels || []).map(l => l.name).some(n => HOLD.has(n))) continue
+                // A fork's branch cannot be pushed to with this token, and updateBranch on one
+                // fails in a way that reads as a conflict. Leave it to its author.
+                if (pr.head.repo && pr.head.repo.full_name !== `${owner}/${repo}`) continue
+
+                const {data: cmp} = await github.rest.repos.compareCommits(
+                  {owner, repo, base: 'main', head: pr.head.sha})
+
+                // ----- what does CI say about this exact head? -----
+                const {data: runs} = await github.rest.actions.listWorkflowRunsForRepo(
+                  {owner, repo, head_sha: pr.head.sha, per_page: 100})
+                const ci = (runs.workflow_runs || [])
+                  .filter(r => r.name === 'CI')
+                  .sort((a, b) => b.run_number - a.run_number)[0]
+                const settled = ci && ci.status === 'completed'
+                const green = settled && ci.conclusion === 'success'
+
+                // A run still in flight is the answer arriving. Touching the branch now would
+                // throw it away and start again from the beginning.
+                if (ci && !settled) continue
+
+                // ----- 1. behind main -----
+                if (cmp.behind_by > 0) {
+                  // Green AND behind is automerge.yml's sweep, which also merges afterwards.
+                  // Two workflows updating one branch at once is two merge commits and a race.
+                  if (green) continue
+                  try {
+                    // expected_head_sha, so an update can never land on a head this run never
+                    // read. If an author pushed while we were deciding, this fails and we leave
+                    // their branch alone.
+                    await github.rest.pulls.updateBranch(
+                      {owner, repo, pull_number: pr.number, expected_head_sha: pr.head.sha})
+                    await github.rest.actions.createWorkflowDispatch(
+                      {owner, repo, workflow_id: 'ci.yml', ref: pr.head.ref})
+                    report.push(`#${pr.number}: was ${cmp.behind_by} behind main, refreshed`)
+                  } catch (e) {
+                    // 422 is the conflict: git cannot do this one, a person must. Label first,
+                    // and only speak if the label was not already there -- a keeper that
+                    // comments on every run turns a stuck branch into an unreadable thread.
+                    const had = (pr.labels || []).map(l => l.name).includes('needs-rebase')
+                    await github.rest.issues.addLabels(
+                      {owner, repo, issue_number: pr.number, labels: ['needs-rebase']})
+                    if (!had) {
+                      await github.rest.issues.createComment({
+                        owner, repo, issue_number: pr.number,
+                        body: [
+                          `This branch is **${cmp.behind_by} commits behind \`main\`** and git`,
+                          'cannot catch it up on its own:',
+                          '',
+                          '```',
+                          e.message,
+                          '```',
+                          '',
+                          'Rebase it, and fetch before you push -- this branch is updated',
+                          'automatically when it can be, so a blind force-push can drop a merge',
+                          'that was already made for you.',
+                          '',
+                          '```bash',
+                          'git fetch origin main',
+                          `git rebase origin/main   # on ${pr.head.ref}`,
+                          '```',
+                        ].join('\n'),
+                      })
+                    }
+                    report.push(`#${pr.number}: ${cmp.behind_by} behind and conflicting`)
+                  }
+                  continue
+                }
+
+                // ----- 2. up to date, but never graded, or refused rather than failed -----
+                if (green) continue
+
+                let why = null
+                if (!ci) {
+                  why = 'its head has no CI run at all'
+                } else if (ci.conclusion === 'cancelled' || ci.conclusion === 'stale') {
+                  // A cancelled run proves nothing in either direction, so it is not a failure
+                  // anyone can act on. Ask the question again.
+                  why = `its last run was ${ci.conclusion}`
+                } else if (ci.conclusion === 'failure') {
+                  // The whole point. Re-run a REFUSAL, never a FAILURE. `changes` is the only
+                  // job that refuses on the state of ANOTHER branch, so a run whose only real
+                  // failure is `changes` graded nothing about this pull request at all.
+                  //
+                  // `ci-ok` is discounted, and that is not a detail. Measured 2026-08-20 on the
+                  // four red pull requests this workflow was written for -- #497, #495, #489,
+                  // #481 -- every one of them reports its failed jobs as `changes, ci-ok`, never
+                  // `changes` alone. `ci-ok` is the `if: always()` aggregator at ci.yml:1328; it
+                  // carries no finding of its own, it only restates its needs. An earlier draft
+                  // of this script asked for `changes` to be the SOLE failure and would
+                  // therefore have fired on none of the four.
+                  const {data: jl} = await github.rest.actions.listJobsForWorkflowRun(
+                    {owner, repo, run_id: ci.id, per_page: 100})
+                  const failed = (jl.jobs || [])
+                    .filter(j => j.conclusion === 'failure')
+                    .map(j => j.name)
+                    .filter(n => n !== 'ci-ok')
+                  if (failed.length === 1 && failed[0] === 'changes') {
+                    // Only if the refusal PREDATES main going green. Without this bound, a
+                    // `changes` job failing for any permanent reason of its own would be
+                    // re-dispatched once on every single merge to main, for ever, and each
+                    // re-run would fail the same way and re-arm the next one.
+                    const at = process.env.MAIN_GREEN_AT
+                    if (at && new Date(ci.created_at) > new Date(at)) {
+                      core.info(`#${pr.number}: refused AFTER main went green, so main is not why`)
+                    } else {
+                      why = 'its build was refused while main was red, not failed'
+                    }
+                  }
+                }
+                if (!why) continue
+
+                await github.rest.actions.createWorkflowDispatch(
+                  {owner, repo, workflow_id: 'ci.yml', ref: pr.head.ref})
+                report.push(`#${pr.number}: re-dispatched CI because ${why}`)
+              } catch (e) {
+                core.warning(`#${pr.number}: ${e.message}`)
+              }
+            }
+
+            if (report.length === 0) {
+              core.info('every open pull request is up to date with main and graded on its own merits')
+            }
+            for (const line of report) core.notice(line)

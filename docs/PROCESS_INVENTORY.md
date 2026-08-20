@@ -171,7 +171,9 @@ Declared here, owned elsewhere. They are listed so the audit can grade them rath
 | `e2e-live-smoke.yml` | workflow_run | Playwright against the live site after a deploy. |
 | `escape-hatch-drill.yml` | schedule, dispatch | Weekly proof that the state can be pulled off Fly intact. |
 | `weekly-estate-review.yml` | schedule Mondays 08:00 UTC, dispatch | Grades the incident loop and opens one issue. |
+| `dns-drift-drill.yml` | schedule, PR, dispatch | Asks the authoritative nameservers what `mumchimp.com` actually resolves to and compares it with the committed zone at `deploy/dns/mumchimp.com.zone`. DNS is the one asset in the estate with no substitute, and every exit path in `docs/ESTATE_CONTINUITY_PLAN.md` ends in "repoint DNS" without saying to what. |
 | `main-green-guard.yml` | workflow_run | main went red: re-run the failed jobs once, and revert the commit if it fails again. The RECOVERY. |
+| `pr-keeper.yml` | pull_request opened, workflow_run | Keeps an open pull request from being red for a reason that is not its own: refreshes a branch that is behind `main` (the founder's rule that a branch carries main before it is judged), and re-dispatches a build that `changes` REFUSED while main was red. It never re-runs a build that actually failed, and it cancels nothing. `automerge.yml` covers the green-and-behind case; this covers the complement. |
 | `main-admission-guard.yml` | push to main | Asks of every new commit on main "did this arrive as a pull request CI proved green". If not, opens an issue and reverts it, within seconds of the push rather than after CI concludes. The PREVENTION, and the replacement for the branch protection this plan will not sell us — `gh api .../branches/main/protection` answers 403 "Upgrade to GitHub Pro". |
 
 ---

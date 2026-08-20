@@ -82,7 +82,11 @@ concurrency:
 
 permissions:
   contents: write # to push the revert
-  actions: read # to read the CI runs at the pull request's head sha
+  # write, not read. The revert push uses GITHUB_TOKEN and GitHub starts NO workflow run from
+  # one, so after a revert nothing re-deploys and nothing re-grades main by itself. The deploys
+  # that the BAD commit triggered on push have already shipped it to production by then. So this
+  # workflow has to dispatch the repair explicitly, the same way automerge.yml does after a merge.
+  actions: write
   pull-requests: read # to resolve #N to its head sha
   issues: write # a revert is never silent
 
@@ -299,3 +303,129 @@ jobs:
             -m "Reverted by main-admission-guard: $WHY" \
             -m "Nothing is lost. \`git revert\` of this commit restores $SHA. See #$ISSUE."
           git push origin main
+
+      # ---------------------------------------------------------------------------------------
+      # Reverting git is not reverting the estate.
+      #
+      # The bad commit's own push fired deploy-engine/web/api the instant it landed, so by now
+      # the code we just deleted is running in production. And the revert push above used
+      # GITHUB_TOKEN, from which GitHub starts NO workflow run at all -- the same fact that stops
+      # this guard recursing into itself stops it repairing anything. Left alone, git says main
+      # is clean while Fly runs the reverted code, and the next unrelated merge is what finally
+      # ships the fix, hours later, by accident.
+      #
+      # So the repair is dispatched by hand, exactly as automerge.yml does after it merges. The
+      # path->workflow map below is copied from automerge.yml:114 and must stay in step with it.
+      #
+      # Measured 2026-08-20: all three deploy workflows use a fixed concurrency group with
+      # `cancel-in-progress: false`, so a repair deploy QUEUES behind the bad one already in
+      # flight and runs after it. That is why nothing here cancels a deploy -- cancelling one
+      # mid-run leaves a half-deployed app, whereas queueing behind it converges on the good
+      # code. ci.yml on main has the same setting, which is why the CI run at the bad sha IS
+      # cancelled: without that, the repair CI would sit in the queue for the full length of a
+      # run that is grading a commit which no longer exists, and `ci.yml`'s `changes` job would
+      # go on refusing every open pull request for the whole of it.
+      # ---------------------------------------------------------------------------------------
+      - name: Put the estate back, not just git
+        if: steps.decide.outputs.go == 'yes'
+        uses: actions/github-script@v7
+        env:
+          BAD_SHA: ${{ steps.decide.outputs.sha }}
+          ISSUE: ${{ steps.issue.outputs.number }}
+        with:
+          script: |
+            const {owner, repo} = context.repo
+            const bad = process.env.BAD_SHA
+            const done = []
+
+            // Copied verbatim from automerge.yml:114. If you edit one, edit both --
+            // tests/unit/test_main_admission_guard.py fails when they drift apart.
+            const DEPLOY = {
+              'deploy-engine.yml': /^(prospector\/|scripts\/|deploy\/engine\/|store_platform\/src\/Ops\.Console\/|requirements\.txt$|config\.yaml$|\.github\/workflows\/deploy-engine\.yml$)/,
+              'deploy-web.yml': /^(store_platform\/src\/Store\.Web\/|store_platform\/deploy\/fly\/web\.fly\.toml$|store_platform\/scripts\/deploy_web\.sh$|store_platform\/scripts\/predeploy_guard\.sh$|\.github\/workflows\/deploy-web\.yml$)/,
+              'deploy-api.yml': /^(store_platform\/src\/Store\.Api\/|store_platform\/src\/Store\.Catalog\/|store_platform\/deploy\/fly\/api\.fly\.toml$|\.github\/workflows\/deploy-api\.yml$)/,
+            }
+            const INPUTS = {
+              'deploy-engine.yml': {dry_run: 'false'},
+              'deploy-web.yml': {target: 'prod', dry_run: 'false'},
+              'deploy-api.yml': {dry_run: 'false'},
+            }
+
+            // 1. Stop the run that is grading a commit which is no longer on main.
+            try {
+              const {data} = await github.rest.actions.listWorkflowRunsForRepo({
+                owner, repo, head_sha: bad, per_page: 100,
+              })
+              for (const run of data.workflow_runs || []) {
+                if (run.name !== 'CI') continue
+                if (run.status === 'completed') continue
+                try {
+                  await github.rest.actions.cancelWorkflowRun({owner, repo, run_id: run.id})
+                  done.push(`cancelled CI run ${run.id}, which was grading the reverted commit`)
+                } catch (e) {
+                  core.warning(`could not cancel run ${run.id}: ${e.message}`)
+                }
+              }
+            } catch (e) {
+              core.warning(`could not list the runs at ${bad.slice(0, 8)}: ${e.message}`)
+            }
+
+            // 2. Which deploys did the bad commit set off? Ask what it touched.
+            //    getCommit returns at most 300 files. A commit bigger than that is not a commit
+            //    to guess about, so every deploy is dispatched rather than a subset.
+            let paths = null
+            try {
+              const {data: commit} = await github.rest.repos.getCommit({owner, repo, ref: bad})
+              const files = commit.files || []
+              paths = files.length >= 300 ? null : files.map(f => f.filename)
+              if (paths === null) {
+                core.warning(`${bad.slice(0, 8)} touches 300+ files, so the file list is truncated`)
+              }
+            } catch (e) {
+              core.warning(`could not read the files of ${bad.slice(0, 8)}: ${e.message}`)
+            }
+
+            // 3. Re-grade main, and re-deploy whatever the bad commit had already shipped.
+            //    CI first: it is the thing every other pull request is waiting on.
+            const wanted = ['ci.yml']
+            for (const [wf, re] of Object.entries(DEPLOY)) {
+              if (paths === null || paths.some(p => re.test(p))) wanted.push(wf)
+            }
+            for (const wf of wanted) {
+              try {
+                await github.rest.actions.createWorkflowDispatch({
+                  owner, repo, workflow_id: wf, ref: 'main', inputs: INPUTS[wf] || {},
+                })
+                done.push(`dispatched \`${wf}\` on main`)
+              } catch (e) {
+                // A failed dispatch must not fail this job. The revert is already pushed, and
+                // that is the part that cannot be left half-done.
+                core.warning(`could not dispatch ${wf}: ${e.message}`)
+                done.push(`FAILED to dispatch \`${wf}\`: ${e.message} -- run it by hand`)
+              }
+            }
+
+            for (const line of done) core.notice(line)
+
+            // 4. Say it in the issue. A repair nobody can see is a repair nobody can check.
+            if (process.env.ISSUE) {
+              try {
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: Number(process.env.ISSUE),
+                  body: [
+                    '### The estate was put back too',
+                    '',
+                    'The revert push cannot start a workflow (GitHub starts no run from a',
+                    '`GITHUB_TOKEN` push), so the deploys the bad commit had already fired were',
+                    'repaired by dispatch:',
+                    '',
+                    ...done.map(d => `- ${d}`),
+                    '',
+                    'The deploy workflows queue rather than cancel, so any deploy of the bad',
+                    'commit still in flight finishes first and is then overwritten by these.',
+                  ].join('\n'),
+                })
+              } catch (e) {
+                core.warning(`could not comment on #${process.env.ISSUE}: ${e.message}`)
+              }
+            }

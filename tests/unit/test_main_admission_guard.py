@@ -310,9 +310,106 @@ class TestTheWorkflowItself:
             names.index("Revert it and push")
 
     def test_it_asks_for_no_more_permission_than_it_uses(self):
-        """`actions: read`, not write. This guard dispatches nothing and cancels nothing."""
+        """Every scope here is spent, and none of the ones absent is.
+
+        `actions` was `read` until 2026-08-20 and is now `write`, for one measured reason: a
+        `GITHUB_TOKEN` push starts no workflow run, so after the revert nothing re-deploys and
+        nothing re-grades main by itself. The repair has to be dispatched, and a dispatch is a
+        write. `packages` and `deployments` stay absent -- this workflow touches neither.
+        """
         doc = yaml.safe_load(WORKFLOW.read_text())
         assert doc["permissions"] == {
-            "contents": "write", "actions": "read",
+            "contents": "write", "actions": "write",
             "pull-requests": "read", "issues": "write",
         }
+
+
+class TestItPutsTheEstateBackAndNotJustGit:
+    """Reverting git is not reverting production, and that gap is what this class pins.
+
+    The bad commit's own push fires the deploy workflows immediately, so production is already
+    running the code by the time the guard reverts it. The revert push cannot start anything --
+    GitHub creates no run from a `GITHUB_TOKEN` push -- so without an explicit dispatch the fix
+    reaches production only when some unrelated merge next happens to ship it.
+    """
+
+    def _repair(self) -> str:
+        doc = yaml.safe_load(WORKFLOW.read_text())
+        for step in doc["jobs"]["admit"]["steps"]:
+            if step.get("name") == "Put the estate back, not just git":
+                return step["with"]["script"]
+        raise AssertionError("the workflow no longer repairs the estate after a revert")
+
+    def test_the_repair_runs_only_when_something_was_reverted(self):
+        doc = yaml.safe_load(WORKFLOW.read_text())
+        step = next(s for s in doc["jobs"]["admit"]["steps"]
+                    if s.get("name") == "Put the estate back, not just git")
+        assert step["if"] == "steps.decide.outputs.go == 'yes'"
+
+    def test_the_repair_runs_after_the_push_and_not_before(self):
+        """Dispatching CI on main before the revert lands grades the commit being deleted."""
+        doc = yaml.safe_load(WORKFLOW.read_text())
+        names = [s.get("name", "") for s in doc["jobs"]["admit"]["steps"]]
+        assert names.index("Revert it and push") < \
+            names.index("Put the estate back, not just git")
+
+    def test_it_re_grades_main(self):
+        """Without this, main's newest CI conclusion stays the red one at the deleted sha, and
+        `ci.yml`'s `changes` job goes on refusing every open pull request because of it."""
+        assert "'ci.yml'" in self._repair()
+
+    def test_it_cancels_the_ci_run_at_the_reverted_sha(self):
+        """ci.yml on main is `cancel-in-progress: false`, so the repair run would otherwise
+        queue behind a run that is grading a commit no longer on main."""
+        script = self._repair()
+        assert "cancelWorkflowRun" in script
+        assert "run.status === 'completed'" in script
+
+    def test_it_never_cancels_a_deploy(self):
+        """Measured 2026-08-20: the three deploy workflows are all `cancel-in-progress: false`,
+        so the repair queues behind a bad deploy in flight and converges. Cancelling one
+        mid-run instead would leave a half-deployed app."""
+        script = self._repair()
+        for wf in ("deploy-engine.yml", "deploy-web.yml", "deploy-api.yml"):
+            assert wf in script
+        # The only cancel in the script is guarded by a CI name check.
+        assert script.count("cancelWorkflowRun") == 1
+        assert "run.name !== 'CI'" in script
+
+    def test_the_deploy_map_has_not_drifted_from_automerge(self):
+        """Two copies of one map is a bug waiting for a path to be added to only one of them.
+
+        They are duplicated rather than shared because a GitHub workflow cannot import from
+        another one. So the drift is caught here instead.
+        """
+        theirs = (WORKFLOW.parent / "automerge.yml").read_text()
+        mine = self._repair()
+        for line in mine.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("'deploy-") and "': /^(" in stripped:
+                assert stripped in [x.strip() for x in theirs.splitlines()], (
+                    f"this line is not in automerge.yml any more:\n  {stripped}")
+
+    def test_the_deploy_inputs_have_not_drifted_from_automerge(self):
+        """`deploy-web.yml` takes a required `target` input. Dispatching it without one 422s."""
+        theirs = (WORKFLOW.parent / "automerge.yml").read_text()
+        assert "'deploy-web.yml': {target: 'prod', dry_run: 'false'}" in theirs
+        assert "'deploy-web.yml': {target: 'prod', dry_run: 'false'}" in self._repair()
+
+    def test_a_failed_dispatch_does_not_fail_the_job(self):
+        """The revert is already pushed by this point. Throwing here would leave the run red
+        over the recoverable half of the work and hide that the important half succeeded."""
+        script = self._repair()
+        assert "core.warning(`could not dispatch" in script
+        assert "run it by hand" in script
+
+    def test_a_truncated_file_list_deploys_everything(self):
+        """`getCommit` returns at most 300 files. Reading a truncated list as the whole truth
+        would skip the deploy for a path that fell off the end."""
+        script = self._repair()
+        assert "files.length >= 300" in script
+        assert "paths === null || paths.some(" in script
+
+    def test_the_repair_is_written_into_the_issue(self):
+        """A repair nobody can see is a repair nobody can check."""
+        assert "createComment" in self._repair()
