@@ -210,3 +210,115 @@ is **`unverified`** — no file sizes or encode times were captured.
   Intel/AMD hardware; ffmpeg Ken Burns file sizes and encode times; the XLabs adapter mislabelling.
 - If generation is approved, the batch runs on rented GPU, on **schnell or Qwen-Image**, and style
   consistency comes from a LoRA or StyleAligned — not from a shared prompt template (§3).
+
+---
+
+## 8. How the engine integrates with image generation — and the exponential fix (2026-08-20)
+
+Founder: *"worth understangin how the engine integrates to the inage generation architecturally"*,
+*"and if the inage generation can be ultrainproved also"*, *"radicall inprovent in quality and
+relevance"*, *"eponential"*.
+
+### 8.1 The architecture, measured
+
+**It does not integrate with image generation at all.** There is no model, no GPU call, no asset
+pipeline. §5 already established there is no image *slot* at five layers. What §5 did not say is
+that one image is nevertheless produced per pack, by a different mechanism entirely:
+
+`Store.Web/src/pages/og/pack/[id].tsx` renders a 1200×630 PNG through `next/og` — satori for layout,
+resvg for rasterisation — inside `getServerSideProps` on the Node runtime. It is a *typesetter*, not
+a generator. Deterministic, no model, no licence question, no hardware requirement.
+
+The path from what the engine knows to what the buyer sees narrows at every step:
+
+| Stage | Fields carried | Where |
+|---|---|---|
+| Dossier on disk | **141 field instances** — 8 checks × 13 keys, plus `score`, `adversarial`, `gate_fired`, `decision`, `ambition_tier`, `dense_reward`, `provider_chain`, `sources` | `store/dossiers/*.json` |
+| Listing written on PASS | 6 | `publish/publish.py:160-167` |
+| Card image consumes | **4** — `title`, `sourceCount`, `verifiedAt`, `price` | `og/pack/[id].tsx` |
+| The *drawing* is a function of | **1** — `sourceCount`, capped at 40 | `lib/evidenceTicks.ts` |
+
+`evidenceTicks.ts` is the whole visual: `EVIDENCE_TICK_CAP = 40`, `HEIGHT_CYCLE = [12,7,10,5,9]`
+indexed by tick position. Its own docblock states the intent plainly — two packs with the same count
+draw the same shape, "which is correct, because the same count IS the same fact."
+
+That reasoning is sound and it is also the defect. It is correct about *honesty* and silent about
+*identity*.
+
+### 8.2 The measurement that decides it
+
+Over the real store (the iCloud clone; the main checkout's `store/dossiers` is empty). The
+population must be split before any rate is computed, because the directory also holds pack **lint
+reports**, which are not dossiers:
+
+```
+2,931 files  ->  2,698 *.kill.json   108 *.pass.json   123 *.lint.json   2 other
+```
+
+A raw `*.json` glob dilutes every rate by ~4% and prints as a measurement rather than an error. The
+skip test that works is `"checks" not in d and "candidate" not in d`. The 108 below is the pass
+population; it is right here because the census required a non-empty `checks` list, which lint
+reports do not have. Corroborated independently by two peer sessions counting from different
+snapshots with different tools.
+
+Measured over those 108:
+
+```
+today: source count, capped at 40            distinct  23/108   identical-to-another  97.2%
+```
+
+Top collisions: 24 packs draw the identical maxed-out 40-tick run; then 7, 6, 6, 6, 5.
+
+**97% of packs are visually indistinguishable from at least one other pack, while the engine knows
+141 things about each of them.** The image is honest and non-identifying. A buyer comparing two packs
+sees the same picture twice.
+
+### 8.3 Why a generative model is the wrong axis
+
+The instinct is to reach for FLUX or Qwen-Image (§1–§3: both Apache-2.0, both clear, both needing
+rented GPU because the dev machine has 4 GB VRAM and no CUDA). That buys *decoration*. It cannot buy
+relevance, because a diffusion model does not know the pack's verdict vector — it would be seeded
+from the title or the id, which is exactly the failure `index.tsx:297` already killed once: the
+removed cover's mark "was a hash of the pack id, which encodes nothing about the pack."
+
+The constraint here is not GPU, licence or model quality. It is that the renderer is fed one integer.
+**Widen the input, not the technology.**
+
+### 8.4 The exponential axis, measured
+
+Feed the renderer the verdict vector the engine already computes. Measured over the same 108 packs:
+
+| What the drawing encodes | Distinct drawings | Packs identical to another |
+|---|---|---|
+| source count, capped at 40 *(today)* | 23 / 108 | **97.2%** |
+| the 8 check verdicts | 72 / 108 | 50.0% |
+| verdicts + confidence banded to 5 steps | 105 / 108 | 4.6% |
+| verdicts + confidence + distinct-domain depth per check | **108 / 108** | **0.0%** |
+
+Every pack draws a different picture, and every difference is a real difference in the evidence.
+That is the exponential: not a better renderer, a wider input. `3^8` verdict states before
+confidence is even counted, against 23 today.
+
+The verdict distribution across those 108 packs — `supported 514, refuted 18, unverifiable 264` —
+is what makes this legible rather than noisy: an eight-cell figure where cell 3 is hollow reads at a
+glance as "distribution is unverified", which is the single most useful thing a buyer can know before
+paying. Today that fact is not in the picture at all.
+
+### 8.5 Why it needs no decision from §7
+
+§7 holds because *generative* imagery would need `SITE_SPEC_PROGRAM.md` §28/§690/§1007 amended.
+This does not. `SITE_SPEC_PROGRAM.md:28` already permits imagery **generated from real engine data**,
+which is precisely what this is — the same rule that authorised the citation-density visual built
+2026-08-15 (§4.2). No spec amendment, no GPU, no licence, no model call, no new dependency. The seam
+already exists: `evidenceRun()` is the one function every surface draws through.
+
+Cost: zero recurring. It is a change to a pure function and its callers (LAW 14 — the cheapest
+possible win is one that removes a bill rather than adding one, and this adds none).
+
+### 8.6 What must not regress
+
+- The figure stays deterministic and model-free, like the `pack_*.py` renderers.
+- A pack with no source count still draws nothing, not a fabricated shape — `evidenceRun` returns
+  `{ticks: [], over: false, shown: 0}` today and must keep doing so.
+- No cell may encode anything the dossier does not literally contain. Source-or-die applies to
+  pixels: a bar height is a claim.
