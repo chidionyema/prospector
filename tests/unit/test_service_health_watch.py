@@ -511,3 +511,78 @@ def test_the_engine_probe_still_proves_the_console_fails_closed(cfg):
     unauth = [c for c in checks if c.get("expect") == "401"]
     assert len(unauth) == 1
     assert unauth[0]["url"].endswith("/api/ops/read/status")
+
+
+# --------------------------------------------------------------------------------------
+# 9. Two passes running at once
+#
+# supervisord runs this every 300s inside the engine image AND it is a button on the
+# /deploys screen, so a scheduled pass and a hand-run pass can overlap on the same store.
+# That is not hypothetical: the console tool row exists precisely so an operator can ask
+# right now instead of waiting for the next tick.
+# --------------------------------------------------------------------------------------
+
+
+def test_two_passes_running_at_once_do_not_write_to_the_same_temp_file(cfg, monkeypatch):
+    """A shared temp name lets one process write into the other's promoted file.
+
+    The sequence that corrupts it: A opens the temp and writes half of it; B opens the
+    SAME temp, writes all of it, and renames it onto the state file; A then finishes
+    writing through its still-open descriptor, which now points at the live state file.
+    The result is B's document with A's tail appended - not valid JSON.
+
+    A per-process temp name makes that sequence impossible, because `Path.replace` is
+    atomic and the two processes never share a descriptor. This test pins the name.
+    """
+    seen: list[str] = []
+    real_write = Path.write_text
+
+    def spy(self, data, *args, **kwargs):
+        seen.append(self.name)
+        return real_write(self, data, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "write_text", spy)
+
+    monkeypatch.setattr(sh.os, "getpid", lambda: 111)
+    sh.save_state(cfg, {"engine": {"failures": 1}})
+    monkeypatch.setattr(sh.os, "getpid", lambda: 222)
+    sh.save_state(cfg, {"engine": {"failures": 2}})
+
+    temps = [n for n in seen if n.endswith(".tmp")]
+    assert len(temps) == 2, seen
+    assert len(set(temps)) == 2, (
+        f"both passes wrote to the same temp file {temps[0]!r}; one can rename the "
+        "other's half-written document onto the state file"
+    )
+
+
+def test_the_last_pass_to_finish_wins_and_the_state_is_whole(cfg, monkeypatch):
+    """Whatever the interleaving, the file on disk is one complete document.
+
+    There is no merge to do here. The counters are cheap to rebuild - a lost count costs
+    at most one extra pass before paging - so last-writer-wins is the right answer and a
+    lock would be a second thing to go wrong.
+    """
+    monkeypatch.setattr(sh.os, "getpid", lambda: 111)
+    sh.save_state(cfg, {"engine": {"failures": 1, "alerted": False}})
+    monkeypatch.setattr(sh.os, "getpid", lambda: 222)
+    sh.save_state(cfg, {"store-api": {"failures": 2, "alerted": True}})
+
+    on_disk = json.loads(sh.state_path(cfg).read_text())
+    assert on_disk == {"store-api": {"failures": 2, "alerted": True}}
+    assert sh.load_state(cfg) == on_disk
+
+
+def test_a_temp_file_left_behind_by_a_killed_pass_is_never_read_as_the_state(cfg):
+    """A SIGKILLed pass leaves its temp behind. It must not become the state.
+
+    `load_state` reads exactly one path. This pins that a stray sibling - which a killed
+    process WILL leave, since nothing sweeps them - cannot be picked up, and that junk in
+    it changes nothing.
+    """
+    sh.save_state(cfg, {"engine": {"failures": 1}})
+    stray = sh.state_path(cfg).with_name(sh.state_path(cfg).name + ".999.tmp")
+    stray.write_text('{"engine": {"failu')  # truncated, exactly as a kill leaves it
+
+    assert sh.load_state(cfg) == {"engine": {"failures": 1}}
+    assert stray.exists(), "the test's own premise: nothing sweeps the stray"

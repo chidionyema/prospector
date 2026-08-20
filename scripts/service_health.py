@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import sys
 from datetime import datetime, timezone
@@ -78,7 +79,15 @@ def save_state(cfg, state: dict) -> None:
     path = state_path(cfg)
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(".tmp")
+        # The temp name carries the PID. Two passes CAN overlap: supervisord runs this
+        # every 300s and the /deploys screen can run it by hand at the same moment. With
+        # one shared temp name, the second process replaces a file the first is still
+        # writing, and half a JSON document lands as the state. load_state survives that
+        # (junk reads as {}), but the consecutive-failure count resets, which delays the
+        # page by one whole pass during the outage it exists to report. `replace` is
+        # atomic, so a per-process temp makes the overlap harmless instead of merely
+        # survivable.
+        tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
         tmp.write_text(json.dumps(state, indent=2, sort_keys=True))
         tmp.replace(path)
     except OSError as exc:
