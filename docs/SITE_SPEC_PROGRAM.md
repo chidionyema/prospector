@@ -504,7 +504,7 @@ worktree rule — not committed or pushed as of this entry; that remains an expl
   prose, and here it would have kept a finished item open instead of closing a live one.
 - ~~`lib/config.ts:46` — `FOUNDER.bio` duplicates the /about story~~ **done 2026-08-07**, removed
   outright rather than shortened; see "the founder was introduced twice" below.
-- ~~`components/marketing/Gauntlet.tsx` — component name carries retired vocabulary~~ **done
+- ~~`components/marketing/Gauntlet.tsx` — component name carries retired vocabulary~~ **done  <!-- doc-lint-ok: struck through: the component was renamed away, and the old name is the record -->
   2026-08-07**; four files renamed, see the table under §5.2.
 - **The title had no narrow door until 2026-08-09, and that is why nobody had ever fixed one.**
   `pack.Title` was written in exactly two places, `Program.cs:466` and `:480`, **both inside the

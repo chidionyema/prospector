@@ -108,7 +108,7 @@ subscription**. There are no hosted inference calls and no API-key billing in th
 default path — the brain and grounding are driven through the installed `claude`
 CLI and the MiniMax adapter. This is an operating rule, not an accident (see
 `CLAUDE.md`). The live roster is `config.yaml operator:` and `moat_primary:`;
-read those, not this sentence. It said "the `gemini` and `claude` CLIs" until
+read those, not this sentence. It said "the `gemini` and `claude` CLIs" until <!-- doc-lint-ok: a record of what the roster USED to say; there is no gemini key today -->
 2026-08-16, long after any config selected Gemini. doc-lint-ok
 
 **Provider failover is built in.** Both the verdict brain and web grounding take an
@@ -470,7 +470,7 @@ operators (e.g. Claude Code → an API operator) needs only a config change, no 
 
 `MINIMAX_API_KEY` is the one key the default path needs. `GEMINI_API_KEY` and
 `ANTHROPIC_API_KEY` are read by API-direct adapters that no config selects — the
-paid `claude` tier was deleted on 2026-08-15, and there is no `gemini` key in
+paid `claude` tier was deleted on 2026-08-15, and there is no `gemini` key in <!-- doc-lint-ok: a record of what the roster USED to say; there is no gemini key today -->
 `config.yaml`. Setting either changes nothing. doc-lint-ok
 The CLI adapters deliberately strip `GEMINI_API_KEY` from the child env to force the
 free OAuth quota.

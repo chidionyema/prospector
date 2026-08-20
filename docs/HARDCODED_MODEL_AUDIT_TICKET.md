@@ -75,7 +75,7 @@ home.
 Step 2 (partial) and step 5 (partial) landed in commit 1d36dd3:
 
 - `cfg.model` and `cfg.model_fast` are now threaded through `_build_operator`
-  to all four non-mock operators (gemini, claude, deepseek, minimax).
+  to all four non-mock operators (gemini, claude, deepseek, minimax). <!-- doc-lint-ok: a dated audit ticket describing the roster as it was on 2026-08-10 -->
   Setting `cfg.model = "deepseek-v4-pro"` (or any string) now selects
   that model without code changes. The deepseek-chat 2026-07-24
   deprecation is now a 1-line `config.yaml` change.
@@ -124,12 +124,12 @@ Reconciling the ticket with current code (it had drifted):
 `cfg.model_fast` (fast=True) and passes it as `model=` to **every** provider,
 where it wins over the per-provider `model_defaults`. But `cfg.model` /
 `cfg.model_fast` are both pinned to the **Gemini** verdict model
-(`"gemini-2.5-flash-lite"`, config.yaml:15-16). The real non-critical chain
+(`"gemini-2.5-flash-lite"`, config.yaml:15-16). The real non-critical chain <!-- doc-lint-ok: a dated audit ticket describing the roster as it was on 2026-08-10 -->
 (`run.py:359-369`) hands the same `cfg` to the deepseek/minimax tiers, so:
 
 ```
-deepseek  fast=False/True -> built model: gemini-2.5-flash-lite
-minimax   fast=False/True -> built model: gemini-2.5-flash-lite
+deepseek  fast=False/True -> built model: gemini-2.5-flash-lite <!-- doc-lint-ok: a dated audit ticket describing the roster as it was on 2026-08-10 -->
+minimax   fast=False/True -> built model: gemini-2.5-flash-lite <!-- doc-lint-ok: a dated audit ticket describing the roster as it was on 2026-08-10 -->
 ```
 
 i.e. the cheap-tail operators are built with a **Gemini** model string, which
@@ -143,7 +143,7 @@ provider — so it locks the leak in. The design intent needs a founder call:
 `cfg.model` should be the **Gemini/moat-only** pin; non-moat providers should
 take their model from `model_defaults.<provider>` (or a future `cfg.models.<p>`).
 Proposed minimal fix: in `_build_operator`, stop forwarding `cfg.model`/
-`cfg.model_fast` to deepseek/minimax/ollama/claude (only gemini consumes them),
+`cfg.model_fast` to deepseek/minimax/ollama/claude (only gemini consumes them), <!-- doc-lint-ok: a dated audit ticket describing the roster as it was on 2026-08-10 -->
 and update the test to assert per-provider `model_defaults` instead. **Founder
 decision required — not applied.**
 
