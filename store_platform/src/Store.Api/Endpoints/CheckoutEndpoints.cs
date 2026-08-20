@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Store.Api.Common;
 using Store.Api.Contracts;
 using Store.Api.Payments;
 using Store.Api.Services;
@@ -145,12 +144,8 @@ public static class CheckoutEndpoints
             return rejection;
         }
 
-        // The id the buyer's browser sent, else this request's trace id. It is stamped onto
-        // the provider session here, which is the only place it can be: the webhook that
-        // fulfils this purchase arrives later on a connection carrying none of these headers.
         return await OpenSessionAsync(
-            paymentProvider, billedLines, buyerEmail, embedded, successUrl, cancelUrl,
-            request.HttpContext.GetCorrelationId()).ConfigureAwait(false);
+            paymentProvider, billedLines, buyerEmail, embedded, successUrl, cancelUrl).ConfigureAwait(false);
     }
 
     /// <summary>Header carrying the edge-resolved buyer country. Both apps run on Fly.io.</summary>
@@ -263,13 +258,12 @@ public static class CheckoutEndpoints
         string? buyerEmail,
         bool embedded,
         string successUrl,
-        string cancelUrl,
-        string? correlationId)
+        string cancelUrl)
     {
         if (embedded)
         {
             var embeddedHandle = await paymentProvider.CreateEmbeddedCheckoutAsync(
-                lines, buyerEmail, successUrl, correlationId, CancellationToken.None).ConfigureAwait(false);
+                lines, buyerEmail, successUrl, CancellationToken.None).ConfigureAwait(false);
 
             if (embeddedHandle?.ClientSecret is { Length: > 0 } secret)
             {
@@ -278,7 +272,7 @@ public static class CheckoutEndpoints
         }
 
         var handle = await paymentProvider.CreateCheckoutAsync(
-            lines, buyerEmail, successUrl, cancelUrl, correlationId, CancellationToken.None).ConfigureAwait(false);
+            lines, buyerEmail, successUrl, cancelUrl, CancellationToken.None).ConfigureAwait(false);
 
         // `clientSecret` is always present on the wire, null on the hosted path. A field that
         // appears and disappears is how a client ends up branching on `undefined` by accident.

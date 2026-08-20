@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Store.Api.Common;
 using Store.Api.Payments;
 using Store.Api.Services;
 using Store.Catalog.Domain;
@@ -48,39 +47,12 @@ public static class WebhookEndpoints
 
         var txn = result.Transaction!;
 
-        // Adopt the buyer's id: Stripe calls us carrying none of their headers, so without this
-        // every line from here on -- PAID-WITHOUT-FULFILMENT included -- gets an unrelated id.
-        request.HttpContext.SetCorrelationId(txn.CorrelationId);
-
         // --- DEDUP LAYER (P2) ---
         if (await RegisterWebhookEventAsync(db, provider, txn, result.Reason, rawBody).ConfigureAwait(false))
         {
             return Results.Ok(new { status = "ALREADY_PROCESSED", eventId = txn.TransactionId });
         }
 
-        return await FulfilAndRespondAsync(txn, fulfilmentService, logger).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Grant the entitlements and answer the provider.
-    /// </summary>
-    /// <remarks>
-    /// Split out of <c>HandleWebhook</c> because that method had reached its length limit
-    /// exactly, so the next edit to it -- any edit -- failed the build on MA0051 rather than on
-    /// anything to do with the change. The seam is a real one: everything above it decides
-    /// WHETHER this event should be fulfilled, and everything here does the fulfilling.
-    /// <para>
-    /// No email is sent here, deliberately. FulfilmentService committed a PendingDelivery row in
-    /// the SAME transaction as each entitlement, and DeliverySweeper is the only sender. That is
-    /// what removes this handler's worst failure by construction rather than by patching around
-    /// it: an inline send lived AFTER the commit and outside it, and the ALREADY_PROCESSED
-    /// short-circuit in the caller means the provider's retry never reaches this line -- so
-    /// anything that interrupted the process here lost the buyer's link for good.
-    /// </para>
-    /// </remarks>
-    private static async Task<IResult> FulfilAndRespondAsync(
-        PaymentTransaction txn, FulfilmentService fulfilmentService, ILogger<Program> logger)
-    {
         var outcome = await fulfilmentService.FulfilAsync(txn).ConfigureAwait(false);
         if (outcome.AlreadyProcessed)
         {
@@ -93,6 +65,12 @@ public static class WebhookEndpoints
                 txn.TransactionId, string.Join(", ", outcome.Unfulfilled));
         }
 
+        // No email is sent here, deliberately. FulfilmentService committed a PendingDelivery row
+        // in the SAME transaction as each entitlement, and DeliverySweeper is the only sender.
+        // That is what removes this handler's worst failure by construction rather than by
+        // patching around it: an inline send lived AFTER the commit and outside it, and the
+        // ALREADY_PROCESSED short-circuit above means the provider's retry never reaches this
+        // line -- so anything that interrupted the process here lost the buyer's link for good.
         return Results.Ok(new
         {
             status = "PROCESSED",
