@@ -68,13 +68,6 @@ concurrency:
   group: automerge
   cancel-in-progress: false
 
-# HOW MANY STRANDED PRs ONE MERGE MAY RESCUE. Each rescue dispatches a CI run, and a CI run fans
-# out to as many as seven jobs across a nine-machine Fly fleet. A sweep bigger than this starves
-# main's own post-merge run, which is the one run the estate cannot afford to leave queued.
-# Raise it when the fleet grows; it is here rather than inline so changing it is a config edit.
-env:
-  SWEEP_MAX: '3'
-
 jobs:
   merge:
     # A FAILED RUN MUST REACH THIS JOB TOO, AND ONLY FOR THE UPDATE PATH. Until 2026-08-19 this
@@ -151,38 +144,24 @@ jobs:
               const {data: cmp} = await github.rest.repos.compareCommits(
                 {owner, repo, base: 'main', head: pr.head.sha})
               if (cmp.behind_by > 0) {
-                // MERGE, NOT REBASE, AND NOT BY CHOICE. PUT .../pulls/{n}/update-branch takes
-                // exactly one body parameter, `expected_head_sha`, and "updates the pull request
-                // branch with the latest upstream changes by MERGING HEAD from the base branch"
-                // (GitHub REST docs, checked 2026-08-19). "Update with rebase" is a web-UI
-                // button with no REST equivalent. A rebase would also rewrite a branch another
-                // session may have checked out, so the merge is the safer of the two anyway --
-                // and main never sees it, because the merge below squashes.
-                core.info(`  behind main by ${cmp.behind_by} - updating the branch, not merging`)
-                try {
-                  // expected_head_sha for the same reason the merge below passes `sha`: if
-                  // someone pushed while this job was deciding, the update must fail rather
-                  // than land on a head this run never saw.
-                  await github.rest.pulls.updateBranch(
-                    {owner, repo, pull_number: pr.number, expected_head_sha: pr.head.sha})
-                } catch (e) {
-                  // 422 is the conflict case: git cannot do it, a person must.
-                  core.error(`could not update #${pr.number}: ${e.message}`)
-                  stuck.push(`#${pr.number} (behind main, update failed: ${e.message})`)
-                  try {
-                    await github.rest.issues.addLabels(
-                      {owner, repo, issue_number: pr.number, labels: ['needs-rebase']})
-                  } catch (le) {
-                    core.warning(`could not label #${pr.number}: ${le.message}`)
-                  }
-                  continue
-                }
-                // The update was pushed with GITHUB_TOKEN, so it started no run of its own.
-                // Dispatch is the documented exception, and the `if` above lets the run it
-                // produces come back here and merge.
-                await github.rest.actions.createWorkflowDispatch(
-                  {owner, repo, workflow_id: 'ci.yml', ref: pr.head.ref})
-                core.info(`  dispatched CI on ${pr.head.ref}; the green run merges it`)
+                // NOTHING HERE PUSHES TO SOMEBODY ELSE'S BRANCH ANY MORE.
+                //
+                // This called pulls.updateBranch, which pushes `Merge branch 'main' into
+                // <branch>` onto every open pull request whenever main moves. That rewrites the
+                // head of a pull request nobody touched. A moved head is no longer inside
+                // whatever branch was cut to close it, so the pull request stays open after its
+                // own content has merged -- and a batch cut to clear a backlog sets this off
+                // with its own merge, so the batch can never finish the job it was cut for.
+                //
+                // Measured 2026-08-20. #480 merged to main at 0fa8f9a6. Four minutes later:
+                //   26d5a7ec  github-actions[bot]  03:38:04  Merge branch 'main' into feat/deploy-every-service-from-the-console  (#477)
+                //   f53bf864  github-actions[bot]  03:38:08  Merge branch 'main' into integrate/2026-08-20-eleven                 (#510)
+                // Both dropped out of the branch that contained them. No person touched either.
+                //
+                // Founder rule, 2026-08-20: a branch merges main into ITSELF before its pull
+                // request is raised. That is the author's job. This workflow only merges.
+                core.info(`  behind main by ${cmp.behind_by} - the author updates it, not us`)
+                stuck.push(`#${pr.number} (${cmp.behind_by} behind main - merge main into it and push)`)
                 continue
               }
 
@@ -255,85 +234,19 @@ jobs:
 
             if (!merged) return
 
-            // AFTER A MERGE, EVERY OTHER GREEN PR IS NOW BEHIND MAIN AND NOTHING WILL NOTICE.
-            // This job fires only when a CI run completes, and it looks only at the PRs whose
-            // head is that run's sha. A PR that went green BEFORE this merge now sits behind
-            // main with no future run to rescue it. Automerge never fires for it again, so it
-            // stays open, green and stuck, and no check anywhere turns red. Measured
-            // 2026-08-19: #388 #405 #424 #431 #442 were all MERGEABLE/CLEAN with every check
-            // SUCCESS, behind main by two, untouched for hours -- while 28 PRs stood open and
-            // nothing was merging. The queue starves itself: every merge strands every PR it
-            // did not merge, and only a human pushing again can undo that.
+            // THE SWEEP IS GONE, BECAUSE ITS ONLY ACTION WAS THE PUSH REMOVED ABOVE.
             //
-            // So do here what this job would have done for those PRs had it ever looked at
-            // them. Updating the branch is the same remedy as the behind-main path above, and
-            // the run it produces comes back through this same job and merges the next one.
-            // The queue then drains with nobody in it.
+            // It looked for pull requests that were green but had fallen behind main, and
+            // called pulls.updateBranch on up to SWEEP_MAX of them. Same defect as the
+            // behind-main path above, aimed at three more branches per merge.
             //
-            // ONLY GREEN AND BEHIND. That set is provably stuck and one update away from
-            // landing. A red PR is not stuck on us, and updating it would spend a CI run to
-            // re-prove a failure its author already has to fix.
-            const sweepMax = Number(process.env.SWEEP_MAX || '3')
-            let swept = 0
-            // Listing the open PRs is a read that can fail on its own, and it sits outside
-            // the per-PR try below. Left unguarded it kills the job for the same reason the
-            // check-runs read did. Nothing between here and the end of the loop is allowed to
-            // reach the dispatch.
-            let open = []
-            try {
-              open = await github.paginate(github.rest.pulls.list,
-                                           {owner, repo, state: 'open', per_page: 100})
-            } catch (e) {
-              core.warning(`could not list open pull requests, so no PR was swept: ${e.message}`)
-            }
-            for (const pr of open) {
-              if (swept >= sweepMax) {
-                core.info(`sweep cap ${sweepMax} reached - the rest wait for the next merge`)
-                break
-              }
-              if (pr.draft || pr.base.ref !== 'main') continue
-              if (pr.labels.map(l => l.name).some(n => HOLD.has(n))) continue
-              if (prs.some(p => p.number === pr.number)) continue
-
-              // EVERY call for this PR is inside the try, reads included. It used to start at
-              // updateBranch, which left compareCommits and checks.listForRef able to throw
-              // out of the whole job. On 2026-08-19 listForRef threw 403 and killed the run
-              // BEFORE `dispatching CI on main` below, so the merge of #451 landed on main and
-              // main was never graded. A best-effort rescue must never be able to do that.
-              try {
-                const {data: cmp} = await github.rest.repos.compareCommits(
-                  {owner, repo, base: 'main', head: pr.head.sha})
-                if (cmp.behind_by === 0) continue
-
-                // "Green" is read from the check runs on the head sha, never from
-                // mergeable_state: GitHub computes that lazily and answers `unknown` on a first
-                // read, which would make the sweep skip the very PRs it exists to rescue.
-                const {data: checks} = await github.rest.checks.listForRef(
-                  {owner, repo, ref: pr.head.sha, per_page: 100})
-                const runs = checks.check_runs
-                if (runs.length === 0) continue
-                const green = runs.every(
-                  c => c.status === 'completed' &&
-                       ['success', 'skipped', 'neutral'].includes(c.conclusion))
-                if (!green) continue
-
-                await github.rest.pulls.updateBranch(
-                  {owner, repo, pull_number: pr.number, expected_head_sha: pr.head.sha})
-                // The update was pushed with GITHUB_TOKEN, so it started no run of its own.
-                // Without this dispatch the rescue is silent and the PR stays stuck -- the
-                // same trap the behind-main path above documents.
-                await github.rest.actions.createWorkflowDispatch(
-                  {owner, repo, workflow_id: 'ci.yml', ref: pr.head.ref})
-                swept++
-                core.info(
-                  `swept #${pr.number}: green but ${cmp.behind_by} behind - ` +
-                  `branch updated, CI dispatched`)
-              } catch (e) {
-                // A rescue that fails is not a merge that fails: the PR is exactly as stuck as
-                // it was, and the next merge tries again. Warn, do not fail the job.
-                core.warning(`could not sweep #${pr.number}: ${e.message}`)
-              }
-            }
+            // It also merged work that no CI run had proved green AT ITS HEAD. That is how
+            // #500 landed unproven on 2026-08-20 and was reverted by main-admission-guard
+            // twelve minutes later, deleting merged work.
+            //
+            // A pull request that falls behind main is now its author's to update, which is
+            // the founder's rule of 2026-08-20: merge main into your branch before raising the
+            // pull request.
 
             // Start what the merge push could not (see the header). workflow_dispatch is the
             // documented exception that works with GITHUB_TOKEN.
