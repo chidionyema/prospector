@@ -1,0 +1,65 @@
+{
+ "dossiers_read": 2806,
+ "unreadable": 0,
+ "skipped_not_dossiers": 123,
+ "store": "/Users/chidionyema/Documents/code/wt-engine100x/store/dossiers",
+ "note": "the LAPTOP dossier copy; production's store is on Fly at /data/store",
+ "checks_run_distribution": {
+  "1": 122,
+  "2": 286,
+  "3": 60,
+  "4": 911,
+  "5": 7,
+  "6": 1020,
+  "7": 3,
+  "8": 261,
+  "9": 136
+ },
+ "mean_checks_run": 4.991,
+ "max_checks_in_run_order": 9,
+ "by_decision": {
+  "kill": {
+   "n": 2698,
+   "mean_checks_run": 4.896,
+   "distribution": {
+    "1": 122,
+    "2": 286,
+    "3": 60,
+    "4": 911,
+    "5": 7,
+    "6": 979,
+    "7": 3,
+    "8": 208,
+    "9": 122
+   }
+  },
+  "pass": {
+   "n": 108,
+   "mean_checks_run": 7.37,
+   "distribution": {
+    "6": 41,
+    "8": 53,
+    "9": 14
+   }
+  }
+ },
+ "first_gate_fired": {
+  "moat_ungrounded": 1042,
+  "min_composite": 744,
+  "source_or_die": 256,
+  "incumbency": 254,
+  "adversarial_decisive": 140,
+  "value_durability": 112,
+  "none": 108,
+  "payer_solvency": 59,
+  "legality": 30,
+  "distribution": 18,
+  "currency": 14,
+  "route_to_market": 13,
+  "pain_reality": 9,
+  "buyer_intent": 7
+ },
+ "upper_bound_speedup_on_checks": 4.991,
+ "brain_calls_multiplier_if_concurrent": 1.803,
+ "caveat": "speedup is on CHECK COUNT and is an UPPER BOUND on wall clock: concurrent wall clock is the SLOWEST check, not the mean one, and the dossiers carry no per-check timings. A serial run of n equal checks becomes 1; a serial run of n unequal checks becomes max(n), which is worse than n/mean."
+}

@@ -1,0 +1,281 @@
+{
+  "question": "Can any locally-runnable verifier reproduce the moat's ruled/unverifiable split well enough to stand in for it, or in front of it?",
+  "corpus_fingerprint": {
+    "n_dossiers": 2929,
+    "newest_mtime_utc": "2026-08-20T06:24:32.860082+00:00",
+    "sha256": "d2e6d72ca4a7f65b",
+    "frozen": false,
+    "corpus_dir": "/Users/chidionyema/Documents/code/wt-engine100x/store/dossiers",
+    "note": "sampling is deterministic against a frozen corpus; the store is live, so two runs with different fingerprints are different samples, not a repeat. frozen=true means this run read a snapshot, so a matched pair is guaranteed rather than hoped for; frozen=false means the daemon could move underneath it."
+  },
+  "pairs_frozen_from": "/private/tmp/claude-501/-Users-chidionyema-Documents-code-prospector/8b88e9aa-6e35-4c1d-a62f-59e1c59e6ce1/scratchpad/e101_pairs.json",
+  "eligible_checks": 13675,
+  "sampled_checks": 1200,
+  "scored_checks": 1200,
+  "pairs": 3472,
+  "class_counts": {
+    "supported": 270,
+    "refuted": 58,
+    "unverifiable": 872
+  },
+  "premise_source_counts": {
+    "cited": 12433,
+    "retrieved_uncited": 1242,
+    "no_passage_at_all": 293
+  },
+  "number_fallback_rate_lex_number": 0.5207,
+  "arms_run": [
+    "lex-token",
+    "lex-number",
+    "hhem",
+    "lex-3gram",
+    "nli-fever-bs"
+  ],
+  "arms_unavailable": {},
+  "results": {
+    "lex-token": {
+      "auc_ruled_vs_unverifiable": 0.8273,
+      "auc_supported_vs_unverifiable": 0.8194,
+      "auc_refuted_vs_unverifiable": 0.8641,
+      "tau_null_p95": 0.0833,
+      "agreement_at_tau": {
+        "supported": 0.9889,
+        "refuted": 1.0,
+        "unverifiable": 0.2087
+      },
+      "median": {
+        "supported": 0.2593,
+        "refuted": 0.3103,
+        "unverifiable": 0.1429
+      },
+      "screen_at_95_precision": {
+        "coverage": 0.3775,
+        "threshold": 0.1406,
+        "precision": 0.9514,
+        "n": 1200,
+        "checks_screened": 453,
+        "of": 1200
+      },
+      "wall_seconds": 0.42,
+      "pairs_per_second": 8222.82,
+      "weights_gb": 0.0,
+      "runs_where": "local"
+    },
+    "lex-3gram": {
+      "auc_ruled_vs_unverifiable": 0.5508,
+      "auc_supported_vs_unverifiable": 0.5454,
+      "auc_refuted_vs_unverifiable": 0.576,
+      "tau_null_p95": 0.4821,
+      "agreement_at_tau": {
+        "supported": 0.2519,
+        "refuted": 0.3276,
+        "unverifiable": 0.7271
+      },
+      "median": {
+        "supported": 0.3376,
+        "refuted": 0.3333,
+        "unverifiable": 0.3423
+      },
+      "screen_at_95_precision": {
+        "coverage": 0.0267,
+        "threshold": 0.1378,
+        "precision": 0.9688,
+        "n": 1200,
+        "checks_screened": 32,
+        "of": 1200
+      },
+      "wall_seconds": 1.63,
+      "pairs_per_second": 2132.95,
+      "weights_gb": 0.0,
+      "runs_where": "local"
+    },
+    "lex-number": {
+      "auc_ruled_vs_unverifiable": 0.727,
+      "auc_supported_vs_unverifiable": 0.7352,
+      "auc_refuted_vs_unverifiable": 0.6886,
+      "tau_null_p95": 0.4091,
+      "agreement_at_tau": {
+        "supported": 0.3222,
+        "refuted": 0.3276,
+        "unverifiable": 0.8956
+      },
+      "median": {
+        "supported": 0.3077,
+        "refuted": 0.2857,
+        "unverifiable": 0.1364
+      },
+      "screen_at_95_precision": {
+        "coverage": 0.0,
+        "threshold": null,
+        "precision": 0.0,
+        "n": 1200
+      },
+      "wall_seconds": 0.44,
+      "pairs_per_second": 7835.07,
+      "weights_gb": 0.0,
+      "runs_where": "local"
+    },
+    "hhem": {
+      "auc_ruled_vs_unverifiable": 0.6485,
+      "auc_supported_vs_unverifiable": 0.6428,
+      "auc_refuted_vs_unverifiable": 0.675,
+      "tau_null_p95": 0.0582,
+      "agreement_at_tau": {
+        "supported": 0.4889,
+        "refuted": 0.5,
+        "unverifiable": 0.7156
+      },
+      "median": {
+        "supported": 0.0572,
+        "refuted": 0.0579,
+        "unverifiable": 0.0356
+      },
+      "screen_at_95_precision": {
+        "coverage": 0.0067,
+        "threshold": 0.0049,
+        "precision": 1.0,
+        "n": 1200,
+        "checks_screened": 8,
+        "of": 1200
+      },
+      "wall_seconds": 4708.3,
+      "pairs_per_second": 0.74,
+      "weights_gb": 0.44,
+      "runs_where": "local"
+    },
+    "nli-fever-bs": {
+      "auc_ruled_vs_unverifiable": 0.4836,
+      "auc_supported_vs_unverifiable": 0.4913,
+      "auc_refuted_vs_unverifiable": 0.4478,
+      "tau_null_p95": 0.9236,
+      "agreement_at_tau": {
+        "supported": 0.1296,
+        "refuted": 0.1724,
+        "unverifiable": 0.8796
+      },
+      "median": {
+        "supported": 0.3013,
+        "refuted": 0.2267,
+        "unverifiable": 0.3203
+      },
+      "screen_at_95_precision": {
+        "coverage": 0.0,
+        "threshold": null,
+        "precision": 0.0,
+        "n": 1200
+      },
+      "wall_seconds": 5171.86,
+      "pairs_per_second": 0.67,
+      "weights_gb": 0.37,
+      "runs_where": "local"
+    }
+  },
+  "spearman_between_arms": {
+    "lex-token|lex-number": 0.5882,
+    "lex-token|hhem": 0.2164,
+    "lex-token|lex-3gram": 0.5091,
+    "lex-token|nli-fever-bs": 0.1521,
+    "lex-number|hhem": 0.1446,
+    "lex-number|lex-3gram": 0.3256,
+    "lex-number|nli-fever-bs": 0.1201,
+    "hhem|lex-3gram": 0.0438,
+    "hhem|nli-fever-bs": 0.1225,
+    "lex-3gram|nli-fever-bs": 0.3715
+  },
+  "lexical_floor_auc": 0.8273,
+  "best_arm": "lex-token",
+  "neural_arms_beating_lexical_floor": [],
+  "arm_meta": {
+    "lex-token": {
+      "arm": "lex-token",
+      "family": "lexical",
+      "n": 3472,
+      "predict_seconds": 0.422,
+      "cache_hits": 0,
+      "wall_seconds": 0.42,
+      "pairs_per_second": 8222.82
+    },
+    "lex-3gram": {
+      "arm": "lex-3gram",
+      "family": "lexical",
+      "n": 3472,
+      "predict_seconds": 1.628,
+      "cache_hits": 0,
+      "wall_seconds": 1.63,
+      "pairs_per_second": 2132.95
+    },
+    "lex-number": {
+      "arm": "lex-number",
+      "family": "lexical",
+      "n": 3472,
+      "predict_seconds": 0.443,
+      "cache_hits": 0,
+      "wall_seconds": 0.44,
+      "pairs_per_second": 7835.07
+    },
+    "hhem": {
+      "arm": "hhem",
+      "model": "vectara/hallucination_evaluation_model",
+      "family": "hhem-custom",
+      "requested": 3472,
+      "cache_hits": 0,
+      "sidecar_run": {
+        "n": 3472,
+        "n_chunks": null,
+        "load_seconds": 1.84,
+        "predict_seconds": 4694.92,
+        "python": "3.12.8",
+        "torch_threads": 6,
+        "entailment_index": null,
+        "id2label": null,
+        "max_length": 512
+      },
+      "wall_seconds": 4708.3,
+      "pairs_per_second": 0.74
+    },
+    "nli-fever-bs": {
+      "arm": "nli-fever-bs",
+      "model": "MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli",
+      "family": "nli-entailment",
+      "requested": 3472,
+      "cache_hits": 0,
+      "sidecar_run": {
+        "n": 3472,
+        "n_chunks": null,
+        "load_seconds": 4.03,
+        "predict_seconds": 5151.66,
+        "python": "3.12.8",
+        "torch_threads": 6,
+        "entailment_index": 0,
+        "id2label": {
+          "0": "entailment",
+          "1": "neutral",
+          "2": "contradiction"
+        },
+        "max_length": 512
+      },
+      "wall_seconds": 5171.86,
+      "pairs_per_second": 0.67
+    }
+  },
+  "disk_free_gb_after": 12.83,
+  "interpretation": {
+    "not_accuracy": "Both sides are instruments. The moat's labels are a model's judgements, not adjudicated fact. Every number here is concordance between two instruments.",
+    "negation_confound": "refuted rationales are negations and entailment models score negations low. auc_refuted_vs_unverifiable is therefore expected to sit below the supported column for reasons that are the instrument, not the moat. Established in E17.",
+    "premise_clip": "Premises are clipped to 1500 chars by _groundedness.py:35, chosen for HHEM's 512-token window. Arms with longer windows are handicapped by it. The clip is kept so the comparison stays paired.",
+    "floor_first": "Read every neural AUC against lexical_floor_auc before reading it against HHEM."
+  },
+  "_meta": {
+    "experiment": "E101",
+    "module": "e101_verifier_sweep.py",
+    "run_at_utc": "2026-08-20T07:07:44+00:00",
+    "argv": [
+      "--pairs-from",
+      "/private/tmp/claude-501/-Users-chidionyema-Documents-code-prospector/8b88e9aa-6e35-4c1d-a62f-59e1c59e6ce1/scratchpad/e101_pairs.json",
+      "--only",
+      "lex-token,lex-3gram,lex-number,hhem,nli-fever-bs"
+    ],
+    "runner": "tools/experiments/runner.py",
+    "python": "3.14.6"
+  }
+}

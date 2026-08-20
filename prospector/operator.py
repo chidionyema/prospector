@@ -1857,7 +1857,6 @@ def _build_operator(kind: str, cfg, fast: bool, component: str | None = None) ->
     from a string.
     """
     md = getattr(cfg, "model_defaults", None)
-    model = resolve_model(cfg, kind, component=component, fast=fast)
     if kind == "claude_cli":
         # cfg.model is an API pin for a hosted tier; it must not leak to the claude CLI, whose
         # model names are different. But passing nothing is not free either: the CLI then uses

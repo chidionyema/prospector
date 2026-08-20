@@ -1,0 +1,132 @@
+{
+ "files": [
+  "/data/store/scheduler/audit/1970-01-01.jsonl",
+  "/data/store/scheduler/audit/2026-06-24.jsonl",
+  "/data/store/scheduler/audit/2026-06-25.jsonl",
+  "/data/store/scheduler/audit/2026-06-26.jsonl",
+  "/data/store/scheduler/audit/2026-06-27.jsonl",
+  "/data/store/scheduler/audit/2026-06-28.jsonl",
+  "/data/store/scheduler/audit/2026-06-29.jsonl",
+  "/data/store/scheduler/audit/2026-06-30.jsonl",
+  "/data/store/scheduler/audit/2026-07-01.jsonl",
+  "/data/store/scheduler/audit/2026-07-02.jsonl",
+  "/data/store/scheduler/audit/2026-07-03.jsonl",
+  "/data/store/scheduler/audit/2026-07-05.jsonl",
+  "/data/store/scheduler/audit/2026-07-06.jsonl",
+  "/data/store/scheduler/audit/2026-07-07.jsonl",
+  "/data/store/scheduler/audit/2026-07-08.jsonl",
+  "/data/store/scheduler/audit/2026-07-09.jsonl",
+  "/data/store/scheduler/audit/2026-07-10.jsonl",
+  "/data/store/scheduler/audit/2026-07-11.jsonl",
+  "/data/store/scheduler/audit/2026-07-22.jsonl",
+  "/data/store/scheduler/audit/2026-07-23.jsonl",
+  "/data/store/scheduler/audit/2026-07-24.jsonl",
+  "/data/store/scheduler/audit/2026-07-26.jsonl",
+  "/data/store/scheduler/audit/2026-07-27.jsonl",
+  "/data/store/scheduler/audit/2026-07-28.jsonl",
+  "/data/store/scheduler/audit/2026-07-29.jsonl",
+  "/data/store/scheduler/audit/2026-07-30.jsonl",
+  "/data/store/scheduler/audit/2026-07-31.jsonl",
+  "/data/store/scheduler/audit/2026-08-02.jsonl",
+  "/data/store/scheduler/audit/2026-08-03.jsonl",
+  "/data/store/scheduler/audit/2026-08-04.jsonl",
+  "/data/store/scheduler/audit/2026-08-05.jsonl",
+  "/data/store/scheduler/audit/2026-08-06.jsonl",
+  "/data/store/scheduler/audit/2026-08-08.jsonl",
+  "/data/store/scheduler/audit/2026-08-09.jsonl",
+  "/data/store/scheduler/audit/2026-08-10.jsonl",
+  "/data/store/scheduler/audit/2026-08-11.jsonl",
+  "/data/store/scheduler/audit/2026-08-13.jsonl",
+  "/data/store/scheduler/audit/2026-08-14.jsonl",
+  "/data/store/scheduler/audit/2026-08-15.jsonl",
+  "/data/store/scheduler/audit/2026-08-16.jsonl",
+  "/data/store/scheduler/audit/2026-08-17.jsonl",
+  "/data/store/scheduler/audit/2026-08-18.jsonl",
+  "/data/store/scheduler/audit/2026-08-19.jsonl",
+  "/data/store/scheduler/audit/2026-08-20.jsonl"
+ ],
+ "audit_rows_read": 258905,
+ "vets_bracketed_by_start_and_done": 9280,
+ "check_result_rows_inside_a_span": 17110,
+ "checks_per_vet_max": 9,
+ "checks_per_vet_mean": 1.84,
+ "vets_with_no_candidate_done_dropped": 577,
+ "unit": "one candidate_start .. candidate_done span; check 1 is timed from candidate_start",
+ "per_check_seconds": {
+  "mean": 62.528,
+  "p50": 15.447,
+  "p90": 235.023,
+  "p99": 452.902,
+  "max": 47157.672
+ },
+ "by_check_name": {
+  "buyer_intent": {
+   "n": 4208,
+   "mean": 87.932,
+   "p50": 9.577,
+   "p90": 345.288
+  },
+  "value_durability": {
+   "n": 2577,
+   "mean": 75.668,
+   "p50": 15.483,
+   "p90": 332.555
+  },
+  "pain_reality": {
+   "n": 3190,
+   "mean": 73.387,
+   "p50": 12.905,
+   "p90": 333.764
+  },
+  "claims_verifiable": {
+   "n": 214,
+   "mean": 44.739,
+   "p50": 23.771,
+   "p90": 92.168
+  },
+  "payer_solvency": {
+   "n": 1379,
+   "mean": 36.84,
+   "p50": 15.503,
+   "p90": 41.701
+  },
+  "legality": {
+   "n": 1578,
+   "mean": 35.068,
+   "p50": 15.74,
+   "p90": 47.918
+  },
+  "route_to_market": {
+   "n": 352,
+   "mean": 34.358,
+   "p50": 19.93,
+   "p90": 55.768
+  },
+  "currency": {
+   "n": 451,
+   "mean": 30.697,
+   "p50": 18.863,
+   "p90": 51.48
+  },
+  "distribution": {
+   "n": 1369,
+   "mean": 27.485,
+   "p50": 16.018,
+   "p90": 45.762
+  },
+  "incumbency": {
+   "n": 568,
+   "mean": 26.266,
+   "p50": 17.889,
+   "p90": 46.359
+  }
+ },
+ "concurrency_speedup_sum_over_max": {
+  "mean": 2.579,
+  "p50": 2.405,
+  "p90": 3.972,
+  "p10": 1.455,
+  "n": 1667,
+  "meaning": "serial wall time divided by the slowest single check, per vet"
+ }
+}

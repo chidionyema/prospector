@@ -1,0 +1,26 @@
+3472 pairs, 8 arms, batch 16
+minicheck-t5: lytang/MiniCheck-Flan-T5-Large (seq2seq-minicheck) ...
+minicheck-t5: done 2360.9s (1.47 pairs/s) -> /data/scores/minicheck-t5.json
+minicheck-deb: lytang/MiniCheck-DeBERTa-v3-Large (seqclass-minicheck) ...
+minicheck-deb: done 2032.2s (1.71 pairs/s) -> /data/scores/minicheck-deb.json
+minicheck-rob: lytang/MiniCheck-RoBERTa-Large (seqclass-minicheck) ...
+Token indices sequence length is longer than the specified maximum sequence length for this model (563 > 512). Running this sequence through the model will result in indexing errors
+minicheck-rob: done 1167.7s (2.97 pairs/s) -> /data/scores/minicheck-rob.json
+nli-mnli-lg: microsoft/deberta-large-mnli (nli-entailment) ...
+Some weights of the model checkpoint at microsoft/deberta-large-mnli were not used when initializing DebertaForSequenceClassification: ['config']
+- This IS expected if you are initializing DebertaForSequenceClassification from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
+- This IS NOT expected if you are initializing DebertaForSequenceClassification from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
+nli-mnli-lg: done 2115.7s (1.64 pairs/s) -> /data/scores/nli-mnli-lg.json
+hhem: vectara/hallucination_evaluation_model (hhem-custom) ...
+You are using a model of type HHEMv2Config to instantiate a model of type HHEMv2. This is not supported for all configurations of models and can yield errors.
+Token indices sequence length is longer than the specified maximum sequence length for this model (576 > 512). Running this sequence through the model will result in indexing errors
+hhem: done 454.7s (7.64 pairs/s) -> /data/scores/hhem.json
+vitaminc: tals/albert-xlarge-vitaminc-mnli (nli-entailment) ...
+vitaminc: done 2876.3s (1.21 pairs/s) -> /data/scores/vitaminc.json
+nli-fever-bs: MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli (nli-entailment) ...
+nli-fever-bs: done 565.2s (6.14 pairs/s) -> /data/scores/nli-fever-bs.json
+nli-fever-lg: MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli (nli-entailment) ...
+nli-fever-lg: done 3022.5s (1.15 pairs/s) -> /data/scores/nli-fever-lg.json
+vitaminc: done 7570.6s (0.46 pairs/s) -> /data/scores/vitaminc.json
+nli-fever-bs: already scored, skipping
+nli-fever-lg: already scored, skipping

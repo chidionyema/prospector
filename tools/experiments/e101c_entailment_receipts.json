@@ -1,0 +1,50 @@
+{
+ "pairs_from": "/private/tmp/claude-501/-Users-chidionyema-Documents-code-prospector/8b88e9aa-6e35-4c1d-a62f-59e1c59e6ce1/scratchpad/e101_pairs.json",
+ "corpus_fingerprint": {
+  "n_dossiers": 2929,
+  "newest_mtime_utc": "2026-08-20T06:24:32.860082+00:00",
+  "sha256": "d2e6d72ca4a7f65b",
+  "frozen": false,
+  "corpus_dir": "/Users/chidionyema/Documents/code/wt-engine100x/store/dossiers",
+  "note": "sampling is deterministic against a frozen corpus; the store is live, so two runs with different fingerprints are different samples, not a repeat. frozen=true means this run read a snapshot, so a matched pair is guaranteed rather than hoped for; frozen=false means the daemon could move underneath it."
+ },
+ "n_checks": 1200,
+ "n_pairs": 3472,
+ "results": {
+  "lex-token": {
+   "n_supported": 270,
+   "n_refuted": 58,
+   "n_unverifiable": 872,
+   "auc_supported_vs_refuted": 0.4036,
+   "auc_supported_vs_unverifiable": 0.8194
+  },
+  "lex-3gram": {
+   "n_supported": 270,
+   "n_refuted": 58,
+   "n_unverifiable": 872,
+   "auc_supported_vs_refuted": 0.4726,
+   "auc_supported_vs_unverifiable": 0.5454
+  },
+  "lex-number": {
+   "n_supported": 270,
+   "n_refuted": 58,
+   "n_unverifiable": 872,
+   "auc_supported_vs_refuted": 0.5346,
+   "auc_supported_vs_unverifiable": 0.7352
+  },
+  "hhem": {
+   "n_supported": 270,
+   "n_refuted": 58,
+   "n_unverifiable": 872,
+   "auc_supported_vs_refuted": 0.4687,
+   "auc_supported_vs_unverifiable": 0.6428
+  },
+  "nli-fever-bs": {
+   "n_supported": 270,
+   "n_refuted": 58,
+   "n_unverifiable": 872,
+   "auc_supported_vs_refuted": 0.5444,
+   "auc_supported_vs_unverifiable": 0.4913
+  }
+ }
+}

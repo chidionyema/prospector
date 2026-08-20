@@ -2412,8 +2412,11 @@ def _build_search(name: str, cfg, fixtures: dict | None) -> SearchProvider:
         return FixtureProvider(fixtures=fixtures, raise_on_miss=False)
     if name == "claude_cli":
         from . import operator as _op
-        from .claude_cli import (CHEAPEST_CLAUDE_MODEL, ClaudeCliGroundingProvider,
-                                 configure_concurrency)
+        from .claude_cli import (
+            CHEAPEST_CLAUDE_MODEL,
+            ClaudeCliGroundingProvider,
+            configure_concurrency,
+        )
         configure_concurrency(r.claude_concurrency)
         return ClaudeCliGroundingProvider(
             # Same pin as the verdict tier: unpinned, this inherits the machine's Claude Code

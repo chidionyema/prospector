@@ -178,7 +178,8 @@ def _entailment_index(config) -> tuple[int, dict]:
         "because guessing wrong inverts the score and looks like model disagreement")
 
 
-def _run(model_id: str, family: str, pairs: list[tuple[str, str]], batch_size: int) -> dict:
+def _run(model_id: str, family: str, pairs: list[tuple[str, str]], batch_size: int,
+         revision: str | None = None) -> dict:
     import os as _os
 
     import torch
@@ -190,11 +191,16 @@ def _run(model_id: str, family: str, pairs: list[tuple[str, str]], batch_size: i
         AutoTokenizer,
     )
 
-    meta: dict = {"family": family, "max_length": MAX_LEN.get(family, 512)}
+    meta: dict = {"family": family, "max_length": MAX_LEN.get(family, 512),
+                  "revision": revision}
+    # None means "whatever refs/main is today", which is how nine arms came to be
+    # scored from a commit nobody recorded. Passed through to every from_pretrained
+    # below so the pin in the registry is load-bearing and not decorative.
+    _rev = {"revision": revision} if revision else {}
     t0 = time.time()
 
     if family == "hhem-custom":
-        model = AutoModelForSequenceClassification.from_pretrained(model_id,
+        model = AutoModelForSequenceClassification.from_pretrained(model_id, **_rev,
                                                                    trust_remote_code=True)
         load_s = time.time() - t0
         order = sorted(range(len(pairs)), key=lambda i: len(pairs[i][0]) + len(pairs[i][1]))
@@ -209,10 +215,10 @@ def _run(model_id: str, family: str, pairs: list[tuple[str, str]], batch_size: i
         return {"scores": scores, "load_seconds": round(load_s, 2),
                 "predict_seconds": round(time.time() - t1, 2), **meta}
 
-    tok = AutoTokenizer.from_pretrained(model_id)
+    tok = AutoTokenizer.from_pretrained(model_id, **_rev)
 
     if family == "nli-entailment":
-        model = AutoModelForSequenceClassification.from_pretrained(model_id)
+        model = AutoModelForSequenceClassification.from_pretrained(model_id, **_rev)
         model.eval()
         load_s = time.time() - t0
         ent_i, id2label = _entailment_index(model.config)
@@ -263,7 +269,7 @@ def _run(model_id: str, family: str, pairs: list[tuple[str, str]], batch_size: i
         if override:
             dtype = {"float32": torch.float32, "bfloat16": torch.bfloat16,
                      "float16": torch.float16}[override]
-        model = AutoModelForCausalLM.from_pretrained(model_id, trust_remote_code=True, dtype=dtype)
+        model = AutoModelForCausalLM.from_pretrained(model_id, **_rev, trust_remote_code=True, dtype=dtype)
         model.eval().to(device)
         load_s = time.time() - t0
         max_len = meta["max_length"]
@@ -371,10 +377,10 @@ def _run(model_id: str, family: str, pairs: list[tuple[str, str]], batch_size: i
 
     # --- the two MiniCheck families: chunk, score every chunk, take the max ---
     if family == "seq2seq-minicheck":
-        model = AutoModelForSeq2SeqLM.from_pretrained(model_id)
+        model = AutoModelForSeq2SeqLM.from_pretrained(model_id, **_rev)
         chunker = lambda d: _word_chunks(d, CHUNK_WORDS)                       # noqa: E731
     elif family == "seqclass-minicheck":
-        model = AutoModelForSequenceClassification.from_pretrained(model_id)
+        model = AutoModelForSequenceClassification.from_pretrained(model_id, **_rev)
         def chunker(d, _tok=tok):
             norm = _normalise(d)
             ids = _tok(norm, add_special_tokens=False)["input_ids"]
@@ -430,7 +436,8 @@ def main() -> int:
             payload = json.load(fh)
         result = _run(payload["model_id"], payload["family"],
                       [(str(p), str(h)) for p, h in payload["pairs"]],
-                      int(payload.get("batch_size") or 8))
+                      int(payload.get("batch_size") or 8),
+                      payload.get("revision"))
         result.update({"ok": True, "model": payload["model_id"],
                        "n": len(result["scores"]), "python": sys.version.split()[0]})
         import torch

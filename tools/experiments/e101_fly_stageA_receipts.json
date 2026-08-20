@@ -1,0 +1,194 @@
+{
+ "corpus_fingerprint": {
+  "n_dossiers": 2929,
+  "newest_mtime_utc": "2026-08-20T06:24:32.860082+00:00",
+  "sha256": "d2e6d72ca4a7f65b",
+  "frozen": false,
+  "corpus_dir": "/Users/chidionyema/Documents/code/wt-engine100x/store/dossiers",
+  "note": "sampling is deterministic against a frozen corpus; the store is live, so two runs with different fingerprints are different samples, not a repeat. frozen=true means this run read a snapshot, so a matched pair is guaranteed rather than hoped for; frozen=false means the daemon could move underneath it."
+ },
+ "pairs_from": "/private/tmp/claude-501/-Users-chidionyema-Documents-code-prospector/8b88e9aa-6e35-4c1d-a62f-59e1c59e6ce1/scratchpad/e101_pairs.json",
+ "n_pairs": 3472,
+ "cross_host_checks": [
+  {
+   "arm": "hhem",
+   "spearman_local_vs_fly": 1.0,
+   "max_abs_difference": 1e-06,
+   "mean_abs_difference": 0.0,
+   "floors": {
+    "spearman": 0.99,
+    "max_abs": 0.05
+   },
+   "comparable": true
+  },
+  {
+   "arm": "nli-fever-bs",
+   "spearman_local_vs_fly": 1.0,
+   "max_abs_difference": 6e-06,
+   "mean_abs_difference": 0.0,
+   "floors": {
+    "spearman": 0.99,
+    "max_abs": 0.05
+   },
+   "comparable": true
+  }
+ ],
+ "shared_arms": [
+  "hhem",
+  "nli-fever-bs"
+ ],
+ "results": {
+  "hhem": {
+   "n": {
+    "supported": 270,
+    "refuted": 58,
+    "unverifiable": 872
+   },
+   "auc_ruled_vs_unverifiable": 0.6485,
+   "auc_supported_vs_unverifiable": 0.6428,
+   "auc_refuted_vs_unverifiable": 0.675,
+   "auc_supported_vs_refuted": 0.4687,
+   "median": {
+    "supported": 0.0573,
+    "refuted": 0.0612,
+    "unverifiable": 0.0356
+   },
+   "pairs_per_second": 7.636,
+   "wall_seconds": 454.68,
+   "scored_on": "fly:prospector-verifier-lab:performance-16x"
+  },
+  "minicheck-deb": {
+   "n": {
+    "supported": 270,
+    "refuted": 58,
+    "unverifiable": 872
+   },
+   "auc_ruled_vs_unverifiable": 0.6258,
+   "auc_supported_vs_unverifiable": 0.6269,
+   "auc_refuted_vs_unverifiable": 0.6205,
+   "auc_supported_vs_refuted": 0.511,
+   "median": {
+    "supported": 0.0375,
+    "refuted": 0.0382,
+    "unverifiable": 0.0267
+   },
+   "pairs_per_second": 1.708,
+   "wall_seconds": 2032.22,
+   "scored_on": "fly:prospector-verifier-lab:performance-16x"
+  },
+  "minicheck-rob": {
+   "n": {
+    "supported": 270,
+    "refuted": 58,
+    "unverifiable": 872
+   },
+   "auc_ruled_vs_unverifiable": 0.7136,
+   "auc_supported_vs_unverifiable": 0.713,
+   "auc_refuted_vs_unverifiable": 0.7162,
+   "auc_supported_vs_refuted": 0.4849,
+   "median": {
+    "supported": 0.0605,
+    "refuted": 0.069,
+    "unverifiable": 0.0244
+   },
+   "pairs_per_second": 2.973,
+   "wall_seconds": 1167.74,
+   "scored_on": "fly:prospector-verifier-lab:performance-16x"
+  },
+  "minicheck-t5": {
+   "n": {
+    "supported": 270,
+    "refuted": 58,
+    "unverifiable": 872
+   },
+   "auc_ruled_vs_unverifiable": 0.4973,
+   "auc_supported_vs_unverifiable": 0.5145,
+   "auc_refuted_vs_unverifiable": 0.4175,
+   "auc_supported_vs_refuted": 0.5907,
+   "median": {
+    "supported": 0.1016,
+    "refuted": 0.0656,
+    "unverifiable": 0.1036
+   },
+   "pairs_per_second": 1.471,
+   "wall_seconds": 2360.95,
+   "scored_on": "fly:prospector-verifier-lab:performance-16x"
+  },
+  "nli-fever-bs": {
+   "n": {
+    "supported": 270,
+    "refuted": 58,
+    "unverifiable": 872
+   },
+   "auc_ruled_vs_unverifiable": 0.4836,
+   "auc_supported_vs_unverifiable": 0.4913,
+   "auc_refuted_vs_unverifiable": 0.4478,
+   "auc_supported_vs_refuted": 0.5444,
+   "median": {
+    "supported": 0.3049,
+    "refuted": 0.2466,
+    "unverifiable": 0.3179
+   },
+   "pairs_per_second": 6.143,
+   "wall_seconds": 565.23,
+   "scored_on": "fly:prospector-verifier-lab:performance-16x"
+  },
+  "nli-fever-lg": {
+   "n": {
+    "supported": 270,
+    "refuted": 58,
+    "unverifiable": 872
+   },
+   "auc_ruled_vs_unverifiable": 0.4495,
+   "auc_supported_vs_unverifiable": 0.453,
+   "auc_refuted_vs_unverifiable": 0.4331,
+   "auc_supported_vs_refuted": 0.5224,
+   "median": {
+    "supported": 0.4212,
+    "refuted": 0.3749,
+    "unverifiable": 0.4799
+   },
+   "pairs_per_second": 1.149,
+   "wall_seconds": 3022.49,
+   "scored_on": "fly:prospector-verifier-lab:performance-16x"
+  },
+  "nli-mnli-lg": {
+   "n": {
+    "supported": 270,
+    "refuted": 58,
+    "unverifiable": 872
+   },
+   "auc_ruled_vs_unverifiable": 0.5438,
+   "auc_supported_vs_unverifiable": 0.5441,
+   "auc_refuted_vs_unverifiable": 0.5426,
+   "auc_supported_vs_refuted": 0.4989,
+   "median": {
+    "supported": 0.0736,
+    "refuted": 0.0638,
+    "unverifiable": 0.0616
+   },
+   "pairs_per_second": 1.641,
+   "wall_seconds": 2115.66,
+   "scored_on": "fly:prospector-verifier-lab:performance-16x"
+  },
+  "vitaminc": {
+   "n": {
+    "supported": 270,
+    "refuted": 58,
+    "unverifiable": 872
+   },
+   "auc_ruled_vs_unverifiable": 0.7742,
+   "auc_supported_vs_unverifiable": 0.7758,
+   "auc_refuted_vs_unverifiable": 0.7667,
+   "auc_supported_vs_refuted": 0.4744,
+   "median": {
+    "supported": 0.0209,
+    "refuted": 0.0291,
+    "unverifiable": 0.0059
+   },
+   "pairs_per_second": 1.207,
+   "wall_seconds": 2876.3,
+   "scored_on": "fly:prospector-verifier-lab:performance-16x"
+  }
+ }
+}

@@ -22,8 +22,8 @@ import copy
 
 import pytest
 
-from prospector.config import load_config
 from prospector import operator as op
+from prospector.config import load_config
 from prospector.ops import console_api as api
 
 
@@ -122,6 +122,7 @@ def test_component_pin_ignores_a_mock_config():
 def test_an_unreadable_pin_raises_at_load(tmp_path, block, needle):
     """A name nothing reads is the defect this field replaced; it must not load quietly."""
     import yaml
+
     from prospector import config as C
     p = tmp_path / "config.yaml"
     p.write_text(yaml.safe_dump({"operator": "mock", "component_models": block}))
@@ -171,6 +172,7 @@ def test_every_model_knob_names_a_key_that_exists_in_config_yaml():
     """`_act_config_set` refuses a key the rewriter cannot find, so a knob whose path is absent
     from the file is a control that always errors. This catches it before an operator does."""
     import yaml
+
     from prospector.config import REPO_ROOT
     raw = yaml.safe_load((REPO_ROOT / "config.yaml").read_text())
     for knob in _model_knobs():
@@ -194,7 +196,6 @@ def test_no_model_knob_is_inert():
     unknown: list[str] = []
     for knob in _model_knobs():
         path = knob["path"]
-        cfg = _cfg()
         if path[0] == "component_models":
             _, comp, prov = path
             before_cfg, after_cfg = _cfg(), _cfg()

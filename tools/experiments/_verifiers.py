@@ -44,9 +44,16 @@ HF_HUB = Path(os.environ.get("HF_HOME", Path.home() / ".cache/huggingface")) / "
 
 
 class Arm:
-    def __init__(self, name, model_id, family, weights_gb, fmt, where, note):
+    def __init__(self, name, model_id, family, weights_gb, fmt, where, note, revision=None):
         self.name, self.model_id, self.family = name, model_id, family
         self.weights_gb, self.fmt, self.where, self.note = weights_gb, fmt, where, note
+        # A model id names a repository, and a repository moves. `revision` names the ONE commit
+        # whose weights produced this programme's numbers. Added 2026-08-20 after building the
+        # sources table in docs/ENGINE_100X_PROGRAM.md found that nine of the thirteen arms had
+        # been scored with no revision at all: `_verifier_sidecar.py` called
+        # `from_pretrained(model_id)` bare. A re-run against a moved checkpoint returns a different
+        # number with no error and no warning, which is indistinguishable from a finding.
+        self.revision = revision
 
     @property
     def is_lexical(self) -> bool:
@@ -63,6 +70,14 @@ class Arm:
         return f"<Arm {self.name} {self.family} {self.where}>"
 
 
+def unpinned_arms() -> list[str]:
+    """Arms that name a model but no commit. `tests/test_verifier_arms_are_pinned.py` fails on any.
+
+    A list rather than a boolean so the failure message can name them.
+    """
+    return sorted(n for n, a in ARMS.items() if not a.is_lexical and not a.revision)
+
+
 # Sizes measured 2026-08-20 from the HF tree API; fmt is what the repo actually publishes.
 ARMS: dict[str, Arm] = {a.name: a for a in [
     # ---- the floor: no model, no download, no sidecar ----
@@ -74,25 +89,34 @@ ARMS: dict[str, Arm] = {a.name: a for a in [
         "share of the hypothesis's numbers, dates and money that appear in the premise"),
     # ---- safetensors, small: run on the laptop ----
     Arm("hhem", "vectara/hallucination_evaluation_model", "hhem-custom", 0.44, "safetensors",
-        "local", "HHEM-2.1-Open, 184M. The E17 baseline: AUC 0.673 on this corpus."),
+        "local", "HHEM-2.1-Open, 184M. The E17 baseline: AUC 0.673 on this corpus.",
+        revision="8e4a2e6e96c708cc76c2344f7e4757df2515292c"),
     Arm("nli-fever-bs", "MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli", "nli-entailment", 0.37,
-        "safetensors", "local", "184M, FEVER-trained. FEVER's 3 classes map onto ours exactly."),
+        "safetensors", "local", "184M, FEVER-trained. FEVER's 3 classes map onto ours exactly.",
+        revision="6f5cf0a2b59cabb106aca4c287eed12e357e90eb"),
     Arm("nli-fever-lg", "MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli",
-        "nli-entailment", 0.87, "safetensors", "local", "435M, the strong general NLI arm."),
+        "nli-entailment", 0.87, "safetensors", "local", "435M, the strong general NLI arm.",
+        revision="b3546ea6b0346eb6f8d5d68b13c7dc6d0376b3d7"),
     Arm("vitaminc", "tals/albert-xlarge-vitaminc-mnli", "nli-entailment", 0.23, "safetensors",
-        "local", "59M, trained on VitaminC: contrastive evidence, built for fact verification."),
+        "local", "59M, trained on VitaminC: contrastive evidence, built for fact verification.",
+        revision="3082ba54344bd9ddada2be1c5e9b4131721d2a5d"),
     # ---- pickle only: cannot load under torch 2.2.2, Fly ----
     Arm("minicheck-t5", "lytang/MiniCheck-Flan-T5-Large", "seq2seq-minicheck", 3.13, "pickle",
-        "fly", "770M. Best fact-checker under 1B; the arm E17 explicitly left open."),
+        "fly", "770M. Best fact-checker under 1B; the arm E17 explicitly left open.",
+        revision="96eafd01cee2d16cf81aaa2fb226b14f422a37b3"),
     Arm("minicheck-deb", "lytang/MiniCheck-DeBERTa-v3-Large", "seqclass-minicheck", 1.74,
-        "pickle", "fly", "435M MiniCheck."),
+        "pickle", "fly", "435M MiniCheck.",
+        revision="2f2d01a54fa022a7ffadb76260e1ea8bc88c82bb"),
     Arm("minicheck-rob", "lytang/MiniCheck-RoBERTa-Large", "seqclass-minicheck", 1.42, "pickle",
-        "fly", "355M MiniCheck; 512-token window, matching our 1500-char premise clip."),
+        "fly", "355M MiniCheck; 512-token window, matching our 1500-char premise clip.",
+        revision="74c8919647e61ed0f71bc177d94f10930f090068"),
     Arm("nli-mnli-lg", "microsoft/deberta-large-mnli", "nli-entailment", 1.63, "pickle", "fly",
-        "The classic MNLI baseline. Labels are ordered CONTRADICTION/NEUTRAL/ENTAILMENT."),
+        "The classic MNLI baseline. Labels are ordered CONTRADICTION/NEUTRAL/ENTAILMENT.",
+        revision="7296194b9009373def4f7c5dad292651e4b5cf4e"),
     # ---- large: Fly, GPU ----
     Arm("bespoke-7b", "bespokelabs/Bespoke-MiniCheck-7B", "causal-minicheck", 15.48,
-        "safetensors", "fly", "77.4% on LLM-AggreFact -- SOTA, above Claude 3.5 Sonnet."),
+        "safetensors", "fly", "77.4% on LLM-AggreFact -- SOTA, above Claude 3.5 Sonnet.",
+        revision="1ed7786bcda3fa1dc35f7c4ed9e3f36b785d33b8"),
     Arm("lynx-8b", "PatronusAI/Llama-3-Patronus-Lynx-8B-Instruct", "causal-judge", 16.06,
         "safetensors", "fly", "Hallucination judge trained as an instruct model."),
 ]}
@@ -174,6 +198,17 @@ def _cache_path(arm: Arm) -> Path:
 
 
 def _key(arm: Arm, premise: str, hypothesis: str) -> str:
+    """Deliberately NOT keyed on arm.revision.
+
+    The revisions added on 2026-08-20 were not chosen, they were RECOVERED by measurement: each is
+    the commit the cache on the scoring host had actually resolved and loaded (see "Sources" in
+    docs/ENGINE_100X_PROGRAM.md for the `cached_file()` probe that established the three ambiguous
+    ones). So every cached score already came from the commit now pinned beside it. Adding the
+    revision to the key would invalidate a cache of valid data and force a re-score — on the Fly
+    arms, hours of compute — to arrive at exactly the same numbers. If an arm's pin is ever CHANGED
+    to a different commit, its cache file must be deleted by hand in the same edit, and that is the
+    one thing this decision costs.
+    """
     h = hashlib.sha256()
     for part in (arm.name, arm.model_id, arm.family, premise, hypothesis):
         h.update(part.encode("utf-8", "replace"))
@@ -222,7 +257,8 @@ def score_arm(name: str, pairs: list[tuple[str, str]], batch_size: int = 8,
                   flush=True)
         with tempfile.TemporaryDirectory() as tmp:
             fin, fout = Path(tmp) / "in.json", Path(tmp) / "out.json"
-            fin.write_text(json.dumps({"model_id": arm.model_id, "family": arm.family,
+            fin.write_text(json.dumps({"model_id": arm.model_id, "revision": arm.revision,
+                                       "family": arm.family,
                                        "batch_size": batch_size,
                                        "pairs": [list(pairs[i]) for i in todo]}))
             env = dict(os.environ)

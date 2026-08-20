@@ -1,0 +1,159 @@
+{
+ "pairs_from": "/private/tmp/claude-501/-Users-chidionyema-Documents-code-prospector/8b88e9aa-6e35-4c1d-a62f-59e1c59e6ce1/scratchpad/e101_pairs.json",
+ "corpus_fingerprint": {
+  "n_dossiers": 2929,
+  "newest_mtime_utc": "2026-08-20T06:24:32.860082+00:00",
+  "sha256": "d2e6d72ca4a7f65b",
+  "frozen": false,
+  "corpus_dir": "/Users/chidionyema/Documents/code/wt-engine100x/store/dossiers",
+  "note": "sampling is deterministic against a frozen corpus; the store is live, so two runs with different fingerprints are different samples, not a repeat. frozen=true means this run read a snapshot, so a matched pair is guaranteed rather than hoped for; frozen=false means the daemon could move underneath it."
+ },
+ "n_checks": 1200,
+ "n_ruled": 328,
+ "n_unverifiable": 872,
+ "target_precision": 0.95,
+ "results": {
+  "lex-token": {
+   "coverage": 0.3775,
+   "threshold": 0.1406,
+   "precision": 0.9514,
+   "screened": 453,
+   "ruled_lost": 22,
+   "of": 1200,
+   "auc_ruled_vs_unverifiable": 0.8273,
+   "ruled_lost_share_of_all_ruled": 0.0671
+  },
+  "passage_count": {
+   "coverage": 0.0,
+   "threshold": null,
+   "precision": 0.0,
+   "screened": 0,
+   "ruled_lost": 0,
+   "of": 1200,
+   "auc_ruled_vs_unverifiable": 0.4727,
+   "ruled_lost_share_of_all_ruled": 0.0
+  },
+  "passage_chars": {
+   "coverage": 0.0033,
+   "threshold": 139.0,
+   "precision": 1.0,
+   "screened": 4,
+   "ruled_lost": 0,
+   "of": 1200,
+   "auc_ruled_vs_unverifiable": 0.4601,
+   "ruled_lost_share_of_all_ruled": 0.0
+  }
+ },
+ "lex_token_operating_points": [
+  {
+   "coverage": 0.5308,
+   "threshold": 0.1818,
+   "precision": 0.9011,
+   "screened": 637,
+   "ruled_lost": 63,
+   "of": 1200,
+   "target_precision": 0.9,
+   "ruled_lost_share_of_all_ruled": 0.1921
+  },
+  {
+   "coverage": 0.3775,
+   "threshold": 0.1406,
+   "precision": 0.9514,
+   "screened": 453,
+   "ruled_lost": 22,
+   "of": 1200,
+   "target_precision": 0.95,
+   "ruled_lost_share_of_all_ruled": 0.0671
+  },
+  {
+   "coverage": 0.1775,
+   "threshold": 0.0889,
+   "precision": 0.9812,
+   "screened": 213,
+   "ruled_lost": 4,
+   "of": 1200,
+   "target_precision": 0.98,
+   "ruled_lost_share_of_all_ruled": 0.0122
+  },
+  {
+   "coverage": 0.1,
+   "threshold": 0.0638,
+   "precision": 0.9917,
+   "screened": 120,
+   "ruled_lost": 1,
+   "of": 1200,
+   "target_precision": 0.99,
+   "ruled_lost_share_of_all_ruled": 0.003
+  },
+  {
+   "coverage": 0.035,
+   "threshold": 0.0357,
+   "precision": 1.0,
+   "screened": 42,
+   "ruled_lost": 0,
+   "of": 1200,
+   "target_precision": 1.0,
+   "ruled_lost_share_of_all_ruled": 0.0
+  }
+ ],
+ "heldout_validation": {
+  "method": "deterministic alternating split; the sample is already class-stratified in order, so every other check preserves the class balance without a random seed",
+  "rows": [
+   {
+    "target_precision": 0.9,
+    "threshold_from_fit_half": 0.1667,
+    "fit_coverage": 0.5,
+    "fit_ruled_lost": 30,
+    "heldout_coverage": 0.4783,
+    "heldout_ruled_lost": 19,
+    "heldout_precision": 0.9338,
+    "heldout_n": 600,
+    "heldout_ruled": 164
+   },
+   {
+    "target_precision": 0.95,
+    "threshold_from_fit_half": 0.1154,
+    "fit_coverage": 0.2817,
+    "fit_ruled_lost": 8,
+    "heldout_coverage": 0.2817,
+    "heldout_ruled_lost": 3,
+    "heldout_precision": 0.9822,
+    "heldout_n": 600,
+    "heldout_ruled": 164
+   },
+   {
+    "target_precision": 0.98,
+    "threshold_from_fit_half": 0.087,
+    "fit_coverage": 0.1783,
+    "fit_ruled_lost": 2,
+    "heldout_coverage": 0.1683,
+    "heldout_ruled_lost": 1,
+    "heldout_precision": 0.9901,
+    "heldout_n": 600,
+    "heldout_ruled": 164
+   },
+   {
+    "target_precision": 0.99,
+    "threshold_from_fit_half": 0.0357,
+    "fit_coverage": 0.0417,
+    "fit_ruled_lost": 0,
+    "heldout_coverage": 0.0283,
+    "heldout_ruled_lost": 0,
+    "heldout_precision": 1.0,
+    "heldout_n": 600,
+    "heldout_ruled": 164
+   },
+   {
+    "target_precision": 1.0,
+    "threshold_from_fit_half": 0.0357,
+    "fit_coverage": 0.0417,
+    "fit_ruled_lost": 0,
+    "heldout_coverage": 0.0283,
+    "heldout_ruled_lost": 0,
+    "heldout_precision": 1.0,
+    "heldout_n": 600,
+    "heldout_ruled": 164
+   }
+  ]
+ }
+}

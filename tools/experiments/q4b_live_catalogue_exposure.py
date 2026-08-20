@@ -44,13 +44,13 @@ import sys
 import urllib.request
 
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[2]))
-from prospector.config import store_root  # noqa: E402
 from prospector.admissibility import (  # noqa: E402
     LOW_TIERS,
     host_of,
     is_ruling_admissible,
     tier,
 )
+from prospector.config import store_root  # noqa: E402
 
 CATALOGUE_URL = "https://api.mumchimp.com/catalog"
 RULED = {"supported", "refuted"}

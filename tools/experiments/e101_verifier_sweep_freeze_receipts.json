@@ -1,0 +1,28 @@
+{
+  "question": "freeze only",
+  "froze": "/private/tmp/claude-501/-Users-chidionyema-Documents-code-prospector/8b88e9aa-6e35-4c1d-a62f-59e1c59e6ce1/scratchpad/e101_pairs.json",
+  "pairs": 3472,
+  "sampled_checks": 1200,
+  "eligible_checks": 13675,
+  "corpus_fingerprint": {
+    "n_dossiers": 2929,
+    "newest_mtime_utc": "2026-08-20T06:24:32.860082+00:00",
+    "sha256": "d2e6d72ca4a7f65b",
+    "frozen": false,
+    "corpus_dir": "/Users/chidionyema/Documents/code/wt-engine100x/store/dossiers",
+    "note": "sampling is deterministic against a frozen corpus; the store is live, so two runs with different fingerprints are different samples, not a repeat. frozen=true means this run read a snapshot, so a matched pair is guaranteed rather than hoped for; frozen=false means the daemon could move underneath it."
+  },
+  "_meta": {
+    "experiment": "E101",
+    "module": "e101_verifier_sweep.py",
+    "run_at_utc": "2026-08-20T07:07:26+00:00",
+    "argv": [
+      "--limit",
+      "1200",
+      "--freeze",
+      "/private/tmp/claude-501/-Users-chidionyema-Documents-code-prospector/8b88e9aa-6e35-4c1d-a62f-59e1c59e6ce1/scratchpad/e101_pairs.json"
+    ],
+    "runner": "tools/experiments/runner.py",
+    "python": "3.14.6"
+  }
+}

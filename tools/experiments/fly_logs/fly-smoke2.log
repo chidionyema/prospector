@@ -1,0 +1,10 @@
+You are using a model of type HHEMv2Config to instantiate a model of type HHEMv2. This is not supported for all configurations of models and can yield errors.
+RESULT hhem OK 6.5 [0.0324, 0.0215, 0.0443, 0.0478] idx None
+Some weights of the model checkpoint at microsoft/deberta-large-mnli were not used when initializing DebertaForSequenceClassification: ['config']
+- This IS expected if you are initializing DebertaForSequenceClassification from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
+- This IS NOT expected if you are initializing DebertaForSequenceClassification from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
+RESULT nli-mnli-lg OK 8.7 [0.0643, 0.0229, 0.0704, 0.074] idx 2
+RESULT minicheck-rob OK 4.0 [0.0724, 0.0106, 0.178, 0.2076] idx None
+RESULT minicheck-deb OK 32.0 [0.0171, 0.0135, 0.0811, 0.0888] idx None
+RESULT minicheck-t5 OK 5.4 [0.0215, 0.0275, 0.1922, 0.54] idx None
+RESULT nli-fever-bs OK 12.1 [0.0133, 0.0231, 0.742, 0.715] idx 0

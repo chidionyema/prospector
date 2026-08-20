@@ -1,0 +1,223 @@
+{
+ "pairs_from": "/private/tmp/claude-501/-Users-chidionyema-Documents-code-prospector/8b88e9aa-6e35-4c1d-a62f-59e1c59e6ce1/scratchpad/e101_pairs.json",
+ "corpus_fingerprint": {
+  "n_dossiers": 2929,
+  "newest_mtime_utc": "2026-08-20T06:24:32.860082+00:00",
+  "sha256": "d2e6d72ca4a7f65b",
+  "frozen": false,
+  "corpus_dir": "/Users/chidionyema/Documents/code/wt-engine100x/store/dossiers",
+  "note": "sampling is deterministic against a frozen corpus; the store is live, so two runs with different fingerprints are different samples, not a repeat. frozen=true means this run read a snapshot, so a matched pair is guaranteed rather than hoped for; frozen=false means the daemon could move underneath it."
+ },
+ "n_checks": 1200,
+ "n_ruled": 328,
+ "idf_vocab": 20903,
+ "idf_built_over_passages": 3472,
+ "incumbent": "lex-token",
+ "results": {
+  "lex-idf": {
+   "auc_ruled_vs_unverifiable": 0.8302,
+   "heldout_operating_points": [
+    {
+     "target": 0.9,
+     "threshold": 0.1634,
+     "heldout_coverage": 0.5167,
+     "heldout_ruled_lost": 19,
+     "heldout_precision": 0.9387,
+     "heldout_n": 600,
+     "heldout_ruled": 164
+    },
+    {
+     "target": 0.95,
+     "threshold": 0.1015,
+     "heldout_coverage": 0.255,
+     "heldout_ruled_lost": 4,
+     "heldout_precision": 0.9739,
+     "heldout_n": 600,
+     "heldout_ruled": 164
+    },
+    {
+     "target": 0.98,
+     "threshold": 0.0613,
+     "heldout_coverage": 0.1033,
+     "heldout_ruled_lost": 0,
+     "heldout_precision": 1.0,
+     "heldout_n": 600,
+     "heldout_ruled": 164
+    },
+    {
+     "target": 0.99,
+     "threshold": 0.0544,
+     "heldout_coverage": 0.0867,
+     "heldout_ruled_lost": 0,
+     "heldout_precision": 1.0,
+     "heldout_n": 600,
+     "heldout_ruled": 164
+    },
+    {
+     "target": 1.0,
+     "threshold": 0.0544,
+     "heldout_coverage": 0.0867,
+     "heldout_ruled_lost": 0,
+     "heldout_precision": 1.0,
+     "heldout_n": 600,
+     "heldout_ruled": 164
+    }
+   ]
+  },
+  "lex-rare": {
+   "auc_ruled_vs_unverifiable": 0.7742,
+   "heldout_operating_points": [
+    {
+     "target": 0.9,
+     "threshold": 0.0556,
+     "heldout_coverage": 0.2017,
+     "heldout_ruled_lost": 6,
+     "heldout_precision": 0.9504,
+     "heldout_n": 600,
+     "heldout_ruled": 164
+    },
+    {
+     "target": 0.95,
+     "threshold": null,
+     "heldout_coverage": 0.0,
+     "heldout_ruled_lost": 0,
+     "heldout_precision": null
+    },
+    {
+     "target": 0.98,
+     "threshold": null,
+     "heldout_coverage": 0.0,
+     "heldout_ruled_lost": 0,
+     "heldout_precision": null
+    },
+    {
+     "target": 0.99,
+     "threshold": null,
+     "heldout_coverage": 0.0,
+     "heldout_ruled_lost": 0,
+     "heldout_precision": null
+    },
+    {
+     "target": 1.0,
+     "threshold": null,
+     "heldout_coverage": 0.0,
+     "heldout_ruled_lost": 0,
+     "heldout_precision": null
+    }
+   ]
+  },
+  "lex-token": {
+   "auc_ruled_vs_unverifiable": 0.8273,
+   "heldout_operating_points": [
+    {
+     "target": 0.9,
+     "threshold": 0.1667,
+     "heldout_coverage": 0.4783,
+     "heldout_ruled_lost": 19,
+     "heldout_precision": 0.9338,
+     "heldout_n": 600,
+     "heldout_ruled": 164
+    },
+    {
+     "target": 0.95,
+     "threshold": 0.1154,
+     "heldout_coverage": 0.2817,
+     "heldout_ruled_lost": 3,
+     "heldout_precision": 0.9822,
+     "heldout_n": 600,
+     "heldout_ruled": 164
+    },
+    {
+     "target": 0.98,
+     "threshold": 0.087,
+     "heldout_coverage": 0.1683,
+     "heldout_ruled_lost": 1,
+     "heldout_precision": 0.9901,
+     "heldout_n": 600,
+     "heldout_ruled": 164
+    },
+    {
+     "target": 0.99,
+     "threshold": 0.0357,
+     "heldout_coverage": 0.0283,
+     "heldout_ruled_lost": 0,
+     "heldout_precision": 1.0,
+     "heldout_n": 600,
+     "heldout_ruled": 164
+    },
+    {
+     "target": 1.0,
+     "threshold": 0.0357,
+     "heldout_coverage": 0.0283,
+     "heldout_ruled_lost": 0,
+     "heldout_precision": 1.0,
+     "heldout_n": 600,
+     "heldout_ruled": 164
+    }
+   ]
+  }
+ },
+ "lossless_union": {
+  "threshold_lex_token": 0.03571428571428571,
+  "threshold_lex_idf": 0.05441240813917648,
+  "fitted_on": "fit half, target precision 1.00",
+  "sets": {
+   "lex-token alone": {
+    "heldout_screened": 17,
+    "heldout_of": 600,
+    "heldout_coverage": 0.0283,
+    "heldout_ruled_lost": 0,
+    "heldout_precision": 1.0
+   },
+   "lex-idf alone": {
+    "heldout_screened": 52,
+    "heldout_of": 600,
+    "heldout_coverage": 0.0867,
+    "heldout_ruled_lost": 0,
+    "heldout_precision": 1.0
+   },
+   "either (union)": {
+    "heldout_screened": 52,
+    "heldout_of": 600,
+    "heldout_coverage": 0.0867,
+    "heldout_ruled_lost": 0,
+    "heldout_precision": 1.0
+   },
+   "both (intersection)": {
+    "heldout_screened": 17,
+    "heldout_of": 600,
+    "heldout_coverage": 0.0283,
+    "heldout_ruled_lost": 0,
+    "heldout_precision": 1.0
+   }
+  }
+ },
+ "ceiling": {
+  "n_checks": 1200,
+  "n_ruled": 328,
+  "n_unverifiable": 872,
+  "class_counts": {
+   "refuted": 58,
+   "supported": 270,
+   "unverifiable": 872
+  },
+  "measures": "moat calls in the verify step; not an end-to-end run-time claim",
+  "operating_points": {
+   "free_lex_idf_fit_at_1.00": {
+    "heldout_coverage": 0.0867,
+    "ruled_lost": 0,
+    "moat_call_speedup": 1.095
+   },
+   "decision_lex_token_at_0.95": {
+    "heldout_coverage": 0.2817,
+    "ruled_lost": 3,
+    "moat_call_speedup": 1.392
+   },
+   "perfect_screen": {
+    "heldout_coverage": 0.7267,
+    "ruled_lost": 0,
+    "moat_call_speedup": 3.659
+   }
+  }
+ }
+}

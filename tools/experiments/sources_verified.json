@@ -1,0 +1,143 @@
+{
+ "checked_utc": "2026-08-20T13:34:28Z",
+ "models": {
+  "hhem": {
+   "model_id": "vectara/hallucination_evaluation_model",
+   "commit": "8e4a2e6e96c708cc76c2344f7e4757df2515292c",
+   "sha_established_by": "laptop HF cache refs/main",
+   "url": "https://huggingface.co/vectara/hallucination_evaluation_model/tree/8e4a2e6e96c708cc76c2344f7e4757df2515292c",
+   "http": 200
+  },
+  "nli-fever-bs": {
+   "model_id": "MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli",
+   "commit": "6f5cf0a2b59cabb106aca4c287eed12e357e90eb",
+   "sha_established_by": "laptop HF cache refs/main",
+   "url": "https://huggingface.co/MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli/tree/6f5cf0a2b59cabb106aca4c287eed12e357e90eb",
+   "http": 200
+  },
+  "nli-fever-lg": {
+   "model_id": "MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli",
+   "commit": "b3546ea6b0346eb6f8d5d68b13c7dc6d0376b3d7",
+   "sha_established_by": "laptop HF cache refs/main",
+   "url": "https://huggingface.co/MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli/tree/b3546ea6b0346eb6f8d5d68b13c7dc6d0376b3d7",
+   "http": 200
+  },
+  "vitaminc": {
+   "model_id": "tals/albert-xlarge-vitaminc-mnli",
+   "commit": "3082ba54344bd9ddada2be1c5e9b4131721d2a5d",
+   "sha_established_by": "laptop HF cache refs/main",
+   "url": "https://huggingface.co/tals/albert-xlarge-vitaminc-mnli/tree/3082ba54344bd9ddada2be1c5e9b4131721d2a5d",
+   "http": 200
+  },
+  "minicheck-t5": {
+   "model_id": "lytang/MiniCheck-Flan-T5-Large",
+   "commit": "96eafd01cee2d16cf81aaa2fb226b14f422a37b3",
+   "sha_established_by": "cached_file() resolved pytorch_model.bin on the lab host",
+   "url": "https://huggingface.co/lytang/MiniCheck-Flan-T5-Large/tree/96eafd01cee2d16cf81aaa2fb226b14f422a37b3",
+   "http": 200
+  },
+  "minicheck-deb": {
+   "model_id": "lytang/MiniCheck-DeBERTa-v3-Large",
+   "commit": "2f2d01a54fa022a7ffadb76260e1ea8bc88c82bb",
+   "sha_established_by": "cached_file() resolved pytorch_model.bin on the lab host",
+   "url": "https://huggingface.co/lytang/MiniCheck-DeBERTa-v3-Large/tree/2f2d01a54fa022a7ffadb76260e1ea8bc88c82bb",
+   "http": 200
+  },
+  "minicheck-rob": {
+   "model_id": "lytang/MiniCheck-RoBERTa-Large",
+   "commit": "74c8919647e61ed0f71bc177d94f10930f090068",
+   "sha_established_by": "cached_file() resolved pytorch_model.bin on the lab host",
+   "url": "https://huggingface.co/lytang/MiniCheck-RoBERTa-Large/tree/74c8919647e61ed0f71bc177d94f10930f090068",
+   "http": 200
+  },
+  "nli-mnli-lg": {
+   "model_id": "microsoft/deberta-large-mnli",
+   "commit": "7296194b9009373def4f7c5dad292651e4b5cf4e",
+   "sha_established_by": "lab host HF cache refs/main",
+   "url": "https://huggingface.co/microsoft/deberta-large-mnli/tree/7296194b9009373def4f7c5dad292651e4b5cf4e",
+   "http": 200
+  },
+  "bespoke-7b": {
+   "model_id": "bespokelabs/Bespoke-MiniCheck-7B",
+   "commit": "1ed7786bcda3fa1dc35f7c4ed9e3f36b785d33b8",
+   "sha_established_by": "pinned in e101_stageB_fly.py:91",
+   "url": "https://huggingface.co/bespokelabs/Bespoke-MiniCheck-7B/tree/1ed7786bcda3fa1dc35f7c4ed9e3f36b785d33b8",
+   "http": 200
+  },
+  "lynx-8b": {
+   "model_id": "PatronusAI/Llama-3-Patronus-Lynx-8B-Instruct",
+   "commit": null,
+   "sha_established_by": "designed, never downloaded, never scored",
+   "url": "https://huggingface.co/PatronusAI/Llama-3-Patronus-Lynx-8B-Instruct",
+   "http": 200
+  }
+ },
+ "datasets": {
+  "tals/vitaminc": {
+   "url": "https://huggingface.co/datasets/tals/vitaminc",
+   "http": 200
+  },
+  "lytang/LLM-AggreFact": {
+   "url": "https://huggingface.co/datasets/lytang/LLM-AggreFact",
+   "http": 200
+  }
+ },
+ "repos": {
+  "MiniCheck reference implementation": {
+   "url": "https://github.com/Liyan06/MiniCheck",
+   "http": 200
+  }
+ },
+ "papers": {
+  "2103.08541": {
+   "url": "https://arxiv.org/abs/2103.08541",
+   "http": 200,
+   "title_from_arxiv_api": "Get Your Vitamin C! Robust Fact Verification with Contrastive Evidence",
+   "used_for": "VitaminC: the contrastive fact-verification corpus used as E-101g's external control"
+  },
+  "2404.10774": {
+   "url": "https://arxiv.org/abs/2404.10774",
+   "http": 200,
+   "title_from_arxiv_api": "MiniCheck: Efficient Fact-Checking of LLMs on Grounding Documents",
+   "used_for": "MiniCheck: the four MiniCheck arms and their reference scoring procedure"
+  },
+  "2407.08488": {
+   "url": "https://arxiv.org/abs/2407.08488",
+   "http": 200,
+   "title_from_arxiv_api": "Lynx: An Open Source Hallucination Evaluation Model",
+   "used_for": "Lynx: the causal-judge arm (designed, not run)"
+  },
+  "2006.03654": {
+   "url": "https://arxiv.org/abs/2006.03654",
+   "http": 200,
+   "title_from_arxiv_api": "DeBERTa: Decoding-enhanced BERT with Disentangled Attention",
+   "used_for": "DeBERTa: architecture behind four arms"
+  },
+  "1909.11942": {
+   "url": "https://arxiv.org/abs/1909.11942",
+   "http": 200,
+   "title_from_arxiv_api": "ALBERT: A Lite BERT for Self-supervised Learning of Language Representations",
+   "used_for": "ALBERT: architecture behind the vitaminc arm"
+  },
+  "1803.05355": {
+   "url": "https://arxiv.org/abs/1803.05355",
+   "http": 200,
+   "title_from_arxiv_api": "FEVER: a large-scale dataset for Fact Extraction and VERification",
+   "used_for": "FEVER: training corpus named in two arm ids"
+  },
+  "1704.05426": {
+   "url": "https://arxiv.org/abs/1704.05426",
+   "http": 200,
+   "title_from_arxiv_api": "A Broad-Coverage Challenge Corpus for Sentence Understanding through Inference",
+   "used_for": "MultiNLI: training corpus named in four arm ids"
+  },
+  "1910.14599": {
+   "url": "https://arxiv.org/abs/1910.14599",
+   "http": 200,
+   "title_from_arxiv_api": "Adversarial NLI: A New Benchmark for Natural Language Understanding",
+   "used_for": "ANLI: training corpus named in two arm ids"
+  }
+ },
+ "all_resolved": true,
+ "unresolved": []
+}

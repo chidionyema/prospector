@@ -1,0 +1,7 @@
+bespoke-7b: bespokelabs/Bespoke-MiniCheck-7B@1ed7786b  8 pairs, batch 2
+  yes ids [7560, 9583, 9828, 9970, 14144, 14218] (6), no ids 6
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  50%|█████     | 2/4 [00:00<00:00, 10.33it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00, 13.92it/s]
+  loaded in 0.7s, missing_keys 0, unexpected 0
+past_key_values should not be None in from_legacy_cache()
+  2/8  0.02 pairs/s  eta 7m
+bespoke-7b: done 350.5s (0.02 pairs/s) -> /data/scores/bespoke-7b.json
