@@ -44,7 +44,13 @@ def _run_pytest_on(tmp_path: Path, body: str) -> subprocess.CompletedProcess:
         (REPO / "tests" / "conftest.py").read_text(encoding="utf-8"), encoding="utf-8")
     (tmp_path / "test_generated.py").write_text(body, encoding="utf-8")
     env = dict(os.environ)
-    env["PYTHONPATH"] = str(REPO) + os.pathsep + env.get("PYTHONPATH", "")
+    # `tests/` as well as the repo root: the real conftest imports its own siblings
+    # (`from tool_gate import require_tool`), which pytest resolves because it puts the
+    # conftest's directory on sys.path. A copy in a bare tmp directory gets no such help, and
+    # the whole file then fails to import -- which reads as "the env guard is broken" rather
+    # than "a module is missing", in a test about something else entirely.
+    env["PYTHONPATH"] = os.pathsep.join(
+        [str(REPO), str(REPO / "tests"), env.get("PYTHONPATH", "")])
     return subprocess.run(
         [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "-n0",
          "test_generated.py"],

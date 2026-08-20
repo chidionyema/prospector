@@ -27,9 +27,12 @@ from __future__ import annotations
 import importlib.util
 import json
 import re
+import subprocess
+from fnmatch import fnmatch
 from pathlib import Path
 
 import pytest
+from tool_gate import require_tool
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MIRROR = REPO_ROOT / "scripts" / "claude_guards"
@@ -199,17 +202,36 @@ def test_the_plan_refuses_two_sources_for_one_destination(tmp_path, monkeypatch)
         sync.plan()
 
 
+def _tracked_under_mirror() -> list[Path]:
+    """What git carries under the mirror, which is what "reached the mirror" means.
+
+    This walked the DISK, and the disk holds things git was never asked to keep: importing any
+    guard module writes `scripts/claude_guards/__pycache__/`, and `.gitignore:2` already excludes
+    it, so it can never be tracked and never reach another machine. The walk failed anyway, on
+    any box where a guard had been imported once -- a red test that named a file nobody added and
+    no commit could remove. Grade the index, which is the thing the claim is about.
+    """
+    git = require_tool("git")
+    out = subprocess.run(
+        [git, "ls-files", "-z", "--", str(MIRROR.relative_to(REPO_ROOT))],
+        cwd=REPO_ROOT, capture_output=True, text=True, check=True, timeout=60,
+    )
+    return [Path(entry) for entry in out.stdout.split("\0") if entry]
+
+
 def test_nothing_the_allow_list_excludes_reached_the_mirror():
     """The allow-list only ever fails by leaving something out -- unless somebody hand-copies."""
+    tracked = _tracked_under_mirror()
+    assert tracked, "git tracks nothing under the mirror; this test would pass on an empty repo"
     banned = {
         ".credentials.json": "a live OAuth token",
         "history.jsonl": "every command typed at this machine",
     }
     for name, why in banned.items():
-        hits = [p.relative_to(REPO_ROOT) for p in MIRROR.rglob(name)]
+        hits = [p for p in tracked if p.name == name]
         assert not hits, f"{hits} must never be tracked: {why}"
     for pattern, why in (("*.bak*", "a snapshot, not the rule that runs"),
                          ("__pycache__", "build output"),
                          ("*.jsonl", "transcript or telemetry data, not a rule")):
-        hits = [p.relative_to(REPO_ROOT) for p in MIRROR.rglob(pattern)]
-        assert not hits, f"{hits} should not be mirrored: {why}"
+        hits = [p for p in tracked if any(fnmatch(part, pattern) for part in p.parts)]
+        assert not hits, f"{hits} should not be tracked: {why}"

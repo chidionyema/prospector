@@ -116,6 +116,21 @@ jobs:
       - name: Decide whether reverting is the right thing to do
         id: decide
         uses: actions/github-script@v7
+        # The cause probe's answer arrives as ENV, not as `${{ }}` spliced into the script body.
+        # Actions substitutes an expression before node ever sees the file, so the body only has
+        # to parse AFTER substitution -- and `tests/unit/test_the_green_guard_reverts_the_cause_
+        # not_the_head.py` parses it BEFORE, by lifting this script out of the YAML and running
+        # it in node. With the expressions inline it did not parse at all:
+        #
+        #   SyntaxError: missing ) after argument list
+        #       ${{ toJSON(steps.cause.outputs.why) }} +
+        #
+        # That took every one of those nine tests down with it, and nothing said so: node is not
+        # on the CI runner, so the file skipped itself and the job stayed green. Through env the
+        # script is ordinary JavaScript, which is the only form a test can execute.
+        env:
+          CAUSE_VERDICT: ${{ steps.cause.outputs.verdict }}
+          CAUSE_WHY: ${{ steps.cause.outputs.why }}
         with:
           script: |
             const {owner, repo} = context.repo
@@ -132,10 +147,10 @@ jobs:
             // The first question, because it is the only one that can prove this commit did not
             // do it. Every check below asks whether reverting is SAFE. This one asks whether it
             // is even the right commit.
-            if ('${{ steps.cause.outputs.verdict }}' === 'already-red') {
+            if (process.env.CAUSE_VERDICT === 'already-red') {
               return refuse(
                 `main was already red before ${sha.slice(0, 8)} landed: ` +
-                ${{ toJSON(steps.cause.outputs.why) }} +
+                (process.env.CAUSE_WHY || 'the cause probe gave no reason') +
                 '. Reverting it deletes work and leaves main exactly as red.',
                 'already-red')
             }

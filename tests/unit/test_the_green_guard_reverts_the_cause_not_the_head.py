@@ -24,14 +24,13 @@ absent, which it is not on any runner that builds the web lane.
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
 import tempfile
 import textwrap
 from pathlib import Path
 
-import pytest
 import yaml
+from tool_gate import require_tool
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github" / "workflows" / "main-green-guard.yml"
@@ -127,9 +126,12 @@ body(github, context, core)
 
 
 def _decide(scenario: dict) -> dict:
-    node = shutil.which("node")
-    if not node:  # pragma: no cover - environment dependent
-        pytest.skip("node is not installed; the structural assertions below still run")
+    # `require_tool`, not `shutil.which(...)` plus an inline skip. That spelling deleted
+    # these tests from CI in silence for as long as the runner image shipped no node, and a
+    # search for the `needs_tool` marker cannot see it because the decision is made here, at
+    # run time. conftest's version skips on a laptop and ERRORS on a runner; it carries the
+    # measurement.
+    node = require_tool("node")
     # A temp file rather than `node -e`: with -e the script itself is not argv[1], and node 26
     # routes -e through its TypeScript path, which turns any mistake into a confusing parse error.
     with tempfile.TemporaryDirectory() as d:

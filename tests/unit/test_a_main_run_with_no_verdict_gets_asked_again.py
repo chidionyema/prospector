@@ -17,13 +17,12 @@ person who cancelled a run on purpose.
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
 import textwrap
 from pathlib import Path
 
-import pytest
 import yaml
+from tool_gate import require_tool
 
 WORKFLOW = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "main-green-guard.yml"
 SHA = "a2e35ae2a62e0000000000000000000000000000"
@@ -81,9 +80,12 @@ def _script() -> str:
 
 
 def _run(scenario: dict, tmp_path: Path) -> dict:
-    node = shutil.which("node")
-    if not node:
-        pytest.skip("node is not on PATH")
+    # `require_tool`, not `shutil.which(...)` plus an inline skip. That spelling deleted
+    # these tests from CI in silence for as long as the runner image shipped no node, and a
+    # search for the `needs_tool` marker cannot see it because the decision is made here, at
+    # run time. conftest's version skips on a laptop and ERRORS on a runner; it carries the
+    # measurement.
+    node = require_tool("node")
     harness = tmp_path / "harness.mjs"
     harness.write_text(HARNESS)
     proc = subprocess.run(
