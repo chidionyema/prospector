@@ -128,6 +128,42 @@ sys.exit(0 if PopddAgent.at_path(pathlib.Path('.').resolve()).verify_chain()['va
   fi
 fi
 
+# `deps_missing <project-dir>` prints the declared packages that are NOT on disk, space
+# separated, and prints nothing when the install is complete.
+#
+# GRADED AGAINST package.json, NEVER AGAINST AN ENTRIES COUNT. A count answers "is there
+# something here", and the question that decides whether the gate can run is "is the thing
+# THIS BRANCH declares here". The two differ exactly when a branch adds a dependency, which
+# is the case the old check was blind to.
+#
+# optionalDependencies are deliberately not graded: npm may legitimately skip one for this
+# platform and the install is still complete. Grading them would make a correct tree fail.
+#
+# The size of the hole this closes, measured 2026-08-20 in one worktree that the old check
+# had called ready: Ops.Console was missing 4 declared packages (react-markdown, remark-gfm,
+# @axe-core/playwright, eslint-plugin-tailwindcss, all added by f7eeab3a) and Store.Web was
+# missing 16, including @testing-library/react, storybook and stylelint. The POPDD console
+# lane failed typecheck with TS2307 "Cannot find module", vitest never ran, and the verdict
+# printed "(0 passed, 0 failed)" — which reads as a broken import in the author's own diff.
+deps_missing() {
+  python3 - "$1" <<'PY'
+import json, os, sys
+root = sys.argv[1]
+pkg = os.path.join(root, "package.json")
+if not os.path.isfile(pkg):
+    raise SystemExit(0)
+with open(pkg, encoding="utf8") as fh:
+    declared = json.load(fh)
+want = list(declared.get("dependencies", {})) + list(declared.get("devDependencies", {}))
+nm = os.path.join(root, "node_modules")
+# A scoped name is a nested path on disk: @scope/pkg -> node_modules/@scope/pkg
+missing = [n for n in want if not os.path.exists(os.path.join(nm, *n.split("/")))]
+print(" ".join(sorted(missing)))
+PY
+}
+
+DEPS_INCOMPLETE=0
+
 # ------------------------------------------------------------------- 2. node_modules
 # EVERY npm project the POPDD gate has a lane for, not just the storefront. On 2026-08-17
 # this block copied Store.Web only, so the gate refused a commit with
@@ -142,13 +178,29 @@ for REL in store_platform/src/Store.Web store_platform/src/Ops.Console; do
     rm -f "$WEB/node_modules"
   fi
   if [ -d "$WEB/node_modules" ]; then
-    echo "[deps] $REL: already a real directory ($(ls "$WEB/node_modules" | wc -l | tr -d ' ') entries)"
+    echo "[deps] $REL: node_modules is a real directory; checking what package.json declares"
   elif [ -d "$SRC_MODULES" ]; then
     echo "[deps] $REL: cloning node_modules from the main checkout (APFS copy-on-write)..."
     cp -Rc "$SRC_MODULES" "$WEB/node_modules"
-    echo "[deps] $REL: done ($(ls "$WEB/node_modules" | wc -l | tr -d ' ') entries)"
   else
-    echo "[deps] $REL: no node_modules in the main checkout; run 'npm ci' in $WEB"
+    echo "[deps] $REL: no node_modules in the main checkout"
+  fi
+
+  # The clone above is a starting point, not an answer: it copies the MAIN checkout's
+  # install, which is as old as whenever someone last ran npm there. The branch in this
+  # worktree may declare more.
+  MISSING="$(deps_missing "$WEB")"
+  if [ -n "$MISSING" ]; then
+    echo "[deps] $REL: $(echo $MISSING | wc -w | tr -d ' ') declared package(s) absent: $(echo $MISSING | cut -c1-140)"
+    echo "[deps] $REL: running npm install to fetch them..."
+    ( cd "$WEB" && npm install --no-audit --no-fund ) || true
+    MISSING="$(deps_missing "$WEB")"
+  fi
+  if [ -n "$MISSING" ]; then
+    echo "[deps] $REL: STILL ABSENT after npm install: $(echo $MISSING | cut -c1-200)"
+    DEPS_INCOMPLETE=1
+  else
+    echo "[deps] $REL: every declared dependency is on disk"
   fi
 done
 
@@ -244,4 +296,14 @@ cat <<'NOTE'
       find . -name __pycache__ -type d -not -path '*/node_modules/*' -exec rm -rf {} +
 
 NOTE
+if [ "$DEPS_INCOMPLETE" = "1" ]; then
+  # SAY IT IS NOT READY. The whole cost of the old version was that it reported a tree
+  # ready and the gate refused the first commit minutes later, naming a TypeScript error
+  # in a file the author had never opened. Failing here spends the same minutes with the
+  # right label on them.
+  echo "==> worktree NOT ready: declared npm packages are still absent (see [deps] above)."
+  echo "    The POPDD gate will refuse a commit here with 'Cannot find module ...' errors."
+  exit 1
+fi
+
 echo "==> worktree ready."

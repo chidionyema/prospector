@@ -16,7 +16,7 @@ import json
 import subprocess
 import sys
 import tarfile
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -52,6 +52,18 @@ def _run(source: offsite.Source, src_dir: Path, dest: Path) -> subprocess.Comple
     return subprocess.run(argv, capture_output=True, text=True)
 
 
+def _today() -> date:
+    """UTC, because that is what names the files.
+
+    `log_ingest._now()` is `datetime.now(timezone.utc)` and `log_ingest.py:414` names each day
+    file from it, so the archiver reads UTC days. A local wall-clock date agrees with that for
+    23 hours a day and disagrees for the last one: the CI runners are BST, so between 23:00Z and
+    midnight this test asked for a day the archiver has never heard of. That is what reverted
+    PR #529 -- CI run 32426675128, 2026-08-20T23:14:38Z.
+    """
+    return datetime.now(timezone.utc).date()
+
+
 def _write_day(directory: Path, service: str, day: date, lines: int = 1) -> Path:
     path = directory / ("%s-%s.jsonl" % (service, day.isoformat()))
     path.write_text("".join(json.dumps({"svc": service, "n": i}) + "\n" for i in range(lines)))
@@ -62,7 +74,7 @@ def test_it_archives_yesterday_and_only_yesterday(source: offsite.Source, tmp_pa
     """Today's file is still being written to. Older files were archived on their own day."""
     logs = tmp_path / "logs"
     logs.mkdir()
-    today = date.today()
+    today = _today()
     yesterday = today - timedelta(days=1)
     _write_day(logs, "scheduler", yesterday, lines=3)
     _write_day(logs, "store-api", yesterday, lines=2)
@@ -89,14 +101,14 @@ def test_an_empty_day_fails_loudly_instead_of_uploading_nothing(
     """
     logs = tmp_path / "logs"
     logs.mkdir()
-    _write_day(logs, "scheduler", date.today())  # today only: nothing to archive
+    _write_day(logs, "scheduler", _today())  # today only: nothing to archive
 
     dest = tmp_path / "out.tgz"
     done = _run(source, logs, dest)
     assert done.returncode != 0, (
         "an empty day exited 0; a run that archived nothing would be recorded as a backup")
     combined = done.stdout + done.stderr
-    assert str(date.today() - timedelta(days=1)) in combined, combined
+    assert str(_today() - timedelta(days=1)) in combined, combined
     assert str(logs) in combined, (
         "the failure must name the directory it looked in, or on-call has to go and find it")
 
