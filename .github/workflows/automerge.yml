@@ -125,6 +125,37 @@ jobs:
               return
             }
 
+            // SAY IT WHERE THE PERSON IS LOOKING, NOT ONLY IN THE RUN LOG.
+            //
+            // Founder directive 2026-08-20: "we have procusses doig stuff without stating clearing
+            // why", "the whole loop hapens in the dark". Every decision below was already logged
+            // with core.info -- the comment above the `!proved` branch even reads "Said out loud,
+            // because a job that returns silently is how a stuck PR becomes invisible". It was
+            // said to a run log nobody opens. The pull request itself, which is where a person
+            // actually looks to ask "why has this not merged", carried nothing at all.
+            //
+            // DEDUPED, because this workflow fires on every CI completion in the repo. Without the
+            // check below a PR that sits red for a day collects one comment per run, and the noise
+            // buries the answer -- the same defect wearing the opposite coat. It speaks only when
+            // the reason CHANGED since the last thing this robot said on that pull request.
+            const MARK = '<!-- automerge-reason -->'
+            const say = async (number, reason) => {
+              try {
+                const {data: comments} = await github.rest.issues.listComments(
+                  {owner, repo, issue_number: number, per_page: 100})
+                const mine = comments.filter(c => (c.body || '').includes(MARK))
+                if (mine.length && mine[mine.length - 1].body.includes(reason)) return
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: number,
+                  body: `${MARK}\n**automerge:** ${reason}\n\nHead \`${sha.slice(0, 8)}\`, decided by ` +
+                        `[this run](${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}).`,
+                })
+              } catch (e) {
+                // Never fail a merge because a comment failed. Saying why is the second job.
+                core.warning(`could not comment on #${number}: ${e.message}`)
+              }
+            }
+
             let merged = false
             const stuck = []
             const toDeploy = new Set()
@@ -134,7 +165,12 @@ jobs:
                         `labels=${labels.join(',') || 'none'}`)
               if (pr.draft)                        { core.info('  skipping: still a draft'); continue }
               if (pr.base.ref !== 'main')          { core.info(`  skipping: targets ${pr.base.ref}`); continue }
-              if (labels.some(n => HOLD.has(n)))   { core.info('  skipping: held by a label'); continue }
+              if (labels.some(n => HOLD.has(n)))   {
+                core.info('  skipping: held by a label')
+                await say(pr.number, 'not merging: held by a label (`hold`, `do-not-merge` or ' +
+                                     '`wip`). Remove it and the next green run takes this.')
+                continue
+              }
 
               // BEHIND MAIN IS A REFUSAL, NOT A DETAIL. `pulls.merge` happily lands a stale
               // branch: its `sha` guard only checks the head did not MOVE, never that the base
@@ -162,6 +198,16 @@ jobs:
                 // request is raised. That is the author's job. This workflow only merges.
                 core.info(`  behind main by ${cmp.behind_by} - the author updates it, not us`)
                 stuck.push(`#${pr.number} (${cmp.behind_by} behind main - merge main into it and push)`)
+                // #515 put a comment on the pull request at every refusal point, because
+                // "the whole loop happens in the dark". This is a refusal point, so it says so
+                // here too -- the author is the one who has to act now.
+                await say(pr.number,
+                          `not merging: this branch is ${cmp.behind_by} commit(s) behind main. ` +
+                          'Merge main into it and push, then this takes it on the next green run.' +
+                          '\n\nThis workflow used to do that update for you. Doing it moved the ' +
+                          'head of every open pull request each time main moved, which dropped ' +
+                          'them out of whatever branch had been cut to close them, so they stayed ' +
+                          'open after their own content had merged.')
                 continue
               }
 
@@ -170,6 +216,12 @@ jobs:
               // loud, because a job that returns silently is how a stuck PR becomes invisible.
               if (!proved) {
                 core.info(`  up to date with main and its CI run failed - not merging #${pr.number}`)
+                await say(pr.number,
+                          'not merging: this branch is level with main and its CI run did not pass. ' +
+                          'Green is the only thing that may merge here, so this is where it stops. ' +
+                          'Check whether the failing jobs are only `changes, ci-ok` -- that means the ' +
+                          'build was refused while main was busy and never ran, so a re-run of the ' +
+                          'existing run clears it. Any other failing job is this branch\'s own.')
                 continue
               }
 
