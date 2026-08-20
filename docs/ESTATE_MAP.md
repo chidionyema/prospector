@@ -14,7 +14,7 @@ on day one. This file is the shared factual spine those documents point back at,
 once instead of drifting in twenty places.
 
 **Where this estate is going:** the [GOLD STAR PLAN](https://claude.ai/code/artifact/ef6fe784-7f6c-4981-85cd-37dfbe40b696) (adopted 2026-08-20) is the target
-platform — ten planes, one portability contract each, and the 53 requirements between here and
+platform — ten planes, one portability contract each, and the 55 requirements between here and
 there. This file says what exists today; that page says what it is being built into. Source of
 truth for it is [MIGRATION_AND_DR_PROGRAM.md](MIGRATION_AND_DR_PROGRAM.md) §10 and §11.
 

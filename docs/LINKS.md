@@ -19,6 +19,30 @@ page's own share menu. Nothing here is public.
 
 ---
 
+## The prize
+
+The target the platform is being rebuilt against. It is first in this file, and therefore first on
+the console's Reports page, because it is the one page that must never go missing: everything else
+here describes what the estate IS, and this one describes what it is FOR.
+
+| What | Page | File |
+|---|---|---|
+| The target platform, the ten planes, and the 55 requirements with the drill that proves each one | [THE GOLD STAR PLAN](https://claude.ai/code/artifact/ef6fe784-7f6c-4981-85cd-37dfbe40b696) | `docs/MIGRATION_AND_DR_PROGRAM.md` |
+
+---
+
+## Estate governance
+
+How this estate governs itself, measured rather than asserted. The design page and its evidence
+page are a pair: read the design, and follow any number in it back to the reading that produced it.
+
+| Page | What it is for | File |
+|---|---|---|
+| [The Closed Loop](https://claude.ai/code/artifact/0fe9a113-b1cb-4b42-8c2f-539bee95a1de) | The design: one defect at three altitudes — the guard, the work item, the session — the seven proposed non-functional laws, and the order to build in | no file, chat only |
+| [What Actually Refuses](https://claude.ai/code/artifact/4d93ddd1-fb92-4304-bfe7-1a6f4ff22801) | The evidence behind it: what the 28 guard mechanisms actually refuse, on which runtimes, at what latency, and the three times the instrument was wrong before the reading was | no file, chat only |
+
+---
+
 ## The twenty seats
 
 Twenty audits of the same platform, each written for one role. Read the index first if you do
