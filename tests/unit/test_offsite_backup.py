@@ -662,3 +662,38 @@ def test_repo_substitution_reaches_the_fetch_command(tmp_path):
     assert receipt["verified"] == "tgz"
     assert storage.uploaded, "the substituted command produced nothing"
     assert marker.exists() is False  # the archive is built in the scratch dir, not here
+
+
+def test_a_skipped_source_does_not_crash_the_report(tmp_path, monkeypatch, capsys):
+    """`--fix` on a host that does not own every source must still exit on its own status.
+
+    `agent-estate` is declared `only_where: ~/.claude`, which does not exist on the Fly engine
+    host. `run` records that source as skipped rather than as a receipt, and the printer read
+    `item['key']` on it: KeyError, exit 1, and none of the freshness lines. That happened on
+    every run on that host, so the automation could never report clean, and a genuine backup
+    failure was indistinguishable from a source that simply lives on the other machine.
+    """
+    import ops.automations.offsite_backup as engine
+
+    fresh = FakeStorage([
+        _obj("offsite/money-db/store-20260816T000000Z.db", age_hours=1),
+        _obj("offsite/estate/claude-20260816T000000Z.tgz", age_hours=1),
+    ])
+    monkeypatch.setattr(engine, "storage_client",
+                        lambda _s: (fresh, "backup-bucket", "offsite/"))
+    seed = _sqlite_file(tmp_path / "seed.db")
+    decl = _declaration(tmp_path, sources=[
+        {"name": "money-db", "key": "money-db/store.db", "verify": "sqlite",
+         "fetch": ["cp", str(seed), "{dest}"]},
+        {"name": "agent-estate", "key": "estate/claude.tgz", "verify": "tgz",
+         "fetch": ["false"], "only_where": str(tmp_path / "not-this-host")},
+    ])
+
+    assert main(["--fix", "--config", str(decl)]) == EXIT_OK
+
+    out = capsys.readouterr().out
+    assert "SKIPPED" in out and "agent-estate" in out
+    assert "BACKED UP money-db" in out
+    # The lines the operator actually reads come AFTER the skipped entry.
+    assert "OK  " in out, "a skipped source must not swallow the freshness report"
+    assert len(fresh.uploaded) == 1, "the skipped source must not be fetched or uploaded"
