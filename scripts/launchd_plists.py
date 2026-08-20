@@ -52,8 +52,25 @@ _SECRET_KEY_RE = re.compile(
 
 # Jobs we did not install and do not own. Tracking them would report drift every time a
 # vendor updates its own agent, which trains the reader to ignore the output.
+#
+# `com.haworks.` and `com.tie.` are here for a different reason, and it is the reason this
+# list is a code constant rather than a habit. They are other projects entirely. Their jobs
+# were installed on this Mac, this tool snapshotted them because nothing said not to, and
+# `--check` then reported them BROKEN on every run once their checkouts went away:
+#
+#     BROKEN  com.haworks.continuous-review  WorkingDirectory not found: .../haworks-platform
+#     BROKEN  com.haworks.test-coverage      WorkingDirectory not found: .../haworks-platform
+#     BROKEN  com.tie.ai-review              script not found: .../the-introduction-exchange/...
+#
+# Three permanent findings about three jobs Prospector does not own, in the output of the one
+# probe that is supposed to mean something. They were unloaded and their plists retired on
+# 2026-08-20 (`~/Library/LaunchAgents/*.plist.RETIRED-2026-08-20`), but retiring them by hand
+# is not what stops this: anything reinstalled tomorrow would be picked straight back up.
+# Naming the prefixes is what stops it, and `tests/unit/test_launchd_tracks_only_prospector.py`
+# fails if either is dropped from this tuple.
 _FOREIGN_PREFIXES = ("com.adobe.", "com.expressvpn.", "com.valvesoftware.",
-                     "com.google.", "com.microsoft.", "com.docker.")
+                     "com.google.", "com.microsoft.", "com.docker.",
+                     "com.haworks.", "com.tie.")
 
 
 def owned(label: str) -> bool:

@@ -22,7 +22,13 @@ public interface IPaymentProvider
     // three hosted checkouts. There is deliberately no single-pack overload — one code path
     // means the one-item case cannot drift away from the many-item case, which is exactly
     // where a price-fence bypass would hide.
-    Task<CheckoutHandle> CreateCheckoutAsync(IReadOnlyList<CheckoutLine> lines, string? buyerEmail, string successUrl, string cancelUrl, CancellationToken ct);
+    //
+    // correlationId is stamped onto the session metadata as `corr` so one string spans the
+    // buyer's browser, this API, the provider, the webhook, fulfilment and delivery. The
+    // webhook arrives on a fresh connection carrying none of the buyer's headers, so without
+    // carrying it through the provider the chain breaks at exactly the step an operator most
+    // needs to follow. Null is allowed and means "no id to carry".
+    Task<CheckoutHandle> CreateCheckoutAsync(IReadOnlyList<CheckoutLine> lines, string? buyerEmail, string successUrl, string cancelUrl, string? correlationId, CancellationToken ct);
 
     // Embedded checkout: the card form renders INSIDE the pack page instead of sending the buyer
     // to the provider's own domain. Same session, same metadata, same tax and same webhook — the
@@ -36,7 +42,8 @@ public interface IPaymentProvider
     // error: the caller falls back to the hosted redirect, which is the path that exists today.
     // A checkout must never fail because a nicer checkout was unavailable.
     Task<CheckoutHandle?> CreateEmbeddedCheckoutAsync(
-        IReadOnlyList<CheckoutLine> lines, string? buyerEmail, string returnUrl, CancellationToken ct)
+        IReadOnlyList<CheckoutLine> lines, string? buyerEmail, string returnUrl, string? correlationId,
+        CancellationToken ct)
         => Task.FromResult<CheckoutHandle?>(null);
 
     // Can THIS deployment actually bill that price id? Asked before a pack is allowed to list.
