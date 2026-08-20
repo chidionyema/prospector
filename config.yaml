@@ -567,8 +567,11 @@ retrieval:
     price_comparables: 16384
     artifacts: 32768
     score: 32768
-  claude_concurrency: 4          # max concurrent claude CLI subprocesses (failover brain only
-                                 # now that grounding resolves on ddg/exa — see chain above)
+  claude_concurrency: 1          # max concurrent claude CLI subprocesses. FOUNDER DIRECTIVE
+                                 # 2026-08-21, repeated: no concurrency on Claude Code, it is
+                                 # too expensive. This key can no longer raise it — the ceiling
+                                 # is clamped at claude_cli._CLAUDE_MAX_EVER = 1, so editing
+                                 # this number upward does nothing.
   # cursor_concurrency REMOVED 2026-08-06 with the cursor_cli adapter.
   vet_workers: 8                 # parallel candidates. RAISED 3 -> 8 (2026-08-15). The old 3 was
                                  # pinned to claude_concurrency (4) from when claude_cli was the

@@ -14,7 +14,7 @@ from prospector.config import load_config
 def test_config_loads_concurrency_and_timeout_knobs():
     cfg = load_config()
     r = cfg.retrieval
-    assert r.claude_concurrency == 4
+    assert r.claude_concurrency == 1
     assert r.vet_workers == 8
     assert not hasattr(r, "cursor_concurrency"), "cursor_cli knob was removed 2026-08-06"
     # THE INVARIANT, retargeted 2026-08-15. It outlives the tuned numbers and it was never
@@ -56,11 +56,12 @@ def test_configure_concurrency_from_config(monkeypatch):
     try:
         monkeypatch.delenv("PROSPECTOR_CLAUDE_CONCURRENCY", raising=False)
         claude_cli.configure_concurrency(3)
-        assert claude_cli._MAX_CLI == 3
+        # CLAMPED, not applied. Founder directive 2026-08-21: no concurrency on Claude Code.
+        assert claude_cli._MAX_CLI == 1
         # Env wins — configure must no-op when set.
         monkeypatch.setenv("PROSPECTOR_CLAUDE_CONCURRENCY", "1")
         claude_cli.configure_concurrency(9)
-        assert claude_cli._MAX_CLI == 3  # unchanged while env pins
+        assert claude_cli._MAX_CLI == 1  # unchanged while env pins
     finally:
         monkeypatch.delenv("PROSPECTOR_CLAUDE_CONCURRENCY", raising=False)
         claude_cli.configure_concurrency(original)

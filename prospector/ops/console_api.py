@@ -672,6 +672,10 @@ def _read_config(cfg, args: dict) -> dict:
             probe = {"writable": False,
                      "reason": f"{'.'.join(key)} is not present in config.yaml. The rewriter "
                                f"never adds a key — it edits lines that exist."}
+        elif spec.get("pinned_reason"):
+            # A code clamp outranks the rewriter's verdict. yaml_surgery CAN edit this line;
+            # the engine would ignore the result, which is the worse of the two failures.
+            probe = {"writable": False, "reason": spec["pinned_reason"]}
         else:
             reason = probes.get(key)
             probe = {"writable": reason is None, "reason": reason}
@@ -1852,6 +1856,28 @@ GROUP_BLURBS = {
 #: that decide which brain rules a verdict, and `producer_mode`, which decides whether this daemon
 #: vets at all. They get a second, explicit acknowledgement on top of the confirmation token — a
 #: casual dropdown is exactly what they must not be.
+def _claude_ceiling() -> int:
+    """How many claude subprocesses may run at once, read out of the code that ENFORCES it.
+
+    Never restate the number here. A console that offers 16 while `claude_cli` clamps to 1 is a
+    control that does nothing, and an operator who moves it and sees no change has been lied to
+    by their own dashboard. Importing the constant makes the two incapable of drifting apart.
+    """
+    from prospector.claude_cli import _CLAUDE_MAX_EVER
+
+    return int(_CLAUDE_MAX_EVER)
+
+
+#: Why the Claude concurrency knob will not move. Shown on the knob itself and returned as the
+#: refusal when a write is attempted, so the reason reaches the operator either way.
+_CLAUDE_CONC_PINNED = (
+    "Pinned at {n} by founder directive 2026-08-21, repeated: no concurrency on Claude Code, it "
+    "is too expensive. The ceiling lives in code at claude_cli._CLAUDE_MAX_EVER and this console "
+    "reads it rather than restating it, so editing config.yaml upward would change nothing. "
+    "MiniMax leads the chain — 'MiniMax calls at once' above is the throughput knob."
+)
+
+
 KNOBS: list[dict] = [
     # ---- work ----
     {"path": ["generation", "candidates_per_signal"], "group": "work",
@@ -1989,7 +2015,9 @@ KNOBS: list[dict] = [
      "help": "The ceiling on the primary brain, so this is the throughput knob. Measured clean "
              "at 16 concurrent with zero 429s."},
     {"path": ["retrieval", "claude_concurrency"], "group": "speed",
-     "label": "Claude CLI calls at once", "kind": "int", "min": 1, "max": 16,
+     "label": "Claude CLI calls at once", "kind": "int",
+     "min": 1, "max": _claude_ceiling(),
+     "pinned_reason": _CLAUDE_CONC_PINNED.format(n=_claude_ceiling()),
      "help": "Bounds the failover brain only, since MiniMax leads. At 2, a saturated queue once "
              "accounted for 1514s of a 1731s run."},
     # The four fractions below divide ONE tick deadline between its phases. They are fractions,
@@ -2439,6 +2467,8 @@ def _act_config_set(cfg, payload: dict, preview: bool) -> dict:
     if spec is None:
         raise ValueError(f"{label!r} is not editable from the console. Editable: "
                          f"{', '.join(sorted(KNOBS_BY_KEY))}")
+    if spec.get("pinned_reason"):
+        raise ValueError(f"{label} cannot be changed from the console. {spec['pinned_reason']}")
     if "value" not in payload:
         raise ValueError("config.set needs a value")
     value = _coerce(spec, payload["value"])
