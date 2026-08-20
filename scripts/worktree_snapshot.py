@@ -194,6 +194,7 @@ def main() -> int:
         return 1
 
     refspecs, rows = [], []
+    by_store: dict[str, list[tuple[str, Path]]] = {}
     for wt in worktrees(repo):
         if not wt.exists():
             continue
@@ -210,8 +211,15 @@ def main() -> int:
             # it. Neither case ever needs --force, and --force is the one thing a tool whose
             # promise is "nothing is lost" must never do to a branch somebody else may have
             # written.
-            _, tree = git(["rev-parse", f"{sha}^{{tree}}"], repo)
-            refspecs.append(f"{sha}:refs/heads/{prefix}/{branch_name(wt)}-{tree[:8]}")
+            # Resolve the tree in the WORKTREE, not in `repo`. Two clones of this repo share
+            # one origin and cross-register each other's worktrees, so a worktree listed here
+            # may keep its objects in a DIFFERENT object store. Asking `repo` about a sha it
+            # cannot see returns empty, which silently produced a branch name ending in "-".
+            _, tree = git(["rev-parse", f"{sha}^{{tree}}"], wt)
+            spec = f"{sha}:refs/heads/{prefix}/{branch_name(wt)}-{tree[:8]}"
+            refspecs.append(spec)
+            _, store = git(["rev-parse", "--path-format=absolute", "--git-common-dir"], wt)
+            by_store.setdefault(store or str(repo), []).append((spec, wt))
 
     if not rows:
         print("No worktree holds uncommitted work. Nothing to snapshot.")
@@ -227,10 +235,24 @@ def main() -> int:
               f"NOT pushed.\nRun again with --push to put them on origin under {prefix}/.")
         return 0
 
-    # ONE push. Thirteen pushes is thirteen round trips for one outcome.
-    code, out = git(["push", "origin", *refspecs], repo, timeout=900)
-    print(out)
-    if code != 0:
+    # ONE push PER OBJECT STORE. It used to be one push full stop, from `repo`, which is
+    # correct only while every worktree shares `repo`'s objects. Measured 2026-08-20: two
+    # clones of this repo (one under ~/Documents/code, one under iCloud Drive) share an origin
+    # and each register worktrees living in the other's store. `commit-tree` runs in the
+    # worktree, so the commit lands in ITS store; pushing the whole batch from `repo` died with
+    # `fatal: bad object <sha>` and, because a push is atomic in its argument list, took every
+    # OTHER snapshot in the batch down with it. Fifteen good snapshots were lost to one
+    # cross-owned worktree, twice, in both directions.
+    failed = 0
+    for store, items in sorted(by_store.items()):
+        specs = [spec for spec, _ in items]
+        # Push from a worktree that actually holds these objects, never from `repo`.
+        code, out = git(["push", "origin", *specs], items[0][1], timeout=900)
+        print(out)
+        if code != 0:
+            print(f"FAILED: {len(specs)} snapshot(s) from object store {store}")
+            failed += 1
+    if failed:
         return 1
     print(f"\nPushed {len(refspecs)} snapshot(s) under {prefix}/. Every dirty worktree above can "
           f"now be discarded\nwithout losing work: git -C <worktree> checkout -- . && git clean -fd")
