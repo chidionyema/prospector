@@ -600,6 +600,13 @@ def _grade_doc_lint_baseline() -> tuple[str, str, str]:
     if overdue:
         return (BAD, "doc lint baseline",
                 f"{len(overdue)} suppression(s) past their burn-down date, e.g. {overdue[0]}")
+    if not dates:
+        # The empty case, and it is the BEST state the ratchet can be in: every suppression
+        # burned down, nothing left to expire. `min()` over it raised
+        # `ValueError: min() iterable argument is empty`, which killed the whole audit --
+        # see `_section` below for why one grader could do that. Measured 2026-08-20:
+        # docs/doc_lint_baseline.json is `{}` on origin/main, so this fired on every run.
+        return (OK, "doc lint baseline", "0 doc(s) suppressed -- the ratchet is fully burned down")
     soonest = min(dates.values())
     return (OK, "doc lint baseline",
             f"{len(dates)} doc(s) suppressed, next burn-down due {soonest}")
@@ -1224,6 +1231,29 @@ def _grade_scheduled_workflows() -> list[tuple[str, str, str]]:
     return rows
 
 
+def _section(title: str, grader) -> tuple[str, list[tuple[str, str, str]]]:
+    """Run one grader, and turn a crash into a FAIL ROW instead of a dead audit.
+
+    The section list used to call all nine graders while building itself, so the first one to
+    raise took the other eight with it and the process exited on a traceback. Measured
+    2026-08-20: `_grade_doc_lint_baseline` raised `ValueError: min() iterable argument is
+    empty` on an empty baseline, and the daily `com.prospector.process-audit` job had been
+    printing that traceback instead of grading anything -- on this Mac and on origin/main.
+
+    The reason that is worse than an ordinary bug: this script is what tells the estate its
+    docs have drifted. A crash reports nothing, and reporting nothing looks exactly like
+    reporting no problems. Both exit non-zero, so even the exit status could not tell them
+    apart. A crashing grader is now the loudest row in its own section, and the other eight
+    still run.
+    """
+    try:
+        return (title, grader())
+    except Exception as exc:  # noqa: BLE001 -- one broken grader must never silence the rest
+        return (title, [(BAD, f"{title}: grader crashed",
+                         f"{type(exc).__name__}: {exc} -- this section graded NOTHING, so treat "
+                         "its silence as unknown rather than clean")])
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--quiet", action="store_true", help="print only problems")
@@ -1235,15 +1265,15 @@ def main() -> int:
     docs = documented_names()
     sections = [
         # Production first, and it is not this Mac. Everything below this line is estate support.
-        ("production (Fly)", grade_fly()),
-        ("CI runners", grade_ci_runners()),
-        ("deploys", grade_deploys()),
-        ("launchd jobs on this Mac", grade_launchd(docs)),
-        ("GitHub workflows", grade_workflows(docs)),
-        ("enforcement", grade_enforcement()),
-        ("specialist probes", grade_specialists()),
-        ("worktree drift", grade_worktree_drift()),
-        ("orphaned directories", orphaned_worktrees()),
+        _section("production (Fly)", grade_fly),
+        _section("CI runners", grade_ci_runners),
+        _section("deploys", grade_deploys),
+        _section("launchd jobs on this Mac", lambda: grade_launchd(docs)),
+        _section("GitHub workflows", lambda: grade_workflows(docs)),
+        _section("enforcement", grade_enforcement),
+        _section("specialist probes", grade_specialists),
+        _section("worktree drift", grade_worktree_drift),
+        _section("orphaned directories", orphaned_worktrees),
     ]
 
     if args.json:
