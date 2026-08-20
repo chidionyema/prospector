@@ -1402,6 +1402,99 @@ class OllamaOperator(Operator):
         return content
 
 
+class OpenAICompatibleOperator(Operator):
+    """One provider declared in `config.yaml providers:`, spoken to over OpenAI-compatible HTTP.
+
+    This is `OllamaOperator` above with the two things a hosted provider needs that a local one
+    does not: a bearer key read from a named env var, and its endpoint, model pair, token
+    ceiling and timeout supplied by config rather than hardcoded. Every other adapter in this
+    file is a variation on the same POST; declaring one is now a config block instead of a new
+    class plus a new branch plus ~85 edits elsewhere.
+
+    It is NEVER trusted by virtue of being declared. `operator.moat_primary()` is the only
+    trust fence: a ruling served here is stamped `provisional` unless the name is also on
+    `moat_primary:`, and `provisional` does not publish on PASS.
+    """
+
+    def __init__(self, name: str, base_url: str, api_key_env: str, model: str,
+                 fast_model: str = "", max_tokens: int = 8192, timeout_s: int = 300,
+                 cheap: bool = False):
+        from .errors import ProviderExhaustedError
+
+        self.provider_name = name
+        self.base_url = (base_url or "").rstrip("/")
+        self.api_key_env = api_key_env
+        # `cheap=True` is the mechanical-call path (query-gen, prescreen). A provider with no
+        # second model uses its one model for both, same as a blank `model_fast` elsewhere.
+        self.model = (fast_model or model) if cheap else model
+        self.max_tokens = max_tokens
+        self.timeout_s = timeout_s
+        self.name = f"{name}/{self.model}"
+        key = (os.environ.get(api_key_env) or "").strip()
+        if not key:
+            # ProviderExhaustedError, not RuntimeError, and AT CONSTRUCTION: a tier whose
+            # credential is absent must be dropped from the chain by `make_operator` so the run
+            # fails OVER to the next brain. Raising later — on the first real call, halfway
+            # through a candidate — spends the run and then reports it as a provider outage.
+            raise ProviderExhaustedError(
+                f"{api_key_env} is unset or blank, so provider {name!r} cannot authenticate. "
+                f"Either export {api_key_env} or drop {name!r} from config.yaml `operator:`/"
+                "`noncritical_operator:`/`moat_primary:`.",
+                provider=self.name)
+        self._key = key
+
+    @property
+    def model_version(self) -> str:
+        return self.name
+
+    @track_latency(name="openai_compatible_raw_call")
+    def _raw(self, system: str, user: str, temperature: float) -> str:
+        """POST to `<base_url>/chat/completions` with a bearer key."""
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            "temperature": temperature,
+            "max_tokens": self.max_tokens,
+        }
+        body = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            f"{self.base_url}/chat/completions",
+            data=body,
+            headers={"Content-Type": "application/json",
+                     "Authorization": f"Bearer {self._key}"},
+            method="POST",
+        )
+        try:
+            # Bounded read, for the same reason every adapter here uses it: urllib's timeout is
+            # per-recv, so a trickled body resets it forever. See `_urlopen_read_bounded`.
+            raw = _urlopen_read_bounded(req, timeout=self.timeout_s,
+                                        total_deadline=self.timeout_s + 60)
+            data = json.loads(raw.decode("utf-8"))
+        except Exception as e:
+            from .errors import ProviderExhaustedError, looks_exhausted
+            if looks_exhausted(str(e)):
+                # Quota, credit or backpressure: fail over, and let health.py bench it for the
+                # right window. One shared classifier, so a new provider inherits every
+                # exhaustion shape the estate has already paid to learn.
+                raise ProviderExhaustedError(
+                    f"{self.name} exhausted: {e}", provider=self.name) from e
+            raise RuntimeError(f"{self.name} call failed: {e}") from e
+
+        content = (data.get("choices", [{}])[0].get("message", {})
+                   .get("content", "") or "")
+        from .telemetry import logger, record_usage
+        usage = data.get("usage") or {}
+        record_usage(input_tokens=int(usage.get("prompt_tokens", 0) or 0),
+                     output_tokens=int(usage.get("completion_tokens", 0) or 0),
+                     total_tokens=int(usage.get("total_tokens", 0) or 0),
+                     provider=self.name)
+        logger.info(f"{self.name} response: length={len(content)}")
+        return content
+
+
 class MockOperator(Operator):
     """Deterministic stub. Routes by a marker in the system prompt to fixture
     responses, so the full pipeline is testable with zero network/spend."""
@@ -1498,7 +1591,12 @@ def _coerce_moat_primary(names, *, source: str) -> frozenset[str]:
     # Read at CALL time, not import time: `BUILDABLE_TIERS` is defined further down the module.
     # A typo here fails SILENTLY in the worst direction — every ruling stamped provisional,
     # nothing published, the engine looking merely unproductive — so it is refused at declaration.
-    buildable = frozenset(BUILDABLE_TIERS)
+    # Declared providers count as buildable. `load_config` installs the parsed `providers:`
+    # block process-wide BEFORE it gets here, which is the only way this check can see one:
+    # `$PROSPECTOR_MOAT_PRIMARY` reaches this function with no Config anywhere in the call.
+    # Without it a valid config is refused at startup and the message blames the config.
+    from .providers import buildable_tiers, installed_declared
+    buildable = frozenset(buildable_tiers(installed_declared()))
     unknown = sorted(resolved - buildable)
     if unknown:
         raise ValueError(
@@ -1939,10 +2037,32 @@ def _build_operator(kind: str, cfg, fast: bool, component: str | None = None) ->
             "operator 'cursor_cli' was removed on 2026-08-06 (founder directive; it was "
             "measured at its usage limit and every call paid a guaranteed failure first). "
             "Use claude_cli. Update config.yaml `operator:`/`artifact_operator:`.")
+    # CONFIG-DECLARED PROVIDERS, last. It runs after every built-in branch and after the two
+    # removed-tier fences above, so a declaration can neither shadow a built-in nor bring back a
+    # removed name. `providers.parse_declared` refuses both at load as well; this ordering is the
+    # second lock, because a Config can also be built by hand in a test or a script.
+    from .providers import buildable_tiers as _buildable_tiers
+    declared = getattr(cfg, "providers", {}) or {}
+    spec = declared.get(kind)
+    if spec is not None:
+        # Same model layering as the minimax branch: a component pin overrides BOTH models, so
+        # `component_models.moat.<name>` moves the moat's model without moving the cheap tail's.
+        pin = component_pin(cfg, component, kind)
+        return OpenAICompatibleOperator(
+            name=spec.name,
+            base_url=spec.base_url,
+            api_key_env=spec.api_key_env,
+            model=pin or spec.model,
+            fast_model=pin or spec.fast_model,
+            max_tokens=spec.max_tokens,
+            timeout_s=spec.timeout_s,
+            cheap=fast,
+        )
     raise ValueError(f"unknown operator: {kind!r} "
-                     f"(expected {'|'.join(BUILDABLE_TIERS)}). "
+                     f"(expected {'|'.join(_buildable_tiers(declared))}). "
                      "Note `minimax_fast` is NOT an operator name — it is a `model_defaults` "
-                     "field consumed by the `minimax` branch above.")
+                     "field consumed by the `minimax` branch above. A name that is neither a "
+                     "built-in tier nor a key under config.yaml `providers:` is a typo.")
 
 
 def make_operator(cfg, fast: bool = False, component: str | None = "moat") -> Operator:
