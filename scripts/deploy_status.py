@@ -290,6 +290,15 @@ def measure(d: dict, *, now: datetime) -> dict:
     # --- what it triggers on -------------------------------------------------
     if d.get("workflow"):
         wf = WORKFLOWS / d["workflow"]
+        if not WORKFLOWS.is_dir():
+            # 2026-08-20: `.dockerignore` excluded `.github/`, so the running image carried no
+            # workflows at all and every row here accused the repo of deleting one. A missing
+            # DIRECTORY is a build-context fault; a missing FILE is a repo fault. Say which.
+            f["unknown_reason"] = (
+                f"there is no {WORKFLOWS.relative_to(ROOT)} directory under {ROOT} — this "
+                "checkout or image was built without it, so nothing here can be measured"
+            )
+            return f
         if not wf.exists():
             f["unknown_reason"] = (
                 f"{wf.relative_to(ROOT)} is gone — this table names a workflow that does not exist"

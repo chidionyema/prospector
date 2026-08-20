@@ -50,6 +50,12 @@ SERVED: dict[str, str] = {
         "prospector/ops/automations_view.py:57 globs ops/automations/*.py and ops/config/*.yaml "
         "to discover every automation for the /processes tab"
     ),
+    ".github/workflows": (
+        "scripts/deploy_status.py:55 resolves `ROOT / '.github/workflows'` and parses each deploy "
+        "workflow's `paths:` filter -- that function IS the /deploys tab, so with the directory "
+        "absent every deployable renders UNKNOWN and the deploy and rollback buttons read as "
+        "missing features"
+    ),
 }
 
 
@@ -131,6 +137,9 @@ def test_every_served_path_names_the_view_that_reads_it(reason: str):
     ("**/node_modules/", "specs", False),
     ("store/", "specs", False),
     ("*.log", "scripts", False),
+    (".github/", ".github/workflows", True),         # the 2026-08-20 shape
+    (".github/", ".github/workflows/ci.yml", True),
+    (".github/", "scripts", False),
 ])
 def test_the_matcher_can_fail(pattern: str, rel: str, excluded: bool):
     """A matcher that never matches would pass every test above while proving nothing."""
@@ -144,4 +153,9 @@ def test_the_incident_pattern_is_gone_from_dockerignore():
     assert "docs/" not in patterns and "specs/" not in patterns, (
         "docs/ or specs/ is excluded from the build context again. On 2026-08-20 that made the "
         "console's Docs tab render an empty screen with no error for a day."
+    )
+    assert ".github/" not in patterns, (
+        ".github/ is excluded from the build context again. On 2026-08-20 that left /app with no "
+        "workflow files, so the console's Deploys tab reported every service as UNKNOWN and "
+        "accused the repo of deleting workflows that were on main the whole time."
     )

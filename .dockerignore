@@ -28,10 +28,24 @@ __pycache__/
 .env
 .env.*
 .git/
-.github/
 .claude/
 .lux/keys/
 *.log
+
+# .github/ used to be excluded here, on the same "not needed at runtime" grounds as docs/.
+# It is needed at runtime. scripts/deploy_status.py:55 resolves `ROOT / ".github/workflows"`
+# and reads each deploy workflow's `paths:` filter to work out what a service is running and
+# how far behind main it is; the console's /deploys tab is that function's output. Measured on
+# prospector-engine 2026-08-20:
+#
+#     $ ls /app/.github/workflows
+#     ls: cannot access '/app/.github/workflows': No such file or directory
+#
+# so every deployable rendered `state: UNKNOWN` with the reason ".github/workflows/deploy-web.yml
+# is gone — this table names a workflow that does not exist". The workflows were never gone. The
+# founder read the page as the deploy buttons not existing.
+#
+# It is 256 KB: 15 workflow files and 2 scripts, no secrets and no state.
 
 # docs/ and specs/ used to be excluded here, on the grounds that documentation is not needed
 # at runtime. That stopped being true on 2026-08-19, when the console gained a Docs tab and a
