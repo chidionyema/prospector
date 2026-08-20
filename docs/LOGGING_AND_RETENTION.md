@@ -709,8 +709,39 @@ Every option below was rejected for cost, lock-in, or both. R7 is zero new recur
 | **Datadog** | Priced per host and per GB ingested. The most expensive option on this list by a wide margin. | Total. Agent, tags, dashboards, monitors. | **Rejected.** Violates R7 immediately and R8 permanently. |
 | **Sentry** | Free tier exists for errors. | Moderate. | **Not rejected — out of scope.** Sentry is error tracking, not logging. `ErrorBoundary.tsx:32` records it as "a deferred, founder-gated decision" and it stays that way. It would not satisfy R1, R2 or R4. |
 | **A second Fly machine as a log host** | Roughly the cost of one more `shared-cpu-1x` machine plus a volume. | None. | **Rejected on cost only.** The `prospector-engine` volume has 18G free (§1.2). Paying for a second machine to hold 500 MB when an existing machine has 18G spare fails R7 and P8. |
-| **OpenTelemetry collector** | Free software; needs somewhere to send data. | Low — OTLP is a standard. | **Rejected for now.** It is a pipeline with no destination. Every destination on this list is rejected. Revisit if a budget ever appears; the JSONL schema in §4.3 maps cleanly onto OTLP fields, which keeps that door open. |
+| **OpenTelemetry collector** (the process) | Free software; a second process to run, configure, deploy and migrate. | Low — OTLP is a standard. | **Rejected, and this one holds.** It is a pipeline with no destination: every destination on this list is rejected, so the collector would move bytes from A to A. |
+| **OTLP** (the wire format) | £0. It is a POST of JSON; no collector is required to speak it. | None. CNCF standard, not a vendor. | **This row was missing, and its absence was an error — see the correction below.** |
 | **`fly logs` piped into a file on the Mac** | £0. | None. | **Rejected as the primary mechanism.** It is a tail: when the collector is down or the Mac sleeps, those lines are gone forever, and there is no way to tell afterwards that they are missing. Silent, unmeasurable loss is worse than no logs, because it looks the same as quiet. Fine as a debugging tool; not a design. |
+
+**Correction, 2026-08-20 — this table conflated the collector with the protocol, and they are not
+the same decision.** Founder challenge: *"OpenTelemetry collector seems like should have been
+used"*. Two things were being rejected under one name.
+
+The **collector** is a daemon. Rejecting it is still right: it exists to fan data out to sinks, and
+every sink here is rejected, so it would be a process whose whole job is to hand our own bytes back
+to us. That is a real cost — another thing to run, deploy, secret, monitor and migrate — for no
+answer we cannot get today.
+
+**OTLP is a wire format, and rejecting it was a mistake.** It costs nothing extra to emit, needs no
+collector (OTLP/HTTP is a POST of JSON to a URL), and it is the only option on this page that is
+neither a vendor nor a bill. It is also the one that answers the migration bar: with OTLP the sink
+is a config line, so moving to Grafana, ClickHouse or anything else is not a rewrite — and, in the
+other direction, any third-party system already speaks it, so auditing something we did not write
+stops needing a bespoke adapter.
+
+**It is also already paid for and switched off.** `store_platform/Directory.Packages.props:68-71`
+pins `OpenTelemetry` 1.15.3 and three siblings, and `Crux.Observability` pulls the ASP.NET Core,
+Http, EF Core and Runtime instrumentation into every `Store.Api` build. `AddOpenTelemetry`,
+`WithTracing` and `AddOtlpExporter` appear nowhere in `store_platform/src`. We compile it on every
+build and emit nothing. `docs/PLATFORM_PORTABILITY_AUDIT.md:392` recorded this and this document
+did not read it.
+
+What does **not** change is Part 4. The ingest, the plain NDJSON files and the zero-cost sink all
+stand; the lock-in that would actually hurt is a query language and a storage format, and we have
+neither. What changes is that the door has to be opened rather than left "open in principle": the
+ingest should accept OTLP/HTTP JSON alongside its own NDJSON, and the exporter `Store.Api` already
+compiles should be switched on and pointed at it. Tracked as its own change, not folded into a
+producer PR.
 
 ---
 
@@ -1007,6 +1038,47 @@ marked done here. `scripts/restore_drill.py` runs weekly as `[program:restore-dr
 datastore and does not close §6.4.
 
 ---
+
+**Step 13 — Third and fourth producers: the storefront and the console. DONE. This step was not
+in the original twelve, and its absence was the gap.**
+Steps 7 and 8 shipped the daemons and `Store.Api`. Measured 2026-08-20, that left two of the four
+things a customer or an operator actually touches producing nothing a central reader can see:
+`Store.Web` (mumchimp.com) and `Ops.Console`. A browser error on the shop front, or a failed read
+in the admin console, existed only in a Fly container's stdout for that machine's lifetime.
+
+Four pieces:
+
+| piece | file | what it does |
+|---|---|---|
+| the Node shipper | `Store.Web/src/lib/centralLog.ts` and `Ops.Console/src/lib/centralLog.ts` | the Node end of §4.5. Queue of 1000, batches of 200 every 2s, 3s timeout, drops rather than blocks, never throws, server-only. |
+| the browser's way in | `Store.Web/src/pages/api/client-log.ts` | a POST-only route. The browser cannot reach the ingest directly — see below. |
+| the storefront's first caller | `Store.Web/src/components/ErrorBoundary.tsx` | a React crash now reports itself, carrying `X-Correlation-Id` so the line joins the §4.4 trail. |
+| the console's first caller | `Ops.Console/src/lib/oplog.ts` | every existing `ConsoleEvent` also ships centrally. The two destinations it already had are unchanged. |
+
+**The ingest key must never reach the browser**, which is why the storefront posts to its own API
+route rather than to `:8613`. `STORE_INTERNAL_API_KEY` in a module the client bundle imports would
+be published in JavaScript to every visitor. That is enforced, not conventioned: a source scan in
+`clientLogRoute.test.ts` asserts nothing outside `pages/api/`, `lib/centralLog*` or `__tests__`
+imports the shipper, and `configured()` returns false whenever `window` is defined.
+
+**The shipper file is copied, not shared, and a test in EACH app refuses drift.** The two Next
+builds have separate `package.json` files and no workspace between them, so there is nowhere for
+one copy to live. The reason the guard is duplicated rather than written once is the CI path
+filter at `.github/workflows/ci.yml:390-402`: `wb` selects on `^store_platform/src/Store\.Web/`
+and `cn` on `^store_platform/src/Ops\.Console/`, so a single-lane drift test would be skipped by
+exactly the one-app change that causes drift.
+
+**Nothing here can fail a request or a build.** `ship()` is wrapped in try/catch and returns a
+boolean nobody is required to read; a failed POST increments `failed_posts` and is dropped, never
+retried; the flush timer is unrefed so a short-lived `next build` process is not held open.
+
+**Deployment note — the code is safe to land before the secret exists.** `configured()` is false
+without `STORE_INTERNAL_API_KEY`, so an unconfigured app counts `dropped_unconfigured` and behaves
+exactly as it does today. `prospector-store-web` needs that secret set before the storefront's
+lines appear; `Ops.Console` runs on `prospector-engine`, which already has it.
+
+*Verification:* 26 passed across six test files. Mutation-checked six ways — see the PR for the
+table.
 
 ## Part 9 — Open gaps and what closing each costs
 
