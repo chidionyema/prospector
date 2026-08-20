@@ -2,7 +2,7 @@
   "EnvironmentVariables": {
     "COORD_AGENTIC_EXEC": "1",
     "COORD_EXEC_DIRS": "/Users/chidionyema/Documents/code:/Users/chidionyema/.hermes:/Users/chidionyema/.claude",
-    "COORD_EXEC_TIMEOUT": "900",
+    "COORD_EXEC_TIMEOUT": "1800",
     "COORD_INTERVAL_S": "60",
     "COORD_MAX_INFLIGHT": "6",
     "COORD_MAX_INGEST": "3",

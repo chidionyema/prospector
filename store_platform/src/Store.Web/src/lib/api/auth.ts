@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '@/lib/config';
+import { correlated } from '@/lib/api/correlation';
 
 /**
  * The customer-account API.
@@ -54,10 +55,12 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
     // Explicit even though same-origin is the fetch default: this is the line that makes the
     // whole cookie-session design work, and a default is a poor place to keep a load-bearing fact.
     credentials: 'same-origin',
-    headers: {
+    // One funnel for every account call, so the correlation id cannot be forgotten on one of
+    // them. A missing id is invisible: the request still succeeds and only the trail is gone.
+    headers: correlated({
       ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-      ...init?.headers,
-    },
+      ...(init?.headers as Record<string, string> | undefined),
+    }),
   });
 
   if (res.status === 204) {
