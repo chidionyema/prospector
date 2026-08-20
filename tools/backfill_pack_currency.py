@@ -48,13 +48,21 @@ from typing import Any, Dict, List, Optional, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from prospector.config import store_root  # noqa: E402
 from prospector.pack_linter import (  # noqa: E402
     expected_currency,
     split_rendered_free_text,
 )
 
-STORE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                         "store", "dossiers")
+
+def _store_dir() -> str:
+    """The dossier directory, from the one resolver, read on every call.
+
+    This was `os.path.join(dirname(dirname(__file__)), "store", "dossiers")`: a path that follows
+    the CODE, so it ignored `PROSPECTOR_STORE_DIR` and named this checkout's `store/` even when the
+    process was pointed at another one. INC-2026-08-18-store-resolver.
+    """
+    return str(store_root() / "dossiers")
 
 # A money amount is a symbol bound to a digit. `$` loose in a sentence ("$ per seat") is
 # not an amount and is not this bug, so it is left alone rather than guessed at.
@@ -101,8 +109,8 @@ def _foreign_elsewhere(text: str, want: str) -> List[str]:
 
 def _iter_dossiers(ids: List[str]) -> List[str]:
     if ids:
-        return [os.path.join(STORE_DIR, f"{i}.pass.json") for i in ids]
-    return sorted(glob.glob(os.path.join(STORE_DIR, "*.pass.json")))
+        return [os.path.join(_store_dir(), f"{i}.pass.json") for i in ids]
+    return sorted(glob.glob(os.path.join(_store_dir(), "*.pass.json")))
 
 
 def _detect_indent(raw: str) -> Optional[int]:

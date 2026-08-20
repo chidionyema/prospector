@@ -38,7 +38,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from prospector.artifacts import generate_artifacts, generate_marketing_content
-from prospector.config import load_config
+from prospector.config import load_config, store_root
 from prospector.models import (
     Candidate,
     CheckResult,
@@ -227,7 +227,7 @@ def main(argv: list[str]) -> int:
             argv.remove(a)
 
     if argv == ["--all"]:
-        paths = sorted(glob.glob("store/dossiers/*.pass.json"))
+        paths = sorted(glob.glob(str(store_root() / "dossiers" / "*.pass.json")))
     else:
         paths = argv
 
