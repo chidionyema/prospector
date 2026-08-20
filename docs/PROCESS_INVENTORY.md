@@ -87,6 +87,7 @@ checkout. See the "Where production runs" section of `CLAUDE.md`.
 | `com.prospector.live-update` | every 60s | `scripts/live_checkout.py --unattended`; rolls the live checkout forward to `origin/main`. |
 | `com.prospector.backup` | 03:40 | `scripts/backup_store.py --mirror-only`. **The git bundle mirror, and the only thing that writes it.** The full store backup runs on Fly under `fly:prospector-engine`; this job is not a duplicate of it. |
 | `com.prospector.offsite-backup` | 03:50 | `ops.automations.offsite_backup --fix`. |
+| `com.prospector.log-rotation` | every 21600s | `ops.automations.log_rotation --fix`; rotates the store's log files so a runaway writer cannot fill the disk. |
 
 Three failover jobs run from `~/.prospector/bin/failover`, which is installed by the engine
 migration and lives outside this repo. `docs/ENGINE_MIGRATION_PROGRAM.md` is the specification.
@@ -171,6 +172,10 @@ Declared here, owned elsewhere. They are listed so the audit can grade them rath
 | `e2e-live-smoke.yml` | workflow_run | Playwright against the live site after a deploy. |
 | `escape-hatch-drill.yml` | schedule, dispatch | Weekly proof that the state can be pulled off Fly intact. |
 | `weekly-estate-review.yml` | schedule Mondays 08:00 UTC, dispatch | Grades the incident loop and opens one issue. |
+| `dns-drift-drill.yml` | schedule, PR, dispatch | Asks the authoritative nameservers what `mumchimp.com` actually resolves to and compares it with the committed zone at `deploy/dns/mumchimp.com.zone`. DNS is the one asset in the estate with no substitute, and every exit path in `docs/ESTATE_CONTINUITY_PLAN.md` ends in "repoint DNS" without saying to what. |
+| `main-green-guard.yml` | workflow_run | main went red: re-run the failed jobs once, and revert the commit if it fails again. The RECOVERY. |
+| `pr-keeper.yml` | pull_request opened, workflow_run | Keeps an open pull request from being red for a reason that is not its own: refreshes a branch that is behind `main` (the founder's rule that a branch carries main before it is judged), and re-dispatches a build that `changes` REFUSED while main was red. It never re-runs a build that actually failed, and it cancels nothing. `automerge.yml` covers the green-and-behind case; this covers the complement. |
+| `main-admission-guard.yml` | push to main | Asks of every new commit on main "did this arrive as a pull request CI proved green". If not, opens an issue and reverts it, within seconds of the push rather than after CI concludes. The PREVENTION, and the replacement for the branch protection this plan will not sell us — `gh api .../branches/main/protection` answers 403 "Upgrade to GitHub Pro". |
 
 ---
 

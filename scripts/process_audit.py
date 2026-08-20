@@ -964,26 +964,44 @@ def orphaned_worktrees() -> list[tuple[str, str, str]]:
     return rows
 
 
-def alert(payload: dict) -> str:
-    """Send one Telegram line through the estate's existing operator alert path.
+def alert(payload: dict, cfg=None) -> str:
+    """Raise the failing checks through the estate's own alert path, durably.
 
-    Deliberately not a new channel. `~/.hermes/scripts/estate_alert.py` is already the estate's
-    one door -- it holds the credentials, it debounces, and it is written never to raise at the
-    caller. A second notifier would mean a second thing to keep working.
+    It used to import `~/.hermes/scripts/estate_alert.py` directly. That module is outside this
+    repository, so on any host without a Hermes checkout -- which includes `prospector-engine`,
+    where production actually runs -- the import failed, this function returned the string
+    `could not alert: No module named estate_alert`, and NOTHING GRADED THAT STRING. The audit
+    printed it, exited 1 for the findings, and no operator was told. An alerting rail whose own
+    failure is invisible is worse than no rail, because the estate is then graded as watched.
+
+    `alerts.emit_alert` is this repo's one alert door and it is strictly wider: it appends the
+    record to `alerts.jsonl` with an fsync BEFORE any sink is tried, marks it active in
+    ALERT.txt, then pushes to desktop, webhook and Telegram -- and its Telegram sink loads the
+    same Hermes sender this used to import, so nothing is lost where Hermes IS present. The
+    durable record is the point. When every sink is missing there is still a receipt saying the
+    estate was failing at this time, and `active_alerts()` can still show it.
+
+    Never raises, and never returns a bland string on failure: a broken alert path says so in
+    words a reader cannot mistake for success. Observing a job must not be able to fail it.
     """
-    sys.path.insert(0, str(Path.home() / ".hermes" / "scripts"))
-    try:
-        import estate_alert
-    except ImportError as exc:
-        return f"could not alert: {exc}"
     lines = [f"{n}: {d}" for sec in payload["sections"] for g, n, d in
              ((r["grade"], r["name"], r["detail"]) for r in sec["rows"]) if g == BAD]
     if not lines:
         return "nothing to alert"
-    text = (f"process audit: {payload['failing']} failing\n" + "\n".join(lines[:12]))
-    sent = estate_alert.send_operator_alert(
-        text, debounce_key="process-audit", debounce_s=3600)
-    return "alert sent" if sent else "alert suppressed (debounce or no credentials)"
+
+    names = [ln.split(":", 1)[0] for ln in lines]
+    failing = payload["failing"]
+    try:
+        from prospector.config import load_config
+        from prospector.scheduler.alerts import emit_alert
+        emit_alert(cfg if cfg is not None else load_config(),
+                   severity="critical", key="process-audit",
+                   title=f"process audit: {failing} failing",
+                   message=f"process audit: {failing} failing\n" + "\n".join(lines[:12]),
+                   throttle_s=3600, failing=failing, checks=names[:12])
+    except Exception as exc:  # noqa: BLE001 -- see the docstring; this must not fail the audit
+        return f"ALERT PATH BROKEN ({type(exc).__name__}: {exc}) -- {failing} failing went unsent"
+    return f"alert recorded ({failing} failing: {', '.join(names[:4])})"
 
 
 def litter() -> list[str]:

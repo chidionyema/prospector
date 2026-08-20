@@ -48,6 +48,7 @@ export const VIEWS = [
   'deliveries',
   'disputes',
   'console_log',
+  'logs',
   'processes',
   'deploys',
 ] as const;
@@ -73,6 +74,7 @@ const ALLOWED_ARGS: Record<string, string[]> = {
   docs: ['name'],
   shares: ['files'],
   console_log: ['limit'],
+  logs: ['service', 'level', 'since', 'until', 'corr', 'q', 'limit'],
 };
 
 /**
