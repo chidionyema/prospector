@@ -19,7 +19,6 @@ using Store.Api.Payments;
 using Crux.Storage;
 using Crux.Resilience;
 using Crux.Observability;
-using Store.Api.Infrastructure.CentralLog;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -71,11 +70,6 @@ if (storageOverrides.Count > 0)
 builder.Services.AddCruxStorage(builder.Configuration);
 builder.Services.AddCruxResilience();
 builder.Services.AddCorrelationId();
-
-// Every log line this API writes also goes to the estate's central ingest, so an operator reads
-// one place instead of ssh-ing to the box. It is off unless both the URL and the key are set, it
-// never blocks a request, and it drops on the floor rather than failing one.
-builder.Services.AddCentralLog(builder.Configuration);
 
 // Correlation-id propagation on all outbound HTTP calls.
 builder.Services.ConfigureHttpClientDefaults(http =>
