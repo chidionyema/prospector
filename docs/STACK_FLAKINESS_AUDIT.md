@@ -205,6 +205,37 @@ Confirmed while writing this: `~/.claude/settings.json` names a `SessionStart` h
 `git show origin/main:scripts/checkout_currency.py`, and that path does not exist on `origin/main`.
 The hook has been failing at every session start. Same class, already live.
 
+**Landed 2026-08-20, on the founder's instruction "~/.claude/ is not a git repo, easy fix is to
+copy into prospector".** `scripts/claude_guards/` now carries 43 files: `CLAUDE.global.md` (the
+seven laws), `settings.json`, the 33 hook scripts flat, and `skills/`. `scripts/agent_estate_sync.py`
+has the three verbs — `--capture` takes this machine's copy in, `--check` exits 1 naming which side
+drifted, `--install` writes the estate onto a bare machine and refuses to clobber a differing file
+without `--force`.
+
+What is closed, and what is not:
+
+* **Version control, backup, review — closed.** The 22 scripts the measurement above counted are
+  now 33, and every one has a diff and a history.
+* **The probe this section asked for — closed, as a test.**
+  `tests/unit/test_the_agent_estate_is_tracked.py` asserts every script `settings.json` names is in
+  the mirror, and separately that every path in this repo a hook runs exists. That second check is
+  the one that would have caught the `checkout_currency.py` hook above; the file is on `origin/main`
+  now, and the test keeps it there. Mutation-proved four ways: deleting a named script, planting a
+  credential shape, adding a `CLAUDE.md`, and removing a repo script a hook runs each turn it red.
+* **Credentials — closed by reading bytes, not paths.** `--capture` scans every file it is about to
+  write for seven credential shapes and refuses the whole run on a match, and a test proves the
+  scanner both fires and is wired. Scanned over all 43: none.
+* **Drift detection — OPEN, and it is manual.** Nothing fires `--check` on a schedule. Measured
+  while writing this: `docs/AGENT_SETUP.md` already records that `scripts/session_check.py` "exists
+  and nothing fires it", so adding a line there would not reach any agent either. The durable answer
+  is the one `idle-guard.py` already uses — `~/.claude/scripts/` symlinks into this directory, so
+  the tracked file IS the file that runs and drift is impossible rather than detected. Converting
+  the other 31 is not free: a symlink follows whatever branch the shared checkout is on, so a branch
+  missing a guard disables it estate-wide. That trade belongs to M2's bootstrap step, with the
+  install path written down, not to a mid-flight edit.
+* **The bootstrap paradox — untouched.** `--install` needs the repo, and a bare machine gets the
+  repo by cloning it, which needs credentials. T10 below is still the unanswered question.
+
 ---
 
 ## 5. S5 — two datastores, and the sequencing that de-flakes it
@@ -363,8 +394,11 @@ Nothing below is a new system. Every line is a sequencing change or a one-line g
    `tests/unit/test_workflow_triggers_are_real_events.py`. Closes the S1 class. <!-- doc-lint-ok: this test was deleted as a duplicate, see 10b below -->
 2. Decide what triggers the autoscaler: cron, `workflow_run`, or delete it. It is manual-only today.
 3. S2 before S3: the off-box dead-man's switch lands before 31 jobs move onto one Fly machine.
-4. The 22 agent guards become tracked files with an installer, and a probe asserts every hook in
-   `settings.json` resolves. Fix the `checkout_currency.py` hook in the same pass.
+4. ~~The 22 agent guards become tracked files with an installer, and a probe asserts every hook in
+   `settings.json` resolves. Fix the `checkout_currency.py` hook in the same pass.~~ **Done
+   2026-08-20** — `scripts/claude_guards/` (43 files), `scripts/agent_estate_sync.py --install`,
+   `tests/unit/test_the_agent_estate_is_tracked.py`, and `checkout_currency.py` is on `origin/main`
+   with a test that keeps it there. Drift detection is still manual; section 4 says why.
 5. #80, the restore drill, runs green on a schedule before #93 starts the Postgres move.
 6. The retention schedule (#13) is written before Litestream (#94) replicates personal data further.
 7. The migration drill records a duration. Until it has, the thirty-minute bar reads UNMEASURED.
@@ -445,7 +479,7 @@ right next action for each is not "adopt", it is the one cheap test named in the
 | Gap | Task | Grade | Justification |
 |---|---|---|---|
 | M1 inventory | #78 | **UNPROVEN** | Depends on T1 |
-| M2 bootstrap | #82 | **FLAKY as scoped** | It cannot succeed while the guards are unversioned (section 4) and the secret restore path is unwritten (T10). Both are prerequisites, not details |
+| M2 bootstrap | #82 | **STILL FLAKY, one prerequisite down** | The guards are versioned as of 2026-08-20 (section 4) and `agent_estate_sync.py --install` writes them onto a bare machine. The secret restore path (T10) is still unwritten, and that alone keeps M2 flaky |
 | M3 money-path adapter | #86 | **UNPROVEN** | Not started |
 | M4 backup proof | #80 | **UNPROVEN** | The keystone. Everything about the 30-minute bar is a wish until this runs a clock |
 | M5 Continuity panel | #85 | **UNPROVEN** | A panel showing unmeasured state would be worse than no panel. Sequence after M4 |
