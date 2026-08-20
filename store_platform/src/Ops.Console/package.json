@@ -6,6 +6,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "audit:gate": "node ../../scripts/audit_gate.mjs",
     "build": "next build",
     "dev": "PROSPECTOR_PYTHON=\"${PROSPECTOR_PYTHON:-$(cd ../../.. && pwd)/.venv/bin/python}\" next dev -p 8611",
     "lint": "eslint",
