@@ -148,7 +148,53 @@ def test_a6_refuses_to_divide_when_no_row_carries_a_cost(store):
     scan = eb.scan_corpus()
     axis = eb.axis_a6(store, scan)
     assert axis.value == eb.UNOBTAINABLE
-    assert "ESTIMATE" in axis.reason
+    assert "candidate_id" in axis.reason
+
+
+def test_a6_is_the_median_over_candidates_not_the_mean_over_calls(store):
+    """Two calls on one candidate are ONE vet, and the axis reports the typical vet.
+
+    Costs 0.10 + 0.10 on candidate a, 0.30 on b, 5.00 on c. Mean over CALLS is 1.375 and mean
+    over candidates is 1.8333 — both dominated by c. The median vet costs 0.30, which is the
+    number that answers "what does a candidate cost us".
+    """
+    rows = [
+        {"message": "usage", "candidate_id": "a", "cost_usd": 0.10, "phase": "vetting"},
+        {"message": "usage", "candidate_id": "a", "cost_usd": 0.10, "phase": "vetting"},
+        {"message": "usage", "candidate_id": "b", "cost_usd": 0.30, "phase": "vetting"},
+        {"message": "usage", "candidate_id": "c", "cost_usd": 5.00, "phase": "vetting"},
+        {"message": "warm-up, no candidate", "cost_usd": 0.99, "phase": "main"},
+    ]
+    (store / "prospector.jsonl").write_text(
+        "\n".join(json.dumps(r) for r in rows), encoding="utf-8"
+    )
+    axis = eb.axis_a6(store, eb.scan_corpus())
+
+    assert axis.value == 0.30, f"expected the median vet, got {axis.value}"
+    assert axis.detail["candidates_priced"] == 3
+    assert axis.detail["priced_calls"] == 4
+    assert axis.detail["attributed_usd"] == 5.50
+    assert axis.detail["unattributed_usd"] == 0.99, "a costed row with no candidate must not vanish"
+    assert axis.detail["unattributed_calls"] == 1
+
+
+def test_a6_reads_the_ledger_even_when_the_dossier_corpus_is_empty(store):
+    """The ledger and the corpus are different populations; A6 must not join them.
+
+    Until 2026-08-20 this axis divided total ledger spend by the corpus check count, so an empty
+    corpus made a fully populated cost meter read UNOBTAINABLE — and a NON-empty corpus from a
+    different month produced a quotient of two unrelated windows, which is worse, because it
+    printed as a measurement.
+    """
+    (store / "prospector.jsonl").write_text(
+        json.dumps({"message": "usage", "candidate_id": "z", "cost_usd": 0.25}), encoding="utf-8"
+    )
+    scan = eb.scan_corpus()
+    assert scan["checks"] == 0, "this test is only meaningful against an empty corpus"
+
+    axis = eb.axis_a6(store, scan)
+    assert axis.value == 0.25
+    assert axis.detail["candidates_priced"] == 1
 
 
 def test_every_axis_reports_a_value_or_a_reason_never_a_blank(store):
