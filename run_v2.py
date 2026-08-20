@@ -156,7 +156,9 @@ def main():
     print(f"  Total: {sum(results.values())}")
 
     # Show ledger growth
-    ledger = Path("storage/durable_ledger.md")
+    # A tracked repo artifact, so it moves with the CODE, not with the store. It was read
+    # relative to the working directory, so it silently read nothing from anywhere else.
+    ledger = Path(__file__).resolve().parent / "storage" / "durable_ledger.md"
     if ledger.exists():
         laws = [ln for ln in ledger.read_text().splitlines() if ln.strip().startswith("*")]
         print(f"  Ledger laws: {len(laws)}")

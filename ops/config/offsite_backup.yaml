@@ -86,6 +86,99 @@ sources:
     verify: tgz
     keep: 30
 
+  - name: agent-estate
+    why: >-
+      ~/.claude — the agent estate. Memory files, hooks, skills, the state probes, every
+      checkpoint and the founder-directive archive. It is how six sessions know what this
+      business is, which traps have already cost time, and why each decision was taken. None of
+      it is in git and, until this entry, it existed in exactly one copy on one laptop disk:
+      the only thing here with no second copy anywhere. 1,127 files, 13.0 MiB, measured
+      2026-08-20 — the rest of the 7.2 GB under ~/.claude is session transcripts, telemetry and
+      caches, and rebuilds itself.
+    fetch:
+      # `{repo}` is this checkout: /app in the engine container, prospector-live on the laptop.
+      # The command runs with cwd set to a scratch directory, so a relative path cannot work and
+      # an absolute one cannot be written down once.
+      #
+      # The script takes an ALLOW-LIST, not a tar of the whole directory, and it reads the bytes
+      # before it packs them. It has to: measured on the allow-listed set alone, ~/.claude held a
+      # private key in a checkpoints directory and a 93-character GitHub token pasted into the
+      # directive archive. Key material is dropped whole, an embedded credential is redacted in
+      # place, and both are recorded by path and line in AGENT_ESTATE_MANIFEST.json inside the
+      # archive. ~/.hermes/.gitignore already carries the verdict on doing this by filename
+      # patterns instead: 26 live keys reached a GitHub remote through exactly that control.
+      - "{repo}/scripts/backup_agent_estate.py"
+      - --out
+      - "{dest}"
+    key: agent-estate/claude.tgz
+    # Opened as a tar archive and its index read, same as the key ring above.
+    verify: tgz
+    # Only the laptop has an agent estate. The engine container skips this source and still
+    # GRADES it, which is the arrangement that matters: the always-on host is the one that
+    # notices when the laptop stops taking the copy.
+    only_where: "~/.claude"
+    # 72 hours, not 24 or 30. This job runs at 03:50 on a laptop, and a laptop with its lid shut
+    # over a long weekend is not a backup failure. A week of silence is. The two hosts that write
+    # every other source here are always on; this one is not, and the threshold says so rather
+    # than going red every Monday until somebody mutes it.
+    max_age_hours: 72
+    keep: 30
+  - name: logs
+    why: >-
+      Yesterday's ingested logs, every service, one file per service per day. They are the only
+      record of what the platform DID -- what a buyer was served, which provider was down, why a
+      tick produced nothing. `ops/config/log_rotation.yaml` deletes `/data/logs/*.jsonl` at 14
+      days, and that is a data-protection bound, not a storage one, so the deletion is not
+      optional and the hot window cannot be widened to compensate. Fourteen days is therefore the
+      ENTIRE margin: if this source stops depositing and nobody notices for two weeks, the logs
+      are gone from both places at once. That coupling is why this is a `source` with its own
+      freshness grade rather than a line in the retention sweeper.
+    fetch:
+      # No curl, because unlike the money database these files are already on the machine this
+      # job runs on. No `tar` and no shell glob either: `date -u -d yesterday` is GNU-only and
+      # this repo's tests run on the Mac as well as on Linux, so a shell one-liner would pass on
+      # CI and fail on a developer's laptop. Python is the one interpreter both have, and it is
+      # what the whole container already is.
+      #
+      # It exits NON-ZERO when yesterday matched no file, and that is deliberate. `[program:
+      # log-ingest]` runs continuously and the scheduler ticks every 7200s, so a day with no log
+      # file at all does not mean a quiet day, it means the ingest died. A silent empty archive
+      # would be uploaded, graded fresh, and would hide exactly the outage this exists to record.
+      - python3
+      - -c
+      - |-
+        import datetime, glob, os, sys, tarfile
+        src, dest = sys.argv[1], sys.argv[2]
+        day = (datetime.datetime.now(datetime.timezone.utc).date()
+               - datetime.timedelta(days=1)).isoformat()
+        files = sorted(glob.glob(os.path.join(src, "*-%s.jsonl" % day)))
+        if not files:
+            sys.exit("no log file for %s in %s: the ingest wrote nothing yesterday" % (day, src))
+        with tarfile.open(dest, "w:gz") as archive:
+            for path in files:
+                archive.add(path, arcname=os.path.basename(path))
+        print("archived %d file(s) for %s" % (len(files), day))
+      # Literal, not ${PROSPECTOR_LOG_DIR}. `_expand` raises CannotEstablish on an unset
+      # variable, the engine image sets only PROSPECTOR_STORE_DIR, and an unset variable here
+      # would take the WHOLE run to unknown -- the money database included. The cost is that this
+      # path restates what `log_ingest.log_dir()` derives; the same trade is made and documented
+      # in ops/config/log_rotation.yaml, and a test fails if the two ever disagree.
+      - /data/logs
+      - "{dest}"
+    key: logs/engine-logs.tgz
+    # Opened as a tar archive and its index read, the same check the key ring gets. A gzip stream
+    # that ends mid-member fails here rather than sitting in the bucket looking like a backup.
+    verify: tgz
+    # 90 days of cold retention, and it is `keep:` rather than an R2 lifecycle rule on purpose.
+    # A lifecycle rule lives in Cloudflare's console, where it cannot be read from a clone, does
+    # not move with the estate, and nothing in this repo can grade it. `keep:` is enforced by
+    # this job's own prune on every run, from a number that is in git. One daily object, so 90
+    # copies is 90 days.
+    keep: 90
+    # 30, not 24, for the same reason as the watch entries below: an 86400s timer graded against
+    # a 24h ceiling flickers red on ordinary drift, and a check that cries wolf gets muted.
+    max_age_hours: 30
+
 # ---------------------------------------------------------------------------------------------
 # Prefixes ANOTHER job writes. Graded for freshness only: never fetched, never verified, never
 # pruned, never deleted. `scripts/backup_store.py` writes the engine store's only offsite copy,
@@ -143,4 +236,21 @@ watch:
       A `git bundle` of the whole repository, so the SOURCE survives losing GitHub as well as
       losing Fly. This is the half of DR that a database backup does not cover: restoring data
       with no code to run against it is not a restore.
+    max_age_hours: 30
+
+  - name: engine-logs
+    prefix: logs/
+    writer: scripts/backup_store.py archive_logs(), supervisord [program:backup], daily
+    why: >-
+      Every log line the estate has ever collected lives on one Fly volume,
+      vol_42kyqo6g0kdzew14, and ops/automations/log_rotation.py deletes it at 14 days. So
+      without this prefix, losing the volume loses the whole record and keeping the volume
+      loses it anyway after a fortnight. One object per service per day,
+      logs/<svc>-<day>.jsonl.gz, kept 90 days.
+    # Same 30h as the three above, and the reason it is safe here is worth stating because the
+    # `dossiers/` entry was REFUSED on exactly this ground. A content mirror's newest-object age
+    # tracks engine output, so it goes red on a quiet day. This is a dated series: one new object
+    # per service per day, uploaded the day after the file closes. The only way it stops moving
+    # is that no service in the estate wrote a single line all day, and on a machine running the
+    # scheduler, the consumer and the API that means the estate stopped, which is worth a red.
     max_age_hours: 30

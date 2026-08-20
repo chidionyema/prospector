@@ -61,6 +61,7 @@ const GROUP_TITLE: Record<string, string> = {
   work: 'How much work it takes on',
   evidence: 'How it searches for evidence',
   brains: 'Which brains it uses',
+  models: 'Which model version each brain runs',
   speed: 'How hard it pushes them',
   money: 'What it may spend',
 };

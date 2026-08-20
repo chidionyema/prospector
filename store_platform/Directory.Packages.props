@@ -69,6 +69,7 @@
     <PackageVersion Include="OpenTelemetry.Api" Version="1.15.3" />
     <PackageVersion Include="OpenTelemetry.Api.ProviderBuilderExtensions" Version="1.15.3" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
 
     <!-- Analyzers -->
     <PackageVersion Include="SonarAnalyzer.CSharp" Version="9.32.0.97167" />

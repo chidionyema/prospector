@@ -13,17 +13,17 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-
-# Directories that hold code we did not write, or state rather than source. `store/` and `storage/`
-# are tracked runtime state; the rest are vendored or generated.
-SKIP = {".git", ".venv", "node_modules", "store", "storage", "graphify-out",
-        "bin", "obj", "__pycache__", ".next", "dist", "build"}
+from repo_files import REPO as ROOT
+from repo_files import repo_files
 
 
-def _sources(suffix: str) -> list[Path]:
-    return [p for p in ROOT.rglob(f"*{suffix}")
-            if not any(part in SKIP for part in p.relative_to(ROOT).parts)]
+def _sources(suffix: str) -> tuple[Path, ...]:
+    """Ask git rather than walking the tree; see `repo_files.py` for why.
+
+    The skip list this replaced named `store/`, `storage/`, `node_modules/`, `bin/`, `obj/`,
+    `dist/` and `build/`. Every one of them is gitignored, so git already excludes them.
+    """
+    return repo_files(f"*{suffix}")
 
 
 def test_every_python_file_opens_with_a_docstring():

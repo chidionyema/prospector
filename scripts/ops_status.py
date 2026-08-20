@@ -196,9 +196,13 @@ def c_dat1():
 
 
 def c_dat2():
-    hits = sorted(ROOT.glob("store/ops/restore_drill*"))
+    # `ROOT.glob("store/...")` looked beside the CODE. The receipt is written to the STORE, which
+    # is a different directory whenever PROSPECTOR_STORE_DIR is set — on the engine it is the
+    # mounted volume. INC-2026-08-18-store-resolver.
+    ops = store_root() / "ops"
+    hits = sorted(ops.glob("restore_drill*")) if ops.is_dir() else []
     if hits:
-        return DONE, f"receipt on disk: {hits[-1].relative_to(ROOT)}"
+        return DONE, f"receipt on disk: {hits[-1]}"
     return OPEN, "scripts/restore_drill.py exists; no dated receipt under store/ops/"
 
 

@@ -15,9 +15,18 @@
  *
  * It also still writes the line to stderr, so a machine with no readable volume degrades to the
  * behaviour that existed before rather than to silence.
+ *
+ * AND it ships the same line to the central ingest as `svc: "console"`, which is what puts the
+ * console's own faults on the /logs page beside the engine's. All three destinations stay: the
+ * file is the copy that survives a redeploy of the ingest, stderr is the copy that survives a
+ * broken volume, and the ingest is the copy anybody can read without an ssh session. None of the
+ * three can fail the request -- `ship` swallows, `appendFileSync` is caught, and stderr cannot
+ * throw.
  */
 import { appendFileSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
+
+import { ship } from "@/lib/centralLog";
 
 /** Keep the last N lines. Trimmed at 2N so the rewrite happens once every N appends. */
 export const KEEP = 500;
@@ -87,6 +96,43 @@ export function logConsoleEvent(ev: ConsoleEvent): void {
     console.error(
       `[ops-console event] could not persist: ${err instanceof Error ? err.message : String(err)}`,
     );
+  }
+  shipCentrally(ev, row);
+}
+
+/**
+ * The severity the central log records for a console event.
+ *
+ * Derived from `kind` rather than passed in, because every existing call site already names the
+ * outcome in the kind and none of them passes a level. Inventing a `lvl` argument would have made
+ * every one of those call sites a place to get it wrong, and left the default -- `info` -- on the
+ * failures.
+ */
+export function levelFor(kind: string): "info" | "warn" | "error" {
+  if (kind.endsWith("_failed") || kind === "client_error") return "error";
+  if (kind.endsWith("_refused") || kind === "read_slow") return "warn";
+  return "info";
+}
+
+/** Fire and forget. Never throws, and never waits: the request is not held for a log line. */
+function shipCentrally(ev: ConsoleEvent, row: Record<string, unknown>): void {
+  try {
+    const ctx: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(row)) {
+      // `ts`/`at` are the file's own stamp and `kind` is already the event name. `message` is
+      // the human sentence and becomes `msg`. Everything else is context.
+      if (k === "ts" || k === "at" || k === "kind" || k === "message") continue;
+      ctx[k] = v;
+    }
+    ship({
+      svc: "console",
+      evt: `console.${ev.kind || "unnamed"}`,
+      lvl: levelFor(ev.kind || ""),
+      msg: ev.message || ev.error || ev.kind,
+      ctx,
+    });
+  } catch {
+    /* a logger that can fail the request it is describing is worse than no logger */
   }
 }
 

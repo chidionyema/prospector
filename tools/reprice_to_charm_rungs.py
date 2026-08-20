@@ -57,7 +57,7 @@ from typing import Optional
 import requests
 
 from prospector.bridge import EngineBridge, StripeProvisioner
-from prospector.config import load_config
+from prospector.config import load_config, store_root
 from prospector.run import _load_dotenv
 
 # Same precedence and the same hard fence as tools/reprice_live_packs.py: prefer the
@@ -66,7 +66,15 @@ LIVE_KEY_VARS = ("STRIPE_LIVE_API_KEY", "STRIPE_API_KEY")
 
 ACTOR = "tools/reprice_to_charm_rungs.py"
 
-RATIONALE_DIR = Path("store/pricing/rationale")
+def _rationale_dir() -> Path:
+    """Where the price rationale lands, from the one resolver, read on every call.
+
+    This was the module constant `Path("store/pricing/rationale")`: relative to the process
+    working directory, so it wrote beside whatever launched it rather than into the store.
+    A module constant would also bind the answer at import, before a test can redirect it.
+    INC-2026-08-18-store-resolver.
+    """
+    return store_root() / "pricing" / "rationale"
 
 
 def engine_decision_pence(pack_id: str) -> tuple[Optional[int], str]:
@@ -78,7 +86,7 @@ def engine_decision_pence(pack_id: str) -> tuple[Optional[int], str]:
     the catalogue row and the Stripe object, which is exactly what a two-against-one
     reconciliation needs.
     """
-    d = RATIONALE_DIR / pack_id
+    d = _rationale_dir() / pack_id
     files = sorted(d.glob("*.json")) if d.is_dir() else []
     if not files:
         return None, f"no price rationale under {d}"

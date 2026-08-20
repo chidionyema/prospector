@@ -13,7 +13,7 @@ migration — that is P1, explicitly out of scope here.
 ## Absolute constraints
 1. **Zero behavior change.** Same signature verification, same JSON parsing, same fulfilment, same
    email dispatch, same HTTP responses. If a test changes meaning, you did it wrong.
-2. **Do NOT touch** `Store.Catalog/Domain/*` (Pack, Order, SalesAudit), `Persistence/StoreDbContext.cs`,
+2. **Do NOT touch** `Store.Catalog/Domain/*` (Pack, Order, SalesAudit), `store_platform/src/Store.Catalog/Persistence/StoreDbContext.cs`,
    or `Migrations/*`. The domain columns stay named `Paddle*` until P1.
 3. **No new NuGet packages.** No Stripe code in P0.
 4. All existing tests must pass unchanged. `dotnet build` clean (treat warnings as you find them —
@@ -21,7 +21,7 @@ migration — that is P1, explicitly out of scope here.
 5. Secrets stay in config/env; never hardcode. Repo is public.
 
 ## Current code (the two files that matter)
-- `store_platform/src/Store.Api/Services/PaddleTransaction.cs` — a record documented
+- `store_platform/src/Store.Api/Services/PaddleTransaction.cs` — a record documented  <!-- doc-lint-ok: the pre-rename name; shipped as Services/PaymentTransaction.cs in 30cc8975 -->
   *"Provider-agnostic view of a completed payment"*. Fields: `TransactionId, BuyerEmail, Currency,
   Country, TotalAmountPence, OccurredAt, Items` (+ `PurchasedItem(ProductId, AmountPence)` in
   `PurchasedItem.cs`).
@@ -36,7 +36,7 @@ migration — that is P1, explicitly out of scope here.
 ## Steps
 
 ### 1. Rename the record (provider-agnostic) + add `Provider`
-- Rename file `Services/PaddleTransaction.cs` → `Services/PaymentTransaction.cs`; rename the record
+- Rename file `Services/PaddleTransaction.cs` → `Services/PaymentTransaction.cs`; rename the record  <!-- doc-lint-ok: the pre-rename name; shipped as Services/PaymentTransaction.cs in 30cc8975 -->
   `PaddleTransaction` → `PaymentTransaction`; **add a leading field** `string Provider` (the source
   rail, e.g. `"paddle"`). Keep all other fields identical.
 - Update every reference (`FulfilmentService.cs`: `FulfilAsync`, `FulfilItemAsync`, `CommitAsync`,
@@ -68,7 +68,7 @@ public sealed record CheckoutHandle(string Url, string? ClientSecret);
 - `WebhookVerifyResult.Ignored` lets a provider say "valid but not a `transaction.completed` event"
   (today's `IGNORED` branch) distinctly from a verify failure.
 
-### 3. `Store.Api/Payments/PaddleProvider.cs` (new) — move Paddle logic here verbatim
+### 3. `Store.Api/Payments/PaddleProvider.cs` (new) — move Paddle logic here verbatim  <!-- doc-lint-ok: never built; the seam shipped straight to Payments/StripeProvider.cs -->
 - Implement `IPaymentProvider` with `Name => "paddle"`.
 - **Move** (cut, don't rewrite) from `WebhookEndpoints.cs` into this class: `VerifyPaddleSignature`,
   `ParsePaddleTransaction`, `ExtractEmail`, `ExtractCountry`, `ParseOccurredAt`, `ParseAmount`,
@@ -127,5 +127,5 @@ public sealed record CheckoutHandle(string Url, string? ClientSecret);
 ## Deliverable to reviewer
 A single diff touching only: `Services/PaymentTransaction.cs` (renamed), `Services/FulfilmentService.cs`
 (type rename only), `Endpoints/WebhookEndpoints.cs` (generic routing), new `Payments/IPaymentProvider.cs`,
-`Payments/PaddleProvider.cs`, `Payments/MoneyRailConfigGate.cs`, `Program.cs` (DI), and test
+`Payments/PaddleProvider.cs`, `Payments/MoneyRailConfigGate.cs`, `Program.cs` (DI), and test  <!-- doc-lint-ok: never built; the seam shipped straight to Payments/StripeProvider.cs -->
 additions/renames under `Store.Tests`. Plus the output of `dotnet build` + `dotnet test`.
