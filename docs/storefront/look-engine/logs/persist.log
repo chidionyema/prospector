@@ -1,0 +1,9 @@
+$ node persist.mjs
+started  2026-08-20T19:01:38Z
+node     v26.3.0
+---
+rolled roll-1 and roll-2 over http, reloaded, linked and forgot one.
+A45 PASS — a rolled look survives a reload, opens from a link on a browser that has never rolled, and can be forgotten.
+---
+exit     0
+duration 5s

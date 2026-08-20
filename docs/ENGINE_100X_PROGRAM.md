@@ -3,6 +3,12 @@
 **Status: OPEN. Started 2026-08-20.** Branch `perf/engine-100x`, worktree
 `/Users/chidionyema/Documents/code/wt-engine100x`, based on `origin/main` at `8c0c821e`.
 
+**The headline number is 1000x, not 100x (founder, 2026-08-20: "1000x is the headline of the
+project", "we want 1000 inprovebtbts all ways").** The filename still says 100X because renaming a
+tracked doc breaks every reference to it; the target it carries is 1000x on every axis in section 1.
+Measured the same day: only two files in this repo mention 1000x at all, both incidentally, so the
+number lived in the founder's head and nowhere else until this paragraph.
+
 This file is the programme's single record. Every experiment gets a row in section 4 whether it
 worked or not. A failed experiment that is not written down will be run again by somebody else.
 
@@ -28,12 +34,27 @@ is a wish reinterpreted.
 10. *"note down all ny wihes"*
 11. *"i want this to be state of the art engine"*
 
+### Later the same day, superseding two of the rules below
+
+12. *"1000x is the headline of the project"* / *"we want 1000 inprovebtbts all ways"* — the target
+    is a thousandfold, on every axis, not a hundredfold.
+13. *"if it for one of exprinents fine ... if thats ging to be an operational cost then need nore
+    cretaive olutions"* — a ONE-OFF experiment cost is acceptable; an OPERATIONAL cost that bills
+    forever demands a different answer. **This supersedes wish 1's "independent of cost".**
+14. *"cost esitbates first dicunented"* — the cost estimate is written down BEFORE the experiment
+    runs, not after.
+15. *"evidence has to converge fron nultiple angles"* / *"with evidece and proof"* / *"no
+    guesswork"* — one measurement is a reading; two independent readings that agree are a proof.
+16. *"disucs idead, edge cases with peers but bias towards action"* / *"doing over narrating is
+    favoured"* — broadcast a plan to peers for the edge case you cannot see, then act.
+
 ### What that translates to, operationally
 
 | Wish | Operational rule for this programme |
 |---|---|
-| independent of cost | Cost is NOT an optimisation target. It is a recorded observation only. No experiment is rejected for being expensive. |
-| 100x, all round | Every axis in section 1 carries a 100x target. Aim for it even where it is not reachable; record the number actually reached. |
+| independent of cost | **SUPERSEDED 2026-08-20 by wishes 13 and 14.** A ONE-OFF experiment cost is acceptable and no experiment is rejected for being expensive. An OPERATIONAL cost — one that bills forever and grows with volume — is a target like any other, and every experiment posts a cost estimate before it runs. |
+| 1000x, all round | Every axis in section 1 carries a **1000x** target (was 100x until wish 12). Aim for it even where it is not reachable; record the number actually reached. |
+| evidence converges | No axis moves on one measurement. Two independent angles that can fail differently, and the reply names both. A disagreement between them outranks either. |
 | benchmark strictly | Section 2 is the admissibility bar. A number that fails it does not go in the ledger. |
 | metric for everything | No axis without a unit, a baseline, and a command that reproduces it. |
 | strong proof | Every ledger row carries a receipt: a command, a commit SHA, and the raw output location. |
@@ -178,7 +199,9 @@ receipt.
 | ID | Date | Result | Verdict | Receipt |
 |---|---|---|---|---|
 | E-100 | 2026-08-20 | The HHEM sidecar lived under `/tmp`, which macOS emptied. Every published HHEM number had become unreproducible: the experiment could no longer be re-run at all. Rebuilt under `~/.local/share`. The `numpy<2` prohibition in the docstring was found to be false — that pin is REQUIRED by torch 2.2.2, not a hazard. | **RESOLVED** | `tests/unit/test_experiment_sidecar_path.py`, 7 tests, mutation-proved 2 RED + 1 RED. Section "E-100" below. |
-| E-101 | 2026-08-20 | Can a local open verifier rule the moat's verdicts? 13 arms across 6 families, 3 lexical baselines included so a neural arm that loses to string overlap is visible. Ranked by AUC against the moat's own decisions plus seconds per pair. | **RUNNING** — Stage A on arm 1 of 8; Stage B code complete and wiring-proved, blocked on a CPU throughput measurement. No result yet. | `tools/experiments/_verifiers.py`, `_verifier_sidecar.py`, `_prove_causal_wiring.py` (17 checks, mutation-proved 4 RED). Section "E-101" below. |
+| E-101 | 2026-08-20 | Can a local open verifier rule the moat's verdicts? 8 arms scored, 3,472 pairs each, 3 lexical baselines included so a neural arm that loses to string overlap is visible. Two angles, because agreement with our own rulings is contaminated by E15's 48.9% rationale infidelity: (a) AUC against the moat's own decisions, (b) a control of cited premises against constructed unrelated ones, labels by construction. | **DONE — the answer is NO.** Angle (a): 0.476–0.562, a coin toss. Angle (b): best arm **0.706 AUC**, worst **0.408**, below random. Throughput 0.04 pairs/s on rented CPU, which would have been an operational cost forever. Stage B killed before spending a further ~$50 and 55 hours. Total spend $12; the 16-core box and its 60GB volume were destroyed the same turn. | `tools/experiments/_verifiers.py`, `_verifier_sidecar.py`, `_prove_causal_wiring.py` (17 checks, mutation-proved 4 RED). Section "E-101" below. Padding control: `e101_stageB_fly.py:183` left-padding verified, right padding moves a score 0.249 while left differs from batch=1 by 0.0023. |
+| E-103 | 2026-08-20 | What does one verdict actually cost us, and is merging the six per-candidate check calls into one worth building? Two independent angles: call count from the dossier corpus, token anatomy from the prompt files on disk. | **DONE.** Corpus n=1,696 completed vets, 2,929 dossiers, 14,006 checks. **4.679 paid model calls per vet** (median 6); 60.1% of vets run all six checks; kill-fast rarely fires because `refuted` is only 4.7% of checks. Fixed preamble is ~11,250 chars on EVERY call (template 4,895 + style 1,247 + exemplars 885 + candidate median 4,220) against 1,500 chars of actual evidence — **7.5x more boilerplate than evidence**. Merged: ~59,700 → ~21,450 input chars per vet = **2.8x on tokens, 4.679x on calls**. My earlier "up to 6x" was wrong and was corrected to the founder unprompted. Founder ruling: *"ok let doi it regardless, add to list"*. | Corpus at `tools/experiments/_corpus.py`; `retrieval_failed` is TRUE on 0 of 14,006 checks, so no deferred run pollutes the denominator (peer 1e's survivorship objection, answered). |
+| E-104 | 2026-08-20 | Is a claim-level verdict against retrieved evidence a defensible product, or is it already commoditised? 68 sourced pages. | **DONE — the verifier is not the moat.** Per-answer citation is commoditised: four rivals at $10–$14 per 1k grounded requests, Anthropic Citations at no surcharge. But **zero of thirteen major providers rule on a claim against retrieved evidence**; the verdict-shaped products that exist are Bedrock contextual grounding ($0.10/1k), Bedrock Automated Reasoning ($0.17/1k, against a formal policy not the open web) and Google Check Grounding ($0.00075/1k). Closest direct competitor WebCite at ~$0.16 per verification. The verification vendors are being absorbed — Arize→Dynatrace $915M (13 Aug 2026), Galileo→Cisco (9 Apr 2026), TruEra→Snowflake, Logically→administration. **What is defensible is the corpus, the declared standard of proof, the audit trail and the liability — not the model.** | Section 5 below carries the load-bearing entries. |
 
 ---
 
@@ -192,6 +215,13 @@ Researched 2026-08-20. Full reasoning in the session transcript; the load-bearin
 - **Purpose-built models beat frontier models at it, at a fraction of the size.**
   Bespoke-MiniCheck-7B tops the LLM-AggreFact leaderboard at 77.4%, above Claude 3.5 Sonnet.
   HHEM-2.1-Open scores 71.8% in under 600MB of RAM and about 1.5s per 2k tokens on an x86 CPU.
+- **The best PERMISSIVELY-LICENSED verifier was never in E-101's sweep, and it beats GPT-4o.**
+  IBM **Granite Guardian 3.3 (8B)** scores **76.5** on LLM-AggreFact under **Apache 2.0**, above
+  GPT-4o at 75.9. The two models ranked above it are non-commercial (Bespoke-MiniCheck-7B, 77.4,
+  CC BY-NC 4.0) and paid (Claude 3.5 Sonnet, 77.2). This does NOT overturn E-101 — E-101 measured
+  on OUR pairs and killed Stage B on throughput, which an 8B model shares — but it does mean the
+  honest statement is *"no free verifier we tested can rule"*, never *"no free verifier can rule"*.
+  Closing that gap costs one run against a hosted Apache-2.0 endpoint, not new hardware.
 - **The standard pipeline is document retrieval, then evidence selection, then verdict.**
   OpenFactCheck formalises it as `claim_processor -> retriever -> verifier`, YAML-configured.
   Loki (MIT) adds check-worthiness as an explicit stage, which the engine does not have.
@@ -542,3 +572,116 @@ restored. Under the repo venv it produced no output and hit a 300 s timeout, and
 Restoring it today would wedge every commit in every worktree rather than gate them. Three other
 hooks lost in the same wipe — graphify's `post-commit` and `post-checkout`, and the `pre-push`
 shim — WERE restored, and `graphify_sweep.py --check-hooks` now reports all triggers present.
+
+---
+
+# 8. Progress notes — 2026-08-20 synthesis
+
+Written because the standing instruction is rigorous, careful documentation, and a programme with
+no written position is a programme that restarts from zero at every compaction. This section is
+the answer to four founder questions asked in one message: what have we done, where are we, what
+is the next set of actions, and is anything promising.
+
+## 8.1 Where the engine actually is, in numbers
+
+| Thing | Number | How it was read |
+|---|---|---|
+| A1 availability | **0%** | The `prospector-engine` box logs `moat_blind` every tick and retries in 300s. No trusted brain can be reached from it. |
+| A2, A3a, A3b, A5, A7, A8 | **no baseline** | Section 1. Five of nine axes have no unit reading at all, so a 1000x claim on them is not falsifiable. |
+| A4 discrimination | **1.00 on 9 items** | Saturated. Cannot register a gain or a regression. |
+| A6 cost | ~$3.60 / 1000 verdicts | Estimate, not a meter reading. |
+| Verdict brains reachable | **1, and it is the laptop** | `out=$(timeout 120 claude -p "Reply with exactly the word: ok" 2>&1); rc=$?` → rc=0, output `ok`. |
+| Dossiers in the canonical store | **0**, ledger 21 lines | `config.store_root()` resolves to `/Users/chidionyema/Documents/code/prospector/store`. |
+| Dossiers on the live volume | **3,622** | Fly volume `/data`. `/dev/vdc` ext4 is the only persistent mount; `/app/config.yaml` is in the IMAGE and does not survive a deploy. |
+| Money rail | **serving** | mumchimp.com, the catalogue and the Stripe rail all answer 200. |
+
+The one-line statement of the position: **the shop sells and the engine produces nothing to sell.**
+
+## 8.2 The two things that block everything else
+
+**A1 is the fire.** Nothing in this programme can be measured on a machine that cannot rule. The
+fix is known and is not research: the Claude login on the `prospector-engine` box, or MiniMax
+credits. Both are the founder's — one is an identity, the other is money leaving the account.
+E-011 (roster breadth) and E-012 (multiple keys rotated on 429) are the engineering half and can
+be built now.
+
+**A4 is the instrument.** Discrimination 1.00 on nine items grades nothing, so E-040 through E-045
+— ensemble, adversarial-on-every-PASS, retrieval-is-the-bottleneck, cross-encoder reranker,
+generalised literal-anchor rule, calibration — are **unrunnable rather than merely unrun**. E-001
+builds a golden set with resolution. It costs no money, and the corpus already holds 2,929
+dossiers to draw hard negatives from. **E-001 is the highest-value item on this list that needs
+nobody's permission.**
+
+Two golden gates exist and they are not interchangeable. `tests/test_golden_set.py:163` uses
+`MockOperator` (`:171`) and asserts `discrimination == 1.0` (`:189`) — free, no brain, runs today.
+The live one is `prospector/golden.py` via `run.py:4403 --deep`, floor 0.75 at `:4405`, and
+`run.py:3602` records that it runs against FIXED evidence (`fixtures/golden_fixtures.json`) — so
+it is nine candidates of model calls with no retrieval, not a full pipeline run.
+
+## 8.3 What is promising, ranked, with what each one needs
+
+| Rank | Item | Effect | Needs |
+|---|---|---|---|
+| 1 | E-011 roster breadth, E-012 key rotation | A1: 0% → serving | money or a login; the code is ours |
+| 2 | **E-001 golden set with resolution** | unblocks E-040..E-045 | **nothing** |
+| 3 | Merge six verdict calls into one (E-103, founder-approved) | A6 and A3: 2.8x tokens, 4.679x calls | a brain only to ship |
+| 4 | E-023 provider prompt caching | same waste, stacks with rank 3 | nothing new |
+| 5 | Retrieval as the quality ceiling (E-042, E-043) | A7 and A5 | blocked on E-001 |
+| 6 | E-102 re-measure rationale infidelity | the product itself | a live brain |
+
+Rank 5 deserves its own sentence, because it is the finding most likely to change what we build.
+**73.3% of all 14,006 checks come back `unverifiable`** and only 4.7% come back `refuted`. The
+engine is not being wrong; it is failing to find evidence. Every hour spent on a better verdict
+model is aimed at 22.0% of the traffic.
+
+Rank 6 is the commercially important one. E15 measured **48.9% rationale infidelity** (171/350,
+CI 43.7–54.1): nearly half the moat's ruled checks write a rationale their own cited passage does
+not entail. E-104 says the audit trail is the asset. A 48.9% infidelity rate is a defect in the
+asset, and it also confounds every moat-agreement number we quote — which is exactly why E-101
+needed its second, construction-labelled angle.
+
+## 8.4 Research still outstanding
+
+1. **Packaging, pricing and defensibility for a one-operator research product.** Never launched —
+   it hit the agent fleet cap. E-104 turned this into the important question: if the corpus and
+   the standard of proof are the asset, what is the sellable object and what does it cost?
+2. **Do the cheap hosted graders beat our own moat on our own corpus?** Bedrock contextual
+   grounding at $0.10/1k and Google Check Grounding at $0.00075/1k both score a claim against
+   supplied passages. Running them over E-101's frozen pair set re-tests E-101's question with
+   models E-101 could not run, as a one-off spend of a few dollars. Cost estimate goes in this
+   file before it runs (wish 14).
+3. **Granite Guardian 3.3 (Apache 2.0, 76.5) on our pairs.** The laptop cannot host it — Python
+   3.14.6 x86_64 has no torch wheel, so anything local must sit behind the Ollama daemon, which is
+   down. A hosted endpoint answers it without buying hardware.
+4. **Who buys a claim-level verdict with consequences attached** — pharma review, advertising
+   substantiation, ESG. E-104 found no per-verdict product priced for a business carrying
+   liability. That is either an opening or the reason nobody bothered, and the two look identical
+   from outside.
+
+## 8.5 Design constraints on the approved merge, recorded before it is built
+
+The founder approved merging the six check calls into one at the corrected 2.8x. Five constraints
+came out of the peer review of that plan and must survive into the implementation:
+
+1. **Parse the merged reply per check.** One bad parse must not defer a whole candidate onto a
+   drain that is already stuck. A per-check parse failure degrades that check, not the vet.
+2. **Kill-fast must still short-circuit.** Merging removes the ability to stop after check 2. At
+   4.7% `refuted` the loss is small, but it is a loss and it must be measured, not assumed away.
+3. **Ship behind the mock gate first** (`tests/test_golden_set.py`, no brain required), and land
+   only after the live nine-item run clears.
+4. **The merged prompt must not exceed the model's context on the long tail.** Candidate JSON has
+   a median of 4,220 chars and a mean of 19,756 — the mean is 4.7x the median, so the tail is real.
+5. **Provider-agnostic.** `moat_primary` is `[minimax, claude_cli]`; the merge must not assume one
+   provider's JSON behaviour, or it becomes a reason the roster cannot widen, which is rank 1.
+
+## 8.6 Corrections made today, recorded so they are not re-made
+
+- **"Up to 6x" on the merge was wrong.** Measured 2.8x on tokens, 4.679x on calls. Corrected to
+  the founder unprompted; he shipped it anyway.
+- **"No brain is available" was wrong**, and it was the founder's own belief. The laptop's
+  `claude -p` answers. The Fly box is the blind one. The distinction decides where work can run.
+- **A padding bug I reported in Stage B did not exist.** `e101_stageB_fly.py:183` already sets
+  `padding_side = "left"`. One angle, carefully done, and wrong; the second angle took four
+  minutes and would have prevented a false claim reaching the founder.
+- **`cmd | tail` reports tail's exit status.** It bit this session again on a brain probe that
+  printed nothing and reported `exit=0`. Capture the status before any pipe.

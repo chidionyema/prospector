@@ -77,16 +77,55 @@ echo "==> worktree:      $TARGET"
 echo "==> main checkout: $MAIN_CHECKOUT"
 
 # ---------------------------------------------------------------- 1. POPDD signing key
+# PRESENT IS NOT ENOUGH — IT MUST BE THE SAME KEY. This block used to stop at
+# `[ -f "$TARGET/$KEY_REL" ] && echo "already present"`, which accepts a key the estate has
+# never seen. Measured 2026-08-20 in the wt-redesign worktree: it held a key generated at
+# 14:37 that afternoon, so setup reported "[key] already present" and every commit there
+# failed with `Chain valid: False` / "signature invalid at 0" AFTER running the whole
+# suite — 6772 tests passed and the gate still refused. The chain's head is
+# .lux/receipts/2026-06-17.jsonl, which IS TRACKED and was signed by the main checkout's
+# key, so a worktree with any other key can never verify receipt 0 and no diff can fix it.
+# The failure names the receipt chain, which reads as a POPDD bug rather than a wrong key.
 KEY_REL=".lux/keys/agent.pem"
-if [ -f "$TARGET/$KEY_REL" ]; then
-  echo "[key]  already present"
-elif [ -f "$MAIN_CHECKOUT/$KEY_REL" ]; then
+if [ ! -f "$MAIN_CHECKOUT/$KEY_REL" ]; then
+  echo "[key]  WARNING: no $KEY_REL in the main checkout; the POPDD gate will fail"
+elif [ -f "$TARGET/$KEY_REL" ] && cmp -s "$MAIN_CHECKOUT/$KEY_REL" "$TARGET/$KEY_REL"; then
+  echo "[key]  already present and identical to the main checkout"
+else
+  # Keep the odd one rather than deleting it: it signed whatever receipts this tree already
+  # wrote, and a key is the one file here that cannot be regenerated from git.
+  if [ -f "$TARGET/$KEY_REL" ]; then
+    mv "$TARGET/$KEY_REL" "$TARGET/$KEY_REL.does-not-match-main.bak"
+    echo "[key]  the key here was NOT the main checkout's — moved aside as"
+    echo "[key]  $KEY_REL.does-not-match-main.bak. Every commit in this tree was failing"
+    echo "[key]  at receipt 0 of the tracked chain. Replacing it with the main checkout's."
+  fi
   mkdir -p "$TARGET/.lux/keys"
   cp "$MAIN_CHECKOUT/$KEY_REL" "$TARGET/$KEY_REL"
   chmod 600 "$TARGET/$KEY_REL"
   echo "[key]  copied from main checkout (it is untracked, so worktrees never get it)"
-else
-  echo "[key]  WARNING: no $KEY_REL in the main checkout either; the POPDD gate will fail"
+fi
+
+# A daily receipt file signed by a key this tree no longer holds wedges the gate the same way,
+# and it is not covered by the check above: the key can be correct now and the file still hold
+# receipts written under the old one. Move it aside so a fresh chain starts under the key that
+# is actually here. It is gitignored scratch, so nothing tracked is lost.
+if [ -f "$TARGET/$KEY_REL" ] && [ -d "$TARGET/.lux/receipts" ]; then
+  if ! ( cd "$TARGET" && .venv/bin/python -c "
+import sys, pathlib
+sys.path.insert(0, '.')
+from popdd_agent import PopddAgent
+sys.exit(0 if PopddAgent.at_path(pathlib.Path('.').resolve()).verify_chain()['valid'] else 1)
+" >/dev/null 2>&1 ); then
+    today="$(date -u +%Y-%m-%d)"
+    if [ -f "$TARGET/.lux/receipts/$today.jsonl" ]; then
+      mv "$TARGET/.lux/receipts/$today.jsonl" "$TARGET/.lux/receipts/$today.jsonl.unverifiable.bak"
+      echo "[key]  today's receipt chain did not verify — moved aside; a fresh one starts now"
+    else
+      echo "[key]  WARNING: the receipt chain does not verify and it is not today's file."
+      echo "[key]           Every commit in this tree will be BLOCKED at 'Chain valid: False'."
+    fi
+  fi
 fi
 
 # ------------------------------------------------------------------- 2. node_modules
