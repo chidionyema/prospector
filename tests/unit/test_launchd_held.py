@@ -172,3 +172,72 @@ def test_the_shipped_excuse_file_parses_and_every_entry_gives_a_reason():
     assert excused, "the shipped file excuses nothing, so it is not being exercised"
     for label, why in excused.items():
         assert len(why) > 30, f"{label} has a reason too short to check: {why!r}"
+
+
+# --------------------------------------------- a receipt no capability grades is not a receipt
+
+LAUNCHD = REPO / "ops" / "launchd"
+CAPABILITIES = Path.home() / ".hermes" / "capabilities.json"
+RECEIPT_WRAPPER = Path.home() / ".hermes" / "scripts" / "launchd_receipt.py"
+
+
+def _receipt_wrapped_jobs() -> dict[str, str]:
+    """label -> receipt key, for every declared launchd job wrapped in launchd_receipt.py.
+
+    The key is asked of the wrapper itself rather than re-derived here. A guard that
+    reimplements the rule it is guarding drifts from it, and this estate has already paid for
+    that once: an AST check written to replace a regex sweep was pinned to one expression and
+    left twenty offenders on disk reading green.
+    """
+    spec = importlib.util.spec_from_file_location("launchd_receipt_under_test", RECEIPT_WRAPPER)
+    wrapper = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(wrapper)
+
+    jobs: dict[str, str] = {}
+    for path in sorted(LAUNCHD.glob("*.json")):
+        try:
+            argv = json.loads(path.read_text(encoding="utf-8")).get("ProgramArguments") or []
+        except ValueError:
+            continue
+        argv = [str(a) for a in argv]
+        if not any(a.endswith("launchd_receipt.py") for a in argv):
+            continue
+        if "--script" in argv:
+            jobs[path.stem] = argv[argv.index("--script") + 1]
+        elif "--" in argv:
+            jobs[path.stem] = wrapper._default_script_key(argv[argv.index("--") + 1:])
+    return jobs
+
+
+@pytest.mark.skipif(not (CAPABILITIES.exists() and RECEIPT_WRAPPER.exists()),
+                    reason="both files live in another repository and are not on a CI runner")
+def test_every_receipt_wrapped_launchd_job_has_a_capability_that_grades_it():
+    """Writing an exit code down is not the same as anyone reading it.
+
+    com.prospector.process-audit exited 2 on all seventeen of its runs -- its plist pointed at
+    a script inside the frozen standby checkout, where that file has never existed -- and every
+    one of those exit codes was already in the Hermes ledger. No capability named the key, so
+    nothing turned them into a colour and nobody looked. This is the join that would have made
+    hour one loud.
+
+    A job excused in ops/config/launchd_not_held.json is skipped: it is off by design, so a
+    capability grading it would sit permanently DARK and teach the operator to ignore DARK.
+    The reverse case -- an excuse that has gone stale because launchd IS holding the job again
+    -- is not caught here; `launchd_plists.py --assert-held` prints it as a NOTE on the hourly
+    run, because failing on it would turn a temporary manual load into a red estate.
+    """
+    graded = {
+        (c.get("observable") or {}).get("script")
+        for c in json.loads(CAPABILITIES.read_text(encoding="utf-8"))["capabilities"]
+    }
+    excused, _ = _module().load_not_held()
+    jobs = {label: key for label, key in _receipt_wrapped_jobs().items() if label not in excused}
+    assert jobs, f"no declaration in {LAUNCHD} is receipt-wrapped and expected to run; vacuous"
+
+    ungraded = sorted(f"{label} -> {key}" for label, key in jobs.items() if key not in graded)
+    assert not ungraded, (
+        "these launchd jobs sign a receipt on every run and no capability grades it, so they "
+        f"are instrumented and read by nobody: {ungraded}. Either add a capability whose "
+        "observable.script is the key, or stop wrapping the job."
+    )
