@@ -1206,6 +1206,7 @@ Append here. One line per shipped item, with the receipt.
 | 2026-08-20 | §11 | the requirements register: 38 functional, 14 non-functional, each with its drill and deliverable | 3 proven, 11 built-never-run, 34 not started, 4 blocked |
 | 2026-08-20 | F-08a | new requirement: a copy is not a backup until it is proven complete against its SOURCE | `~/.prospector/standby/prospector.jsonl` measured at 25,296,896 bytes, 6.2% of the 407,981,598-byte source, and every truncating sync logged as a success. Register now 39 functional + 14 non-functional = 53; 3 / 11 / 35 / 4 |
 | 2026-08-20 | §12 | how much of the estate can sensibly move to k8s, plane by plane: 2 whole, 5 half, 3 not at all | adapter read at `deploy/targets/k8s.sh`; `docker-desktop` live in `kubectl config get-contexts` |
+| 2026-08-20 | F-08a | first completeness measurement taken against a real copy: the R2 ledger object is **99.88% of the live source**, and the shortfall is append lag, not truncation | gzip trailer ISIZE 413,570,301 B vs `wc -c` 414,063,171 B on `prospector-engine`; ledger measured appending at 437 B/s over 120s, so a 492,870 B gap is ~19 min of appends against a ~16 min old snapshot |
 | 2026-08-20 | §13 | the final tooling named — 7 decided, 4 proposed, 4 things deliberately not adopted | `command -v` sweep on this laptop: helm, sops, restic, rclone, ansible, kind, k3d absent |
 | 2026-08-20 | §10.4 | the k8s adapter question answered: nothing calls it, it has never run, and a free local cluster exists | `kubectl config get-contexts` → `docker-desktop` |
 | 2026-08-20 | P5 / #355 | the engine can page the founder from a container — in-repo Telegram sender, no `$HOME` dependency | commit `47212af5`; 18 tests, 5 mutations caught |
@@ -1542,6 +1543,26 @@ most valuable thing you can clear:
    this laptop: `docker-desktop` k8s, which costs nothing and needs no account.
 3. **RPO and RTO** (N-03) are unset, and every backup and restore deliverable is graded against
    numbers that do not exist yet.
+
+**The first drill instrument exists, and it is nearly free.** F-08a asks whether a copy is complete
+against its SOURCE. For any gzipped copy that is one ranged GET of four bytes: the last four bytes
+of a gzip stream are ISIZE, the uncompressed length as a little-endian uint32, so the copy's true
+size is readable without downloading or decompressing it. Against the live source size from
+`fly ssh console -a prospector-engine -C "wc -c /data/store/prospector.jsonl"` that is two angles
+that fail differently — one number written by gzip on the Fly box at compress time, one read from
+the filesystem now.
+
+Run on 2026-08-20 against `prospector-backup/ledger/prospector-2026-08-20.jsonl.gz`: ISIZE
+413,570,301 B against a live source of 414,063,171 B, so the off-Fly copy holds **99.88%** of the
+money file. The 492,870 B shortfall is append lag — the ledger measured appending at 437 B/s over a
+120s window, which puts 492,870 B at about nineteen minutes of writes against a snapshot roughly
+sixteen minutes old. A truncation does not look like this; the broken standby copy the same day was
+6.2% of its source.
+
+This does not turn F-08a green. The requirement is that a short copy is REFUSED, and nothing refuses
+one yet; a measurement that has to be run by hand is an instrument, not a drill. What it does settle
+is that the money file has a real off-Fly copy today, written under dated keys by
+`scripts/backup_store.py:450` so a truncation cannot overwrite the good ones.
 
 ### 11.5 The rule that keeps this register honest
 
