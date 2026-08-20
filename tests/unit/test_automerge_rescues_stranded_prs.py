@@ -32,10 +32,13 @@ WORKFLOW = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "auto
 # only thing that distinguishes the two calls.
 SWEEP_ANCHOR = "github.rest.pulls.list,"
 
-# Where the sweep STOPS. Slicing to end-of-file instead let the post-merge `dispatching CI on
-# main` call satisfy "the sweep dispatches CI": deleting the sweep's own dispatch left all
-# nine tests green, which is precisely the silent-rescue bug they exist to catch.
-SWEEP_END = "dispatching CI on main"
+# The post-merge deploy dispatch, which must NOT be inside the sweep slice: while it sat below
+# the sweep, slicing to end-of-file let `dispatching CI on main` satisfy "the sweep dispatches
+# CI", and deleting the sweep's own dispatch left all nine tests green -- precisely the
+# silent-rescue bug they exist to catch. Since 2026-08-19 that block runs BEFORE the sweep
+# (tests/unit/test_automerge_deploys_before_anything_optional.py holds the order), so the sweep
+# is everything from its anchor to the end, and the fixture asserts the block did not move back.
+MAIN_DISPATCH = "dispatching CI on main"
 
 
 @pytest.fixture(scope="module")
@@ -57,9 +60,14 @@ def script(source: str) -> str:
 
 @pytest.fixture(scope="module")
 def sweep(script: str) -> str:
-    """Just the post-merge sweep block, bounded at both ends."""
+    """Just the post-merge sweep block."""
     start = script.index(SWEEP_ANCHOR)
-    return script[start : script.index(SWEEP_END, start)]
+    block = script[start:]
+    assert MAIN_DISPATCH not in block, (
+        "the post-merge deploy dispatch is inside the sweep slice again, so every assertion "
+        "below can be satisfied by code that is not the sweep's"
+    )
+    return block
 
 
 def test_the_workflow_is_valid_yaml(source: str) -> None:
