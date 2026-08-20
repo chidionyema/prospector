@@ -9,7 +9,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { logConsoleEvent } from '@/lib/oplog';
-import { opsRead } from '@/lib/ops';
 import { clearFailures, clientKey, isLocked, recordFailure } from '@/lib/ratelimit';
 
 import {
@@ -23,33 +22,6 @@ import {
   sessionValid,
   setSessionCookie,
 } from '@/lib/auth';
-
-/**
- * Every console read spawns `python -m prospector.ops.console_api`, so the first one after a
- * deploy pays for a cold interpreter AND a cold page cache on the volume. Measured on
- * prospector-engine, 2026-08-19: the `status` view took 3.73s cold, then 0.98s and 0.94s warm;
- * a bare `import prospector.ops.console_api` is 0.32s and an empty interpreter 0.02s, so the
- * cold cost is the filesystem, not our imports. Founder the same day: the console is "slow to
- * load on first login".
- *
- * So warm it during the redirect the browser is already doing. This runs AFTER the cookie is
- * written and is never awaited: sign-in must not get slower to make the next page faster, and a
- * gateway that is down must not stop anyone signing in to find out why.
- *
- * Rate-limited to one spawn a minute. A page-refresh loop on the login form would otherwise be
- * a way to spawn interpreters on the engine, and this route is reachable before any session
- * exists.
- */
-const PREWARM_EVERY_MS = 60_000;
-let lastPrewarm = 0;
-
-function prewarmGateway(now: number = Date.now()): void {
-  if (now - lastPrewarm < PREWARM_EVERY_MS) return;
-  lastPrewarm = now;
-  void opsRead('status', {}).catch(() => {
-    // A failed prewarm is not an error anyone needs to see. The page's own read will report it.
-  });
-}
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'no-store');
@@ -111,6 +83,5 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   // is a real fault. Neither reading is available without both lines.
   logConsoleEvent({ kind: 'signed_in', who, status: 200 });
   setSessionCookie(res, mintSession(), isSecureRequest(req));
-  prewarmGateway();
   return res.status(200).json({ ok: true, signed_in: true });
 }
