@@ -56,6 +56,7 @@ SCOPES: dict[str, tuple[str, ...]] = {
     "issues.addLabels": ("issues:write", "pull-requests:write"),
     "issues.create": ("issues:write",),
     "issues.createComment": ("issues:write", "pull-requests:write"),
+    "issues.listComments": ("issues:read", "pull-requests:read"),
     "issues.listForRepo": ("issues:read",),
     "issues.listLabelsOnIssue": ("issues:read", "pull-requests:read"),
     "issues.update": ("issues:write",),

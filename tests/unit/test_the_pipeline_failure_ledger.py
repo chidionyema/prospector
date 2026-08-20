@@ -82,11 +82,16 @@ LEDGER: tuple[Mode, ...] = (
         None,
     ),
     Mode(
-        "one-merge-strands-every-other-pr",
-        "A merge to main leaves every open PR behind main, and none of them can merge until a "
-        "person updates each branch by hand.",
-        (".github/workflows/automerge.yml",),
-        "tests/unit/test_automerge_rescues_stranded_prs.py",
+        "a-workflow-pushes-to-an-open-prs-branch",
+        "A workflow calls pulls.updateBranch, which pushes `Merge branch 'main' into <branch>` "
+        "onto an open pull request whenever main moves. GitHub closes a pull request only when "
+        "its own head COMMIT is reachable from main, so the moved head drops out of whatever "
+        "branch was cut to close it -- and a batch cut to clear a backlog triggers this with its "
+        "own merge, on every pull request at once. Measured 2026-08-20: fifteen pull requests, "
+        "three failed batches, thirty hours, and the call lived in two workflows written weeks "
+        "apart by different sessions.",
+        (".github/workflows/automerge.yml", ".github/workflows/pr-keeper.yml"),
+        "tests/unit/test_nothing_pushes_to_a_pull_request_branch.py",
         None,
         None,
     ),
@@ -146,12 +151,20 @@ LEDGER: tuple[Mode, ...] = (
         None,
     ),
     Mode(
-        "a-red-main-blocks-every-pull-request",
-        "ci.yml's changes gate refuses to build any PR while main is red, so a red main stops the "
-        "whole repository. The one escape is the fixes-main label, and PR labels in the event "
-        "payload are frozen at dispatch, so the label must exist before the run starts.",
-        (".github/workflows/ci.yml",),
-        "tests/unit/test_no_pr_builds_while_main_is_red.py",
+        "a-merge-lands-on-main-with-no-green-run-at-its-head",
+        "Code reaches main that no CI run ever graded -- a direct push, a merge whose run was "
+        "cancelled, or a merge made on the strength of a run at an older sha. Main goes red, and "
+        "a red main used to stop the whole repository.\n\n"
+        "This replaced `a-red-main-blocks-every-pull-request` on 2026-08-20. That mode described "
+        "ci.yml's gate, which refused to build any pull request while main's CI was queued or "
+        "last red, and recorded the refusal as a FAILED check. It could not do what it claimed: "
+        "it is a check, not a reservation, so it could not hand main a runner -- it only failed "
+        "every other branch while main waited for one. Measured that day: 12 of 12 runners busy, "
+        "main's run 32327977452 queued since 03:22, and PR #517 failed in 18 seconds having "
+        "compiled nothing. The gate was deleted. main-admission-guard is what protects main now, "
+        "and it acts on main itself rather than on every other branch.",
+        (".github/workflows/main-admission-guard.yml",),
+        "tests/unit/test_main_admission_guard.py",
         None,
         None,
     ),

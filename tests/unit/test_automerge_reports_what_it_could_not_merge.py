@@ -94,13 +94,28 @@ def test_a_pull_request_behind_main_is_not_merged(source):
     assert behind_at < merge_at, "the staleness check must run before the merge, not after"
 
 
-def test_an_updated_branch_gets_a_ci_run_of_its_own(source):
-    """updateBranch pushes with GITHUB_TOKEN, and a GITHUB_TOKEN push starts no workflow run.
-    Without the dispatch the PR is updated and then waits forever for a run that cannot exist."""
+def test_a_pull_request_behind_main_is_told_rather_than_pushed_to(source):
+    """This workflow used to update the branch itself. That push moved the pull request's head,
+    which dropped it out of whatever branch had been cut to close it -- three batches failed
+    that way on 2026-08-20 before anyone saw it.
+
+    The refusal has to stay VISIBLE, though. A silent skip is how a green pull request sits
+    open for hours with nothing red anywhere: it must land in the stuck report AND say so on the
+    pull request, so the author knows the next move is theirs.
+    """
     code = _strip_comments(source)
-    assert "updateBranch(" in code, "a PR behind main is never brought up to date"
-    assert re.search(r"createWorkflowDispatch\(\s*\{owner, repo, workflow_id: 'ci\.yml', ref: pr\.head\.ref\}",
-                     code), "the updated branch gets no CI run, so the merge can never be retried"
+    assert "updateBranch" not in code, (
+        "automerge is pushing to an open pull request's branch again. See "
+        "tests/unit/test_nothing_pushes_to_a_pull_request_branch.py for what that costs."
+    )
+    assert re.search(r"stuck\.push\(.*behind main", code), (
+        "a pull request behind main is skipped without reaching the stuck report, so it is "
+        "invisible: green, open, and waiting for a person who does not know to act"
+    )
+    assert re.search(r"await say\(pr\.number", code), (
+        "nothing is said ON the pull request when it is refused for being behind main. Founder "
+        "directive 2026-08-20: the whole loop must not happen in the dark."
+    )
 
 
 def test_the_job_accepts_the_runs_it_dispatches_itself(source):
@@ -118,9 +133,21 @@ def test_only_this_workflows_own_dispatch_can_merge(source):
         "a hand-dispatched CI run on a PR branch would merge that PR")
 
 
-def test_the_branch_update_asserts_the_head_it_measured(source):
-    """The staleness check reads pr.head.sha. If someone pushes between that read and the
-    update, the update must fail rather than land on a head this run never saw -- the same
-    guarantee `sha` gives the merge call."""
+def test_the_merge_asserts_the_head_it_measured(source):
+    """The green verdict is about ONE commit. If someone pushes between the run this job is
+    reacting to and the merge call, the merge must fail rather than land a head no run graded.
+
+    This used to guard `updateBranch`'s `expected_head_sha` as well. That call is gone; the
+    merge's own `sha` is the same guarantee and is the one that can still land code.
+
+    The value has to be the sha the CI RUN graded -- `workflow_run.head_sha` -- not a freshly
+    read `pr.head.sha`. Re-reading the pull request would return whatever was pushed a second
+    ago, which is exactly the commit no run has covered.
+    """
     code = _strip_comments(source)
-    assert "expected_head_sha" in code, "updateBranch is called without a head assertion"
+    assert re.search(r"const sha = context\.payload\.workflow_run\.head_sha", code), (
+        "the merge no longer pins the sha the CI run graded")
+    assert re.search(r"pulls\.merge\(\s*\{[^}]*\bsha\b", code), (
+        "pulls.merge is called without pinning the head this run measured, so a push landing "
+        "mid-job would be merged on the strength of a verdict that never covered it"
+    )

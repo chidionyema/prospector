@@ -71,21 +71,34 @@ def test_every_api_namespace_the_script_uses_is_declared(doc: dict, script: str)
     )
 
 
-def test_the_deploy_dispatch_runs_before_the_best_effort_sweep(script: str) -> None:
-    dispatch = script.index("dispatching CI on main")
-    sweep = script.index("const sweepMax")
-    assert dispatch < sweep, (
-        "the deploy dispatch is below the stranded-PR sweep again. The sweep is best effort; "
-        "the dispatch is the only thing that puts merged code into production. A throw in the "
-        "sweep then skips a deploy for code that has already merged."
-    )
+def test_nothing_optional_runs_between_the_merge_and_the_deploy_dispatch(script: str) -> None:
+    """The ordering rule, stated as what it actually protects.
 
+    The original defect was a best-effort stranded-PR sweep sitting ABOVE the dispatch: any
+    throw in it skipped the deploy for code that had already merged. The sweep was deleted on
+    2026-08-20 (it worked by pushing to open PR branches, which is what stopped three batches
+    from closing anything -- see tests/unit/test_nothing_pushes_to_a_pull_request_branch.py).
 
-def test_no_deploy_is_skipped_by_an_early_return(script: str) -> None:
-    """`if (toDeploy.size === 0) ... return` was fine while the dispatch was last. Above the
-    sweep it would skip the sweep on every merge that needs no deploy, which is most of them."""
-    tail = script[script.index("dispatching CI on main"):script.index("const sweepMax")]
-    assert "return" not in tail, (
-        "the dispatch block returns early. It now runs before the sweep, so a return here "
-        "silently disables the stranded-PR rescue."
+    So the assertion is no longer "dispatch before sweep". It is the rule that produced it:
+    once a merge has landed, NOTHING may run before the dispatch that ships it. Any code
+    inserted between them can throw, and merged code then never reaches production with nothing
+    red to say so -- four merges on 2026-08-19 (#451 #453 #459 #462) left production nine
+    commits behind main exactly that way.
+    """
+    merged_guard = script.index("if (!merged) return")
+    # Cut at the START of the dispatch's own line. Slicing at the marker itself leaves the
+    # first half of `core.info('dispatching CI on main')` in the region and reports the
+    # dispatch as the thing that was inserted before the dispatch.
+    dispatch = script.rindex("\n", 0, script.index("dispatching CI on main"))
+    between = script[merged_guard + len("if (!merged) return") : dispatch]
+    code = [
+        line
+        for line in between.splitlines()
+        if line.strip() and not line.lstrip().startswith("//")
+    ]
+    assert not code, (
+        f"code was inserted between the merge guard and the deploy dispatch: {code}. "
+        f"Anything here can throw, and a throw here skips the deploy for code that has ALREADY "
+        f"merged -- green everywhere, production behind main, nothing to say so. Put it after "
+        f"the dispatch."
     )
