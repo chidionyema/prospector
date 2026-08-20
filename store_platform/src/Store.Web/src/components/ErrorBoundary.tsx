@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui';
-import { correlated } from '@/lib/api/correlation';
+import { reportClientError } from '@/lib/api/client';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -35,23 +35,16 @@ interface ErrorBoundaryState {
  * cancelled by the navigation that follows it.
  */
 function report(error: Error, info: React.ErrorInfo): void {
-  try {
-    void fetch('/api/client-log', {
-      method: 'POST',
-      headers: correlated({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({
-        where: 'ErrorBoundary',
-        message: String(error?.message || error),
-        stack: String(error?.stack || ''),
-        componentStack: String(info?.componentStack || ''),
-      }),
-      keepalive: true,
-    }).catch(() => {
-      /* the report is best effort; the console.error above is the copy that always exists */
-    });
-  } catch {
-    /* no fetch, no storage, no network: nothing here may reach the render below */
-  }
+  // The fetch itself lives in lib/api/client.ts. UI-STANDARDS §4 is "components never call fetch
+  // directly", eslint enforces it, and an error boundary is a component like any other -- the
+  // rule does not get an exception because the caller is unhappy. `reportClientError` swallows
+  // every failure for us, which is what this call site needs anyway.
+  reportClientError({
+    where: 'ErrorBoundary',
+    message: String(error?.message || error),
+    stack: String(error?.stack || ''),
+    componentStack: String(info?.componentStack || ''),
+  });
 }
 
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {

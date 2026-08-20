@@ -3677,6 +3677,14 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     "scripts/test_impacted.py": "picks the tests a local edit can affect; a developer's loop",
     "scripts/verify_engine_change.sh": "the pre-commit proof that an engine change is safe",
     "tools/commit_mine.sh": "commits exactly the named paths; a developer's git helper",
+    "scripts/backup_agent_estate.py": "archives ~/.claude on this developer laptop. Production "
+                                      "runs from a detached mirror of main on Fly, where that "
+                                      "directory does not exist, so the button would back up "
+                                      "nothing. Its schedule is a launchd job on the Mac",
+    "scripts/founder_tasks.py": "prints and syncs the founder's own task list, which lives in "
+                                "GitHub issues labelled founder-task. It is read by the session "
+                                "state probe before an agent starts, not by an operator running "
+                                "the platform, and the console already links the issue list",
     "tools/backfill_human_register.py": "a one-off repair that back-filled the human register after a schema change; kept for the record, not for re-running",
     "tools/register_repair_probe.py": "reports rows the human register cannot resolve; a developer's diagnostic, and it names local paths an operator has no access to",
     "scripts/claudeignore_sync.py": "compiles .claudeignore into the Read() deny rules in ~/.claude/settings.json; it configures an agent on a developer's machine, and the engine has no ~/.claude to write to",

@@ -151,13 +151,31 @@ def test_it_runs_where_this_account_can_actually_start_a_runner(doc):
 
 
 def test_its_permissions_are_the_narrowest_that_still_work(doc):
-    """`actions: write` is the power to destroy any job in the repository. Nothing else is needed.
+    """`actions: write` is the power to destroy any job in the repository. Nothing else is needed
+    unless the workflow says out loud what it did.
 
     An explicit permissions block is a whitelist, so this also proves the workflow cannot write
-    contents, issues or packages even if a future edit tries to.
+    contents or packages even if a future edit tries to.
+
+    `pull-requests: write` is allowed on ONE condition, checked below rather than waved through:
+    the script must actually post a comment. Founder, 2026-08-20, on a pipeline that cancelled,
+    reverted and blocked without ever saying why -- "the whole loop hapens in the dark". A robot
+    that destroys a running job and leaves no note on the pull request is that darkness, and the
+    scope that lifts it is this one. Grant it only to a workflow that uses it: an unused write
+    scope is power with no purpose, which is exactly what the rest of this test refuses.
     """
     perms = doc["permissions"]
     assert perms.get("actions") == "write", "it cannot cancel without actions: write"
     assert perms.get("contents") == "read", "it never needs to write contents"
-    extra = {k: v for k, v in perms.items() if k not in ("actions", "contents") and v == "write"}
+
+    allowed = {"actions", "contents"}
+    script = doc["jobs"]["cancel"]["steps"][-1]["with"]["script"]
+    if "issues.createComment" in script:
+        allowed.add("pull-requests")
+    else:
+        assert perms.get("pull-requests") != "write", (
+            "pull-requests: write is granted but the script no longer comments. Drop the scope, "
+            "or put the explanation back -- those are the only two honest states.")
+
+    extra = {k: v for k, v in perms.items() if k not in allowed and v == "write"}
     assert not extra, f"unnecessary write scopes: {extra}"

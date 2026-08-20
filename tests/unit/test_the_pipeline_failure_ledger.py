@@ -56,7 +56,7 @@ LEDGER: tuple[Mode, ...] = (
         "A pull request is merged while its own ci-ok is failing. Nothing in GitHub refuses it: "
         "both branch-protection endpoints answer 403 on this plan, so ci-ok is a required check "
         "in name only. Six PRs went in this way on 2026-08-19 and main was red for over an hour.",
-        (".github/workflows/automerge.yml",),
+        (".github/workflows/main-admission-guard.yml",),
         None,
         475,
         "Only a person or GitHub Pro can refuse this. rule-guard.py fences a typed `gh pr merge`; "
@@ -66,18 +66,27 @@ LEDGER: tuple[Mode, ...] = (
     Mode(
         "merge-of-a-branch-behind-main",
         "A PR that is green on its own merge ref is merged while behind main, and the combination "
-        "breaks main. The PR was never tested against what main actually contains.",
-        (".github/workflows/automerge.yml",),
-        "tests/unit/test_automerge_rescues_a_stale_pr.py",
+        "breaks main. The PR was never tested against what main actually contains. automerge.yml "
+        "used to close this by calling pulls.updateBranch, which is the very call that jammed the "
+        "board for thirty hours -- see a-workflow-pushes-to-an-open-prs-branch below. Since "
+        "2026-08-20 the branch is the AUTHOR's to update: pr-keeper.yml counts how far behind it "
+        "is, labels it needs-rebase and comments the command to run, and pushes nothing.",
+        (".github/workflows/pr-keeper.yml",),
+        "tests/unit/test_pr_keeper.py",
         None,
         None,
     ),
     Mode(
         "merge-robot-finishes-green-having-merged-nothing",
-        "The merge step swallows its own failure with `|| true` and reports success. A workflow "
-        "that silently does nothing is worse than one that is absent, because it is trusted.",
-        (".github/workflows/automerge.yml",),
-        "tests/unit/test_automerge_reports_what_it_could_not_merge.py",
+        "A robot with power over main swallows its own failure and reports success. A workflow "
+        "that silently does nothing is worse than one that is absent, because it is trusted. The "
+        "merge robot itself is gone -- automerge.yml was deleted on 2026-08-20 and merging is the "
+        "author's job -- so the robot this now describes is main-admission-guard.yml, which "
+        "REVERTS. Its proof executes the decide script in node against a stubbed Octokit rather "
+        "than grepping the YAML for keywords, because a guard whose tests pass on a broken guard "
+        "reports a safety it is not providing.",
+        (".github/workflows/main-admission-guard.yml",),
+        "tests/unit/test_main_admission_guard.py",
         None,
         None,
     ),
@@ -90,7 +99,7 @@ LEDGER: tuple[Mode, ...] = (
         "own merge, on every pull request at once. Measured 2026-08-20: fifteen pull requests, "
         "three failed batches, thirty hours, and the call lived in two workflows written weeks "
         "apart by different sessions.",
-        (".github/workflows/automerge.yml", ".github/workflows/pr-keeper.yml"),
+        (".github/workflows/pr-keeper.yml",),
         "tests/unit/test_nothing_pushes_to_a_pull_request_branch.py",
         None,
         None,
@@ -100,7 +109,7 @@ LEDGER: tuple[Mode, ...] = (
         "An unhandled error part way through a github-script step silently skips the rest of the "
         "step. On 2026-08-19 checks.listForRef threw 403 above the CI dispatch, so the merge of "
         "#451 landed on main and main was never graded.",
-        (".github/workflows/automerge.yml",),
+        (".github/workflows/main-admission-guard.yml",),
         "tests/unit/test_a_workflow_step_cannot_hide_its_own_failure.py",
         None,
         None,
@@ -110,7 +119,7 @@ LEDGER: tuple[Mode, ...] = (
         "An explicit `permissions:` block is a whitelist: every scope it does not name is set to "
         "none, and a job-level block replaces the top-level one outright. The call fails with 403 "
         "at run time, not at lint time.",
-        (".github/workflows/automerge.yml", ".github/workflows/e2e-live-smoke.yml"),
+        (".github/workflows/main-admission-guard.yml", ".github/workflows/e2e-live-smoke.yml"),
         "tests/unit/test_a_workflow_permission_block_covers_its_api_calls.py",
         None,
         None,
@@ -183,7 +192,7 @@ LEDGER: tuple[Mode, ...] = (
         "GitHub refuses to build a push made with the default GITHUB_TOKEN: it creates a run with "
         "conclusion action_required and ZERO jobs. It sorts newest, so any tool reading 'the "
         "latest run at this head' reports a green PR as pending, or a red one as unknown.",
-        (".github/workflows/automerge.yml", "scripts/pr_triage.py"),
+        (".github/workflows/main-admission-guard.yml", "scripts/pr_triage.py"),
         "tests/unit/test_pr_triage_reads_the_cause_not_the_colour.py",
         None,
         None,
