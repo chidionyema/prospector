@@ -18,14 +18,9 @@ export const GROUPS: Group[] = [
     // Deploys sits beside Now because "is the thing I merged actually live?" is a
     // right-now question. It was invisible for twelve hours on 2026-08-19 while every
     // other screen read green.
-    // Logs sits here for the same reason. It is read WHILE something is wrong, so it is a
-    // right-now question. Everything in the Data group is read afterwards: Incidents is the
-    // write-up, Audit is who changed what, Backups is what survives. Logs is the system still
-    // talking.
     screens: [
       { href: '/', label: 'Now', what: 'what needs attention right now' },
       { href: '/deploys', label: 'Deploys', what: 'what each deployable is running, and how far behind main' },
-      { href: '/logs', label: 'Logs', what: 'what every service said, in one place' },
     ],
   },
   {

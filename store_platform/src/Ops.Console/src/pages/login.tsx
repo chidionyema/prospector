@@ -11,7 +11,6 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 
 import { Button, Note, Problem } from '@/components/ui';
-import { safeNextPath } from '@/lib/nextPath';
 
 export default function Login() {
   const router = useRouter();
@@ -19,19 +18,16 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [configured, setConfigured] = useState<boolean | null>(null);
-  // Where the gate wanted to send them. A signed-out operator who opened /money lands back
-  // on /money, not on the home page. Sanitised because it arrives from the URL bar.
-  const next = safeNextPath(router.query.next);
 
   useEffect(() => {
     fetch('/api/ops/session', { credentials: 'same-origin' })
       .then((r) => r.json())
       .then((j: { configured?: boolean; signed_in?: boolean }) => {
         setConfigured(Boolean(j.configured));
-        if (j.signed_in) void router.replace(next);
+        if (j.signed_in) void router.replace('/');
       })
       .catch(() => setConfigured(null));
-  }, [router, next]);
+  }, [router]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -46,7 +42,7 @@ export default function Login() {
       });
       const body = (await res.json()) as { ok?: boolean; error?: string };
       if (res.ok && body.ok) {
-        window.location.href = next;
+        window.location.href = '/';
         return;
       }
       setError(body.error || 'That did not work.');
