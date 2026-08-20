@@ -315,6 +315,16 @@ class ModelDefaults:
     # M3 8.1s vs M2.7 29.5s on a generation prompt) and must never lead a chain.
     minimax_m27: str = "MiniMax-M2.7"
     ollama: str = "qwen2.5-coder:7b"
+    # OpenRouter rotates a PRIORITY LIST, not one model — the adapter scores each by
+    # success-rate and latency and promotes the healthy ones. So this field is a list where the
+    # others are strings. `OpenRouterOperator`'s docstring has named `cfg.model_defaults.openrouter`
+    # since it was written; the field itself did not exist until 2026-08-19, which is one half of
+    # why nothing could construct that adapter (the other half was no branch in `_build_operator`).
+    openrouter: list[str] = field(default_factory=lambda: [
+        "google/gemma-4-31b-it:free",
+        "qwen/qwen3-coder:free",
+        "openrouter/free",
+    ])
     # Search provider defaults (the LLM that decomposes queries for the
     # function-calling search providers). One per search provider.
     search: dict[str, str] = field(default_factory=lambda: {
@@ -611,6 +621,17 @@ class Config:
     # => reuse `model` (the CLI already auto-routes utility calls to flash).
     model_fast: str = ""
     model_version_tag: str = ""
+    # PER-COMPONENT MODEL PINS: {component: {provider: model}}. `operator.COMPONENTS` names the
+    # five components and `operator.resolve_model` is the only reader. Blank/absent everywhere
+    # means "every chain uses `model_defaults`", which is the behaviour that predates this field.
+    #
+    # This is what `model:`/`model_fast:` above were supposed to be and never were. Measured
+    # 2026-08-19: the prefix heuristic that decided which provider `model:` applied to reached
+    # one construction site whose prefix list was empty, so both knobs changed nothing, in the
+    # console as much as in the file. A pin here reaches the provider by NAME, so there is no
+    # guess to get wrong, and it is per-chain, so the moat and the cheap tail cannot move each
+    # other. `scripts/model_pin_probe.py` prints what each component actually resolves to.
+    component_models: dict = field(default_factory=dict)
     # Model pin for the `claude_cli` tier. Blank => claude_cli.CHEAPEST_CLAUDE_MODEL, never
     # the CLI's own default (see the constant for the measurement that made this a pin).
     claude_cli_model: str = ""
@@ -972,6 +993,10 @@ def _parse_model_defaults(raw_md: dict | None) -> ModelDefaults:
         minimax_fast=raw_md.get("minimax_fast", ModelDefaults.minimax_fast),
         minimax_m27=raw_md.get("minimax_m27", ModelDefaults.minimax_m27),
         ollama=raw_md.get("ollama", "qwen2.5-coder:7b"),
+        # A list, not a string — OpenRouter rotates a priority list. A single string in the
+        # file is accepted as a one-model list rather than iterated into characters.
+        openrouter=([raw_md["openrouter"]] if isinstance(raw_md.get("openrouter"), str)
+                    else list(raw_md.get("openrouter") or ModelDefaults().openrouter)),
         search=search,
     )
 
@@ -1117,6 +1142,46 @@ def _as_list(raw) -> list[str]:
     return [str(n).strip() for n in raw if str(n).strip()]
 
 
+def _component_models(raw) -> dict:
+    """Normalise the `component_models:` block, refusing a name nothing will ever read.
+
+    A typo'd component or provider name is the exact failure this whole field exists to end:
+    a pin that is written, saved and displayed, and reaches no call. So an unknown name raises
+    here, at load, rather than being dropped silently — the same treatment `_build_operator`
+    gives a removed tier, and for the same reason.
+
+    Blank values are kept as blanks, not errors: a pre-declared empty pin is how a key becomes
+    editable from the ops console at all (`yaml_surgery` edits lines that exist and never adds
+    a key), so the file ships with every slot present and unset.
+    """
+    from . import operator as _op  # local: config must not import operator at module scope
+    if not raw:
+        return {}
+    if not isinstance(raw, dict):
+        raise ValueError(f"component_models must be a mapping, got {type(raw).__name__}")
+    out: dict[str, dict[str, str]] = {}
+    for comp, row in raw.items():
+        if comp not in _op.COMPONENTS:
+            raise ValueError(
+                f"component_models: unknown component {comp!r}. "
+                f"Expected one of {'|'.join(_op.COMPONENTS)}. A component name nothing reads is "
+                f"a pin that silently does nothing, which is the defect this block replaced.")
+        if row is None:
+            out[comp] = {}
+            continue
+        if not isinstance(row, dict):
+            raise ValueError(f"component_models.{comp} must be a mapping of provider -> model")
+        clean: dict[str, str] = {}
+        for prov, model in row.items():
+            if prov not in _op.BUILDABLE_TIERS:
+                raise ValueError(
+                    f"component_models.{comp}: unknown provider {prov!r}. "
+                    f"Expected one of {'|'.join(_op.BUILDABLE_TIERS)}.")
+            clean[prov] = str(model or "").strip()
+        out[comp] = clean
+    return out
+
+
 def load_config(path: str | Path | None = None) -> Config:
     p = Path(path) if path else REPO_ROOT / "config.yaml"
     raw = yaml.safe_load(p.read_text()) if p.exists() else {}
@@ -1125,6 +1190,7 @@ def load_config(path: str | Path | None = None) -> Config:
         model=raw.get("model", ""),
         model_fast=raw.get("model_fast", ""),
         model_version_tag=raw.get("model_version_tag", ""),
+        component_models=_component_models(raw.get("component_models")),
         claude_cli_model=raw.get("claude_cli_model", ""),
         artifact_operator=raw.get("artifact_operator") or ["claude_cli"],
         marketing_operator=raw.get("marketing_operator") or ["minimax", "claude_cli"],

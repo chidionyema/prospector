@@ -2411,6 +2411,7 @@ def _build_search(name: str, cfg, fixtures: dict | None) -> SearchProvider:
         # is visible without being fatal.
         return FixtureProvider(fixtures=fixtures, raise_on_miss=False)
     if name == "claude_cli":
+        from . import operator as _op
         from .claude_cli import (CHEAPEST_CLAUDE_MODEL, ClaudeCliGroundingProvider,
                                  configure_concurrency)
         configure_concurrency(r.claude_concurrency)
@@ -2418,7 +2419,12 @@ def _build_search(name: str, cfg, fixtures: dict | None) -> SearchProvider:
             # Same pin as the verdict tier: unpinned, this inherits the machine's Claude Code
             # default, measured as `opus[1m]` on 2026-08-19. Grounding is the highest-volume
             # claude_cli caller in the estate, so it is where an unpinned default costs most.
-            model=(cfg.claude_cli_model or "").strip() or CHEAPEST_CLAUDE_MODEL,
+            # `grounding` is this chain's component name, so retrieval can run a different
+            # Claude from the one that rules verdicts. Falls through to the estate-wide
+            # claude pin and then to the cheapest tier — never to the CLI's own default.
+            model=(_op.component_pin(cfg, "grounding", "claude_cli")
+                   or (getattr(cfg, "claude_cli_model", "") or "").strip()
+                   or CHEAPEST_CLAUDE_MODEL),
             timeout=max(r.search_timeout, r.claude_min_timeout),
             timeout_max=max(r.search_timeout_max, r.claude_min_timeout),
             escalation=r.search_timeout_escalation, retries=r.search_retries,

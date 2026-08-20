@@ -1768,43 +1768,106 @@ class FallbackOperator(Operator):
 #: function; read this instead. Removed tiers stay absent deliberately — they raise below with
 #: the reason and the date, which is the message an operator needs.
 BUILDABLE_TIERS: tuple[str, ...] = (
-    "claude_cli", "minimax", "minimax_m27", "deepseek", "ollama", "mock",
+    "claude_cli", "minimax", "minimax_m27", "deepseek", "ollama", "openrouter", "mock",
 )
 
 
-def _build_operator(kind: str, cfg, fast: bool) -> Operator:
-    # fast=True selects the lighter model for mechanical calls (query-gen,
-    # prescreen); falls back to the main model when model_fast is unset.
-    #
-    # CRITICAL: cfg.model / cfg.model_fast are provider-specific pins.
-    # They must NOT leak to other providers. Only apply cfg.model/model_fast
-    # when they match the provider being built — determined by the model
-    # name prefix or the config's implicit primary operator.
-    # An empty string is treated as "unset" — the operator's own config
-    # default is then used (cfg.model_defaults.<provider>).
-    cfg_model = getattr(cfg, "model_fast", "") if fast else getattr(cfg, "model", "")
-    # Per-provider config defaults (from cfg.model_defaults).
-    md = getattr(cfg, "model_defaults", None)
+#: The parts of the engine that can carry their own model pin.
+#:
+#: Each name is a chain that ALREADY exists as its own config roster, so this adds no new concept
+#: — it gives each roster a model to go with its provider list. `moat` is the verdict chain
+#: (`operator:`/`moat_primary:`), `noncritical` the cheap tail (`noncritical_operator:`),
+#: `artifact` the prose of the £49 deliverable (`artifact_operator:`), `marketing` the shelf copy
+#: (`marketing_operator:`), `grounding` the retrieval brain.
+#:
+#: WHY THIS EXISTS. Until 2026-08-19 there was one estate-wide `model:` and one `model_fast:`,
+#: and a name-prefix heuristic guessed which provider they were "for". Measured that day: the
+#: guess reached exactly one construction site (`ollama`), where its prefix table was empty, so
+#: the match was always False and the value always `None`. Setting `cfg.model` to a MiniMax name,
+#: a Claude name or an Ollama name changed the model of nothing. Both knobs are editable in the
+#: ops console, so an operator could set them, watch the write succeed, read the history row, and
+#: get no change at all. `tests/unit/test_component_models.py` fails if a pin stops arriving.
+COMPONENTS: tuple[str, ...] = ("moat", "noncritical", "artifact", "marketing", "grounding")
 
-    # Determine if cfg.model/model_fast was set FOR this provider.
-    # Heuristic: a model name starting with the provider name or its aliases
-    # (e.g. "claude-*", "deepseek-*", "minimax-*") belongs to that provider.
-    _PROVIDER_MODEL_PREFIX = {
-        "claude_cli": ("claude-",),
-        "deepseek": ("deepseek-",),
-        "minimax": ("minimax-", "MiniMax-"),
-        "ollama": (),
-    }
-    prefixes = _PROVIDER_MODEL_PREFIX.get(kind, ())
-    model_matches = bool(cfg_model) and any(cfg_model.lower().startswith(p.lower()) for p in prefixes)
-    model = cfg_model if model_matches else None
+
+def component_pin(cfg, component: str | None, kind: str) -> str:
+    """The model `component` pins for provider `kind`, or "" when it pins nothing.
+
+    Reads `config.yaml component_models.<component>.<kind>`. Returns "" for every shape that is
+    not an explicit non-blank string, including the MagicMock configs the unit suite builds —
+    a Mock attribute is truthy, and treating one as a pin would hand every mocked test a model
+    name that looks like `<MagicMock id=...>`.
+    """
+    if not component:
+        return ""
+    table = getattr(cfg, "component_models", None)
+    if not isinstance(table, dict):
+        return ""
+    row = table.get(component)
+    if not isinstance(row, dict):
+        return ""
+    val = row.get(kind)
+    return val.strip() if isinstance(val, str) else ""
+
+
+def resolve_model(cfg, kind: str, *, component: str | None = None,
+                  fast: bool = False) -> str | None:
+    """The single answer to "which model does <component> run on <provider>?".
+
+    Three layers, most specific first:
+
+      1. `component_models.<component>.<kind>` — this chain, this provider. Lets the moat run
+         MiniMax-M3 while the non-critical tail runs something cheaper, without either config
+         being able to move the other.
+      2. `model_defaults.<kind>` (`<kind>_fast` when `fast` and that field is set) — the
+         estate-wide default for that provider. Unchanged; this is where the models live today.
+      3. `None` — the adapter's own default.
+
+    Returns `None`, never "", for "nothing pinned": every adapter already reads `None` as
+    "use your default", and an empty string would be passed through as a model name.
+    """
+    pin = component_pin(cfg, component, kind)
+    if pin:
+        return pin
+    md = getattr(cfg, "model_defaults", None)
+    if md is None:
+        return None
+    if fast:
+        f = getattr(md, f"{kind}_fast", None)
+        if isinstance(f, str) and f.strip():
+            return f.strip()
+    d = getattr(md, kind, None)
+    return d.strip() if isinstance(d, str) and d.strip() else None
+
+
+def _build_operator(kind: str, cfg, fast: bool, component: str | None = None) -> Operator:
+    """Construct one provider tier, with the model `component` pins for it.
+
+    `fast=True` selects the lighter model for mechanical calls (query-gen, prescreen).
+    `component` is one of `COMPONENTS`, or `None` for a caller that is not a named chain —
+    `None` simply skips layer 1 of `resolve_model` and behaves exactly as this function did
+    before per-component pins existed.
+
+    What was here until 2026-08-19: a `_PROVIDER_MODEL_PREFIX` table that guessed whether the
+    estate-wide `cfg.model` "belonged to" the provider being built by matching a name prefix.
+    Measured: the value it computed was used at exactly one construction site (`ollama`), whose
+    prefix tuple was empty, so the match was always False and the model always `None`. The
+    guess never selected a model for anything. `resolve_model` replaces it with an explicit
+    per-component lookup, so which model a chain uses is a line in config.yaml, not an inference
+    from a string.
+    """
+    md = getattr(cfg, "model_defaults", None)
+    model = resolve_model(cfg, kind, component=component, fast=fast)
     if kind == "claude_cli":
         # cfg.model is an API pin for a hosted tier; it must not leak to the claude CLI, whose
         # model names are different. But passing nothing is not free either: the CLI then uses
         # the machine's own default, which was measured as `opus[1m]` on 2026-08-19. So this
         # tier always carries an explicit pin, and it defaults to the cheapest Claude.
         from .claude_cli import CHEAPEST_CLAUDE_MODEL, ClaudeCliOperator
-        return ClaudeCliOperator(model=(cfg.claude_cli_model or "").strip() or CHEAPEST_CLAUDE_MODEL)
+        return ClaudeCliOperator(
+            model=(component_pin(cfg, component, "claude_cli")
+                   or (getattr(cfg, "claude_cli_model", "") or "").strip()
+                   or CHEAPEST_CLAUDE_MODEL))
     if kind == "claude":
         raise ValueError(
             "operator 'claude' (the PAID Anthropic API tier) was removed on 2026-08-15 "
@@ -1819,10 +1882,13 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
         # artifacts).  fast=True uses the cheap/structured model; fast=False uses
         # the full reasoning model. Both defaults come from cfg.model_defaults.
         # NEVER use cfg.model/cfg.model_fast here — those are Gemini-specific pins.
+        # `model` is the component pin when there is one; without it this is exactly
+        # `model_defaults.minimax` / `.minimax_fast`, which is what it was before.
+        pin = component_pin(cfg, component, "minimax")
         return MiniMaxOperator(
             cheap=fast,
-            default_model=md.minimax if md else None,
-            fast_model=md.minimax_fast if md else None,
+            default_model=pin or (md.minimax if md else None),
+            fast_model=pin or (md.minimax_fast if md else None),
         )
     if kind == "minimax_m27":
         # The SECOND non-critical tier, added 2026-08-15. Same account, same adapter, a
@@ -1836,22 +1902,43 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
         # reusing "minimax" would have benched this tier the moment M3 was benched — an inert
         # fallback that reads as depth. It must never LEAD: M2.7 measured 29.5s against M3's
         # 8.1s on a generation prompt (2026-08-15), so it buys survivability, never latency.
-        m27 = (md.minimax_m27 if md else None) or "MiniMax-M2.7"
+        m27 = (component_pin(cfg, component, "minimax_m27")
+               or (md.minimax_m27 if md else None) or "MiniMax-M2.7")
         return MiniMaxOperator(cheap=fast, default_model=m27, fast_model=m27)
     if kind == "deepseek":
         # Routed to non-verification tasks only (prescreen, scoring, content).
         # MUST NOT be used for kill-check verdicts or adversarial analysis (the moat).
         # NEVER use cfg.model/cfg.model_fast here — those are Gemini-specific pins.
         return DeepSeekOperator(
-            default_model=md.deepseek if md else None,
+            default_model=(component_pin(cfg, component, "deepseek")
+                           or (md.deepseek if md else None)),
         )
     if kind == "ollama":
         # Ollama: fully local, zero token cost. OpenAI-compatible endpoint.
         # Routed to non-verification tasks only (generation, prescreen, scoring).
         # MUST NOT be used for kill-check verdicts or adversarial analysis (the moat).
         return OllamaOperator(
-            model=model,
+            model=component_pin(cfg, component, "ollama") or None,
             default_model=md.ollama if md else None,
+        )
+    if kind == "openrouter":
+        # WHY THIS BRANCH IS NEW AND THE CLASS ABOVE IS NOT. `OpenRouterOperator` has been in
+        # this file since before 2026-08-19 — ~300 lines with per-model circuit breakers, health
+        # marking, Retry-After handling and a priority rotation — and NOTHING could construct it.
+        # There was no branch here and no other call site in the repo, so `operator: [openrouter]`
+        # raised `unknown operator`. Its own docstring described "the factory passes it as
+        # `default_models`" and named `cfg.model_defaults.openrouter`, a field that did not exist.
+        # Built and unreachable is its own defect class; this is the two lines that end it.
+        #
+        # It is the provider that makes "add a provider" cheap: OpenRouter fronts many vendors,
+        # so a new model behind it is a config edit, not an adapter. It stays OUT of the moat by
+        # policy — its own class docstring bars it from verdicts, and the free models it rotates
+        # through are not what should rule a £49 deliverable.
+        pin = component_pin(cfg, component, "openrouter")
+        declared = getattr(md, "openrouter", None) if md else None
+        return OpenRouterOperator(
+            models=[pin] if pin else None,
+            default_models=list(declared) if isinstance(declared, (list, tuple)) and declared else None,
         )
     # standardcompute was removed here on 2026-08-15 (founder directive), same treatment as
     # cursor_cli below: an EXPLICIT error, not an unknown-operator one, so a stale config or plist
@@ -1878,7 +1965,7 @@ def _build_operator(kind: str, cfg, fast: bool) -> Operator:
                      "field consumed by the `minimax` branch above.")
 
 
-def make_operator(cfg, fast: bool = False) -> Operator:
+def make_operator(cfg, fast: bool = False, component: str | None = "moat") -> Operator:
     # operator may be a single name or an ordered fallback chain.
     # Sync CLI concurrency governors from config (env overrides still win).
     r0 = getattr(cfg, "retrieval", None)
@@ -1906,7 +1993,7 @@ def make_operator(cfg, fast: bool = False) -> Operator:
     built: list[tuple[str, Operator]] = []
     for k in kinds:
         try:
-            built.append((k, _build_operator(k, cfg, fast)))
+            built.append((k, _build_operator(k, cfg, fast, component=component)))
         except RuntimeError as e:
             # Loud, and it names the consequence: a silently-dropped tier is exactly how a
             # fallback ends up configured-but-inert, which is the defect this whole change set
