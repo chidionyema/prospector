@@ -33,7 +33,7 @@ the Fly volume at `/data`. Read every number below as "the engine as it behaved 
 | A3 latency | `UNOBTAINABLE` | **No per-stage timer is recorded anywhere in a dossier.** A dossier carries `created_at` and nothing else time-shaped, so start-to-finish cannot be reconstructed after the fact. This is a defect, not a gap in the harness. |
 | A4 discrimination | **100.0%** on 9 cases, from `minimax_20260815T111104521041.json`, 77 stored runs | Saturated. See below. |
 | A5 yield | **38.5 PASS per 1000** (108 of 2,806; kill 2,698) | This is passes per thousand, not survival of founder review. Nothing records a review outcome, so that half stays `UNOBTAINABLE`. |
-| A6 cost | `UNOBTAINABLE` | **No ledger row carries a cost field.** See below. |
+| A6 cost | **$0.1893 median per candidate vetted** (mean $0.2452, min $0.1078, max $0.5568, n=9 candidates over 38 priced calls) | Corrected 2026-08-20. The earlier `UNOBTAINABLE` was measured against the wrong store. See below. |
 | A7 grounding fidelity | **2.92%** [2.43, 3.51], null control **0.0%** [0.0, 0.1] | New metric, defined below, and it passes its own control. |
 | A8 abstention | **26.71% attempted** — unverifiable 10,265, supported 3,079, refuted 662 of 14,006 | 73.3% abstention, and 95.3% of it had relevant passages in hand (E-105). See below. |
 
@@ -42,15 +42,80 @@ Cost anatomy from the same pass: 2,806 vets, **4.991 model calls per vet on aver
 
 ## The four findings that matter
 
-### 1. We cannot measure what the engine costs to run
+### 1. A candidate costs $0.1893 to vet — and the first answer here was wrong
 
-A6 is `UNOBTAINABLE` because **not one row in the ledger carries a cost field.** The $3.60 per
-1,000 verdicts in the programme doc is an estimate, and it has always been an estimate.
+**CORRECTED 2026-08-20.** This section previously read "not one row in the ledger carries a cost
+field", and A6 reported `UNOBTAINABLE`. That was a measurement against the **wrong store**. The
+snapshot store the harness was pointed at has no priced rows; the canonical ledger,
+`/Users/chidionyema/Documents/code/prospector/store/prospector.jsonl`, has 528 rows of which 39
+carry `cost_usd`. The meter existed the whole time. This is the
+`the-canonical-store-is-the-empty-one` trap firing on my own instrument, and a single angle gave
+the wrong answer — exactly what LAW 15 exists for.
 
-The founder's goal is "as cheap as possible to run while being 1000x better". Cost is now a
-target, and a target with no meter cannot be hit or even aimed at. Writing a real per-call cost
-into the ledger is the highest-priority instrument in the plan, ahead of every optimisation,
-because every cost win claimed before it exists is a claim nobody can check.
+The number, from the Claude CLI's own billed figure:
+
+| | |
+|---|---|
+| **median USD per candidate vetted** | **0.1893** |
+| mean | 0.2452 |
+| min / max | 0.1078 / 0.5568 |
+| candidates priced | 9 |
+| priced calls | 38 |
+| median calls per vet | 3 |
+| attributed spend | $2.2065 |
+| unattributed (costed rows naming no candidate) | $0.0391 over 1 call |
+
+**Median, not mean, and that choice is the finding.** The spread is 5.2x from cheapest to dearest
+vet, because retries land on one candidate. The mean tracks that tail; the median answers "what
+does a typical candidate cost us", which is the number a budget is built from.
+
+**The axis no longer divides one population by another.** It used to compute total ledger spend
+over the corpus check count. The ledger and the dossier corpus are different populations over
+different time windows, so that quotient was arithmetic wearing a measurement's clothes — and
+with an empty corpus it printed `UNOBTAINABLE` against a fully populated cost meter. It now
+self-joins on the `candidate_id` carried inside the cost row itself, and reports rows that carry
+a cost but name no candidate separately rather than dropping them.
+
+**Provenance, and it bounds the number.** All 39 priced rows carry `message: "Claude CLI usage"`
+and span 2026-08-20 19:46:05 to 21:10:32 — 84 minutes of **local runs on this laptop**, not
+production. `com.prospector.scheduler` is off by design here; the engine has run on Fly
+(`prospector-engine`) since the 2026-08-18 cutover, and this session cannot reach that box's store.
+So this is a real measurement of what a vet costs, taken on the wrong host. Treat it as an order of
+magnitude for production, not as production's bill.
+
+**Two things it therefore does NOT measure.** First, `cost_usd` is the Claude CLI's own
+self-reported figure, which is notional retail on a subscription already paid for — it is what the
+work WOULD cost at API prices, not cash leaving the account. Second, and worse for the cost
+programme: **MiniMax, the configured head and a trusted-final brain, emits no cost row at all.**
+74 ledger rows mention minimax; 0 carry a cost field. The meter prices the fallback and is blind to
+the primary.
+
+**Why Claude CLI served every call in this window.** MiniMax was quota-exhausted throughout:
+`provider_health.json` records 4 strikes and `"MiniMax quota exhausted: HTTP Error 429 — Token Plan
+usage limit reached: Upgrade your Token Plan or purchase Credits"`, breaker open, re-probe backing
+off 120s → 240s → 480s → 600s. Buying credits is money leaving the account, so it is the founder's
+call, not an agent's. Verdicts still finalised correctly because `claude_cli` is also inside
+`moat_primary`, so nothing was stamped provisional — the engine was degraded, not down.
+
+**A perf cost inside that failover (LAW 14), measured, unfixed.** Each exhaustion burned the full
+retry ladder before failing over: 5s + 10s + 20s + 40s = **75 seconds of sleep per occurrence**, 5
+occurrences = 6m15s of pure wall-clock in an 84-minute window. The classifier does eventually mark
+it permanent, so the strikes work; the waste is the four retries against a provider whose error
+text already says the token plan is exhausted.
+
+**Still unmeasured:** cost per PASS. 9 priced candidates is too few to contain a representative
+number of passes, and A5 says only 38.5 in 1,000 pass. The $3.60 per 1,000 verdicts in the
+programme doc remains an estimate and should be replaced once the ledger has attributed a few
+hundred vets.
+
+**One cost finding, not yet fixed, with the number attached (LAW 14).** Across those 39 priced
+calls, prompt-cache WRITE tokens were 841,319 against cache READ 524,698 — a ratio of **1.60**,
+with write exceeding read on **39 of 39 calls**. Cache write bills at a premium over ordinary
+input; a stable prefix would show read dominating. The prefix is being rebuilt on nearly every
+call. Before any caching change ships, the guard is: assert `cache_read + cache_creation > 0` on
+the SECOND call. Below the provider's minimum cacheable prefix (4,096 tokens for Claude Haiku 4.5
+and Gemini 3.x Flash; our preamble measures 2,813) the API returns 200, reports
+`cache_creation_input_tokens: 0`, and bills full price forever.
 
 ### 2. A4 is saturated, and its unsaturated companion was sitting in the same file
 

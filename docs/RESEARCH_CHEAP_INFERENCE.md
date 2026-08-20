@@ -15,13 +15,29 @@ disagreement is the most useful thing in this document.
 
 ## 0. The number we are trying to move, and why it is not a meter reading
 
-$3.60 per 1000 verdicts. **That figure is an ESTIMATE, not a measurement.** A6 in the baseline is
-`UNOBTAINABLE` because no ledger row in 245 carries a cost field. Everything below is arithmetic on
-published prices and our own measured token counts, which is sound for RANKING the levers and
-not sound for claiming a saving after the fact.
+$3.60 per 1000 verdicts. **That figure is an ESTIMATE, not a measurement**, and the arithmetic below
+is sound for RANKING the levers, not for claiming a saving after the fact.
 
-Item 1.3 of the action plan (write cost into the ledger row) is what turns this into a meter. Until
-it lands, every percentage here is a projection.
+**CORRECTED 2026-08-20.** This section previously said A6 was `UNOBTAINABLE` because "no ledger row
+in 245 carries a cost field". That was measured against the wrong store. The canonical ledger,
+`/Users/chidionyema/Documents/code/prospector/store/prospector.jsonl`, has 528 rows of which 39
+carry `cost_usd`. A partial meter has existed the whole time.
+
+**It is partial in the way that matters, so item 1.3 still ships first.** Three limits, all
+measured (detail in `docs/ENGINE_BASELINE_2026-08-20.md`, finding 1):
+
+- **It is blind to the head brain.** All 39 priced rows carry `message: "Claude CLI usage"`. 74
+  rows mention minimax; **0** carry a cost field. The meter prices the fallback, not the primary.
+- **The figure is notional.** `cost_usd` is the Claude CLI's own retail number on a subscription
+  already paid for — what the work would cost at API prices, not cash out.
+- **It is the wrong host.** Those rows span 84 minutes of local laptop runs.
+  `com.prospector.scheduler` is off by design here; the engine has run on Fly since 2026-08-18.
+
+What the partial meter does give is a scale check on the estimate, and the two do not agree.
+Measured median **$0.1893 per candidate vetted** — $189 per 1,000 vets, against an estimate of
+$3.60 per 1,000 verdicts. A vet is 3–6 calls, so the units are not identical, but no reconciliation
+of them closes a 50x gap. **Do not quote either number as the baseline until 1.3 lands and prices
+a MiniMax call.** Every percentage below remains a projection.
 
 Measured inputs that the arithmetic rests on, all from `tools/engine_baseline.py` against the
 2026-08-19 snapshot (fingerprint `d66f09d0544fd796`, 2806 dossiers, 14006 checks):
@@ -184,8 +200,12 @@ from the biggest one.
 
 ## 6. What to do, in order
 
-1. **Ship the cost meter first** (action plan 1.3). Every number above is a projection until a
-   ledger row carries a cost. A 19x claim with no meter cannot be verified after the fact.
+1. **Ship the cost meter first** (action plan 1.3). Sharpened 2026-08-20: the gap is not that no
+   row carries a cost — 39 of 528 do — it is that **no MiniMax row does**, and MiniMax is the head.
+   The specific deliverable is a `cost_usd` on every metered adapter's row, priced from the
+   provider's own published rate where the adapter does not report one, plus a `provider` field so
+   the join does not depend on parsing `message`. A 19x claim measured only on the fallback brain
+   cannot be verified after the fact.
 2. **Cache the preamble, padded to 4,096 tokens, with the assertion from §1.** Biggest lever,
    no quality decision, and the assertion is what stops it being silently inert.
 3. **Merge the six check calls behind the golden gate.** 4.991x on calls. This one CAN change
