@@ -116,6 +116,12 @@ def _is_path_claim(token: str) -> bool:
         return False
     if token.startswith(("http://", "https://", "/", "~")):
         return False
+    # A token that OPENS with a colon is a line reference continuing a citation already made --
+    # "set at `verify.py:481-493`, persisted at `:527/:534/:553/:561`". There is no path in it to
+    # resolve. Reading one as a path reports a file missing that the doc never claimed exists,
+    # and the slashes between the line numbers are what makes it look like one.
+    if token.startswith(":"):
+        return False
     # A bare filename is NOT a path claim. `cockpit.py` in the Telegram programme means a file in
     # the Hermes repo; requiring a directory separator was the difference between 815 findings
     # and the handful that are actually about this repo. A doc that wants to be checked cites
@@ -424,8 +430,14 @@ def main(argv: list[str] | None = None) -> int:
                    if rel in previous and due[rel] == previous[rel][1])
         print(f"wrote {BASELINE_PATH.relative_to(REPO_ROOT)}: "
               f"{len(findings)} finding(s) across {len(counts)} doc(s)")
-        print(f"next deadline {min(due.values())}; {held} doc(s) kept an existing deadline "
-              f"because their count did not come down")
+        if not due:
+            # The day the burn-down finishes. There is no next deadline because there is nothing
+            # left to be due, and crashing here would make an empty baseline look like a broken
+            # tool rather than a finished one.
+            print("no deadlines: every doc lints clean, so nothing is suppressed")
+        else:
+            print(f"next deadline {min(due.values())}; {held} doc(s) kept an existing deadline "
+                  f"because their count did not come down")
         return 0
 
     if args.check:

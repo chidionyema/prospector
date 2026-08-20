@@ -17,12 +17,12 @@ tolerance, and off-machine monitoring via the Hermes Telegram agent.
 
 | Metric | Baseline (2026-08-06) | Target | Probe |
 |---|---|---|---|
-| Verdict calls that bought no ruling — **CURRENT** | **45.9%** (2026-08, n=1998) | < 35% | `scripts/engine_yield.py` (to write, P1) |
+| Verdict calls that bought no ruling — **CURRENT** | **45.9%** (2026-08, n=1998) | < 35% | `scripts/engine_yield.py` (to write, P1) <!-- doc-lint-ok: a deliverable of this programme; writing the file is the task, so it is absent by definition --> |
 | Verdict calls that bought no ruling — all-time | 66.8% (4957/7421) — *historic average, see §3* | n/a | same |
-| Live PASSes failing today's gate | ~~5 of 83~~ → **0 of 78** (all 5 re-vetted to KILL) | 0 | `scripts/replay_pass_gate.py` (to write, P0) |
+| Live PASSes failing today's gate | ~~5 of 83~~ → **0 of 78** (all 5 re-vetted to KILL) | 0 | `scripts/replay_pass_gate.py` (to write, P0) <!-- doc-lint-ok: a deliverable of this programme; writing the file is the task, so it is absent by definition --> |
 | Killed packs still publicly listed | **5** (no retract path exists — §7) | 0 | `ls store/listings/` vs `*.kill.json` |
 | Live PASSes past re-vet SLA | **29 of 83**, max 21d overdue | < 5 | decay sweep counters in tick log |
-| Unwired rails (impl + tested + 0 prod callers) | **6 known** (1 fixed, 5 open) | 0 | `scripts/unwired_rails.py` (to write, P2) |
+| Unwired rails (impl + tested + 0 prod callers) | **6 known** (1 fixed, 5 open) | 0 | `scripts/unwired_rails.py` (to write, P2) <!-- doc-lint-ok: a deliverable of this programme; writing the file is the task, so it is absent by definition --> |
 | Off-machine alert delivery | **inert** (`ALERT_WEBHOOK_URL` unset) | Telegram, debounced | `estate_alert.py --dry-run` + tick log |
 | Distinguishable limit classes | **1** (everything → 3600s) | 3 (5-hour / weekly / permanent) | `tests/unit/test_errors_limits.py` (to write, P1) |
 
@@ -124,7 +124,7 @@ Same sweep reported, also unverified: **`adaptive.py` is fully wired** (all 8 fu
 reconciliation is manual by design** — the daemon detects orphaned rows (`run.py:1300-1306`) but
 deliberately does not fix them; only `scripts/reconcile_orphan_index.py` does.
 
-**P2 deliverable:** `scripts/unwired_rails.py` — walks `prospector/`, builds a caller graph with
+**P2 deliverable:** `scripts/unwired_rails.py` — walks `prospector/`, builds a caller graph with  <!-- doc-lint-ok: a deliverable of this programme; writing the file is the task, so it is absent by definition -->
 `tests/` and `scripts/` excluded from the caller set, fails CI on any public function with zero
 production callers that is not on an explicit allowlist. This turns a class of bug that survived two
 occurrences into a build failure.
@@ -308,7 +308,7 @@ a probe, not a paragraph" for this engine.
 2. Confirm `schedule.decay_per_tick: 2`. ← decision
 3. Re-vet the 5 pre-gate PASSes. ← decision
 4. Wire the Telegram sink (§5) with the dry-run test fence.
-5. `scripts/replay_pass_gate.py` — make "live PASSes failing today's gate" a probe, not a memory.
+5. `scripts/replay_pass_gate.py` — make "live PASSes failing today's gate" a probe, not a memory.  <!-- doc-lint-ok: a deliverable of this programme; writing the file is the task, so it is absent by definition -->
 
 **P1 — reliability and yield (next).**
 6. Three limit classes + absolute reset parsing (§4).
@@ -316,7 +316,7 @@ a probe, not a paragraph" for this engine.
 8. Prompt work on `payer_solvency` and `legality` — the two worst checks.
 
 **P2 — make the class extinct.**
-9. `scripts/unwired_rails.py` in CI (§2).
+9. `scripts/unwired_rails.py` in CI (§2).  <!-- doc-lint-ok: a deliverable of this programme; writing the file is the task, so it is absent by definition -->
 10. Verify rails 1–5 on disk, then wire or delete each. Deleting is a legitimate outcome; a rail
     nobody wants is cheaper gone than dormant.
 11. Stamp `delivery_proof.json` so the estate probe sees this engine.

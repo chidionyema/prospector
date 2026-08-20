@@ -126,13 +126,13 @@ I first wrote that the fix was a new `Screen(...)` model, because a screen is *c
 **Measuring adoption before building it showed that was half wrong, and the true finding is
 sharper and much cheaper to act on.**
 
-`gateway/operator_shell/panel_chrome.py` (288 lines) **already is** most of that renderer:
+`gateway/operator_shell/panel_chrome.py` (288 lines) **already is** most of that renderer:  <!-- doc-lint-ok: lives in the Hermes repo (~/.hermes/hermes-agent/), not this one -->
 `compose(header, groups, …) -> (text, rows)` generates the message body and the button grid
 together in one order, and guarantees the invariant that makes a dense card readable — *every
 legend line has buttons under it, and every button sits under a legend line.* `Group` labels the
 blocks. `VERDICT_GLYPHS` is the one state vocabulary. `nav()` is the one spine.
 
-Census over the 61 panel modules (`tests/gateway/operator_shell/test_spine_adoption.py`, run
+Census over the 61 panel modules (`tests/gateway/operator_shell/test_spine_adoption.py`, run  <!-- doc-lint-ok: lives in the Hermes repo (~/.hermes/hermes-agent/), not this one -->
 2026-08-14):
 
 | Spine piece | Adopted by | What it does |
@@ -287,7 +287,7 @@ receipt (exit code, diff summary, duration, cost) → rendered on the surface th
 
 ## 5. The Actuator Registry — the one new abstraction
 
-One declaration per tool, in `prospector/ops/registry.py`. **The Telegram keyboard and the Streamlit
+One declaration per tool, in `prospector/ops/registry.py`. **The Telegram keyboard and the Streamlit  <!-- doc-lint-ok: task O1's own deliverable -->
 tool cards are both generated from it.** A control cannot exist without an entry; an entry cannot
 exist without a real executable behind it.
 
@@ -312,7 +312,7 @@ Actuator(
 R7 closed by auditing 34 **hand-written** button sites and emptying a 15-entry quarantine.
 Hand-writing is what made that audit necessary. A registry makes the next ~40 controls generated,
 and makes `_UNBUILT` unable to refill: a control exists **iff** an entry exists, and
-`tests/ops/test_registry.py` asserts every entry resolves to a real file with real flags. It also
+`tests/ops/test_registry.py` asserts every entry resolves to a real file with real flags. It also  <!-- doc-lint-ok: task O1's own deliverable -->
 guarantees the two surfaces offer the *same* tools with the *same* fences — which no amount of
 discipline achieves across two hand-written UIs.
 
@@ -336,7 +336,7 @@ natch,set,unset}, markets{list,show,probe,open,close}}` · `vet --resume` (the d
 `prospector_daemon.py:431-437`; the registry **adopts** them, it does not rebuild them)*.
 
 **Backup / integrity.** `scripts/backup_store.py` · `scripts/restore_drill.py` ·
-`scripts/verify_selling_catalogue.py` · `scripts/reconcile_orphan_index.py`.
+`tools/verify_selling_catalogue.py` · `scripts/reconcile_orphan_index.py`.
 
 **Probes (READ_ONLY).** `blocker_probe` · `pack_banner_probe` · `site_spec_probe` · `store_audit` ·
 `popdd_verify` · `load_gate` · `generation_survival` · `spend_today` · `graphify_sweep`.
@@ -480,7 +480,7 @@ tests and an unusable product; these stories remove the ability to author an inc
 
 | # | Story | Acceptance |
 |---|---|---|
-| **U5** ✅ | **The adoption meter.** Census the 61 panel modules for `compose()` / `Group()` / `VERDICT_GLYPHS` / `nav()`; floors that only rise, a raw-glyph ceiling that only falls, failure output naming the next modules to migrate. | **SHIPPED** — `tests/gateway/operator_shell/test_spine_adoption.py`, floors 4 / 3 / 1 / 39, ceiling 33 |
+| **U5** ✅ | **The adoption meter.** Census the 61 panel modules for `compose()` / `Group()` / `VERDICT_GLYPHS` / `nav()`; floors that only rise, a raw-glyph ceiling that only falls, failure output naming the next modules to migrate. | **SHIPPED** — `tests/gateway/operator_shell/test_spine_adoption.py`, floors 4 / 3 / 1 / 39, ceiling 33 <!-- doc-lint-ok: lives in the Hermes repo (~/.hermes/hermes-agent/), not this one --> |
 | **U6** ✅ | **The way back.** Wire the dead `nav_stack` at the single funnel so all 63 panels gain ← and a breadcrumb without being edited; fix its import-time state path, non-atomic write and bare `except:`. **Seed the lexicon** (`LABELS` + `label_for()`) so a screen cannot invent a word. | **SHIPPED** — 17 tests in `test_back_navigation.py`, incl. a source assertion that the chrome still *imports* the history module (a unit test of `go_back()` would have passed throughout the years it was unreachable) |
 | **U7** | **Migrate panels onto `compose()`/`Group()`/`VERDICT_GLYPHS`**, in U4's defect-rank order, raising the meter's floors per commit. Panel by panel, behind the 39 existing tests. Never big-bang — routing and plumbing are working assets. | each commit raises a floor or lowers the ceiling; full suite green; U1's crawl shows that panel's defects gone with no new ones anywhere |
 | **U8** | **Every action reports its outcome — now the renderer's job, not each author's.** Tap → acknowledgement → receipt naming what changed, or naming the failure specifically. A generic *"Action failed"* is a defect (R7 found this class already; it recurs because it was 45 people's responsibility). | trigger 5 failure modes; each returns a distinct, specific card, with no per-panel code |
@@ -496,7 +496,7 @@ points at, so the two are the same design arriving from opposite ends.
 
 | # | Story | Acceptance |
 |---|---|---|
-| **O1** | `prospector/ops/registry.py` — every tool declared once with class, blast, dry-run. | `pytest tests/ops/test_registry.py` (the six rules, §5.3) |
+| **O1** | `prospector/ops/registry.py` — every tool declared once with class, blast, dry-run. | `pytest tests/ops/test_registry.py` (the six rules, §5.3) <!-- doc-lint-ok: task O1's own deliverable --> |
 | **O2** | Coverage gate: a new script in `scripts/`/`tools/` reddens the suite until registered or waived. | add a dummy script → red → register → green |
 | **O3** | `prospector/ops/readmodel.py` wraps `control_center/readers.py`; no new derivations. | test asserts no direct `sqlite3`/`json.load` of `store/` inside `ops/` |  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 | **O4** | The Telegram gateway renders its tool keyboard **generated from the registry**, not hand-written. | `test_every_button_dispatches` green with `_UNBUILT == {}` |
@@ -532,7 +532,7 @@ points at, so the two are the same design arriving from opposite ends.
 
 | # | Story | Acceptance |
 |---|---|---|
-| **D1** | Archive `~/.hermes/mini-app/` and `scripts/mini_app_server.py`; free port `:8801`. | `rg 'mini_app' ~/.hermes/scripts` → only the archive path; nothing binds 8801 |
+| **D1** | Archive `~/.hermes/mini-app/` and `scripts/mini_app_server.py`; free port `:8801`. | `rg 'mini_app' ~/.hermes/scripts` → only the archive path; nothing binds 8801 <!-- doc-lint-ok: lives in the Hermes repo (~/.hermes/scripts/), not this one --> |
 | **D2** | `ESTATE_STATE.md` updated: `:8801` retired **and** nothing on disk still tries to bind it. | `verify_estate.sh` still exits 0; the port list is true |
 
 ### Tier 4 — catalogue + customers (R11, R12)
