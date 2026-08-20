@@ -917,6 +917,11 @@ def restore(s3, bucket: str, dest: Path) -> int:
     the ETag R2 computed at upload time, the local file where one still exists, and whether
     the bytes actually parse as the dossier JSON a restore is supposed to yield.
 
+    Only two of those three can fail the restore. A difference from the local file is REPORTED
+    and never fatal, because the ETag has already settled the question this function exists to
+    ask -- are the bytes in the bucket the bytes we put there -- and a live daemon rewriting its
+    own dossiers must not be able to make a recovery look broken.
+
     Layout: `dest/dossiers/<relative path>` plus `dest/prospector.db`. That is exactly what
     `scripts/restore_drill.py --backup DIR` consumes, so a pull from R2 can be handed straight
     to the drill and checked row-by-row against the live index — the two halves of recovery
@@ -930,6 +935,7 @@ def restore(s3, bucket: str, dest: Path) -> int:
     import json
 
     bad: list[str] = []
+    diverged: list[str] = []
     compared_to_local = 0
     for key, etag in sorted(remote.items()):
         body = s3.get_object(Bucket=bucket, Key=key)["Body"].read()
@@ -947,9 +953,19 @@ def restore(s3, bucket: str, dest: Path) -> int:
         local = DOSSIER_DIR / rel
         if local.is_file():
             if _sha256_bytes(body) != _sha256(local):
-                bad.append(f"{rel}: differs from the local original")
-                continue
-            compared_to_local += 1
+                # Not a bucket failure, and it must not stop the restore. The ETag check above
+                # already proved these bytes are exactly what R2 was given, so the only thing a
+                # local difference can mean is that the LOCAL file moved on after upload. On a
+                # live box that is constant and normal: the daemon rewrites `*.defer.json` as it
+                # re-vets. Measured 2026-08-20 on prospector-engine, 53 of 4,480 objects differed
+                # for exactly that reason, with 0 local files missing from the bucket.
+                #
+                # Counting it as failure is what made this exit 1 on every run on a live host,
+                # and the hard exit below meant `restore_db` NEVER RAN -- so the index, the half
+                # of a recovery that actually matters, had never once been restored.
+                diverged.append(rel)
+            else:
+                compared_to_local += 1
 
         out = dest / "dossiers" / rel
         out.parent.mkdir(parents=True, exist_ok=True)
@@ -961,6 +977,10 @@ def restore(s3, bucket: str, dest: Path) -> int:
         sys.exit(f"STORE_BACKUP RESTORE FAIL {len(bad)}/{len(remote)} objects failed")
 
     print(f"  checked {len(remote)} against R2's ETag, {compared_to_local} against local originals")
+    if diverged:
+        print(f"  {len(diverged)} objects differ from the local copy. The bucket holds the bytes "
+              f"it was given (ETag verified above); these local files changed after upload, "
+              f"which is what a live daemon does. e.g. {', '.join(sorted(diverged)[:3])}")
     restore_db(s3, bucket, dest)
     return len(remote)
 

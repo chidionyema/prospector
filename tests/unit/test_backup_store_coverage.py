@@ -372,3 +372,40 @@ def test_ledger_snapshot_stops_at_the_last_complete_record(store):
     captured = bs._snapshot_ledger(out)
     assert gzip.decompress(out.read_bytes()) == b'{"n": 1}\n{"n": 2}\n'
     assert captured == len(b'{"n": 1}\n{"n": 2}\n')
+
+
+def test_a_dossier_rewritten_after_upload_does_not_fail_the_restore(store, tmp_path, capsys):
+    """The live-box case, and the reason the index had never once been restored.
+
+    `restore` checks each object three ways, but only two of them ask anything about the
+    BUCKET. The third compares the restored bytes to the local file, and on a running engine
+    that file moves underneath it: the daemon rewrites `*.defer.json` as it re-vets. Measured
+    2026-08-20 on prospector-engine, 53 of 4,480 objects differed for exactly that reason,
+    with zero local files missing from the bucket and every object matching its upload ETag.
+
+    Counting that as failure hard-exited the restore before `restore_db` ever ran, so the
+    catalogue index came back not at all — and it did so on every run on a live host, which
+    made a genuine corruption look identical to a daemon doing its job.
+    """
+    s3 = FakeS3()
+    bs.sync(s3, "b")
+
+    # The daemon re-vets and rewrites one dossier AFTER it was uploaded. The bucket copy is
+    # untouched and still matches the ETag R2 recorded; only the local original has moved on.
+    (bs.DOSSIER_DIR / "aaa.pass.json").write_text(
+        json.dumps({"id": "aaa", "verdict": "re-vetted since the upload"}), encoding="utf-8"
+    )
+
+    dest = tmp_path / "restored"
+    count = bs.restore(s3, "b", dest)
+
+    assert count == 3
+    # The diverged object must still be materialised, and from the BUCKET's bytes. Skipping it
+    # is how a restore silently comes up short of the count it just reported.
+    assert json.loads((dest / "dossiers" / "aaa.pass.json").read_text()) == {"id": "aaa"}
+    # And the restore must reach the database.
+    assert (dest / "prospector.db").is_file()
+
+    out = capsys.readouterr().out
+    assert "1 objects differ from the local copy" in out
+    assert "aaa.pass.json" in out
