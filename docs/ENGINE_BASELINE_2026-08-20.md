@@ -31,7 +31,7 @@ the Fly volume at `/data`. Read every number below as "the engine as it behaved 
 | A1 availability | `UNOBTAINABLE` | `provider_health.json` absent from this snapshot. On the canonical store it exists; on the Fly box it is the one that matters and this session cannot reach it. |
 | A2 throughput | **0.0/hour trailing 24h**, 6.083/hour trailing 7d, 1.844/hour lifetime | Nothing written in the last 24 hours of the snapshot. Newest dossier 2026-08-18, oldest 2026-06-15. |
 | A3 latency | `UNOBTAINABLE` | **No per-stage timer is recorded anywhere in a dossier.** A dossier carries `created_at` and nothing else time-shaped, so start-to-finish cannot be reconstructed after the fact. This is a defect, not a gap in the harness. |
-| A4 discrimination | **100.0%** on 9 cases, from `minimax_20260815T111104521041.json`, 77 stored runs | Saturated. See below. |
+| A4 discrimination | **100.0%** on 9 cases, from `minimax_20260815T111104521041.json`, 77 stored runs, **5.4 days old**, read from a worktree store | Saturated, and stale. See below. |
 | A5 yield | **38.5 PASS per 1000** (108 of 2,806; kill 2,698) | This is passes per thousand, not survival of founder review. Nothing records a review outcome, so that half stays `UNOBTAINABLE`. |
 | A6 cost | **$0.1893 median per candidate vetted** (mean $0.2452, min $0.1078, max $0.5568, n=9 candidates over 38 priced calls) | Corrected 2026-08-20. The earlier `UNOBTAINABLE` was measured against the wrong store. See below. |
 | A7 grounding fidelity | **2.92%** [2.43, 3.51], null control **0.0%** [0.0, 0.1] | New metric, defined below, and it passes its own control. |
@@ -133,10 +133,57 @@ how often the gate that fired is the gate the golden case labelled. Two readings
 That is a live, unsaturated quality number that needs no new labels, no money and nobody's
 permission. It is the interim quality axis to use while the golden set is being resolved.
 
-**Defect found while reading this.** `prospector/golden.py:396` writes the audit record to
-`<store>/golden_runs/`. The canonical store has no `golden_runs` directory, so today's live 9/9
-run left no receipt anywhere — the only copy of that measurement is a terminal transcript. Every
-stored run in the estate is from 2026-08-15 or earlier.
+**Two defects found while reading this, and the first version of the first one was wrong.**
+
+This section previously said the receipt was lost because "the canonical store has no
+`golden_runs` directory". That inference does not survive reading the code: `_audit_path`
+(`prospector/golden.py:396`) calls `mkdir(parents=True, exist_ok=True)`, so a missing directory
+creates itself. A missing directory is not why the record is missing.
+
+**Defect 1 — the golden score answers to cwd, not to the engine.** Measured 2026-08-20:
+
+| where | `store/golden_runs` |
+|---|---|
+| `/Users/chidionyema/Documents/code/prospector/store` (canonical, every plist) | **absent** |
+| the iCloud clone's store | **absent** |
+| seven scratchpad worktrees (`wt-m1`, `wt-guard`, `wt-logcold`, `wt-producers`, `wt-incident`, `wt-fresh`, `wt-otlp`) | 77 files each, **byte-identical** |
+
+`scripts/setup_worktree.sh:186` CoW-clones `store/golden_runs` out of the main checkout when a
+worktree is created. The main checkout's copy has since been deleted, so every worktree made
+before that carries a frozen snapshot and every worktree made after gets nothing.
+`prospector.ops.readers.latest_golden()` is the estate's headline gate score, so the question
+"what is our discrimination" currently returns **100%** or **nothing at all** depending only on
+which directory the reader was started in. The 77 records span 2026-06-15 to 2026-08-15; the
+newest is 5.42 days old. None of them is today's live 9/9, which remains only in a transcript.
+
+Not fixed here: `setup_worktree.sh` is held by wt-storeroot-1e and wt-storeroot-4a, who asked for
+it to be left alone until their change lands. Broadcast to them instead. What IS fixed is the
+axis: `axis_a4` now reports `store`, `measured_at`, `age_days` and `config_hash` alongside the
+value, so the provenance travels with the number instead of being rediscovered. The age comes
+from the FILENAME STAMP rather than the file mtime, because a clone's mtime dates the copy — and
+the stamp is trustworthy: across all 77 records the filename stamp and the record's own
+`timestamp` field agreed exactly, 0 mismatches.
+
+**Defect 2 — `config_hash` was a process id wearing a config's name.** `golden.py` computed it as
+`str(hash((operator, model, model_fast)))`. Python salts the builtin `hash()` per process, so the
+same brain produced a different digest on every invocation, and the field could never answer the
+one question it exists for: was this score measured on the engine we are running now? Two angles:
+
+- three subprocesses under `PYTHONHASHSEED` 0, 1 and 12345, identical input, three different
+  digests;
+- the 77 stored records hold **51 distinct `config_hash` values, clustering in groups of three** —
+  one group per `--runs 3` invocation, which is one group per process.
+
+Fixed to `hashlib.sha256(...)[:12]` in `_config_fingerprint`, mutation-proved by
+`tests/unit/test_golden_config_hash_is_stable.py` (2 of its 3 tests fail if the old expression
+returns; the seed test runs in a SUBPROCESS on purpose, because an in-process comparison passes
+trivially — the salt is fixed for the life of one interpreter). The scope stays narrow: hashing
+the whole config would invalidate a golden score on any unrelated threshold edit, and the golden
+set measures the brain. Old records stay readable and stay distinguishable on sight, a signed
+19-digit int against 12 hex characters.
+
+Nothing in the estate reads `config_hash` — `rg` finds only the write site. That is also why the
+defect went unnoticed: a field nobody reads cannot be caught being wrong.
 
 ### 3. A7: a grounding instrument that is free, deterministic, and passes its own control
 
