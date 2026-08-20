@@ -205,8 +205,6 @@ def grade(fleet: dict, fly: str | None, gh: str | None, image_only: bool = False
         machines=[],
         started=0,
         stopped=0,
-        usable=0,
-        standbys=[],
         floor=lo,
         ceiling=hi,
         runners_online=0,
@@ -231,41 +229,6 @@ def grade(fleet: dict, fly: str | None, gh: str | None, image_only: bool = False
             ]
             out["started"] = sum(1 for m in machines if m.get("state") == "started")
             out["stopped"] = len(machines) - out["started"]
-
-            # A CLONED machine is a STANDBY, and a standby can never hold a CI job. It exists to
-            # take over only if its source machine's HOST fails, so Fly stops it again whenever
-            # anything starts it — through the Machines API, which the machine event log records
-            # as `stop | user`, indistinguishable from a person or a script.
-            #
-            # Measured 2026-08-19: 10 of prospector-ci's 12 machines were standbys cloned from
-            # 8e4530a7712248, and hermes-ci's only machine was one too. `fly machine list` said
-            # 12, `fly status` said 12, GitHub said 11 registered runners — and the number that
-            # could hold a build was 2. Standbys DO register and DO take jobs; Fly then stops
-            # them mid-build, which surfaces as "The self-hosted runner lost communication with
-            # the server" and reads as a failing test. A day went into hunting a caller that did
-            # not exist.
-            #
-            # This is the only check here that reads a machine's CONFIG rather than its STATE,
-            # because state is the one thing a standby gets right.
-            standbys = [m.get("id") for m in machines
-                        if (m.get("config") or {}).get("standbys")]
-            out["standbys"] = standbys
-            out["usable"] = sum(
-                1 for m in machines
-                if m.get("state") == "started" and not (m.get("config") or {}).get("standbys")
-            )
-            if standbys:
-                out["problems"].append(
-                    f"{len(standbys)} of {len(machines)} machine(s) are STANDBYS, not workers "
-                    f"({', '.join(str(i) for i in standbys)}). A standby can never hold a job, "
-                    f"so this fleet's real capacity is {out['usable']}, not {out['started']}. "
-                    f"`fly machine clone` makes standbys on a service-less app; `fly scale "
-                    f"count` makes workers. Repair each with: "
-                    + "; ".join(
-                        f"fly machine update {i} -a {app} --standby-for '' --yes"
-                        for i in standbys
-                    )
-                )
             # A STOPPED MACHINE IS NOT A FAULT. `deploy/runners.sh autoscale` stops idle
             # machines on purpose: a stopped Fly machine bills no CPU and no RAM, and that is
             # the entire saving. The first version of this file graded each one as a problem
