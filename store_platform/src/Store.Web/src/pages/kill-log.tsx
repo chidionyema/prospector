@@ -655,7 +655,10 @@ export default function KillLogPage({
                         </span>
                       </span>
                   {isOpen && (
-                    <div className="mt-3 rounded-ctl bg-surface3 px-3 py-4 [grid-column:1/-1]">
+                    <div
+                      data-testid="kill-argument"
+                      className="mt-3 rounded-ctl bg-surface3 px-3 py-4 [grid-column:1/-1]"
+                    >
                         {/* The argument arrives from /api/kill-log-detail, once per session. Until
                             it does the row says what it is waiting for: an empty panel under a
                             row a reader just opened reads as a broken page, and this is the page

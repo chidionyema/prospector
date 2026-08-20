@@ -16,21 +16,56 @@ const CITATION_HASH = /[([][0-9a-f]{16}[)\]]/;
 /**
  * These selectors track a redesign, and the redesign is why they are written this way.
  *
- * The log used to be a flat <li> list with every argument and every source link rendered up
- * front. It is now a table with one <tbody id={slug}> per record: a summary row (idea, the gate
- * that killed it, a source COUNT, the date) and a detail row that mounts only once the row is
- * expanded. That is a real improvement for 400 records and a trap for a test — an assertion made
- * against the page as loaded now sees zero arguments and zero links, and passes or fails for
- * reasons that have nothing to do with whether the evidence is there.
+ * The log renders one <li id={slug} class="klrow"> per record: a title button carrying
+ * `aria-expanded`, a two-line excerpt, a mono meta line reading "<date> · <n> sources", a side
+ * column holding the killed chip and the gate label, and an argument panel that mounts only once
+ * the row is expanded. That is a real improvement for 400 records and a trap for a test — an
+ * assertion made against the page as loaded now sees zero arguments and zero links, and passes or
+ * fails for reasons that have nothing to do with whether the evidence is there.
  *
  * So each test below expands what it intends to assert on. A test that reads only the collapsed
  * page is vacuous here, which is exactly how the previous version of this file went green while
  * checking nothing.
+ *
+ * WHY THIS BLOCK IS DATED. These selectors said <tbody>/<tr>/<td> until 2026-08-20. The page was
+ * a table when they were written; #377 (2026-08-19) rebuilt it as a list, and nothing failed in a
+ * way anyone read — `main tbody[id]` simply matched nothing, so `records().count()` returned 0 and
+ * all three record tests failed the same "> 5" assertion for 36 hours on the live smoke. A count
+ * of zero is the one result a structural selector produces for BOTH "the page is empty" and "the
+ * selector is stale", which is why the argument panel now carries `data-testid="kill-argument"`:
+ * a hook the page states on purpose cannot rot silently behind a redesign that keeps the feature.
  */
 
-/** The one-<tbody>-per-record group. `[id]` is the per-kill permalink slug, so this cannot
- *  accidentally match the <thead> or a layout table elsewhere on the page. */
-const records = (page: import('@playwright/test').Page) => page.locator('main tbody[id]');
+/** The one-<li>-per-record group. `[id]` is the per-kill permalink slug and `klrow` is the
+ *  drawing's own class for a record, so this cannot match the filter bar or the chart above. */
+const records = (page: import('@playwright/test').Page) => page.locator('main li.klrow[id]');
+
+/**
+ * The expanded argument panel.
+ *
+ * TWO SELECTORS ON PURPOSE, and the reason is the whole shape of this suite: it grades
+ * https://mumchimp.com (playwright.config.ts:5), which is the PREVIOUSLY deployed build, not the
+ * branch under review. A test that names only the markup in the branch is red from the moment it
+ * merges until the web image ships, and a test that names only the deployed markup is red from
+ * the moment it does. So this accepts both sides of a deploy: `data-testid` is the hook the page
+ * now states on purpose, `.bg-surface3` is the styling class the currently-live build carries.
+ * Drop the second one once a build carrying the testid is live.
+ */
+const detailPanel = (record: import('@playwright/test').Locator) =>
+  record.locator('[data-testid="kill-argument"], div.bg-surface3').first();
+
+/** The gate that killed a record, as rendered in the row's side column. */
+const gateOf = (record: import('@playwright/test').Locator) =>
+  record.locator('.side .mono').first();
+
+/** The source COUNT, read off the mono meta line, which reads "20 Aug 2026 · 3 sources".
+ *  Parsed rather than positional: the line is one string, and the date in front of it is
+ *  formatted for a reader, so an index into it would be an index into prose. */
+async function sourceCount(record: import('@playwright/test').Locator): Promise<number> {
+  const meta = (await record.locator('p.m.num').first().innerText()).trim();
+  const m = meta.match(/(\d+)\s+sources?\b/);
+  return m ? Number(m[1]) : 0;
+}
 
 /** Expand the first record whose source COUNT column is non-zero, and hand back its detail row.
  *  Chosen by reading the count off the summary row rather than by index: which kills carry a
@@ -42,10 +77,9 @@ async function openFirstSourcedRecord(page: import('@playwright/test').Page) {
 
   for (let i = 0; i < total; i++) {
     const record = all.nth(i);
-    const sources = (await record.locator('tr').first().locator('td').nth(2).innerText()).trim();
-    if (Number(sources) > 0) {
+    if ((await sourceCount(record)) > 0) {
       await record.locator('button[aria-expanded]').first().click();
-      const detail = record.locator('tr').nth(1);
+      const detail = detailPanel(record);
       await expect(detail).toBeVisible();
       // The row is visible the instant it is expanded, but the argument inside it comes from
       // /api/kill-log-detail, one ~400KB fetch for the whole page (`kill-log.tsx:495`). Until it
@@ -73,12 +107,11 @@ test('the kill log renders rejections with the reason that killed each one', asy
   const all = records(page);
   expect(await all.count()).toBeGreaterThan(5);
 
-  // The count alone is no longer enough. Every row now renders the gate that killed it in its
-  // own cell, so a table of 400 ideas with an empty "Killed by" column would satisfy a bare
-  // count while losing the entire point of the page.
+  // The count alone is no longer enough. Every row renders the gate that killed it in its side
+  // column, so 400 ideas with an empty gate label would satisfy a bare count while losing the
+  // entire point of the page.
   for (let i = 0; i < 5; i++) {
-    const killedBy = all.nth(i).locator('tr').first().locator('td').nth(1);
-    await expect(killedBy).not.toBeEmpty();
+    await expect(gateOf(all.nth(i))).not.toBeEmpty();
   }
 
   // And the argument itself, which only exists once a row is open.
