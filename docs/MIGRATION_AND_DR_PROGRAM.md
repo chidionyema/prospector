@@ -857,29 +857,201 @@ is worse than no verifier, because it is believed.**
 
 ---
 
-## 6. Sequence
+## 6. The delivery plan
 
-Ordered by what unblocks what, and by the founder's rule that the money path outranks the engine.
+Founder, 2026-08-20: *"i need to see a detailed pla of how you are going to deliver this project.
+this is a sassive transfornation proect and our buniess is dependent on the success of this
+endeavorur"*, *"nission cuticl"*.
 
-1. **M9(a) commit the DNS zone.** One export, one committed file, one daily diff. It is an afternoon,
-   and it removes the only unrecoverable loss on the register.
-2. **M1 inventory**, across all ten resource classes. Everything else needs to know what exists, and
-   it is the cheapest thing that makes the estate legible.
-3. **M11 datastore table** and **M4 restore drills (a) and (b).** The largest uncovered risk is R1,
-   and the fix is a safe snapshot method plus a proof. Do this **before** any further migration,
-   because migration is what breaks it — the order effect in `ESTATE_CONTINUITY_PLAN.md` §4.1.
-4. **M6 D1 and D3 on a schedule**, plus the DNS diff from step 1. Three drills in the pattern
-   `escape-hatch-drill.yml` already proves works.
-5. **M12 `fly scale count 2` on `prospector-store-web`.** One command, and the shop front stops
-   being a single machine.
-6. **M2 bootstrap**, with **M6 D4** as its proof. This is what makes "my laptop died" survivable.
-7. **Hermes decision (#74) and cutover.** The live test of steps 1–6.
-8. **M5 console panel** and **M10 log shipping** — the two halves of full ops visibility: receipts
-   worth reading, and logs that outlive the platform that wrote them.
-9. **M3 storefront adapter**, behind **M6 D2**. Platform independence for the money path.
-10. **M7 chaos** and **M8 end-to-end**, starting with the three cheapest scenarios each.
+### 6.0 How this plan is built, and how to read it
 
-Steps 1–5 reduce real, business-dependent risk this week. Steps 9–10 are what stop it coming back.
+One rule governs the shape of it: **every phase ends in a drill that either goes green or goes red,
+and the drill is the definition of done.** Not a document, not a review, not a claim in a reply. A
+phase is finished when a named command exits 0 on a machine that is not this laptop, and leaves a
+receipt something else can grade. This is the only structure that survives a session dropping
+mid-phase, which is the normal case here.
+
+Read it as: **what we cannot lose (Phase 0) → what we have (1) → can we get it back (2) → can we
+see it (3) → can we move it (4) → does it hold when attacked (5) → the thirty minutes (6).**
+The order is not preference. Each phase is the precondition of the next: you cannot move an estate
+you have not inventoried, you cannot trust a move you cannot observe, and you cannot claim thirty
+minutes for something you have never timed.
+
+**Sizes are S (an afternoon), M (a day or two), L (a week).** They are estimates and each one is
+re-stated as a measurement once the work is done.
+
+### 6.1 Phase 0 — the data survives the machine. **B0. IN PROGRESS.**
+
+Nothing else in this plan means anything if the catalogue is gone, because every later phase is a
+way of *rebuilding from a copy*.
+
+| Item | State | Proof |
+|---|---|---|
+| Nightly local snapshot | running | `store/backup.log` |
+| Offsite copy to R2 | running | `[program:offsite-backup]` in `deploy/engine/supervisord.conf` |
+| Weekly drill that pulls from R2 and grades it | **landed 2026-08-20**, never run live | `deploy/engine/offsite_drill.sh`, commit `e53e265b` |
+| The restore contract itself | **fixed 2026-08-20** | commit `5db638e2` — ETag is the only fatal check |
+| Signing key escrowed off every code tree | done | `~/.prospector/escrow/`, mode 400 |
+| Signing key escrowed **off the machine** | **open, founder's action** | P3 on the register |
+
+**Exit:** one live run of `deploy/engine/offsite_drill.sh` on `prospector-engine` exits 0 and writes
+a receipt. Until that run exists, the drill is proved by test and not by use, and this phase stays
+open. **Next command:** wait for the weekly timer, or trigger it by hand on the machine.
+
+### 6.2 Phase 1 — know what we have. **M1, M9, M11. P0.**
+
+Three inventories exist and none of them meet, so no one can answer "what is running" without
+reading three lists and reconciling them by hand. Everything downstream needs this answer.
+
+| Step | Gap | Size | Exit — the command that goes green |
+|---|---|---|---|
+| Commit the DNS zone, diff it daily | M9(a) | S | a committed zone file, and a scheduled diff that goes red on drift |
+| One inventory across all ten resource classes | M1 | M | one probe prints every resource; a test fails when a class is unclaimed |
+| Every datastore named, with its size and its backup | M11 | M | the table is generated, not typed |
+
+DNS goes first because it is the only entry on the risk register with **no substitute**: lose the
+zone and there is nothing to restore it from. It is an afternoon.
+
+**Exit:** the inventory probe is the single answer to "what does this estate consist of", and a test
+refuses a new resource class that nothing claims.
+
+### 6.3 Phase 2 — prove we can get it back. **M4, M2, M6. P0.**
+
+Phase 1 says what exists. This phase proves each of those things can be rebuilt from nothing.
+
+| Step | Gap | Size | Exit |
+|---|---|---|---|
+| Restore drill per datastore, on a schedule | M4, M6 D1/D3 | M | each drill writes a receipt; a stale receipt fires an alert |
+| Bootstrap a new machine from the repo plus one secret | M2 | M | a clean box serves after one documented sequence |
+| D4 — "my laptop died" | M6 D4 | M | the bootstrap is the drill; it is timed |
+
+**M2 is blocked on open decision 1** (where secrets live so a new machine can fetch them). That
+decision is the founder's and it is on the critical path of the whole programme, because B2's thirty
+minutes cannot include a manual secret hunt.
+
+**Exit:** every datastore in the M11 table has a dated green restore receipt, and a new machine has
+been brought up once, timed.
+
+### 6.4 Phase 3 — see it, in real time. **M5, M10, #355. P0 for the alert bus.**
+
+Founder, 2026-08-20: *"our notiong nand elerting is poor ll round"*, and the target,
+*"a low nintennace stack wheere everyhting works and slef heals and is obvered realtine reparing"*.
+
+This phase is currently the weakest in the estate and it is the one that makes every other phase
+observable. `docs/STACK_AUDIT.md` already named it: *"many bespoke observers and no dead-man's
+switch"*. Issue #355 names the live defect.
+
+| Step | Size | Exit |
+|---|---|---|
+| One alert bus that leaves the machine | S | an alert raised on `prospector-engine` reaches a phone |
+| Silence detection — a job that stops running is itself an alarm | S | Healthchecks, decided 2026-08-19, not landed |
+| Endpoint reachability | S | Gatus, decided 2026-08-19, not landed |
+| Logs that outlive the platform that wrote them | M10, M | logs from a destroyed machine are still readable |
+| The Continuity panel — drive all of this from the dashboard | M5, M | B4 and B5 met |
+
+**Exit and the proposed rule:** *a rail that cannot go red where a human sees it is not a rail.*
+Testable, which is the point — a test asserts every alert key has a reachable off-machine sink in
+the environment the code is actually running in, so this cannot silently regress to a file again.
+Measured 2026-08-20: 18 critical `moat_blind` alerts sat in a file, none delivered.
+
+### 6.5 Phase 4 — move it. **M3, M12, M13, Hermes. P0/P1.**
+
+| Step | Gap | Size | Exit |
+|---|---|---|---|
+| `fly scale count 2` on the shop front | M12 | S | the shop stops being one machine |
+| Storefront adapter, so the money path can leave | M3 | L | the money path has the three adapters the engine has |
+| Staging, with the laptop as emergency fallback | M13 | M | a cutover is rehearsed somewhere that is not production |
+| Hermes: cut over or destroy | decision 3 | — | founder's call, task #74 |
+
+**M3 is the largest single item in the programme and it is P0**, because today only the engine can
+leave Fly. The money path cannot, which means B6 is half-met and a provider failure takes the
+revenue with it.
+
+### 6.6 Phase 5 — break it on purpose. **M7, M8, plus two gaps that do not exist yet. P1.**
+
+Founder, 2026-08-20: *"wwe also have the chose testing"*, *"stress testing"*, *"secitory etsing"*.
+
+| Discipline | Home today | Action |
+|---|---|---|
+| Chaos | **M7**, with a done-when and three scenarios | build it; tooling decided (Pumba, Toxiproxy) |
+| End-to-end | **M8** | build it; Playwright is already in the repo |
+| Stress and load | **no gap owns this** | **write M14.** Assets exist unclaimed: `scripts/load_gate.py`, `tools/corpus/load.py` |
+| Security | **no gap owns this** | **write M15.** `docs/ARCHITECTURE_SECURITY_BASELINE.md` measures state; nothing attacks it |
+
+Two of the four disciplines the founder named have no owner in the gap list. Writing M14 and M15 is
+the first action of this phase, and it is small — the assets are already on disk.
+
+**Exit:** `tests/chaos/` holds one scenario per named risk, each asserting the *observable*
+consequence rather than the internal state; a load run has a published number; a security pass has
+findings with owners.
+
+### 6.7 Phase 6 — the thirty minutes. **B1–B8. The acceptance test.**
+
+The whole programme exists to pass one drill, and the drill is the founder's own sentence:
+
+> thirty minutes, the whole stack, driven from the ops dashboard, no downtime the customer can see,
+> nothing in use missed, and it works for a project that is not prospector.
+
+It is graded as eight separate results, not one verdict, so a partial pass is legible:
+
+| | Graded by |
+|---|---|
+| B1 completeness | the Phase 1 inventory: every class present at the destination |
+| B2 thirty minutes | a stopwatch on the drill, published |
+| B3 zero downtime | the shop front probed throughout; any non-200 is a fail |
+| B4 from the dashboard | the drill is started from the console, not a terminal |
+| B5 real-time progress | the console shows each step as it happens |
+| B6 destination-agnostic | run once against a provider that is not Fly |
+| B7 reusable | run once against a project that is not prospector |
+| B8 probe and audit | the inventory is discovered, not hand-written |
+
+**Nothing in this phase is new work.** If Phases 1–5 are done, Phase 6 is running the drill and
+publishing the eight numbers. If it fails, the failing letter names the phase that was not finished.
+
+### 6.8 How this is tracked, so nothing is lost when a session drops
+
+Founder, 2026-08-20: *"we ned trackinng etrene"*, *"eep linking so contet neevr gets nissed f
+session drops"*, and *"probbly need to autonnate this so i ont eep repeating nyself"*.
+
+Four mechanisms, and each one is a file rather than a memory:
+
+1. **This document is the plan of record.** §3 holds the gaps, §6 holds the phases, §8 is the ledger
+   of what actually shipped with its commit. A session that drops mid-phase is recovered by reading
+   §6 for the phase and §8 for the last receipt.
+2. **One issue per gap**, so work cannot be started twice by two sessions that cannot see each
+   other. Live examples: #355 alerting, #454 store sync, #74 Hermes.
+3. **Every shipped item gets a ledger line with its commit**, in §8. A claim with no commit is not a
+   delivery.
+4. **Founder directives are captured automatically**, by `~/.claude/scripts/directive-capture.py`,
+   a `UserPromptSubmit` hook that appends every prompt to `~/.claude/directives/<project>.jsonl`,
+   read back with `python3 ~/.claude/scripts/directives.py --grep <word>`. **Measured 2026-08-20:
+   it is capturing, and it is dropping.** 3,848 entries total and 426 today, but none of this
+   session's directives are in it, and what it does hold is diluted with peer messages, task
+   notifications and the engine's own model prompts. That defect is why the founder is still
+   repeating himself, and it is tracked as part of Phase 3 — a capture rail that silently drops is
+   the same class as an alert rail that silently drops.
+
+**Cross-links, so a dropped session finds the rest of the context:** `docs/PLATFORM_DIRECTIVES.md`
+and `docs/FOUNDER_NOTES.md` hold his standing instructions; `docs/decisions/0003-migration-and-dr-rulings.md`
+holds rulings D1–D7 for this programme; `docs/STACK_AUDIT.md` measures what is running;
+`docs/ENGINE_MIGRATION_PROGRAM.md` covers the engine's own move, and its Status line is stale —
+it still reads "NOT STARTED" although the engine has run on Fly since 2026-08-18;
+`docs/ARCHITECTURE_SECURITY_BASELINE.md` is the security baseline Phase 5 will attack;
+`docs/SECRETS_PROGRAM.md` Part 6 is the key risk register that Phase 2's open decision resolves;
+§9 of this document holds the founder's notes from 2026-08-20 verbatim.
+
+### 6.9 What is on the critical path, and what only the founder can clear
+
+| Blocker | Blocks | Owner |
+|---|---|---|
+| Where secrets live so a new machine can fetch them (decision 1) | M2, and therefore B2 | **founder** |
+| Which second provider we prove portability against (decision 2) | M3, D5, and therefore B6 | **founder** |
+| Hermes: cut over or destroy (decision 3) | §4 of this document | **founder** |
+| DNS: move the zone or keep GoDaddy (decision 5) | M9(c) | **founder** |
+| `claude_cli` not logged in on the Fly container | the engine's moat is blind right now | **founder** |
+| MiniMax token plan limit reached | same | **founder** |
+
+Everything not in that table is mine, and none of it needs asking.
 
 ---
 
@@ -924,3 +1096,66 @@ Append here. One line per shipped item, with the receipt.
 | 2026-08-19 | — | `docs/ESTATE_MAP.md` Hermes section corrected from asserted to measured | PR #390 |
 | 2026-08-19 | M4 (part) | key-ring backup graded by opening the archive, not by its size — new `tgz` verify kind | PR #441; `26 passed` |
 | 2026-08-19 | M4 (part) | `verify:` has no default — a source that states no kind, or an unknown kind, is refused when the declaration is read | `29 passed`; mutation-proved (`2 failed` with the default restored) |
+
+---
+
+## 9. Notes — the standard the founder set, 2026-08-20
+
+Captured as notes, in his words, at the moment he set them. Nothing here is designed yet. Each
+note says where the work already has a home, or that it has none, so that the next session can
+tell a decided thing from an undecided one.
+
+**The bar.** *"this is once in a lifetine ooprtunity"*, *"we cant do repeat this project"*, *"so
+needs nainun craft"*, *"to ahcive gight level goals"*, *"seanless evryting"*. Read together: there
+is no second attempt, so a thing built twice is a thing that cost the estate its one run at this.
+This is the reason the programme prefers extending a mechanism over adding one, and the reason a
+guard is repaired rather than relaxed when a change blinds it.
+
+**The target stack.** *"a low nintennace stack wheere everyhting works and slef heals and is
+obvered realtine reparing"*. Four properties, and they are not the same property:
+
+| Property | What it means here | Where it stands |
+|---|---|---|
+| Low maintenance | no step that needs a human on a schedule | 31 launchd jobs today; Dagu decided, not landed |
+| Works | the money path and the engine both serve | shop measured 200; engine moat blind, founder-blocked |
+| Self-heals | the system corrects itself with no agent involved | partial: half-open probes, DEFER + resume, breakers |
+| Observed in real time, repairing | a human sees it go red, and something acts | **the weakest of the four — see the alerting note** |
+
+Self-healing already has a precedent to copy rather than invent: `health.py` half-open probes let
+exactly one caller re-test a benched brain, so recovery is automatic and costs one call. The gap is
+not the pattern. It is that the pattern is applied to brains and to almost nothing else.
+
+**Alerting — researched, decided, not landed.** The founder: *"our notiong nand elerting is poor ll
+round"*, *"did we research this"*. Yes, and the audit's own sentence is his complaint:
+`docs/STACK_AUDIT.md` — *"the estate has many bespoke observers and no dead-man's switch"*.
+Decided 2026-08-19: Healthchecks for job liveness, Gatus for endpoint reachability, both on
+`prospector-engine`. Neither has landed. Issue #355 is open and names the live defect: the sink is
+a file in `$HOME` and the Fly container has no `$HOME/.hermes`, so `alerts.py` has five sinks and
+none of them reach a human. Measured 2026-08-20: 18 `moat_blind` criticals in
+`store/scheduler/alerts.jsonl`, none delivered.
+
+**Proposed rule, for the founder to accept or reject.** *A rail that cannot go red where a human
+sees it is not a rail.* Every alert leaves the machine through one bus, and a job that stops
+running triggers silence-detection rather than merely failing to log. It is testable, which is the
+point: a test can assert every key in `TELEGRAM_KEYS` has a reachable off-machine sink in the
+environment the code is running in, so this cannot regress into a file again.
+
+**Testing the founder named, and where each one lives.**
+
+| Kind | His words | Home today |
+|---|---|---|
+| Chaos | *"chaos testing and eend to end tests also"* | **M7**, with a done-when and three starting scenarios. Tooling decided: Pumba, Toxiproxy |
+| End-to-end | same | **M8** — no proof today that a buyer can buy. Playwright already in the repo |
+| Stress / load | *"stress testing"* | **NO GAP OWNS THIS.** Assets exist and are unclaimed: `scripts/load_gate.py`, `tools/corpus/load.py`. k6 was considered in §5 and deferred |
+| Security | *"secitory etsing"* | **NO GAP OWNS THIS.** `docs/ARCHITECTURE_SECURITY_BASELINE.md` measures state; nothing attacks it. `docs/personas/security.md` exists |
+
+So two of the four have no owner in the twelve gaps. That is the finding, not a plan: stress and
+security testing need gaps of their own before they can be sequenced, and writing them is work,
+not a note.
+
+**Tracking.** *"we ned trackinng etrene"*, and earlier *"dont lose track of your project work"*,
+*"you re not tracing context"*. The rule that follows: a thread that is not on disk does not
+survive a compaction, so the ledger in §8 and the gap list in §3 are the record, and a session's
+own context is not. Every shipped item gets a ledger line with its receipt, and anything parked
+gets the four lines LAW 16 requires — the question, what was established, the next command, and
+why it was put down.
