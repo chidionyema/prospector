@@ -24,7 +24,7 @@
 | # | What | Owning doc | State |
 |---|---|---|---|
 | B1 | Docs-as-shareable-links from the ops dashboard | `docs.tsx` | Rail proven live end-to-end. `/docs` share button written, uncommitted, needs a `pages.test.ts` assertion. |
-| B2 | Every report reachable from the ops dashboard | Ops.Console `lib/nav.ts` | Half done — `/docs` and `/share` are in nav; the four published artifacts are not linked. |
+| B2 | Every report reachable from the ops dashboard | Ops.Console `/docs` | **VERIFIED WORKING 2026-08-20.** `READS['docs']` indexes 128 documents in 11 sections. `LINKS.md` is one of them and holds 44 artifact URLs, the Assay Sheet (`d0ada5d9`) among them. `CARD_IMAGERY_RESEARCH.md` and `OPEN_WORK.md` are both indexed. `docs.tsx:247` reads `router.query.open`, so `/docs?open=LINKS.md` opens the list directly. One gap left, and it is a founder decision: there is no nav entry pointing at it, so the gallery is one row among 128. `nav.test.ts:69,73` caps the map at 7 groups of 4 screens and both caps are already full, so a new entry means replacing an existing screen. Not mine to choose. |
 | B3 | Laws injector cap | `~/.claude/scripts/memory-loop.py` | FIXED, 22/22 selftest. A peer proposes a smaller trim; that is a founder decision, not mine. |
 | B4 | Auth + payments modularisation (C40) | — | PARKED at the founder's instruction: "sorry lowest priotity that one". |
 
