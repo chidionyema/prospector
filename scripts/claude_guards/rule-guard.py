@@ -42,6 +42,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 
 REPO = "/Users/chidionyema/Documents/code/prospector"
 
@@ -905,13 +906,23 @@ def selftest() -> int:
             print(f"  FAIL  {cmd!r}\n        wanted {want}, got {got}")
 
     # Which tree a rule measures is itself a rule, and it is the one that was wrong.
-    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # ~/.claude, not a repo
+    # A cwd outside ANY git worktree must fall back to REPO. This input used to be
+    # `dirname(dirname(__file__))`, on the assumption that this guard lives in ~/.claude/scripts
+    # and so its grandparent is ~/.claude, which is not a repository. That assumption died on
+    # 2026-08-20, when the guards moved INTO this repository to make them agent-editable: the
+    # grandparent became `<worktree>/scripts`, `_repo_for` correctly returned the worktree, and
+    # the case failed as though the guard had broken. It had not. A fixture that infers its own
+    # input from where the code happens to live grades the layout, not the behaviour -- the same
+    # class as a fixture that hardcodes the constant it is measuring against.
+    #
+    # So build a directory that is outside every worktree by construction, and prove it is.
+    outside = tempfile.mkdtemp(prefix="rule-guard-outside-")
     for cmd, session_cwd, want in [
         (f"cd {REPO} && gh pr create", "/nonexistent", REPO),
         (f"cd '{REPO}'\ngh pr create", "/nonexistent", REPO),
         ("gh pr create", REPO, REPO),          # no cd: the session's own tree
         ("cd /nonexistent/nope && gh pr create", None, REPO),   # unusable cd -> fall back
-        ("gh pr create", here, REPO),          # cwd outside any worktree -> fall back
+        ("gh pr create", outside, REPO),      # cwd outside any worktree -> fall back
         # The 2026-08-17 false refusal: the cd path was a shell variable, so it resolved to no
         # directory and the SESSION's repo got graded instead.
         (f"P={REPO}\ncd \"$P\"\ngh pr create", "/nonexistent", REPO),
@@ -925,6 +936,15 @@ def selftest() -> int:
                   f"        wanted {want}, got {got_repo}")
         else:
             cases.append((cmd, want))
+
+    # Anti-vacuity: if `outside` were in a worktree after all, the fall-back case above would be
+    # asserting the opposite of what it claims and would still pass whenever that worktree
+    # happened to be REPO. That is exactly how the __file__ version stayed green for months.
+    if _worktree_root(outside) is not None:
+        bad += 1
+        print(f"  FAIL  the 'outside any worktree' fixture {outside!r} IS in a worktree, so the "
+              f"fall-back case proves nothing")
+    shutil.rmtree(outside, ignore_errors=True)
 
     # The shared-checkout note, tested on its decision rather than on the repo's mood.
     for repo, branch, want_note in [

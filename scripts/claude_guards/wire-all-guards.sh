@@ -55,6 +55,29 @@ done
 
 [ -d "$DEST" ] || { echo "no $DEST"; exit 1; }
 
+# A SYMLINK IS ONLY AS DURABLE AS ITS TARGET. SRC is derived from this script's own location, so
+# running it out of an agent's scratchpad worktree points every hook at a path that is deleted when
+# that session ends. The result is 16 dead symlinks and no guards at all, and nothing announces it:
+# a guard that is missing refuses nothing, which looks exactly like a guard that approves.
+# Measured 2026-08-20: the worktree this migration was built in lives under /private/tmp, so the
+# obvious way to run this script was also the way that breaks the estate.
+case "$SRC" in
+  /tmp/*|/private/tmp/*|/var/folders/*)
+    if [ "${ALLOW_TEMP_SOURCE:-0}" != "1" ]; then
+      echo "REFUSING to wire: the repo copy sits under a temporary path."
+      echo "    $SRC"
+      echo
+      echo "Symlinks into a scratchpad die when that directory is cleaned, and every guard dies"
+      echo "with them, silently. Run this from a checkout that outlives the session -- the shared"
+      echo "one at ~/Documents/code/prospector, once this branch has merged."
+      echo
+      echo "To accept a temporary source anyway:  ALLOW_TEMP_SOURCE=1 $0 $*"
+      exit 1
+    fi
+    echo "WARNING: wiring from a temporary path. These symlinks die with $SRC."
+    ;;
+esac
+
 # Run one guard's selftest with NO stdin and a hard ceiling.
 #   rc 0 = passed, 1 = failed or timed out, 2 = this guard has no selftest to run.
 #
