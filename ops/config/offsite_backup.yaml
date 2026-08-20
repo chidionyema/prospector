@@ -123,6 +123,61 @@ sources:
     # than going red every Monday until somebody mutes it.
     max_age_hours: 72
     keep: 30
+  - name: logs
+    why: >-
+      Yesterday's ingested logs, every service, one file per service per day. They are the only
+      record of what the platform DID -- what a buyer was served, which provider was down, why a
+      tick produced nothing. `ops/config/log_rotation.yaml` deletes `/data/logs/*.jsonl` at 14
+      days, and that is a data-protection bound, not a storage one, so the deletion is not
+      optional and the hot window cannot be widened to compensate. Fourteen days is therefore the
+      ENTIRE margin: if this source stops depositing and nobody notices for two weeks, the logs
+      are gone from both places at once. That coupling is why this is a `source` with its own
+      freshness grade rather than a line in the retention sweeper.
+    fetch:
+      # No curl, because unlike the money database these files are already on the machine this
+      # job runs on. No `tar` and no shell glob either: `date -u -d yesterday` is GNU-only and
+      # this repo's tests run on the Mac as well as on Linux, so a shell one-liner would pass on
+      # CI and fail on a developer's laptop. Python is the one interpreter both have, and it is
+      # what the whole container already is.
+      #
+      # It exits NON-ZERO when yesterday matched no file, and that is deliberate. `[program:
+      # log-ingest]` runs continuously and the scheduler ticks every 7200s, so a day with no log
+      # file at all does not mean a quiet day, it means the ingest died. A silent empty archive
+      # would be uploaded, graded fresh, and would hide exactly the outage this exists to record.
+      - python3
+      - -c
+      - |-
+        import datetime, glob, os, sys, tarfile
+        src, dest = sys.argv[1], sys.argv[2]
+        day = (datetime.datetime.now(datetime.timezone.utc).date()
+               - datetime.timedelta(days=1)).isoformat()
+        files = sorted(glob.glob(os.path.join(src, "*-%s.jsonl" % day)))
+        if not files:
+            sys.exit("no log file for %s in %s: the ingest wrote nothing yesterday" % (day, src))
+        with tarfile.open(dest, "w:gz") as archive:
+            for path in files:
+                archive.add(path, arcname=os.path.basename(path))
+        print("archived %d file(s) for %s" % (len(files), day))
+      # Literal, not ${PROSPECTOR_LOG_DIR}. `_expand` raises CannotEstablish on an unset
+      # variable, the engine image sets only PROSPECTOR_STORE_DIR, and an unset variable here
+      # would take the WHOLE run to unknown -- the money database included. The cost is that this
+      # path restates what `log_ingest.log_dir()` derives; the same trade is made and documented
+      # in ops/config/log_rotation.yaml, and a test fails if the two ever disagree.
+      - /data/logs
+      - "{dest}"
+    key: logs/engine-logs.tgz
+    # Opened as a tar archive and its index read, the same check the key ring gets. A gzip stream
+    # that ends mid-member fails here rather than sitting in the bucket looking like a backup.
+    verify: tgz
+    # 90 days of cold retention, and it is `keep:` rather than an R2 lifecycle rule on purpose.
+    # A lifecycle rule lives in Cloudflare's console, where it cannot be read from a clone, does
+    # not move with the estate, and nothing in this repo can grade it. `keep:` is enforced by
+    # this job's own prune on every run, from a number that is in git. One daily object, so 90
+    # copies is 90 days.
+    keep: 90
+    # 30, not 24, for the same reason as the watch entries below: an 86400s timer graded against
+    # a 24h ceiling flickers red on ordinary drift, and a check that cries wolf gets muted.
+    max_age_hours: 30
 
 # ---------------------------------------------------------------------------------------------
 # Prefixes ANOTHER job writes. Graded for freshness only: never fetched, never verified, never

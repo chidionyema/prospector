@@ -709,8 +709,39 @@ Every option below was rejected for cost, lock-in, or both. R7 is zero new recur
 | **Datadog** | Priced per host and per GB ingested. The most expensive option on this list by a wide margin. | Total. Agent, tags, dashboards, monitors. | **Rejected.** Violates R7 immediately and R8 permanently. |
 | **Sentry** | Free tier exists for errors. | Moderate. | **Not rejected — out of scope.** Sentry is error tracking, not logging. `ErrorBoundary.tsx:32` records it as "a deferred, founder-gated decision" and it stays that way. It would not satisfy R1, R2 or R4. |
 | **A second Fly machine as a log host** | Roughly the cost of one more `shared-cpu-1x` machine plus a volume. | None. | **Rejected on cost only.** The `prospector-engine` volume has 18G free (§1.2). Paying for a second machine to hold 500 MB when an existing machine has 18G spare fails R7 and P8. |
-| **OpenTelemetry collector** | Free software; needs somewhere to send data. | Low — OTLP is a standard. | **Rejected for now.** It is a pipeline with no destination. Every destination on this list is rejected. Revisit if a budget ever appears; the JSONL schema in §4.3 maps cleanly onto OTLP fields, which keeps that door open. |
+| **OpenTelemetry collector** (the process) | Free software; a second process to run, configure, deploy and migrate. | Low — OTLP is a standard. | **Rejected, and this one holds.** It is a pipeline with no destination: every destination on this list is rejected, so the collector would move bytes from A to A. |
+| **OTLP** (the wire format) | £0. It is a POST of JSON; no collector is required to speak it. | None. CNCF standard, not a vendor. | **This row was missing, and its absence was an error — see the correction below.** |
 | **`fly logs` piped into a file on the Mac** | £0. | None. | **Rejected as the primary mechanism.** It is a tail: when the collector is down or the Mac sleeps, those lines are gone forever, and there is no way to tell afterwards that they are missing. Silent, unmeasurable loss is worse than no logs, because it looks the same as quiet. Fine as a debugging tool; not a design. |
+
+**Correction, 2026-08-20 — this table conflated the collector with the protocol, and they are not
+the same decision.** Founder challenge: *"OpenTelemetry collector seems like should have been
+used"*. Two things were being rejected under one name.
+
+The **collector** is a daemon. Rejecting it is still right: it exists to fan data out to sinks, and
+every sink here is rejected, so it would be a process whose whole job is to hand our own bytes back
+to us. That is a real cost — another thing to run, deploy, secret, monitor and migrate — for no
+answer we cannot get today.
+
+**OTLP is a wire format, and rejecting it was a mistake.** It costs nothing extra to emit, needs no
+collector (OTLP/HTTP is a POST of JSON to a URL), and it is the only option on this page that is
+neither a vendor nor a bill. It is also the one that answers the migration bar: with OTLP the sink
+is a config line, so moving to Grafana, ClickHouse or anything else is not a rewrite — and, in the
+other direction, any third-party system already speaks it, so auditing something we did not write
+stops needing a bespoke adapter.
+
+**It is also already paid for and switched off.** `store_platform/Directory.Packages.props:68-71`
+pins `OpenTelemetry` 1.15.3 and three siblings, and `Crux.Observability` pulls the ASP.NET Core,
+Http, EF Core and Runtime instrumentation into every `Store.Api` build. `AddOpenTelemetry`,
+`WithTracing` and `AddOtlpExporter` appear nowhere in `store_platform/src`. We compile it on every
+build and emit nothing. `docs/PLATFORM_PORTABILITY_AUDIT.md:392` recorded this and this document
+did not read it.
+
+What does **not** change is Part 4. The ingest, the plain NDJSON files and the zero-cost sink all
+stand; the lock-in that would actually hurt is a query language and a storage format, and we have
+neither. What changes is that the door has to be opened rather than left "open in principle": the
+ingest should accept OTLP/HTTP JSON alongside its own NDJSON, and the exporter `Store.Api` already
+compiles should be switched on and pointed at it. Tracked as its own change, not folded into a
+producer PR.
 
 ---
 
@@ -840,23 +871,50 @@ Measured 2026-08-20: `ops/config/offsite_backup.yaml` already declares three eng
 `max_age_hours: 30`, and each written by the `[program:backup]` entry in
 `deploy/engine/supervisord.conf`. Nothing to add. The step was written against an older config.
 
-**Step 6 — The ingest endpoint, engine side.**
-`POST /internal/logs` on `prospector-engine`, private network only. Writes
-`/data/logs/<svc>-<date>.jsonl`. Enforces the three caps in §4.6. No client changes yet.
-*Verification:* `curl` one line from inside the 6PN, confirm it lands; confirm a 17 KB line is
-rejected with 413; confirm a bad key gets 401.
+**Step 6 — The ingest endpoint, engine side. DONE.**
+`prospector/log_ingest.py`. `POST /internal/logs` writes `<svc>-<date>.jsonl` under
+`log_dir()`, which is `/data/logs` on the engine, and it runs as `[program:log-ingest]` in
+`deploy/engine/supervisord.conf:199`. The three §4.6 caps are enforced with the status codes
+this step asked for: `401` on a bad key (`log_ingest.py:529`), `413` on an oversized body and on
+too many lines (`log_ingest.py:533`, `:537`, `:546`). Every drop is counted and the counters are
+readable at `GET /internal/logs/stats`, so a client that is being rejected can be seen rather
+than inferred from an absence.
 
-**Step 7 — First producer: the Mac daemons.**
-A small writer in `prospector/telemetry.py` alongside the existing `route_logs_to_file`
-(`telemetry.py:100`). Buffered, non-blocking, drops on failure. **A logging call must never be
-able to fail a tick.**
-*Verification:* `evt` counts in `/data/logs/scheduler-*.jsonl` match tick counts in
-`store/scheduler/ticks.jsonl`.
+One thing was added that this step did not ask for, and it is the reason the filename uses the
+INGEST's date rather than the line's own `ts` (`log_ingest.py:24`): a client with a wrong clock
+would otherwise create `store-api-2035-01-01.jsonl`, a file the retention sweeper would never
+reach and which would sit on the volume holding personal data forever.
 
-**Step 8 — Second producer: `Store.Api`.**
-An `ILoggerProvider` that batches to the ingest. This is the first PR that touches the money
-service, so it is the first that needs the money-path review. It adds logging only.
-*Verification:* a checkout in test mode produces lines in `/data/logs/store-api-*.jsonl`.
+**Step 7 — First producer: the daemons. DONE, and not in the file this step named.**
+The writer is `prospector/log_shipper.py`, not an addition to `prospector/telemetry.py`.
+`telemetry.py` is on the hot path of every priced call; a shipper that batches, buffers and
+talks to a socket does not belong in it, and keeping them apart is what makes "a logging call
+must never be able to fail a tick" checkable rather than asserted. Both producers attach it:
+`prospector/scheduler/run_scheduled.py:2459` and `prospector/run.py:4472`, each via
+`log_shipper.attach`.
+
+**Step 8 — Second producer: `Store.Api`. DONE.**
+`store_platform/src/Store.Api/Infrastructure/CentralLog/`, eight files: an `ILoggerProvider`
+(`CentralLogProvider.cs`) over a buffer (`CentralLogBuffer.cs`) and a background shipper
+(`CentralLogShipper.cs`), wired by `CentralLogExtensions.cs` and configured by
+`CentralLogOptions.cs`. It adds logging and nothing else — no money-path behaviour changed,
+which is what let it land without the money-path review this step anticipated.
+
+*Verification for all three:* 69 passed — `tests/unit/test_log_ingest.py`,
+`tests/unit/test_log_shipper.py` and
+`tests/unit/test_log_retention_sweeps_where_the_logs_land.py`, plus
+`store_platform/src/Store.Tests/Infrastructure/CentralLogTests.cs` (253 lines) on the .NET side.
+All three shipped in PR #466, and this document did not say so until 2026-08-20.
+
+PR #466 was then reverted off `main` as `739b6d42` at 00:30Z on 2026-08-20 by the automated
+green guard, and re-landed by this branch. The revert is worth recording because the reason it
+gives is not the reason it happened. Main's CI failed on five tests; one of them,
+`test_swallowed_failures_can_only_go_down`, was #466's and is fixed here. The other four —
+`test_console_tool_registry_has_no_drift` and four in `test_prune_branches_absorbed.py` — were
+already failing before #466 merged, from #460 and #467, and were fixed by #488. The proof is
+that CI on the revert commit itself, run `32317556934`, failed on the same five tests: reverting
+#466 did not make main green. So the central logging build was deleted for four failures it did
+not cause.
 
 **Step 9 — The correlation id. DONE.**
 `X-Correlation-Id` through web → api → Stripe session metadata → webhook → fulfilment. Not
@@ -939,13 +997,88 @@ two halves cannot drift apart in silence. Mutation-checked four ways — remove
 `[program:log-retention]`, point the glob at `/data/store/logs`, widen the window to 30 days, drop
 `--fix` — each kills exactly one test, and the restore is green.
 
-**Step 12 — Cold tier and the restore drill.**
-Daily gzip of yesterday's files to R2 `prospector-backup/logs/` with a 90-day lifecycle rule.
-Then run the §6.4 drill once and write the date and result into `store/backup.log`.
-*Verification:* step 5 of the drill passes — a historical grant token decrypts against the
-restored key ring.
+**Step 12 — Cold tier. DONE. The restore drill is NOT this document's to close.**
+The cold tier is a `logs` source in `ops/config/offsite_backup.yaml`, and no new code:
+`ops.automations.offsite_backup` already fetches, verifies, prunes and grades freshness, and
+already runs daily as `[program:offsite-backup]` (`deploy/engine/supervisord.conf:109`).
+
+Why this is a `source` and not a line in the retention sweeper: `ops/config/log_rotation.yaml`
+deletes `/data/logs/*.jsonl` at 14 days, and §5.3 makes that a data-protection bound rather than
+a storage preference, so the deletion cannot be postponed to cover a failing archive. Fourteen
+days is therefore the entire margin. If this stops depositing and nobody notices for two weeks,
+the logs are gone from both places at once — which is exactly why it needed the freshness grade
+a `source` gets and a `watch` prefix does not.
+
+Three decisions in it that differ from the instruction above, each stated rather than buried:
+
+| | This step said | What shipped, and why |
+|---|---|---|
+| retention | a 90-day R2 lifecycle rule | `keep: 90`, enforced by this job's own prune. A lifecycle rule lives in Cloudflare's console, where no clone can read it, nothing here can grade it, and it does not move with the estate. One daily object, so 90 copies is 90 days. |
+| location | `prospector-backup/logs/` | `prospector-backup/offsite/logs/engine-logs-*.tgz`. `offsite/` is the declaration's storage prefix, shared by every source; carving out an exception would need a special case in the prune, the freshness check and the restore procedure. |
+| the archiver | "daily gzip" | A five-line Python program in the declaration, not `tar` and not a shell glob. `date -u -d yesterday` is GNU-only, so a shell one-liner would pass on the Linux runners and fail on a developer's Mac. |
+
+**An empty day exits non-zero on purpose.** `[program:log-ingest]` runs continuously and the
+scheduler ticks every 7200s, so a day with no log file does not mean a quiet day, it means the
+ingest died. An empty archive would upload, pass `verify: tgz`, and be graded fresh — a green
+light reporting the exact outage it exists to catch.
+
+*Verification:* 5 passed, `tests/unit/test_offsite_backup_archives_logs.py`, which runs the argv
+out of the declaration itself rather than a copy pasted into the test. Mutation-checked four
+ways, each killing its own test: delete the `logs` source (4 errors); `keep: 90` → `30` (1
+failed); make an empty day exit 0 (2 failed); archive today instead of yesterday (2 failed).
+Restored: 5 passed.
+
+**What is left, and it is not a logging task.** §6.4 step 5 — a historical grant token
+decrypting against a restored key ring — needs a throwaway Fly app booted from the same
+Dockerfile. That is new infrastructure and a founder decision, and it grades the
+`data-protection-keys` source rather than anything on this page. It belongs to M4 (prove the
+backups restore) in `docs/LAUNCH_OPS_PROGRAM.md`, and it stays open there rather than being
+marked done here. `scripts/restore_drill.py` runs weekly as `[program:restore-drill]`
+(`deploy/engine/supervisord.conf:135`) and drills the ENGINE STORE, which is a different
+datastore and does not close §6.4.
 
 ---
+
+**Step 13 — Third and fourth producers: the storefront and the console. DONE. This step was not
+in the original twelve, and its absence was the gap.**
+Steps 7 and 8 shipped the daemons and `Store.Api`. Measured 2026-08-20, that left two of the four
+things a customer or an operator actually touches producing nothing a central reader can see:
+`Store.Web` (mumchimp.com) and `Ops.Console`. A browser error on the shop front, or a failed read
+in the admin console, existed only in a Fly container's stdout for that machine's lifetime.
+
+Four pieces:
+
+| piece | file | what it does |
+|---|---|---|
+| the Node shipper | `Store.Web/src/lib/centralLog.ts` and `Ops.Console/src/lib/centralLog.ts` | the Node end of §4.5. Queue of 1000, batches of 200 every 2s, 3s timeout, drops rather than blocks, never throws, server-only. |
+| the browser's way in | `Store.Web/src/pages/api/client-log.ts` | a POST-only route. The browser cannot reach the ingest directly — see below. |
+| the storefront's first caller | `Store.Web/src/components/ErrorBoundary.tsx` | a React crash now reports itself, carrying `X-Correlation-Id` so the line joins the §4.4 trail. |
+| the console's first caller | `Ops.Console/src/lib/oplog.ts` | every existing `ConsoleEvent` also ships centrally. The two destinations it already had are unchanged. |
+
+**The ingest key must never reach the browser**, which is why the storefront posts to its own API
+route rather than to `:8613`. `STORE_INTERNAL_API_KEY` in a module the client bundle imports would
+be published in JavaScript to every visitor. That is enforced, not conventioned: a source scan in
+`clientLogRoute.test.ts` asserts nothing outside `pages/api/`, `lib/centralLog*` or `__tests__`
+imports the shipper, and `configured()` returns false whenever `window` is defined.
+
+**The shipper file is copied, not shared, and a test in EACH app refuses drift.** The two Next
+builds have separate `package.json` files and no workspace between them, so there is nowhere for
+one copy to live. The reason the guard is duplicated rather than written once is the CI path
+filter at `.github/workflows/ci.yml:390-402`: `wb` selects on `^store_platform/src/Store\.Web/`
+and `cn` on `^store_platform/src/Ops\.Console/`, so a single-lane drift test would be skipped by
+exactly the one-app change that causes drift.
+
+**Nothing here can fail a request or a build.** `ship()` is wrapped in try/catch and returns a
+boolean nobody is required to read; a failed POST increments `failed_posts` and is dropped, never
+retried; the flush timer is unrefed so a short-lived `next build` process is not held open.
+
+**Deployment note — the code is safe to land before the secret exists.** `configured()` is false
+without `STORE_INTERNAL_API_KEY`, so an unconfigured app counts `dropped_unconfigured` and behaves
+exactly as it does today. `prospector-store-web` needs that secret set before the storefront's
+lines appear; `Ops.Console` runs on `prospector-engine`, which already has it.
+
+*Verification:* 26 passed across six test files. Mutation-checked six ways — see the PR for the
+table.
 
 ## Part 9 — Open gaps and what closing each costs
 
