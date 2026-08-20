@@ -27,18 +27,13 @@ installed. So the DEFINITIONS are what this pins.
 """
 from __future__ import annotations
 
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[2]
-SKIP = {".git", "node_modules", ".venv", "store", "storage", "graphify-out", ".next"}
+from repo_files import REPO as ROOT
+from repo_files import repo_files_named
 
 
 def _tracked_paths(pattern: str) -> list[str]:
-    return sorted(
-        str(p.relative_to(ROOT))
-        for p in ROOT.rglob(pattern)
-        if not SKIP.intersection(p.relative_to(ROOT).parts)
-    )
+    """Ask git rather than walking the tree; see `repo_files.py` for why."""
+    return sorted(str(p.relative_to(ROOT)) for p in repo_files_named(pattern))
 
 
 def test_no_actions_runner_job_is_defined_in_this_repo() -> None:

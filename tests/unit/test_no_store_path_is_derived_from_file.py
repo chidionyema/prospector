@@ -26,8 +26,8 @@ import ast
 from pathlib import Path, PurePosixPath
 
 import pytest
+from repo_files import REPO, repo_python_files  # noqa: E402
 
-REPO = Path(__file__).resolve().parents[2]
 SKIP_DIRS = {".venv", "node_modules", "store", "storage", ".git", "graphify-out",
              "__pycache__", ".pytest_cache", "scratchpad"}
 SEGMENTS = {"store", "storage"}
@@ -170,9 +170,9 @@ def _offenders(path: Path) -> list[tuple[int, str]]:
     return hits
 
 
-def _sources() -> list[Path]:
-    return [p for p in sorted(REPO.rglob("*.py"))
-            if not any(part in SKIP_DIRS for part in p.relative_to(REPO).parts)]
+def _sources() -> tuple[Path, ...]:
+    """Ask git rather than walking the tree; see `repo_files.py` for why."""
+    return repo_python_files()
 
 
 def test_there_are_sources_to_grade():
