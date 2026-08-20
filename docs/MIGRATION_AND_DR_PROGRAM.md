@@ -17,6 +17,17 @@ that is not a file we can copy**.
 > paragraph. **§11 is the requirements register** — 38 functional and 14 non-functional
 > requirements, each with the drill that proves it and the deliverable that builds it. §0–§9 grade
 > what is broken; §10–§11 say what we are building. When they disagree, §10 and §11 win.
+> **§12 answers how much of this can sensibly move to Kubernetes, and §13 names the final
+> tooling** — the two questions the founder asked on 2026-08-20 that nothing here answered.
+>
+> **§10 and §11 are published as the [GOLD STAR PLAN](https://claude.ai/code/artifact/ef6fe784-7f6c-4981-85cd-37dfbe40b696), dated
+> 20 August 2026 and adopted by the founder as the target** — *"this is perfect ... this is what we
+> are working toward, label it gold star plan and date"*. The page also answers two things this
+> document did not: how much of the estate can sensibly move to Kubernetes, plane by plane, and the
+> tooling we standardise on. That page renders THIS document; when they differ, this document is
+> right and the page gets republished at the same URL. It is linked from `README.md` and
+> `docs/ESTATE_MAP.md` so a session that loses its context can find it from any door into the
+> repo.
 
 
 Founder directive, 2026-08-18/19:
@@ -1193,6 +1204,8 @@ Append here. One line per shipped item, with the receipt.
 | 2026-08-19 | M4 (part) | `verify:` has no default — a source that states no kind, or an unknown kind, is refused when the declaration is read | `29 passed`; mutation-proved (`2 failed` with the default restored) |
 | 2026-08-20 | §10 | the target platform: ten planes, one contract each, and what done looks like | this document; counts re-measured from the tables, not asserted |
 | 2026-08-20 | §11 | the requirements register: 38 functional, 14 non-functional, each with its drill and deliverable | 3 proven, 11 built-never-run, 34 not started, 4 blocked |
+| 2026-08-20 | §12 | how much of the estate can sensibly move to k8s, plane by plane: 2 whole, 5 half, 3 not at all | adapter read at `deploy/targets/k8s.sh`; `docker-desktop` live in `kubectl config get-contexts` |
+| 2026-08-20 | §13 | the final tooling named — 7 decided, 4 proposed, 4 things deliberately not adopted | `command -v` sweep on this laptop: helm, sops, restic, rclone, ansible, kind, k3d absent |
 | 2026-08-20 | §10.4 | the k8s adapter question answered: nothing calls it, it has never run, and a free local cluster exists | `kubectl config get-contexts` → `docker-desktop` |
 | 2026-08-20 | P5 / #355 | the engine can page the founder from a container — in-repo Telegram sender, no `$HOME` dependency | commit `47212af5`; 18 tests, 5 mutations caught |
 
@@ -1532,3 +1545,76 @@ A requirement is met when its drill has run green **and is scheduled**. Not when
 not when a test passes on shape, not when a document says so. Eleven of the rows above are `◐` —
 built and never run — and that column is the whole reason the programme felt like progress while
 the bar stayed unmet.
+
+---
+
+## 12. How much of this can sensibly move to Kubernetes
+
+Founder question, 2026-08-20: *"questios neeeds answered how easy to nove everything or as nuch as
+nakes sese to k8's"*.
+
+"Move to k8s" is ten questions wearing one name, so the answer is plane by plane. Kubernetes is a
+compute substrate with an ecosystem attached. It absorbs some planes whole, half-absorbs others,
+and has no opinion at all about three.
+
+| Plane | Absorbed | What k8s gives | What stays ours |
+|---|---|---|---|
+| P1 Compute | **fully** | Deployment, Service, image pull. `deploy/targets/k8s.sh` already generates its own manifests inline (`t_provision`, `t_start`) — no Helm, no chart to maintain. | Nothing. The one plane k8s answers end to end. |
+| P2 State | half | A PersistentVolumeClaim holds `store/`. The adapter asks for `ReadWriteOnce` deliberately, which is also what holds one writer on the ledger. | Backup, offsite copy, restore. A PVC is a disk, not a backup. |
+| P3 Secrets | half | A `Secret` delivers `KEY=VALUE` into the pod, loaded via `--from-env-file` so no value reaches `ps` or a history file. | The hard half: a k8s Secret is base64, not encryption, and it does not say where secrets live so a NEW machine can fetch them. Still blocked on the founder. |
+| P4 Identity | half | Real ground: ingress for routing, cert-manager for TLS issue and renewal, external-dns to write records where the registrar has an API. | The registrar account, the domain, and the recovery path to both. |
+| P5 Observability | mostly | The largest single win: a stack that already knows how to scrape pods, replacing hand-rolled shipping and scraping. | Paging a human. Already solved in-repo (`prospector/scheduler/telegram_sender.py`) and needs no cluster. |
+| P6 Work | **fully** | `CronJob` replaces the launchd plists one for one, with history and retries. The long-running tick stays a Deployment. | Nothing structural. |
+| P7 Money | **not at all** | Nothing. The payment provider is a third party reached over HTTPS from wherever compute sits. | All of it. Portability here is `bridge.py`'s own contract. |
+| P8 Delivery | half | The storefront is a container, so it runs as a Deployment. | The domain and edge in front (P4) and the catalogue state (P2). |
+| P9 Control | half | The console runs as a workload. Nothing more. | Every button. The console is only as portable as the verbs it calls. k8s does not make a missing verb appear. |
+| P10 Knowledge | **not at all** | Nothing. Runbooks and docs live in git. | All of it. |
+
+**Two planes move whole, five move half, three do not move at all — and the half left behind is the
+expensive half every time.** k8s absorbs compute and scheduled work completely and takes a real
+bite out of observability and TLS. It does nothing for the three questions actually blocking this
+programme: where secrets live so a new machine can fetch them, who can recover the domain, and how
+state is restored. Adopting it does not shorten §11.
+
+**What that makes it worth: a portability proof, not a production migration.** A second substrate
+genuinely unlike Fly is the cheapest way to find out whether the eleven-verb contract is real or
+only well-written, and `kubectl config get-contexts` shows `docker-desktop` live on this laptop, so
+the proof costs nothing and needs no account. That is deliverable **D-P1.3** and it turns the first
+`◐` in §11 into a `✅`.
+
+**What I would not do: run a self-managed control plane on the laptop as production.** It replaces
+one single point of failure with a more complicated one, and a control plane needs its own backups,
+upgrades and on-call. If we take this route it is a managed cluster, and only once the planes k8s
+cannot help with are already closed.
+
+---
+
+## 13. The final tooling — the decision, closing §5's analysis
+
+Founder, 2026-08-20: *"no netion of finalaa tooling"*. §5 lists candidates. This section names the
+choice. One tool per layer, nothing chosen twice. **Decided** means code in the repo uses it today.
+**Proposed** means it is waiting on the founder, and the alternative is named so the choice is a
+choice rather than a default.
+
+| Layer | Tool | Status | Why this one |
+|---|---|---|---|
+| Portability contract | our own eleven verbs, plain `sh` | decided | `deploy/PORTABILITY.md`, four adapters, one contract test. No framework is smaller than a shell function, and nothing outside `deploy/targets/` knows a provider's name. |
+| Container build | Docker, one Dockerfile per service | decided | Every adapter builds the same image from the repo root, so the artifact on Fly is the artifact anywhere else. |
+| Production host | Fly | decided 2026-08-18 | Running there since the cutover. Stays production until a second substrate has actually been drilled. |
+| Second substrate | Kubernetes via `kubectl`, **no Helm** | proposed | The adapter writes its own manifests, so a chart would be a second place for the same truth to live. Free to prove on `docker-desktop`. |
+| Infrastructure as code | none for the engine | proposed | `terraform` is installed and nothing in the repo uses it. The engine is eleven verbs, not a resource graph. Revisit only for DNS records and account scaffolding — a different problem, and §5 already parks it as OpenTofu-later. |
+| Secrets at rest | `sops` + `age`, key escrowed off-machine | proposed · **blocks P3** | `age` is installed and already signs receipts here. Cloud KMS is ruled out by the founder. Alternative is a password-manager CLI; either way one bootstrap credential must exist off this laptop. |
+| Backup and restore | `restic` to object storage | proposed | Free, encrypted, deduplicating, and it verifies its own snapshots — which matters more than the copy, because an unverified backup is a belief. Alternative `rclone` copies but does not verify. |
+| Paging | Telegram, in-repo sender | decided 2026-08-20 | Commit `47212af5`. The previous sink was a file on this laptop, which is the wrong place for the alert that says this laptop is gone. |
+| CI | GitHub Actions, self-hosted runners behind a variable | decided | Every job reads `CI_RUNS_ON` with a hosted fallback, so the fleet moves or dies without touching a workflow file. |
+| Language and gate | Python 3.14, `uv`, `ruff`, `pytest` | decided | In use and enforced by the commit gate. Written down so nobody re-opens it. |
+| Ops surface | the repo's own console | decided | The rule outranks the tool: no behaviour may exist only in a provider's dashboard. A button is a verb in the repo or it is not a button. |
+
+**Four things are deliberately absent, and that is the point of writing this down: no Helm, no
+Terraform for the engine, no service mesh, no hosted observability vendor.** Each adds a second
+place for the same truth to live, and every measurement in this programme says duplication is what
+has been costing us — not missing tools.
+
+Measured on this laptop 2026-08-20, so the proposals are honest about what still needs installing:
+`kubectl`, `docker`, `fly`, `terraform`, `age`, `gh`, `uv`, `ruff`, `pytest`, `node` are present.
+`helm`, `sops`, `restic`, `rclone`, `ansible`, `kind`, `k3d` are not.
