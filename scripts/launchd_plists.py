@@ -26,6 +26,7 @@ worse than the drift.
 Usage:
     python3 scripts/launchd_plists.py --check       # report drift, exit 1 if any
     python3 scripts/launchd_plists.py --snapshot    # write the tracked copies
+    python3 scripts/launchd_plists.py --assert-held # exit 1 if a declared job is not running
 """
 from __future__ import annotations
 
@@ -40,6 +41,7 @@ from pathlib import Path
 
 LIVE = Path(os.path.expanduser("~/Library/LaunchAgents"))
 TRACKED = Path(__file__).resolve().parent.parent / "ops" / "launchd"
+NOT_HELD = Path(__file__).resolve().parent.parent / "ops" / "config" / "launchd_not_held.json"
 
 REDACTED = "<REDACTED>"
 
@@ -356,6 +358,119 @@ def cmd_check() -> int:
     return 1
 
 
+def held_labels() -> set[str] | None:
+    """Labels launchd is holding right now, or None when launchctl did not answer.
+
+    None and the empty set are different answers and the difference is the whole point. A
+    parse that returns {} when it could not ask reports every job in the estate as dead, so
+    the reader learns to ignore it; a parse that returns {} when it DID ask and launchd holds
+    nothing is a real alarm. `--assert-held` exits 2 on None and never grades anything.
+    """
+    try:
+        proc = subprocess.run(["launchctl", "list"], capture_output=True, text=True,
+                              timeout=20, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    held: set[str] = set()
+    for line in proc.stdout.splitlines()[1:]:
+        parts = line.split("\t")
+        if len(parts) >= 3:
+            held.add(parts[2].strip())
+    return held
+
+
+def load_not_held(path: Path | None = None) -> tuple[dict[str, str], list[str]]:
+    """The deliberately-not-held labels and their reasons, plus anything wrong with the file.
+
+    A missing file is not a problem: it means every declared job is expected to be held,
+    which is the safe default. A file that exists and cannot be read IS a problem, because
+    the alternative is excusing nothing and burying the reader in false alarms.
+    """
+    path = NOT_HELD if path is None else path
+    problems: list[str] = []
+    if not path.exists():
+        return {}, problems
+    try:
+        raw = json.loads(path.read_text())
+    except (OSError, ValueError) as exc:
+        return {}, ["%s is unreadable: %s" % (path.name, exc)]
+    entries = raw.get("not_held")
+    if not isinstance(entries, dict):
+        return {}, ["%s has no `not_held` object" % path.name]
+    excused: dict[str, str] = {}
+    for label, why in sorted(entries.items()):
+        if not isinstance(why, str) or not why.strip():
+            problems.append("%s excuses %s with no reason" % (path.name, label))
+            continue
+        excused[label] = why.strip()
+    return excused, problems
+
+
+def cmd_assert_held() -> int:
+    """Every job declared in ops/launchd/ is held by launchd, or is excused in writing.
+
+    WHY THIS IS SEPARATE FROM --check. `--check` compares definitions; this asserts one fact
+    about the running machine, so its exit code means exactly one thing and a capability can
+    be hung on it. `process_audit.py` already measured this and graded it WARN, on the
+    written argument that the probe could not know whether a job OUGHT to be running -- and
+    it was right, so this gives it the missing input instead of arguing with it. What a job
+    ought to do is now declared in ops/config/launchd_not_held.json, where a person writes
+    the reason down once.
+
+    Measured 2026-08-20, the run that produced this: ten jobs were installed and not held,
+    including every ai.hermes.* daemon, and the estate had been blind to it for 13.5 hours.
+    """
+    declared = sorted(load_tracked())
+    if not declared:
+        print("LAUNCHD HELD UNPROVEN — no declarations in %s, so there is nothing to assert"
+              % TRACKED)
+        return 2
+    held = held_labels()
+    if held is None:
+        print("LAUNCHD HELD UNPROVEN — `launchctl list` did not answer, so nothing was graded")
+        return 2
+
+    excused, problems = load_not_held()
+    installed = {p.stem for p in LIVE.glob("*.plist")}
+
+    missing: list[str] = []
+    notes: list[str] = []
+    for label in declared:
+        if label in held:
+            if label in excused:
+                notes.append("%s  is excused as not-held, but launchd IS holding it — drop "
+                             "the entry from %s" % (label, NOT_HELD.name))
+            continue
+        if label in excused:
+            notes.append("%s  off by design — %s" % (label, excused[label]))
+            continue
+        where = "its plist is installed" if label in installed else "NO plist installed"
+        missing.append("%s  declared, %s, launchd is NOT holding it" % (label, where))
+
+    for label in sorted(set(excused) - set(declared)):
+        notes.append("%s  is excused as not-held but is declared nowhere in %s"
+                     % (label, TRACKED.name))
+
+    for note in notes:
+        print("NOTE         %s" % note)
+    for problem in problems:
+        print("BAD EXCUSE   %s" % problem)
+    for finding in missing:
+        print("NOT HELD     %s" % finding)
+
+    n = len(missing) + len(problems)
+    if n == 0:
+        print("LAUNCHD HELD PASS  %d declared job(s), %d held, %d excused in writing"
+              % (len(declared), len(declared) - len(excused), len(excused)))
+        return 0
+    print("LAUNCHD HELD FAIL  %d finding(s)  (not-held=%d bad-excuse=%d)  — either load the "
+          "job, or write down in %s why it must not run"
+          % (n, len(missing), len(problems), NOT_HELD.name))
+    return 1
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     g = ap.add_mutually_exclusive_group(required=True)
@@ -363,8 +478,15 @@ def main() -> int:
                    help="report drift against the tracked snapshot; exit 1 if any")
     g.add_argument("--snapshot", action="store_true",
                    help="overwrite the tracked snapshot with what is installed now")
+    g.add_argument("--assert-held", action="store_true",
+                   help="exit 1 if launchd is not holding a declared job that is "
+                        "not excused in ops/config/launchd_not_held.json")
     args = ap.parse_args()
-    return cmd_snapshot() if args.snapshot else cmd_check()
+    if args.snapshot:
+        return cmd_snapshot()
+    if args.assert_held:
+        return cmd_assert_held()
+    return cmd_check()
 
 
 if __name__ == "__main__":
