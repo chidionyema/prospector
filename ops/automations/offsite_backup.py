@@ -93,6 +93,22 @@ class Source:
     verify: str = ""
     keep: int = DEFAULT_KEEP
     max_age_hours: float = DEFAULT_MAX_AGE_HOURS
+    # A path that must exist on THIS host for this source to be taken here. Empty means every
+    # host takes it, which is what every source did before this field existed.
+    #
+    # One declaration is read by two hosts: the Fly engine container
+    # (deploy/engine/supervisord.conf [program:offsite-backup]) and the founder's laptop
+    # (ops/launchd/com.prospector.offsite-backup.json), both with `--fix`. The agent estate is
+    # ~/.claude on the laptop and does not exist in the container at all, so without this the
+    # container would fail that source every night, report the whole run `unknown`, and turn the
+    # `offsite_backup` receipt red for a reason that is not a backup problem. This file already
+    # says what happens next: "a check that goes red for the wrong reason gets muted, and a muted
+    # check is worse than none."
+    #
+    # It gates TAKING only. `check` still grades this source on every host, because it grades the
+    # bucket, and the bucket is the same everywhere — so if the laptop stops taking the copy, the
+    # container is the thing that notices.
+    only_where: str = ""
 
 
 @dataclass
@@ -203,6 +219,7 @@ def load_declaration(path: Path) -> Declaration:
                 verify=kind,
                 keep=int(entry.get("keep") or DEFAULT_KEEP),
                 max_age_hours=float(entry.get("max_age_hours") or default_age),
+                only_where=str(entry.get("only_where") or ""),
             )
         )
 
@@ -359,6 +376,17 @@ def verify_copy(path: Path, kind: str) -> None:
     )
 
 
+def takeable_here(source: Source) -> bool:
+    """Can this host take this source at all?
+
+    `~` is expanded, environment variables are not. `${HOME}` would raise through `_expand` where
+    it is unset, which turns "this source belongs to another host" into "the declaration is
+    broken" — the opposite of the intent."""
+    if not source.only_where:
+        return True
+    return Path(os.path.expanduser(source.only_where)).exists()
+
+
 def _dated_key(prefix: str, source: Source, stamp: str) -> str:
     stem, dot, suffix = source.key.rpartition(".")
     dated = f"{stem}-{stamp}.{suffix}" if dot else f"{source.key}-{stamp}"
@@ -366,7 +394,8 @@ def _dated_key(prefix: str, source: Source, stamp: str) -> str:
 
 
 def take_backup(client: Any, bucket: str, prefix: str, source: Source,
-                *, timeout_s: float = DEFAULT_FETCH_TIMEOUT_S) -> dict[str, Any]:
+                *, repo: Path | None = None,
+                timeout_s: float = DEFAULT_FETCH_TIMEOUT_S) -> dict[str, Any]:
     """Fetch, verify, upload, prune. Returns the receipt."""
     with tempfile.TemporaryDirectory(prefix="offsite-") as scratch:
         dest = Path(scratch) / Path(source.key).name
@@ -375,7 +404,14 @@ def take_backup(client: Any, bucket: str, prefix: str, source: Source,
         # eighteen literal characters of the variable name. The API answers 401, `--fail` turns
         # that into a non-zero exit, and the night reads as a fetch failure rather than as a
         # missing secret. `_expand` raises when the variable is unset, which is the honest answer.
-        command = [_expand(part).replace("{dest}", str(dest)) for part in source.fetch]
+        # `{repo}` as well as `{dest}`: a fetch that runs a script out of this repository cannot
+        # name it by a relative path, because the command runs with cwd set to the scratch
+        # directory, and cannot name it absolutely, because the checkout is /app in the container
+        # and prospector-live on the laptop.
+        command = [
+            _expand(part).replace("{dest}", str(dest)).replace("{repo}", str(repo or ""))
+            for part in source.fetch
+        ]
         try:
             done = subprocess.run(
                 command, capture_output=True, text=True, timeout=timeout_s, cwd=scratch
@@ -531,9 +567,20 @@ def run(config_path: Path, *, fix: bool = False) -> dict[str, Any]:
         load_dotenv(config_path.resolve().parents[2] / ".env")
         client, bucket, prefix = storage_client(decl.storage)
         if fix:
-            result["backups"] = [
-                take_backup(client, bucket, prefix, source) for source in decl.sources
-            ]
+            repo = config_path.resolve().parents[2]
+            backups: list[dict[str, Any]] = []
+            for source in decl.sources:
+                if not takeable_here(source):
+                    # Recorded, not silent. A source that quietly does nothing on every host is a
+                    # source nothing backs up, and `check` below is what catches that: it grades
+                    # this source here anyway, off the shared bucket.
+                    backups.append({
+                        "source": source.name,
+                        "skipped": f"{source.only_where} does not exist on this host",
+                    })
+                    continue
+                backups.append(take_backup(client, bucket, prefix, source, repo=repo))
+            result["backups"] = backups
         report = check(client, bucket, prefix, decl.sources)
         report += check_watched(client, bucket, decl.watched)
     except CannotEstablish as exc:
