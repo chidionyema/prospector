@@ -141,6 +141,24 @@ def main() -> int:
     model_id, revision = ARMS[name]
     batch = int(os.environ.get("BATCH", "4"))
     limit = int(os.environ.get("LIMIT", "0"))
+    offset = int(os.environ.get("OFFSET", "0"))
+    threads = int(os.environ.get("THREADS", "0"))
+    dtype_name = os.environ.get("DTYPE", "int8")
+    # DTYPE defaults to int8, and that default is a measurement, not a preference. This host is an
+    # Intel Xeon @2.30GHz whose /proc/cpuinfo flags carry avx512f and avx512_vnni but NOT
+    # avx512_bf16 and NOT amx_bf16. bfloat16 therefore has no hardware path here: every matmul is
+    # emulated through fp32. Measured on the box 2026-08-20, same shapes, 16 threads:
+    #
+    #     float32 matmul 2048^3   16.9 ms      bfloat16 matmul   78.3 ms  -> fp32 4.6x faster
+    #     float32 Linear   1.4 ms  int8 Linear  1.3 ms  bf16 Linear 3.7 ms -> int8 2.85x faster
+    #
+    # The Stage B arm ran at 0.025 pairs/s (38.6 h for the frozen 3,472-pair set) paying that
+    # emulation tax on every pair. int8 dynamic quantisation is both the fastest option AND the
+    # only one that fits: fp32 weights for a 7.6B model are ~30 GB against 32 GB of RAM, int8 is
+    # ~8 GB. This is a DEVIATION from the reference implementation and is recorded as one in the
+    # receipt's meta.deviations, not hidden.
+    if threads:
+        torch.set_num_threads(threads)
 
     hf_home = Path(os.environ["HF_HOME"]).resolve()
     if not str(hf_home).startswith(str(DATA)):
@@ -150,10 +168,16 @@ def main() -> int:
 
     frozen = json.loads((DATA / "e101_pairs.json").read_text())
     pairs = [tuple(p) for p in frozen["pairs"]]
+    # OFFSET before LIMIT, so N machines can each take a disjoint slice of the SAME frozen set:
+    # OFFSET=0 LIMIT=868, OFFSET=868 LIMIT=868, ... The receipt records both, so merging the shards
+    # can prove the union is the whole set with no pair scored twice and none skipped.
+    if offset:
+        pairs = pairs[offset:]
     if limit:
         pairs = pairs[:limit]
 
-    print(f"{name}: {model_id}@{revision[:8]}  {len(pairs)} pairs, batch {batch}", flush=True)
+    print(f"{name}: {model_id}@{revision[:8]}  {len(pairs)} pairs, batch {batch}, "
+          f"dtype {dtype_name}, offset {offset}, threads {torch.get_num_threads()}", flush=True)
     tok = AutoTokenizer.from_pretrained(model_id, revision=revision, trust_remote_code=True)
     tok.padding_side = "left"          # the score is read at the LAST position
     if tok.pad_token_id is None:
@@ -163,8 +187,15 @@ def main() -> int:
           f"no ids {len(no_ids)}", flush=True)
 
     t_load = time.time()
+    # int8 is a two-step load: the checkpoint is read at its own precision, then the Linear layers
+    # are quantised. No path loads int8 weights directly, and peak resident size is the LOAD dtype
+    # -- which is why int8 loads via bfloat16 (15 GB) rather than float32 (30 GB) even though
+    # bfloat16 arithmetic is the slow one here. Only the arithmetic AFTER quantisation matters, and
+    # after it there is no bfloat16 left in the Linear layers.
+    load_dtype = {"int8": torch.bfloat16, "bfloat16": torch.bfloat16,
+                  "float32": torch.float32}[dtype_name]
     model, info = AutoModelForCausalLM.from_pretrained(
-        model_id, revision=revision, dtype=torch.bfloat16, low_cpu_mem_usage=True,
+        model_id, revision=revision, dtype=load_dtype, low_cpu_mem_usage=True,
         trust_remote_code=True, output_loading_info=True)
     missing = info.get("missing_keys") or []
     if missing:
@@ -174,6 +205,13 @@ def main() -> int:
             f"that has not learned this task. See memory "
             f"a-remote-code-model-can-load-as-a-different-model.")
     model.eval()
+    if dtype_name == "int8":
+        # AFTER the missing_keys check, deliberately: that check must grade the real checkpoint,
+        # not a quantised copy of it. Dynamic quantisation of Linear only -- weights to int8 once,
+        # activations quantised per batch at run time. Embeddings, LayerNorm and the LM head keep
+        # their precision, so the yes/no logits this experiment reads stay on a float path.
+        model = torch.ao.quantization.quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)
+        print("  Linear layers quantised to int8 (dynamic)", flush=True)
     print(f"  loaded in {time.time() - t_load:.1f}s, missing_keys 0, "
           f"unexpected {len(info.get('unexpected_keys') or [])}", flush=True)
 
@@ -212,13 +250,17 @@ def main() -> int:
         "corpus_fingerprint": frozen["corpus_fingerprint"],
         "scored_on": "fly:prospector-verifier-lab:performance-16x",
         "wall_seconds": round(wall, 2), "pairs_per_second": round(len(pairs) / wall, 3),
-        "meta": {"model_id": model_id, "revision": revision, "dtype": "bfloat16",
+        "meta": {"model_id": model_id, "revision": revision, "dtype": dtype_name,
                  "n_yes_token_ids": len(yes_ids), "n_no_token_ids": len(no_ids),
                  "trust_remote_code": True, "missing_keys": 0,
                  "batch": batch, "limit": limit,
+                 "offset": offset, "threads": torch.get_num_threads(),
                  "deviations": ["single forward pass instead of vLLM generate",
                                 "full-vocabulary yes-mass; top-5 reference value recorded beside it",
-                                "no sentence fusion, no chunking (premises clipped to 1500 chars)"]},
+                                "no sentence fusion, no chunking (premises clipped to 1500 chars)"]
+                 + (["Linear layers dynamically quantised to int8; this host has avx512_vnni but "
+                     "no avx512_bf16, so int8 is the only hardware-accelerated path"]
+                    if dtype_name == "int8" else [])},
     }))
     print(f"{name}: done {wall:.1f}s ({len(pairs)/wall:.2f} pairs/s) -> {dest}", flush=True)
     return 0
