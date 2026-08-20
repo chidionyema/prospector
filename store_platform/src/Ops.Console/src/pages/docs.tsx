@@ -30,17 +30,22 @@
  *     Documents change when someone deploys, not every thirty seconds, so both reads are
  *     `pollMs: 0` with a Refresh button. That is two spawns per 30s per open tab, removed.
  *
- * What this is NOT yet: shareable. A link a non-operator can open, that expires and can be
- * revoked, needs a token store and a route that answers without a session — that arrived
- * separately as `/share`. Everything here sits behind the console's own auth.
+ *  5. EVERY DOCUMENT IS SHAREABLE FROM HERE. `ShareDoc` below mints an expiring, revocable link
+ *     for the document on screen. This paragraph used to read "What this is NOT yet: shareable",
+ *     and it stayed true for a day after it stopped being the whole story: the token store and
+ *     the sessionless route both shipped on 2026-08-19 as `/share`, and nothing joined them to
+ *     the page where the operator is actually standing. Measured 2026-08-20 against the live
+ *     store: 0 shares had ever been minted. Reading a path off this page and typing it into
+ *     another one is a step nobody takes.
  */
 import { useRouter } from 'next/router';
 import { useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
+import Confirm from '@/components/Confirm';
 import Shell from '@/components/Shell';
-import { AsOf, Button, Card, Empty, Note, Problem, Scroll, Spinner } from '@/components/ui';
+import { AsOf, Button, Card, Empty, Mono, Note, Problem, Scroll, Spinner } from '@/components/ui';
 import { useOps } from '@/lib/useOps';
 
 type DocEntry = {
@@ -110,6 +115,124 @@ const md = {
   td: (p: object) => <td className="border border-line px-2 py-1 align-top" {...p} />,
   hr: () => <hr className="my-5 border-0 border-t border-line" />,
 };
+
+/**
+ * A share link for the document on screen.
+ *
+ * Added 2026-08-20. The two halves of "expose every repo doc as a shareable link" both shipped on
+ * 2026-08-19 and were never joined. This page could read 127 documents; `/share` could mint an
+ * expiring, revocable link for any of 2,093 tracked files. Getting from one to the other meant
+ * reading the path off this page and typing it into that one. Measured the same day, against the
+ * live store: 0 shares had ever been minted. The founder checked and said the story was not done,
+ * and he was right — a rail nobody can reach from where they are standing is not a rail.
+ *
+ * It mints through the SAME `share.create` action as `/share`, with the same preview-then-apply
+ * gate, so what a link may cover is still decided in one place (`prospector/ops/share.py`). This
+ * is a shorter walk to that fence, never a second one: a copy of the rule here would be a rule
+ * that can disagree with itself.
+ */
+function ShareDoc({ name }: { name: string }) {
+  const [panel, setPanel] = useState(false);
+  const [days, setDays] = useState(7);
+  const [note, setNote] = useState('');
+  /** Held only until the operator navigates away. The token is never re-readable. */
+  const [minted, setMinted] = useState<{ url: string; expires: number } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const target = `docs/${name}`;
+
+  async function copy(url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+    } catch {
+      // Clipboard access is refused outside a secure context and in some browsers. The link is on
+      // screen and selectable, so this is a missing convenience, never a lost token.
+      setCopied(false);
+    }
+  }
+
+  if (!panel) {
+    return (
+      <div className="mb-3">
+        <Button onClick={() => setPanel(true)}>Share this doc</Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-3 rounded-sm border border-line px-3 py-3">
+      <div className="text-[13px] font-[560]">
+        A link to <Mono>{target}</Mono> that anyone can open without a login.
+      </div>
+      <div className="mt-2 flex flex-wrap gap-3">
+        <label className="flex flex-col gap-1 text-[13px]">
+          <span className="text-subtle">Days until it expires</span>
+          <input
+            type="number"
+            min={1}
+            max={90}
+            value={days}
+            onChange={(e) => setDays(Number(e.target.value))}
+            className="tap w-28 rounded-sm border border-border-control bg-surface px-2 py-2 text-[16px]"
+          />
+        </label>
+        <label className="flex flex-1 flex-col gap-1 text-[13px]">
+          <span className="text-subtle">Who is it for (recorded, not shown to them)</span>
+          <input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="architecture review"
+            className="tap rounded-sm border border-border-control bg-surface px-2 py-2 text-[16px]"
+          />
+        </label>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Confirm
+          action="share.create"
+          label="Check what this covers"
+          kind="primary"
+          applyLabel="Mint the link"
+          payload={() => ({ scope: 'file', target, days, note })}
+          renderPreview={(p) => (
+            <div className="flex flex-col gap-2">
+              <div>
+                <strong>{String(p.covers)}</strong> file, readable by anyone holding the link for{' '}
+                {String(p.days)} days.
+              </div>
+              <div className="text-[12px] text-muted">{String(p.note ?? '')}</div>
+            </div>
+          )}
+          onApplied={(receipt) => {
+            setCopied(false);
+            setMinted({
+              url: `${window.location.origin}${String(receipt.path ?? '')}`,
+              expires: Number(receipt.expires_at ?? 0),
+            });
+          }}
+        />
+        <Button onClick={() => setPanel(false)}>Close</Button>
+      </div>
+      {minted ? (
+        <div className="mt-3 rounded-sm border border-ok/40 bg-ok-bg px-3 py-3">
+          <div className="text-[13px] font-[560] text-ok-strong">
+            Copy this now. It is not stored and cannot be shown again.
+          </div>
+          <div className="wrap-any mt-2 font-mono text-[12.5px]">{minted.url}</div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Button onClick={() => copy(minted.url)}>{copied ? 'Copied' : 'Copy link'}</Button>
+            <span className="text-[12px] text-muted">
+              expires {minted.expires ? new Date(minted.expires * 1000).toLocaleString() : '—'}
+            </span>
+            <a className="text-[12px] underline" href="/share">
+              Manage or revoke it on Share
+            </a>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export default function Docs() {
   // `?open=incidents/INC-....json` opens that document directly. The Incidents page links here
@@ -275,6 +398,7 @@ export default function Docs() {
         >
           {doc.error ? <Problem>{doc.error}</Problem> : null}
           {doc.loading && !doc.data ? <Spinner what={open} /> : null}
+          {doc.data ? <ShareDoc name={doc.data.name} /> : null}
           {doc.data?.truncated ? (
             <Note>
               Showing the first {size(doc.data.text.length)} of {size(doc.data.bytes)}. The rest is
