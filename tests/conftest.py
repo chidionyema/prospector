@@ -7,6 +7,55 @@ import pytest
 
 from prospector.config import Config, load_config
 
+
+def _strip_inherited_git_env() -> list[str]:
+    """Remove every GIT_* variable from this process before any test runs. Returns what went.
+
+    WHAT THIS PREVENTS: the test suite destroying the index of the person running it.
+
+    `git commit` exports GIT_INDEX_FILE, GIT_DIR and friends into the environment of every hook it
+    runs, and this suite is run by one — `scripts/popdd_verify.py --staged` is wired as the
+    pre-commit gate. An inherited GIT_INDEX_FILE beats `cwd=` and it beats `git -C <dir>`
+    (memory `git-c-repo-loses-to-an-inherited-git-dir.md`). So a test that builds a scratch repo
+    in tmp_path and runs `git add -A` inside it stages the COMMITTER'S working tree instead, and
+    then passes.
+
+    Measured 2026-08-20, independently in two worktrees with two different indexes:
+
+        worktree      index before   index after   pytest verdict
+        wt-engine100x        1,979             4   10 passed
+        prospector-20        2,039             3   10 passed
+
+    1,977 files staged as deletions in the first, and the suite called it green both times. The
+    test that did it is named `test_worktree_snapshot_touches_nothing.py`.
+
+    WHY HERE AND NOT AT THE CALL SITES. There were 21 mutating git call sites across four test
+    files and not one of them passed `env=`. Fixing them individually fixes today's tests and none
+    of tomorrow's; this fixes every test that exists, every test written after it, and every
+    script they shell out to, in one place. A test that genuinely wants a GIT_* variable still
+    sets it explicitly with `env=` on its own subprocess call, which is unaffected.
+
+    WHY THE WHOLE PREFIX. GIT_WORK_TREE, GIT_OBJECT_DIRECTORY, GIT_COMMON_DIR,
+    GIT_ALTERNATE_OBJECT_DIRECTORIES and GIT_CONFIG_GLOBAL all redirect a git subprocess the same
+    way. A list of the three that bit us is a list that goes stale. Note also that the damaging
+    case and the harmless case differ only in WHICH variables are set: with GIT_INDEX_FILE alone
+    the fixture builds its repo and destroys the index, while with GIT_DIR also set it errors out
+    early and destroys nothing (2 passed, 8 errors). So this keys on inheritance, never on
+    observed damage.
+
+    WHY AT IMPORT AND NOT IN A FIXTURE. `pytest_runtest_setup` below snapshots os.environ before
+    each test's fixtures run, and `pytest_runtest_teardown` fails any test that changed it. An
+    autouse fixture doing this strip would therefore be read as a leak and fail every test in the
+    suite. Import time is before the first snapshot, so the strip is invisible to that guard.
+    """
+    removed = sorted(k for k in os.environ if k.startswith("GIT_"))
+    for name in removed:
+        del os.environ[name]
+    return removed
+
+
+STRIPPED_GIT_ENV = _strip_inherited_git_env()
+
 # Variables pytest itself owns and rewrites around every test. PYTEST_CURRENT_TEST carries the
 # node id AND the phase, so it reads "…(setup)" at the start of a test and "…(teardown)" at the
 # end — a difference on every single test, which would make the guard below fire 5852 times and
