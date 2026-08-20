@@ -1,0 +1,45 @@
+{
+  "id": "INC-2026-08-20-an-unknown-main-looked-green-on-every-pr",
+  "opened": "2026-08-20",
+  "title": "Main's CI was cancelled rather than failed, so no guard fired, and every pull request then rendered its unbuilt jobs as passing checks",
+  "severity": "high",
+  "detected_by": "founder \u2014 \"disaster, another edge case\", then \"i merged the prs ... because they were there and they said passed checks\", then \"if main is never red then there would be no need for manual approval\"",
+  "first_order": {
+    "what_broke": "Four pull requests were merged onto main with no build behind them: #467 (48465494), #472 (802a2e4b), #476 (fe6fcd13), #466 (a2e35ae2). The founder merged them by hand because their GitHub checks page showed nothing red.",
+    "receipt": "Not one CI run at any of those four heads concluded `success`. PR #466 head 515bd122: run 32312751684 (pull_request) cancelled, run 32312746987 (workflow_dispatch) failure. PR #476 head 14432474: runs 32314274763 and 32314271298, both cancelled. Their check rollups read `changes FAILURE, guard CANCELLED, python SKIPPED, dotnet SKIPPED, nextjs SKIPPED, ops-console SKIPPED, ci-ok FAILURE`. GitHub renders SKIPPED as neutral grey.",
+    "fixed_by": "3af703b6 on ci/pipeline-failure-ledger (#480) \u2014 a `restart` job in main-green-guard.yml, plus tests/unit/test_a_main_run_with_no_verdict_gets_asked_again.py, 13 tests. Nothing was reverted: the four merges stand, and main's actual redness is fixed by #474 and #488 rather than by undoing landed work."
+  },
+  "cause_chain": [
+    "A person merged four pull requests whose checks page did not say they were unbuilt.",
+    "The checks page did not say so because every build job was SKIPPED, and a skipped job is drawn neutral grey, not red. Only `ci-ok` and `changes` were red, two rows out of nine.",
+    "Every build job was skipped because ci.yml's `changes` step refuses to build a pull request while main's last completed CI run did not succeed (ci.yml:314, `latest.conclusion === 'success'`).",
+    "Main's last completed run did not succeed because it was CANCELLED, not failed: run 32311937136 at 802a2e4b sat queued for forty minutes with zero jobs and was killed; run 32314818774 at fe6fcd13 the same.",
+    "Nothing repaired that, because main-green-guard.yml's two jobs both require `conclusion == 'failure'` (main-green-guard.yml:68 and :87). A cancelled run makes main's colour UNKNOWN rather than red, and no job in the estate fired on unknown. Guard runs 32314822031 and 32314849990 are the skips.",
+    "So an unknown main behaved exactly like a red main for every pull request, while no machine anywhere was watching for it \u2014 because 'red' was never established.",
+    "The next link is capacity: main's runs were queued forty minutes because the Fly CI fleet could not serve them. That is a founder decision about fleet size, not an agent's."
+  ],
+  "second_order": {
+    "sweep_command": "rg -n 'conclusion' .github/workflows/ -g '*.yml'",
+    "siblings_found": 3,
+    "siblings_fixed": 1,
+    "note": "The class is a guard keyed on ONE value of a status field and blind to the rest. Three live siblings. (1) main-green-guard.yml:68,:87 \u2014 the incident itself, FIXED. (2) automerge.yml:87-88 \u2014 the job fires on success or failure only, so a CANCELLED CI run never triggers the sweep that rescues stranded pull requests; this is why no automerge run ever fired for #474 while it sat green and unmerged. OPEN. (3) automerge.yml:317 \u2014 the sweep's mergeability read counts `skipped` as green, which is the same lie the checks page tells, in code; while main is red it rescues pull requests that cannot build. OPEN. ci.yml:314 is the consumer of the unknown state rather than a sibling: treating a non-success main as non-green is correct, and with the restart job an unknown main now resolves in minutes instead of hours.",
+    "hypothesis_killed": "That automerge's unconditional `dispatching CI on main` (automerge.yml:340) was flooding main's queue and causing the cancellations. Measured before acting: `gh api .../workflows/ci.yml/runs?branch=main` shows 12 push runs and only 2 workflow_dispatch runs on main since 21:00Z. The automerge job is gated on a pull_request-sourced run, so it skips on main's own pushes. No storm. No fix made."
+  },
+  "third_order": {
+    "tier": "heal",
+    "mechanism": "main-green-guard.yml gains a `restart` job. A CI run on main ending `cancelled`, `timed_out` or `stale` gets asked for a verdict again. It never reverts, because a cancelled run is no evidence the code is wrong. It stands aside when a main run is already queued or in flight. After three verdictless runs at one commit it stops and opens an issue, because by then the answer is capacity and a fourth run will not find it.",
+    "landed_on": "2026-08-20",
+    "why_not_higher": "Refusal is the tier above healing and it is unavailable. Native branch protection returns `403 Upgrade to GitHub Pro` on both /branches/main/protection and /rulesets, so GitHub will merge any pull request a human clicks, red or not. Nothing we can build refuses that click. Healing main quickly is the strongest available substitute, and it removes the reason anyone would click.",
+    "note": "Proved both ways. Each of the five checks in the new job was broken in turn and the suite failed: stand-aside removed -> 2 failed; MAX_ATTEMPTS removed -> 2 failed; per-commit counting removed -> 1 failed; refused dispatch swallowed -> 1 failed; unreadable run list acted on -> 1 failed. Restored byte-identical, 13 passed.",
+    "landed_in": "ci/pipeline-failure-ledger (#480), commit 3af703b6"
+  },
+  "grade": {
+    "signature": "a CI run on main whose conclusion is cancelled, timed_out or stale, with no newer run queued",
+    "before": 2,
+    "after": null,
+    "window_days": 1,
+    "verdict": "unproven",
+    "note": "before = main's runs 32311937136 and 32314818774 on 2026-08-19, both cancelled and both left unanswered. `unproven` is the honest verdict today: the guard has tests but has not yet met a real cancelled run on main. Re-grade a day after #480 reaches main. The number that counts is not zero cancelled runs -- capacity will keep producing those -- but zero cancelled runs that stayed unanswered."
+  },
+  "state": "open"
+}
