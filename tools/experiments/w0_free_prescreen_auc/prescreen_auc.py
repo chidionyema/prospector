@@ -16,6 +16,14 @@ labelled dossier outcomes.
 import json, glob, os, math, collections
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+# The store is wherever PROSPECTOR_STORE_DIR points, which on the engine is a mounted volume.
+# These globs were relative to the working directory, so they read whatever `store/` happened
+# to sit beside the shell. INC-2026-08-18-store-resolver.
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(HERE))))
+from prospector.config import store_root  # noqa: E402
+
 labelled = json.load(open(os.path.join(HERE, 'labelled.json')))
 outcome = {}
 for r in labelled:
@@ -30,7 +38,7 @@ for r in labelled:
         outcome[stem] = 1 if r['decision'] == 'pass' else 0
 
 shadow = []
-for f in glob.glob('store/prescreen_shadow/shadow-*.jsonl'):
+for f in glob.glob(str(store_root() / 'prescreen_shadow' / 'shadow-*.jsonl')):
     for line in open(f):
         line = line.strip()
         if line:

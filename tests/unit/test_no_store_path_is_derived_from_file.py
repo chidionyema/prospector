@@ -23,7 +23,7 @@ allowed. Adding to it is a decision; arriving on it by accident is not possible.
 from __future__ import annotations
 
 import ast
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import pytest
 
@@ -58,7 +58,27 @@ ALLOWED = {
     "tests/integration/test_golden_promotion_cli.py":
         "A fence asserting the repo store is left untouched by a --store-dir run. It names the "
         "repo store in order to prove nothing was written there.",
+    "run_v2.py":
+        "storage/durable_ledger.md again: a tracked repo artifact, not runtime state, so it "
+        "belongs to the checkout and must move with the code. Same reason as middleware.py above.",
+    "tests/invariants/test_audit_isolation.py":
+        "A fence proving the suite left THIS checkout's audit trail alone. store_root() under "
+        "pytest points at a temp directory, so resolving it that way would prove nothing.",
+    "tests/ops/cc/test_ephemeral_jobs.py":
+        "The same kind of fence, on the repo-local control-centre jobs file: the assertion is "
+        "that launching a job in a temp dir did not write the checkout's production copy.",
 }
+
+
+def _is_dunder_file(node: ast.AST) -> bool:
+    """`__file__`, and also `some_module.__file__`.
+
+    The attribute form is not a curiosity: `tests/invariants/test_audit_isolation.py:22` is
+    `Path(A.__file__).resolve().parent.parent`, and reading only the bare name left that file
+    unseen by this check for as long as it has existed.
+    """
+    return ((isinstance(node, ast.Name) and node.id == "__file__")
+            or (isinstance(node, ast.Attribute) and node.attr == "__file__"))
 
 
 def _file_derived_names(tree: ast.Module) -> set[str]:
@@ -66,15 +86,55 @@ def _file_derived_names(tree: ast.Module) -> set[str]:
     out: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Assign) and any(
-            isinstance(n, ast.Name) and n.id == "__file__" for n in ast.walk(node.value)
+            _is_dunder_file(n) for n in ast.walk(node.value)
         ):
             out.update(t.id for t in node.targets if isinstance(t, ast.Name))
     return out
 
 
+def _parameter_names(tree: ast.Module) -> set[str]:
+    """Every name bound as a function parameter anywhere in the file.
+
+    A parameter is bound by the CALLER, so a module-level name that happens to match it says
+    nothing about what it holds. Without this, one `root = Path(__file__)...` inside any function
+    made the name `root` file-derived for the whole file, and
+    `tests/unit/test_console_tools_run.py:359` — `def _tree(root: Path)`, always called with
+    `tmp_path` — was reported as an offender. A guard that fires on correct code earns an
+    allow-list long enough to hide a real one.
+    """
+    out: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+            a = node.args
+            out.update(arg.arg for arg in [*a.posonlyargs, *a.args, *a.kwonlyargs])
+            if a.vararg:
+                out.add(a.vararg.arg)
+            if a.kwarg:
+                out.add(a.kwarg.arg)
+    return out
+
+
 def _mentions(node: ast.AST, names: set[str]) -> bool:
-    return any(isinstance(n, ast.Name) and (n.id == "__file__" or n.id in names)
+    return any(_is_dunder_file(n) or (isinstance(n, ast.Name) and n.id in names)
                for n in ast.walk(node))
+
+
+def _dotted(node: ast.AST) -> str | None:
+    parts: list[str] = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if not isinstance(node, ast.Name):
+        return None
+    parts.append(node.id)
+    return ".".join(reversed(parts))
+
+
+def _starts_with_a_store_segment(value: object) -> bool:
+    if not isinstance(value, str) or not value or any(c.isspace() for c in value):
+        return False
+    pure = PurePosixPath(value)
+    return not pure.is_absolute() and bool(pure.parts) and pure.parts[0] in SEGMENTS
 
 
 def _offenders(path: Path) -> list[tuple[int, str]]:
@@ -82,14 +142,31 @@ def _offenders(path: Path) -> list[tuple[int, str]]:
         tree = ast.parse(path.read_text())
     except (SyntaxError, UnicodeDecodeError):
         return []
-    names = _file_derived_names(tree)
+    names = _file_derived_names(tree) - _parameter_names(tree)
     hits = []
     for node in ast.walk(tree):
+        # ROOT / "store" / "dossiers"
         if (isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div)
                 and isinstance(node.right, ast.Constant)
                 and node.right.value in SEGMENTS
                 and _mentions(node.left, names)):
             hits.append((node.lineno, ast.unparse(node)))
+            continue
+        if not isinstance(node, ast.Call) or not node.args:
+            continue
+        # os.path.join(os.path.dirname(__file__), "store", "dossiers")
+        if _dotted(node.func) == "os.path.join":
+            if (any(isinstance(a, ast.Constant) and a.value in SEGMENTS for a in node.args)
+                    and any(_mentions(a, names) for a in node.args)):
+                hits.append((node.lineno, ast.unparse(node)[:120]))
+            continue
+        # ROOT.glob("store/ops/restore_drill*")
+        if (isinstance(node.func, ast.Attribute)
+                and node.func.attr in {"glob", "rglob", "joinpath"}
+                and isinstance(node.args[0], ast.Constant)
+                and _starts_with_a_store_segment(node.args[0].value)
+                and _mentions(node.func.value, names)):
+            hits.append((node.lineno, ast.unparse(node)[:120]))
     return hits
 
 
@@ -132,6 +209,24 @@ def test_every_allowed_file_exists_and_still_needs_its_exemption(rel: str):
 def test_every_exemption_carries_a_reason():
     for rel, why in ALLOWED.items():
         assert len(why) > 40, f"{rel} is exempt for a reason too short to be one: {why!r}"
+
+
+@pytest.mark.parametrize("src", [
+    # the two-step form the original regex could not see
+    "ROOT = Path(__file__).resolve().parents[1]\nD = ROOT / 'store' / 'dossiers'\n",
+    # os.path.join, which the AST walk could not see either: tools/backfill_pack_currency.py:56
+    "import os\nD = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'store', 'dossiers')\n",
+    # a glob off a file-derived root: scripts/ops_status.py:199
+    "ROOT = Path(__file__).resolve().parents[1]\nhits = sorted(ROOT.glob('store/ops/restore_drill*'))\n",
+    # __file__ read off a module rather than the current one
+    "import prospector.audit as A\nR = Path(A.__file__).resolve().parent.parent\nD = R / 'store'\n",
+])
+def test_the_shapes_this_is_supposed_to_catch(tmp_path: Path, src: str):
+    """Each of these was on disk on 2026-08-19 while this check was green. A guard pinned to the
+    one syntax it was written for repeats the mistake it exists to close."""
+    p = tmp_path / "z.py"
+    p.write_text("from pathlib import Path\n" + src)
+    assert _offenders(p), f"missed a file-derived store path:\n{src}"
 
 
 def test_the_two_step_form_is_what_this_catches():
