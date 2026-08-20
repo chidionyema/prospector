@@ -286,6 +286,7 @@ substrate is built. What is missing is proof and breadth, not architecture.
 | Fly adapter | `deploy/targets/fly.sh` | In production |
 | Laptop adapter | `deploy/targets/laptop.sh` | Tested, is the rollback path |
 | Any Linux box with Docker and SSH | `deploy/targets/sshdocker.sh` | Built, **never booted in anger** |
+| Kubernetes, and its lighter versions | `deploy/targets/k8s.sh` | Built 2026-08-20, **never booted in anger** |
 | Move between any two targets | `deploy/cutover.sh --from X --to Y` | Built |
 | Pure-Docker stack, four services | `deploy/compose/docker-compose.yml` | Built, checked by CI |
 | State as a portable tarball with a manifest | `scripts/store_migrate.py` | Built, drilled weekly |
@@ -298,6 +299,12 @@ substrate is built. What is missing is proof and breadth, not architecture.
 droplet, Hetzner, a Mac mini in an office, and a Raspberry Pi**, because all seven are the same
 thing: a Linux box with Docker and an SSH login. We do not need seven adapters. We need one more
 adapter shape and evidence that the one we have actually boots.
+
+`k8s.sh` collapses a second family the same way: k3s on one box, MicroK8s, kind, EKS, GKE, AKS
+and DigitalOcean Kubernetes are all one adapter, because all of them answer to `kubectl`. It
+carries one rule the others do not — a Deployment defaults to `strategy: RollingUpdate`, which
+runs two engines during every release and so breaks the single-writer money fence. `Recreate` is
+what holds it, and a test fails if that line goes missing.
 
 The second shape is the managed container service, where there is no SSH: AWS App Runner or ECS
 Fargate, Azure Container Apps, Google Cloud Run. Those need `t_exec` and `t_put` implemented
@@ -316,6 +323,7 @@ of persistent disk. They are HYPOTHESIS until a drill produces a bill.
 | On-prem box (Mac mini, NUC, Pi) | `sshdocker.sh`, built | electricity | No vendor at all. The true escape hatch |
 | DigitalOcean droplet | `sshdocker.sh`, built | ~$6 | A named cheap player with a sane API |
 | AWS EC2 / Azure VM / GCE | `sshdocker.sh`, built | ~$10 and up | Enterprise credibility, same shape |
+| Managed k8s (EKS, GKE, AKS, DOKS) or k3s on one box | `k8s.sh`, built | k3s: the box only. Managed: ~$10 and up plus nodes | Where a team lands when it outgrows one box |
 | AWS App Runner, Azure Container Apps, Cloud Run | **not built** | scale-to-zero, near free at our volume | No SSH. Needs the second adapter shape |
 | Laptop | `laptop.sh`, built | £0 | Last resort only, by L1 |
 

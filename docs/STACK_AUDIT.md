@@ -438,8 +438,8 @@ directly, so it is the analysis tool over the ledger, never the store of record.
 ## 5. Deployment substrate
 
 The founder chose route (c): Compose substrate plus adapters now, declarative infrastructure
-later. `deploy/PORTABILITY.md` already defines eleven adapter verbs with three
-implementations (`fly.sh`, `laptop.sh`, `sshdocker.sh`).
+later. `deploy/PORTABILITY.md` already defines twelve adapter verbs with four
+implementations (`fly.sh`, `laptop.sh`, `sshdocker.sh`, `k8s.sh`).
 
 **Verdict: keep it. Do not adopt Kamal or Nomad.** Kamal is the strong choice for 1–3 servers
 running a single app and would deploy faster, but it replaces an adapter contract we already

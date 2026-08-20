@@ -788,8 +788,8 @@ the thing that watches everything else. A monitor that dies with the room is not
 It follows the pattern already built, and reuses it rather than repeating it:
 
 - **One container image**, and no platform API call inside it. Same rule as the engine.
-- **A `deploy/targets/` adapter**, so the same three targets — `fly`, `laptop`, `sshdocker` —
-  work for Hermes with no new concepts.
+- **A `deploy/targets/` adapter**, so the same four targets — `fly`, `laptop`, `sshdocker`, `k8s`
+  — work for Hermes with no new concepts.
 - **`deploy/cutover.sh` unchanged.** It already does not know what it is moving; both ends are
   adapters.
 - **The laptop stays a proven standby**, with the same disable fence and the same

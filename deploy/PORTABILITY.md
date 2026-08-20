@@ -37,7 +37,8 @@ candidate.
 
 ## The adapters
 
-`deploy/targets/<name>.sh` implements eleven shell functions. Each is a handful of lines.
+`deploy/targets/<name>.sh` implements twelve shell functions, on the eleven lines below —
+`t_start` and `t_stop` share a line because they are one decision. Each is a handful of lines.
 
 ```
 t_name                 what to call this platform in the log
@@ -76,8 +77,24 @@ Shipped today:
 - `deploy/targets/sshdocker.sh` — any Linux box with Docker and an SSH login. This is the escape
   hatch, and it exists **now**, not later. Hetzner, a Mac mini in an office, an EC2 instance and a
   Raspberry Pi are all the same target.
+- `deploy/targets/k8s.sh` — Kubernetes and its lighter versions: k3s, k0s, MicroK8s, kind, EKS,
+  GKE. Written as an adapter rather than a substrate, because `docs/STACK_AUDIT.md` §5 ruled that
+  the contract on this page is what we keep. Choosing Kubernetes later costs one environment
+  variable, not a migration.
 
-Writing a third adapter is the whole cost of changing platform.
+  It carries one rule the others do not need. **A Deployment defaults to
+  `strategy: RollingUpdate`, which starts the replacement pod before terminating the old one** —
+  so the default setting of the default workload type breaks rule 1 above on every release: two
+  engines, two spend ledgers, twice the daily cap, for as long as the handover takes. `Recreate`
+  is what holds it, and it is also the only strategy that works against the ReadWriteOnce volume
+  every default StorageClass hands out. Under RollingUpdate the new pod sits Pending on
+  "Multi-Attach error for volume" until the rollout times out, which reads like a broken image.
+  `tests/unit/test_every_deploy_target_implements_the_contract.py` fails if either goes missing.
+
+Writing a fourth adapter is the whole cost of changing platform. It is now four files of about
+ninety lines each, and `tests/unit/test_every_deploy_target_implements_the_contract.py` grades
+every one of them against the verb list above — including the fifth, before it is ever used in
+anger.
 
 ## Leaving a platform
 
@@ -92,6 +109,10 @@ deploy/cutover.sh --from fly --to sshdocker
 
 # and it is reversible, which is the same command with the ends swapped
 deploy/cutover.sh --from fly --to laptop
+
+# onto a cluster, whether that is k3s on one box or a managed one
+PROSPECTOR_K8S_IMAGE=ghcr.io/you/prospector-engine:2026-08-20 \
+  deploy/cutover.sh --from fly --to k8s
 ```
 
 The state itself is a plain `tar.gz` with a sha256 manifest inside it
