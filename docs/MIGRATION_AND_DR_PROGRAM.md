@@ -14,7 +14,7 @@ that is not a file we can copy**.
 > founder said *"i dont have a wwhole stack or architectuure or platfon plan. i dont knoww what th
 > eplatfornwill look like when we are done"* and *"we qre just stuck and nocler guidanc"*.
 > **§10 is the target platform** — ten planes, one contract each, and what "done" looks like in a
-> paragraph. **§11 is the requirements register** — 38 functional and 14 non-functional
+> paragraph. **§11 is the requirements register** — 39 functional and 14 non-functional
 > requirements, each with the drill that proves it and the deliverable that builds it. §0–§9 grade
 > what is broken; §10–§11 say what we are building. When they disagree, §10 and §11 win.
 > **§12 answers how much of this can sensibly move to Kubernetes, and §13 names the final
@@ -1204,9 +1204,12 @@ Append here. One line per shipped item, with the receipt.
 | 2026-08-19 | M4 (part) | `verify:` has no default — a source that states no kind, or an unknown kind, is refused when the declaration is read | `29 passed`; mutation-proved (`2 failed` with the default restored) |
 | 2026-08-20 | §10 | the target platform: ten planes, one contract each, and what done looks like | this document; counts re-measured from the tables, not asserted |
 | 2026-08-20 | §11 | the requirements register: 38 functional, 14 non-functional, each with its drill and deliverable | 3 proven, 11 built-never-run, 34 not started, 4 blocked |
+| 2026-08-20 | F-08a | new requirement: a copy is not a backup until it is proven complete against its SOURCE | `~/.prospector/standby/prospector.jsonl` measured at 25,296,896 bytes, 6.2% of the 407,981,598-byte source, and every truncating sync logged as a success. Register now 39 functional + 14 non-functional = 53; 3 / 11 / 35 / 4 |
 | 2026-08-20 | §12 | how much of the estate can sensibly move to k8s, plane by plane: 2 whole, 5 half, 3 not at all | adapter read at `deploy/targets/k8s.sh`; `docker-desktop` live in `kubectl config get-contexts` |
+| 2026-08-20 | F-08a | first completeness measurement taken against a real copy: the R2 ledger object is **99.88% of the live source**, and the shortfall is append lag, not truncation | gzip trailer ISIZE 413,570,301 B vs `wc -c` 414,063,171 B on `prospector-engine`; ledger measured appending at 437 B/s over 120s, so a 492,870 B gap is ~19 min of appends against a ~16 min old snapshot |
 | 2026-08-20 | §13 | the final tooling named — 7 decided, 4 proposed, 4 things deliberately not adopted | `command -v` sweep on this laptop: helm, sops, restic, rclone, ansible, kind, k3d absent |
 | 2026-08-20 | §10.4 | the k8s adapter question answered: nothing calls it, it has never run, and a free local cluster exists | `kubectl config get-contexts` → `docker-desktop` |
+| 2026-08-20 | F-07 | **the first off-machine restore this estate has ever completed** — the R2 catalogue index pulled down, decompressed and opened read-only | `db/prospector-2026-08-20.db.gz`, 975,480 B → 3,100,672 B; `PRAGMA integrity_check` = `ok`; 1 table, `dossiers`, **3,608 rows**. Second angle from `prospector-engine` itself: `LIVE_ROWS 3608` — exact agreement. F-07 stays ○: one source restored by hand is not "every backup, by a machine, scheduled" |
 | 2026-08-20 | P5 / #355 | the engine can page the founder from a container — in-repo Telegram sender, no `$HOME` dependency | commit `47212af5`; 18 tests, 5 mutations caught |
 
 ---
@@ -1429,6 +1432,7 @@ run, **○** not started, **⛔** blocked on a decision in §7.
 | F-06 | Every named datastore is backed up off-machine on a schedule, and a missed backup alerts | the weekly drill + a `backup_stale` alert key | D-P2.2 | 0 | ◐ |
 | F-07 | Every backup has been restored at least once into a scratch location, by a machine | restore drill, scheduled | D-P2.3 (M4) | 2 | ○ |
 | F-08 | State moves with compute inside the same cutover, to a stated RPO | cutover drill measures bytes and lag | D-P2.4 | 4 | ○ |
+| F-08a | **Every copy of a money file is proven COMPLETE against its source before it is allowed to replace the previous copy** — size equal to the source, and the format opened and read, never a byte count | the truncation drill: cut a transfer mid-file and require the copy to be refused | D-P2.5 | 0 | ○ |
 
 #### P3 Secrets — a first-class plane, at the founder's instruction
 
@@ -1524,8 +1528,10 @@ holds the requirement and the deliverable; the two are cross-linked and must not
 
 ### 11.4 Coverage — what this register makes visible
 
-Counting the rows above: **38 functional and 14 non-functional requirements. 3 are proven. 11 are
-built but never run. 34 are not started. 4 are blocked on a decision only you can make** (§7).
+Counting the rows above: **39 functional and 14 non-functional requirements — 53 in all. 3 are
+proven. 11 are built but never run. 35 are not started. 4 are blocked on a decision only you can
+make** (§7). Counted by command, never asserted:
+`sed -n '1414,1526p' docs/MIGRATION_AND_DR_PROGRAM.md | grep -cE '^\| F-'` and the same for `N-`.
 
 Three of those blocks stop whole planes rather than single deliverables, which is why they are the
 most valuable thing you can clear:
@@ -1538,6 +1544,42 @@ most valuable thing you can clear:
    this laptop: `docker-desktop` k8s, which costs nothing and needs no account.
 3. **RPO and RTO** (N-03) are unset, and every backup and restore deliverable is graded against
    numbers that do not exist yet.
+
+**The first drill instrument exists, and it is nearly free.** F-08a asks whether a copy is complete
+against its SOURCE. For any gzipped copy that is one ranged GET of four bytes: the last four bytes
+of a gzip stream are ISIZE, the uncompressed length as a little-endian uint32, so the copy's true
+size is readable without downloading or decompressing it. Against the live source size from
+`fly ssh console -a prospector-engine -C "wc -c /data/store/prospector.jsonl"` that is two angles
+that fail differently — one number written by gzip on the Fly box at compress time, one read from
+the filesystem now.
+
+Run on 2026-08-20 against `prospector-backup/ledger/prospector-2026-08-20.jsonl.gz`: ISIZE
+413,570,301 B against a live source of 414,063,171 B, so the off-Fly copy holds **99.88%** of the
+money file. The 492,870 B shortfall is append lag — the ledger measured appending at 437 B/s over a
+120s window, which puts 492,870 B at about nineteen minutes of writes against a snapshot roughly
+sixteen minutes old. A truncation does not look like this; the broken standby copy the same day was
+6.2% of its source.
+
+This does not turn F-08a green. The requirement is that a short copy is REFUSED, and nothing refuses
+one yet; a measurement that has to be run by hand is an instrument, not a drill. What it does settle
+is that the money file has a real off-Fly copy today, written under dated keys by
+`scripts/backup_store.py:450` so a truncation cannot overwrite the good ones.
+
+**And the restore side is no longer theoretical.** Until 2026-08-20 every restore claim in this
+programme rested on `scripts/restore_drill.py` passing against a LOCAL backup directory — which
+proves the parser, not the survival of the estate. The first pull from off-machine storage ran that
+day: `db/prospector-2026-08-20.db.gz` fetched from R2 (975,480 bytes), decompressed to 3,100,672
+bytes, opened through a `file:...?mode=ro` URI so the copy could not be mutated by reading it.
+`PRAGMA integrity_check` returned `ok`. It holds one table, `dossiers`, with **3,608 rows**.
+
+The second angle is what makes it a proof rather than a reading: `prospector-engine` was asked the
+same question about its own live database and answered `LIVE_ROWS 3608`. Two instruments that fail
+differently — a gzip stream written to R2 at snapshot time, and a live SQLite count taken now over
+the network — agree exactly.
+
+**F-07 stays ○ anyway, and that is the point of the glyph.** What ran was one source, restored once,
+by hand, by me. The requirement says every backup, by a machine, on a schedule. The distance between
+"it worked when I did it" and "it works when nobody does it" is the whole of this programme.
 
 ### 11.5 The rule that keeps this register honest
 
