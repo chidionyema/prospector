@@ -536,15 +536,6 @@ def _host(url: str) -> str:
 # `dict`, so `sc.scores.items()` raised on every stored dossier that had a score at all.
 
 
-def _mapping(obj: Any) -> dict:
-    """A JSON object as a dict, whether it arrived as one or as a `SimpleNamespace`."""
-    if isinstance(obj, dict):
-        return obj
-    if hasattr(obj, "__dict__"):
-        return dict(vars(obj))
-    return {}
-
-
 def _num(value: Any, default: float = 0.0) -> float:
     """A stored number that arrived as a string, or as nothing at all, still formats."""
     try:

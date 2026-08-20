@@ -192,6 +192,16 @@ def disabled_labels() -> set[str]:
 
     Fails OPEN. If launchctl cannot be read the set is empty and every job is checked. A false
     alarm about a missing program is cheap; silence about one is what this exists to stop.
+
+    `--assert-held` reads this too, because launchd has three states and the middle one is the
+    interesting one: a label can be held; absent because it crashed, was never loaded or was
+    booted out; or absent because somebody ran `launchctl disable`, which writes a persistent
+    per-user override that survives a reboot and makes `bootstrap` refuse. That third state is
+    an ACT, not a REASON, so it excuses nothing -- it changes the wording of the finding and
+    nothing else. Measured 2026-08-20: nine ai.hermes.* daemons reported NOT HELD had all been
+    disabled in one action at 19 Aug 22:47, to end a split in which the same daemons ran on Fly
+    and on this Mac against separate SQLite databases. The report gave no hint of that, so the
+    first move it invited was a hunt for nine crashes that never happened.
     """
     try:
         out = subprocess.run(["launchctl", "print-disabled", "gui/%d" % os.getuid()],
@@ -379,39 +389,6 @@ def held_labels() -> set[str] | None:
         if len(parts) >= 3:
             held.add(parts[2].strip())
     return held
-
-
-def disabled_labels() -> set[str] | None:
-    """Labels an operator has explicitly disabled, or None when launchctl did not answer.
-
-    Read separately from `launchctl list` because launchd has three states and the middle one
-    is the interesting one. A label can be held; absent because it crashed, was never loaded
-    or was booted out; or absent because somebody ran `launchctl disable`, which writes a
-    persistent per-user override that survives a reboot and makes `bootstrap` refuse.
-
-    That third state is an ACT, not a REASON, so it excuses nothing. A job somebody turned
-    off for a stated cause and a job somebody turned off by accident are the same row here,
-    and telling them apart is exactly what ops/config/launchd_not_held.json is for. Knowing
-    changes the wording of the finding and nothing else.
-
-    Measured 2026-08-20: nine ai.hermes.* daemons reported as NOT HELD. All nine had been
-    disabled in one action at 19 Aug 22:47, to end a real split in which the same daemons ran
-    on Fly and on this Mac against separate SQLite databases. The report gave no hint of that,
-    so the first move it invited was a hunt for nine crashes that never happened.
-    """
-    try:
-        proc = subprocess.run(["launchctl", "print-disabled", "gui/%d" % os.getuid()],
-                              capture_output=True, text=True, timeout=20, check=False)
-    except (OSError, subprocess.SubprocessError):
-        return None
-    if proc.returncode != 0:
-        return None
-    off: set[str] = set()
-    for line in proc.stdout.splitlines():
-        m = re.search(r'"([^"]+)"\s*=>\s*(?:disabled|true)\b', line)
-        if m:
-            off.add(m.group(1))
-    return off
 
 
 def load_not_held(path: Path | None = None) -> tuple[dict[str, str], list[str]]:
