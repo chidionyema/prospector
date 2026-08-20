@@ -1,0 +1,431 @@
+# Nothing reaches main except through a green pull request. If something does, put it back.
+#
+# WHY THIS EXISTS. Founder, 2026-08-20: "main should never go red under any circumstances because
+# it kicks off a chain of events hard to recover from", "we should have our own protected", "we
+# should not be dependent on github".
+#
+# GITHUB'S OWN BRANCH PROTECTION IS NOT AVAILABLE HERE, and that is measured, not assumed.
+# On 2026-08-20 both of these returned HTTP 403:
+#
+#   gh api repos/chidionyema/prospector/branches/main/protection
+#   gh api repos/chidionyema/prospector/rulesets
+#   {"message":"Upgrade to GitHub Pro or make this repository public to enable this feature."}
+#
+# The repository is private and owned by a User on the free plan. GitHub also offers no
+# pre-receive hook below Enterprise, so there is no way to REFUSE a write to main at all. This
+# file is the closest thing that exists without paying: it cannot stop the write, but it reads
+# the write within seconds and undoes it.
+#
+# WHY IT IS NOT THE SAME AS main-green-guard.yml. That file waits for CI on main to CONCLUDE red,
+# which takes about twenty minutes here, and during those twenty minutes `ci.yml`'s `changes` job
+# refuses to build ANY pull request, so the whole queue stalls. This one fires on the push event
+# itself. It does not ask "did main go red"; it asks "was this commit allowed in", which is
+# answerable in about thirty seconds and catches the case the other guard cannot see at all: a
+# commit that was never proved green in the first place.
+#
+# THE CASE THAT PAID FOR IT. #460 was merged by hand on 2026-08-19 with its own CI already
+# failing -- the run at 21:46:09Z named `scripts/pr_triage.py` as unregistered, and it was merged
+# anyway at 22:05:30Z. main went red. Every open branch inherited the failure, thirteen of
+# seventeen PRs went red for a reason that had nothing to do with their diffs, the green guard
+# then reverted the wrong commit, and the estate spent the next day recovering. One unadmitted
+# merge, one day.
+#
+# THE QUESTION IT ASKS, and it is deliberately the only one:
+#
+#   Did this commit arrive as a pull request whose head sha had a CI run that concluded SUCCESS?
+#
+#   yes  -> admitted, do nothing.
+#   no   -> not admitted, open an issue and revert it.
+#
+# It does NOT re-grade the code, re-run tests, or judge the diff. `automerge.yml` already refuses
+# to merge anything that is not green and not up to date with main. This is the audit that the
+# refusal actually happened, for the paths that go around automerge entirely: a person clicking
+# Merge in the GitHub UI, `gh pr merge`, or a plain `git push origin main`.
+#
+# IT FAILS OPEN, ON PURPOSE. A guard that reverts because of its own bug is worse than the hole
+# it closes. Every uncertainty -- an API error, a PR it cannot find, a run list it cannot read --
+# admits the commit and leaves a warning in the log. It reverts only on POSITIVE evidence that
+# no green run exists. That is the same rule main-green-guard.yml uses to decide it is the cause.
+#
+# EVERY RISK OF AN AUTO-REVERT, AND WHAT ANSWERS IT.
+#
+#   Reverting good work.        A revert is an ordinary commit. `git revert` of the revert
+#                               restores it, and the issue this opens names the sha to use.
+#   Reverting the green guard.  A commit whose subject starts with "Revert" is admitted. That is
+#                               main-green-guard.yml putting main back, and reverting it would
+#                               undo the repair.
+#   Reverting itself.           The push below uses GITHUB_TOKEN. GitHub does not start workflow
+#                               runs from a GITHUB_TOKEN push, so this workflow cannot trigger
+#                               itself. Same mechanism main-green-guard.yml relies on.
+#   A revert storm.             Refuses if this guard already reverted within the last hour.
+#   Racing a human.             Refuses if main has already moved past the commit it was called
+#                               about; whoever moved it is dealing with it.
+#   A silent revert.            The issue is opened BEFORE the push. If the issue cannot be
+#                               opened, nothing is reverted.
+#   A conflicting revert.       `git revert` conflicts fail the job. Nothing is forced.
+#   Reverting a merge commit.   Handled with `-m 1`; a commit with no parent is refused.
+#   A legitimate hotfix.        `Founder-override: <reason>` as a line in the commit message
+#                               admits it. That hatch is the founder's, not an agent's.
+#
+# WHAT IT DOES TO PRODUCTION. Nothing directly. It changes `main`. Deploys are separate workflows
+# and none is dispatched from here.
+
+name: Main admission guard
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: main-admission-guard
+  cancel-in-progress: false
+
+permissions:
+  contents: write # to push the revert
+  # write, not read. The revert push uses GITHUB_TOKEN and GitHub starts NO workflow run from
+  # one, so after a revert nothing re-deploys and nothing re-grades main by itself. The deploys
+  # that the BAD commit triggered on push have already shipped it to production by then. So this
+  # workflow has to dispatch the repair explicitly, the same way automerge.yml does after a merge.
+  actions: write
+  pull-requests: read # to resolve #N to its head sha
+  issues: write # a revert is never silent
+
+jobs:
+  admit:
+    # A branch deletion pushes the zero sha and has nothing to grade.
+    if: github.event.deleted != true && github.event.after != '0000000000000000000000000000000000000000'
+    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 50
+
+      - name: Was this commit admitted by a green pull request?
+        id: decide
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo
+            const sha = context.payload.after
+
+            // `admit` is the default answer everywhere something is unknown. Only the explicit
+            // `reject` calls below revert anything.
+            const admit = (why) => {
+              core.info(`admitted: ${why}`)
+              core.setOutput('go', 'no')
+              core.setOutput('why', why)
+            }
+            const reject = (why, subject, author, parents) => {
+              core.warning(`NOT ADMITTED: ${why}`)
+              core.setOutput('go', 'yes')
+              core.setOutput('why', why)
+              core.setOutput('sha', sha)
+              core.setOutput('subject', subject)
+              core.setOutput('author', author)
+              core.setOutput('parents', String(parents))
+            }
+
+            let commit
+            try {
+              ({data: commit} = await github.rest.repos.getCommit({owner, repo, ref: sha}))
+            } catch (e) {
+              return admit(`could not read ${sha.slice(0, 8)} (${e.message}); failing open`)
+            }
+            const message = commit.commit.message || ''
+            const subject = message.split('\n')[0]
+            const author = commit.commit.author?.name || 'unknown'
+            const parents = commit.parents.length
+
+            // The founder's hatch. Deliberately a commit trailer and not a label, because it has
+            // to be decided at the moment the commit is written, by whoever writes it.
+            if (/^Founder-override:/m.test(message)) {
+              return admit(`${sha.slice(0, 8)} carries a Founder-override trailer`)
+            }
+
+            // main-green-guard.yml putting main back. Reverting the repair would restore the
+            // breakage and start a loop between two guards.
+            if (/^revert/i.test(subject)) {
+              return admit(`${sha.slice(0, 8)} is a revert ("${subject}")`)
+            }
+
+            if (parents === 0) {
+              return admit(`${sha.slice(0, 8)} has no parent and could not be reverted anyway`)
+            }
+
+            // Never race whoever is already dealing with it.
+            try {
+              const {data: head} = await github.rest.repos.getBranch({owner, repo, branch: 'main'})
+              if (head.commit.sha !== sha) {
+                return admit(`main has already moved to ${head.commit.sha.slice(0, 8)}`)
+              }
+            } catch (e) {
+              return admit(`could not read main's head (${e.message}); failing open`)
+            }
+
+            // One revert per hour, whatever the reason. A storm is worse than a red main.
+            try {
+              const since = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+              const {data: recent} = await github.rest.repos.listCommits(
+                {owner, repo, sha: 'main', since, per_page: 20})
+              const already = recent.find(c =>
+                c.commit.message.startsWith('Revert') &&
+                c.commit.message.includes('main-admission-guard'))
+              if (already) {
+                return admit(`this guard already reverted ${already.sha.slice(0, 8)} within the ` +
+                             'last hour; stopping rather than reverting again')
+              }
+            } catch (e) {
+              return admit(`could not list main's recent commits (${e.message}); failing open`)
+            }
+
+            // Which pull request did this arrive as? The SUBJECT only, never the body: a body
+            // carrying "Closes #123" would otherwise credit the commit to an unrelated PR.
+            // GitHub writes `... (#N)` for a squash merge and `Merge pull request #N` for a
+            // merge commit, and those are the only two shapes automerge.yml can produce.
+            const m = subject.match(/\(#(\d+)\)\s*$/) || subject.match(/^Merge pull request #(\d+)/)
+            if (!m) {
+              return reject(
+                'it names no pull request, so it was pushed straight to main rather than merged',
+                subject, author, parents)
+            }
+            const number = Number(m[1])
+
+            let pr
+            try {
+              ({data: pr} = await github.rest.pulls.get({owner, repo, pull_number: number}))
+            } catch (e) {
+              return admit(`could not read #${number} (${e.message}); failing open`)
+            }
+
+            let runs
+            try {
+              ({data: runs} = await github.rest.actions.listWorkflowRunsForRepo(
+                {owner, repo, head_sha: pr.head.sha, per_page: 100}))
+            } catch (e) {
+              return admit(`could not list runs at ${pr.head.sha.slice(0, 8)} (${e.message}); ` +
+                           'failing open')
+            }
+
+            // `ci-ok` is the aggregate every lane feeds, so a green CI run is the whole verdict.
+            // A run that was cancelled, parked for approval, or never started is not evidence of
+            // anything and is simply not a success.
+            const green = (runs.workflow_runs || []).find(
+              r => r.name === 'CI' && r.conclusion === 'success')
+            if (green) {
+              return admit(`#${number} was proved green by run ${green.id}`)
+            }
+
+            const seen = (runs.workflow_runs || [])
+              .filter(r => r.name === 'CI')
+              .map(r => r.conclusion || r.status).join(', ') || 'no CI run at all'
+            return reject(
+              `#${number} was merged without a green CI run at its head ${pr.head.sha.slice(0, 8)} ` +
+              `(CI there: ${seen})`,
+              subject, author, parents)
+
+      - name: Say that the commit was admitted
+        if: steps.decide.outputs.go != 'yes'
+        run: |
+          echo "admitted: ${{ steps.decide.outputs.why }}"
+
+      # Before the push, on purpose. If GitHub refuses the issue, the revert never happens -- a
+      # revert nobody was told about is how work disappears.
+      - name: Open the issue first, so the revert can never be silent
+        if: steps.decide.outputs.go == 'yes'
+        id: issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo
+            const sha = '${{ steps.decide.outputs.sha }}'
+            const {data: issue} = await github.rest.issues.create({
+              owner, repo,
+              title: `main: ${sha.slice(0, 8)} was not admitted and has been reverted`,
+              body: [
+                'A commit reached `main` without going through a green pull request, so it was',
+                'reverted within seconds of landing rather than after CI on main went red.',
+                '',
+                `- **commit** \`${sha}\` — ${{ toJSON(steps.decide.outputs.subject) }}`,
+                `- **author** ${{ toJSON(steps.decide.outputs.author) }}`,
+                `- **why it was not admitted** ${{ toJSON(steps.decide.outputs.why) }}`,
+                '',
+                '## Why this is enforced at all',
+                '',
+                'A red `main` is not one branch\'s problem. `ci.yml`\'s `changes` job refuses to',
+                'build any pull request while main is red, so every open PR stalls behind it, and',
+                'every session then spends its time diagnosing somebody else\'s breakage. On',
+                '2026-08-19 one merge made with its own CI already failing did exactly that to',
+                'thirteen of seventeen open PRs.',
+                '',
+                '## Nothing is lost',
+                '',
+                'The revert is an ordinary commit:',
+                '',
+                '```bash',
+                `git revert <the revert sha>     # restores ${sha.slice(0, 8)}`,
+                '```',
+                '',
+                '## How to land it properly',
+                '',
+                'Open a pull request, let CI finish, and let `automerge.yml` merge it. It merges',
+                'only a head sha CI proved green and only when the branch is not behind main, so',
+                'no click is needed and nothing red can land.',
+                '',
+                'If this really was a deliberate hotfix straight to main, the commit needed a',
+                '`Founder-override: <reason>` line in its message. That hatch is the founder\'s.',
+              ].join('\n'),
+            })
+            core.setOutput('number', String(issue.number))
+            core.notice(`opened #${issue.number}`)
+
+      - name: Revert it and push
+        if: steps.decide.outputs.go == 'yes'
+        env:
+          SHA: ${{ steps.decide.outputs.sha }}
+          PARENTS: ${{ steps.decide.outputs.parents }}
+          ISSUE: ${{ steps.issue.outputs.number }}
+          WHY: ${{ steps.decide.outputs.why }}
+        run: |
+          set -euo pipefail
+          git config user.name "main-admission-guard"
+          git config user.email "actions@github.com"
+          # -m 1 reverts a merge commit against its first parent, which is main's own history.
+          if [ "$PARENTS" -gt 1 ]; then
+            git revert --no-edit -m 1 "$SHA"
+          else
+            git revert --no-edit "$SHA"
+          fi
+          # Three -m flags, not one multi-line string: a bare newline inside this `run:` block
+          # would end the YAML block scalar and the workflow would not parse.
+          git commit --amend \
+            -m "Revert \"$(git log -1 --format=%s "$SHA")\"" \
+            -m "Reverted by main-admission-guard: $WHY" \
+            -m "Nothing is lost. \`git revert\` of this commit restores $SHA. See #$ISSUE."
+          git push origin main
+
+      # ---------------------------------------------------------------------------------------
+      # Reverting git is not reverting the estate.
+      #
+      # The bad commit's own push fired deploy-engine/web/api the instant it landed, so by now
+      # the code we just deleted is running in production. And the revert push above used
+      # GITHUB_TOKEN, from which GitHub starts NO workflow run at all -- the same fact that stops
+      # this guard recursing into itself stops it repairing anything. Left alone, git says main
+      # is clean while Fly runs the reverted code, and the next unrelated merge is what finally
+      # ships the fix, hours later, by accident.
+      #
+      # So the repair is dispatched by hand, exactly as automerge.yml does after it merges. The
+      # path->workflow map below is copied from automerge.yml:114 and must stay in step with it.
+      #
+      # Measured 2026-08-20: all three deploy workflows use a fixed concurrency group with
+      # `cancel-in-progress: false`, so a repair deploy QUEUES behind the bad one already in
+      # flight and runs after it. That is why nothing here cancels a deploy -- cancelling one
+      # mid-run leaves a half-deployed app, whereas queueing behind it converges on the good
+      # code. ci.yml on main has the same setting, which is why the CI run at the bad sha IS
+      # cancelled: without that, the repair CI would sit in the queue for the full length of a
+      # run that is grading a commit which no longer exists, and `ci.yml`'s `changes` job would
+      # go on refusing every open pull request for the whole of it.
+      # ---------------------------------------------------------------------------------------
+      - name: Put the estate back, not just git
+        if: steps.decide.outputs.go == 'yes'
+        uses: actions/github-script@v7
+        env:
+          BAD_SHA: ${{ steps.decide.outputs.sha }}
+          ISSUE: ${{ steps.issue.outputs.number }}
+        with:
+          script: |
+            const {owner, repo} = context.repo
+            const bad = process.env.BAD_SHA
+            const done = []
+
+            // Copied verbatim from automerge.yml:114. If you edit one, edit both --
+            // tests/unit/test_main_admission_guard.py fails when they drift apart.
+            const DEPLOY = {
+              'deploy-engine.yml': /^(prospector\/|scripts\/|deploy\/engine\/|store_platform\/src\/Ops\.Console\/|requirements\.txt$|config\.yaml$|\.github\/workflows\/deploy-engine\.yml$)/,
+              'deploy-web.yml': /^(store_platform\/src\/Store\.Web\/|store_platform\/deploy\/fly\/web\.fly\.toml$|store_platform\/scripts\/deploy_web\.sh$|store_platform\/scripts\/predeploy_guard\.sh$|\.github\/workflows\/deploy-web\.yml$)/,
+              'deploy-api.yml': /^(store_platform\/src\/Store\.Api\/|store_platform\/src\/Store\.Catalog\/|store_platform\/deploy\/fly\/api\.fly\.toml$|\.github\/workflows\/deploy-api\.yml$)/,
+            }
+            const INPUTS = {
+              'deploy-engine.yml': {dry_run: 'false'},
+              'deploy-web.yml': {target: 'prod', dry_run: 'false'},
+              'deploy-api.yml': {dry_run: 'false'},
+            }
+
+            // 1. Stop the run that is grading a commit which is no longer on main.
+            try {
+              const {data} = await github.rest.actions.listWorkflowRunsForRepo({
+                owner, repo, head_sha: bad, per_page: 100,
+              })
+              for (const run of data.workflow_runs || []) {
+                if (run.name !== 'CI') continue
+                if (run.status === 'completed') continue
+                try {
+                  await github.rest.actions.cancelWorkflowRun({owner, repo, run_id: run.id})
+                  done.push(`cancelled CI run ${run.id}, which was grading the reverted commit`)
+                } catch (e) {
+                  core.warning(`could not cancel run ${run.id}: ${e.message}`)
+                }
+              }
+            } catch (e) {
+              core.warning(`could not list the runs at ${bad.slice(0, 8)}: ${e.message}`)
+            }
+
+            // 2. Which deploys did the bad commit set off? Ask what it touched.
+            //    getCommit returns at most 300 files. A commit bigger than that is not a commit
+            //    to guess about, so every deploy is dispatched rather than a subset.
+            let paths = null
+            try {
+              const {data: commit} = await github.rest.repos.getCommit({owner, repo, ref: bad})
+              const files = commit.files || []
+              paths = files.length >= 300 ? null : files.map(f => f.filename)
+              if (paths === null) {
+                core.warning(`${bad.slice(0, 8)} touches 300+ files, so the file list is truncated`)
+              }
+            } catch (e) {
+              core.warning(`could not read the files of ${bad.slice(0, 8)}: ${e.message}`)
+            }
+
+            // 3. Re-grade main, and re-deploy whatever the bad commit had already shipped.
+            //    CI first: it is the thing every other pull request is waiting on.
+            const wanted = ['ci.yml']
+            for (const [wf, re] of Object.entries(DEPLOY)) {
+              if (paths === null || paths.some(p => re.test(p))) wanted.push(wf)
+            }
+            for (const wf of wanted) {
+              try {
+                await github.rest.actions.createWorkflowDispatch({
+                  owner, repo, workflow_id: wf, ref: 'main', inputs: INPUTS[wf] || {},
+                })
+                done.push(`dispatched \`${wf}\` on main`)
+              } catch (e) {
+                // A failed dispatch must not fail this job. The revert is already pushed, and
+                // that is the part that cannot be left half-done.
+                core.warning(`could not dispatch ${wf}: ${e.message}`)
+                done.push(`FAILED to dispatch \`${wf}\`: ${e.message} -- run it by hand`)
+              }
+            }
+
+            for (const line of done) core.notice(line)
+
+            // 4. Say it in the issue. A repair nobody can see is a repair nobody can check.
+            if (process.env.ISSUE) {
+              try {
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: Number(process.env.ISSUE),
+                  body: [
+                    '### The estate was put back too',
+                    '',
+                    'The revert push cannot start a workflow (GitHub starts no run from a',
+                    '`GITHUB_TOKEN` push), so the deploys the bad commit had already fired were',
+                    'repaired by dispatch:',
+                    '',
+                    ...done.map(d => `- ${d}`),
+                    '',
+                    'The deploy workflows queue rather than cancel, so any deploy of the bad',
+                    'commit still in flight finishes first and is then overwritten by these.',
+                  ].join('\n'),
+                })
+              } catch (e) {
+                core.warning(`could not comment on #${process.env.ISSUE}: ${e.message}`)
+              }
+            }
