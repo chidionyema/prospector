@@ -197,3 +197,30 @@ def test_the_watch_checks_out_enough_history_to_have_an_expectation():
         "fetch origin main explicitly: fetch-depth 0 deepens the checked-out ref, it does not "
         "guarantee a refs/remotes/origin/main to compare against"
     )
+
+
+def test_the_watch_is_skipped_and_not_failed_while_hosted_runners_cannot_start():
+    """A daily red that no code change can clear teaches the estate to ignore red.
+
+    Measured 2026-08-20 07:21, run 32343624520, job 96347602802: zero steps, the job log 404s,
+    conclusion `failure`, and the only record anywhere is the annotation, verbatim — "The job was
+    not started because recent account payments have failed or your spending limit needs to be
+    increased." This account cannot start a GitHub-hosted job at all.
+
+    The job stays on `ubuntu-latest` and waits behind a switch rather than moving to the fly pool,
+    because `test_the_watch_does_not_run_on_the_fleet_it_grades` above is right: a fleet running
+    the wrong image cannot be trusted to report that it is running the wrong image. The cost of
+    the skip is that the question goes unasked, which is why ci-fleet-keeper's `announce` job
+    states the same outage once an hour on the pool that does work.
+    """
+    watch = _watch()["jobs"]["watch"]
+    assert watch.get("if") == "vars.HOSTED_RUNNERS_AVAILABLE == 'yes'", (
+        "jobs.watch must be gated on the founder-owned repository variable, so turning it back "
+        "on after billing is fixed is `gh variable set HOSTED_RUNNERS_AVAILABLE --body yes` and "
+        "not a code change: today the job cannot start, and a job that cannot start is a FAILURE "
+        f"on main every morning. Found: {watch.get('if')!r}"
+    )
+    assert "HOSTED_RUNNERS_AVAILABLE" in (WATCH.read_text()), (
+        "name the variable in the file, so the reader who finds this workflow skipped can see "
+        "what turns it back on without going to another repository's settings page"
+    )

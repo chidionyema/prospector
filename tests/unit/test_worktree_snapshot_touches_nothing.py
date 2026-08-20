@@ -11,6 +11,7 @@ tree is byte-for-byte where it was. It is deliberately not a source scan.
 """
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -23,8 +24,21 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import worktree_snapshot as ws  # noqa: E402
 
 
+def _clean_git_env() -> dict[str, str]:
+    """The ambient environment minus every GIT_* variable.
+
+    Belt and braces. `tests/conftest.py` already strips these process-wide before any test runs,
+    which is the mechanism that protects the whole suite. This second copy exists because THIS is
+    the file that destroyed a committer's index on 2026-08-20 — 1,979 entries down to 4, and
+    "10 passed" printed underneath — and the next person to read it should find the trap named at
+    the exact line that sprang it rather than one directory up.
+    """
+    return {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+
+
 def git(cwd: Path, *args: str) -> str:
-    p = subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, text=True, check=True)
+    p = subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, text=True, check=True,
+                       env=_clean_git_env())
     return p.stdout.strip()
 
 
