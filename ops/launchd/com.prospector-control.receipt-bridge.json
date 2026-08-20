@@ -1,0 +1,14 @@
+{
+  "EnvironmentVariables": {
+    "PATH": "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+  },
+  "Label": "com.prospector-control.receipt-bridge",
+  "ProgramArguments": [
+    "/Users/chidionyema/.prospector/bin/failover",
+    "receipts"
+  ],
+  "RunAtLoad": true,
+  "StandardErrorPath": "/Users/chidionyema/.prospector/logs/com.prospector-control.receipt-bridge.log",
+  "StandardOutPath": "/Users/chidionyema/.prospector/logs/com.prospector-control.receipt-bridge.log",
+  "StartInterval": 900
+}

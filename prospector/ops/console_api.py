@@ -47,6 +47,7 @@ import os
 import re
 import secrets
 import shlex
+import socket
 import subprocess
 import sys
 import time
@@ -829,6 +830,40 @@ def _read_console_log(cfg, args: dict) -> dict:
         kinds[k] = kinds.get(k, 0) + 1
     return {"path": str(path), "present": path.exists(), "total": len(rows),
             "unreadable_lines": unreadable, "kinds": kinds, "rows": rows[:limit]}
+
+
+def _read_logs(cfg, args: dict) -> dict:
+    """Every service's log lines in one place, newest first, filtered.
+
+    WHY THIS EXISTS. Founder, 2026-08-19: "right now we dont have proper loggin visibility in
+    store fonrt, engine adin etc we log but no cetral place to view". Before this, answering
+    "what happened to this buyer" meant `fly logs` on three apps, each holding about four
+    minutes of history, none of them joinable. `docs/LOGGING_AND_RETENTION.md` Part 4 is the
+    design; this is step 10 of its plan.
+
+    It reads the day files directly instead of asking the ingest process over HTTP. Both run on
+    the same machine (`deploy/engine/supervisord.conf`, `[program:ops-console]` and
+    `[program:log-ingest]`), so an HTTP hop would add no isolation and one failure mode: the
+    logs would go unreadable exactly when the ingest is the process that died.
+
+    `host` and `dir` are returned on every response, empty or not. A console run against a
+    checkout that is not the engine resolves a log directory production never writes to, finds
+    nothing, and would otherwise render a confident empty table — the same shape as a healthy
+    estate. The page says which machine answered instead.
+    """
+    from prospector import log_ingest
+
+    out = log_ingest.search(
+        service=str(args.get("service") or ""),
+        level=str(args.get("level") or ""),
+        since=str(args.get("since") or ""),
+        until=str(args.get("until") or ""),
+        corr=str(args.get("corr") or ""),
+        q=str(args.get("q") or ""),
+        limit=int(args.get("limit") or 200),
+    )
+    out["host"] = socket.gethostname()
+    return out
 
 
 def _store_api() -> tuple[str, str]:
@@ -1658,6 +1693,7 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
     "config": _read_config,
     "intents": _read_intents,
     "console_log": _read_console_log,
+    "logs": _read_logs,
     "tools": _read_tools,
     "undo": _read_undo,
     "catalogue": _read_catalogue,
@@ -3385,6 +3421,16 @@ TOOLS: list[dict] = [
     # running three probes by hand and getting three different answers.
     _t("scripts/branch_backlog.py", "How much finished work is sitting unmerged on a branch?",
        False, "/audit"),
+    # --- registered 2026-08-19 ---
+    # It shipped in #460 with a `--json` flag whose own help text says "for the ops console", and
+    # was never added to this table. That is exactly the drift `test_console_tool_registry_has_no_drift`
+    # exists to catch, and it caught it: main went red the moment #460 merged, and stayed red,
+    # so every open pull request inherited a failure that had nothing to do with its own change.
+    # Sits beside `main_red.py` on /processes because they answer the two halves of one question:
+    # main_red says whether the branch everyone builds on is broken, this says whether the 27 red
+    # pull requests are 27 broken changes or one broken machine.
+    _t("scripts/pr_triage.py", "Why is every pull request red: a broken test or a broken machine?",
+       False, "/processes"),
 ]
 
 
