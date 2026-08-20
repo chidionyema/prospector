@@ -241,10 +241,43 @@ def test_restore_without_a_db_snapshot_still_restores_dossiers(store, tmp_path, 
     assert "no db snapshot in the bucket" in capsys.readouterr().err
 
 
-def test_restore_rejects_an_object_that_does_not_parse(store, tmp_path):
+def test_an_unparseable_object_is_reported_and_the_restore_finishes(store, tmp_path, capsys):
+    """This test asserted the opposite until 2026-08-20: that an object which does not parse
+    exits the restore. It was changed deliberately, because on a real host it made the restore
+    permanently red -- and the hard exit sat ABOVE restore_db, so the catalogue index, the half
+    of a recovery that actually matters, was never restored once.
+
+    An unparseable object whose ETag matches is a faithful copy of bytes R2 was given. It is
+    reported with a count and an example, and the restore carries on."""
     s3 = FakeS3()
     bs.sync(s3, "b")
     s3.objects["dossiers/aaa.pass.json"] = b"not json"
+
+    count = bs.restore(s3, "b", tmp_path / "restored")
+
+    assert count == 3
+    assert (tmp_path / "restored" / "prospector.db").is_file()
+    out = capsys.readouterr().out
+    assert "1 restored objects do not parse as JSON" in out
+    # The local twin still parses, so the message must NOT blame the source for this one.
+    assert "local file is unparseable too" not in out
+
+
+def test_bytes_that_disagree_with_the_stored_etag_still_fail_the_restore(store, tmp_path):
+    """The one condition that is still fatal. Everything else the restore reports; this is the
+    only check that answers the question the function exists to ask -- are the bytes in the
+    bucket the bytes we gave it."""
+
+    class LyingS3(FakeS3):
+        def list_objects_v2(self, **kw):
+            page = super().list_objects_v2(**kw)
+            for row in page["Contents"]:
+                if row["Key"] == "dossiers/aaa.pass.json":
+                    row["ETag"] = '"%s"' % ("0" * 32)
+            return page
+
+    s3 = LyingS3()
+    bs.sync(s3, "b")
     with pytest.raises(SystemExit) as exc:
         bs.restore(s3, "b", tmp_path / "restored")
     assert "RESTORE FAIL" in str(exc.value)
@@ -409,3 +442,26 @@ def test_a_dossier_rewritten_after_upload_does_not_fail_the_restore(store, tmp_p
     out = capsys.readouterr().out
     assert "1 objects differ from the local copy" in out
     assert "aaa.pass.json" in out
+
+
+def test_a_zero_byte_source_dossier_does_not_fail_the_restore(store, tmp_path, capsys):
+    """Measured on prospector-engine 2026-08-20: 5 dossiers are zero bytes in the bucket and
+    zero bytes locally. The backup copied a broken source file faithfully, which is its job.
+    Failing the restore over it makes the restore permanently red on that host, so a real
+    failure could never be told apart from this one."""
+    (bs.DOSSIER_DIR / "bbb.kill.json").write_bytes(b"")
+    s3 = FakeS3()
+    bs.sync(s3, "b")
+    assert s3.objects[bs.DOSSIER_PREFIX + "bbb.kill.json"] == b""
+
+    dest = tmp_path / "restored"
+    count = bs.restore(s3, "b", dest)
+
+    assert count == 3
+    # The broken object is still WRITTEN. The drill reconciles the tree against the index,
+    # and a file this function silently dropped would read there as a coverage hole.
+    assert (dest / "dossiers" / "bbb.kill.json").read_bytes() == b""
+    assert (dest / "prospector.db").is_file()
+    out = capsys.readouterr().out
+    assert "1 restored objects do not parse as JSON" in out
+    assert "bbb.kill.json (0B, local file is unparseable too)" in out
