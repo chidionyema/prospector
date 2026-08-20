@@ -350,7 +350,16 @@ class TestTheHookDelegatesInsteadOfKeepingASecondCopy:
             "the hook is filtering extensions itself again — that list belongs only in "
             "scripts/popdd_verify.py:lanes_for()"
         )
-        assert ".tsx" not in code and ".py" not in code.replace("popdd_verify.py", "")
+        # The blunt substring net runs over the lines that can actually FILTER. An `echo`
+        # prints; it cannot classify a file, so an extension named in the hook's failure
+        # message is documentation, not a second copy of the lane map. This assertion went
+        # red on 2026-08-20 for exactly that reason: the message was corrected to say ruff
+        # is scoped to "the .py files you staged", and a guard against duplicated LOGIC
+        # graded PROSE. The regex above is the guard that matters and is unchanged.
+        filtering = "\n".join(
+            line for line in code.splitlines() if not re.match(r"\s*(echo|printf)\b", line)
+        )
+        assert ".tsx" not in filtering and ".py" not in filtering.replace("popdd_verify.py", "")
 
     def test_the_hook_still_fails_closed(self):
         code = _hook_code()
