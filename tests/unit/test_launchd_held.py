@@ -17,6 +17,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -241,3 +242,61 @@ def test_every_receipt_wrapped_launchd_job_has_a_capability_that_grades_it():
         f"are instrumented and read by nobody: {ungraded}. Either add a capability whose "
         "observable.script is the key, or stop wrapping the job."
     )
+# ------------------------------------- launchd's third state: disabled by hand, not crashed
+
+def test_disabled_labels_reads_only_the_disabled_ones(monkeypatch):
+    """`launchctl print-disabled` lists BOTH states in one table; only one of them is ours."""
+    mod = _module()
+    out = (
+        "\n\tdisabled services = {\n"
+        '\t\t"com.google.keystone.user.agent" => enabled\n'
+        '\t\t"ai.hermes.cockpit" => disabled\n'
+        '\t\t"ai.hermes.keepawake" => enabled\n'
+        '\t\t"com.prospector.scheduler" => disabled\n'
+        "\t}\n"
+    )
+    monkeypatch.setattr(mod.subprocess, "run",
+                        lambda *a, **k: types.SimpleNamespace(returncode=0, stdout=out))
+    assert mod.disabled_labels() == {"ai.hermes.cockpit", "com.prospector.scheduler"}
+
+
+def test_disabled_labels_returns_none_when_launchctl_cannot_answer(monkeypatch):
+    """None, never the empty set. Empty means asked-and-nothing-is-off, which is a real claim."""
+    mod = _module()
+    monkeypatch.setattr(mod.subprocess, "run",
+                        lambda *a, **k: types.SimpleNamespace(returncode=1, stdout=""))
+    assert mod.disabled_labels() is None
+    monkeypatch.setattr(mod.subprocess, "run",
+                        lambda *a, **k: (_ for _ in ()).throw(OSError("no launchctl")))
+    assert mod.disabled_labels() is None
+
+
+def test_a_job_disabled_by_hand_still_fails_but_says_so(estate, capsys, monkeypatch):
+    """Disabling is an ACT. The reason still has to be written down, so this is not an excuse."""
+    estate.declare("com.prospector.deliberate")
+    estate.holding()
+    monkeypatch.setattr(estate.mod, "disabled_labels", lambda: {"com.prospector.deliberate"})
+    assert estate.mod.cmd_assert_held() == 1
+    out = capsys.readouterr().out
+    assert "launchctl disable" in out
+    assert "1 of them disabled by hand" in out
+
+
+def test_a_job_that_is_merely_absent_is_not_called_disabled(estate, capsys, monkeypatch):
+    """The wording must not claim an operator acted when nothing says one did."""
+    estate.declare("com.prospector.crashed")
+    estate.holding()
+    monkeypatch.setattr(estate.mod, "disabled_labels", lambda: set())
+    assert estate.mod.cmd_assert_held() == 1
+    out = capsys.readouterr().out
+    assert "launchctl disable" not in out
+    assert "launchd is NOT holding it" in out
+
+
+def test_not_knowing_what_is_disabled_does_not_change_the_verdict(estate, capsys, monkeypatch):
+    """A probe that cannot answer costs the wording, never the finding."""
+    estate.declare("com.prospector.crashed")
+    estate.holding()
+    monkeypatch.setattr(estate.mod, "disabled_labels", lambda: None)
+    assert estate.mod.cmd_assert_held() == 1
+    assert "0 of them disabled by hand" in capsys.readouterr().out

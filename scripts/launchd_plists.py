@@ -381,6 +381,39 @@ def held_labels() -> set[str] | None:
     return held
 
 
+def disabled_labels() -> set[str] | None:
+    """Labels an operator has explicitly disabled, or None when launchctl did not answer.
+
+    Read separately from `launchctl list` because launchd has three states and the middle one
+    is the interesting one. A label can be held; absent because it crashed, was never loaded
+    or was booted out; or absent because somebody ran `launchctl disable`, which writes a
+    persistent per-user override that survives a reboot and makes `bootstrap` refuse.
+
+    That third state is an ACT, not a REASON, so it excuses nothing. A job somebody turned
+    off for a stated cause and a job somebody turned off by accident are the same row here,
+    and telling them apart is exactly what ops/config/launchd_not_held.json is for. Knowing
+    changes the wording of the finding and nothing else.
+
+    Measured 2026-08-20: nine ai.hermes.* daemons reported as NOT HELD. All nine had been
+    disabled in one action at 19 Aug 22:47, to end a real split in which the same daemons ran
+    on Fly and on this Mac against separate SQLite databases. The report gave no hint of that,
+    so the first move it invited was a hunt for nine crashes that never happened.
+    """
+    try:
+        proc = subprocess.run(["launchctl", "print-disabled", "gui/%d" % os.getuid()],
+                              capture_output=True, text=True, timeout=20, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    off: set[str] = set()
+    for line in proc.stdout.splitlines():
+        m = re.search(r'"([^"]+)"\s*=>\s*(?:disabled|true)\b', line)
+        if m:
+            off.add(m.group(1))
+    return off
+
+
 def load_not_held(path: Path | None = None) -> tuple[dict[str, str], list[str]]:
     """The deliberately-not-held labels and their reasons, plus anything wrong with the file.
 
@@ -434,6 +467,9 @@ def cmd_assert_held() -> int:
 
     excused, problems = load_not_held()
     installed = {p.stem for p in LIVE.glob("*.plist")}
+    # None here is not fatal. Not knowing WHY a job is absent leaves the fact that it is
+    # absent, which is the only thing this command asserts; it costs the reader the wording.
+    disabled = disabled_labels() or set()
 
     missing: list[str] = []
     notes: list[str] = []
@@ -445,6 +481,11 @@ def cmd_assert_held() -> int:
             continue
         if label in excused:
             notes.append("%s  off by design — %s" % (label, excused[label]))
+            continue
+        if label in disabled:
+            missing.append("%s  declared, and somebody ran `launchctl disable` on it. That "
+                           "records the act, not the reason -- write the reason in %s, or "
+                           "re-enable the job" % (label, NOT_HELD.name))
             continue
         where = "its plist is installed" if label in installed else "NO plist installed"
         missing.append("%s  declared, %s, launchd is NOT holding it" % (label, where))
@@ -465,9 +506,11 @@ def cmd_assert_held() -> int:
         print("LAUNCHD HELD PASS  %d declared job(s), %d held, %d excused in writing"
               % (len(declared), len(declared) - len(excused), len(excused)))
         return 0
-    print("LAUNCHD HELD FAIL  %d finding(s)  (not-held=%d bad-excuse=%d)  — either load the "
-          "job, or write down in %s why it must not run"
-          % (n, len(missing), len(problems), NOT_HELD.name))
+    off_by_hand = sum(1 for label in declared
+                      if label not in held and label not in excused and label in disabled)
+    print("LAUNCHD HELD FAIL  %d finding(s)  (not-held=%d, %d of them disabled by hand; "
+          "bad-excuse=%d)  — either load the job, or write down in %s why it must not run"
+          % (n, len(missing), off_by_hand, len(problems), NOT_HELD.name))
     return 1
 
 
