@@ -1209,6 +1209,7 @@ Append here. One line per shipped item, with the receipt.
 | 2026-08-20 | F-08a | first completeness measurement taken against a real copy: the R2 ledger object is **99.88% of the live source**, and the shortfall is append lag, not truncation | gzip trailer ISIZE 413,570,301 B vs `wc -c` 414,063,171 B on `prospector-engine`; ledger measured appending at 437 B/s over 120s, so a 492,870 B gap is ~19 min of appends against a ~16 min old snapshot |
 | 2026-08-20 | §13 | the final tooling named — 7 decided, 4 proposed, 4 things deliberately not adopted | `command -v` sweep on this laptop: helm, sops, restic, rclone, ansible, kind, k3d absent |
 | 2026-08-20 | §10.4 | the k8s adapter question answered: nothing calls it, it has never run, and a free local cluster exists | `kubectl config get-contexts` → `docker-desktop` |
+| 2026-08-20 | F-07 | **the first off-machine restore this estate has ever completed** — the R2 catalogue index pulled down, decompressed and opened read-only | `db/prospector-2026-08-20.db.gz`, 975,480 B → 3,100,672 B; `PRAGMA integrity_check` = `ok`; 1 table, `dossiers`, **3,608 rows**. Second angle from `prospector-engine` itself: `LIVE_ROWS 3608` — exact agreement. F-07 stays ○: one source restored by hand is not "every backup, by a machine, scheduled" |
 | 2026-08-20 | P5 / #355 | the engine can page the founder from a container — in-repo Telegram sender, no `$HOME` dependency | commit `47212af5`; 18 tests, 5 mutations caught |
 
 ---
@@ -1563,6 +1564,22 @@ This does not turn F-08a green. The requirement is that a short copy is REFUSED,
 one yet; a measurement that has to be run by hand is an instrument, not a drill. What it does settle
 is that the money file has a real off-Fly copy today, written under dated keys by
 `scripts/backup_store.py:450` so a truncation cannot overwrite the good ones.
+
+**And the restore side is no longer theoretical.** Until 2026-08-20 every restore claim in this
+programme rested on `scripts/restore_drill.py` passing against a LOCAL backup directory — which
+proves the parser, not the survival of the estate. The first pull from off-machine storage ran that
+day: `db/prospector-2026-08-20.db.gz` fetched from R2 (975,480 bytes), decompressed to 3,100,672
+bytes, opened through a `file:...?mode=ro` URI so the copy could not be mutated by reading it.
+`PRAGMA integrity_check` returned `ok`. It holds one table, `dossiers`, with **3,608 rows**.
+
+The second angle is what makes it a proof rather than a reading: `prospector-engine` was asked the
+same question about its own live database and answered `LIVE_ROWS 3608`. Two instruments that fail
+differently — a gzip stream written to R2 at snapshot time, and a live SQLite count taken now over
+the network — agree exactly.
+
+**F-07 stays ○ anyway, and that is the point of the glyph.** What ran was one source, restored once,
+by hand, by me. The requirement says every backup, by a machine, on a schedule. The distance between
+"it worked when I did it" and "it works when nobody does it" is the whole of this programme.
 
 ### 11.5 The rule that keeps this register honest
 
