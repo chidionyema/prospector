@@ -1061,6 +1061,19 @@ marked done here. `scripts/restore_drill.py` runs weekly as `[program:restore-dr
 (`deploy/engine/supervisord.conf:135`) and drills the ENGINE STORE, which is a different
 datastore and does not close §6.4.
 
+**TWO IMPLEMENTATIONS OF THIS STEP LANDED, AND THAT IS AN OPEN DEFECT.** The paragraph above
+describes the `logs` source in `ops/config/offsite_backup.yaml`, driven by
+`ops.automations.offsite_backup`. PR #518 independently shipped `archive_logs()` in
+`scripts/backup_store.py`, which gzips every closed day file to `prospector-backup/logs/` from
+inside `[program:backup]`. Both are merged, both have passing tests, and they archive the same
+files to overlapping prefixes on the same schedule.
+
+Neither can be deleted casually, because deleting either removes tested work — which is exactly
+the trap `CLAUDE.md` names: "two implementations of one class are worse than none". Whoever picks
+this up chooses ONE, proves the other's tests are covered by it, and removes the loser in a single
+commit. Do not leave both running: two daily uploads of the same day, pruned by two different
+rules, is a restore that silently picks the wrong copy.
+
 ---
 
 **Step 13 — Third and fourth producers: the storefront and the console. DONE. This step was not
