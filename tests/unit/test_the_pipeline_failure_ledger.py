@@ -123,6 +123,20 @@ LEDGER: tuple[Mode, ...] = (
         None,
     ),
     Mode(
+        "a-main-run-ends-with-no-verdict-at-all",
+        "A CI run on main can end `cancelled`, `timed_out` or `stale`. Main's colour is then "
+        "UNKNOWN, not red, and both of the green guard's other jobs require `conclusion == "
+        "'failure'`, so neither fires. Measured 2026-08-20: main's runs at 802a2e4b and fe6fcd13 "
+        "both ended cancelled with zero jobs, the guard skipped both, and main sat red on two "
+        "tests with nothing watching. An unknown main is a non-green main to ci.yml's `changes` "
+        "step, so every pull request skipped every build job -- and a skipped job renders neutral "
+        "grey, not red. Four pull requests were merged by hand on that appearance.",
+        (".github/workflows/main-green-guard.yml",),
+        "tests/unit/test_a_main_run_with_no_verdict_gets_asked_again.py",
+        None,
+        None,
+    ),
+    Mode(
         "a-push-lands-straight-on-main",
         "Someone or something pushes to main without a pull request, so no CI verdict ever "
         "covered the code that main now contains.",
