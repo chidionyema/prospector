@@ -74,6 +74,16 @@ them back into `docs/` is tracked as its own job.
 | [Shelf cards: three packs, two title registers](https://claude.ai/code/artifact/f1256b3d-12c4-4688-adc9-72c23089ffec) | Which title register a card should use |
 | [2050 hero specimen](https://claude.ai/code/artifact/5950ca8f-21b4-4629-a86e-2787c2acbf5e) | Hero type treatment |
 | [The Cut](https://claude.ai/code/artifact/8d146770-b0dc-4208-a5b9-1e6c94b94093) | A storefront direction |
+| [Sample Sheet](https://claude.ai/code/artifact/3fc0d907-a9c0-44ef-abae-569fe94c4c3d) | All 29 plates from the 2026-08-20 redesign session, in the order they were made |
+| [The Assay Sheet](https://claude.ai/code/artifact/d0ada5d9-4994-434f-b6cd-e5bdac499a14) | All **18 designed routes** as light-on-dark plates, with the real on-disk copy for each, the copy-layer coverage, and the pack-image collision measurement with its fix |
+| [Ten Looks](https://claude.ai/code/artifact/06f86a35-a240-4495-a685-fac2aed5684e) | The look engine itself, live — switch identity, flip theme, roll an eleventh from a seed |
+| [Storefront Today](https://claude.ai/code/artifact/8d204575-9ecd-45c6-b1e2-7b86fc8b826c) | The site as it stands at `017516af`, so the ten looks have a before to be compared against |
+
+## Tooling
+
+| Page | What it shows |
+|---|---|
+| [The Automation Ledger](https://claude.ai/code/artifact/ec383383-851a-41ae-8215-477d7e96244e) | Every tool built, which gate it implements, and what it refuses. Generated from the tools' own header lines, so it cannot list a tool that is not on disk. Linked from `README.md` under Tooling and quality gates. |
 
 ## Product samples
 

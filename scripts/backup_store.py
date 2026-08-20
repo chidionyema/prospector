@@ -917,6 +917,18 @@ def restore(s3, bucket: str, dest: Path) -> int:
     the ETag R2 computed at upload time, the local file where one still exists, and whether
     the bytes actually parse as the dossier JSON a restore is supposed to yield.
 
+    Only ONE of those three can fail the restore, and it is the ETag. That is the only check
+    that asks the question this function exists to ask -- are the bytes in the bucket the bytes
+    we put there. The other two are reported with counts and examples and are never fatal,
+    because neither of them is a statement about the bucket: a difference from the local file
+    means the local file moved on, and bytes that do not parse mean the source file was already
+    broken when it was uploaded. Letting either one exit non-zero is what stopped this function
+    ever reaching `restore_db`, and a restore that always fails cannot report a real failure.
+
+    Whether the catalogue is RECOVERABLE is a separate and larger question, and it belongs to
+    `scripts/restore_drill.py`, which parses sampled rows and reconciles the restored tree
+    against the index.
+
     Layout: `dest/dossiers/<relative path>` plus `dest/prospector.db`. That is exactly what
     `scripts/restore_drill.py --backup DIR` consumes, so a pull from R2 can be handed straight
     to the drill and checked row-by-row against the live index — the two halves of recovery
@@ -930,6 +942,8 @@ def restore(s3, bucket: str, dest: Path) -> int:
     import json
 
     bad: list[str] = []
+    diverged: list[str] = []
+    unparseable: list[str] = []
     compared_to_local = 0
     for key, etag in sorted(remote.items()):
         body = s3.get_object(Bucket=bucket, Key=key)["Body"].read()
@@ -941,15 +955,49 @@ def restore(s3, bucket: str, dest: Path) -> int:
         try:
             json.loads(body)
         except ValueError:
-            bad.append(f"{rel}: restored bytes are not valid JSON")
-            continue
+            # Also not a bucket failure, for the same reason. The ETag above already proved
+            # these are the bytes R2 was given, so bytes that do not parse mean the SOURCE FILE
+            # did not parse when it was uploaded. A backup that faithfully copies a broken file
+            # has done its job; it is not the thing that broke it.
+            #
+            # Measured 2026-08-20 on prospector-engine: 5 of 4,480 objects, every one a
+            # zero-byte `*.kill.json` that is zero bytes locally too, all five written inside
+            # one 2.4-hour window, all five with a live index row pointing at them.
+            #
+            # Making this fatal keeps the restore permanently red on that host over a defect
+            # the restore neither caused nor can fix -- the same trap as the divergence below.
+            # Whether the catalogue is RECOVERABLE is the drill's question, and it asks it
+            # properly: scripts/restore_drill.py parses sampled rows and compares the restored
+            # tree against the index. This function's question is narrower -- did the bytes
+            # survive the round trip -- and the ETag is what settles it.
+            twin = DOSSIER_DIR / rel
+            source_too = False
+            if twin.is_file():
+                try:
+                    json.loads(twin.read_bytes())
+                except ValueError:
+                    source_too = True
+            unparseable.append(
+                f"{rel} ({len(body)}B" + (", local file is unparseable too" if source_too else "")
+                + ")"
+            )
 
         local = DOSSIER_DIR / rel
         if local.is_file():
             if _sha256_bytes(body) != _sha256(local):
-                bad.append(f"{rel}: differs from the local original")
-                continue
-            compared_to_local += 1
+                # Not a bucket failure, and it must not stop the restore. The ETag check above
+                # already proved these bytes are exactly what R2 was given, so the only thing a
+                # local difference can mean is that the LOCAL file moved on after upload. On a
+                # live box that is constant and normal: the daemon rewrites `*.defer.json` as it
+                # re-vets. Measured 2026-08-20 on prospector-engine, 53 of 4,480 objects differed
+                # for exactly that reason, with 0 local files missing from the bucket.
+                #
+                # Counting it as failure is what made this exit 1 on every run on a live host,
+                # and the hard exit below meant `restore_db` NEVER RAN -- so the index, the half
+                # of a recovery that actually matters, had never once been restored.
+                diverged.append(rel)
+            else:
+                compared_to_local += 1
 
         out = dest / "dossiers" / rel
         out.parent.mkdir(parents=True, exist_ok=True)
@@ -961,6 +1009,14 @@ def restore(s3, bucket: str, dest: Path) -> int:
         sys.exit(f"STORE_BACKUP RESTORE FAIL {len(bad)}/{len(remote)} objects failed")
 
     print(f"  checked {len(remote)} against R2's ETag, {compared_to_local} against local originals")
+    if unparseable:
+        print(f"  {len(unparseable)} restored objects do not parse as JSON. Each matched the "
+              f"ETag R2 recorded at upload, so these are faithful copies of source files that "
+              f"were already broken: {', '.join(sorted(unparseable)[:5])}")
+    if diverged:
+        print(f"  {len(diverged)} objects differ from the local copy. The bucket holds the bytes "
+              f"it was given (ETag verified above); these local files changed after upload, "
+              f"which is what a live daemon does. e.g. {', '.join(sorted(diverged)[:3])}")
     restore_db(s3, bucket, dest)
     return len(remote)
 

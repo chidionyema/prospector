@@ -3502,3 +3502,52 @@ The pattern across all six: the TRUE half was always adjacent to the false one. 
 really is exact; the sources really are published; the unverifiable checks really are labelled.
 Nothing here required weakening the product's actual claim — only deleting the part of the sentence
 that generalised it into a guarantee. `npx tsc --noEmit` exit 0; 264 python tests green.
+
+---
+
+## 34. E-104 — is a claim-level verdict defensible? Market structure, measured (2026-08-20)
+
+Researched across 68 sourced pages. Recorded here rather than in the engine programme file because
+it changes what we SELL, not how the engine runs. The engine-side row is `ENGINE_100X_PROGRAM.md`
+section 4, E-104.
+
+**The question.** The engine's differentiator has been described internally as "we rule on a claim
+against retrieved evidence". Is that a moat, or has the market already commoditised it?
+
+**Finding 1 — per-answer citation is commoditised.** Four rivals converged on $10–$14 per thousand
+grounded requests, and Anthropic's Citations charges nothing beyond tokens. Attaching a source to
+an answer is now a checkbox, not a product.
+
+**Finding 2 — ruling on a claim is not commoditised, but it is unsold rather than defended.**
+Zero of thirteen major providers ship a claim-level verdict against retrieved open-web evidence.
+The verdict-shaped things that do exist are narrow and cheap:
+
+| Product | Price | What it actually does |
+|---|---|---|
+| Google Check Grounding | $0.00075 / 1k | scores an answer against passages you supply |
+| AWS Bedrock contextual grounding | $0.10 / 1k | same shape, inside Guardrails |
+| AWS Bedrock Automated Reasoning | $0.17 / 1k | proves against a FORMAL POLICY, not the open web |
+| WebCite | ~$0.16 per verification | closest direct competitor: supported/contradicted + citations |
+
+**Finding 3 — the verification vendors are being absorbed.** Arize → Dynatrace, $915M, 13 Aug 2026.
+Galileo → Cisco, 9 Apr 2026. TruEra → Snowflake. Logically → administration. Standalone
+"we check AI output" companies are not surviving as standalone companies.
+
+**Finding 4 — the best open verifier is free and beats GPT-4o.** IBM Granite Guardian 3.3 (8B),
+Apache 2.0, 76.5 on LLM-AggreFact against GPT-4o's 75.9. Bespoke-MiniCheck-7B leads at 77.4 but is
+CC BY-NC 4.0. A competitor can stand up a credible verifier for the cost of an endpoint.
+
+**The conclusion, stated plainly: the verifier is not the moat.** Anyone can buy or download one.
+What cannot be downloaded is the corpus we have accumulated, the declared standard of proof the
+filter applies uniformly, the audit trail that makes a verdict inspectable after the fact, and the
+liability position of a business willing to stand behind it. Product work should be aimed at those
+four, not at the model.
+
+**What this makes urgent.** E15 measured 48.9% rationale infidelity (171/350, CI 43.7–54.1) — the
+audit trail is the asset, and nearly half of it does not currently say what its own citation
+supports. Re-measuring and fixing that (E-102) is now a commercial priority, not a quality nicety.
+
+**Research still open on this thread.** Who buys a claim-level verdict with consequences attached —
+pharma review, advertising substantiation, ESG. No per-verdict product priced for a business
+carrying liability was found. That is either an opening or the reason nobody bothered, and the two
+look identical from outside.

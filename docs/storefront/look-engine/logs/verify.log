@@ -1,0 +1,24 @@
+$ node verify.mjs
+started  2026-08-20T19:00:47Z
+node     v26.3.0
+---
+104 cells measured (10 designed + 3 rolled looks x 4 viewports x 2 themes)
+ALL PASS — 0 contrast refusals, 0 overflow, 0 sub-24px targets, 0 sub-44px controls, 0 blank plates, 0 clipped text, 0 collisions (19474 painted leaves compared), 0 console errors
+
+fonts actually resolved per look:
+ledger      Bodoni Moda
+instrument  Chivo
+fieldguide  Fraunces
+dossier     Courier Prime
+prospectus  Archivo
+almanac     EB Garamond
+signal      Bricolage Grotesque
+workbench   Chivo
+broadside   Archivo Black
+quiet       Newsreader
+roll-101    Fraunces
+roll-102    Chivo
+roll-103    EB Garamond
+---
+exit     0
+duration 51s

@@ -68,6 +68,7 @@ ROOT = Path(__file__).parent.parent
 WEB_DIR = ROOT / "store_platform" / "src" / "Store.Web"
 CONSOLE_DIR = ROOT / "store_platform" / "src" / "Ops.Console"
 DOTNET_TEST_PROJ = "store_platform/src/Store.Tests/Store.Tests.csproj"
+LOOKENGINE_DIR = ROOT / "docs" / "storefront" / "look-engine"
 
 # Wall-clock ceiling per lane. This is a HANG detector, not a performance budget — set it
 # well above the real runtime so a merely-slow suite never reads as a failure. Measured
@@ -120,6 +121,11 @@ OPS_REL = "store_platform/src/Ops.Console/"
 # the two apps have separate node_modules and separate npm scripts, and one lane cannot cd to
 # two directories.
 CONSOLE_REL = "store_platform/src/Ops.Console/"
+
+# The look engine is the storefront redesign prototype: .mjs tools plus .js/.css parts that
+# build one self-contained page. Its extensions are all in SOURCE_EXTS, so before this lane
+# existed every one of its files read as unproven and the directory could not be committed.
+LOOKENGINE_REL = "docs/storefront/look-engine/"
 
 # ── the engine lane's catchment ───────────────────────────────────────────────
 # The daemon is steered by two kinds of file, and until 2026-08-14 one of them was proven by
@@ -218,6 +224,26 @@ def _parse_engine(stdout: str) -> tuple[int, int, list[str]]:
     return passed, failed, failed_checks
 
 
+def _parse_lookengine(stdout: str) -> tuple[int, int, list[str]]:
+    """Count the look-engine tools' own verdict lines ('A43 PASS — ...', 'FAIL ...').
+
+    Same shape as _parse_engine: the verdict is the exit code, and these counts exist only
+    to make the receipt legible.
+    """
+    passed = failed = 0
+    failed_checks: list[str] = []
+    for line in stdout.splitlines():
+        m = re.search(r"\b(PASS|FAIL)\b", line)
+        if not m:
+            continue
+        if m.group(1) == "PASS":
+            passed += 1
+        else:
+            failed += 1
+            failed_checks.append(line.strip()[:120])
+    return passed, failed, failed_checks[:50]
+
+
 # ── lanes ────────────────────────────────────────────────────────────────────
 
 @dataclass(frozen=True)
@@ -300,6 +326,39 @@ LANES: dict[str, Lane] = {
         cwd=CONSOLE_DIR,
         preflight=(CONSOLE_DIR / "node_modules",),
     ),
+    # Two node-only proofs, and both were mutation-proved BEFORE they were put in a lane. A
+    # step that logs a fault and exits 0 makes a lane green while grading nothing, which is the
+    # same class as `cmd | tail` reporting tail's status.
+    #   check.mjs exits 1 on each of: a hex value written into a look (A43); a `[data-look=...]`
+    #   selector appended to the stylesheet (A42); a tool claiming a gate number the programme
+    #   doc does not define (the gate audit).
+    #   palette-test.mjs exits 1 when one `min:` in the palette module's own pair table is
+    #   raised — 4,000 failing pairs out of 80,000 assertions over 2,000 random seeds.
+    # Together ~3s, and neither writes a tracked file.
+    #
+    # tools.mjs WAS in this lane and was removed for failing exactly that test: given a tool
+    # whose @ledger line names a script that does not exist, it regenerated the ledger page
+    # with the lie in it and exited 0. It is a generator, not a gate.
+    #
+    # What this lane does NOT prove, said out loud rather than implied by a green tick: the
+    # five browser gates (verify.mjs — 104 cells, coldopen.mjs, overflow.mjs, persist.mjs and
+    # probe.mjs) all drive Playwright and take minutes, and a commit hook that launches a
+    # browser is the wedge this gate already has a memory file about. They are run by hand
+    # through runlog.sh, and logs/ carries their last verdict. So this is a real net over the
+    # static contracts, not the whole net. seed.mjs is excluded for a different reason: it is a
+    # one-off migration from the hand-picked palettes to seeds, so it is a tool, not a gate.
+    "lookengine": Lane(
+        key="lookengine",
+        label="look-engine — source contracts + palette contrast",
+        target="storefront:look-engine",
+        steps=(
+            ("check", ["node", "check.mjs"]),
+            ("palette", ["node", "palette-test.mjs"]),
+        ),
+        parser=_parse_lookengine,
+        cwd=LOOKENGINE_DIR,
+        preflight=(LOOKENGINE_DIR / "check.mjs",),
+    ),
     "dotnet": Lane(
         key="dotnet",
         label="dotnet — Store.Tests",
@@ -311,7 +370,10 @@ LANES: dict[str, Lane] = {
 
 # cheapest first, so a fast failure comes back fast. `engine` (~15s) leads: a change that
 # stops the daemon completing a tick should be reported before anything spends 175s.
-LANE_ORDER = ("engine", "console", "web", "dotnet", "python")
+# `lookengine` (~3s) is cheaper still and would lead on that rule alone, but
+# test_popdd_gate_lanes.py:289 pins the engine at position 0 on purpose, and 15 seconds is
+# not worth loosening a guard another session wrote.
+LANE_ORDER = ("engine", "lookengine", "console", "web", "dotnet", "python")
 
 
 def lanes_for(paths: list[str]) -> tuple[list[str], list[str]]:
@@ -338,6 +400,8 @@ def lanes_for(paths: list[str]) -> tuple[list[str], list[str]]:
             lanes.add("web")
         elif path.startswith(OPS_REL) and ext in WEB_EXTS:
             lanes.add("ops")
+        elif path.startswith(LOOKENGINE_REL) and ext in SOURCE_EXTS:
+            lanes.add("lookengine")
         elif ext == ".py":
             lanes.add("python")
         elif ext in (".cs", ".csproj"):

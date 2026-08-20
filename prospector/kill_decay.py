@@ -15,6 +15,25 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
+#: `store/dossiers/` is NOT a dossier population. The pack gate writes a
+#: `<id>.lint.json` receipt into the same directory (bridge.py:1256), and 116 of the 123
+#: non-dossier files measured there on 2026-08-20 carry a `market` field — a jurisdiction
+#: code like "uk" or "us-ga", not a business domain. Every domain fallback below reads
+#: `market`, so without this test a lint receipt is counted as a real domain.
+#:
+#: Measured on the live store the same day, over the newest-50 window this module uses:
+#: 31 of the 50 files were lint receipts, entropy read 1.9334 ("ok") against a true
+#: dossiers-only entropy of 0.0 ("force_reseed"), and ALL five non-"unknown" domains came
+#: from lint receipts. The brake did not merely drift; it read the opposite verdict.
+#:
+#: The test is on CONTENT, not on the filename suffix, because the next artifact somebody
+#: writes into this directory will have a different suffix and the same effect.
+def _is_dossier(obj: object) -> bool:
+    """True if this parsed JSON is a dossier rather than another artifact in the same directory."""
+    return isinstance(obj, dict) and ("checks" in obj or "candidate" in obj)
+
+
+
 def get_active_steers(
     store_path: Path,
     half_life_days: int = 30,
@@ -47,6 +66,8 @@ def get_active_steers(
     for f in dossiers_dir.glob("*.json"):
         try:
             dossier = json.loads(f.read_text())
+            if not _is_dossier(dossier):
+                continue
             verdict = dossier.get("verdict", "")
             if verdict.upper() != "KILL":
                 continue
@@ -150,6 +171,8 @@ def check_diversity_floor(
     for f in files:
         try:
             d = json.loads(f.read_text())
+            if not _is_dossier(d):
+                continue
             domain = (
                 d.get("domain")
                 or d.get("category")
@@ -215,6 +238,8 @@ def get_stale_domains(
     for f in dossiers_dir.glob("*.json"):
         try:
             d = json.loads(f.read_text())
+            if not _is_dossier(d):
+                continue
             domain = (
                 d.get("domain")
                 or d.get("category")
@@ -285,6 +310,11 @@ def decayed_kill_ids(
             d = json.loads(f.read_text())
         except (json.JSONDecodeError, OSError):
             continue
+        # No `_is_dossier` test here on purpose: `verdict == "KILL"` is already a stronger
+        # discriminator. Measured 2026-08-20, 0 of the 123 pack lint receipts in
+        # `store/dossiers/` carry a top-level `verdict` key, so they cannot reach this
+        # branch. The guard belongs on the three functions above, which fall back to
+        # `market` for a domain and would otherwise read a jurisdiction code as one.
         if not isinstance(d, dict) or str(d.get("verdict", "")).upper() != "KILL":
             continue
         cid = str(d.get("candidate_id") or d.get("id") or f.name.split(".")[0]).strip()

@@ -625,6 +625,16 @@ def main(argv: list[str] | None = None) -> int:
         print(f"UNKNOWN: {result['reason']}")
     else:
         for item in result.get("backups") or []:
+            if item.get("skipped"):
+                # A host-scoped source (`only_where`) belongs to the host that owns it, and
+                # `check` below still grades it off the shared bucket. Printing it is not a
+                # courtesy: this loop used to read item['key'] on a skipped entry, raise
+                # KeyError and exit 1 on EVERY run on the Fly engine host, which owns none of
+                # ~/.claude. The freshness lines below never printed, and the one signal that
+                # says the offsite backup is healthy could not go green, so a real failure
+                # looked exactly like this one.
+                print(f"SKIPPED   {item['source']}: {item['skipped']}")
+                continue
             print(f"BACKED UP {item['source']} -> {item['key']} "
                   f"({item['bytes']:,} bytes, {item['verified']} verified)")
         for item in result["sources"]:
