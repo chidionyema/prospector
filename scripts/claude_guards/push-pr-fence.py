@@ -75,9 +75,33 @@ EXEMPT_PREFIXES = ("archive/", "backup/", "rescue/", "salvage/", "parked/", "cap
 REFSPEC = re.compile(r"^(?:\+)?(?:HEAD|refs/heads/[^:]+|[^:]+)?:(?:refs/heads/)?(?P<dst>[^:]+)$")
 
 
+def _clean_env(**extra: str) -> dict[str, str]:
+    """The environment for every git and gh subprocess here, with the caller's GIT_* removed.
+
+    A git hook exports GIT_DIR, GIT_WORK_TREE and GIT_INDEX_FILE into everything it runs, and
+    `cwd=` does not override them -- git reads the environment first, so a command told to run in
+    one repository operates on another (memory `git-c-repo-loses-to-an-inherited-git-dir.md`).
+    This fence's selftest runs `git init`, `git add`, `git commit`, `git clone` and
+    `git checkout -b` in a temporary directory, so an inherited GIT_DIR turns every one of
+    them into a write against whichever repository the environment names.
+
+    Measured 2026-08-20 by a peer session on the same class in the pytest suite: a test whose git
+    calls inherited GIT_INDEX_FILE rewrote the real index from 2039 entries to 3 while printing
+    "10 passed". The PASSING outcome is the dangerous one; with GIT_DIR and GIT_WORK_TREE also
+    set, the same commands error harmlessly instead, so a green run is the tell.
+
+    The whole GIT_ prefix goes, not a named list. git adds variables between versions and a list
+    that has to be maintained is a guard that decays.
+    """
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    env.update(extra)
+    return env
+
+
 def run(*cmd: str, cwd: str) -> tuple[int, str]:
     try:
-        p = subprocess.run(cmd, capture_output=True, text=True, timeout=20, cwd=cwd)
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=20, cwd=cwd,
+                           env=_clean_env())
     except (OSError, subprocess.SubprocessError):
         return 1, ""
     return p.returncode, (p.stdout or "").strip()
@@ -214,7 +238,8 @@ def selftest_staleness() -> tuple[list[str], int]:
     from pathlib import Path
 
     def git(*a: str, cwd: str) -> None:
-        subprocess.run(("git",) + a, cwd=cwd, capture_output=True, check=True)
+        subprocess.run(("git",) + a, cwd=cwd, capture_output=True, check=True,
+                       env=_clean_env())
 
     failures: list[str] = []
     with tempfile.TemporaryDirectory() as tmp:
@@ -226,7 +251,8 @@ def selftest_staleness() -> tuple[list[str], int]:
         (Path(origin) / "a").write_text("1")
         git("add", "a", cwd=origin)
         git("commit", "-qm", "one", cwd=origin)
-        subprocess.run(("git", "clone", "-q", origin, clone), capture_output=True, check=True)
+        subprocess.run(("git", "clone", "-q", origin, clone), capture_output=True,
+                       check=True, env=_clean_env())
         git("config", "user.email", "t@t", cwd=clone)
         git("config", "user.name", "t", cwd=clone)
         git("checkout", "-qb", "work", cwd=clone)
@@ -339,6 +365,9 @@ def selftest() -> int:
     # twice for a guard whose fix was present and never called.
     import ast
     import inspect
+    import shutil
+    import tempfile
+    from pathlib import Path
 
     src = inspect.getsource(inspect.getmodule(main))
     node = next(n for n in ast.walk(ast.parse(src))
@@ -347,10 +376,51 @@ def selftest() -> int:
             and isinstance(n.func, ast.Name) and n.func.id == "pr_would_be_refused"]:
         failures.append("  main() never calls pr_would_be_refused, so the interlock is dead code")
 
+
+    # Every git call in this file must ignore an inherited GIT_INDEX_FILE. Running the staleness
+    # selftest under a poisoned environment exercises all of them at once -- init, add, commit,
+    # clone and checkout -- and the decoy index is the thing that would have been rewritten.
+    _decoy = tempfile.mkdtemp(prefix="push-pr-fence-decoy-")
+    _saved = {k: v for k, v in os.environ.items() if k.startswith("GIT_")}
+    try:
+        subprocess.run(("git", "init", "-q", "-b", "main", _decoy), capture_output=True,
+                       check=True, env=_clean_env())
+        Path(_decoy, "a.txt").write_text("one\n")
+        subprocess.run(("git", "add", "a.txt"), cwd=_decoy, capture_output=True, check=True,
+                       env=_clean_env())
+        _index = Path(_decoy, ".git", "index")
+        _before = _index.read_bytes()
+
+        # GIT_INDEX_FILE ALONE, deliberately. With GIT_DIR also set the fixture cannot build
+        # its temp repo and dies early, which harms nothing -- so a check run that way grades
+        # the safe case. The destructive shape is this one, and its tell is a GREEN run with a
+        # rewritten index behind it (measured by a peer session, 2026-08-20: 2039 entries to 3
+        # while pytest printed "10 passed").
+        os.environ["GIT_INDEX_FILE"] = str(_index)
+        try:
+            _poisoned_failures, _ = selftest_staleness()
+        except Exception as _e:  # noqa: BLE001 -- a crash is a detection, but not THE detection
+            _poisoned_failures = [f"  staleness selftest raised under GIT_INDEX_FILE: {_e}"]
+
+        if _index.read_bytes() != _before:
+            failures.append("  an inherited GIT_INDEX_FILE reached the decoy index and rewrote it")
+        if _poisoned_failures:
+            failures.append("  the staleness selftest does not survive an inherited GIT_INDEX_FILE")
+    finally:
+        for _k in [k for k in os.environ if k.startswith("GIT_")]:
+            del os.environ[_k]
+        os.environ.update(_saved)
+        shutil.rmtree(_decoy, ignore_errors=True)
+
+    # No NEW call site may hand os.environ straight to a subprocess. Needle built by
+    # concatenation: written whole it appears in this line and the check reports itself.
+    if ("{**" + "os.environ") in src:
+        failures.append("  a subprocess call passes os.environ unfiltered; use _clean_env()")
+
     staleness_failures, staleness_total = selftest_staleness()
     failures += staleness_failures
 
-    total = len(SELFTEST_CASES) + 10 + staleness_total
+    total = len(SELFTEST_CASES) + 12 + staleness_total
     if failures:
         print(f"push-pr-fence selftest: {len(failures)}/{total} FAILED")
         print("\n".join(failures))

@@ -1,0 +1,31 @@
+{
+ "id": "INC-2026-08-20-a-job-that-cannot-start-turned-main-red-hourly",
+ "opened": "2026-08-20",
+ "title": "Two scheduled workflows turned main red every hour and every morning, for a billing reason no code change could fix, and reported it only in an annotation",
+ "severity": "high",
+ "detected_by": "the session resolving CI, reading the annotation endpoint after `gh run view --log-failed` answered `log not found`",
+ "first_order": {
+  "what_broke": "ci-fleet-keeper (hourly, cron 17 * * * *) and ci-fleet-watch (daily, cron 30 6 * * *) both target `runs-on: ubuntu-latest`. This account cannot start a GitHub-hosted job at all, so both jobs conclude `failure` having run ZERO steps. main was therefore red once an hour and once every morning, on two checks that had nothing to do with any diff.",
+  "receipt": "Run 32343624520, job 96347602802: {\"conclusion\":\"failure\",\"started_at\":\"2026-08-20T07:21:24Z\",\"completed_at\":\"2026-08-20T07:21:27Z\",\"steps\":0}. `gh run view --log-failed` answers `log not found: 96371203101`. The only record anywhere is the check-run annotation, verbatim: \"The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings\". Read it with `gh api repos/OWNER/REPO/check-runs/<job_id>/annotations`.",
+  "fixed_by": "Both jobs now carry `if: vars.HOSTED_RUNNERS_AVAILABLE == 'yes'`, so they SKIP instead of failing. Turning them back on after billing is fixed is `gh variable set HOSTED_RUNNERS_AVAILABLE --body yes` and needs no code change. Pinned by tests/unit/test_ci_fleet_keeper.py::test_the_keeper_is_skipped_and_not_failed_while_hosted_runners_cannot_start and tests/unit/test_ci_fleet_probe.py::test_the_watch_is_skipped_and_not_failed_while_hosted_runners_cannot_start; both were mutation-proved against origin/main's copy of the workflow, where jobs.watch.if is None and the assertion fails."
+ },
+ "cause_chain": [
+  "main went red on a schedule -> the failing job ran zero steps -> its log 404s, so the usual instrument returns nothing -> the reason lives only in a check-run annotation -> the reason is that account payments failed, which is a founder decision and not a code defect -> a check that is red every morning for a reason nobody in CI can act on is a check that trains the estate to ignore red."
+ ],
+ "second_order": {
+  "premise_refuted": "ci-fleet-keeper's own header argued that the Free plan's 2,000 GitHub-hosted minutes are an emergency reserve for ci.yml, whose runner label falls back to `|| 'ubuntu-latest'` when the CI_*_RUNS_ON variables are unset. That reserve does not exist. The fallback is an instant no-steps failure, which reads as nothing at all. If the fly pool ever goes down, ci.yml has no escape hatch.",
+  "why_not_moved_to_the_fleet": "Neither job was moved to the `fly` pool, and that is deliberate in both cases. A self-hosted runner cannot start a dead self-hosted fleet, because when the fleet is down there is no runner left to pick the job up. And a fleet running the wrong image cannot be trusted to report that it is running the wrong image. Skipping loses the check; moving it would keep a check that lies.",
+  "cost_of_the_skip": "While the switch is off, the fleet has no self-heal and the image-staleness question goes unasked. Both are answered by hand: `.venv/bin/python scripts/ci_fleet_keeper.py --start` and `.venv/bin/python scripts/ci_fleet_probe.py --image-only`, and both are ops console buttons."
+ },
+ "third_order": {
+  "silence": "A skipped job is silent, and silence is what this estate keeps reading as health. ci-fleet-keeper gained an `announce` job that runs on the fly pool whenever the switch is off, states the outage and the annotation in the step summary, and SUCCEEDS. So the hourly tick is a green run carrying a reason instead of a red run carrying a message only the founder can act on. ci-fleet-watch adds no second alarm on purpose: one announcement an hour is enough, and two would be the same noise twice."
+ },
+ "grade": {
+  "class": "a failure mode whose only record is outside the instrument everyone uses. A job that never starts has no log, so every habit built on `gh run view --log-failed` reports nothing and the run looks unexplained rather than explained.",
+  "self_healing": "not possible \u2014 the cause is a payment, which is the founder's alone",
+  "guard": "two tests pin the `if:` gate as an exact string in both workflows, so deleting the gate without deciding to is a red suite rather than an hourly red main",
+  "memory": "the annotation endpoint as the source of truth for a zero-step job is already recorded in memory `a-killed-runner-reads-as-a-failing-test.md`; this incident is its second instance with a different cause",
+  "founder_action": "fix Actions billing, then `gh variable set HOSTED_RUNNERS_AVAILABLE --body yes`"
+ },
+ "state": "open"
+}

@@ -530,6 +530,34 @@ jobs:
           echo "VIRTUAL_ENV=$VENV" >> "$GITHUB_ENV"
           "$VENV/bin/python" --version
 
+      # NODE IS PART OF THE PYTHON LANE, and that is not a mistake in the lane boundary.
+      #
+      # Two test modules prove a workflow by EXECUTING it: `test_main_admission_guard.py` and
+      # `test_pr_keeper.py` pull the `github-script` body out of the YAML and run it in node
+      # against a stubbed Octokit. Between them that is 67 tests, and they are the only
+      # executable proof that main's protection decides correctly — everything else about those
+      # two workflows is a text assertion.
+      #
+      # They were not running. `deploy/runner/Dockerfile` installs no language runtimes on
+      # purpose ("every toolchain arrives through an action that fetches its own copy"), this
+      # job never called setup-node, and both modules gated themselves on
+      # `shutil.which("node")`. So on every run since the fleet moved to our own image, 67
+      # tests SKIPPED and the job stayed green. Measured on this tree with node off PATH:
+      # `67 skipped in 10.92s`.
+      #
+      # A missing binary usually fails loudly, at exit 127. Turned into a skip by a test, it
+      # fails as nothing at all, and the greener the board looks the less it is measuring.
+      # `tests/conftest.py` now refuses that shape outright — under CI a missing tool is an
+      # ERROR, never a skip — so if this step is ever deleted the suite goes red instead of
+      # quiet. This step is what keeps it green.
+      #
+      # No `cache:`. setup-node's cache keys off a lockfile and stores node_modules; nothing in
+      # this job installs a package. The download is ~30s on a cold runner and is the whole cost.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
       - name: Test suite
         # No -x. It stops at the first failure, so a run reports one problem and hides the
         # rest behind it: on 2026-07-31 four independent environment faults (a hardcoded
@@ -566,7 +594,14 @@ jobs:
           SCAN_PIDS=""
           for scan in bandit dep_advisory; do
             rm -f "/tmp/scan-$scan.rc" "/tmp/scan-$scan.log"
-            ( bash ".github/scripts/${scan}_scan.sh" > "/tmp/scan-$scan.log" 2>&1
+            # `set +e` inside the subshell is load-bearing. This block inherits the step's
+            # `set -e`, so a scan that exits non-zero killed the subshell BEFORE it could
+            # write its `.rc` file — and the grading step then reported "recorded no exit
+            # code, so it did not finish" for a scan that finished and found something. It
+            # failed the job either way, so nothing was let through; it just named the wrong
+            # reason, on the one line anyone reads. Measured on run 32345786916.
+            ( set +e
+              bash ".github/scripts/${scan}_scan.sh" > "/tmp/scan-$scan.log" 2>&1
               echo $? > "/tmp/scan-$scan.rc" ) &
             SCAN_PIDS="$SCAN_PIDS $!"
             echo "started $scan in the background (pid $!)"

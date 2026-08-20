@@ -56,10 +56,33 @@ PROTECTED = {"main", "master", "HEAD"}
 FRESH_SECONDS = int(os.environ.get("BRANCH_PR_GUARD_FRESH_SECONDS", 24 * 3600))
 
 
+def _clean_env(**extra: str) -> dict[str, str]:
+    """The environment for every git and gh subprocess here, with the caller's GIT_* removed.
+
+    A git hook exports GIT_DIR, GIT_WORK_TREE and GIT_INDEX_FILE into everything it runs, and
+    `cwd=` does not override them -- git reads the environment first, so a command told to run in
+    one repository operates on another (memory `git-c-repo-loses-to-an-inherited-git-dir.md`).
+    This guard runs `git update-ref -d` in `drop_stale_refs`, and its selftest runs `git init`,
+    `git add` and `git commit`, so an inherited GIT_DIR turns all four into writes against
+    whichever repository the environment names rather than the one they were asked about.
+
+    Measured 2026-08-20 by a peer session on the same class in the pytest suite: a test whose git
+    calls inherited GIT_INDEX_FILE rewrote the real index from 2039 entries to 3 while printing
+    "10 passed". The PASSING outcome is the dangerous one; with GIT_DIR and GIT_WORK_TREE also
+    set, the same commands error harmlessly instead, so a green run is the tell.
+
+    The whole GIT_ prefix goes, not a named list. git adds variables between versions and a list
+    that has to be maintained is a guard that decays.
+    """
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    env.update(extra)
+    return env
+
+
 def git(args: list[str], cwd: str) -> str | None:
     try:
         out = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True,
-                             timeout=TIMEOUT, env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"})
+                             timeout=TIMEOUT, env=_clean_env(GIT_OPTIONAL_LOCKS="0"))
     except Exception:  # noqa: BLE001 — probe failure means PASS, never block
         return None
     return out.stdout.strip() if out.returncode == 0 else None
@@ -161,7 +184,8 @@ def has_pr(branch: str, cwd: str, sha: str) -> bool | None:
         out = subprocess.run(
             ["gh", "pr", "list", "--head", branch, "--state", "all",
              "--json", "number,state,headRefOid"],
-            cwd=cwd, capture_output=True, text=True, timeout=TIMEOUT)
+            cwd=cwd, capture_output=True, text=True, timeout=TIMEOUT,
+            env=_clean_env())
     except Exception:  # noqa: BLE001
         return None
     if out.returncode != 0:
@@ -182,7 +206,7 @@ def exists_on_remote(names: list[str], cwd: str) -> bool | None:
     try:
         out = subprocess.run(["git", "ls-remote", "--heads", "origin", *names],
                              cwd=cwd, capture_output=True, text=True, timeout=TIMEOUT,
-                             env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"})
+                             env=_clean_env(GIT_OPTIONAL_LOCKS="0"))
     except Exception:  # noqa: BLE001 — probe failure means PASS, never block
         return None
     if out.returncode != 0:
@@ -280,7 +304,7 @@ def selftest() -> int:
 
     def run(args, cwd, **env):
         subprocess.run(args, cwd=cwd, capture_output=True, text=True, timeout=60,
-                       env={**os.environ, "GIT_TERMINAL_PROMPT": "0", **env}, check=True)
+                       env={**_clean_env(GIT_TERMINAL_PROMPT="0"), **env}, check=True)
 
     failures: list[str] = []
 
@@ -421,7 +445,46 @@ def selftest() -> int:
               and n.func.id == "freeze_in_force"]
     check("main() consults the freeze", bool(_calls), True)
 
-    total = 28
+
+    # An inherited GIT_DIR must not reach a mutating git call. `drop_stale_refs` runs
+    # `git update-ref -d`, so this is the destructive path, not a proxy for it.
+    _decoy = tempfile.mkdtemp(prefix="branch-pr-guard-decoy-")
+    _target = tempfile.mkdtemp(prefix="branch-pr-guard-target-")
+    _saved = {k: v for k, v in os.environ.items() if k.startswith("GIT_")}
+    try:
+        run(["git", "init", "-q", "-b", "main", _decoy], _decoy)
+        Path(_decoy, "a.txt").write_text("one\n")
+        run(["git", "add", "a.txt"], _decoy)
+        run(["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "one"], _decoy)
+        run(["git", "update-ref", "refs/remotes/origin/decoy", "HEAD"], _decoy)
+        run(["git", "init", "-q", "-b", "main", _target], _target)
+
+        os.environ["GIT_DIR"] = f"{_decoy}/.git"
+        os.environ["GIT_INDEX_FILE"] = f"{_decoy}/.git/index"
+        drop_stale_refs(["decoy"], _target)
+
+        _still = subprocess.run(["git", "rev-parse", "--verify", "-q",
+                                 "refs/remotes/origin/decoy"],
+                                cwd=_decoy, capture_output=True, text=True,
+                                env=_clean_env()).returncode == 0
+        check("inherited GIT_DIR does not reach update-ref", _still, True)
+    finally:
+        for _k in [k for k in os.environ if k.startswith("GIT_")]:
+            del os.environ[_k]
+        os.environ.update(_saved)
+        shutil.rmtree(_decoy, ignore_errors=True)
+        shutil.rmtree(_target, ignore_errors=True)
+
+    # And no NEW call site may hand os.environ straight to a subprocess. The case above only
+    # exercises the paths it calls; this one covers the ones nobody has written yet.
+    _mod_src = _inspect.getsource(_inspect.getmodule(main))
+    # Built by concatenation on purpose: written whole, the needle appears in this very
+    # line and the check reports itself. Measured 2026-08-20 -- it failed exactly that way.
+    _needle = "{**" + "os.environ"
+    check("no subprocess call passes os.environ unfiltered",
+          _needle in _mod_src, False)
+
+    total = 30
     if failures:
         print(f"branch-pr-guard selftest: {len(failures)}/{total} FAILED")
         print("\n".join(failures))

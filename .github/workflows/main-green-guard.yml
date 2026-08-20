@@ -26,6 +26,15 @@
 #
 #   Reverting good work.        A revert is an ordinary commit. `git revert` of the revert
 #                               restores it, and the issue this opens names the sha to use.
+#   Blaming an inherited red.   `scripts/green_guard_cause.py` asks whether the commit's FIRST
+#                               PARENT already failed CI. If it did, main was broken before this
+#                               commit arrived and reverting it cannot be the fix, so the guard
+#                               stands down and opens an issue naming the parent instead. This
+#                               row was written on 2026-08-20, after the guard reverted #466 --
+#                               the whole central logging build, 48 files -- for five failures of
+#                               which four came from #460 and #467. Its own next run,
+#                               32317556934 on the revert commit 739b6d42, failed on the same
+#                               five tests, so the revert did not make main green.
 #   Reverting a flake.          The re-run above.
 #   Racing a human fix.         Refuses if main's HEAD has moved since the failing run.
 #   Ping-pong.                  Refuses to revert a commit that is itself a revert.
@@ -94,19 +103,56 @@ jobs:
           ref: main
           fetch-depth: 50
 
+      # Was main already broken before this commit landed? Answered from the parent's own CI
+      # run, never from the diff. A `unknown` verdict PROCEEDS on purpose -- see the script's
+      # docstring -- so this check can stop a wrong revert but can never cause one.
+      - name: Ask whether main was already red before this commit
+        id: cause
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python3 scripts/green_guard_cause.py --sha "${{ github.event.workflow_run.head_sha }}"
+
       - name: Decide whether reverting is the right thing to do
         id: decide
         uses: actions/github-script@v7
+        # The cause probe's answer arrives as ENV, not as `${{ }}` spliced into the script body.
+        # Actions substitutes an expression before node ever sees the file, so the body only has
+        # to parse AFTER substitution -- and `tests/unit/test_the_green_guard_reverts_the_cause_
+        # not_the_head.py` parses it BEFORE, by lifting this script out of the YAML and running
+        # it in node. With the expressions inline it did not parse at all:
+        #
+        #   SyntaxError: missing ) after argument list
+        #       ${{ toJSON(steps.cause.outputs.why) }} +
+        #
+        # That took every one of those nine tests down with it, and nothing said so: node is not
+        # on the CI runner, so the file skipped itself and the job stayed green. Through env the
+        # script is ordinary JavaScript, which is the only form a test can execute.
+        env:
+          CAUSE_VERDICT: ${{ steps.cause.outputs.verdict }}
+          CAUSE_WHY: ${{ steps.cause.outputs.why }}
         with:
           script: |
             const {owner, repo} = context.repo
             const run = context.payload.workflow_run
             const sha = run.head_sha
 
-            const refuse = (why) => {
+            const refuse = (why, reason) => {
               core.notice(`not reverting: ${why}`)
               core.setOutput('go', 'no')
               core.setOutput('why', why)
+              core.setOutput('reason', reason || 'other')
+            }
+
+            // The first question, because it is the only one that can prove this commit did not
+            // do it. Every check below asks whether reverting is SAFE. This one asks whether it
+            // is even the right commit.
+            if (process.env.CAUSE_VERDICT === 'already-red') {
+              return refuse(
+                `main was already red before ${sha.slice(0, 8)} landed: ` +
+                (process.env.CAUSE_WHY || 'the cause probe gave no reason') +
+                '. Reverting it deletes work and leaves main exactly as red.',
+                'already-red')
             }
 
             // Someone may already be fixing it. Never race a human.
@@ -238,6 +284,44 @@ jobs:
         run: |
           echo "main is red and this guard stood down."
           echo "reason: ${{ steps.decide.outputs.why }}"
+
+      # A stand-down leaves main RED. The other refusals hand off to something already in motion
+      # -- a human pushing a fix, an earlier revert, a run that has moved on. This one does not:
+      # nobody is working on it, because nobody has been told. One issue, reused, so a main that
+      # stays red across six runs does not open six issues.
+      - name: Say so where somebody will see it, because main is still red
+        if: steps.decide.outputs.go != 'yes' && steps.decide.outputs.reason == 'already-red'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo
+            const title = 'main is red, and it was already red before the newest commit'
+            const body = [
+              'The green guard stood down instead of reverting, because the failure is older',
+              'than the commit it would have reverted.',
+              '',
+              `- **commit CI tested** \`${context.payload.workflow_run.head_sha}\``,
+              `- **why** ${{ toJSON(steps.decide.outputs.why) }}`,
+              `- **failing run** ${context.payload.workflow_run.html_url}`,
+              '',
+              'Fix the actual cause. Reverting the newest merge would delete good work and leave',
+              'main exactly as red. That is what happened to #466 on 2026-08-20, and the proof is',
+              'that CI on the revert commit failed on the same five tests.',
+              '',
+              'Start with `scripts/main_red.py`, then open the failing JOB LOG rather than the run',
+              'summary: the summary says a job failed, only the log says what failed.',
+            ].join('\n')
+            const {data: found} = await github.rest.issues.listForRepo(
+              {owner, repo, state: 'open', per_page: 100})
+            const existing = found.find(i => i.title === title && !i.pull_request)
+            if (existing) {
+              await github.rest.issues.createComment(
+                {owner, repo, issue_number: existing.number, body})
+              core.notice(`main still red; commented on #${existing.number}`)
+            } else {
+              const {data: issue} = await github.rest.issues.create({owner, repo, title, body})
+              core.notice(`main still red; opened #${issue.number}`)
+            }
 
       # The issue is opened BEFORE the push, on purpose. If GitHub refuses the issue, the revert
       # never happens -- a revert nobody was told about is how work disappears.

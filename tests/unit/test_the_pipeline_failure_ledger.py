@@ -312,6 +312,27 @@ LEDGER: tuple[Mode, ...] = (
         None,
     ),
     Mode(
+        "the-fleet-collapses-and-nothing-puts-it-back",
+        "CI runner machines are stopped rather than broken, and no agent is watching. Measured "
+        "2026-08-19: ten of the twelve prospector-ci machines were `stopped`, capacity was 2/12 "
+        "for hours, and main's own run for 6054bf09 queued at 18:11:53Z and never got a machine. "
+        "It passed first time, in full, the moment the machines were started by hand. Two things "
+        "kept it invisible. The floor WAS the collapse -- ci_capacity.yaml declared runners: 2 "
+        "and autoscale_min: 2, so a fleet of 2 online out of 12 graded as CONTRACT HOLDS, and a "
+        "floor set to the minimum survivable number cannot detect a collapse to it. And nothing "
+        "acted: ci_fleet_probe.py grades the fleet, but a report is only as good as whoever is "
+        "reading it, and at 18:11 nobody was. fleet.min_started is a second, higher number whose "
+        "only job is to notice, and the keeper runs hourly and STARTS machines -- it never stops, "
+        "destroys or creates one, so the worst outcome of a bug in it is a machine running that "
+        "did not need to be. It must stay on ubuntu-latest: a self-hosted runner cannot start a "
+        "dead self-hosted fleet, because when the fleet is down nothing picks the job up.",
+        (".github/workflows/ci-fleet-keeper.yml", "scripts/ci_fleet_keeper.py",
+         "ops/config/ci_capacity.yaml"),
+        "tests/unit/test_ci_fleet_keeper.py",
+        None,
+        None,
+    ),
+    Mode(
         "a-machine-that-registers-as-a-runner-cannot-hold-a-job",
         "A Fly standby machine registers with GitHub and is stopped by the platform mid-build. "
         "Every count says twelve; the number that can work is two. The build dies as 'the "

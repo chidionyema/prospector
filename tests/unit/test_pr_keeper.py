@@ -22,7 +22,6 @@ automated actor with write scopes whose decision logic had never been run.
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
 from pathlib import Path
 
@@ -32,7 +31,10 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github" / "workflows" / "pr-keeper.yml"
 
-pytestmark = pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")
+# `needs_tool`, not `skipif(shutil.which(...))`. The skipif spelling deleted this whole
+# file from CI without a word for as long as the fleet ran our own runner image, which
+# ships no language runtimes. tests/conftest.py::_require_tools carries the measurement.
+pytestmark = pytest.mark.needs_tool("node")
 
 HEAD = "1111111111111111111111111111111111111111"
 

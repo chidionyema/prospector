@@ -584,8 +584,17 @@ def run_lane(agent: PopddAgent, lane: Lane) -> bool:
 
     print(f"\n▶ {lane.label}")
     combined, returncode = "", 0
+    # Which steps actually EXECUTED, not which were configured. The loop below breaks on the
+    # first non-zero exit, so a lane can report a verdict having run only its cheapest step --
+    # and the counts it prints come from parsing that step's output, which yields 0 passed and
+    # 0 failed. "0 passed, 0 failed" then reads as a completed clean suite. Measured 2026-08-20:
+    # a peer timed this gate at 1.0s and reported it as the gate's cost. It was ruff failing
+    # fast; pytest never started, and the real passing cost is 175-290s. The receipt said the
+    # same thing, so the misreading survived into a second session.
+    ran: list[str] = []
     for step_name, argv in lane.steps:
         print(f"   … {step_name}")
+        ran.append(step_name)
         try:
             result = _run_step(argv, lane.cwd, TEST_TIMEOUT_SECONDS)
         except StepTimeout as timed_out:
@@ -598,6 +607,8 @@ def run_lane(agent: PopddAgent, lane: Lane) -> bool:
                 **{
                     "verdict": "TIMEOUT", "lane": lane.key, "step": step_name,
                     "passed": 0, "failed": 0, "failedTests": [], "exitCode": None,
+                    "stepsRun": ran,
+                    "stepsSkipped": [n for n, _ in lane.steps if n not in ran],
                     "timeoutSeconds": TEST_TIMEOUT_SECONDS,
                     "outputDrained": timed_out.drained,
                 },
@@ -627,20 +638,54 @@ def run_lane(agent: PopddAgent, lane: Lane) -> bool:
             break
 
     passed, failed, failed_tests = lane.parser(combined)
+    skipped = [name for name, _ in lane.steps if name not in ran]
     verdict = "PASS" if returncode == 0 and failed == 0 else "FAIL"
     agent.sign_generic(
         action="test-run:complete", target=lane.target,
         **{
             "verdict": verdict, "lane": lane.key, "passed": passed, "failed": failed,
             "failedTests": failed_tests, "exitCode": returncode,
+            "stepsRun": ran, "stepsSkipped": skipped,
         },
     )
     print(f"   {'✅' if verdict == 'PASS' else '❌'} {lane.key}: {verdict} ({passed} passed, {failed} failed)")
+    if skipped:
+        print(f"      ⚠ NEVER RAN: {', '.join(skipped)} — '{ran[-1]}' failed first and stopped "
+              "the lane.\n"
+              f"      So ({passed} passed, {failed} failed) is what {ran[-1]}'s output parsed to, "
+              "NOT a suite result,\n"
+              "      and this lane's elapsed time is the cost of failing early, not the cost of "
+              "passing.")
     for nodeid in failed_tests:
         print(f"      FAILED  {nodeid}")
     if failed and not failed_tests:
         print("      (failure count reported but no ids parsed — check the runner's output format)")
     return verdict == "PASS"
+
+
+def print_summary(ran: list[str], selected: list[str], ok: bool, chain_valid: bool) -> None:
+    """Print the run summary, naming the lanes that ACTUALLY executed.
+
+    It used to print `selected`. The lane loop breaks on the first failing lane, so on a FAIL the
+    tail of `selected` never runs -- measured 2026-08-20, a merge blocked by the console lane
+    printed "Lanes run: engine, console, web, dotnet, python" and gave a verdict line for engine
+    and console only. Three lanes were reported as run and were never started.
+
+    That is the same defect as the step-level `stepsRun` receipt in `run_lane`, one level up, and
+    it is worse here because this is the block a human reads. A reader who takes that line at face
+    value concludes the dotnet and python lanes graded this diff green. They did not run at all.
+    """
+    print(f"\n{'=' * 60}")
+    print("  Prospector POPDD Run Complete")
+    print(f"{'=' * 60}")
+    print(f"  Lanes run:     {', '.join(ran) if ran else '(none)'}")
+    skipped = [k for k in selected if k not in ran]
+    if skipped:
+        print(f"  Lanes SKIPPED: {', '.join(skipped)} — kill-fast stopped at the first failing")
+        print("                 lane, so these were never graded. Not evidence that they pass.")
+    print(f"  Verdict:       {'PASS' if ok else 'FAIL'}")
+    print(f"  Chain valid:   {chain_valid}")
+    print(f"{'=' * 60}\n")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -699,23 +744,25 @@ def main(argv: list[str] | None = None) -> int:
 
     agent = PopddAgent.at_path(ROOT)
     ok = True
+    # Which lanes actually EXECUTED. The loop below breaks on the first failing lane, so on a FAIL
+    # the tail of `selected` never runs. Printing `selected` there claimed five lanes had run when
+    # two had -- measured 2026-08-20, a merge blocked by the console lane printed
+    # "Lanes run: engine, console, web, dotnet, python" with a verdict line for engine and console
+    # only. Same class as the step-level `stepsRun` above: a receipt that reports what was
+    # CONFIGURED reads as coverage that never happened.
+    ran: list[str] = []
     with single_flight() as acquired:
         if not acquired:
             return 1
         for key in selected:
+            ran.append(key)
             if not run_lane(agent, scope_ruff(LANES[key], paths)):
                 ok = False
                 break   # kill-fast: a failed lane already blocks the commit
 
     verify = agent.verify_chain()   # (auto-saved by PopddAgent)
 
-    print(f"\n{'=' * 60}")
-    print("  Prospector POPDD Run Complete")
-    print(f"{'=' * 60}")
-    print(f"  Lanes run:     {', '.join(selected)}")
-    print(f"  Verdict:       {'PASS' if ok else 'FAIL'}")
-    print(f"  Chain valid:   {verify['valid']}")
-    print(f"{'=' * 60}\n")
+    print_summary(ran, selected, ok, verify["valid"])
     return 0 if verify["valid"] and ok else 1
 
 

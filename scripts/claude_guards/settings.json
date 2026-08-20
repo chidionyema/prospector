@@ -1,0 +1,228 @@
+{
+  "env": {
+    "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "200000"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "Agent(*)",
+      "WebFetch(*)"
+    ],
+    "defaultMode": "auto",
+    "deny": [
+      "Read(**/node_modules/**)",
+      "Read(**/.next/**)",
+      "Read(**/dist/**)",
+      "Read(**/build/**)",
+      "Read(**/bin/Debug/**)",
+      "Read(**/bin/Release/**)",
+      "Read(**/obj/**)",
+      "Read(**/.turbo/**)",
+      "Read(**/storybook-static/**)",
+      "Read(**/playwright-report/**)",
+      "Read(**/test-results/**)",
+      "Read(**/package-lock.json)",
+      "Read(**/pnpm-lock.yaml)",
+      "Read(**/yarn.lock)",
+      "Read(**/uv.lock)",
+      "Read(**/packages.lock.json)",
+      "Read(**/*.min.js)",
+      "Read(**/*.min.css)",
+      "Read(**/*.map)",
+      "Read(**/coverage/**)",
+      "Read(**/htmlcov/**)",
+      "Read(**/.pytest_cache/**)",
+      "Read(**/.ruff_cache/**)",
+      "Read(**/__pycache__/**)",
+      "Read(**/*.log)",
+      "Read(graphify-out/**)",
+      "Read(.venv/**)",
+      "Read(**/.venv/**)",
+      "Read(store/_cache/**)",
+      "Read(store/golden_runs/**)",
+      "Read(store/control_center/runs/**)",
+      "Read(**/*.png)",
+      "Read(**/*.jpg)",
+      "Read(**/*.jpeg)",
+      "Read(**/*.gif)",
+      "Read(**/*.pdf)",
+      "Read(**/*.zip)",
+      "Read(**/*.bundle)",
+      "Read(**/*.db)",
+      "Read(**/*.db-wal)",
+      "Read(**/*.db-shm)"
+    ]
+  },
+  "autoMode": {
+    "environment": [
+      "$defaults",
+      "This is the user's own developer laptop. ~/Documents/code/prospector is their own repository (github.com/chidionyema/prospector) and ~/.claude is their own agent configuration, including the guard scripts in ~/.claude/scripts. Reading, editing and running things in either is self-administration, not third-party access.",
+      "The user owns the GitHub repo chidionyema/prospector and the Fly.io organisation hosting the prospector-*, store-*, mumchimp-* and tie-* apps. Commands aimed at those resources administer the user's own infrastructure.",
+      "Standing instruction from the user: prefer acting to asking on routine estate work. Interruptions on ordinary read, inspect, deploy and repo-administration commands cost more than they protect."
+    ],
+    "allow": [
+      "$defaults",
+      "Read-only inspection of any file on this machine, including binaries and installed application bundles, with tools such as strings, nm, otool, file, xxd, head, sed -n, grep and rg. Reading a file to learn how it works is not exfiltration.",
+      "Reading, writing and running files under ~/.claude/, including settings.json, scripts/, skills/, plugins/ and projects/. This is the user's own agent configuration.",
+      "gh CLI commands against the user's own repositories, including gh api, gh pr, gh run, gh workflow, gh issue, gh release, gh variable set and gh secret set/delete. Secret values are supplied from a file or an environment variable and are never printed.",
+      "flyctl / fly commands against the user's own Fly.io apps, including fly status, fly logs, fly deploy, fly machine, fly volumes, fly secrets set and fly ssh console -C.",
+      "Running the repository's own scripts under scripts/, ops/ and tools/ with .venv/bin/python or python3, in report mode and with --fix.",
+      "Running a nested claude process (for example claude -p ...) against a throwaway CLAUDE_CONFIG_DIR to test a settings, permission or hook change.",
+      "git worktree add / list / remove under /private/tmp/claude-501/** and ~/Documents/code/wt-*, and ordinary git operations in those trees.",
+      "launchctl list, print, kickstart, bootout, bootstrap, enable and disable for the user's own com.prospector.* and com.hermes.* LaunchAgents.",
+      "Running test suites, linters, builds and the POPDD gate anywhere in the user's own checkouts, including npm, npx, dotnet, pytest, ruff and vitest."
+    ]
+  },
+  "model": "opus[1m]",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/chidionyema/.claude/scripts/directive-capture.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 /Users/chidionyema/.claude/scripts/context-guard-hook.py"
+          },
+          {
+            "type": "command",
+            "command": "/usr/bin/python3 /Users/chidionyema/Documents/code/prospector/scripts/graphify_query_hook.py"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/chidionyema/.claude/scripts/tool-drip-guard.py"
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/chidionyema/.claude/scripts/memory-loop.py"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/chidionyema/.claude/scripts/memory-loop.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 /Users/chidionyema/Documents/code/prospector/scripts/graphify_session_hook.py"
+          },
+          {
+            "type": "command",
+            "command": "timeout 180 bash -c 'cd /Users/chidionyema/Documents/code/prospector && git fetch -q origin main && git show origin/main:scripts/checkout_currency.py > /tmp/checkout_currency.py && python3 /tmp/checkout_currency.py --fix' 2>&1 | tail -5 || true"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/chidionyema/.claude/scripts/tool-drip-guard.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/chidionyema/.claude/scripts/hang-guard.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 /Users/chidionyema/.claude/scripts/rule-guard.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 /Users/chidionyema/.claude/scripts/push-pr-fence.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/scripts/dupe-work-fence.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 /Users/chidionyema/.claude/scripts/pr-freeze.py"
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/chidionyema/.claude/scripts/context-guard-hook.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/chidionyema/.claude/scripts/scope-guard.py"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/chidionyema/.claude/scripts/idle-guard.py"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/chidionyema/.claude/scripts/branch-pr-guard.py"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/chidionyema/.claude/scripts/jargon-guard.py"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "python3 /Users/chidionyema/.claude/scripts/statusline-context.py",
+    "padding": 0
+  },
+  "enabledPlugins": {
+    "stripe@claude-plugins-official": false
+  },
+  "tui": "fullscreen",
+  "skipDangerousModePermissionPrompt": true,
+  "skipWorkflowUsageWarning": true
+}

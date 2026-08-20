@@ -160,3 +160,19 @@ pools:
 #                stops what is already there, and says so when it wants more than exists.
 autoscale_min: 2
 autoscale_max: 12
+
+# ---------------------------------------------------------------------------- fleet floor
+# THE NUMBER THAT NOTICES A COLLAPSE. Distinct from `autoscale_min` and from `pools.*.runners`,
+# and it has to be, because those two are the reason the collapse of 2026-08-19 was invisible.
+# Both were 2, so when ten of twelve `prospector-ci` machines were stopped and capacity sat at
+# 2/12 for hours, `scripts/ci_capacity.py --live` graded the contract as HOLDING. It was right
+# on its own terms: 2 is the floor it was given. A floor set to the minimum survivable number
+# cannot detect a collapse to the minimum survivable number.
+#
+# 6 is not a capacity target and not a round number. It is one pull request's peak fan-out on
+# the `fly` pool, read off the `needs:` graph in .github/workflows/ci.yml: `changes` gates five
+# jobs (python, engine, dotnet, nextjs, ops-console) and `guard` runs beside them. Below six,
+# one PR queues behind itself. `scripts/ci_fleet_keeper.py` starts machines up to this number
+# and never past it, so raising it raises the bill and lowering it raises the wait.
+fleet:
+  min_started: 6

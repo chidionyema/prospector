@@ -1,0 +1,65 @@
+{
+  "id": "INC-2026-08-20-a-four-second-delete-gutted-the-shared-venv",
+  "opened": "2026-08-20",
+  "title": "A four-second recursive delete removed 158.3 MB from the shared virtualenv, and no record on this machine names what ran it",
+  "severity": "high",
+  "detected_by": "an agent session whose local test run failed on missing files rather than on its own diff, while the pipeline outage was still open",
+  "first_order": {
+    "what_broke": "Between 07:29:07 and 07:29:11 on 2026-08-20 a recursive delete removed 158.3 MB from /Users/chidionyema/Documents/code/prospector/.venv, damaging 79 of 118 installed distributions in whole or in part. Local test results stopped meaning anything: modules imported in CI and not on the laptop, so a session could not tell its own defect from the estate's. That happened during the pipeline outage, when a trustworthy local suite was the one instrument that could have shortened it.",
+    "receipt": "Damaged distributions, measured against each one's own RECORD manifest: stripe 2396 of 2402 files gone, pandas 1170 of 2943, numpy 317 of 1321, pyarrow 121.1 MB of 122.8 MB. Collection errors seen at the time: `ModuleNotFoundError: No module named 'mistune'` on tests/unit/test_pack_html.py, test_pack_pdf.py, test_backfill_bundle_html.py and test_backfill_renders_the_new_sections.py; `ModuleNotFoundError: No module named 'pytest_timeout'` before collection started, from a dist-info left behind with no module beside it.",
+    "fixed_by": "Rebuild at 08:25, verified complete rather than assumed: the interpreter reports ISOLATED True at prefix /Users/chidionyema/Documents/code/prospector/.venv, mistune imports at 3.3.4, and `uv pip install -r requirements.txt --dry-run` reports \"Audited 30 packages. Would make no changes.\" Two independent trees then ran green on it: 138 passed / 11 skipped and 97 passed / 11 skipped in one worktree, 95 passed in another on the four modules that had failed collection. The damaged tree is preserved as .venv.gutted; every measurement in this record was derived from it."
+  },
+  "cause_chain": [
+    "A recursive delete ran at 07:29:07 and stopped at 07:29:11, four seconds later.",
+    "It was confined to site-packages. 122,860 directories under ~/Documents/code were compared against the window and 6 were touched, all six inside .venv.gutted, the deepest being pyarrow/include/arrow/flight. Only 6 surviving directories record removals because the rest were removed whole, and a directory that no longer exists has no mtime to read.",
+    "It ended rather than paused. Of 20,531 surviving files exactly one carries a later stamp: pygments/__pycache__/style.cpython-314.pyc at 08:10, which is an interpreter writing a bytecode cache and not a deleter.",
+    "It walked per directory, not per file, and died mid-walk. The frontier inside pyarrow is where it stopped.",
+    "Nothing that can be tested from disk chose the files. Five candidate selectors were measured and all five refuted; they are recorded under second_order.hypothesis_killed.",
+    "No record on this machine names the process. Four record types were searched, and they are not equally strong evidence: agent transcripts hold no delete-shaped command in the window (a real negative, with the standing caveat that a transcript records the CALL and not the OUTCOME); zsh history has no timestamped entry (weak, because extended history is off, so most commands carry no timestamp to match); the macOS unified log holds zero records for the window, which is NO EVIDENCE EITHER WAY and must not be cited as a negative finding; and exactly one laptop-side job log was written after 07:00 (~/.cache/graphify-rebuild.log), with no line in the window, which is thin by design because the production daemons log to /data/store on Fly.",
+    "The next link is not another pass over the tree. It is a process or shell record from 07:29:07, and none exists. That gap is the founder's to close, not an agent's: the cheapest instrument that would have answered it is zsh EXTENDED_HISTORY, which costs nothing and stamps every command with an epoch time, but it is a change to his shell configuration."
+  ],
+  "second_order": {
+    "sweep_command": "find ~/Documents/code -type d -newermt '2026-08-20 07:29:00' ! -newermt '2026-08-20 07:30:00'",
+    "siblings_found": 2,
+    "siblings_fixed": 0,
+    "note": "The sweep looked for anywhere else in the estate the same window touched. It found nothing outside .venv.gutted, which is what establishes the blast radius as one directory tree rather than the checkout. Two related weaknesses were found and neither is fixed, because both are founder decisions and are recorded here rather than acted on.",
+    "hypothesis_killed": [
+      "FILE AGE, i.e. a retention sweep. Refuted: the oldest file in an untouched directory (pip/__init__.py, 06-13 19:43) predates the oldest survivor in a raided one (websockets/auth.py, 19:46). No cutoff exists.",
+      "FILE TYPE. Refuted: 5,871 .pyc and 1,590 .py were deleted, while 4,836 .pyc and 9,117 .py survived. Both extensions appear on both sides.",
+      "FILE SIZE, i.e. a space reclaimer taking the largest first, which the 98%-full disk made plausible. Refuted: RECORD stores each file's size, so the deleted population is measurable even though it is gone. 16 files over 1 MB deleted against 33 survived; 1,188 under 4 KB deleted against 9,671 survived. The same rate at both ends.",
+      "`uv pip sync`, which uninstalls what requirements.txt does not name and was the strongest candidate because it genuinely chooses. Refuted: 5 of the 6 mostly-wiped distributions - boto3, docstring_parser, exa_py, openpyxl, stripe - were reinstalled by the rebuild, so requirements.txt wants them and a sync would not have removed them.",
+      "iCLOUD EVICTION, which fit both the four-second shape and the 98% disk. Refuted twice over: ~/Documents is an ordinary directory and not the iCloud path (they are two separate trees on this laptop, and there are two prospector checkouts as a result), and there are zero .icloud placeholders anywhere in the repo. Eviction leaves placeholders. This left nothing.",
+      "THE macOS UNIFIED LOG AS A SIXTH REFUTATION. Nearly filed as one. It returned an empty result for the window, which reads exactly like a clean negative until you ask whether it had anything to be negative about: it holds zero records for that window, not zero matches. An empty result is only evidence once the instrument is proved loaded. Same shape as pytest exiting zero when it collects nothing, and a guard that iterates an empty list passing."
+    ],
+    "siblings": [
+      {
+        "site": "the laptop's shell configuration",
+        "finding": "a destructive local process left no attributable record anywhere on this machine - not in a job log, not in shell history, not in the system log. zsh EXTENDED_HISTORY is off, so most commands carry no timestamp to match a window against.",
+        "state": "FOUNDER DECISION - no change made",
+        "evidence": "Turning it on costs nothing and stamps every command with an epoch time, which is the single cheapest thing that would have named this process. It is a change to the founder's own shell configuration, so an agent must not make it."
+      },
+      {
+        "site": "the shared checkout's .venv, and every session that reads it",
+        "finding": "nothing grades the virtualenv, so damage to it is invisible until a test fails for a reason that looks like the session's own diff. The damage was found by a confused human reading a stack trace, which is the slowest possible detector and the one most likely to send a session chasing a fiction.",
+        "state": "OPEN - named as the close for this incident, not yet built",
+        "evidence": "The check already exists as a one-off: grade every installed distribution against its own RECORD manifest and report the ones with missing files. That run produced every number in this record. Made routine and made to FAIL rather than report, it turns a silent gutting into a refusal at the moment a session tries to trust the interpreter."
+      }
+    ]
+  },
+  "third_order": {
+    "tier": "memory",
+    "mechanism": "This incident is recorded and the damaged tree is preserved. That is the floor, not the answer, and this record says so in its own state field.",
+    "landed_on": null,
+    "why_not_higher": "Healing and refusing both require naming what ran, and nothing on this laptop does. A guard that refuses a delete cannot be written against an unknown process, and a self-heal that rebuilds the venv would hide the next occurrence rather than catch it. What CAN be built without naming the process is the sibling above: a manifest check that fails when the interpreter is not what it claims to be. That is the close, and it is named here so the next session does not have to re-derive it.",
+    "note": "Do not delete .venv.gutted until the process is named. It is 444 MB against 9.9 GiB free, and it is not a rollback copy somebody made - it is the state the event left behind, renamed. Every row in this record came out of RECORD files that exist only inside it, and a different row was needed to kill each of the five selectors. Writing the manifest to a file preserves the answers already obtained; it does not preserve the ability to ask the next question."
+  },
+  "grade": {
+    "signature": "a distribution in the shared .venv whose RECORD manifest names files that are not on disk",
+    "before": 79,
+    "after": 0,
+    "window_days": 1,
+    "verdict": "unproven",
+    "note": "before = 79 of 118 distributions damaged at 07:29. after = 0, measured on the rebuilt interpreter at 08:25 and confirmed by two independent worktrees running green on it. The verdict is `unproven` and not `held`, because nothing yet WATCHES this number - it was measured by hand, twice, by sessions that already knew to look. It becomes provable the day the manifest check runs on its own and fails."
+  },
+  "state": "open"
+}
