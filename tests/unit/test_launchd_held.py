@@ -260,15 +260,24 @@ def test_disabled_labels_reads_only_the_disabled_ones(monkeypatch):
     assert mod.disabled_labels() == {"ai.hermes.cockpit", "com.prospector.scheduler"}
 
 
-def test_disabled_labels_returns_none_when_launchctl_cannot_answer(monkeypatch):
-    """None, never the empty set. Empty means asked-and-nothing-is-off, which is a real claim."""
+def test_disabled_labels_fails_open_when_launchctl_cannot_answer(monkeypatch):
+    """Empty, not None, and that is #345's choice rather than this one.
+
+    I wrote a second `disabled_labels()` at the bottom of the module that returned None on an
+    unreadable launchctl, on the reasoning that "could not ask" is not "asked, nothing is off".
+    The reasoning is fine and the act was not: #345 already defined the function 200 lines
+    above, Python kept whichever came last, and `test_launchd_broken_program_paths.py` went red
+    on a CI runner that has no launchctl at all. The surviving contract is #345's, because its
+    caller needs it: `broken_programs` skips disabled jobs, so an unknown set must be EMPTY or
+    a launchctl outage silently stops every job being checked for a missing program.
+    """
     mod = _module()
     monkeypatch.setattr(mod.subprocess, "run",
                         lambda *a, **k: types.SimpleNamespace(returncode=1, stdout=""))
-    assert mod.disabled_labels() is None
+    assert mod.disabled_labels() == set()
     monkeypatch.setattr(mod.subprocess, "run",
                         lambda *a, **k: (_ for _ in ()).throw(OSError("no launchctl")))
-    assert mod.disabled_labels() is None
+    assert mod.disabled_labels() == set()
 
 
 def test_a_job_disabled_by_hand_still_fails_but_says_so(estate, capsys, monkeypatch):
