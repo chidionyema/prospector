@@ -62,6 +62,7 @@ it solves; the Stop-hook nag still catches those cases afterwards.
 """
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import re
@@ -315,10 +316,41 @@ def selftest() -> int:
         if name.startswith(EXEMPT_PREFIXES) is not exempt:
             failures.append(f"  exemption {name!r}: want exempt={exempt}")
 
+    # THE FREEZE INTERLOCK. Hermetic: it writes its own freeze file and never reads
+    # ~/.claude/PR_FREEZE. pr-freeze.py's own selftest used to read the real one, and went red
+    # the day the integration branch was renamed while the guard itself was working perfectly.
+    guard = _freeze_guard()
+    if guard is None:
+        failures.append("  pr-freeze.py is not loadable beside this file, so the freeze "
+                        "interlock cannot be graded")
+    else:
+        with tempfile.TemporaryDirectory() as tmp:
+            guard.FREEZE = os.path.join(tmp, "PR_FREEZE")
+            if pr_would_be_refused("feat/x", guard) is not False:
+                failures.append("  no freeze file: the fence must stay live")
+            with open(guard.FREEZE, "w", encoding="utf-8") as fh:
+                fh.write("Frozen for the selftest.\nAllow-Head: integrate/one\n")
+            if pr_would_be_refused("feat/x", guard) is not True:
+                failures.append("  freeze in force: the fence must stand down for a barred head")
+            if pr_would_be_refused("integrate/one", guard) is not False:
+                failures.append("  freeze in force: the fence must stay live for the allowed head")
+
+    # And main() must consult it, or the helper is decoration. This branch has already paid
+    # twice for a guard whose fix was present and never called.
+    import ast
+    import inspect
+
+    src = inspect.getsource(inspect.getmodule(main))
+    node = next(n for n in ast.walk(ast.parse(src))
+                if isinstance(n, ast.FunctionDef) and n.name == "main")
+    if not [n for n in ast.walk(node) if isinstance(n, ast.Call)
+            and isinstance(n.func, ast.Name) and n.func.id == "pr_would_be_refused"]:
+        failures.append("  main() never calls pr_would_be_refused, so the interlock is dead code")
+
     staleness_failures, staleness_total = selftest_staleness()
     failures += staleness_failures
 
-    total = len(SELFTEST_CASES) + 6 + staleness_total
+    total = len(SELFTEST_CASES) + 10 + staleness_total
     if failures:
         print(f"push-pr-fence selftest: {len(failures)}/{total} FAILED")
         print("\n".join(failures))
@@ -350,6 +382,40 @@ def live_ci_run(branch: str, cwd: str) -> tuple[str, str] | None | bool:
         if r.get("status") in ("queued", "in_progress", "waiting", "requested", "pending"):
             return str(r.get("databaseId")), str(r.get("status"))
     return False
+
+
+def _freeze_guard():
+    """`pr-freeze.py` loaded as a module, or None when it cannot be reached.
+
+    It is a sibling of this file, and realpath() finds it through the ~/.claude/scripts symlink
+    that wires both. Loading it under a name that is not __main__ runs no hook.
+    """
+    sibling = os.path.join(os.path.dirname(os.path.realpath(__file__)), "pr-freeze.py")
+    try:
+        spec = importlib.util.spec_from_file_location("_pr_freeze_for_fence", sibling)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def pr_would_be_refused(branch: str, guard=None) -> bool:
+    """True when the pull request this fence is about to demand would itself be refused.
+
+    It asks the guard that owns the refusal rather than re-reading ~/.claude/PR_FREEZE with a
+    second parser. Two readers of one file drift, and then they disagree about whose turn it is
+    to block; this way the answer comes from the only copy that decides anything.
+
+    Unknown means the fence stands. A stand-down has to be established, never assumed.
+    """
+    guard = guard or _freeze_guard()
+    if guard is None:
+        return False
+    try:
+        return guard.check(f"gh pr create --base main --head {branch}") is not None
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def main() -> int:
@@ -448,6 +514,21 @@ def main() -> int:
                 return 2
         except json.JSONDecodeError:
             return 0
+
+        # A PR FREEZE MAKES THIS DEMAND IMPOSSIBLE. Measured 2026-08-20: this arm refused a
+        # push because the branch had no pull request, while ~/.claude/PR_FREEZE refused the
+        # command that would open one -- and that same freeze file lists "pushing commits" as
+        # still allowed. Two wired guards demanding opposite things is worse than either being
+        # absent, because no command ends the turn. It stands down only for a head the freeze
+        # actually bars: for the one head the freeze names, opening the PR is possible, so the
+        # demand is fair and the fence stays live.
+        if pr_would_be_refused(branch):
+            print(
+                f"push-pr-fence: `{branch}` has no open pull request, but a PR freeze bars "
+                f"opening one. Allowing the push. Open it when the freeze lifts.",
+                file=sys.stderr,
+            )
+            continue
 
         print(
             f"BLOCKED by push-pr-fence: `{branch}` is already on origin and has no open pull "

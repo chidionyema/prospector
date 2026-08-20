@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -393,13 +394,51 @@ def selftest() -> int:
         trimmed = dict(list(trimmed.items())[-200:])
     check("state ledger caps at 200", len(trimmed), 200)
 
-    total = 25
+    # The freeze interlock. Behaviour first, then the wiring, because a helper nothing calls
+    # is the failure mode this estate has already paid for twice on this branch.
+    import tempfile as _tf
+    global FREEZE
+    _orig_freeze = FREEZE
+    try:
+        _d = _tf.mkdtemp(prefix="branch-pr-guard-freeze-")
+        FREEZE = os.path.join(_d, "PR_FREEZE")
+        check("freeze absent -> guard is live", freeze_in_force(), False)
+        with open(FREEZE, "w", encoding="utf-8") as _fh:
+            _fh.write("Frozen for the selftest.\n")
+        check("freeze present -> guard stands down", freeze_in_force(), True)
+    finally:
+        FREEZE = _orig_freeze
+        shutil.rmtree(_d, ignore_errors=True)
+
+    # main() must consult it BEFORE it starts reporting, or the helper is decoration. Matching
+    # the name alone is enough here: there is exactly one call and it guards an early return.
+    import ast as _ast
+    import inspect as _inspect
+    _src = _inspect.getsource(_inspect.getmodule(main))
+    _main = next(n for n in _ast.walk(_ast.parse(_src))
+                 if isinstance(n, _ast.FunctionDef) and n.name == "main")
+    _calls = [n for n in _ast.walk(_main)
+              if isinstance(n, _ast.Call) and isinstance(n.func, _ast.Name)
+              and n.func.id == "freeze_in_force"]
+    check("main() consults the freeze", bool(_calls), True)
+
+    total = 28
     if failures:
         print(f"branch-pr-guard selftest: {len(failures)}/{total} FAILED")
         print("\n".join(failures))
         return 1
     print(f"branch-pr-guard selftest: {total}/{total} passed")
     return 0
+
+
+#: While this file exists, `pr-freeze.py` refuses to open a pull request for any head but the one
+#: the freeze names. Both hooks are wired, so both run on the same turn.
+FREEZE = os.path.expanduser("~/.claude/PR_FREEZE")
+
+
+def freeze_in_force() -> bool:
+    """True while a PR freeze bars this session from opening the pull request we would demand."""
+    return os.path.exists(FREEZE)
 
 
 def main() -> int:
@@ -411,6 +450,19 @@ def main() -> int:
         payload = {}
     cwd = payload.get("cwd") or os.getcwd()
     session_id = payload.get("session_id")
+
+    # THE TRAP THIS CLOSES. Measured 2026-08-20: this guard ended a turn by telling the session
+    # to run `gh pr create`, while ~/.claude/PR_FREEZE was in force and pr-freeze.py
+    # refuses that exact command for every head but the one the freeze names. The session could
+    # satisfy neither hook: doing nothing tripped this one, and doing what it asked tripped the
+    # other. Two wired guards demanding opposite things is worse than either one being absent,
+    # because no command ends the turn -- and the founder's complaint that day was precisely
+    # that the guards cause too much friction.
+    #
+    # The freeze is a deliberate decision and its own text says what to do instead, so while it
+    # stands this guard has nothing to add. It resumes the moment the file is removed.
+    if freeze_in_force():
+        return 0
 
     if git(["rev-parse", "--git-dir"], cwd) is None:
         return 0  # not a repo
