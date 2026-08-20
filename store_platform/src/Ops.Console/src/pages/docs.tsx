@@ -38,6 +38,7 @@
  *     store: 0 shares had ever been minted. Reading a path off this page and typing it into
  *     another one is a step nobody takes.
  */
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
@@ -45,7 +46,18 @@ import remarkGfm from 'remark-gfm';
 
 import Confirm from '@/components/Confirm';
 import Shell from '@/components/Shell';
-import { AsOf, Button, Card, Empty, Mono, Note, Problem, Scroll, Spinner } from '@/components/ui';
+import {
+  AsOf,
+  Button,
+  Card,
+  Empty,
+  Mono,
+  Note,
+  Pill,
+  Problem,
+  Scroll,
+  Spinner,
+} from '@/components/ui';
 import { useOps } from '@/lib/useOps';
 
 type DocEntry = {
@@ -116,8 +128,20 @@ const md = {
   hr: () => <hr className="my-5 border-0 border-t border-line" />,
 };
 
+type ShareRow = {
+  id: string;
+  scope: string;
+  target: string;
+  note: string;
+  created_at: number;
+  expires_at: number;
+  reads: number;
+  status: 'live' | 'expired' | 'revoked';
+};
+type Shares = { shares: ShareRow[]; default_days: number; max_days: number };
+
 /**
- * A share link for the document on screen.
+ * The public/private switch for the document on screen.
  *
  * Added 2026-08-20. The two halves of "expose every repo doc as a shareable link" both shipped on
  * 2026-08-19 and were never joined. This page could read 127 documents; `/share` could mint an
@@ -126,10 +150,22 @@ const md = {
  * live store: 0 shares had ever been minted. The founder checked and said the story was not done,
  * and he was right — a rail nobody can reach from where they are standing is not a rail.
  *
- * It mints through the SAME `share.create` action as `/share`, with the same preview-then-apply
- * gate, so what a link may cover is still decided in one place (`prospector/ops/share.py`). This
- * is a shorter walk to that fence, never a second one: a copy of the rule here would be a rule
- * that can disagree with itself.
+ * SAME DAY, SECOND CORRECTION, AND IT IS WHY THIS BLOCK LOOKS THE WAY IT DOES. The first version
+ * of this component could only mint. The founder's words: "docs are still not hshareable with
+ * public/private switch". A control that turns a thing on and cannot turn it off is not a switch,
+ * it is a one-way door — and the operator could not even SEE whether the document in front of him
+ * was already public, because nothing on this page read the share list. So the component now
+ * starts from the ANSWER to "who can read this right now", and both directions are one click from
+ * it. State comes from the live share list (`shares`), never from anything remembered here.
+ *
+ * Both directions go through the SAME actions as `/share` — `share.create` and `share.revoke`,
+ * with the same preview-then-apply gate — so what a link may cover is still decided in one place
+ * (`prospector/ops/share.py`). This is a shorter walk to that fence, never a second one: a copy of
+ * the rule here would be a rule that can disagree with itself.
+ *
+ * The link this switch controls is the one to the FILE IN THIS REPO. A document also published as
+ * a page on claude.ai is governed by that page's own share menu, which this console cannot reach.
+ * `/reports` says the same thing about the same pair, for the same reason.
  */
 function ShareDoc({ name }: { name: string }) {
   const [panel, setPanel] = useState(false);
@@ -139,7 +175,14 @@ function ShareDoc({ name }: { name: string }) {
   const [minted, setMinted] = useState<{ url: string; expires: number } | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // No polling. Every read is a fresh Python process, and a document's audience changes when
+  // somebody presses one of the two buttons below — which refresh it — not every thirty seconds.
+  const shares = useOps<Shares>('shares', {}, { pollMs: 0 });
+
   const target = `docs/${name}`;
+  const rows = shares.data?.shares ?? [];
+  const live =
+    rows.find((r) => r.status === 'live' && r.scope === 'file' && r.target === target) ?? null;
 
   async function copy(url: string) {
     try {
@@ -152,67 +195,130 @@ function ShareDoc({ name }: { name: string }) {
     }
   }
 
+  const status = shares.error ? (
+    <span className="text-[12.5px] text-muted">share list unavailable</span>
+  ) : shares.loading && !shares.data ? (
+    <span className="text-[12.5px] text-muted">checking…</span>
+  ) : live ? (
+    <>
+      <Pill tone="warn">Public</Pill>
+      <span className="text-[12.5px] text-muted">
+        anyone with the link, until {new Date(live.expires_at * 1000).toLocaleDateString()} ·{' '}
+        {live.reads} {live.reads === 1 ? 'read' : 'reads'}
+      </span>
+    </>
+  ) : (
+    <>
+      <Pill tone="ok">Private</Pill>
+      <span className="text-[12.5px] text-muted">console login only</span>
+    </>
+  );
+
   if (!panel) {
     return (
-      <div className="mb-3">
-        <Button onClick={() => setPanel(true)}>Share this doc</Button>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        {status}
+        <Button onClick={() => setPanel(true)}>{live ? 'Change who can read it' : 'Share this doc'}</Button>
       </div>
     );
   }
 
   return (
     <div className="mb-3 rounded-sm border border-line px-3 py-3">
-      <div className="text-[13px] font-[560]">
-        A link to <Mono>{target}</Mono> that anyone can open without a login.
+      <div className="flex flex-wrap items-center gap-2">{status}</div>
+      <div className="mt-2 text-[13px] font-[560]">
+        {live ? (
+          <>
+            <Mono>{target}</Mono> is readable by anyone holding its link.
+          </>
+        ) : (
+          <>
+            A link to <Mono>{target}</Mono> that anyone can open without a login.
+          </>
+        )}
       </div>
-      <div className="mt-2 flex flex-wrap gap-3">
-        <label className="flex flex-col gap-1 text-[13px]">
-          <span className="text-subtle">Days until it expires</span>
-          <input
-            type="number"
-            min={1}
-            max={90}
-            value={days}
-            onChange={(e) => setDays(Number(e.target.value))}
-            className="tap w-28 rounded-sm border border-border-control bg-surface px-2 py-2 text-[16px]"
-          />
-        </label>
-        <label className="flex flex-1 flex-col gap-1 text-[13px]">
-          <span className="text-subtle">Who is it for (recorded, not shown to them)</span>
-          <input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="architecture review"
-            className="tap rounded-sm border border-border-control bg-surface px-2 py-2 text-[16px]"
-          />
-        </label>
-      </div>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Confirm
-          action="share.create"
-          label="Check what this covers"
-          kind="primary"
-          applyLabel="Mint the link"
-          payload={() => ({ scope: 'file', target, days, note })}
-          renderPreview={(p) => (
-            <div className="flex flex-col gap-2">
+
+      {live ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Confirm
+            action="share.revoke"
+            label="Turn it off"
+            kind="danger"
+            applyLabel="Yes, make it private"
+            payload={() => ({ id: live.id })}
+            renderPreview={(p) => (
               <div>
-                <strong>{String(p.covers)}</strong> file, readable by anyone holding the link for{' '}
-                {String(p.days)} days.
+                <div className="font-mono text-[12.5px]">{String(p.target) || target}</div>
+                <div className="mt-1 text-[12px] text-muted">
+                  Anyone holding this link stops being able to read the file. A page published for
+                  this document on claude.ai is not affected — that one is turned off in its own
+                  share menu.
+                </div>
               </div>
-              <div className="text-[12px] text-muted">{String(p.note ?? '')}</div>
-            </div>
-          )}
-          onApplied={(receipt) => {
-            setCopied(false);
-            setMinted({
-              url: `${window.location.origin}${String(receipt.path ?? '')}`,
-              expires: Number(receipt.expires_at ?? 0),
-            });
-          }}
-        />
-        <Button onClick={() => setPanel(false)}>Close</Button>
-      </div>
+            )}
+            onApplied={() => {
+              setMinted(null);
+              shares.refresh();
+            }}
+          />
+          <Button onClick={() => setPanel(false)}>Close</Button>
+        </div>
+      ) : (
+        <>
+          <div className="mt-2 flex flex-wrap gap-3">
+            <label className="flex flex-col gap-1 text-[13px]">
+              <span className="text-subtle">Days until it expires</span>
+              <input
+                type="number"
+                min={1}
+                max={90}
+                value={days}
+                onChange={(e) => setDays(Number(e.target.value))}
+                className="tap w-28 rounded-sm border border-border-control bg-surface px-2 py-2 text-[16px]"
+              />
+            </label>
+            <label className="flex flex-1 flex-col gap-1 text-[13px]">
+              <span className="text-subtle">Who is it for (recorded, not shown to them)</span>
+              <input
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="architecture review"
+                className="tap rounded-sm border border-border-control bg-surface px-2 py-2 text-[16px]"
+              />
+            </label>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Confirm
+              action="share.create"
+              label="Check what this covers"
+              kind="primary"
+              applyLabel="Mint the link"
+              payload={() => ({ scope: 'file', target, days, note })}
+              renderPreview={(p) => (
+                <div className="flex flex-col gap-2">
+                  <div>
+                    <strong>{String(p.covers)}</strong> file, readable by anyone holding the link
+                    for {String(p.days)} days.
+                  </div>
+                  <div className="text-[12px] text-muted">{String(p.note ?? '')}</div>
+                </div>
+              )}
+              onApplied={(receipt) => {
+                setCopied(false);
+                setMinted({
+                  url: `${window.location.origin}${String(receipt.path ?? '')}`,
+                  expires: Number(receipt.expires_at ?? 0),
+                });
+                // The switch above must now read Public. It is derived from this list, so the
+                // list is what gets refreshed — nothing here remembers the new state separately.
+                shares.refresh();
+              }}
+            />
+            <Button onClick={() => setPanel(false)}>Close</Button>
+          </div>
+        </>
+      )}
+
       {minted ? (
         <div className="mt-3 rounded-sm border border-ok/40 bg-ok-bg px-3 py-3">
           <div className="text-[13px] font-[560] text-ok-strong">
@@ -224,9 +330,9 @@ function ShareDoc({ name }: { name: string }) {
             <span className="text-[12px] text-muted">
               expires {minted.expires ? new Date(minted.expires * 1000).toLocaleString() : '—'}
             </span>
-            <a className="text-[12px] underline" href="/share">
-              Manage or revoke it on Share
-            </a>
+            <Link className="text-[12px] underline" href="/share">
+              Every link, on one page
+            </Link>
           </div>
         </div>
       ) : null}
