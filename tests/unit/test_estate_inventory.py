@@ -269,8 +269,20 @@ def test_the_job_does_not_use_a_calendar_slot_the_machine_can_sleep_through():
 
 
 def test_the_job_can_reach_the_command_line_tools_it_shells_out_to():
-    """fly lives in /usr/local/bin, which launchd does NOT put on PATH by default."""
+    """fly lives in /usr/local/bin, which launchd does NOT put on PATH by default.
+
+    The subject is the PLIST, not the machine running the test. Deriving the expected directory
+    from `shutil.which("fly")` made this assert on the runner's filesystem: it passes on the
+    founder's Mac and fails on every clone, and it did fail CI on 2026-08-20 with "fly is not
+    installed on this machine at all". That is the exact class
+    tests/test_suite_is_machine_independent.py exists to stop.
+    """
     path = _job()["EnvironmentVariables"]["PATH"].split(":")
+    installs = ("/usr/local/bin", "/opt/homebrew/bin")
+    assert any(d in path for d in installs), (
+        f"none of {installs} is on the job's PATH {path}, so the job cannot find fly on an Intel "
+        f"or an Apple-silicon Mac")
     fly = shutil.which("fly")
-    assert fly, "fly is not installed on this machine at all"
-    assert str(Path(fly).parent) in path, f"{fly} is not reachable from the job's PATH: {path}"
+    if fly:
+        assert str(Path(fly).parent) in path, (
+            f"fly is installed here at {fly} and is not reachable from the job's PATH: {path}")
