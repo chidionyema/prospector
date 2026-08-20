@@ -21,9 +21,11 @@
 # The installed copy is what actually runs, so it can drift from this one. It cannot drift
 # silently: scripts/process_audit.py compares the two and grades a mismatch BAD.
 #
-# Rules for anything added below. No network calls — this runs before every session. Absolute
-# paths only — memory-loop runs it with cwd=$HOME. Read-only, always exit 0: a probe must never
-# be the reason a session fails to start.
+# Rules for anything added below. No network call a session WAITS ON — this runs before every
+# session. A detached background refresh behind a staleness gate and a lock is allowed, and there
+# are two below; only the founder-task one leaves this machine, and nothing reads its result until
+# the NEXT session. Absolute paths only — memory-loop runs it with cwd=$HOME. Read-only, always
+# exit 0: a probe must never be the reason a session fails to start.
 
 set -u
 
@@ -52,6 +54,20 @@ install_probe() {
   cp "$0" "$INSTALL_PATH"
   chmod +x "$INSTALL_PATH"
   echo "installed $INSTALL_PATH"
+  # The founder-task reader is installed beside the probe rather than called out of a checkout.
+  # A checkout is the wrong thing to depend on here: the main one was 11 commits behind when this
+  # was written, and prospector-live is pinned to origin/main by a different job on its own
+  # cadence. Installing it makes the probe self-contained, and process_audit.py compares this copy
+  # to the source exactly as it does the probe itself, so the second copy cannot drift in silence.
+  local reader; reader="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)/scripts/founder_tasks.py"
+  if [ -f "$reader" ]; then
+    cp "$reader" "$INSTALL_DIR/founder_tasks.py"
+    chmod +x "$INSTALL_DIR/founder_tasks.py"
+    echo "installed $INSTALL_DIR/founder_tasks.py"
+  else
+    echo "NOT installed: scripts/founder_tasks.py was not found next to $0 --"
+    echo "  run --install from a checkout, not from the installed copy, or the task list stays blank"
+  fi
   local n=0 m=0
   # Every session started in a prospector checkout or one of its worktrees gets the same brief.
   # The tmp scratchpad slugs are skipped: they are throwaway cwds, not places work is done.
@@ -135,6 +151,23 @@ mkdir -p "$STORE/ops" 2>/dev/null
 _refresh_snapshot_if_stale
 
 echo "PRODUCTION IS FLY. This Mac is development and estate support, not production."
+
+# --- which store is canonical -------------------------------------------------------------------
+# Founder ruling 2026-08-19: production is canonical. This block exists because the docs said the
+# opposite for a day after the cutover and an agent believed them: the where-production-runs skill
+# read "State did NOT move ... That is the canonical store", naming the laptop path. Measured that
+# evening, Fly's ledger carried 166,013 rows stamped that day and the laptop copy carried 0. A
+# reader pointed at the laptop store does not show less than the truth. It shows a confident zero.
+# Local only: an mtime, no network, so this costs a session nothing.
+_ledger="$STORE/prospector.jsonl"
+if [ -f "$_ledger" ]; then
+  _mt="$(stat -f %m "$_ledger" 2>/dev/null || echo 0)"
+  _age_h=$(( ( $(date +%s) - _mt ) / 3600 ))
+  echo "STORE  canonical is /data/store on prospector-engine, volume vol_42kyqo6g0kdzew14."
+  echo "  the laptop store is a stopped copy: $STORE last written ${_age_h}h ago, and"
+  echo "  config.store_root() in ANY process on this Mac resolves to it. Ask production instead:"
+  echo "      fly ssh console -a prospector-engine -C \"tail -1 /data/store/prospector.jsonl\""
+fi
 python3 - "$SNAP" <<'PYEOF' 2>/dev/null || echo "  (no estate snapshot yet -- run: .venv/bin/python scripts/estate_map.py --snapshot)"
 import json, sys, time, calendar
 path = sys.argv[1]
@@ -207,6 +240,53 @@ for repo in "$HOME/Documents/code/prospector" \
   [ "$repo" = "$SESSION_CHECKOUT" ] && continue
   grade_checkout "$repo" ""
 done
+
+# --- the founder's task list ----------------------------------------------------------------------
+# Measured 2026-08-20: the task list was already persisted, at ~/.claude/tasks/<session-id>/<n>.json.
+# Persistence was never the problem, discovery was. That store is keyed by SESSION, so a new session
+# opens on an empty list: 231 open tasks across 45 prospector session directories, 231 distinct
+# subjects, zero overlap, because no session can see another one's. Dumping those 231 here would
+# spend a screen of every agent's context on another session's scratch work, forever. So the durable
+# list is GitHub issues labelled `founder-task` — already the estate's claim mechanism, and readable
+# by the founder without a terminal.
+#
+# Printing is local and always exits 0. The refresh that WRITES the cache needs the network, so it
+# runs detached, only when the cache is over 6h old, behind a lock — the same shape as
+# _refresh_snapshot_if_stale above. If it never works (no `gh` on PATH, no auth), nothing here
+# breaks: the printed line starts saying STALE after 24h and carries the command that fixes it.
+_founder_tasks_reader() {
+  local cand
+  # The installed copy first: it is the one --install put there, and it does not go stale when a
+  # checkout does. The checkouts are a fallback for a probe run straight out of a tree.
+  for cand in "$INSTALL_DIR/founder_tasks.py" \
+              "$SESSION_CHECKOUT/scripts/founder_tasks.py" \
+              "$MAIN_CHECKOUT/scripts/founder_tasks.py" \
+              "$HOME/Documents/code/prospector-live/scripts/founder_tasks.py"; do
+    case "$cand" in /scripts/*) continue ;; esac        # SESSION_CHECKOUT empty
+    [ -f "$cand" ] && { printf '%s' "$cand"; return 0; }
+  done
+  return 1
+}
+_ft_reader="$(_founder_tasks_reader)" || _ft_reader=""
+if [ -z "$_ft_reader" ]; then
+  # Saying nothing here is the failure this section exists to fix. A list that silently disappears
+  # is indistinguishable from a list with nothing on it.
+  echo "FOUNDER TASKS: reader not installed, so the list is not being shown. Fix it with:"
+  echo "      bash ops/state_probe.sh --install     (from a checkout that has scripts/founder_tasks.py)"
+else
+  python3 "$_ft_reader" 2>/dev/null || true
+  _ft_state="$HOME/.claude/state"
+  # find on a missing file prints nothing, so a cache that does not exist yet takes this branch too.
+  if [ -z "$(find "$_ft_state/founder-tasks.json" -maxdepth 0 -mmin -360 2>/dev/null)" ]; then
+    _ft_lock="$_ft_state/.founder-tasks.refresh.lock"
+    mkdir -p "$_ft_state" 2>/dev/null
+    [ -n "$(find "$_ft_lock" -maxdepth 0 -mmin +30 2>/dev/null)" ] && rmdir "$_ft_lock" 2>/dev/null
+    if mkdir "$_ft_lock" 2>/dev/null; then          # another session is already refreshing
+      ( python3 "$_ft_reader" --refresh; rmdir "$_ft_lock" 2>/dev/null ) \
+        >/dev/null 2>&1 &
+    fi
+  fi
+fi
 
 echo "AUDIT everything scheduled, across both hosts, graded:"
 echo "      .venv/bin/python scripts/process_audit.py --quiet        (console page: /processes)"

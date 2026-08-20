@@ -632,6 +632,23 @@ def _grade_state_probe() -> list[tuple[str, str, str]]:
     else:
         rows.append((OK, "state probe", f"installed and matching source ({src[:12]})"))
 
+    # The probe installs a second file: the founder-task reader it calls. One copy graded and the
+    # other not is how the first copy came to carry 17 lines that were in no commit anywhere.
+    reader_src = ROOT / "scripts" / "founder_tasks.py"
+    reader_installed = Path.home() / ".claude" / "state-probe" / "founder_tasks.py"
+    if reader_src.exists():
+        if not reader_installed.exists():
+            rows.append((BAD, "founder task reader",
+                         "NOT INSTALLED -- every session opens without the task list; "
+                         "run bash ops/state_probe.sh --install"))
+        elif (hashlib.sha256(reader_src.read_bytes()).hexdigest()
+              != hashlib.sha256(reader_installed.read_bytes()).hexdigest()):
+            rows.append((BAD, "founder task reader",
+                         "INSTALLED COPY DRIFTED from scripts/founder_tasks.py -- re-run "
+                         "bash ops/state_probe.sh --install"))
+        else:
+            rows.append((OK, "founder task reader", "installed and matching source"))
+
     projects = Path.home() / ".claude" / "projects"
     targets = [d for d in projects.glob("*") if d.is_dir() and "-private-" not in d.name
                and (d.name.endswith("code-prospector") or "-code-wt-" in d.name)]

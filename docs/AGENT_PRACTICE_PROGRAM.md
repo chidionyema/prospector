@@ -28,6 +28,7 @@ Never trust the description. Run the command.
 | mechanism | what it does | prove it |
 |---|---|---|
 | `ops/state_probe.sh` | the SessionStart brief. Renders the measured estate snapshot and its age | `bash ops/state_probe.sh` |
+| `scripts/founder_tasks.py` | the founder's task list, from GitHub issues labelled `founder-task`. The probe prints it at every session start; a refresh is the only mode that uses the network | `.venv/bin/python scripts/founder_tasks.py` |
 | `scripts/estate_map.py --snapshot` | measures Fly apps, machines, endpoints, runners, laptop jobs; writes `<store>/ops/estate_map.json` | `.venv/bin/python scripts/estate_map.py --quick` |
 | `ops/share_memory.sh` | one memory store for every checkout and worktree, instead of one per cwd | `bash ops/share_memory.sh --check` |
 | ten session hooks | refuse a forbidden command, stop a drip of one-command turns, block a push with no PR | `<hook> --selftest` — all ten answer it |
@@ -73,6 +74,13 @@ Shipped:
 - `ops/state_probe.sh`, installed to `~/.claude/state-probe/prospector.sh`; the audit compares the
   two by hash, so the installed copy cannot drift silently (#373)
 - the probe renders `estate_map.py`'s measurement instead of a hand-written paragraph (#381)
+- the founder's task list survives the session that took it (#486). Tasks were already persisted
+  at `~/.claude/tasks/<session-id>/<n>.json`; that store is keyed by SESSION, so a new session
+  opened on an empty list. Measured 2026-08-20: 231 open tasks across 45 prospector session
+  directories, 231 distinct subjects, zero overlap. The durable list is GitHub issues labelled
+  `founder-task`; `scripts/founder_tasks.py` prints them and the probe runs it. The reader is
+  installed beside the probe and graded by the same hash comparison, because one copy graded and
+  the other not is how the installed probe came to carry 17 lines that were in no commit anywhere
 - CI location is a `gh api` measurement in the probe, the audit and `estate_map.py` (#373, #381)
 - all ten session hooks answer `--selftest`; the audit runs and grades them (#373, #381)
 - the hooks are tracked in git; the audit reports any hook file behind `origin/main` (#381)
