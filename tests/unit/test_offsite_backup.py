@@ -697,3 +697,93 @@ def test_a_skipped_source_does_not_crash_the_report(tmp_path, monkeypatch, capsy
     # The lines the operator actually reads come AFTER the skipped entry.
     assert "OK  " in out, "a skipped source must not swallow the freshness report"
     assert len(fresh.uploaded) == 1, "the skipped source must not be fetched or uploaded"
+
+
+# --- the scheduled drill must open the bucket ----------------------------------------------
+#
+# `scripts/restore_drill.py` with no --backup snapshots the LIVE store and restores that. It
+# never opens R2. Measured 2026-08-20, that was the whole of the weekly `restore-drill` program,
+# so the offsite copy -- the only thing that survives losing the machine -- had never been tested
+# by anything automatic. These read the EXECUTABLE lines, never the file text: the script's own
+# comments name every command checked for here, so a guard that greps the source would stay green
+# with the commands deleted and the comments left behind.
+
+_ENGINE_DIR = Path(__file__).resolve().parents[2] / "deploy" / "engine"
+_DRILL_SH = _ENGINE_DIR / "offsite_drill.sh"
+_SUPERVISORD = _ENGINE_DIR / "supervisord.conf"
+
+
+def _restore_drill_command() -> str:
+    import re
+    text = _SUPERVISORD.read_text()
+    block = re.search(r"^\[program:restore-drill\]\s*$(.*?)(?=^\[|\Z)", text, re.M | re.S)
+    assert block, "no [program:restore-drill] section in supervisord.conf"
+    line = re.search(r"^command=(.*)$", block.group(1), re.M)
+    assert line, "[program:restore-drill] has no command= line"
+    return line.group(1).strip()
+
+
+def _runnable_lines(path) -> list[str]:
+    """The lines a shell would actually execute: no blanks, no comments."""
+    out = []
+    for raw in path.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        out.append(line)
+    return out
+
+
+def test_the_comment_stripper_actually_strips():
+    """The check that makes the three below mean anything.
+
+    Every assertion here greps the runnable lines for a command that ALSO appears in the
+    script's comments. If _runnable_lines ever returned the file verbatim, all three would pass
+    against a script whose commands had been deleted. So prove it removes something first.
+    """
+    runnable = _runnable_lines(_DRILL_SH)
+    assert runnable, "no runnable lines parsed out of the drill script"
+    assert len(runnable) < len(_DRILL_SH.read_text().splitlines())
+    assert not [ln for ln in runnable if ln.startswith("#")]
+    # The commands are named in the comments; that is the trap this test exists to disarm.
+    assert "backup_store.py --restore" in _DRILL_SH.read_text()
+
+
+def test_the_scheduled_drill_runs_the_composed_script():
+    assert "deploy/engine/offsite_drill.sh" in _restore_drill_command(), (
+        "the weekly restore-drill no longer runs the composed script, so it is back to "
+        "grading a local snapshot and proving nothing about R2"
+    )
+
+
+def test_the_drill_pulls_from_r2_and_grades_what_it_pulled():
+    runnable = _runnable_lines(_DRILL_SH)
+    pulls = [ln for ln in runnable if "backup_store.py" in ln and "--restore" in ln]
+    grades = [ln for ln in runnable if "restore_drill.py" in ln and "--backup" in ln]
+    assert pulls, "the drill never pulls from R2; only backup_store.py --restore opens the bucket"
+    assert grades, (
+        "the drill pulls from R2 and never grades the pull. backup_store.py --restore proves the "
+        "TRANSFER; only restore_drill.py --backup proves the catalogue is recoverable from it"
+    )
+
+
+def test_the_drill_keeps_the_network_free_half():
+    """Both halves, because they fail differently.
+
+    restore_drill.py:49 states the design: a drill that needs the network cannot run when the
+    network is the problem. Dropping the local half to 'simplify' would lose the only check that
+    still works during an outage.
+    """
+    runnable = _runnable_lines(_DRILL_SH)
+    local = [ln for ln in runnable if "restore_drill.py" in ln and "--backup" not in ln]
+    assert local, "the drill no longer runs the network-free local half"
+
+
+def test_the_drill_removes_its_restored_copy():
+    """~250 MB per pass onto the same volume the store lives on. A drill that fills the disk it
+    is protecting has become the outage."""
+    runnable = _runnable_lines(_DRILL_SH)
+    assert any(ln.startswith("trap ") and "cleanup" in ln for ln in runnable), (
+        "no trap installs the cleanup, so a failed pass leaves the pulled copy on the volume"
+    )
+    assert any("rm -rf" in ln for ln in runnable)

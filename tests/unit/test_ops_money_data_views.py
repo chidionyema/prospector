@@ -205,7 +205,27 @@ def test_something_actually_runs_the_drill():
         "nothing on the engine runs scripts/restore_drill.py, so DAT-2 can only ever say the "
         "restore has never been proven")
     block = conf.split("[program:restore-drill]", 1)[1].split("[program:", 1)[0]
-    assert "scripts/restore_drill.py" in block
+    command = next(ln for ln in block.splitlines() if ln.startswith("command="))
+
+    # The command may run the drill DIRECTLY, or run a wrapper that runs it. Follow the
+    # indirection rather than pinning one shape: on 2026-08-20 the program was changed to a
+    # wrapper so the weekly pass would also drill the R2 copy, and this assertion went blind
+    # to a chain that still ends in the drill. A guard that only recognises one spelling of
+    # "runs the drill" fails an improvement and passes a deletion one refactor later.
+    runners = [command]
+    for token in command.split():
+        candidate = (Path(__file__).resolve().parents[2] / token)
+        if token.endswith(".sh") and candidate.is_file():
+            # RUNNABLE lines only. The wrapper's comments explain what it runs and therefore
+            # name scripts/restore_drill.py several times; reading the file verbatim makes this
+            # assertion pass over a wrapper whose commands have all been deleted. Measured
+            # 2026-08-20: that mutation passed until this line stripped the comments.
+            runners.append("\n".join(
+                ln for ln in candidate.read_text().splitlines()
+                if ln.strip() and not ln.strip().startswith("#")))
+    assert any("scripts/restore_drill.py" in r for r in runners), (
+        "the restore-drill program does not run scripts/restore_drill.py, directly or through "
+        "any wrapper script it names")
     assert "receipt.sh restore_drill.py" in block, "the run must leave a receipt Hermes can grade"
     interval = int(block.split("periodic.sh", 1)[1].split()[0])
     assert interval <= DRILL_STALE_DAYS * 86400 / 4, (
