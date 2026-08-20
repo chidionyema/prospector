@@ -155,7 +155,7 @@ each that a change is likely to break:
 - **price_comparables.py** — the seventh check, evidence-only. It can NEVER kill (barred in `kill_filter.is_hard_fail` and in verify's run order): "no price page on the open web" is a fact about the web, not the idea. Every anchor appears literally in the passage it cites; FX is config-declared, never inferred.
 - **pricing.py** — the L1 ladder: segment (ambition_tier × market) → a rung in `config.yaml listing.pricing`, never a continuous number.
 - **kill_filter.py** — deterministic gates; KILL or PASS. **score.py** — six axes, composite = Σ(score × weight).
-- **dossier.py / store.py / publish/publish.py** — artifacts, catalogue state, listing JSON on PASS. (`prospector/publish.py` is a dead 0-byte stub; the real one is top-level `publish/`.)
+- **dossier.py / store.py / publish/publish.py** — artifacts, catalogue state, listing JSON on PASS. (the real one is top-level `publish/`; a 0-byte `prospector/publish.py` stub sat beside it until #312 deleted it.)
 - **bridge.py** — the money rail's entry: one `PriceDecision` mints the provider Price object AND writes the catalogue row, so the two cannot drift. A drift charges the buyer and then fails the fulfilment fence.
 - **run.py** — CLI entry, orchestrates RUN.md. `_noncritical_order(cfg)` builds the generation/prescreen/score chain from `config.yaml noncritical_operator:`. DEFER + `vet --resume` on moat exhaustion; failed signals to `signals/pending/` for `generate --resume`.
 

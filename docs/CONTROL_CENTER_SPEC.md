@@ -42,7 +42,7 @@ with the repo rule "No hosted service / no API-key calls beyond this repo").
 
 ## 1. What we inherit from signalengine — and where we deliberately diverge
 
-The signalengine control center (`dashboard/app.py`, 899 lines) is a clean reference. Patterns we
+The signalengine control center (`dashboard/app.py`, 899 lines) is a clean reference. Patterns we  <!-- doc-lint-ok: signalengine's repo, cited as a reference we read, not a file here -->
 copy verbatim:
 
 | Pattern | signalengine source | We reuse it for |
@@ -168,7 +168,7 @@ operator pills (absence from `provider_health.json` = healthy; no "no health row
 
 **Writes:** none.
 
-**Shared chrome:** `components/chrome.py` (`page_hero`, `log_panel`) used across all pages.
+**Shared chrome:** `components/chrome.py` (`page_hero`, `log_panel`) used across all pages.  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 Theme: slate + amber (`theme.py` / `.streamlit/config.toml`) — not purple AI defaults.  <!-- doc-lint-ok: deleted with the Streamlit console, 2026-08-18 -->
 
 ### 3.2 Catalogue (Dossier browser)
