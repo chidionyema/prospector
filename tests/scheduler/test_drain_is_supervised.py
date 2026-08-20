@@ -33,12 +33,7 @@ from prospector.scheduler import run_scheduled as rs
 
 
 def _cfg(tmp_path, **schedule):
-    # recover_per_tick 0 because these tests time the drain against a sub-second deadline. Pack
-    # recovery spawns a python child that opens the real catalogue; on a machine that has one it
-    # ran for longer than the deadline, and on a machine that does not it failed and reported the
-    # error into the tick. Either way the thing under test here -- was the deadline cancelled --
-    # was measured against the wrong clock.
-    sched = {"batch_size": 15, "backlog_cap": 100, "recover_per_tick": 0}
+    sched = {"batch_size": 15, "backlog_cap": 100}
     sched.update(schedule)
     return types.SimpleNamespace(
         store_dir=tmp_path,

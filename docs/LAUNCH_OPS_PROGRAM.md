@@ -322,10 +322,11 @@ goal 4; a screen with no control behind it fails goal 1.
 
 ### P0 — Stop being one bad day away from losing the business (this week)
 1. **DAT-1**: hourly copy of `/data/store.db` off Fly into R2, verified, alerting if the newest
-   copy is over 26h old. **NOT done — corrected 2026-08-16.** This line read "Done, PR #240". It is
-   built, but on a branch: `git ls-tree --name-only HEAD` has no `ops` entry and `gh pr list` shows
-   #240 still OPEN. A claim about a branch is not a claim about `main`. What follows describes the
-   branch. Shipped daily rather than hourly: the
+   copy is over 26h old. **DONE — measured 2026-08-17.** `git ls-tree --name-only origin/main` now
+   lists `ops`, and `origin/main:ops/config` carries `offsite_backup.yaml`; the newest line in
+   `store/offsite_backup.log` reads `OK data-protection-keys: 0.0h old`. (This line said "NOT done"
+   from 2026-08-16, when #240 was still an open branch. It merged. The correction is the measurement
+   above, not this sentence.) Shipped daily rather than hourly: the
    database changes on a purchase, and at 3 orders total an hourly copy buys nothing over a daily
    one and costs 24x the R2 calls. The window is declared in `ops/config/offsite_backup.yaml`
    (`max_age_hours: 24`), so raising the cadence is a YAML edit, not a code change. Alerting is the
@@ -334,6 +335,13 @@ goal 4; a screen with no control behind it fails goal 1.
 2. **SRC-1**: commit the branch in slices by explicit path (never `git add -A` — `store/` and
    `storage/` are tracked runtime state pytest writes to), merge `origin/main`, tag `launch-rc1`.
 3. **SRC-2**: turn on branch protection for `main` — required checks, no force push, signed commits.
+   **BLOCKED on a paid plan — measured 2026-08-17.** Both server-side routes refuse on a private repo
+   on the Free plan. `gh api -X PUT repos/chidionyema/prospector/branches/main/protection` and
+   `gh api -X POST repos/chidionyema/prospector/rulesets` (rules `deletion`, `non_fast_forward`,
+   `required_signatures`) each return HTTP 403 `Upgrade to GitHub Pro or make this repository public
+   to enable this feature.` This is a founder decision, not an engineering one: GitHub Pro is about
+   $4/month, and making the repo public is not an option. Until it is paid for, nothing on the GitHub
+   side stops a force push or a delete of `main`, and the only fence is local to this machine.
 4. **SRC-4**: a second remote mirror, pushed by the nightly job.
 5. **PAY-1**: a live-mode assertion that runs on every deploy and every probe.
 6. **BIZ-1**: real company number, registered address and VAT status on the site.
@@ -351,7 +359,7 @@ and the founder can read all six on the console without a terminal.
 2. Publish sweep every tick: any PASS without a listing gets one attempt.
 3. ~~Clear the 35 — read-only report first~~ **read-only half done 2026-08-16**: `ops/automations/stranded_packs.py` reports 38 with the blocking rule per pack. The `--fix` half is deliberately NOT in that automation (repair costs model calls; R8/P3) and is still to build.
 5. **Console:** the Catalogue screen gets a one-click 'repair and republish' on any stranded pack.
-**Done when:** stranded count is 0, the check runs per tick, and the count is a line on the console home. **The console line is NOT done** (corrected 2026-08-17): this said an automations view at `prospector/ops/automations_view.py` discovered every engine and ran its `--json`, so the check would appear with no console edit. That file has never existed and no discovery layer does. Each caller imports one automation by name — `prospector/ops/data.py` imports `ops.automations.offsite_backup`, `scripts/ops_status.py` runs `ops.automations.stranded_packs`. So a new automation still needs a console edit, and the stranded count is not on the console home.
+**Done when:** stranded count is 0, the check runs per tick, and the count is a line on the console home. **The console line is done**: the automations view (`prospector/ops/automations_view.py`) discovers every engine that has a declaration and runs its `--json` live, so this check appears with no console edit.
 
 ### P2 — Make the meters honest
 1. Ledger rotation into `store/ledger/YYYY-MM.jsonl` plus a compacted `daily_totals.json` the guard
@@ -514,7 +522,6 @@ DNS-3   DKIM record                                    EMPTY — DKIM not publis
 | 2026-08-17 | ENG: production ran from the shared dev checkout | **FIXED.** The scheduler and consumer ran from `/Users/chidionyema/Documents/code/prospector`, a developer checkout sitting on whatever branch a session left it on. On 2026-08-17 that was `integrate/minimax-into-main`, 75 commits behind `origin/main`, so the daemon executed 17-hour-old code and changing a branch meant changing production. Both jobs now run from `/Users/chidionyema/Documents/code/prospector-live`, detached at `origin/main`, with `PROSPECTOR_STORE_DIR` pinning state to the canonical store. `scripts/live_checkout.py` reports it and `--update` rolls it forward; both are console buttons | `lsof -a -p <pid> -d cwd` on pids 99793/99800 → `prospector-live`; live HEAD == `origin/main` == `1800f38`; plist backups at `~/Library/LaunchAgents/*.plist.bak-2026-08-17` |
 | 2026-08-17 | ENG: the move benched every MiniMax tier | **FIXED.** Git does not carry secrets. The new checkout had no `.env`, so the first tick after the move failed with `ProviderExhaustedError: All operators in ('minimax', 'minimax_m27') unavailable — check API keys and credentials`. `.env` and `.lux/keys/agent.pem` are symlinks back to the dev checkout, and the probe now checks both | `store/scheduler/launchd.err.log` 2026-08-17T12:54:05Z (failure) → 12:58:11Z tick generating with no exhaustion error after the link at 13:57 local |
 | 2026-08-17 | ENG: moving the code split live state in two | **FIXED.** `PROSPECTOR_STORE_DIR` kept the ledger and dossiers canonical, but four constants derived the store from `Path(__file__)` and so followed the CODE: `provider_health.json`, `provider_health_noncritical.json`, `store/_cache/` and `store/scheduler/audit/`. For twenty minutes the daemon wrote health marks in one directory while every probe read the other — the state in which a benched provider can never be seen to recover. `config.store_root()` is the single resolver now (health, retrieval, audit, golden). With the env var unset the paths are byte-identical to before | leaked writes measured after the 13:52 clone: health 14:04, `_cache` 14:12, audit 14:13, against 948 files in the canonical store in the same window. 1748 audit rows and 237 cache files carried back; the four live paths are symlinks until the fix reaches main. `pytest -k "health or audit or store_dir or golden or cache or console_tools"` → 172 passed |
-| 2026-08-17 | CI: `origin/main` was red, so every PR inherited the failures | **FIXED.** Four separate faults, none of them in any PR's own diff. (1) `MoneyRailStatusTests.NonStripeProvider_RecordsNotApplicable` asserted a state that could not exist: `MoneyRailConfigGate.StartAsync` throws for any provider missing from `RequiredKeys`, and stripe is the only entry, so `GuardStripeApiKeyShape` never saw a non-Stripe provider. The fail-closed throw is right and stays; the dead branch, the mode and the test went, and the test now pins the throw. (2) One em dash in `Store.Web/src/lib/config.ts:120`. (3) Four CI scripts landed unclassified in the console tool registry. (4) `PADDLE_API_KEY` was the last mention of the retired provider, in `test_dotenv_fence.py`. Also removed: an unresolved merge conflict committed into this file at lines 494-497, with a test so the next one cannot reach main | `dotnet test --filter MoneyRail` → 40 passed; `vitest dashFree` → 8 passed; `pytest test_console_tools_run test_retired_terms test_dotenv_fence` → 46 passed; `pytest test_no_conflict_markers` → 1 passed |
 | 2026-08-17 | OPS: the console tool registry had drifted | **FIXED.** Three runnable scripts had no button and nothing stopped the hand-written registry drifting again. Buttons added, plus `NOT_AN_OPS_TOOL` so every file in `tools/` and `scripts/` is either registered or carries a written reason it is not. A test walks both directories and fails on a file in neither list, and on a stale exclusion naming a file that no longer exists | `pytest tests/unit/test_console_tools_run.py -q` → 25 passed; PR #255 |
 | 2026-08-17 | Main carried conflict markers in this file, and a page fell out of the nav | `origin/main` at `81bca3f` (PR #260) committed three literal conflict-marker lines into this section, so every branch that merges main inherits them. Removed here. The same PR rewrote `lib/nav.ts` as grouped data and gave it no entry for `pages/method.tsx`, which exists only on this branch, so the merged tree broke the `every screen is reachable from the nav` assertion in `tests/nav.test.ts`. `/method` is in the Control group now | `git show origin/main:docs/LAUNCH_OPS_PROGRAM.md` greps 3 marker lines at 494, 496, 497; after this merge the same grep over every tracked file returns nothing. Nav checked without node_modules by replicating the test: nav entries with no page 0, pages with no nav entry 0, duplicates 0 |
 
@@ -615,9 +622,7 @@ and 11 console pages; the search looked for App Router files in a Pages Router a
 justified closing work that was fine.
 
 *Number:* false claims per session, counted from the transcript. **No probe exists yet.**
-`~/.claude/scripts/reflect.py` finds where the founder stopped an agent, which is a proxy, not
-this. It lives in the harness config, not in this repo — `ops/launchd/com.chidionyema.reflect.json`
-is what runs it.
+`scripts/reflect.py` finds where the founder stopped an agent, which is a proxy, not this.
 
 *State:* OPEN.
 
@@ -655,7 +660,7 @@ rules that are READ are not.
 *Costs:* the same mistakes at the same cost, indefinitely.
 
 *Number:* **1.68 founder-stop events per 100 tool calls** across 343 transcripts and 41,319
-calls, from `~/.claude/scripts/reflect.py`. July 0.63, August 1.79 — the rate nearly tripled. Any
+calls, from `scripts/reflect.py`. July 0.63, August 1.79 — the rate nearly tripled. Any
 behaviour rule that lands must move that number or be deleted.
 
 *State:* OPEN. `~/.claude/scripts/rule-guard.py` exists, passes its own selftest, and **has

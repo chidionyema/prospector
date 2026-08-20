@@ -35,20 +35,6 @@ TEST_FILES = sorted(p for p in (REPO_ROOT / "tests").rglob("test_*.py"))
 # whoever's laptop it runs on. See .gitignore:43.
 UNSHIPPED = ("store/dossiers", "store/prospector.jsonl", "store/listings")
 
-# The token alone is not the fault; OPENING it is. A test may pass "store/prospector.jsonl" to a
-# function that only classifies the string -- `doc_lint._resolve` decides whether a doc's path
-# reference is valid, `live_checkout._code_changes` decides whether a porcelain line is code --
-# and neither one touches the disk. Flagging those taught nothing and cost two red CI runs on
-# 2026-08-17. So the line must ALSO perform a filesystem operation.
-#
-# This is not a hole. A test that assigns the path on one line and opens it on the next was never
-# caught by the substring check either, because the `open(p)` line carries no token. The rule is
-# the same width it always was, minus the false positives.
-_READS_DISK = re.compile(
-    r"\b(open|read_text|read_bytes|readlines|Path|glob|rglob|iterdir|listdir|scandir|walk"
-    r"|exists|is_file|is_dir|stat|load|loads|read_csv|connect)\s*\("
-)
-
 
 def _relevant(path: Path) -> str:
     return str(path.relative_to(REPO_ROOT))
@@ -92,11 +78,8 @@ def test_no_test_reads_the_operators_own_store():
             if lineno in prose:
                 continue
             code = line.split("#")[0]
-            if not any(u in code for u in UNSHIPPED) or "tmp_path" in code:
-                continue
-            if not _READS_DISK.search(code):
-                continue
-            offenders.append(f"{_relevant(path)}:{lineno}: {line.strip()}")
+            if any(u in code for u in UNSHIPPED) and "tmp_path" not in code:
+                offenders.append(f"{_relevant(path)}:{lineno}: {line.strip()}")
     assert not offenders, (
         "These read data that is gitignored, so they assert on one machine's state and fail "
         "on every clone:\n  " + "\n  ".join(offenders)

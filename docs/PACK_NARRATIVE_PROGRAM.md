@@ -175,7 +175,7 @@ numbers:** `publish/bundles/` is the BUILT bundle, not proof of what R2 serves t
 
 | Defect | Count | How it was verified |
 |---|---|---|
-| `## Grounded signals` heading shipped **completely empty** in the executive summary | **36 / 140** | verbatim from `96a6e230dc6ea48f/00_Executive_Summary.md:14-16` and `142717e797740247/…:14-16` — an `## ` heading immediately followed by the next `## ` | <!-- doc-lint-ok: generated pack output from the 140-pack corpus study, not repo files -->
+| `## Grounded signals` heading shipped **completely empty** in the executive summary | **36 / 140** | verbatim from `96a6e230dc6ea48f/00_Executive_Summary.md:14-16` and `142717e797740247/…:14-16` — an `## ` heading immediately followed by the next `## ` |
 | QA/audit report ≥40% of all pack words | 11 / 140 | `96a6e230dc6ea48f`: QA 5,983 of 11,516 md words = 52% |
 | Our own shop price used as the yardstick in the buyer's market analysis | 8 / 140 | see below |
 | `First_Fortnight.html` cross-references files that do not exist in the zip | 4 / 140 | emits `04FinancialModel.md`; the zip holds `04_Financial_Model.md`. Underscores stripped |
@@ -196,10 +196,10 @@ an invented figure with a real one. That reasoning is sound **about our own pric
 
 The two definitions cannot both hold, and the corpus shows which one the model resolves to:
 
-- `96a6e230dc6ea48f/QA_Report.md:107` — **PASSED** on *"UK agencies and their clients operate at <!-- doc-lint-ok: generated pack output from the 140-pack corpus study, not repo files -->
+- `96a6e230dc6ea48f/QA_Report.md:107` — **PASSED** on *"UK agencies and their clients operate at
   scale far above £29.99"*, for a venture whose own product is priced at £2,000
   (`04_Financial_Model.md`).
-- `142717e797740247/QA_Report.md:108` — *"whether such a founder would part with £29.99 for a <!-- doc-lint-ok: generated pack output from the 140-pack corpus study, not repo files -->
+- `142717e797740247/QA_Report.md:108` — *"whether such a founder would part with £29.99 for a
   one-off pack, so the buyer's willingness to pay is not addressed either way"*, for a venture
   selling a £1,250 audit.
 
@@ -234,7 +234,7 @@ what the buyer meets first.
 
 Specific findings beyond the six root causes:
 
-- **The best paragraph in the pack is filed in the appendix.** `96a6e230dc6ea48f/QA_Report.md` <!-- doc-lint-ok: generated pack output from the 140-pack corpus study, not repo files -->
+- **The best paragraph in the pack is filed in the appendix.** `96a6e230dc6ea48f/QA_Report.md`
   ("How it works") opens *"Agency owners who deliver AI work for UK enterprise or regulated clients
   run into the same wall on every project. The client's procurement or compliance team asks for
   proof the AI is safe, lawful and accountable, in their format, and often cites the ICO's AI
@@ -726,3 +726,58 @@ function that uses them. `requirements.txt:73-97` carries the measurements.
 | Readability | recorded only, no actuator by design |
 | Paid-artifact claim gate | **shipped, ON** — expect held listings on regeneration |
 | Storefront editorial proposal (§"Storefront") | still a proposal; nothing in `store_platform/` changed |
+
+## A stored gate verdict expires when the rules change (2026-08-17)
+
+A pack's `<id>.lint.json` is a cached verdict. Until now nothing expired it, so a pack blocked by
+a linter rule that was later fixed stayed blocked forever. `tools/verify_pass_shelf_coverage.py:14`
+records what that cost: "Twenty-four had been published UNLISTED and forgotten."
+
+Freshness used to be mtime only. That answers "has the pack changed", and it cannot answer "have
+the rules changed", because editing `pack_linter.py` touches no dossier. Every receipt stays newer
+than its pack, so mtime says "current" forever.
+
+Three changes, all small:
+
+1. **`pack_linter.RULESET_VERSION` is a fingerprint of the linter's own bytes**, not a hand-bumped
+   integer. `sha256(pack_linter.py)[:12]`, computed at import. Change a rule and every stored
+   verdict is stale automatically. Nobody has to remember anything. A comment-only edit
+   invalidates every receipt too; that is the deliberate trade, because a re-gate lists nothing
+   and mints nothing.
+2. **`pack_linter.receipt_is_current(receipt)` is the one definition of staleness**, used by
+   `tools/publish_passes.py::_fresh_lint`, `scheduler/run_scheduled.py::_stale_verdicts` and
+   `ops/console_api.py::_read_shelf`. Three copies of the same comparison is how they drift.
+3. **`_regate_pass` is the counterpart to `_unlist_pass`**, and the half that did not exist. Each
+   tick it re-asks the gate about at most `schedule.regate_unlisted_per_tick` stale packs, by
+   shelling out to `tools/publish_passes.py --dry-run`.
+
+**The re-gate lists nothing, and that asymmetry is the point.** Unlisting a pack unattended can
+only cost a sale. Listing one unattended takes money from a buyer. `bridge.py:1256-1272` returns
+on `if dry_run:` before `price_for`, so there is no Stripe Price, no R2 upload and no catalogue
+row, and nothing goes on sale. The step refreshes the verdict on disk and prints which packs now
+clear the gate. Putting them on sale stays a deliberate act.
+
+**What it costs is network, not model spend, and the gate now runs ten at a time.** Measured
+2026-08-17: ~124s a pack, all of it the linter probing the URLs the pack cites. Re-gating the 40
+stranded packs took about 80 minutes, because `--jobs` fanned out GENERATION and a dry run does
+no generation — the one slow step was the only one still running serially. `publish_passes` now
+gates inside the same pool on a dry run and defaults to `_DRY_RUN_JOBS = 10`, which is safe for
+the same reason the generation fan-out is: a dry run mints nothing, so there is no money-rail
+bookkeeping to serialise, and each pack writes only its own `<id>.lint.json`. Real publishing is
+unchanged and still strictly serial.
+
+**A log line cost a round of wrong documentation, and is worth recording as a defect class.**
+`publish_passes` printed `stored artifacts incomplete -> regenerating` on every path. On a dry
+run that is false — the attempt loop is `range(1, 1)` and never executes. The line was read as
+evidence that a rehearsal makes model calls, and a config comment, a docstring and this section
+were all written around the wrong number before anyone checked the loop bound. The message now
+says what the dry path actually does. A log that states an intention rather than an outcome is
+evidence of nothing.
+
+**It self-drains.** A re-gate stamps the current fingerprint whatever the verdict, so a pack that
+is still blocked also drops out of the selection. The queue converges to empty instead of
+re-running the same failures every tick.
+
+**It is visible and administrable from the Ops Console**, not just a CLI: the stranded page shows
+a "stale verdicts" count, tags each affected row `stale — rules changed since`, and offers a
+`shelf.regate` button. Pinned by `tests/unit/test_a_stale_verdict_is_re_gated.py`.

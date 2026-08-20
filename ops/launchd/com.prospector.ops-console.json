@@ -3,15 +3,14 @@
     "CONTROL_CENTER_PASSWORD": "<REDACTED>",
     "NODE_ENV": "production",
     "PATH": "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
-    "PROSPECTOR_PYTHON": "/Users/chidionyema/Documents/code/prospector-live/.venv/bin/python",
-    "PROSPECTOR_ROOT": "/Users/chidionyema/Documents/code/prospector-live",
-    "PROSPECTOR_STORE_DIR": "/Users/chidionyema/Documents/code/prospector/store"
+    "PROSPECTOR_PYTHON": "/Users/chidionyema/Documents/code/prospector/.venv/bin/python",
+    "PROSPECTOR_ROOT": "/Users/chidionyema/Documents/code/prospector"
   },
   "KeepAlive": true,
   "Label": "com.prospector.ops-console",
   "ProgramArguments": [
     "/usr/local/bin/node",
-    "/Users/chidionyema/Documents/code/prospector-live/store_platform/src/Ops.Console/node_modules/next/dist/bin/next",
+    "/Users/chidionyema/Documents/code/prospector/store_platform/src/Ops.Console/node_modules/next/dist/bin/next",
     "start",
     "-H",
     "100.93.240.113",
@@ -21,5 +20,5 @@
   "RunAtLoad": true,
   "StandardErrorPath": "/tmp/ops-console.err.log",
   "StandardOutPath": "/tmp/ops-console.out.log",
-  "WorkingDirectory": "/Users/chidionyema/Documents/code/prospector-live/store_platform/src/Ops.Console"
+  "WorkingDirectory": "/Users/chidionyema/Documents/code/prospector/store_platform/src/Ops.Console"
 }

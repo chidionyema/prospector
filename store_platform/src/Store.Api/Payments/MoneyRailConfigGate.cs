@@ -73,14 +73,17 @@ public sealed class MoneyRailConfigGate(
     // (deploy/fly/api.staging.fly.toml:17-18), so throwing here would make staging unbootable.
     // A test key on the real store takes no real money, which is loud enough to find fast; a
     // malformed key is unambiguously broken, so that one throws.
-    //
-    // `activeProvider` is always "stripe" by the time this runs. StartAsync looks the provider up
-    // in RequiredKeys and throws for anything it does not recognise, and "stripe" is the only key
-    // in there. A branch here used to record Mode "not-applicable" for a non-Stripe provider; it
-    // could never run, and the test asserting it failed on every build. The throw stays: a money
-    // rail with no declared required keys cannot be checked, so the app refuses to start.
     private void GuardStripeApiKeyShape(string activeProvider)
     {
+        if (!string.Equals(activeProvider, "stripe", StringComparison.Ordinal))
+        {
+            // Still record it. A probe that answers "unknown" cannot tell a provider with no key
+            // shape from a gate that never ran, and those need different responses.
+            status?.Record(activeProvider, "not-applicable", environment.EnvironmentName,
+                DateTimeOffset.UtcNow);
+            return;
+        }
+
         var apiKey = config["Stripe:ApiKey"] ?? string.Empty;
 
         // sk_ = standard secret key, rk_ = restricted key; both are valid server-side keys.

@@ -51,20 +51,8 @@ HISTORICAL_FILES = frozenset({"CLAUDE.md", "docs/COST_PROGRAM.md", "docs/attic"}
 #: Resolving only against the repo root reported 174 live files as missing.
 SEARCH_ROOTS = ("", "prospector", "scripts", "tools",
                 "store_platform/src",
-                "store_platform/src/Store.Api", "store_platform/src/Store.Tests",
                 "store_platform/src/Store.Web", "store_platform/src/Store.Web/src",
-                "store_platform/src/Store.Web/src/pages",
-                "store_platform/src/Ops.Console", "store_platform/src/Ops.Console/src",
-                "store_platform/src/Ops.Console/src/pages")
-
-#: Directories the ENGINE writes at run time. Git will never track `store/prospector.jsonl` — it
-#: is 211 MB of ledger (`docs/RUNBOOKS.md:190`) — so `_tracked()` called every mention of it a
-#: broken reference, and a doc telling an operator where the ledger lives was punished for being
-#: right. These are paths the running system CREATES; a clone is not supposed to ship them. A doc
-#: naming one is claiming where output goes, and the code that writes it is what checks that
-#: claim. Measured 2026-08-17: this class was 11 of the 25 findings failing the ratchet on `main`.
-RUNTIME_ROOTS = ("store/", "storage/", "corpora/", "graphify-out/", "scratchpad/",
-                 ".popdd/", ".lux/receipts/", ".backfill-logs/")
+                "store_platform/src/Ops.Console", "store_platform/src/Ops.Console/src")
 
 #: Docs whose paths are rooted in ANOTHER repo. The Telegram programme cites the Hermes
 #: checkout; testing those paths against this root reports every one of them missing, which is
@@ -105,11 +93,6 @@ def _is_path_claim(token: str) -> bool:
     if not token or " " in token or token.startswith("-"):
         return False
     if any(ch in token for ch in "<>*{}$|"):
-        return False
-    # An elided path is a shape too. `store_platform/.../lib/copyConfig.ts` and
-    # `142717e797740247/…:14-16` name a real file by pointing at it, not by spelling it; testing
-    # the literal text can only ever report missing, so it is a linter that is wrong every time.
-    if "..." in token or "…" in token:
         return False
     if token.startswith(("http://", "https://", "/", "~")):
         return False
@@ -184,11 +167,6 @@ def _tracked() -> frozenset[str]:
 
 def _resolve(bare: str) -> Path | None:
     """The repo path this claim names, or None if the repo does not have it."""
-    if bare.startswith(RUNTIME_ROOTS):
-        # Runtime output. Not in the index anywhere, by design, so grading it against the index
-        # only measures that fact over and over. Return the path so the empty-file check can
-        # still run when the file happens to be here.
-        return REPO_ROOT / bare
     tracked = _tracked()
     for root in SEARCH_ROOTS:
         rel = f"{root}/{bare}" if root else bare

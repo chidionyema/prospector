@@ -30,9 +30,6 @@ type RunRow = {
   outage_checks: number;
   searches: number;
   search_errors: number;
-  unfinished: number;
-  state: string;
-  state_reason: string;
   cost_usd: number | null;
   cost_null_reason: string;
 };
@@ -141,18 +138,7 @@ function RunCard({ r }: { r: RunRow }) {
           <Pill tone="warn">{r.outage_checks} checks hit an outage</Pill>
         ) : null}
         {r.search_errors > 0 ? <Pill tone="warn">{r.search_errors} search errors</Pill> : null}
-        {/* A run that died with work open looked identical to one that finished cleanly. The
-            count is the number of candidates it started and NOBODY has ruled since. */}
-        {r.unfinished > 0 ? (
-          <Pill tone={r.state === 'in_flight' ? 'mute' : 'bad'}>
-            {r.unfinished} never finished
-          </Pill>
-        ) : null}
       </div>
-
-      {r.unfinished > 0 && r.state_reason ? (
-        <div className="mt-1 text-[12px] text-muted">{r.state_reason}</div>
-      ) : null}
 
       <div className="mt-1 text-[11px] text-subtle">
         cost not attributed here — {r.cost_null_reason}

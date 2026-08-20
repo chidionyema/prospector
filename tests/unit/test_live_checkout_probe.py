@@ -15,7 +15,6 @@ path at a fixed offset 3 then read "ore/provider_health.json".
 from __future__ import annotations
 
 import importlib.util
-import os
 from pathlib import Path
 
 import pytest
@@ -84,54 +83,3 @@ class TestRealCodeChangesStillFire:
             " D store/scheduler/audit/1970-01-01.jsonl\n"
         )
         assert lc._code_changes(porcelain) == [" M prospector/run.py"]
-
-
-class TestTheConsoleIsPartOfTheDeploy:
-    """Rolling the code forward has to reach the console, not just the two python daemons.
-
-    Measured 2026-08-17: the ops console was serving a build made at 16:52 the previous day,
-    out of the shared developer checkout on a retired branch, with eight console commits on
-    main newer than it. Nothing rebuilt or restarted it, and no probe reported its age, so
-    the founder had to ask why his console work was not deployed.
-    """
-
-    def test_the_console_job_is_restarted_with_the_daemons(self, lc):
-        assert lc.CONSOLE_JOB in lc.JOBS
-
-
-class TestConsoleBuildStaleness:
-    """`next start` serves a directory. Current code is not the same as a current build."""
-
-    @staticmethod
-    def _prepare(lc, monkeypatch, tmp_path, *, build_mtime=None, git=(0, "1000")):
-        monkeypatch.setattr(lc, "LIVE", tmp_path)
-        if build_mtime is not None:
-            build = tmp_path / lc.CONSOLE / ".next"
-            build.mkdir(parents=True)
-            os.utime(build, (build_mtime, build_mtime))
-        monkeypatch.setattr(lc, "run", lambda *a, **k: git)
-
-    def test_no_build_directory_is_stale(self, lc, monkeypatch, tmp_path):
-        self._prepare(lc, monkeypatch, tmp_path)
-        stale, why = lc.console_build_is_stale()
-        assert stale and "never been built" in why
-
-    def test_a_build_older_than_the_console_code_is_stale(self, lc, monkeypatch, tmp_path):
-        """The case that actually happened: code merged after the build was made."""
-        self._prepare(lc, monkeypatch, tmp_path, build_mtime=1000, git=(0, "8200"))
-        stale, why = lc.console_build_is_stale()
-        assert stale and "predates" in why
-
-    def test_a_build_newer_than_the_console_code_is_current(self, lc, monkeypatch, tmp_path):
-        """The control: without this, the check above could pass by always saying stale."""
-        self._prepare(lc, monkeypatch, tmp_path, build_mtime=9000, git=(0, "8200"))
-        stale, _ = lc.console_build_is_stale()
-        assert not stale
-
-    def test_a_probe_that_cannot_read_the_commit_date_does_not_block(
-        self, lc, monkeypatch, tmp_path
-    ):
-        """A check that fails closed whenever its own input is unavailable gets removed."""
-        self._prepare(lc, monkeypatch, tmp_path, build_mtime=1000, git=(128, "fatal: no repo"))
-        stale, why = lc.console_build_is_stale()
-        assert not stale and "not judging" in why

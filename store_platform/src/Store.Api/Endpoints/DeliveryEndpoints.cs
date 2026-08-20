@@ -58,22 +58,7 @@ public static class DeliveryEndpoints
         var provider = sp.GetKeyedService<IPaymentProvider>(providerName);
         if (provider is null)
         {
-            // Not a 404. The buyer here has already paid, and 404 tells them we have no record of
-            // their order. It tells the operator "unknown session" too, when the real fault is a
-            // provider name with nothing registered behind it.
-            //
-            // The startup gate checks this name once, at boot. `payments:active_provider` is read
-            // per request and ASP.NET reloads configuration without a restart (P7, the hot
-            // switch), so the value can become an unregistered name while the app is serving.
-            // CheckoutEndpoints already answers 503 for exactly this fault; this matches it.
-            logger.LogCritical(
-                "MONEY-RAIL-UNREGISTERED-PROVIDER: payments:active_provider is '{Provider}', "
-                + "which has no registered IPaymentProvider. Paid buyers cannot be shown their "
-                + "downloads until this is corrected.",
-                providerName);
-            return Results.Problem(
-                $"Payment provider '{providerName}' is not registered.",
-                statusCode: StatusCodes.Status503ServiceUnavailable);
+            return Results.NotFound();
         }
 
         var transactionId = await provider.ResolvePaidTransactionIdAsync(sessionId, ct)

@@ -42,6 +42,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 
 # The harness prints this when a command is backgrounded.
@@ -128,16 +130,53 @@ def _finished_on_disk(tid: str) -> bool:
     fixture ids `bbb` and `zzz` into the transcript and the guard blocked a stop over two
     tasks that had never existed. The harness creates the output file at launch, so its
     ABSENCE is proof the id is not a real run.
+
+    THE EXIT LINE IS NOT WRITTEN BY EVERY HARNESS BUILD, so it cannot be the only check.
+    Measured 2026-08-17, after the fix above shipped: this guard blocked three stops in a row
+    over bqnq5m0wv, bi6s3igu1 and bgiikm8kq. All three had reported `completed`, all three
+    had their output read, and not one output file contained `[exited with code` anywhere.
+    The paragraph above states the harness appends it; on this build it does not, so the only
+    disk signal never arrived and every finished run read as running forever.
+
+    WHAT IS ACTUALLY ON DISK IS THE OPEN FILE HANDLE. A running background command holds its
+    stdout open; an exited one does not. Measured the same day, one live run against four
+    finished ones: the live run's output file had 2 open writers, each finished one had 0.
+    That is the signal that cannot go stale, because it is the operating system's own record
+    of the process rather than something the harness has to remember to write.
+
+    A PROBE THAT CANNOT RUN MEANS FINISHED, NOT RUNNING. If lsof is missing or fails, this
+    returns True and the guard does not block. A guard that blocks whenever its own probe
+    breaks cannot be satisfied, and an unsatisfiable guard gets uninstalled — the failure this
+    file's docstring warns about, and the one that produced both fixes above.
     """
     import glob as _glob
     for root in _TASK_ROOTS:
         for hit in _glob.glob("%s/*/*/tasks/%s.output" % (root, tid)):
             try:
                 with open(hit, encoding="utf-8", errors="replace") as fh:
-                    return "[exited with code" in fh.read()[-4000:]
+                    if "[exited with code" in fh.read()[-4000:]:
+                        return True
             except OSError:
                 continue
+            return not _has_open_writer(hit)
     return True  # no output file anywhere: not a real background run
+
+
+def _has_open_writer(path: str) -> bool:
+    """True only when some process demonstrably holds `path` open.
+
+    Anything else — no lsof, a non-zero exit, a timeout — is False, so the caller reports the
+    run as finished and the guard stays satisfiable. See `_finished_on_disk`.
+    """
+    lsof = shutil.which("lsof")
+    if not lsof:
+        return False
+    try:
+        out = subprocess.run([lsof, "-t", "--", path], capture_output=True, text=True,
+                             timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return bool(out.stdout.strip())
 
 
 REASON = (
@@ -200,9 +239,18 @@ def selftest() -> int:
     sandbox = tempfile.mkdtemp(prefix="idleguard-")
     tasks = os.path.join(sandbox, "sess", "run", "tasks")
     os.makedirs(tasks, exist_ok=True)
+    #
+    # The "still running" fixtures keep their handle OPEN for the rest of the selftest. That is
+    # not decoration: `_finished_on_disk` now asks whether a process holds the file open, so a
+    # fixture written and closed would read as finished and cases 1, 3, 5 and 6 would pass for
+    # the wrong reason. Holding the handle makes this process the writer, which is exactly the
+    # state a live background run is in.
+    held = []
     for tid in ("abc123", "aaa", "bbb", "zzz", "live1"):
-        with open(os.path.join(tasks, tid + ".output"), "w") as fh:
-            fh.write("....... still going, no exit line yet\n")
+        fh = open(os.path.join(tasks, tid + ".output"), "w")
+        fh.write("....... still going, no exit line yet\n")
+        fh.flush()
+        held.append(fh)
     with open(os.path.join(tasks, "done1.output"), "w") as fh:
         fh.write("442 passed, 1 warning in 387.35s\n\n[exited with code 0]\n")
     _saved_roots, _TASK_ROOTS = _TASK_ROOTS, (sandbox,)
@@ -257,6 +305,23 @@ def selftest() -> int:
         rec("Command running in background with ID: ghost2"),
     ])
     cases.append(("text about a run is not a run", in_flight(p) == []))
+
+    # 9. The defect this probe exists for: an output file with NO exit line and no process
+    #    holding it open is a finished run, not a running one. On the harness build measured
+    #    2026-08-17 the exit line is never written, so this is the only thing separating a
+    #    completed run from a live one.
+    with open(os.path.join(tasks, "closed1.output"), "w") as fh:
+        fh.write("ran, said nothing about exiting, and the writer is gone\n")
+    p = transcript([rec("Command running in background with ID: closed1")])
+    cases.append(("no exit line and no open writer is finished", in_flight(p) == []))
+
+    # 10. ...and the control that keeps case 9 from being vacuous: same shape, writer still
+    #     holding the file open, so it IS in flight.
+    p = transcript([rec("Command running in background with ID: live1")])
+    cases.append(("no exit line but a live writer is in flight", in_flight(p) == ["live1"]))
+
+    for fh in held:
+        fh.close()
     _TASK_ROOTS = _saved_roots
 
     ok = True

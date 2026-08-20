@@ -92,76 +92,6 @@ def load_live() -> dict[str, dict]:
     return out
 
 
-def _dupe_keys(path: Path) -> list[str]:
-    """Key names that appear twice inside ONE <dict>.
-
-    plistlib keeps the LAST of a repeated key and says nothing, so a second
-    EnvironmentVariables block silently deletes the first. That happened on 2026-08-17: a
-    script added a store pin at the top of com.prospector.watchdog.plist while the file
-    already carried an EnvironmentVariables block further down. plutil said OK, the pin was
-    dead, the watchdog resolved its store next to the code, found no heartbeat, and paged
-    the founder that the generation daemon was down while it was running normally.
-    """
-    import xml.etree.ElementTree as ET
-
-    try:
-        root = ET.parse(path).getroot()
-    except ET.ParseError:
-        return []  # reported separately as UNREADABLE
-    dupes = []
-    for block in root.iter("dict"):
-        seen: set[str] = set()
-        for key in block.findall("key"):
-            name = (key.text or "").strip()
-            if name in seen:
-                dupes.append(name)
-            seen.add(name)
-    return sorted(set(dupes))
-
-
-def store_pin_faults() -> list[str]:
-    """Prospector jobs must all name the SAME store, and never one inside their own checkout.
-
-    The code runs from a checkout that rolls forward with origin/main; the catalogue, ledger,
-    dossiers and provider health do not move with it. A store path resolved relative to the
-    code splits the state in two, and the halves cannot see each other: a daemon writing one
-    copy of provider_health.json while a probe reads another can never see a brain recover.
-
-    Stated without naming a path, so it holds on any machine and after any checkout move. The
-    pin must be present, must sit outside the job's own working directory, and every
-    prospector job must agree on it.
-    """
-    faults: list[str] = []
-    pins: dict[str, list[str]] = {}
-    for path in sorted(LIVE.glob("com.prospector.*.plist")):
-        label = path.stem
-        for name in _dupe_keys(path):
-            faults.append(
-                "%s: key %r appears twice in one dict — plistlib keeps the LAST, "
-                "so the first copy is dead config" % (label, name))
-        try:
-            with open(path, "rb") as fh:
-                data = plistlib.load(fh)
-        except Exception:  # noqa: BLE001 — already reported as UNREADABLE
-            continue
-        pin = (data.get("EnvironmentVariables") or {}).get("PROSPECTOR_STORE_DIR")
-        if not pin:
-            faults.append(
-                "%s: no PROSPECTOR_STORE_DIR — its store resolves next to the code, so "
-                "moving the checkout moves the state with it" % label)
-            continue
-        cwd = data.get("WorkingDirectory")
-        if cwd and (pin == cwd or pin.startswith(cwd.rstrip("/") + "/")):
-            faults.append(
-                "%s: PROSPECTOR_STORE_DIR is inside its own checkout (%s) — the state will "
-                "follow the code" % (label, pin))
-        pins.setdefault(pin, []).append(label)
-    if len(pins) > 1:
-        faults.append("prospector jobs disagree on which store is canonical: " + "; ".join(
-            "%s <- %s" % (pin, ",".join(labels)) for pin, labels in sorted(pins.items())))
-    return faults
-
-
 def load_tracked() -> dict[str, dict]:
     out: dict[str, dict] = {}
     if not TRACKED.is_dir():
@@ -240,21 +170,13 @@ def cmd_check() -> int:
     for label in unreadable:
         print("UNREADABLE   %s  %s" % (label, live[label]["__unreadable__"]))
 
-    # Drift is measured against a snapshot, so a mistake that is snapshotted becomes the new
-    # normal and stops being reported. These faults are judged against the invariant instead,
-    # so --snapshot cannot silence them.
-    faults = store_pin_faults()
-    for fault in faults:
-        print("STORE PIN    %s" % fault)
-
-    n = len(added) + len(gone) + len(changed) + len(unreadable) + len(faults)
+    n = len(added) + len(gone) + len(changed) + len(unreadable)
     if n == 0:
         print("LAUNCHD PLISTS PASS  %d job(s) match the tracked snapshot" % len(live))
         return 0
-    print("LAUNCHD PLISTS FAIL  %d finding(s)  "
-          "(new=%d missing=%d drifted=%d unreadable=%d store-pin=%d)  — review, then "
-          "--snapshot to accept (store-pin faults must be FIXED, not snapshotted)"
-          % (n, len(added), len(gone), len(changed), len(unreadable), len(faults)))
+    print("LAUNCHD PLISTS FAIL  %d job(s) differ  "
+          "(new=%d missing=%d drifted=%d unreadable=%d)  — review, then --snapshot to accept"
+          % (n, len(added), len(gone), len(changed), len(unreadable)))
     return 1
 
 

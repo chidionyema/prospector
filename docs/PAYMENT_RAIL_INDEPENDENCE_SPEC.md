@@ -80,7 +80,7 @@ Already abstracted behind interfaces: `IEmailSender` (Postmark), `IContentStorag
 | 7 | `Store.Catalog/Domain/SalesAudit.cs:6-7` | `PaddleTransactionId`, `PaddleProductId` |
 | 8 | `Store.Api/Contracts/PublishRequest.cs:8-9` | `PaddleProductId?`, `PaddlePriceId?` over the wire |
 | 9 | `FulfilmentService.cs:50` | Pack lookup `p.PaddleProductId == item.ProductId` |
-| 10 | `Store.Web/src/lib/paddle.ts`, `pages/pack/[id].tsx` | Frontend Paddle.js checkout | <!-- doc-lint-ok: the Paddle frontend this spec migrated off; removed from the repo -->
+| 10 | `Store.Web/src/lib/paddle.ts`, `pages/pack/[id].tsx` | Frontend Paddle.js checkout |
 
 **Difficulty: MEDIUM-LOW.** Items 1–3 are one provider class. Items 5–9 are a rename + one nullable
 column (`PaymentProvider`). Item 4 is a Python interface + one Stripe client. Item 10 is the only
@@ -147,11 +147,11 @@ our store is a single Minimal-API app and must stay that way.
 **TAKE (port the logic into `Store.Api/Payments/`, rewired to call our `FulfilmentService` directly):**
 | haworks-platform source | → our use | Adapt |
 |---|---|---|
-| `Payments.Infrastructure/Stripe/StripeCheckoutSessionService.cs` | `StripeProvider.CreateCheckoutAsync` / `CreateProductAsync` | keep Stripe API calls; drop MassTransit event-driven invocation | <!-- doc-lint-ok: source file in the haworks-platform repo, per the manifest heading above -->
-| `Payments.Infrastructure/Stripe/StripeWebhookProcessor.cs` | `StripeProvider.VerifyAndParseAsync` (handle `checkout.session.completed` → our `PaymentTransaction`) | strip the `checkout.session.expired`/`subscription.*`/`invoice.*` branches we don't need | <!-- doc-lint-ok: source file in the haworks-platform repo, per the manifest heading above -->
-| `Payments.Api/Controllers/WebhooksController.cs` (verify + ingest only) | our `/webhooks/stripe` route body | **DROP** the `PaymentWebhookValidatedEvent`→RabbitMQ outbox publish; call `FulfilmentService.FulfilAsync` inline like our Paddle path does today | <!-- doc-lint-ok: source file in the haworks-platform repo, per the manifest heading above -->
-| `Payments.Infrastructure/Webhooks/WebhookIdempotencyGuard.cs` | per-`(provider,eventId)` dedup | back it with our `SalesAudit` unique index instead of its DB table if simpler | <!-- doc-lint-ok: source file in the haworks-platform repo, per the manifest heading above -->
-| `Payments.Application/Common/IdempotencyKeyGenerator.cs` | `sha256(provider:eventId)` deterministic id | take verbatim | <!-- doc-lint-ok: source file in the haworks-platform repo, per the manifest heading above -->
+| `Payments.Infrastructure/Stripe/StripeCheckoutSessionService.cs` | `StripeProvider.CreateCheckoutAsync` / `CreateProductAsync` | keep Stripe API calls; drop MassTransit event-driven invocation |
+| `Payments.Infrastructure/Stripe/StripeWebhookProcessor.cs` | `StripeProvider.VerifyAndParseAsync` (handle `checkout.session.completed` → our `PaymentTransaction`) | strip the `checkout.session.expired`/`subscription.*`/`invoice.*` branches we don't need |
+| `Payments.Api/Controllers/WebhooksController.cs` (verify + ingest only) | our `/webhooks/stripe` route body | **DROP** the `PaymentWebhookValidatedEvent`→RabbitMQ outbox publish; call `FulfilmentService.FulfilAsync` inline like our Paddle path does today |
+| `Payments.Infrastructure/Webhooks/WebhookIdempotencyGuard.cs` | per-`(provider,eventId)` dedup | back it with our `SalesAudit` unique index instead of its DB table if simpler |
+| `Payments.Application/Common/IdempotencyKeyGenerator.cs` | `sha256(provider:eventId)` deterministic id | take verbatim |
 | `StripeRefundService.cs` (optional, P-later) | refund support | optional; not needed for v1 launch |
 
 **DROP entirely (do NOT bring into our store):** MassTransit consumers/sagas (`PaymentSessionRequestedConsumer`,
@@ -301,7 +301,7 @@ class StripeProvisioner(ProductProvisioner):       # Stripe Product + Price API 
 
 ## 7. Frontend (`Store.Web`)
 
-- Today: Paddle.js overlay (`lib/paddle.ts`, `pages/pack/[id].tsx`). <!-- doc-lint-ok: the Paddle frontend this spec migrated off; removed from the repo -->
+- Today: Paddle.js overlay (`lib/paddle.ts`, `pages/pack/[id].tsx`).
 - Add `lib/stripe.ts` + a `redirectToCheckout(provider, packId)` that, for Stripe, calls a new
   `POST /packs/{id}/checkout` → `CreateCheckoutAsync` → 302 to the Stripe-hosted Checkout page.
 - The pack page picks the provider from the pack's `PaymentProvider` field. Keep Paddle path intact.

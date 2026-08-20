@@ -89,7 +89,7 @@ alarm. Half the interval only catches a job about to suppress its own next run.
 
 So there is a second bar, from 2026-08-17: **three times the median of that job's own recent
 clean runs** (`launchd_receipt.py::_history_budget`, and the same function with the same
-numbers in `~/.hermes/hermes-agent/cron/scheduler.py`, so one audit reads both ledgers). <!-- doc-lint-ok: the Hermes estate is a separate repo on this box, so the path cannot resolve here --> The tighter of the two
+numbers in `cron/scheduler.py`, so one audit reads both ledgers). The tighter of the two
 bars wins, and the receipt records which one under `budget_basis`. Median, not mean, so one
 outlier cannot raise the bar it exists to trip. Clean runs only, because a run that crashed
 early is fast for the wrong reason. Under five samples there is no budget at all — we do not

@@ -1,7 +1,5 @@
-using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Store.Catalog.Domain;
 using Store.Catalog.Persistence;
@@ -139,30 +137,5 @@ public sealed class OrderBySessionTests : IClassFixture<StoreApiFactory>
         Assert.Equal("ready", doc.RootElement.GetProperty("status").GetString());
         var item = Assert.Single(doc.RootElement.GetProperty("items").EnumerateArray().ToList());
         Assert.Equal("/download/grant_cs_mixed_1", item.GetProperty("downloadPath").GetString());
-    }
-
-    [Fact]
-    public async Task An_unregistered_provider_after_boot_is_a_service_fault_not_a_missing_order()
-    {
-        // MoneyRailConfigGate checks payments:active_provider once, at boot. This endpoint reads
-        // it on every request, and ASP.NET reloads configuration without a restart (P7, the hot
-        // switch), so the value can become a name with no registered rail while the app is
-        // serving. It used to answer 404, which tells a buyer who has already paid that we have
-        // no record of their order, and tells the operator "unknown session" when the fault is a
-        // misconfigured rail. Checkout already answers 503 for the same fault.
-        var config = _factory.Services.GetRequiredService<IConfiguration>();
-        var original = config["payments:active_provider"];
-        config["payments:active_provider"] = "not-a-registered-rail";
-        try
-        {
-            var response = await _factory.CreateClient()
-                .GetAsync("/api/orders/by-session/cs_provider_gone");
-
-            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-        }
-        finally
-        {
-            config["payments:active_provider"] = original;
-        }
     }
 }

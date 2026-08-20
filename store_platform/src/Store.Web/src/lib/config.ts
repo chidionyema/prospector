@@ -117,7 +117,7 @@ export const LEGAL = {
   // only operator-supplied legal facts left). `legalName` defaults to the operating entity.
   // Confirmed by the founder 2026-08-16 against Companies House: BYTESYNC LTD, company number
   // 17182157, incorporated 27 April 2026, status active. Five dissolved companies share the name,
-  // which is why the number is recorded here and not just the name. The name alone does not
+  // which is why the number is recorded here and not just the name — the name alone does not
   // identify the trader.
   legalName: 'ByteSync Ltd',
   companyNumber: '17182157',

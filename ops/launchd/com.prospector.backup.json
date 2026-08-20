@@ -1,18 +1,17 @@
 {
   "EnvironmentVariables": {
     "HOME": "/Users/chidionyema",
-    "PATH": "/Users/chidionyema/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
-    "PROSPECTOR_STORE_DIR": "/Users/chidionyema/Documents/code/prospector/store"
+    "PATH": "/Users/chidionyema/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
   },
   "Label": "com.prospector.backup",
   "ProgramArguments": [
-    "/Users/chidionyema/Documents/code/prospector-live/.venv/bin/python",
+    "/Users/chidionyema/Documents/code/prospector/.venv/bin/python",
     "/Users/chidionyema/.hermes/scripts/launchd_receipt.py",
     "--label",
     "com.prospector.backup",
     "--",
-    "/Users/chidionyema/Documents/code/prospector-live/.venv/bin/python",
-    "/Users/chidionyema/Documents/code/prospector-live/scripts/backup_store.py"
+    "/Users/chidionyema/Documents/code/prospector/.venv/bin/python",
+    "/Users/chidionyema/Documents/code/prospector/scripts/backup_store.py"
   ],
   "StandardErrorPath": "/Users/chidionyema/Documents/code/prospector/store/backup.log",
   "StandardOutPath": "/Users/chidionyema/Documents/code/prospector/store/backup.log",
@@ -20,5 +19,5 @@
     "Hour": 3,
     "Minute": 40
   },
-  "WorkingDirectory": "/Users/chidionyema/Documents/code/prospector-live"
+  "WorkingDirectory": "/Users/chidionyema/Documents/code/prospector"
 }

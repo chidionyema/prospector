@@ -27,6 +27,7 @@ export default function Confirm({
   renderPreview,
   onApplied,
   applyLabel = 'Yes, do it',
+  requireAck,
 }: {
   action: string;
   /** Built fresh on each click by the caller, so it always reflects the current form state. */
@@ -37,8 +38,16 @@ export default function Confirm({
   renderPreview: (data: Record<string, unknown>) => React.ReactNode;
   onApplied?: (receipt: Record<string, unknown>) => void;
   applyLabel?: string;
+  /**
+   * A second, explicit acknowledgement for the cases where the preview reveals the write is
+   * destructive. Return the sentence the operator must tick; return null and the apply button
+   * behaves normally. It exists because "preview then apply" is one gate for every write, and
+   * resending an already-delivered link erases the record that the first email went out.
+   */
+  requireAck?: (preview: Record<string, unknown>) => string | null;
 }) {
   const [stage, setStage] = useState<Stage>('idle');
+  const [acked, setAcked] = useState(false);
   const [preview, setPreview] = useState<Record<string, unknown> | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [sent, setSent] = useState<Record<string, unknown> | null>(null);
@@ -46,6 +55,7 @@ export default function Confirm({
   const [error, setError] = useState<string | null>(null);
 
   function reset() {
+    setAcked(false);
     setStage('idle');
     setPreview(null);
     setToken(null);
@@ -128,15 +138,31 @@ export default function Confirm({
   }
 
   if (stage === 'confirm' || stage === 'applying') {
+    const ack = preview && requireAck ? requireAck(preview) : null;
     return (
       <div className="flex flex-col gap-3 rounded-sm border border-warn/50 bg-warn-bg px-3 py-3">
         <div className="text-[13px] font-[560] text-warn-strong">
           Read this, then confirm. Nothing has been written yet.
         </div>
         <div className="text-[13px] text-text">{preview ? renderPreview(preview) : null}</div>
+        {ack ? (
+          <label className="tap flex items-start gap-2 rounded-sm border border-bad/50 bg-bad-bg px-3 py-2 text-[13px] text-bad-strong">
+            <input
+              type="checkbox"
+              checked={acked}
+              onChange={(e) => setAcked(e.target.checked)}
+              className="mt-1"
+            />
+            <span className="wrap-any">{ack}</span>
+          </label>
+        ) : null}
         {error ? <Problem>{error}</Problem> : null}
         <div className="flex flex-wrap gap-2">
-          <Button kind={kind === 'plain' ? 'primary' : kind} onClick={doApply} disabled={stage === 'applying' || !token}>
+          <Button
+            kind={kind === 'plain' ? 'primary' : kind}
+            onClick={doApply}
+            disabled={stage === 'applying' || !token || (ack !== null && !acked)}
+          >
             {stage === 'applying' ? 'writing…' : applyLabel}
           </Button>
           <Button onClick={reset} disabled={stage === 'applying'}>

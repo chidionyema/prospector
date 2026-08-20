@@ -17,7 +17,7 @@ import { ABSENT } from '@/lib/time';
 import { useOps } from '@/lib/useOps';
 
 type Rail = {
-  state: 'live' | 'test' | 'never-ran' | 'unreachable';
+  state: 'live' | 'test' | 'never-ran' | 'not-applicable' | 'unreachable';
   mode: string | null;
   provider: string | null;
   environment: string | null;
@@ -40,6 +40,7 @@ const RAIL_TONE: Record<Rail['state'], 'ok' | 'warn' | 'bad'> = {
   live: 'ok',
   test: 'bad',
   'never-ran': 'bad',
+  'not-applicable': 'warn',
   unreachable: 'warn',
 };
 
@@ -47,6 +48,7 @@ const RAIL_WORDS: Record<Rail['state'], string> = {
   live: 'Live keys. A checkout charges a real card.',
   test: 'Test keys. Every checkout completes and no card is charged.',
   'never-ran': 'The startup gate recorded no decision, so nothing checked the rail.',
+  'not-applicable': 'The active provider is not Stripe, so the live/test check does not apply.',
   unreachable: 'The API did not answer. This is a failed measurement, not a healthy rail.',
 };
 

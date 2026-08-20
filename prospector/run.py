@@ -659,8 +659,217 @@ def _shelf_copy_breaches(cand, marketing, cfg) -> list[str]:
         "subhead": _cap_words(_card_field(listing.get("subhead")), 280),
     }
     assert set(fields) == set(_MARKETING_SHELF_FIELDS)
-    return [pb["detail"] for pb in check_shelf_copy(fields, block=True)
-            if pb.get("severity") == "error"]
+
+    # THE TITLE IS PASSED IN AND NEVER GRADED, and both halves of that matter.
+    #
+    # Passed in, because two shelf rules read the whole page rather than one field: a term
+    # the title spells out is introduced by the time the card line uses it, and a line that
+    # repeats the title is the repeat. Grading the card line without the title in front of it
+    # is a DIFFERENT bar from the one `bridge.py` applies at publish, and a generator that
+    # refuses copy the gate would accept burns three attempts plus an escalation to the
+    # expensive chain to arrive at the same pack.
+    #
+    # Never graded, for the reason `_MARKETING_SHELF_FIELDS` exists: the title comes off the
+    # Candidate, so no marketing rewrite can fix it, and looping over it is spend with no
+    # buyer-visible change. Filtering on `where` is what keeps the two facts independent —
+    # the context can widen without the actuator widening with it.
+    graded = dict(fields)
+    graded["title"] = _card_field(getattr(cand, "title", "") or "")
+    return [pb["detail"] for pb in check_shelf_copy(graded, block=True)
+            if pb.get("severity") == "error"
+            and pb.get("where") in _MARKETING_SHELF_FIELDS]
+
+
+#: How many times the title repair asks for a clean title before leaving the one the
+#: candidate came with. Two, not three: this is one field on a candidate that has already
+#: passed, and a chain that cannot write 60 clean characters twice will not write them on a
+#: third go either.
+_MAX_TITLE_REPAIR_ATTEMPTS = 2
+
+
+#: A one-liner longer than this is CUT by `bridge.py:878` when the catalogue row is written,
+#: and a cut line ends in `…`, which `check_shelf_copy` then refuses as "trails off on the
+#: shelf". The engine was manufacturing the defect it goes on to reject: 9 of the 21 stranded
+#: `oneLine` packs fail on exactly that. Repairing the line before the cut is what stops it.
+_ONE_LINER_CUT_AT = 280
+
+
+def _repair_title(cand, cfg, *, op) -> list[str]:
+    """Rewrite `cand.title` in place when it breaches the rule the publish gate enforces.
+
+    THE TITLE AND THE ONE-LINER ARE THE SHELF LINES NO RETRY CAN FIX. `_MARKETING_SHELF_FIELDS`
+    excludes both on purpose: they come off the Candidate, so regenerating the pack's copy
+    three times cannot change them, and grading them inside that loop would escalate to the
+    expensive chain over lines no regeneration touches. The consequence was that a breach was
+    found only at the publish gate, after a ~7,700-word pack had been generated, vetted and
+    paid for — and the pack then sat unsellable, because nothing downstream repairs either
+    line. Measured 2026-08-17 against the live catalogue: `title` blocked 20 stranded passes,
+    all 20 made in the previous three days, and `oneLine` blocked 21, 9 of them made in the
+    previous two. Between them they are the biggest live defect on the shelf, and every one of
+    those packs was already finished when it was caught.
+
+    So both are repaired ONCE, here, before anything is built on them, by the same code that
+    repairs the LIVE shelf after the fact: `prompts/retitle.md` + `check_title` for the title
+    (as `tools/retitle_catalogue.py` does) and `shelf_copy_repair.rewrite_one` for the
+    one-liner (as `tools/sweep_shelf_copy.py` does). Same prompts, same bars, moved upstream of
+    the spend they were previously discovered downstream of.
+
+    Three properties, in the order they matter:
+
+    - **It costs nothing when the lines are clean.** No breach, no call. Once generation obeys
+      its own contract (`prompts/generate_system.md:130`) this function is free.
+    - **It can only improve.** A proposal is accepted only when the gate's own checker passes
+      it, so a bad rewrite leaves the candidate the line it had. A dead operator does the same.
+    - **`candidate_id` is deliberately not recomputed.** It is already the catalogue row's
+      identity and the dossier filename; rehashing it here would fork the pack.
+
+    Returns the audit trail (empty when nothing needed repairing).
+    """
+    from .pack_linter import TITLE_MAX_CHARS, check_title
+    from .prompts import render
+
+    def _breaches(title: str) -> list[str]:
+        return [p["detail"] for p in check_title(title, max_chars=TITLE_MAX_CHARS)
+                if p.get("severity") == "error"]
+
+    problems = _breaches(cand.title or "")
+    if not problems:
+        return []
+
+    trail = [f"title breaches: {'; '.join(problems)}"]
+    feedback = ""
+    for attempt in range(1, _MAX_TITLE_REPAIR_ATTEMPTS + 1):
+        try:
+            system, user = render(
+                "retitle",
+                current_title=cand.title or "",
+                one_line=cand.one_liner or "",
+                # Neither line exists yet — that is the whole point of running here. The
+                # prompt reads them as context for the trade, so "(none)" is honest input
+                # rather than a placeholder it might echo.
+                headline="(none)",
+                card_line="(none)",
+                who_pays=cand.who_pays or "",
+                sector=str((cand.tags or {}).get("sector") or ""),
+                market=cand.market or "",
+                max_chars=TITLE_MAX_CHARS,
+                feedback=feedback,
+            )
+            data = op.complete_json(system, user, temperature=0.6 if attempt == 1 else 0.2)
+        except Exception as e:  # noqa: BLE001 — a title repair must never lose a PASS
+            # swallow-ok: best effort by contract. The candidate keeps its own title and the
+            # pack is still built; the publish gate remains the backstop it has always been.
+            logger.error("Title repair for %s failed on attempt %d: %s",
+                         cand.candidate_id, attempt, e,
+                         extra={"candidate_id": cand.candidate_id, "attempt": attempt,
+                                "error": str(e), "title_repair_failed": True})
+            trail.append(f"attempt {attempt}: call failed — {e}")
+            return trail
+
+        proposed = " ".join(str((data or {}).get("title") or "").split()).rstrip(".").strip()
+        if not proposed:
+            trail.append(f"attempt {attempt}: no title returned")
+            feedback = "Your output was not a JSON object with a 'title'. Output only that."
+            continue
+
+        still = _breaches(proposed)
+        if not still:
+            trail.append(f"attempt {attempt}: accepted ({len(proposed)} chars)")
+            logger.warning(
+                "Repaired the title of %s before building its pack: %r -> %r (%s)",
+                cand.candidate_id, cand.title, proposed, "; ".join(problems),
+                extra={"candidate_id": cand.candidate_id, "old_title": cand.title,
+                       "new_title": proposed, "title_breaches": problems,
+                       "title_repaired": True})
+            cand.title = proposed
+            return trail
+
+        trail.append(f"attempt {attempt}: rejected — {'; '.join(still)}")
+        # Verbatim, counts included: a vague "too long" gets a draft one character shorter.
+        feedback = ("Your previous answer was REJECTED for these reasons:\n"
+                    + "\n".join(f"  - {b}" for b in still)
+                    + "\nRewrite it. Do not truncate; say a shorter true thing.")
+
+    logger.warning(
+        "Could not repair the title of %s in %d attempt(s) — building the pack on its own "
+        "title, which the publish gate will refuse: %s",
+        cand.candidate_id, _MAX_TITLE_REPAIR_ATTEMPTS, "; ".join(problems),
+        extra={"candidate_id": cand.candidate_id, "title_breaches": problems,
+               "title_repair_exhausted": True})
+    return trail
+
+
+def _repair_one_liner(cand, cfg, *, op) -> list[str]:
+    """Rewrite `cand.one_liner` in place when the shelf would refuse it, or cut it.
+
+    Two triggers, and the second is the engine refusing its own handiwork:
+
+    - **Voice.** `shelf_copy_repair.voice_breaches` — second person, or an opener on a bare
+      pronoun. Deliberately the founder's two only: an unexplained initialism is reported and
+      left, because asking a cheap brain to expand `BS 4142` while it rewords is how a rewrite
+      invents a fact on a source-or-die storefront.
+    - **Length.** A line over `_ONE_LINER_CUT_AT` is cut by `bridge.py:878` and the cut ends in
+      `…`, which `check_shelf_copy` then refuses as "trails off on the shelf". Nine of the 21
+      stranded `oneLine` packs fail on exactly that, so the engine was manufacturing the defect
+      it goes on to reject. Repaired here the line is short enough that no cut happens.
+
+    `rewrite_one` is the sweep's own function, so a rewrite is re-graded before it is accepted
+    AND refused if it introduces a proper noun or figure the original did not have. A refusal
+    leaves the candidate the line it had, which is why this is safe to run unattended.
+    """
+    from .shelf_copy_repair import voice_breaches
+
+    line = (cand.one_liner or "").strip()
+    if not line:
+        return []
+    why = voice_breaches(line)
+    if len(line) > _ONE_LINER_CUT_AT:
+        why = why + [f"{len(line)} chars — over the {_ONE_LINER_CUT_AT} the catalogue cuts at, "
+                     f"and a cut line trails off on the shelf"]
+    if not why:
+        return []
+
+    try:
+        from .shelf_copy_repair import rewrite_one
+        new = rewrite_one(op, cand.title or "", line)
+    except Exception as e:  # noqa: BLE001 — a copy repair must never lose a PASS
+        # swallow-ok: best effort by contract. The candidate keeps its own line and the pack
+        # is still built; the publish gate remains the backstop it has always been.
+        logger.error("One-liner repair for %s failed: %s", cand.candidate_id, e,
+                     extra={"candidate_id": cand.candidate_id, "error": str(e),
+                            "one_liner_repair_failed": True})
+        return [f"one-liner breaches: {'; '.join(why)}", f"call failed — {e}"]
+
+    trail = [f"one-liner breaches: {'; '.join(why)}"]
+    # Length is checked again on the REWRITE. `rewrite_one` re-grades voice and guards facts;
+    # it does not know about the catalogue's cut, so a faithful but still-long rewrite would
+    # trade one defect for the other.
+    if not new or len(new) > _ONE_LINER_CUT_AT:
+        trail.append("rejected — kept the candidate's own line")
+        logger.warning(
+            "Could not repair the one-liner of %s — building the pack on its own line, which "
+            "the publish gate will refuse: %s", cand.candidate_id, "; ".join(why),
+            extra={"candidate_id": cand.candidate_id, "one_liner_breaches": why,
+                   "one_liner_repair_exhausted": True})
+        return trail
+
+    logger.warning(
+        "Repaired the one-liner of %s before building its pack: %r -> %r (%s)",
+        cand.candidate_id, line, new, "; ".join(why),
+        extra={"candidate_id": cand.candidate_id, "old_one_liner": line, "new_one_liner": new,
+               "one_liner_breaches": why, "one_liner_repaired": True})
+    cand.one_liner = new
+    trail.append(f"accepted ({len(new)} chars)")
+    return trail
+
+
+def _repair_shelf_lines(cand, cfg, *, op) -> list[str]:
+    """Both Candidate-sourced shelf lines, repaired before anything is built on them.
+
+    The title first, because `rewrite_one` is given the title as context for the trade and a
+    breached title is poor context. Neither half can raise and neither can make a line worse.
+    """
+    return _repair_title(cand, cfg, op=op) + _repair_one_liner(cand, cfg, op=op)
 
 
 def _generate_pack_content(op, cand, checks, *, query_op, quality_op, cfg, score,
@@ -734,6 +943,11 @@ def _generate_pack_content(op, cand, checks, *, query_op, quality_op, cfg, score
     if vet_deadline_mono is not None:
         _art_deadline = (min(_art_deadline, vet_deadline_mono)
                          if _art_deadline is not None else vet_deadline_mono)
+
+    # BEFORE anything is built on it, and outside the attempt loop on purpose: this is one
+    # field on a candidate that already passed, not a retry of the pack. See
+    # `_repair_shelf_lines`.
+    _repair_shelf_lines(cand, cfg, op=(marketing_op or quality_op))
 
     artifacts: dict = {}
     marketing: list = []
@@ -1074,7 +1288,6 @@ def vet_candidate(
 
     from . import progress
     from .audit import audit
-    from .audit import run_id as _run_id
 
     # SUB-TICK PROGRESS (R5): the boundary rows. Per-check rows alone cannot say whether a
     # candidate is still being worked or was abandoned, so a reader would call a crashed vet
@@ -1087,17 +1300,6 @@ def vet_candidate(
     # larger diff than the case warrants. A start with no done is instead resolved by the
     # READER, which must handle it regardless — a SIGKILLed daemon can never emit its own
     # `candidate_done`, so staleness has to be the reader's rule, not the writer's promise.
-    # THE AUDIT ROW IS NOT A RECORD OF THE WORK. It names the candidate; it does not hold it.
-    # A process killed here left no dossier and no index row, so the candidate itself ceased to
-    # exist — measured 2026-08-17: 10 of 12 candidates abandoned by two daemon restarts had no
-    # record anywhere in `store/`. `inflight` keeps the candidate on disk for exactly as long as
-    # this vet owns it, so `vet --resume` can pick it up when this process dies.
-    if store is not None:
-        from . import inflight as _inflight
-
-        _inflight.open_(store.root, cand, run_id=_run_id(), label=label or "",
-                        full_vet=bool(full_vet))
-
     audit("candidate_start",
           candidate_id=cand.candidate_id,
           title=(cand.title or "")[:120],
@@ -1284,11 +1486,6 @@ def vet_candidate(
           # is the `score_failed` distinction models.py:336 exists to preserve.
           **({} if _sc is None or getattr(_sc, "score_failed", False)
              else {"composite": round(float(_sc.composite or 0.0), 3)}))
-    # The verdict is on disk, so this candidate is no longer work anyone has to recover.
-    if store is not None:
-        from . import inflight as _inflight
-
-        _inflight.close(store.root, cand.candidate_id)
     return dossier
 
 
@@ -2379,118 +2576,6 @@ def _with_exclusions(summary: dict, survey: DrainSurvey) -> dict:
     return summary
 
 
-def _recover_orphans(args: argparse.Namespace, cfg: Config, op: Operator,
-                     fast_op: Operator, search: SearchProvider, store: Store,
-                     deadline_mono: Optional[float] = None,
-                     artifact_time_budget_s: Optional[float] = None) -> dict:
-    """Re-vet candidates whose vetting process died. This is how the engine heals itself.
-
-    THE FAILURE THIS UNDOES. `vet_candidate` persists on its single return path, so a process
-    killed mid-vet wrote no dossier and no index row: the candidate stopped existing. Measured
-    2026-08-17 on the live store over four audit day-files — 12 candidates had a `candidate_start`
-    and no `candidate_done` from a dead process, and 10 of the 12 had NO index row and NO dossier.
-    `run.drainable()` works from index rows, so the ordinary drain could never see them. They were
-    not backlogged; they were gone.
-
-    THE LOOP. `inflight.open_` writes the candidate to disk before the vet begins and
-    `inflight.close` removes it once a verdict exists, so a leftover record means exactly one
-    thing: the process that owned it died. Every `vet --resume` — the CLI one and the daemon's
-    own per-tick drain (`scheduler/run_scheduled.py`) — starts here, so recovery happens on the
-    engine's normal cadence with no operator action and no new schedule.
-
-    TWO OUTCOMES, BOTH SELF-CORRECTING. A record whose candidate is already in the store means
-    the process died in the gap between `store.save` and `inflight.close`: the verdict exists, so
-    the record is dropped and nothing is paid twice. Everything else is re-vetted, which writes
-    the dossier and the index row the dead process never got to write.
-
-    Bounded by the same `--limit` as the drain, and refused entirely when the moat is blind, for
-    the same reason the drain is: a re-vet with no brain to rule only spends money to write DEFER.
-    """
-    from . import inflight, progress
-    from .health import moat_blind_reason
-
-    try:
-        pending = inflight.orphans(store.root)
-    except Exception as exc:  # noqa: BLE001 — recovery must never be what breaks a drain
-        logger.warning("could not survey in-flight work", extra={"error": f"{exc}"})
-        return {"orphans": None, "orphans_null_reason": f"in-flight survey failed: {exc}"}
-    if not pending:
-        return {}
-
-    # SETTLED FIRST, AND IT IS FREE. Membership is one index read; re-vetting a candidate that
-    # already has a verdict on disk would be the expensive way to learn nothing.
-    known = {str(r.get("candidate_id") or "") for r in store.all()}
-    settled, todo = 0, []
-    for rec in pending:
-        cid = str(rec.get("candidate_id") or "")
-        if not cid:
-            continue
-        if cid in known or store.has_dossier(cid):
-            inflight.close(store.root, cid)
-            settled += 1
-        else:
-            todo.append(rec)
-
-    out: dict = {"orphans": len(pending), "settled": settled, "recovered": 0,
-                 "unrecoverable": 0}
-    if not todo:
-        if settled:
-            print(f"Cleared {settled} in-flight record(s) whose verdict was already on disk.")
-        return out
-
-    blind = moat_blind_reason(cfg)
-    if blind:
-        print(f"{len(todo)} candidate(s) were abandoned by a dead process, but {blind}. "
-              f"Leaving them for the next pass — they are on disk and cannot be lost again.")
-        out["skipped"] = blind
-        return out
-
-    limit = getattr(args, "limit", None)
-    if limit is not None and limit <= 0:
-        out["skipped"] = f"limit={limit} disables this pass"
-        return out
-    if limit is not None:
-        todo = todo[:limit]
-
-    owner = f"{os.getpid()}:{uuid.uuid4().hex[:8]}"
-    print(f"Recovering {len(todo)} candidate(s) abandoned by a process that died mid-vet"
-          + (f" ({settled} more already had a verdict on disk)." if settled else "."))
-    for i, rec in enumerate(todo, 1):
-        cid = str(rec.get("candidate_id") or "")
-        cand = inflight.candidate_of(rec)
-        if cand is None:
-            # The record cannot rebuild its candidate, so nothing can vet it. Count it and leave
-            # the file alone: deleting it would destroy the only remaining trace of the idea.
-            out["unrecoverable"] += 1
-            continue
-        if not inflight.claim(store.root, cid, owner):
-            continue  # another drain is already recovering it
-        try:
-            progress.banner(f"[recover {i}/{len(todo)}] {cand.title!r} "
-                            f"({rec.get('why', 'its process is gone')})")
-            _for_lane = getattr(cfg, "for_lane", None)
-            vet_cfg = _for_lane(cand.ambition_tier) if callable(_for_lane) else cfg
-            vet_candidate(cand, op, search, vet_cfg, store=store, query_op=fast_op,
-                          publish=getattr(args, "publish", False), show_checks=True,
-                          board_personas=_resolve_board(args),
-                          artifact_time_budget_s=artifact_time_budget_s,
-                          vet_deadline_mono=deadline_mono)
-            out["recovered"] += 1
-        except ProviderExhaustedError:
-            # The moat went down DURING recovery. The record is still on disk, so the next pass
-            # picks this candidate up again. Stop rather than burn the rest on a dead brain —
-            # the same rule the drain follows.
-            out["skipped"] = "the moat went blind during recovery"
-            break
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("could not recover abandoned candidate",
-                           extra={"candidate_id": cid, "error": f"{exc}"})
-            out["unrecoverable"] += 1
-        finally:
-            inflight.release_claim(store.root, cid)
-    return out
-
-
 def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
                 fast_op: Operator, search: SearchProvider, store: Store,
                 log_path: Optional[Path] = None,
@@ -2522,14 +2607,6 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
               file=sys.stderr)
         sys.exit(2)
 
-    # SELF-HEAL BEFORE DRAINING. Work abandoned by a dead process is invisible to `drain_survey`
-    # — it has no index row to survey — so it can only be found through the in-flight ledger, and
-    # it has to be found FIRST: it is the population that is losing money right now, and it is
-    # bounded and small (12 in four days, measured 2026-08-17) where the ordinary backlog is not.
-    recovered = _recover_orphans(args, cfg, op, fast_op, search, store,
-                                 deadline_mono=deadline_mono,
-                                 artifact_time_budget_s=artifact_time_budget_s)
-
     max_att = drain_state.max_attempts(cfg)
     # An operator who NAMES the dead population gets it, whatever the config default says. The
     # exclusion exists to stop provisional KILLs silently eating the daemon's automatic bound;
@@ -2537,19 +2614,6 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     revet_dead = (drain_state.revet_provisional_kills(cfg)
                   or only in ("provisional", "provisional-kill"))
     survey = drain_survey(store, max_attempts=max_att, revet_provisional_kills=revet_dead)
-
-    def _done(summary: dict) -> dict:
-        """Every return from here carries the recovery result AND the exclusions.
-
-        Same rule as `_with_exclusions`, one cause over: this summary is what reaches
-        `ticks.jsonl` and the ops console, so a recovery that is not in here is a recovery no
-        operator will ever see — and the whole point of the ledger is that the loss becomes
-        visible.
-        """
-        if recovered:
-            summary["recovery"] = recovered
-        return _with_exclusions(summary, survey)
-
     pending = survey.workable
     backlog = len(pending)
     excluded = ""
@@ -2573,8 +2637,8 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
             print(f"No backlogged candidate the drain can work on.{excluded}")
         else:
             print("No deferred or provisional candidates to resume. Moat is healthy.")
-        return _done({"backlog": 0, "attempted": 0, "resumed": 0,
-                                 "passes": 0, "kills": 0, "defers": 0})
+        return _with_exclusions({"backlog": 0, "attempted": 0, "resumed": 0,
+                                 "passes": 0, "kills": 0, "defers": 0}, survey)
 
     # MOAT PREFLIGHT — never drain into a blind moat.
     #
@@ -2599,8 +2663,8 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
         print(f"Found {backlog} deferred + provisional candidate(s), but {blind}. "
               f"Re-vetting none — a drain into a blind moat only relabels rows "
               f"provisional->defer, and its own CLI load helps keep the brain benched.")
-        return _done({"backlog": backlog, "attempted": 0, "resumed": 0,
-                                 "passes": 0, "kills": 0, "defers": 0, "skipped": blind})
+        return _with_exclusions({"backlog": backlog, "attempted": 0, "resumed": 0,
+                                 "passes": 0, "kills": 0, "defers": 0, "skipped": blind}, survey)
 
     # Restrict to one population BEFORE the priority sort and the `--limit` slice, so the
     # bound is spent on the rows the operator asked for. `backlog` keeps counting the whole
@@ -2612,8 +2676,8 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
         if not pending:
             print(f"Found {backlog} deferred + provisional candidate(s), but none match "
                   f"--only {only}. Nothing to re-vet.{excluded}")
-            return _done({"backlog": backlog, "attempted": 0, "resumed": 0,
-                                     "passes": 0, "kills": 0, "defers": 0})
+            return _with_exclusions({"backlog": backlog, "attempted": 0, "resumed": 0,
+                                     "passes": 0, "kills": 0, "defers": 0}, survey)
 
     limit = getattr(args, "limit", None)
     if limit is not None and limit <= 0:
@@ -2628,8 +2692,8 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
         # unbounded, which is what `vet --resume` has always done.
         print(f"Found {backlog} deferred + provisional candidate(s); limit={limit} "
               f"disables the drain — re-vetting none.{excluded}")
-        return _done({"backlog": backlog, "attempted": 0, "resumed": 0,
-                                 "passes": 0, "kills": 0, "defers": 0})
+        return _with_exclusions({"backlog": backlog, "attempted": 0, "resumed": 0,
+                                 "passes": 0, "kills": 0, "defers": 0}, survey)
     # HIGHEST-VALUE POPULATION FIRST, then oldest first within it (`_drain_rank`).
     #
     # Age alone was the whole sort key until 2026-08-06, and on this backlog it inverted the
@@ -3017,31 +3081,7 @@ def _cmd_resume(args: argparse.Namespace, cfg: Config, op: Operator,
     # budget is visible in ticks.jsonl and the state probe instead of showing up as an
     # inexplicable `attempted: 3, resumed: 0` — or, once the brake is engaged, as a generation
     # freeze with nothing anywhere naming the rows that are holding it.
-    return _done(summary)
-
-
-def recover_abandoned(cfg: Config, *, limit: int | None = None,
-                      publish: bool = False) -> dict:
-    """Re-vet work abandoned by a process that died mid-vet, WITHOUT running the ordinary drain.
-
-    WHY THIS IS A SEPARATE ENTRY POINT. `_cmd_resume` already recovers first, so `vet --resume`
-    heals on its own. The daemon does not always reach it: `_drain_pass` returns early on
-    `if not n_resume` (`scheduler/run_scheduled.py:793`), so `schedule.resume_per_tick: 0` — the
-    documented way to switch the drain off — would also switch off recovery. That is the exact
-    coupling the drain was pulled out of `_default_generate` on 2026-08-06 to break: one decision
-    about the treadmill silently disabling the mechanism that pays the loss back.
-
-    Recovery is not draining. Abandoned work has no index row, so no backlog policy is about it.
-    """
-    from .operator import make_operator
-    from .telemetry import reset_usage
-
-    reset_usage()
-    args = argparse.Namespace(limit=limit, publish=publish, board=None,
-                              fixtures=None, search=None)
-    store = Store(cfg)
-    return _recover_orphans(args, cfg, make_operator(cfg), make_operator(cfg, fast=True),
-                            _make_search(cfg, args), store)
+    return _with_exclusions(summary, survey)
 
 
 def resume_deferred(cfg: Config, *, limit: int | None = None,
