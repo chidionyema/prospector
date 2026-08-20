@@ -14,7 +14,7 @@ that is not a file we can copy**.
 > founder said *"i dont have a wwhole stack or architectuure or platfon plan. i dont knoww what th
 > eplatfornwill look like when we are done"* and *"we qre just stuck and nocler guidanc"*.
 > **§10 is the target platform** — ten planes, one contract each, and what "done" looks like in a
-> paragraph. **§11 is the requirements register** — 38 functional and 14 non-functional
+> paragraph. **§11 is the requirements register** — 39 functional and 14 non-functional
 > requirements, each with the drill that proves it and the deliverable that builds it. §0–§9 grade
 > what is broken; §10–§11 say what we are building. When they disagree, §10 and §11 win.
 > **§12 answers how much of this can sensibly move to Kubernetes, and §13 names the final
@@ -1204,6 +1204,7 @@ Append here. One line per shipped item, with the receipt.
 | 2026-08-19 | M4 (part) | `verify:` has no default — a source that states no kind, or an unknown kind, is refused when the declaration is read | `29 passed`; mutation-proved (`2 failed` with the default restored) |
 | 2026-08-20 | §10 | the target platform: ten planes, one contract each, and what done looks like | this document; counts re-measured from the tables, not asserted |
 | 2026-08-20 | §11 | the requirements register: 38 functional, 14 non-functional, each with its drill and deliverable | 3 proven, 11 built-never-run, 34 not started, 4 blocked |
+| 2026-08-20 | F-08a | new requirement: a copy is not a backup until it is proven complete against its SOURCE | `~/.prospector/standby/prospector.jsonl` measured at 25,296,896 bytes, 6.2% of the 407,981,598-byte source, and every truncating sync logged as a success. Register now 39 functional + 14 non-functional = 53; 3 / 11 / 35 / 4 |
 | 2026-08-20 | §12 | how much of the estate can sensibly move to k8s, plane by plane: 2 whole, 5 half, 3 not at all | adapter read at `deploy/targets/k8s.sh`; `docker-desktop` live in `kubectl config get-contexts` |
 | 2026-08-20 | §13 | the final tooling named — 7 decided, 4 proposed, 4 things deliberately not adopted | `command -v` sweep on this laptop: helm, sops, restic, rclone, ansible, kind, k3d absent |
 | 2026-08-20 | §10.4 | the k8s adapter question answered: nothing calls it, it has never run, and a free local cluster exists | `kubectl config get-contexts` → `docker-desktop` |
@@ -1429,6 +1430,7 @@ run, **○** not started, **⛔** blocked on a decision in §7.
 | F-06 | Every named datastore is backed up off-machine on a schedule, and a missed backup alerts | the weekly drill + a `backup_stale` alert key | D-P2.2 | 0 | ◐ |
 | F-07 | Every backup has been restored at least once into a scratch location, by a machine | restore drill, scheduled | D-P2.3 (M4) | 2 | ○ |
 | F-08 | State moves with compute inside the same cutover, to a stated RPO | cutover drill measures bytes and lag | D-P2.4 | 4 | ○ |
+| F-08a | **Every copy of a money file is proven COMPLETE against its source before it is allowed to replace the previous copy** — size equal to the source, and the format opened and read, never a byte count | the truncation drill: cut a transfer mid-file and require the copy to be refused | D-P2.5 | 0 | ○ |
 
 #### P3 Secrets — a first-class plane, at the founder's instruction
 
@@ -1524,8 +1526,10 @@ holds the requirement and the deliverable; the two are cross-linked and must not
 
 ### 11.4 Coverage — what this register makes visible
 
-Counting the rows above: **38 functional and 14 non-functional requirements. 3 are proven. 11 are
-built but never run. 34 are not started. 4 are blocked on a decision only you can make** (§7).
+Counting the rows above: **39 functional and 14 non-functional requirements — 53 in all. 3 are
+proven. 11 are built but never run. 35 are not started. 4 are blocked on a decision only you can
+make** (§7). Counted by command, never asserted:
+`sed -n '1414,1526p' docs/MIGRATION_AND_DR_PROGRAM.md | grep -cE '^\| F-'` and the same for `N-`.
 
 Three of those blocks stop whole planes rather than single deliverables, which is why they are the
 most valuable thing you can clear:
