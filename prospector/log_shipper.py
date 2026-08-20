@@ -150,7 +150,8 @@ class IngestHandler(logging.Handler):
         self._queue: deque[dict] = deque(maxlen=capacity)
         self._lock = threading.Lock()
         self._stop = threading.Event()
-        self.counters = {"queued": 0, "sent": 0, "dropped_full": 0, "failed_posts": 0}
+        self.counters = {"queued": 0, "sent": 0, "dropped_full": 0,
+                         "dropped_malformed": 0, "failed_posts": 0}
         self._thread: threading.Thread | None = None
 
     # -- producer side (the caller's thread) -------------------------------------
@@ -158,7 +159,17 @@ class IngestHandler(logging.Handler):
         try:
             line = to_line(record, self.svc)
         except Exception:
-            return  # a malformed record must never surface in the caller
+            # swallow-ok: a logging handler raising into its caller would take down code
+            # whose only mistake was to log a line, which `logging.Handler` forbids and
+            # which no return channel here could report anyway -- `logging` discards what
+            # emit() returns. So the failure is COUNTED instead of returned:
+            # `dropped_malformed` sits beside `dropped_full` in `counters`, the same shape
+            # `log_ingest` already uses, and `handleError` puts the traceback on stderr,
+            # which supervisord captures. A silent shipper and a working one now differ by
+            # a number someone can read.
+            self.counters["dropped_malformed"] += 1
+            self.handleError(record)
+            return
         with self._lock:
             if len(self._queue) == self._queue.maxlen:
                 self.counters["dropped_full"] += 1

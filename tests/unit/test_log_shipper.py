@@ -118,6 +118,34 @@ def test_emit_does_no_io():
     assert len(h._queue) == 1
 
 
+def test_a_record_emit_cannot_turn_into_a_line_is_counted_not_vanished():
+    """The waived swallow in `IngestHandler.emit` has to leave a number behind.
+
+    `logging` discards what emit() returns, so no failure flag can reach a caller and
+    raising would take down code whose only mistake was to log. That leaves exactly one
+    honest option: count it. This test is what stops the counter being tidied away, which
+    would put the site back in tier 1 of tools/audit_swallow_sites.py -- where it landed
+    main red on 2026-08-20.
+    """
+    h = log_shipper.IngestHandler("engine", url="http://x/y", key="k")
+    h.handleError = lambda record: None  # type: ignore[method-assign]
+
+    def unrenderable(record, svc):
+        raise RuntimeError("this record cannot be turned into a line")
+
+    monkey = log_shipper.to_line
+    log_shipper.to_line = unrenderable  # type: ignore[assignment]
+    try:
+        h.emit(record())          # must not raise into the caller
+    finally:
+        log_shipper.to_line = monkey  # type: ignore[assignment]
+
+    assert len(h._queue) == 0, "a record that could not be rendered must not be queued"
+    assert h.counters["dropped_malformed"] == 1, (
+        "the drop left no trace -- a silent shipper and a working one would read alike")
+    assert h.counters["queued"] == 0
+
+
 def test_a_dead_ingest_never_raises_and_is_counted():
     h = log_shipper.IngestHandler("engine", url="http://127.0.0.1:1/x", key="k", timeout=0.2)
     h.emit(record())
