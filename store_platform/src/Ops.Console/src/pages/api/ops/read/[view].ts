@@ -17,6 +17,7 @@ import { logConsoleEvent } from '@/lib/oplog';
 export const VIEWS = [
   'engine_location',
   'status',
+  'attention',
   'queue',
   'drain',
   'providers',

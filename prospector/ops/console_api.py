@@ -1763,6 +1763,19 @@ def _rollback_route(name: str) -> dict:
             "rollback_danger": None}
 
 
+def _read_attention(cfg, args: dict) -> dict:
+    """Which nav group has a problem, so the Shell can badge it.
+
+    Composed from `_read_status` and from nothing else, deliberately. The console had seven
+    groups and no signal above a screen, so "is anything wrong" cost up to seven navigations;
+    a badge with its OWN idea of trouble would have cost more than that, because it could go
+    green while the screen it points at went red.
+    """
+    from .attention import attention_view
+
+    return attention_view(_read_status(cfg, args))
+
+
 READS: dict[str, Callable[[Any, dict], Any]] = {
     "processes": _read_processes,
     "deploys": _read_deploys,
@@ -1771,6 +1784,7 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
     "shelf": _read_shelf,
     "content_rules": _read_content_rules,
     "status": _read_status,
+    "attention": _read_attention,
     "queue": _read_queue,
     "drain": _read_drain,
     "providers": _read_providers,
