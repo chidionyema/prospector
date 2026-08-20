@@ -122,60 +122,67 @@ def test_a_contract_without_the_key_falls_back_rather_than_crashing(tmp_path):
 # --------------------------------------------------------------------------- #
 # The two guards
 # --------------------------------------------------------------------------- #
-def test_the_keeper_never_runs_on_the_fleet_it_heals():
-    """A self-hosted runner cannot start a dead self-hosted fleet.
+def test_the_keeper_runs_where_this_estate_actually_has_compute():
+    """It ran on `ubuntu-latest` until 2026-08-20, and that was a correct argument about a
+    runner this account does not have.
 
-    Every other workflow here targets the `fly` pool, so making this one match is the obvious
-    tidy-up -- and it would make the keeper unable to run in exactly the situation it exists
-    for: no runner is left to pick the job up.
+    The argument was: a self-hosted runner cannot start a dead self-hosted fleet, so the keeper
+    must sit somewhere else. Sound, and moot. A GitHub-hosted job cannot start here at all --
+    run 32343624520 concluded `failure` having run ZERO steps, its log 404s, and the only record
+    anywhere is the annotation "The job was not started because recent account payments have
+    failed or your spending limit needs to be increased." The founder has ruled that this is
+    permanent: we are not paying GitHub. So the real choice was fleet-versus-nothing, plus an
+    hourly red main that no code change could clear.
 
-    The `announce` job is the deliberate exception and runs on the fleet on purpose: it makes no
-    repair, it only says that no repair is happening, so a dead fleet costs it nothing it was
-    going to do anyway.
+    What the move costs is one case, named honestly: a TOTAL fleet outage, where no machine is
+    left to pick the job up. Partial outages -- some machines stopped, others alive -- are the
+    common case and are what this now repairs unattended. `scripts/ci_fleet_keeper.py` talks to
+    https://api.machines.dev/v1 and never inspects the box it runs on, so even a runner started
+    from a stale image heals the fleet correctly.
+
+    A hosted runner in ANY job of this file is the regression to catch: it would look like a
+    tidy restoration of the old argument and would silently be a job that cannot start.
     """
     wf = yaml.safe_load((ROOT / ".github/workflows/ci-fleet-keeper.yml").read_text())
-    assert wf["jobs"]["keep"]["runs-on"] == "ubuntu-latest", (
-        "the keeper must stay on a GitHub-hosted runner; a self-hosted runner cannot start a "
-        "dead self-hosted fleet"
-    )
     for name, job in wf["jobs"].items():
-        if name == "keep":
-            continue
         assert "ubuntu-latest" not in str(job["runs-on"]), (
-            f"job {name} does no repair, so it must not sit on the hosted runners this account "
-            "cannot start. Measured 2026-08-20: a hosted job fails at start with a billing "
-            "annotation and zero steps."
+            f"job `{name}` asks for a GitHub-hosted runner. This account cannot start one: the "
+            f"job concludes `failure` with zero steps and no log, which reads as nothing at all. "
+            f"Target the fleet -- vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'fly'."
         )
+    assert "CI_RUNS_ON" in str(wf["jobs"]["keep"]["runs-on"]), (
+        "the keeper must target the pool this estate owns, by variable rather than by a "
+        "hardcoded label, so the fleet can be renamed without editing every workflow"
+    )
 
 
-def test_the_keeper_is_skipped_and_not_failed_while_hosted_runners_cannot_start():
-    """main is never red. A job that cannot start is a failure like any other.
+def test_the_keeper_is_not_parked_behind_a_switch_nobody_will_flip():
+    """A gate on a repository variable was the wrong ending, and this is the test that says so.
 
-    This account cannot start a GitHub-hosted job: the keeper's first ever scheduled run
-    (2026-08-20 08:57) ran zero steps, its log 404s, and its only record is the annotation
-    "The job was not started because recent account payments have failed or your spending limit
-    needs to be increased". Hourly, that paints main red for ever, and no code change fixes it
-    because the fix is a payment.
+    Between 2026-08-20 09:00 and 12:30 this workflow carried
+    `if: vars.HOSTED_RUNNERS_AVAILABLE == 'yes'`, so it SKIPPED instead of failing. That stopped
+    the red and it also stopped the repair, for ever: the variable was only ever going to be set
+    after paying GitHub, and the founder's answer to that is no. A check parked behind a switch
+    nobody will flip is a check the estate has lost while still carrying its file, its tests and
+    its name on the workflow list.
 
-    So the repair job waits behind a variable the founder sets, and the announcement job carries
-    the reason on every tick. If somebody deletes the switch before billing is fixed, this fails
-    and says why rather than letting the hourly red come back.
+    There are two honest endings for a job that cannot run where it was written: move it to
+    compute we own, or delete it. This one moved.
     """
     wf = yaml.safe_load((ROOT / ".github/workflows/ci-fleet-keeper.yml").read_text())
-    keep, announce = wf["jobs"]["keep"], wf["jobs"]["announce"]
-    assert keep["if"] == "vars.HOSTED_RUNNERS_AVAILABLE == 'yes'", (
-        "the repair job must be gated on the variable, or its run fails at start and main is red"
+    text = (ROOT / ".github/workflows/ci-fleet-keeper.yml").read_text()
+    for name, job in wf["jobs"].items():
+        assert "if" not in job, (
+            f"job `{name}` is gated by `if: {job.get('if')}`. If it cannot run, move it or "
+            f"delete it -- do not park it behind a condition and leave the file looking alive."
+        )
+    assert "HOSTED_RUNNERS_AVAILABLE" not in text, (
+        "that variable was the parking gate and is gone. Nothing should reference it: it would "
+        "read as a switch somebody could flip, and there is no plan under which anybody does."
     )
-    assert announce["if"] == "vars.HOSTED_RUNNERS_AVAILABLE != 'yes'", (
-        "the two conditions must be exact opposites, or a tick either says nothing or says both"
-    )
-    body = " ".join(
-        str(step.get("run", "")) for step in announce["steps"]
-    )
-    assert "GITHUB_STEP_SUMMARY" in body, "an alarm nobody can read is not an alarm"
-    assert "HOSTED_RUNNERS_AVAILABLE" in body, (
-        "the announcement must name the switch that turns the keeper back on; a message that "
-        "reports a problem without naming the fix is how a loop stays in the dark"
+    assert "api.machines.dev" in (ROOT / "scripts/ci_fleet_keeper.py").read_text(), (
+        "the reason the keeper can run on the fleet at all is that it asks Fly's API rather "
+        "than the machine it is running on. If that stops being true, this move stops being safe."
     )
 
 

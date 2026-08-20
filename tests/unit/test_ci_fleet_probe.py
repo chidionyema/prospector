@@ -169,14 +169,31 @@ def test_a_schedule_actually_asks_the_question():
     )
 
 
-def test_the_watch_does_not_run_on_the_fleet_it_grades():
-    """The states worth catching are the ones where the fleet cannot run a job."""
+def test_the_watch_runs_where_this_estate_actually_has_compute():
+    """It was hardcoded to `ubuntu-latest` until 2026-08-20, on the argument that a check on the
+    fleet must not run on the fleet.
+
+    That argument over-claimed, and the runner it depended on does not exist here. This probe
+    asks FLY -- `fly machine list` over FLY_API_TOKEN, compared against the image sha in this
+    repository's git log. None of its evidence comes from the box it runs on, so a runner
+    started from a stale image still reports the fleet's real state. What is genuinely lost is
+    the case where NO machine can pick the job up, and that case is answered by hand: the ops
+    console button, or `scripts/ci_fleet_probe.py --image-only` from any checkout.
+
+    The measurement that forced it: run 32343624520, job 96347602802, conclusion `failure`,
+    ZERO steps, log 404s, annotation "The job was not started because recent account payments
+    have failed or your spending limit needs to be increased." Daily red on main, uncleanable
+    by any code change, and the founder has ruled the payment will not be made.
+    """
     for job_id, job in _watch()["jobs"].items():
         runs_on = str(job.get("runs-on", ""))
-        assert "self-hosted" not in runs_on and "CI_RUNS_ON" not in runs_on, (
-            f"job `{job_id}` runs on the fleet it is grading ({runs_on!r}). A dead or "
-            f"mis-imaged fleet cannot report that it is dead or mis-imaged. Hardcode a hosted "
-            f"runner here even though every other workflow in this repo uses vars.CI_RUNS_ON."
+        assert "ubuntu-latest" not in runs_on, (
+            f"job `{job_id}` asks for a GitHub-hosted runner ({runs_on!r}). This account cannot "
+            f"start one -- zero steps, no log, and a red main every morning. Target the fleet."
+        )
+        assert "CI_RUNS_ON" in runs_on, (
+            f"job `{job_id}` must target the pool this estate owns by variable, not by a "
+            f"hardcoded label. Found {runs_on!r}."
         )
 
 
@@ -199,28 +216,21 @@ def test_the_watch_checks_out_enough_history_to_have_an_expectation():
     )
 
 
-def test_the_watch_is_skipped_and_not_failed_while_hosted_runners_cannot_start():
-    """A daily red that no code change can clear teaches the estate to ignore red.
+def test_the_watch_is_not_parked_behind_a_switch_nobody_will_flip():
+    """The same wrong ending this workflow carried for three hours on 2026-08-20.
 
-    Measured 2026-08-20 07:21, run 32343624520, job 96347602802: zero steps, the job log 404s,
-    conclusion `failure`, and the only record anywhere is the annotation, verbatim — "The job was
-    not started because recent account payments have failed or your spending limit needs to be
-    increased." This account cannot start a GitHub-hosted job at all.
-
-    The job stays on `ubuntu-latest` and waits behind a switch rather than moving to the fly pool,
-    because `test_the_watch_does_not_run_on_the_fleet_it_grades` above is right: a fleet running
-    the wrong image cannot be trusted to report that it is running the wrong image. The cost of
-    the skip is that the question goes unasked, which is why ci-fleet-keeper's `announce` job
-    states the same outage once an hour on the pool that does work.
+    `if: vars.HOSTED_RUNNERS_AVAILABLE == 'yes'` stopped the daily red and stopped the check
+    with it. The variable was only ever going to be set after paying GitHub, which the founder
+    has ruled out, so the workflow would have sat on the list looking alive while grading
+    nothing. Move it or delete it; do not park it.
     """
-    watch = _watch()["jobs"]["watch"]
-    assert watch.get("if") == "vars.HOSTED_RUNNERS_AVAILABLE == 'yes'", (
-        "jobs.watch must be gated on the founder-owned repository variable, so turning it back "
-        "on after billing is fixed is `gh variable set HOSTED_RUNNERS_AVAILABLE --body yes` and "
-        "not a code change: today the job cannot start, and a job that cannot start is a FAILURE "
-        f"on main every morning. Found: {watch.get('if')!r}"
-    )
-    assert "HOSTED_RUNNERS_AVAILABLE" in (WATCH.read_text()), (
-        "name the variable in the file, so the reader who finds this workflow skipped can see "
-        "what turns it back on without going to another repository's settings page"
+    text = WATCH.read_text()
+    for job_id, job in _watch()["jobs"].items():
+        assert "if" not in job, (
+            f"job `{job_id}` is gated by `if: {job.get('if')}`. A job that cannot run where it "
+            f"is written gets moved or deleted, never parked."
+        )
+    assert "HOSTED_RUNNERS_AVAILABLE" not in text, (
+        "the parking gate is gone and nothing should mention it -- it reads as a switch "
+        "somebody could flip, and nobody will"
     )

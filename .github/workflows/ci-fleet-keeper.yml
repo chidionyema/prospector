@@ -1,17 +1,32 @@
 # Put stopped CI runner machines back, on a schedule, with no agent involved.
 #
-# THIS MUST NOT RUN ON THE FLEET IT HEALS. `runs-on: ubuntu-latest` is deliberate and is the
-# whole point of the file: a self-hosted runner cannot start a dead self-hosted fleet, because
-# when the fleet is down there is no runner left to pick this job up. Every other workflow in
-# this repository targets the `fly` pool; this one must not. Do not "fix" it to match.
+# WHERE IT RUNS, AND WHY THAT CHANGED. This used to say `runs-on: ubuntu-latest`, deliberately,
+# arguing that a self-hosted runner cannot start a dead self-hosted fleet. That argument was
+# sound and it is now moot: a GitHub-hosted job cannot start on this account at all, and the
+# founder has ruled that it never will — "we are not paying for github". Measured on this
+# workflow's first ever scheduled run (2026-08-20 08:57, d443f0ab): zero steps, the job log
+# 404s, conclusion `failure`, and the only record anywhere is the annotation, verbatim:
 #
-# WHY HOURLY AND NOT EVERY FEW MINUTES. GitHub bills a one-minute MINIMUM per job, so the
-# cadence is a spend decision. Measured 2026-08-19: private repo on the Free plan = 2,000
-# GitHub-hosted minutes a month, and no other workflow uses a GitHub-hosted runner, so the
-# budget is intact. Hourly is 720 runs = 720 minutes = 36% of it. Every 15 minutes would be
-# 2,880 minutes and would blow the allowance outright. The headroom is not spare: ci.yml falls
-# back to `ubuntu-latest` when the CI_*_RUNS_ON variables are unset, so these minutes are the
-# emergency reserve for CI itself, and a monitor must not eat the escape hatch it protects.
+#   "The job was not started because recent account payments have failed or your spending
+#    limit needs to be increased. Please check the 'Billing & plans' section in your settings"
+#
+# So the real choice was never hosted-versus-fleet. It was fleet-versus-nothing, and hourly red
+# on main for a reason no code change can clear. It runs on the fleet now.
+#
+# WHAT THAT COSTS, exactly. The keeper reads and writes Fly's REST API at
+# https://api.machines.dev/v1 (scripts/ci_fleet_keeper.py:67) — it never inspects the box it is
+# running on, so a runner started from a stale image still heals the fleet correctly. The one
+# case it can no longer catch is a TOTAL outage, where no machine is left to pick the job up.
+# That case is covered by hand and always was: the ops console button, or
+# `.venv/bin/python scripts/ci_fleet_keeper.py --start` from any checkout with FLY_API_TOKEN.
+# Partial outages — some machines stopped, others alive — are the common case and are exactly
+# what this now fixes unattended.
+#
+# WHY HOURLY AND NOT EVERY FEW MINUTES. It is no longer a spend decision, because the fleet is
+# already paid for and idle between jobs. Hourly is kept because a stopped machine costs
+# nothing until it is needed, and a keeper that runs every few minutes races the deploy script:
+# `deploy/runners.sh up` uses --strategy immediate, and a keeper restarting machines mid-deploy
+# would fight it.
 #
 # A RED RUN HERE MEANS CI CAPACITY IS DEGRADED. It does not mean a test failed. That
 # distinction is the reason the 2026-08-19 outage cost hours: a machine killed mid-job surfaces
@@ -35,29 +50,12 @@ permissions:
 
 jobs:
   keep:
-    # SKIPPED, not failed, while this account cannot start a GitHub-hosted job at all.
-    #
-    # Measured on this workflow's first ever scheduled run (2026-08-20 08:57, d443f0ab): the job
-    # ran zero steps, its log 404s, and the only record anywhere is the annotation, verbatim:
-    #
-    #   "The job was not started because recent account payments have failed or your spending
-    #    limit needs to be increased. Please check the 'Billing & plans' section in your settings"
-    #
-    # That also refutes the header's budget note above: there is no 2,000-minute reserve to
-    # spend, and `ci.yml`'s `|| 'ubuntu-latest'` fallback is not an escape hatch — it is an
-    # instant failure with no steps, which reads like nothing at all.
-    #
-    # A job that cannot start still counts as a FAILURE on main, once an hour, for ever, and
-    # main is never allowed to be red. No code fixes that: the fix is a billing decision, and
-    # money is the founder's alone. So the keeper waits behind a switch he owns.
-    #
-    #   gh variable set HOSTED_RUNNERS_AVAILABLE --body yes    # turn it back on, no code change
-    #   gh variable list                                       # the live answer, never this file
-    #
-    # Absent means "a GitHub-hosted job cannot start here", which is the true state today. It
-    # does not mean somebody forgot: the `announce` job below says so on every tick.
-    if: vars.HOSTED_RUNNERS_AVAILABLE == 'yes'
-    runs-on: ubuntu-latest   # see header. NOT the fly pool.
+    # The fleet, like every other workflow here. No `|| 'ubuntu-latest'` fallback on purpose:
+    # that fallback is not an escape hatch on this account, it is an instant failure with no
+    # steps and no log, which reads like nothing at all. A job that cannot start is still a
+    # FAILURE on main, and main is never allowed to be red. If the CI_*_RUNS_ON variables are
+    # ever unset this fails loudly on an unknown label instead of quietly on a dead runner.
+    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'fly' }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -71,30 +69,3 @@ jobs:
           RUNNER_ADMIN_PAT: ${{ secrets.RUNNER_ADMIN_PAT }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: python3 scripts/ci_fleet_keeper.py --start
-
-  # The alarm, because a skipped job is silent and silence is what this estate keeps mistaking
-  # for health. It runs on the fleet — which works — states that the fleet has no self-heal
-  # right now, and SUCCEEDS, so the hourly tick is a green run carrying a reason instead of a
-  # red run carrying a billing message nobody can act on but the founder.
-  announce:
-    if: vars.HOSTED_RUNNERS_AVAILABLE != 'yes'
-    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'fly' }}
-    timeout-minutes: 5
-    steps:
-      - name: Say that the fleet keeper is off, and why
-        run: |
-          {
-            echo "## ci-fleet-keeper is OFF — the fleet has no self-heal"
-            echo
-            echo "A GitHub-hosted job cannot start on this account. Measured 2026-08-20 08:57:"
-            echo "zero steps, the job log 404s, and the annotation reads:"
-            echo
-            echo "> The job was not started because recent account payments have failed or your"
-            echo "> spending limit needs to be increased."
-            echo
-            echo "So a stopped CI machine stays stopped until somebody starts it by hand:"
-            echo '`.venv/bin/python scripts/ci_fleet_keeper.py --start`'
-            echo
-            echo "Turn the keeper back on after fixing billing, no code change needed:"
-            echo '`gh variable set HOSTED_RUNNERS_AVAILABLE --body yes`'
-          } >> "$GITHUB_STEP_SUMMARY"

@@ -12,9 +12,20 @@
 # workflow is what makes it ASKED — a probe that only runs when somebody presses a console button
 # is a probe that reports the fault after the fault has already cost the day.
 #
-# WHERE IT RUNS. `ubuntu-latest`, hardcoded, never `vars.CI_RUNS_ON`. A check on the fleet must not
-# run on the fleet: the states worth catching are exactly the ones where the fleet cannot run a job
-# and so could never report on itself.
+# WHERE IT RUNS, AND WHY THAT CHANGED. This used to be `ubuntu-latest`, hardcoded, arguing that a
+# check on the fleet must not run on the fleet. A GitHub-hosted job cannot start on this account at
+# all and the founder has ruled that it never will — "we are not paying for github". Measured
+# 2026-08-20 07:21, run 32343624520, job 96347602802: conclusion `failure`, ZERO steps, the job log
+# 404s, and the only record is the annotation, verbatim — "The job was not started because recent
+# account payments have failed or your spending limit needs to be increased." So the choice was
+# never fleet-versus-hosted. It was fleet-versus-nothing, plus a red main every morning.
+#
+# The old argument also over-claimed. This probe asks FLY, not the box it runs on: `fly machine
+# list` over FLY_API_TOKEN, compared against the image sha in this repository's git log. A runner
+# started from a stale image still reports the fleet's real state, because none of the evidence
+# comes from localhost. The one state it can no longer catch is a fleet so dead that no machine
+# picks the job up — and that state has an owner already: the ops console button, or
+# `.venv/bin/python scripts/ci_fleet_probe.py --image-only` from any checkout.
 #
 # WHY `--image-only`. Reading a repository's self-hosted runners needs the `administration`
 # permission, which GITHUB_TOKEN cannot be granted — only a personal access token can, and this
@@ -48,21 +59,9 @@ concurrency:
 
 jobs:
   watch:
-    # Gated for the same reason as ci-fleet-keeper's `keep`, and by the same switch: this
-    # account cannot start a GitHub-hosted job at all. Measured 2026-08-20 07:21, run
-    # 32343624520 — zero steps, log 404s, annotation "The job was not started because recent
-    # account payments have failed or your spending limit needs to be increased". Daily red on
-    # main, for a reason no code change can fix.
-    #
-    # It skips rather than moving to the fleet, because `test_the_watch_does_not_run_on_the_fleet
-    # _it_grades` is right: a mis-imaged fleet cannot report that it is mis-imaged. So while the
-    # switch is off this question is asked by hand — the ops console button, or
-    # `.venv/bin/python scripts/ci_fleet_probe.py --image-only`. ci-fleet-keeper's `announce`
-    # job says so once an hour, so the silence is not silent.
-    #
-    #   gh variable set HOSTED_RUNNERS_AVAILABLE --body yes    # after billing is fixed
-    if: vars.HOSTED_RUNNERS_AVAILABLE == 'yes'
-    runs-on: ubuntu-latest
+    # The fleet — see the header. No `|| 'ubuntu-latest'` fallback: on this account that is not
+    # an escape hatch, it is an instant failure with no steps and no log.
+    runs-on: ${{ vars.CI_RUNS_ON || 'fly' }}
     timeout-minutes: 10
     steps:
       # fetch-depth 0 and the explicit fetch are both load-bearing: expected_image_sha() asks
