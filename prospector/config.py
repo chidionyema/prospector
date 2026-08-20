@@ -9,6 +9,10 @@ from typing import Any
 
 import yaml
 
+# Safe at module scope, unlike `prospector.operator`: `providers` imports only the stdlib and
+# `prospector.tiers`, which itself imports nothing.
+from .providers import buildable_tiers, installed_declared, parse_declared, set_declared
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -667,6 +671,12 @@ class Config:
     # Promoting a cheap brain into this set is a PROMOTION GATE, not a preference: run
     # `python -m prospector.golden` on it first (specs/offline-moat-validation.md).
     moat_primary: list[str] = field(default_factory=list)
+    # Config-declared model providers: {name: providers.DeclaredProvider}, parsed from
+    # `config.yaml providers:` by `providers.parse_declared`. Each one is an OpenAI-compatible
+    # endpoint that `_build_operator` can construct by name, so adding a provider is a config
+    # block instead of ~85 source edits across 12 files. Declaring one does NOT make it
+    # trusted: it rules `provisional` until it is ALSO named in `moat_primary:` above.
+    providers: dict = field(default_factory=dict)
     retrieval: Retrieval = field(default_factory=Retrieval)
     thresholds: Thresholds = field(default_factory=Thresholds)
     admissibility: Admissibility = field(default_factory=Admissibility)
@@ -1172,11 +1182,14 @@ def _component_models(raw) -> dict:
         if not isinstance(row, dict):
             raise ValueError(f"component_models.{comp} must be a mapping of provider -> model")
         clean: dict[str, str] = {}
+        # Declared providers are pinnable too. `load_config` installs the parsed `providers:`
+        # block before it builds the Config, so a pin for a declared name is valid here.
+        known = buildable_tiers(installed_declared())
         for prov, model in row.items():
-            if prov not in _op.BUILDABLE_TIERS:
+            if prov not in known:
                 raise ValueError(
                     f"component_models.{comp}: unknown provider {prov!r}. "
-                    f"Expected one of {'|'.join(_op.BUILDABLE_TIERS)}.")
+                    f"Expected one of {'|'.join(known)}.")
             clean[prov] = str(model or "").strip()
         out[comp] = clean
     return out
@@ -1185,7 +1198,16 @@ def _component_models(raw) -> dict:
 def load_config(path: str | Path | None = None) -> Config:
     p = Path(path) if path else REPO_ROOT / "config.yaml"
     raw = yaml.safe_load(p.read_text()) if p.exists() else {}
+    # PROVIDERS FIRST, and installed process-wide before anything else runs. Two validators
+    # below check tier NAMES — `_component_models` inside the Config(...) call, and
+    # `set_moat_primary` at the end — and both refuse a name they do not know. Parsing this
+    # block later means a config that declares a provider and then uses it is rejected at
+    # startup, with a message blaming the config. Written on EVERY load, so an absent key
+    # resets it and one process loading a fixture config cannot poison the next load.
+    declared_providers = parse_declared(raw.get("providers"))
+    set_declared(declared_providers)
     cfg = Config(
+        providers=declared_providers,
         operator=raw.get("operator", "mock"),
         model=raw.get("model", ""),
         model_fast=raw.get("model_fast", ""),
