@@ -299,7 +299,7 @@ Read this before proposing to build any of it (memory
 | Capability | What exists on `origin/main` | State |
 |---|---|---|
 | Platform contract | `deploy/PORTABILITY.md` — eleven verbs, six platform requirements | written, honoured by the engine |
-| Adapters | `deploy/targets/{fly,laptop,sshdocker}.sh` | three written; `fly.sh` flyctl shim landed 2026-08-19 (PR #388) |
+| Adapters | `deploy/targets/{fly,laptop,sshdocker,k8s}.sh` | four written; `fly.sh` flyctl shim landed 2026-08-19 (PR #388); `k8s.sh` 2026-08-20, and every adapter is now graded against the verb list by `tests/unit/test_every_deploy_target_implements_the_contract.py` |
 | Cutover | `deploy/cutover.sh`, `deploy/decommission.sh` | written, **dry-run never proven** |
 | Secrets push | `deploy/secrets.sh`, `deploy/secrets.required` | written; `.env` on this laptop is the source of truth |
 | Store move | `scripts/store_migrate.py` (+ `verify`) | written; `verify` is the restore proof |

@@ -72,8 +72,8 @@ downtime. Anything that still says otherwise is stale. The discriminator a proce
 ### When a candidate is parked: DEFER, and what unparks it
 
 A DEFER is not a verdict. It means the engine could not reach an answer — the brain was benched,
-the call raised, retrieval was down — so the row is put back rather than killed. `verify.py:365`
-sets `retrieval_failed=True` on any verdict call that raises, and the DEFER gate at `verify.py:693`
+the call raised, retrieval was down — so the row is put back rather than killed. `prospector/verify.py:580` and `prospector/verify.py:682`
+set `retrieval_failed=True` on any verdict call that raises, and the DEFER gate at `prospector/verify.py:1145`
 fires on it. This exists because the honest verdict on a check that never ran is "come back to it",
 never "this idea is dead". Killing on an outage is a real defect this system has had:
 `store/dossiers/2102bacc6dd75cf9.kill.json` is a candidate killed by our own quota exhaustion, in a
@@ -85,8 +85,8 @@ webhook, no queue trigger. A separate process re-reads the parked rows on a time
 | Who | What it does | Where |
 | --- | --- | --- |
 | `com.prospector.consumer` | the drain. Wakes on its own cadence, takes a batch of parked rows, re-vets each one, writes the outcome | `prospector/consumer.py` |
-| `run.py::_cmd_resume` | the same work by hand: `python -m prospector.run vet --resume` | `prospector/run.py:2687` |
-| `run.drainable` | the ONE definition of what counts as parked-and-workable | `prospector/run.py:2547` |
+| `run.py::_cmd_resume` | the same work by hand: `python -m prospector.run vet --resume` | `prospector/run.py:2735` |
+| `run.drainable` | the ONE definition of what counts as parked-and-workable | `prospector/run.py:2595` |
 
 So the answer to "MiniMax is back, what happens to the deferred rows" is: the consumer picks them
 up a batch at a time on its next pass, and the backlog falls over hours, not at once.
@@ -116,7 +116,7 @@ claim.
 it has been in it, pid), then "Is it moving?" (what came of the work, backlog then and now), then
 "The last few passes". Engine page → the brains, which is where a bench shows up. On disk:
 `store/scheduler/consumer_drains.jsonl` is one line per pass, `store/consumer_heartbeat.json` is
-the live phase, and `prospector/consumer.py:478` `consumer_liveness` is the only thing that reads
+the live phase, and `prospector/consumer.py:487` `consumer_liveness` is the only thing that reads
 that format — the alarm and the panel share it so they cannot disagree.
 
 **Alive is not working.** The same afternoon the consumer sat in phase `draining` for 61 minutes
@@ -302,12 +302,25 @@ somewhere off this machine. Everything encrypted at rest is unreadable without i
 
 After the Fly cutover, this is the honest list:
 
-- The **four CI runners**. No runner, no deploy. Selling keeps working; shipping stops. (R8)
-- The **`ai.hermes.*` launchd jobs** — gateway, coordinator, otto-server and the rest. Hermes is
-  deployed on Fly, but the laptop copies are still the ones running, and the Fly `gateway` process
-  is stopped. The cutover is half done. (R7)
-- The **`com.prospector-control.*` jobs** — failover-watch, receipt-bridge, standby-sync — and
-  `com.prospector.backup`.
+Re-measured 2026-08-20 by running the command at the foot of this section, because the list
+below had drifted in both directions.
+
+- The **`ai.hermes.*` launchd jobs that are actually loaded**: `keepawake`, `idle-engine`,
+  `lease-guard`, `runaway-reaper`. Those four, and no others.
+- The **`com.prospector*` jobs**: `offsite-backup`, `backup`, `launchd-held`, `process-audit`,
+  `log-rotation`, and the `com.prospector-control.*` set — `failover-watch`, `receipt-bridge`,
+  `standby-sync`.
+
+Two entries that used to be on this list are NOT on it, and both were wrong in a way that
+would have sent someone looking for a process that does not exist:
+
+- **The CI runners are not here.** `launchctl list` shows no `actions.runner.*` entry at all,
+  and `ops/launchd/` defines no runner job. They run on Fly.
+- **`ai.hermes.gateway`, `coordinator` and `otto-server` are not running on this laptop.**
+  The gateway plist carries `<key>Disabled</key><true/>`, set on 2026-06-25 during the Phase 0
+  estate surgery. The other two are not registered with launchd at all — `launchctl print`
+  answers "Could not find service". The claim that "the laptop copies are still the ones
+  running" was true once and stopped being true two months ago.
 
 Nothing a customer touches depends on the laptop any more. That was the point of the migration.
 

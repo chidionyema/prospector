@@ -24,7 +24,8 @@
 # this laptop, which is the same reason this whole programme exists.
 #
 #   bash deploy/secrets.sh init                 # make the keypair, once per machine
-#   bash deploy/secrets.sh set KEY value        # add or change one secret
+#   printf %s "$VALUE" | bash deploy/secrets.sh set KEY   # add or change one secret
+#   bash deploy/secrets.sh set KEY value                 # same, but the value lands in argv
 #   bash deploy/secrets.sh list                 # key NAMES only, never values
 #   bash deploy/secrets.sh import path/to/.env  # take a whole existing .env in one go
 #   bash deploy/secrets.sh push fly             # decrypt and hand to that target's t_secrets
@@ -80,7 +81,24 @@ cmd_init() {
 }
 
 cmd_set() {
-  local k="${1:?usage: set KEY VALUE}" v="${2:?usage: set KEY VALUE}"
+  local k="${1:?usage: set KEY [VALUE]  -- omit VALUE and it is read from stdin}" v
+  if [ "$#" -ge 2 ]; then
+    v="$2"
+  else
+    # Read the value from stdin so it never reaches argv. Two reasons, both measured rather
+    # than theoretical: `ps` shows argv to every process on the box, and an interactive shell
+    # appends argv to its history file. A live Stripe key sitting in ~/.zsh_history is a leak
+    # that outlives the terminal it was typed in. The positional form still works, because
+    # breaking it would send people back to editing the plaintext by hand, which is worse.
+    # Two traps in one line. `read` returns non-zero at EOF even when it filled the
+    # variable, which is exactly what `printf %s` with no trailing newline produces -- so
+    # test the VALUE, not the exit status. And this script runs under `set -e`, which kills
+    # it on that same non-zero return before any check can run, printing nothing at all.
+    # `|| true` is what keeps the EOF case alive long enough to be judged.
+    v=""
+    IFS= read -r v || true
+    [ -n "$v" ] || die "no value on stdin for $k -- pipe one in, or pass it as an argument"
+  fi
   local current=""
   [ -f "$STORE" ] && current="$(plaintext)"
   # Drop any existing line for this key, then append the new one. grep -v with an anchored
@@ -137,5 +155,6 @@ case "${1:-}" in
   import) shift; cmd_import "$@" ;;
   push)   shift; cmd_push "$@" ;;
   check)  shift; cmd_check ;;
-  *) die "usage: $(basename "$0") {init|set KEY VALUE|list|import <file>|push <target>|check}" ;;
+  *) die "usage: $(basename "$0") {init|set KEY [VALUE]|list|import <file>|push <target>|check}
+  set reads VALUE from stdin when you omit it, which keeps it out of argv and shell history" ;;
 esac

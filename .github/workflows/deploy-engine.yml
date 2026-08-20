@@ -91,6 +91,7 @@ jobs:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy
+        id: deploy
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_ENGINE || secrets.FLY_API_TOKEN }}
         run: |
@@ -150,3 +151,45 @@ jobs:
             404) echo "route missing - the machine is serving an older image"; exit 1 ;;
             *)   echo "unexpected status from the crash-reporting route"; exit 1 ;;
           esac
+
+      # SELF-HEALING. Everything above this line ALERTS. `flyctl deploy` ships the image, the
+      # proof requests run, and when a proof goes red the bad image keeps serving production
+      # until a person reads the failure mail and clicks Rollback. Founder, 2026-08-20:
+      # "alerts is one thing, recovery and self healing is anither".
+      #
+      # This step is the recovery arm. It pulls the rollback that ALREADY EXISTS rather than
+      # adding a second one: scripts/rollback_now.py is the same code path the ops console's
+      # Rollback button runs. It re-deploys the previous release's image (no build, no source
+      # tree, so nothing in this commit can poison it) and probes itself afterwards.
+      #
+      # The condition is narrow on purpose. A bare `failure()` would also fire when the BUILD
+      # failed - production was never touched in that case, and rolling a healthy service back
+      # to an older image would be an outage this workflow caused rather than cured.
+      # `steps.deploy.outcome == 'success'` is what limits it to the one case that needs
+      # healing: the new image IS serving, and it does not answer.
+      #
+      # The job stays RED either way. Restoring service is not the same as the commit being
+      # good, and main still carries it, so the next merge touching these paths ships it again.
+      - name: Roll back, because this deploy does not answer
+        if: ${{ failure() && steps.deploy.outcome == 'success' }}
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_ENGINE || secrets.FLY_API_TOKEN }}
+        run: |
+          set -uo pipefail
+          python3 scripts/rollback_now.py engine
+          rc=$?
+          {
+            echo "## Automatic rollback"
+            echo ""
+            if [ "$rc" = "0" ]; then
+              echo "Commit $GITHUB_SHA deployed but did not answer, so prospector-engine was rolled"
+              echo "back to its previous release, and that release passes its health checks."
+            else
+              echo "Commit $GITHUB_SHA deployed, did not answer, and THE ROLLBACK DID NOT"
+              echo "RESTORE IT (exit $rc). This needs a human now."
+            fi
+            echo ""
+            echo "This does not change main. The commit is still there and the next merge"
+            echo "touching these paths ships it again. Revert it."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$rc"

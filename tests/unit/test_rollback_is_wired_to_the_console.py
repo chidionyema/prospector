@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -343,3 +344,142 @@ def test_every_older_release_failed_is_refused_with_the_reason():
     target, why = rollback_now.choose_target(rows)
     assert target is None
     assert "no earlier release completed" in why
+
+
+# --------------------------------------------------------------------------- #
+# Self-healing: a deploy that does not answer puts itself back
+#
+# Founder, 2026-08-20: "alerts is one thing, recovery and self healing is anither". Every deploy
+# workflow already PROVES itself after shipping - it asks the live service a question only the
+# new code can answer. Until 2026-08-20 a red answer did nothing but fail the job, so the bad
+# image kept serving production until a person read the mail and clicked Rollback. What follows
+# pins the recovery arm, and in particular the one condition that stops it becoming a weapon.
+# --------------------------------------------------------------------------- #
+WORKFLOWS = ROOT / ".github" / "workflows"
+
+#: Every workflow that ships a service to production, mapped to the rollback_now.py service that
+#: puts that same service back. A new deploy workflow that is not in this table is invisible to
+#: these tests, which is why test_every_service_that_deploys_from_ci_is_in_this_table exists.
+DEPLOY_WORKFLOWS = {
+    "deploy-engine.yml": "engine",
+    "deploy-api.yml": "store-api",
+    "deploy-web.yml": "store-web",
+}
+
+
+def _deploying_job(workflow: str) -> dict:
+    """The job that actually ships, found the way a reader finds it: it has a step called Deploy."""
+    doc = yaml.safe_load((WORKFLOWS / workflow).read_text())
+    for name, job in doc["jobs"].items():
+        if any(s.get("name") == "Deploy" for s in job.get("steps", [])):
+            return job
+    raise AssertionError(
+        f"{workflow} has no step named 'Deploy'. Either it stopped deploying, in which case take "
+        f"it out of DEPLOY_WORKFLOWS, or the step was renamed and this whole section is now "
+        f"grading nothing."
+    )
+
+
+def _healing_step(workflow: str) -> dict:
+    job = _deploying_job(workflow)
+    steps = job["steps"]
+    last = steps[-1]
+    assert last.get("name", "").startswith("Roll back"), (
+        f"{workflow}: the last step of the deploying job is {last.get('name')!r}, not a rollback.\n"
+        f"The healing step must come LAST, because it is conditioned on the steps before it "
+        f"having failed. A step added after it would run before production was restored."
+    )
+    return last
+
+
+@pytest.mark.parametrize("workflow,service", sorted(DEPLOY_WORKFLOWS.items()))
+def test_a_deploy_that_does_not_answer_rolls_itself_back(workflow: str, service: str):
+    """The workflow must PULL the rollback that exists, not carry a second copy of one."""
+    step = _healing_step(workflow)
+    run = step["run"]
+    assert "scripts/rollback_now.py" in run, (
+        f"{workflow}: the healing step does not call scripts/rollback_now.py.\n"
+        f"It ran:\n{run}\n\n"
+        f"That script IS the console's Rollback button. A second way to roll back would be a "
+        f"second, untested path through production."
+    )
+    assert f"rollback_now.py {service}" in run, (
+        f"{workflow} deploys {service}, so it must roll {service} back. It ran:\n{run}"
+    )
+    assert service in rollback_now.routes(), (
+        f"{workflow} would try to roll back {service!r}, which is not a service "
+        f"rollback_now.py knows. Known: {', '.join(rollback_now.routes())}"
+    )
+
+
+@pytest.mark.parametrize("workflow", sorted(DEPLOY_WORKFLOWS))
+def test_a_failed_build_never_rolls_back_a_healthy_service(workflow: str):
+    """The whole safety of this feature is one clause.
+
+    A bare `failure()` also fires when the BUILD failed - and a failed build never touched
+    production, so rolling back there would take a HEALTHY service off its current image. That is
+    an outage caused by the thing meant to cure one. `steps.deploy.outcome == 'success'` is what
+    narrows it to the only case that needs healing: the new image is serving and does not answer.
+    """
+    step = _healing_step(workflow)
+    condition = step.get("if", "")
+    assert "steps.deploy.outcome == 'success'" in condition, (
+        f"{workflow}: the healing step fires on `{condition}`, which does not check that the "
+        f"deploy itself succeeded. As written, a failed BUILD would roll back a service that is "
+        f"serving perfectly well."
+    )
+    ids = [s.get("id") for s in _deploying_job(workflow)["steps"]]
+    assert "deploy" in ids, (
+        f"{workflow}: the condition reads steps.deploy.outcome, but no step has `id: deploy`. "
+        f"GitHub resolves an unknown step id to an empty string rather than failing, so the "
+        f"condition would silently never be true and nothing would ever heal. Step ids: {ids}"
+    )
+
+
+def test_a_dry_run_of_the_web_deploy_cannot_roll_back_production():
+    """deploy-web is the odd one out, and the difference is dangerous.
+
+    deploy-engine.yml and deploy-api.yml skip the whole deploying job on `dry_run`, so they can
+    never reach the healing step. deploy-web.yml handles dry_run INSIDE its deploy step, as a
+    `--dry-run` flag - so on a dry run the Deploy step SUCCEEDS while shipping nothing. Without
+    this clause a red proof on a dry run would roll back a production nobody had touched.
+    """
+    condition = _healing_step("deploy-web.yml").get("if", "")
+    assert "!inputs.dry_run" in condition, (
+        "deploy-web.yml's healing step fires on `" + condition + "`, which does not exclude a "
+        "dry run. Its Deploy step succeeds on a dry run without deploying anything."
+    )
+
+
+@pytest.mark.parametrize("workflow", sorted(DEPLOY_WORKFLOWS))
+def test_healing_production_never_turns_the_job_green(workflow: str):
+    """A restored service is not a good commit.
+
+    main still carries the commit that did not answer, and the next merge touching these paths
+    ships it again. If the rollback made the run green, nobody would ever revert it.
+    """
+    step = _healing_step(workflow)
+    assert not step.get("continue-on-error"), (
+        f"{workflow}: the healing step is continue-on-error, so a rollback would report the "
+        f"deploy as fine. The commit is still broken and still on main."
+    )
+    assert "does not change main" in step["run"], (
+        f"{workflow}: the healing step does not tell the reader that main is unchanged. That "
+        f"sentence is the difference between a rollback and a fix."
+    )
+
+
+def test_every_service_that_deploys_from_ci_is_in_this_table():
+    """Stops this section quietly grading three workflows while a fourth ships unguarded."""
+    shipping = {
+        f.name
+        for f in WORKFLOWS.glob("deploy-*.yml")
+        if any(s.get("name") == "Deploy" for s in yaml.safe_load(f.read_text())["jobs"].values()
+               for s in s.get("steps", []))
+    }
+    missing = shipping - set(DEPLOY_WORKFLOWS)
+    assert not missing, (
+        "these workflows deploy to production and no test above checks that they can heal "
+        "themselves:\n  " + "\n  ".join(sorted(missing))
+        + "\n\nAdd each to DEPLOY_WORKFLOWS with the rollback_now.py service it ships."
+    )

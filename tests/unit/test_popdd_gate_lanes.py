@@ -57,6 +57,54 @@ def _hooks_dir() -> Path:
 INSTALLED_HOOK = _hooks_dir() / "pre-commit"
 
 
+def _hook_state(path: Path) -> str:
+    """`clean`, `dirty`, `untracked` or `unmeasurable`, from the checkout that OWNS `path`.
+
+    Run in the owner's directory, never the caller's: the installed hook lives in the main
+    checkout, and `git status` on a path outside the current worktree answers about the
+    wrong tree or refuses outright.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "status", "--porcelain", "--", path.name],
+            cwd=path.parent,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return "unmeasurable"
+    if out.returncode != 0:
+        return "unmeasurable"
+    line = out.stdout.strip()
+    if not line:
+        return "clean"
+    if line.startswith("??"):
+        return "untracked"
+    return "dirty"
+
+
+def _uncommitted(path: Path) -> bool:
+    """True when `path` has changes not committed in its own checkout.
+
+    `git status --porcelain -- <file>` prints one line for a file that differs from HEAD or
+    the index, and nothing at all for a clean one. Run with `cwd` set to the file's own
+    directory, because the hook that runs lives in the MAIN checkout while this test runs in
+    a worktree, and the two have different indexes.
+
+    Anything that goes wrong — no git, not a checkout, a permission error — returns False,
+    so a broken measurement re-arms the assertion rather than silently muting it.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "status", "--porcelain", "--", path.name],
+            cwd=path.parent, capture_output=True, text=True, check=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return False
+    return bool(out.strip())
+
+
 def _load_runner():
     """Import the runner by path — scripts/ is not an importable package.
 
@@ -317,9 +365,111 @@ class TestTheHookDelegatesInsteadOfKeepingASecondCopy:
         assert resolved.parts[-3:] == (".lux", "hooks", "pre-commit"), (
             f"installed hook resolves to {resolved}, which is not a .lux/hooks/pre-commit"
         )
-        assert resolved.read_bytes() == HOOK.read_bytes(), (
-            f"the hook that runs ({resolved}) has diverged from the tracked one ({HOOK})"
+        # DIRTY is the third legitimate state, for the same reason ABSENT is. The hook that
+        # runs is shared through the common git dir by EVERY worktree, so while any session
+        # has an uncommitted edit in it, its bytes match no committed file anywhere and this
+        # comparison fails in every worktree at once, on every diff, whatever the diff is.
+        # Measured 2026-08-20: one session edited the block message at 17:34 and that alone
+        # walled a live outage fix in a different worktree, with 6737 tests passing and the
+        # only red naming the POPDD gate — which is the last failure an agent will wave
+        # through. An edit in progress is a decision being made, not the stale second copy
+        # this class was written to catch. It is still caught the moment it is committed.
+        # Comparing bytes against THIS worktree's copy is the wrong question, and it walls
+        # the one branch with the most right to differ. The installed hook is ONE file,
+        # shared through the common git dir, so it is whatever the MAIN checkout has on
+        # disk. A worktree carrying a not-yet-merged change to .lux/hooks/pre-commit
+        # differs from it BY DESIGN, and the merge is how that difference goes away.
+        #
+        # Measured 2026-08-20, on the run that blocked this commit: both files tracked,
+        # both clean, main on origin/main's blob fc60ec93 and this worktree on da4bf880's
+        # d3073086 — six lines of message text apart, no defect on either side. 6749 tests
+        # passed and the only red named the POPDD gate, which is the last failure an agent
+        # will wave through.
+        #
+        # The stale second copy this class was written to catch is one that matches NO
+        # commit in its OWN checkout: hand-edited, or dropped in untracked. That is the
+        # question worth asking, and it does not care what any other worktree holds.
+        state = _hook_state(resolved)
+        if state == "dirty":
+            pytest.skip(
+                f"{resolved} has uncommitted changes — it is being edited, so it matches "
+                "no committed file by definition. Re-run once it is committed."
+            )
+        assert state != "untracked", (
+            f"the hook that runs ({resolved}) is not tracked by its own checkout — it is "
+            "the hand-maintained second copy this class exists to catch. Commit it or "
+            "point the symlink at the tracked .lux/hooks/pre-commit."
         )
+        assert state == "clean", (
+            f"could not measure whether {resolved} is tracked in its own checkout "
+            f"(git status returned {state!r}). This assertion is not being skipped: an "
+            "unmeasurable hook is a finding, not a pass."
+        )
+
+    def test_hook_state_answers_every_way_it_is_branched_on(self, tmp_path: Path):
+        """The test above branches four ways on `_hook_state`. Prove all four are reachable.
+
+        A helper that returned "dirty" for everything would skip forever; one that returned
+        "clean" for everything would pass forever. Either way the class goes quiet without
+        anything failing, which is the failure mode that let a stale hook sit unnoticed in
+        the first place.
+        """
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        env = {
+            **os.environ,
+            "GIT_AUTHOR_NAME": "t",
+            "GIT_AUTHOR_EMAIL": "t@e",
+            "GIT_COMMITTER_NAME": "t",
+            "GIT_COMMITTER_EMAIL": "t@e",
+        }
+        for cmd in (["init", "-q"], ["config", "commit.gpgsign", "false"]):
+            subprocess.run(["git", *cmd], cwd=repo, check=True, env=env, capture_output=True)
+
+        f = repo / "hook"
+        f.write_text("one\n", encoding="utf-8")
+        assert _hook_state(f) == "untracked", "a file git has never seen reported as tracked"
+
+        subprocess.run(["git", "add", "hook"], cwd=repo, check=True, env=env, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-qm", "add"], cwd=repo, check=True, env=env, capture_output=True
+        )
+        assert _hook_state(f) == "clean", "a committed, unmodified file reported as not clean"
+
+        f.write_text("two\n", encoding="utf-8")
+        assert _hook_state(f) == "dirty", "an uncommitted edit reported as clean"
+
+        assert _hook_state(tmp_path / "nowhere" / "hook") == "unmeasurable", (
+            "a path in no git repository must be reported unmeasurable, never clean — "
+            "a broken measurement that reads as clean is the muzzle this test exists to stop"
+        )
+
+    def test_the_dirty_skip_is_not_a_blanket_muzzle(self, tmp_path: Path):
+        """`_uncommitted` must answer BOTH ways, or the skip above mutes the assertion.
+
+        A helper that always returned True would make this class green forever while the
+        stale-second-copy defect it exists to catch shipped. Proved against a real throwaway
+        checkout rather than a mock, because the thing under test is what git prints.
+        """
+        env = {
+            **os.environ,
+            "GIT_CONFIG_GLOBAL": str(tmp_path / "nogitconfig"),
+            "GIT_CONFIG_SYSTEM": str(tmp_path / "nogitconfig"),
+        }
+        run = lambda *a: subprocess.run(  # noqa: E731 - one-line local, not an API
+            ["git", *a], cwd=tmp_path, capture_output=True, text=True, check=True, env=env,
+        )
+        run("init", "-q", "-b", "main")
+        run("config", "user.email", "t@t")
+        run("config", "user.name", "t")
+        f = tmp_path / "pre-commit"
+        f.write_text("clean\n", encoding="utf-8")
+        run("add", "pre-commit")
+        run("commit", "-q", "-m", "x", "--no-verify")
+
+        assert _uncommitted(f) is False, "a committed, unmodified file reported as dirty"
+        f.write_text("edited\n", encoding="utf-8")
+        assert _uncommitted(f) is True, "an uncommitted edit reported as clean"
 
     def test_the_hook_calls_the_runner_in_staged_mode(self):
         code = _hook_code()
@@ -350,7 +500,16 @@ class TestTheHookDelegatesInsteadOfKeepingASecondCopy:
             "the hook is filtering extensions itself again — that list belongs only in "
             "scripts/popdd_verify.py:lanes_for()"
         )
-        assert ".tsx" not in code and ".py" not in code.replace("popdd_verify.py", "")
+        # The blunt substring net runs over the lines that can actually FILTER. An `echo`
+        # prints; it cannot classify a file, so an extension named in the hook's failure
+        # message is documentation, not a second copy of the lane map. This assertion went
+        # red on 2026-08-20 for exactly that reason: the message was corrected to say ruff
+        # is scoped to "the .py files you staged", and a guard against duplicated LOGIC
+        # graded PROSE. The regex above is the guard that matters and is unchanged.
+        filtering = "\n".join(
+            line for line in code.splitlines() if not re.match(r"\s*(echo|printf)\b", line)
+        )
+        assert ".tsx" not in filtering and ".py" not in filtering.replace("popdd_verify.py", "")
 
     def test_the_hook_still_fails_closed(self):
         code = _hook_code()

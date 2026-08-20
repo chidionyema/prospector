@@ -12,6 +12,7 @@ tree is byte-for-byte where it was. It is deliberately not a source scan.
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -37,8 +38,23 @@ def _clean_git_env() -> dict[str, str]:
 
 
 def git(cwd: Path, *args: str) -> str:
-    p = subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, text=True, check=True,
+    """Run git, and on failure raise something that names the CAUSE, not just the status.
+
+    `check=True` with `capture_output=True` throws stderr away, so a failure in CI reads
+    "Command [...] returned non-zero exit status 128" and stops there. That exact message cost a
+    reproduction on a second machine to learn it meant "fatal: invalid reference: HEAD".
+
+    The TYPE must stay CalledProcessError: test_the_secret_is_not_in_the_snapshot asserts
+    `pytest.raises(subprocess.CalledProcessError)` on a git call that is SUPPOSED to fail, and an
+    AssertionError here turns that deliberate failure into a red test. The notes carry the cause --
+    CalledProcessError.__str__ prints only the exit status, and pytest renders notes."""
+    p = subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, text=True,
                        env=_clean_git_env())
+    if p.returncode:
+        e = subprocess.CalledProcessError(p.returncode, ["git", *args], p.stdout, p.stderr)
+        e.add_note(f"cwd: {cwd}")
+        e.add_note((p.stderr or p.stdout).strip() or "<no git output>")
+        raise e
     return p.stdout.strip()
 
 
@@ -160,3 +176,72 @@ def test_the_branch_name_is_stable_for_the_same_worktree():
     """Re-running must overwrite the same branch, not accumulate one per run."""
     p = Path("/tmp/x/3fa47c70-1111-2222-3333-444455556666/scratchpad/wt-ci")
     assert ws.branch_name(p) == ws.branch_name(p)
+
+
+def test_a_worktree_whose_objects_live_in_another_clone_is_still_pushed(tmp_path, monkeypatch):
+    """One cross-owned worktree must not take every other snapshot down with it.
+
+    WHY THIS EXISTS, measured 2026-08-20. This machine carries TWO clones of prospector sharing
+    one origin -- ~/Documents/code/prospector and one under iCloud Drive -- and each clone's
+    .git/worktrees/ registers trees whose objects live in the OTHER clone's store. `snapshot()`
+    runs `commit-tree` with the worktree as cwd, so the commit lands in that worktree's store,
+    while the push used to run from `repo`. Pushing a sha `repo` cannot see fails with
+    `fatal: bad object`, and a push is ATOMIC IN ITS ARGUMENT LIST: the whole batch dies. It
+    happened in both directions on the same day -- 44 snapshots lost to `wt-method`, then 15
+    lost to `prospector-live`.
+
+    The assertion that matters is the one about the OTHER worktree. A test that only checked the
+    cross-owned tree would pass on a fix that pushed it and silently dropped the rest.
+    """
+    # `-b main` is load-bearing, not tidiness. `git init --bare` names HEAD from the
+    # machine's init.defaultBranch, which is `master` on a GitHub runner and `main` on
+    # this estate's laptops. The fixture then pushes to refs/heads/main, so on the runner
+    # origin/HEAD pointed at a branch that never existed, every clone below came out
+    # EMPTY ("remote HEAD refers to nonexistent ref, unable to checkout"), and
+    # `worktree add --detach` failed with "fatal: invalid reference: HEAD" -- exit 128,
+    # reported by CI with no error text. Green on every developer machine, red on every
+    # runner. Reproduced 2026-08-20 by forcing `-b master` on a laptop.
+    git(tmp_path, "init", "-q", "--bare", "-b", "main", "origin.git")
+    origin = tmp_path / "origin.git"
+
+    seed = tmp_path / "seed"
+    git(tmp_path, "clone", "-q", str(origin), "seed")
+    git(seed, "config", "user.email", "t@t")
+    git(seed, "config", "user.name", "t")
+    (seed / "kept.txt").write_text("original\n")
+    git(seed, "add", "-A")
+    git(seed, "commit", "-q", "-m", "first")
+    git(seed, "push", "-q", "origin", "HEAD:refs/heads/main")
+
+    clones = {}
+    for name in ("a", "b"):
+        git(tmp_path, "clone", "-q", str(origin), name)
+        clones[name] = tmp_path / name
+        git(clones[name], "config", "user.email", "t@t")
+        git(clones[name], "config", "user.name", "t")
+
+    trees = {}
+    for name in ("a", "b"):
+        wt = tmp_path / f"wt-{name}"
+        git(clones[name], "worktree", "add", "-q", "--detach", str(wt))
+        (wt / "kept.txt").write_text(f"uncommitted work in {name}\n")
+        trees[name] = wt
+
+    # Cross-registration, exactly as it exists on this machine: clone A lists wt-b, but wt-b/.git
+    # still points at clone B, so wt-b's objects are written to B's store and A cannot see them.
+    shutil.copytree(clones["b"] / ".git" / "worktrees" / "wt-b",
+                    clones["a"] / ".git" / "worktrees" / "wt-b")
+    listed = git(clones["a"], "worktree", "list", "--porcelain")
+    assert str(trees["b"]) in listed, "fixture is vacuous: clone A does not list the foreign tree"
+    assert ws.git(["cat-file", "-t", git(trees["b"], "rev-parse", "HEAD")],
+                  clones["a"])[0] == 0
+    monkeypatch.setattr(sys, "argv",
+                        ["worktree_snapshot.py", "--push", "--repo", str(clones["a"]),
+                         "--prefix", "snap/test"])
+    rc = ws.main()
+
+    refs = git(origin, "for-each-ref", "--format=%(refname)")
+    assert "snap/test/wt-a-shared" in refs, (
+        "the snapshot of clone A's OWN worktree was lost as collateral of the foreign one")
+    assert "snap/test/wt-b-shared" in refs, "the cross-owned worktree was never pushed"
+    assert rc == 0, "a run that pushed everything must not report failure"
