@@ -86,6 +86,44 @@ sources:
     verify: tgz
     keep: 30
 
+  - name: agent-estate
+    why: >-
+      ~/.claude — the agent estate. Memory files, hooks, skills, the state probes, every
+      checkpoint and the founder-directive archive. It is how six sessions know what this
+      business is, which traps have already cost time, and why each decision was taken. None of
+      it is in git and, until this entry, it existed in exactly one copy on one laptop disk:
+      the only thing here with no second copy anywhere. 1,127 files, 13.0 MiB, measured
+      2026-08-20 — the rest of the 7.2 GB under ~/.claude is session transcripts, telemetry and
+      caches, and rebuilds itself.
+    fetch:
+      # `{repo}` is this checkout: /app in the engine container, prospector-live on the laptop.
+      # The command runs with cwd set to a scratch directory, so a relative path cannot work and
+      # an absolute one cannot be written down once.
+      #
+      # The script takes an ALLOW-LIST, not a tar of the whole directory, and it reads the bytes
+      # before it packs them. It has to: measured on the allow-listed set alone, ~/.claude held a
+      # private key in a checkpoints directory and a 93-character GitHub token pasted into the
+      # directive archive. Key material is dropped whole, an embedded credential is redacted in
+      # place, and both are recorded by path and line in AGENT_ESTATE_MANIFEST.json inside the
+      # archive. ~/.hermes/.gitignore already carries the verdict on doing this by filename
+      # patterns instead: 26 live keys reached a GitHub remote through exactly that control.
+      - "{repo}/scripts/backup_agent_estate.py"
+      - --out
+      - "{dest}"
+    key: agent-estate/claude.tgz
+    # Opened as a tar archive and its index read, same as the key ring above.
+    verify: tgz
+    # Only the laptop has an agent estate. The engine container skips this source and still
+    # GRADES it, which is the arrangement that matters: the always-on host is the one that
+    # notices when the laptop stops taking the copy.
+    only_where: "~/.claude"
+    # 72 hours, not 24 or 30. This job runs at 03:50 on a laptop, and a laptop with its lid shut
+    # over a long weekend is not a backup failure. A week of silence is. The two hosts that write
+    # every other source here are always on; this one is not, and the threshold says so rather
+    # than going red every Monday until somebody mutes it.
+    max_age_hours: 72
+    keep: 30
+
 # ---------------------------------------------------------------------------------------------
 # Prefixes ANOTHER job writes. Graded for freshness only: never fetched, never verified, never
 # pruned, never deleted. `scripts/backup_store.py` writes the engine store's only offsite copy,
