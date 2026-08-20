@@ -139,38 +139,53 @@ main().then(() => console.log(JSON.stringify({calls, logs})))
     return json.loads(proc.stdout)
 
 
-class TestItRefreshesWhatIsBehindMain:
-    """The founder's ask, 2026-08-20: a branch should carry main before it is judged."""
+class TestItTellsTheAuthorWhatIsBehindMain:
+    """The founder's rule, 2026-08-20: a branch merges main into ITSELF before its pull request
+    is raised. That is the author's job.
 
-    def test_a_behind_and_red_branch_is_brought_up_to_date(self):
+    This class used to assert the opposite -- that the keeper did the update for them, with
+    `pulls.updateBranch`. That call moved the pull request's head, which dropped it out of
+    whatever branch had been cut to close it, and three batches failed that way on 2026-08-20
+    before anyone saw it. The keeper now labels, says so once, and reports. It pushes nothing.
+
+    The estate-wide refusal is tests/unit/test_nothing_pushes_to_a_pull_request_branch.py; these
+    tests are the behaviour that replaced the push.
+    """
+
+    def test_a_behind_and_red_branch_is_told_rather_than_pushed_to(self):
         out = _run(prs=[pull()], behind=4, runs=[run(conclusion="failure")],
                    jobs=[{"name": "python", "conclusion": "failure"}])
-        assert len(out["calls"]["update"]) == 1
-        assert out["calls"]["update"][0]["expected_head_sha"] == HEAD
+        assert out["calls"]["update"] == [], "the keeper pushed to an open pull request's branch"
+        assert out["calls"]["label"][0]["labels"] == ["needs-rebase"]
+        body = out["calls"]["comment"][0]["body"]
+        assert "4 commits behind" in body
+        assert "git merge origin/main" in body, "the comment does not say what to actually run"
 
-    def test_the_update_is_pinned_to_the_head_it_read(self):
-        """Without expected_head_sha an author's push during this run is silently overwritten."""
+    def test_the_refusal_is_visible_without_reading_a_log(self):
+        """A silent skip is how a pull request sits open for hours with nothing red anywhere.
+        The label is what makes it visible on the board, not just in this run's output."""
         out = _run(prs=[pull()], behind=1, runs=[])
-        assert out["calls"]["update"][0]["expected_head_sha"] == HEAD
+        assert out["calls"]["label"] != [], "nothing marks the pull request as the author's move"
 
-    def test_the_refreshed_branch_gets_ci_dispatched(self):
-        """updateBranch pushes with GITHUB_TOKEN, from which GitHub starts no run. Without the
-        dispatch the branch is refreshed and then graded by nobody, which is worse than before:
-        its only run now describes a sha that is no longer its head."""
+    def test_no_ci_is_dispatched_for_a_branch_nothing_changed(self):
+        """The dispatch existed to grade the commit the keeper had just pushed. There is no such
+        commit now, so a dispatch would spend a runner re-grading the identical tree."""
         out = _run(prs=[pull()], behind=2, runs=[])
-        assert [d["workflow_id"] for d in out["calls"]["dispatch"]] == ["ci.yml"]
-        assert out["calls"]["dispatch"][0]["ref"] == "feat/x"
+        assert out["calls"]["dispatch"] == []
 
     def test_a_branch_level_with_main_is_not_touched(self):
         out = _run(prs=[pull()], behind=0, runs=[run(conclusion="success")])
         assert out["calls"]["update"] == []
+        assert out["calls"]["label"] == []
+        assert out["calls"]["comment"] == []
 
-    def test_a_green_behind_branch_is_left_to_automerge(self):
-        """automerge.yml sweeps green-and-behind and merges afterwards. Two workflows updating
-        one branch at the same moment is two merge commits and a race between them."""
+    def test_a_green_behind_branch_is_told_too(self):
+        """Green-and-behind is graded against a base it does not contain, so its green means
+        nothing. automerge.yml refuses to merge it for the same reason. Neither one updates it."""
         out = _run(prs=[pull()], behind=5, runs=[run(conclusion="success")])
         assert out["calls"]["update"] == []
         assert out["calls"]["dispatch"] == []
+        assert out["calls"]["label"][0]["labels"] == ["needs-rebase"]
 
 
 class TestItReRunsARefusalAndNotAFailure:
@@ -334,25 +349,20 @@ class TestItRespectsWhoOwnsTheBranch:
 
 
 class TestWhenGitCannotDoIt:
-    def test_a_conflicting_branch_is_labelled_and_told_why(self):
-        out = _run(prs=[pull()], behind=4, runs=[], update_error="merge conflict")
-        assert out["calls"]["label"][0]["labels"] == ["needs-rebase"]
-        body = out["calls"]["comment"][0]["body"]
-        assert "merge conflict" in body
-        assert "git rebase origin/main" in body
+    """Two tests here graded a conflict path that no longer exists.
+
+    They stubbed `updateBranch` to throw `merge conflict` and asserted the catch labelled the
+    pull request and told the author to rebase. The keeper no longer calls updateBranch at all,
+    so there is nothing to conflict: every behind-main branch takes the same path, which
+    TestItTellsTheAuthorWhatIsBehindMain grades. What survives is the part that was never about
+    conflicts -- saying it once, and not stranding the rest of the board on one bad pull request.
+    """
 
     def test_it_does_not_say_it_twice(self):
         """A keeper that comments on every run turns a stuck branch into an unreadable thread."""
-        out = _run(prs=[pull(labels=["needs-rebase"])], behind=4, runs=[],
-                   update_error="merge conflict")
+        out = _run(prs=[pull(labels=["needs-rebase"])], behind=4, runs=[])
         assert out["calls"]["label"] != []
         assert out["calls"]["comment"] == []
-
-    def test_the_comment_warns_against_a_blind_force_push(self):
-        """This workflow pushes a merge onto someone's branch. An author who force-pushes
-        without fetching drops it, and their next push is rejected non-fast-forward."""
-        out = _run(prs=[pull()], behind=4, runs=[], update_error="merge conflict")
-        assert "fetch before you push" in out["calls"]["comment"][0]["body"]
 
     def test_one_broken_pull_request_does_not_strand_the_rest(self):
         """A keeper that throws on number three never reaches four to twenty, and the ones it
@@ -397,6 +407,9 @@ class TestTheWorkflowItself:
     def test_it_asks_for_no_more_permission_than_it_uses(self):
         doc = yaml.safe_load(WORKFLOW.read_text())
         assert doc["permissions"] == {
-            "contents": "write", "pull-requests": "write",
+            # READ. The workflow pushes nothing, so the token cannot. This is the half of the
+            # 2026-08-20 fix that a future edit cannot undo by accident: re-add the branch
+            # update here and it fails at the API rather than moving fifteen heads quietly.
+            "contents": "read", "pull-requests": "write",
             "actions": "write", "issues": "write",
         }

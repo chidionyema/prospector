@@ -376,25 +376,18 @@ class TestItPutsTheEstateBackAndNotJustGit:
         assert script.count("cancelWorkflowRun") == 1
         assert "run.name !== 'CI'" in script
 
-    def test_the_deploy_map_has_not_drifted_from_automerge(self):
-        """Two copies of one map is a bug waiting for a path to be added to only one of them.
-
-        They are duplicated rather than shared because a GitHub workflow cannot import from
-        another one. So the drift is caught here instead.
-        """
-        theirs = (WORKFLOW.parent / "automerge.yml").read_text()
-        mine = self._repair()
-        for line in mine.splitlines():
-            stripped = line.strip()
-            if stripped.startswith("'deploy-") and "': /^(" in stripped:
-                assert stripped in [x.strip() for x in theirs.splitlines()], (
-                    f"this line is not in automerge.yml any more:\n  {stripped}")
-
-    def test_the_deploy_inputs_have_not_drifted_from_automerge(self):
-        """`deploy-web.yml` takes a required `target` input. Dispatching it without one 422s."""
-        theirs = (WORKFLOW.parent / "automerge.yml").read_text()
-        assert "'deploy-web.yml': {target: 'prod', dry_run: 'false'}" in theirs
-        assert "'deploy-web.yml': {target: 'prod', dry_run: 'false'}" in self._repair()
+    # DELETED 2026-08-20: test_the_deploy_map_has_not_drifted_from_automerge and
+    # test_the_deploy_inputs_have_not_drifted_from_automerge.
+    #
+    # Both compared this workflow's DEPLOY/INPUTS objects against a SECOND copy of them in
+    # .github/workflows/automerge.yml. That file was deleted on founder decision the same day,
+    # so there is no second copy to drift from and the comparison could only ever fail.
+    #
+    # The map still needs grading, and it is graded better now: it is compared against the three
+    # deploy workflows' OWN `on.push.paths`, in both directions, by
+    # tests/unit/test_every_deploy_ships_on_green_main.py. That is the source the two copies were
+    # both hand-transcribed from, so checking against it catches a drift that agreeing copies
+    # would have hidden.
 
     def test_a_failed_dispatch_does_not_fail_the_job(self):
         """The revert is already pushed by this point. Throwing here would leave the run red

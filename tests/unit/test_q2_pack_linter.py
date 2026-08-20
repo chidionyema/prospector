@@ -398,6 +398,11 @@ def test_an_unreachable_archive_leaves_the_error_standing(monkeypatch):
             raise real_requests.ConnectTimeout("archive down")
         return _Resp(404)
 
+    # Four other tests in this file already stub the backoff; this one did not, and it slept
+    # the real `_MEMENTO_BACKOFF_S` — 3s then 9s. Measured 2026-08-20 with a time.sleep probe
+    # over the full suite: 12.0s in this single test, the largest blocking sleep in 6405 tests.
+    # What it asserts is the VERDICT after the retries are exhausted, not how long they took.
+    monkeypatch.setattr(pack_linter.time, "sleep", lambda _s: None)
     monkeypatch.setattr(pack_linter.requests, "head", fake_head)
     monkeypatch.setattr(pack_linter.requests, "get", fake_get)
     probs, _ = check_urls(

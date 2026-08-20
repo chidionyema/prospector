@@ -80,7 +80,7 @@ an assumed zero repeat rate. The one number it emits is wrong in kind.
 - Placeholder strings: `prospector/artifacts.py:192, 216, 234, 246, 248, 271, 291, 295`
 - ARPU is computed from a field named `monthly_price` regardless of purchase model:
   `prospector/artifacts.py:171, 246`; the prompt demands `monthly_price` unconditionally at
-  `prospector/prompts/artifacts.md:37`
+  `prompts/artifacts.md:37`
 - Nothing gates the document on being computable: `prospector/pack_validation.py:24-25` only
   checks length > 200 chars
 - (Above four: reported by subagent, **spot-check the line numbers before editing** — not
@@ -196,7 +196,7 @@ aimed at *parents*. One of eight documents is not doing its job at all.
 
 Headings are generated from the asset `type` field (`prospector/bridge.py:1475`), types assigned
 at `prospector/artifacts.py:805` `["listing_page", "teaser_social", "seo_preview", "launch_email"]`;
-the generating prompt (`prospector/prompts/content_gen.md:38-66`) defines each type's *structure*
+the generating prompt (`prompts/content_gen.md:38-66`) defines each type's *structure*
 but never states **who each asset is written for**. *(subagent-reported; verify lines.)*
 
 ---

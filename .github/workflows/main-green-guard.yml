@@ -26,6 +26,15 @@
 #
 #   Reverting good work.        A revert is an ordinary commit. `git revert` of the revert
 #                               restores it, and the issue this opens names the sha to use.
+#   Blaming an inherited red.   `scripts/green_guard_cause.py` asks whether the commit's FIRST
+#                               PARENT already failed CI. If it did, main was broken before this
+#                               commit arrived and reverting it cannot be the fix, so the guard
+#                               stands down and opens an issue naming the parent instead. This
+#                               row was written on 2026-08-20, after the guard reverted #466 --
+#                               the whole central logging build, 48 files -- for five failures of
+#                               which four came from #460 and #467. Its own next run,
+#                               32317556934 on the revert commit 739b6d42, failed on the same
+#                               five tests, so the revert did not make main green.
 #   Reverting a flake.          The re-run above.
 #   Racing a human fix.         Refuses if main's HEAD has moved since the failing run.
 #   Ping-pong.                  Refuses to revert a commit that is itself a revert.
@@ -94,6 +103,16 @@ jobs:
           ref: main
           fetch-depth: 50
 
+      # Was main already broken before this commit landed? Answered from the parent's own CI
+      # run, never from the diff. A `unknown` verdict PROCEEDS on purpose -- see the script's
+      # docstring -- so this check can stop a wrong revert but can never cause one.
+      - name: Ask whether main was already red before this commit
+        id: cause
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python3 scripts/green_guard_cause.py --sha "${{ github.event.workflow_run.head_sha }}"
+
       - name: Decide whether reverting is the right thing to do
         id: decide
         uses: actions/github-script@v7
@@ -103,10 +122,22 @@ jobs:
             const run = context.payload.workflow_run
             const sha = run.head_sha
 
-            const refuse = (why) => {
+            const refuse = (why, reason) => {
               core.notice(`not reverting: ${why}`)
               core.setOutput('go', 'no')
               core.setOutput('why', why)
+              core.setOutput('reason', reason || 'other')
+            }
+
+            // The first question, because it is the only one that can prove this commit did not
+            // do it. Every check below asks whether reverting is SAFE. This one asks whether it
+            // is even the right commit.
+            if ('${{ steps.cause.outputs.verdict }}' === 'already-red') {
+              return refuse(
+                `main was already red before ${sha.slice(0, 8)} landed: ` +
+                ${{ toJSON(steps.cause.outputs.why) }} +
+                '. Reverting it deletes work and leaves main exactly as red.',
+                'already-red')
             }
 
             // Someone may already be fixing it. Never race a human.
@@ -141,6 +172,49 @@ jobs:
                             'last hour; stopping rather than reverting again')
             }
 
+            // THE HEAD IS NOT NECESSARILY THE CAUSE. 2026-08-19: #460 merged with its own CI
+            // already failing and broke main. Three commits later this guard reverted #463 --
+            // the HEAD, and innocent -- opened #468 blaming its author, and left main red,
+            // because the file that actually broke it was never touched.
+            //
+            // So before reverting, ask whether main was ALREADY failing this way one commit
+            // earlier. If the same job failed on the parent, this commit cannot be the cause.
+            //
+            // This only ever REFUSES on positive evidence. No run on the parent, a run still in
+            // flight, or an API that throws all fall through to the old behaviour: a red main
+            // blocks every open PR, and being unable to prove innocence is not proof of guilt.
+            const failingJobs = async (run_id) => {
+              const {data} = await github.rest.actions.listJobsForWorkflowRun(
+                {owner, repo, run_id, filter: 'latest', per_page: 100})
+              return new Set(
+                data.jobs.filter(j => j.conclusion === 'failure').map(j => j.name))
+            }
+            try {
+              const mine = await failingJobs(run.id)
+              const parent = commit.parents[0].sha
+              const {data: prior} = await github.rest.actions.listWorkflowRunsForRepo(
+                {owner, repo, branch: 'main', head_sha: parent, per_page: 20})
+              for (const p of prior.workflow_runs) {
+                if (p.conclusion !== 'failure') continue
+                const theirs = await failingJobs(p.id)
+                const shared = [...mine].filter(n => theirs.has(n))
+                if (shared.length) {
+                  core.setOutput('blame', parent)
+                  core.setOutput('blame_jobs', shared.join(', '))
+                  core.setOutput('blame_run', p.html_url)
+                  return refuse(
+                    `${sha.slice(0, 8)} is not the cause: ${parent.slice(0, 8)} already failed ` +
+                    `the same job(s) [${shared.join(', ')}]. Reverting the head would remove ` +
+                    'innocent work and leave main red.')
+                }
+              }
+            } catch (e) {
+              // Never let this check kill the job. An unhandled throw part way through a
+              // github-script step silently drops every line below it -- that is how the merge
+              // of #451 landed on main ungraded on 2026-08-19.
+              core.warning(`could not check the parent commit, proceeding: ${e.message}`)
+            }
+
             core.setOutput('go', 'yes')
             core.setOutput('sha', sha)
             core.setOutput('subject', subject)
@@ -148,11 +222,91 @@ jobs:
             core.setOutput('parents', String(parents))
             core.setOutput('run_url', run.html_url)
 
+      - name: Name the commit that really broke main
+        if: steps.decide.outputs.blame != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo
+            const blame = '${{ steps.decide.outputs.blame }}'
+            const title = `main is red, and ${blame.slice(0, 8)} is where it started`
+            // One issue per suspect. Every subsequent failed run on main would otherwise open
+            // another, and an alarm that repeats is an alarm people filter out.
+            const {data: open} = await github.rest.issues.listForRepo(
+              {owner, repo, state: 'open', per_page: 100})
+            if (open.some(i => i.title === title)) {
+              core.notice(`already reported: ${title}`)
+              return
+            }
+            const {data: issue} = await github.rest.issues.create({
+              owner, repo, title,
+              body: [
+                'The green guard stood down instead of reverting, because the commit at the head',
+                'of `main` is provably not the cause.',
+                '',
+                `- **failing job(s)** ${{ toJSON(steps.decide.outputs.blame_jobs) }}`,
+                `- **already failing at** \`${blame}\` — ${{ steps.decide.outputs.blame_run }}`,
+                `- **the run that triggered this** ${{ steps.decide.outputs.run_url }}`,
+                '',
+                'Reverting the head would have deleted innocent work and left `main` red, which',
+                'is what happened on 2026-08-19 to #463.',
+                '',
+                '## What to do',
+                '',
+                'Read the failing job, fix the cause, and open the PR with the `fixes-main` label',
+                'so it can build while main is red. The label must be on the PR BEFORE the run',
+                'starts: labels in the event payload are frozen at dispatch.',
+                '',
+                '```bash',
+                '.venv/bin/python scripts/main_red.py',
+                '```',
+              ].join('\n'),
+            })
+            core.notice(`opened #${issue.number}`)
+
       - name: Say why nothing was reverted
         if: steps.decide.outputs.go != 'yes'
         run: |
           echo "main is red and this guard stood down."
           echo "reason: ${{ steps.decide.outputs.why }}"
+
+      # A stand-down leaves main RED. The other refusals hand off to something already in motion
+      # -- a human pushing a fix, an earlier revert, a run that has moved on. This one does not:
+      # nobody is working on it, because nobody has been told. One issue, reused, so a main that
+      # stays red across six runs does not open six issues.
+      - name: Say so where somebody will see it, because main is still red
+        if: steps.decide.outputs.go != 'yes' && steps.decide.outputs.reason == 'already-red'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo
+            const title = 'main is red, and it was already red before the newest commit'
+            const body = [
+              'The green guard stood down instead of reverting, because the failure is older',
+              'than the commit it would have reverted.',
+              '',
+              `- **commit CI tested** \`${context.payload.workflow_run.head_sha}\``,
+              `- **why** ${{ toJSON(steps.decide.outputs.why) }}`,
+              `- **failing run** ${context.payload.workflow_run.html_url}`,
+              '',
+              'Fix the actual cause. Reverting the newest merge would delete good work and leave',
+              'main exactly as red. That is what happened to #466 on 2026-08-20, and the proof is',
+              'that CI on the revert commit failed on the same five tests.',
+              '',
+              'Start with `scripts/main_red.py`, then open the failing JOB LOG rather than the run',
+              'summary: the summary says a job failed, only the log says what failed.',
+            ].join('\n')
+            const {data: found} = await github.rest.issues.listForRepo(
+              {owner, repo, state: 'open', per_page: 100})
+            const existing = found.find(i => i.title === title && !i.pull_request)
+            if (existing) {
+              await github.rest.issues.createComment(
+                {owner, repo, issue_number: existing.number, body})
+              core.notice(`main still red; commented on #${existing.number}`)
+            } else {
+              const {data: issue} = await github.rest.issues.create({owner, repo, title, body})
+              core.notice(`main still red; opened #${issue.number}`)
+            }
 
       # The issue is opened BEFORE the push, on purpose. If GitHub refuses the issue, the revert
       # never happens -- a revert nobody was told about is how work disappears.
@@ -232,3 +386,105 @@ jobs:
               workflow_id: 'ci.yml', ref: 'main',
             })
             core.notice('main reverted and CI dispatched')
+
+  # ─── A MAIN RUN THAT NEVER REACHED A VERDICT IS THE THIRD FAILURE, AND IT WAS UNGUARDED ────
+  #
+  # The two jobs above both require `conclusion == 'failure'`. A CI run on main can also end
+  # `cancelled`, `timed_out` or `stale`, and every one of those leaves main's colour UNKNOWN
+  # rather than red. Nothing above fires, so nothing looks, and main stays unknown until a
+  # person notices.
+  #
+  # MEASURED 2026-08-20. Main's own runs at 802a2e4b and fe6fcd13 both ended `cancelled` with
+  # ZERO jobs -- 32311937136 sat queued for forty minutes and was killed. The guard skipped both
+  # (runs 32314822031 and 32314849990, `completed/skipped`). Main was red on two tests the whole
+  # time and no machine in the estate was watching, because "red" was never established.
+  #
+  # WHY IT COST SO MUCH. ci.yml's `changes` step refuses to build any pull request while main's
+  # last completed run did not succeed. An unknown main is a non-green main, so every pull
+  # request skipped every build job -- and a skipped job renders as neutral grey, not red. Four
+  # pull requests were then merged by hand on that appearance. Founder, on the click that took:
+  # "i merged the prs ... because they were there and they said passed checks", and on the
+  # remedy: "i dont like the manual intervention", "if main is never red then there would be no
+  # need for manual approval".
+  #
+  # SO THIS JOB DOES ONE THING: ask for the verdict again. It never reverts. A cancelled run is
+  # not evidence that anything is wrong with the code, and reverting on no evidence is the exact
+  # mistake this file was repaired for on 2026-08-19.
+  #
+  # THE THREE WAYS IT COULD MAKE THINGS WORSE, AND WHAT STOPS EACH:
+  #   Fighting a person.   Someone cancelling a main run on purpose gets it restarted. Bounded:
+  #                        it gives up after MAX_ATTEMPTS runs at the same commit and says so.
+  #   Restarting a queue.  If a newer CI run on main is already queued or in progress, main's
+  #                        verdict is already coming and this stands aside.
+  #   Recursing.           Dispatching CI creates a run; if THAT is cancelled this job fires
+  #                        again -- which is the point -- but the attempt count is read from the
+  #                        commit, not the run, so the ceiling holds across all of them.
+  restart:
+    if: >
+      github.event.workflow_run.head_branch == 'main' &&
+      (github.event.workflow_run.conclusion == 'cancelled' ||
+       github.event.workflow_run.conclusion == 'timed_out' ||
+       github.event.workflow_run.conclusion == 'stale')
+    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    steps:
+      - name: Ask main for a verdict again
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo
+            const sha = context.payload.workflow_run.head_sha
+            // Three runs at one commit is enough to tell a flaky runner from a queue nobody can
+            // serve. Past that the answer is capacity, and a fourth run does not find it.
+            const MAX_ATTEMPTS = 3
+
+            let runs = []
+            try {
+              const {data} = await github.rest.actions.listWorkflowRuns(
+                {owner, repo, workflow_id: 'ci.yml', branch: 'main', per_page: 50})
+              runs = data.workflow_runs
+            } catch (e) {
+              // Fail open and loudly. A guard that cannot read must not also block.
+              core.warning(`could not list main's CI runs (${e.message}) - not restarting`)
+              return
+            }
+
+            const live = runs.filter(
+              r => r.status === 'queued' || r.status === 'in_progress')
+            if (live.length > 0) {
+              core.info(
+                `main already has ${live.length} CI run(s) in flight ` +
+                `(${live.map(r => r.id).join(', ')}) - its verdict is already coming`)
+              return
+            }
+
+            const atSha = runs.filter(r => r.head_sha === sha)
+            if (atSha.length >= MAX_ATTEMPTS) {
+              const msg =
+                `CI on main has ended without a verdict ${atSha.length} times at ${sha.slice(0, 8)} ` +
+                `(${atSha.map(r => `${r.id}=${r.conclusion}`).join(', ')}). ` +
+                `That is a capacity or runner fault, not a flake, and restarting it again will ` +
+                `not find it. Main's colour is UNKNOWN, which blocks every pull request build.`
+              core.error(msg)
+              try {
+                await github.rest.issues.create({
+                  owner, repo,
+                  title: `main has no CI verdict at ${sha.slice(0, 8)}`,
+                  body: msg,
+                  labels: ['ci'],
+                })
+              } catch (e) {
+                core.warning(`could not open the issue: ${e.message}`)
+              }
+              return
+            }
+
+            try {
+              await github.rest.actions.createWorkflowDispatch(
+                {owner, repo, workflow_id: 'ci.yml', ref: 'main'})
+            } catch (e) {
+              core.setFailed(`could not dispatch CI on main: ${e.message}`)
+              return
+            }
+            core.notice(
+              `main's CI ended ${context.payload.workflow_run.conclusion} at ${sha.slice(0, 8)} ` +
+              `with no verdict - dispatched attempt ${atSha.length + 1} of ${MAX_ATTEMPTS}`)

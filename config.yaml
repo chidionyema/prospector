@@ -134,10 +134,55 @@ moat_primary: [minimax, claude_cli]
 # is a failover tier, never a routing choice. `minimax_fast` is NOT a name that can go here —
 # it is a model_defaults FIELD, and `_build_operator` would raise `unknown operator`.
 noncritical_operator: [minimax, minimax_m27]
-model: ""                            # verdict brain model pin (blank = each CLI's default).
-model_fast: ""                   # cheap model for query-gen/prescreen; blank = each provider's
-                                 # own fast default (model_defaults.fast). Was deepseek-v4-flash.
+# DEAD KNOBS, KEPT ONLY SO A STALE CONFIG STILL PARSES. Measured 2026-08-19: the value of
+# either one reached exactly one construction site (`ollama`), whose prefix table in
+# `_PROVIDER_MODEL_PREFIX` was empty, so the match was always False and the model always None.
+# Setting `model:` to a MiniMax name, a Claude name or an Ollama name changed the model of
+# nothing — including from the ops console, where both were editable knobs that wrote a value,
+# recorded a history row, and did nothing. The heuristic is deleted; use `component_models:`
+# below, which names the provider instead of guessing it. Both stay blank.
+model: ""
+model_fast: ""
 model_version_tag: ""            # filled at runtime for audit
+
+# PER-COMPONENT MODEL PINS — which model each chain runs on each provider.
+#
+# `<component>.<provider>: ""` means "use model_defaults for that provider". Every slot the
+# engine can use is pre-declared blank on purpose: the ops console's rewriter edits lines that
+# EXIST and never adds a key, so a slot missing here is a pin the console cannot set. An unknown
+# component or provider name raises at load (config.py `_component_models`) — a pin nothing
+# reads is the exact defect this block replaced.
+#
+# The five components are the five operator rosters that already exist above:
+#   moat        <- operator: / moat_primary:      the verdict chain. Money path.
+#   noncritical <- noncritical_operator:          generation, prescreen, scoring.
+#   artifact    <- artifact_operator:             the prose of the £49 deliverable.
+#   marketing   <- marketing_operator:            shelf copy.
+#   grounding   <- retrieval.provider:            the retrieval brain.
+#
+# WHAT A PIN DOES NOT BUY. Health marks and circuit breakers are keyed on the TIER NAME, not on
+# the model. Pinning `noncritical.minimax` to a different model than `moat.minimax` does not give
+# it a separate dead mark: bench one and both are benched. That is why `minimax_m27` is a
+# separate tier name rather than a model pin, and it is the reason to reach for a second tier
+# when you want survivability, and for a pin when you want a different model.
+component_models:
+  moat:
+    claude_cli:  ""
+    minimax:     ""
+  noncritical:
+    minimax:     ""
+    minimax_m27: ""
+    deepseek:    ""
+    ollama:      ""
+    openrouter:  ""
+  artifact:
+    claude_cli:  ""
+    minimax:     ""
+  marketing:
+    claude_cli:  ""
+    minimax:     ""
+  grounding:
+    claude_cli:  ""
 
 # MODEL PIN FOR THE CLAUDE FALLBACK. Founder directive 2026-08-19: both estates must fall back
 # to the CHEAPEST Claude, enforced and documented. Blank => prospector.claude_cli
@@ -228,6 +273,15 @@ model_defaults:
                                        # tier only. Different model, NOT a faster one: measured
                                        # 2026-08-15 M3 8.1s vs M2.7 29.5s on a generation prompt.
   ollama:       "qwen2.5-coder:7b"     # OllamaOperator default
+  # OpenRouter rotates a PRIORITY LIST and scores each model by success rate and latency, so
+  # this is a list where the rest are strings. The adapter has read this field by name since it
+  # was written; the field did not exist until 2026-08-19, which is half of why nothing could
+  # construct it (the other half was no branch in `_build_operator`). Free models only — the
+  # adapter is barred from the moat by its own docstring and must not rule a £49 verdict.
+  openrouter:
+    - "google/gemma-4-31b-it:free"
+    - "qwen/qwen3-coder:free"
+    - "openrouter/free"
   # `standardcompute` removed 2026-08-15 with its adapter — see prospector/operator.py.
   search:
     deepseek:    "deepseek-v4-flash"

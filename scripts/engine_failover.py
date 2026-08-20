@@ -49,6 +49,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -498,10 +499,46 @@ STORE_LEAF = LAPTOP_STORE.name
 
 HERMES_RECEIPTS = Path.home() / ".hermes" / "state" / "capability_receipts.jsonl"
 
-# The container writes one receipt file per job onto the volume. These are the two Hermes grades
-# from them today; the key on the left is the file name, and it must equal `observable.script` in
-# ~/.hermes/capabilities.json or the audit will not join them up.
-CONTAINER_RECEIPTS = ("backup_store.py", "prospector.scheduler.run_scheduled")
+#: The file that decides which jobs the container runs, and therefore which receipts exist.
+SUPERVISORD_CONF = REPO / "deploy" / "engine" / "supervisord.conf"
+
+#: `receipt.sh <key> <command...>` - the key is the argument straight after the wrapper.
+_RECEIPT_KEY_RE = re.compile(r"receipt\.sh\s+(\S+)")
+
+
+def container_receipt_keys(conf: Path = SUPERVISORD_CONF) -> tuple[str, ...]:
+    """Every receipt key the engine container writes, read from the file that writes them.
+
+    This used to be a hand-written tuple of two, and that is what went wrong. supervisord wraps
+    four jobs in receipt.sh; the tuple named `backup_store.py` and
+    `prospector.scheduler.run_scheduled`. So `offsite_backup` and `restore_drill.py` wrote a
+    receipt onto the volume on schedule and nothing ever collected it - the offsite backup and the
+    restore drill, which are the two jobs that exist to prove the business can be recovered.
+
+    Reading the list means a new receipt-wrapped job ships without a second edit. One list, in the
+    file that already had to be right, instead of two that must agree and nothing compares.
+
+    The key must still equal `observable.script` in ~/.hermes/capabilities.json, which is a
+    different repository; `tests/unit/test_container_receipts_are_shipped_and_graded.py` is what
+    fails when the two drift.
+
+    Order follows the file and duplicates collapse, so a key wrapped twice is fetched once.
+    """
+    try:
+        text = conf.read_text(encoding="utf-8")
+    except OSError as exc:
+        print(f"cannot read {conf}: {exc}", file=sys.stderr)
+        return ()
+    keys: dict[str, None] = {}
+    for line in text.splitlines():
+        if line.lstrip().startswith(";"):
+            # A commented-out program runs nothing and writes no receipt. This matters: the
+            # comments in that file discuss the receipt keys by name.
+            continue
+        m = _RECEIPT_KEY_RE.search(line)
+        if m:
+            keys.setdefault(m.group(1), None)
+    return tuple(keys)
 
 
 def cmd_receipts(args) -> int:
@@ -535,7 +572,7 @@ def cmd_receipts(args) -> int:
             print(f"could not read the Hermes ledger: {exc}", file=sys.stderr)
             return 1
 
-    for key in CONTAINER_RECEIPTS:
+    for key in container_receipt_keys():
         rc, so, se = sh(["fly", "ssh", "console", "-a", FLY_APP, "-C",
                          f"cat /data/{STORE_LEAF}/ops/receipts/{key}.json"], timeout=120)
         if rc != 0:

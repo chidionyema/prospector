@@ -32,6 +32,7 @@ USAGE
 from __future__ import annotations
 
 import argparse
+import datetime as _dt
 import os
 import subprocess
 import sys
@@ -139,13 +140,24 @@ def snapshot(wt: Path) -> tuple[str, str]:
         if code != 0:
             return "", f"write-tree: {err}"
     _, head_tree = git(["rev-parse", f"{head}^{{tree}}"], wt)
+    # Any fixed string would do for determinism; the parent's own date keeps `git log` readable.
+    _, head_date = git(["log", "-1", "--format=%cI", head], wt)
+    head_date = head_date or "2000-01-01T00:00:00+00:00"
     if tree == head_tree:
         return "", "identical to HEAD once secrets and runtime state are excluded"
     msg = (f"snapshot of uncommitted work in {wt.name}\n\n"
            f"Written by scripts/worktree_snapshot.py. Nobody committed this; it is a copy taken\n"
            f"so the worktree can be discarded without losing anything. Parent is that worktree's\n"
            f"HEAD at the time, which may be well behind main.\n")
-    code, sha = git(["commit-tree", tree, "-p", head, "-m", msg], wt)
+    # The identity and both dates are PINNED, which makes the commit sha a pure function of
+    # (tree, parent, message). Without that, snapshotting unchanged content twice produces two
+    # different shas, so the second push to a branch named after the content is a non-fast-forward
+    # and git refuses it. With it, the second run pushes the identical sha and git says
+    # "Everything up-to-date". Nothing here is claiming a person wrote this commit: nobody did.
+    stamp = {"GIT_AUTHOR_NAME": "worktree_snapshot", "GIT_AUTHOR_EMAIL": "snapshot@localhost",
+             "GIT_COMMITTER_NAME": "worktree_snapshot", "GIT_COMMITTER_EMAIL": "snapshot@localhost",
+             "GIT_AUTHOR_DATE": head_date, "GIT_COMMITTER_DATE": head_date}
+    code, sha = git(["commit-tree", tree, "-p", head, "-m", msg], wt, stamp)
     return (sha, "") if code == 0 else ("", f"commit-tree: {sha}")
 
 
@@ -153,11 +165,33 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--push", action="store_true", help="push the snapshots (default: report only)")
     ap.add_argument("--prefix", default="", help="branch prefix, default snapshot/<today>")
+    # Same reason checkout_currency.py takes one: the SessionStart hook reads these scripts out
+    # of origin/main into /tmp, because a tool that repairs a stale checkout must not be read
+    # from it. Run that way __file__ is /tmp, `git worktree list` finds nothing, and the report
+    # reads "No worktree holds uncommitted work" -- a green line for a run that looked at
+    # nothing.
+    ap.add_argument("--repo", default="", help="checkout to snapshot (default: this one)")
     args = ap.parse_args()
 
-    repo = Path(__file__).resolve().parent.parent
-    _, today = git(["log", "-1", "--format=%cs"], repo)
+    repo = Path(args.repo).resolve() if args.repo else Path(__file__).resolve().parent.parent
+    # This used to read `git log -1 --format=%cs` and call the answer `today`. It is the HEAD
+    # commit's date, not today's. Measured 2026-08-20 03:36 BST on the shared checkout: HEAD sat
+    # at a commit dated 2026-08-19, so the prefix was yesterday's, every branch under it already
+    # existed, and every push was a non-fast-forward. checkout_currency.py treats a failed
+    # snapshot as a refusal to move, so the checkout it exists to keep current had been frozen
+    # since the previous day. A name that lies about what it holds is the whole defect.
+    today = _dt.date.today().isoformat()
     prefix = args.prefix or f"snapshot/{today}"
+
+    # Ask whether there IS a repository before reporting on one. `git worktree list` in a plain
+    # directory fails, this parsed its error text into an empty list, and the run ended "No
+    # worktree holds uncommitted work. Nothing to snapshot." at exit 0 -- a green line for a run
+    # that looked at nothing, which is the failure mode this whole family of tools guards other
+    # people's work against.
+    code, out = git(["rev-parse", "--git-dir"], repo)
+    if code != 0:
+        print(f"BLOCKED: {repo} is not a git checkout, so nothing was examined.\n{out}")
+        return 1
 
     refspecs, rows = [], []
     for wt in worktrees(repo):
@@ -169,7 +203,15 @@ def main() -> int:
         sha, err = snapshot(wt)
         rows.append((wt, len(files), sha, err))
         if sha:
-            refspecs.append(f"{sha}:refs/heads/{prefix}/{branch_name(wt)}")
+            # The tree sha is in the branch name so that two runs can never fight over one ref.
+            # Same content -> same tree -> same branch AND same commit (the commit is pinned
+            # above), so a re-run is "Everything up-to-date". Changed content -> a different
+            # branch, which is the honest answer: they are different work, not two versions of
+            # it. Neither case ever needs --force, and --force is the one thing a tool whose
+            # promise is "nothing is lost" must never do to a branch somebody else may have
+            # written.
+            _, tree = git(["rev-parse", f"{sha}^{{tree}}"], repo)
+            refspecs.append(f"{sha}:refs/heads/{prefix}/{branch_name(wt)}-{tree[:8]}")
 
     if not rows:
         print("No worktree holds uncommitted work. Nothing to snapshot.")

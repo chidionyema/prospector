@@ -98,6 +98,25 @@ const eslintConfig = defineConfig([
     },
   },
 
+  // The central-log shipper is a transport, not a caller.
+  //
+  // It cannot route through src/lib/api/client.ts: that file exports typed store-API endpoints
+  // and no generic post, and a client whose own failures were reported through the logger would
+  // recurse. It also has to stay byte-for-byte identical to
+  // store_platform/src/Ops.Console/src/lib/centralLog.ts -- src/__tests__/centralLogDoesNotDrift
+  // .test.ts fails if it drifts -- so it cannot be edited to satisfy one app's lint config.
+  //
+  // Narrow on purpose: one file by name, not a directory. UI-STANDARDS §4 is about COMPONENTS
+  // calling fetch, and the error boundary that tripped this rule on 2026-08-20 was fixed by
+  // moving its fetch into client.ts (reportClientError), not by widening this list.
+  {
+    name: "tie/central-log-transport-exception",
+    files: ["src/lib/centralLog.ts"],
+    rules: {
+      "no-restricted-syntax": "off",
+    },
+  },
+
   // A/B testing exception for landing page.
   {
     name: "tie/landing-page-exceptions",

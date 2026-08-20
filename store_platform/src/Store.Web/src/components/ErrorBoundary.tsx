@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui';
+import { reportClientError } from '@/lib/api/client';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -17,7 +18,35 @@ interface ErrorBoundaryState {
  *
  * Scope: catches render/lifecycle errors only (not event handlers or async, those surface via
  * toasts). Reload is the recovery path; we never expose the raw error to the user.
+ *
+ * It also REPORTS. Until 2026-08-20 the only trace of a storefront crash was a `console.error` in
+ * the buyer's own devtools, which nobody here can read, so the surface where a fault costs money
+ * was the one surface the central log could not answer for. `POST /api/client-log` is the
+ * server-side hop that puts it in the central log as `svc: "store-web"` -- the browser never
+ * talks to the ingest itself, because the ingest is private-network only and its key would end
+ * up in client JavaScript.
  */
+/**
+ * Send the crash to our own server. Fire and forget, and it can never throw: this runs inside a
+ * boundary that has already caught one error, and a reporter that throws here would take out the
+ * recovery panel and give the buyer the blank white page the boundary exists to prevent.
+ *
+ * `keepalive` because the most likely next thing the buyer does is reload, and a normal fetch is
+ * cancelled by the navigation that follows it.
+ */
+function report(error: Error, info: React.ErrorInfo): void {
+  // The fetch itself lives in lib/api/client.ts. UI-STANDARDS §4 is "components never call fetch
+  // directly", eslint enforces it, and an error boundary is a component like any other -- the
+  // rule does not get an exception because the caller is unhappy. `reportClientError` swallows
+  // every failure for us, which is what this call site needs anyway.
+  reportClientError({
+    where: 'ErrorBoundary',
+    message: String(error?.message || error),
+    stack: String(error?.stack || ''),
+    componentStack: String(info?.componentStack || ''),
+  });
+}
+
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
@@ -29,8 +58,9 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    // Surface in the console for now; a real reporter (Sentry) is a deferred, founder-gated decision.
+    // Still the local console: it is the copy that exists when the report below never lands.
     console.error('Unhandled UI error:', error, info.componentStack);
+    report(error, info);
   }
 
   render() {

@@ -40,14 +40,17 @@ from __future__ import annotations
 import argparse
 import gzip
 import hashlib
+import json
 import os
 import random
+import re
 import shutil
 import sqlite3
 import subprocess
 import sys
 import tempfile
 import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -716,6 +719,173 @@ def mirror_repo(s3, bucket: str, *, keep: int = DEFAULT_BUNDLE_KEEP) -> tuple[st
     return key, size, local_sha
 
 
+# ------------------------------------------------------------------------- the log cold tier
+#: Where a closed day file lands: `logs/<svc>-<day>.jsonl.gz`, one object per service per day.
+#: Dated keys sort chronologically, so the prune below needs no metadata call and no clock.
+LOGS_PREFIX = "logs/"
+
+#: A cold-tier key this cannot parse is never deleted. That is the safe direction for the one
+#: place in this file that copies the writer's naming rule instead of importing it: the reader
+#: below imports `log_ingest.day_files` for the FILENAMES, but an object key is this script's
+#: own construction and the prune has to be able to read it back without a round trip.
+_LOG_KEY_RE = re.compile(
+    r"^" + re.escape(LOGS_PREFIX) + r"(?P<svc>[a-z][a-z0-9-]{0,31})-(?P<day>\d{4}-\d{2}-\d{2})\.jsonl\.gz$"
+)
+
+#: How long the cold tier keeps a day file. 90 days against the 14 the hot tier keeps
+#: (`ops/config/log_rotation.yaml`), because the two answer different questions: the hot tier
+#: answers "what happened this morning" and is read constantly; the cold tier answers "what
+#: happened the week that order was placed" and is read once a year.
+#:
+#: PRUNED HERE, not by an R2 lifecycle rule, and that is a deliberate cost. A lifecycle rule is
+#: cheaper — no LIST, no DELETE, and it keeps working while this job is off. It is also a fact
+#: that would live in a provider account and nowhere in this repository, and the platform rule is
+#: that a fresh clone plus an env file is the whole system. The three series already here prune
+#: in code for the same reason; a fourth pruning somewhere else is the one nobody remembers when
+#: this estate leaves Fly.
+DEFAULT_LOGS_KEEP_DAYS = 90
+
+#: Fields the ingest guarantees on every line it writes. `svc` and `evt` are refused outright
+#: without them, `ts` and `lvl` are repaired when absent, and `host` is overwritten from the
+#: connection (`prospector/log_ingest.py`, `normalise`). A restored line missing any of them did
+#: not survive the round trip.
+_LOG_REQUIRED = ("ts", "svc", "lvl", "evt", "host")
+
+
+def _verify_log_archive(s3, bucket: str, key: str) -> str:
+    """Open one uploaded object and prove its records survived. Returns "" or one problem.
+
+    Reads back over the network rather than re-checking the local file, because what a restore
+    will have is the bytes on R2, and those are the only bytes worth proving. Streamed through
+    `GzipFile` a line at a time: a day file is capped at 200 MB (§4.6) and this runs on a
+    machine with 512 MB of memory, so decompressing the whole object into a string would trade
+    a backup check for an OOM.
+    """
+    number = 0
+    try:
+        body = s3.get_object(Bucket=bucket, Key=key)["Body"]
+        with gzip.GzipFile(fileobj=body) as raw:
+            for number, raw_line in enumerate(raw, start=1):
+                line = raw_line.decode("utf-8").strip()
+                if not line:
+                    continue
+                record = json.loads(line)
+                if not isinstance(record, dict):
+                    return (f"log archive {key} line {number} restored as "
+                            f"{type(record).__name__}, not an object")
+                missing = [f for f in _LOG_REQUIRED if f not in record]
+                if missing:
+                    return f"log archive {key} line {number} lost {', '.join(missing)}"
+    except Exception as exc:
+        where = f" at line {number}" if number else ""
+        return f"log archive {key} did not read back{where}: {type(exc).__name__}: {exc}"
+    if number == 0:
+        return f"log archive {key} restored to zero records"
+    return ""
+
+
+def _prune_log_archives(s3, bucket: str, *, keep_days: int, today: str) -> list[str]:
+    """Delete cold-tier objects whose DAY is more than `keep_days` before `today`.
+
+    The bound is read out of the KEY, never out of the object's `LastModified`. An object that
+    is re-uploaded, or copied inside the bucket during a provider move, gets a fresh
+    `LastModified` while still holding a log from March; a prune that trusted it would keep that
+    object forever and delete nothing. The key names the day the records are from.
+    """
+    if keep_days <= 0:
+        return []
+    cutoff = (datetime.strptime(today, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+              - timedelta(days=keep_days)).strftime("%Y-%m-%d")
+    stale = []
+    for key in sorted(_remote_index(s3, bucket, LOGS_PREFIX)):
+        match = _LOG_KEY_RE.match(key)
+        if match and match.group("day") < cutoff:
+            stale.append(key)
+    for key in stale:
+        s3.delete_object(Bucket=bucket, Key=key)
+    if stale:
+        print(f"  pruned {len(stale)} log archive(s) older than {cutoff}")
+    return stale
+
+
+def archive_logs(s3, bucket: str, *, keep_days: int = DEFAULT_LOGS_KEEP_DAYS,
+                 today: str | None = None) -> tuple[list[str], int, list[str]]:
+    """Gzip every CLOSED day file to `logs/` on R2, read each one back, then prune.
+
+    Returns `(keys uploaded, bytes uploaded, problems)`. A non-empty `problems` fails the run.
+
+    This is step 12 of `docs/LOGGING_AND_RETENTION.md` Part 8, and it closes the gap the whole
+    document is named after: everything the ingest receives lives on one Fly volume, and
+    `ops/automations/log_rotation.py` deletes it at 14 days. Without this, losing the volume
+    loses every log the estate ever collected, and keeping the volume loses them anyway.
+
+    **Only files whose day is strictly before `today` are touched.** The ingest names a file from
+    its OWN clock at write time and appends to today's file continuously, so today's file is the
+    one file guaranteed to be mid-write. Capturing it would upload a torn tail and then have to
+    be replaced tomorrow. Yesterday's file has been closed since the clock rolled over.
+
+    **Every new object is read back and opened before the run counts.** `verify: nonempty` was
+    removed from `ops/config/offsite_backup.yaml` on 2026-08-19 because a size cannot tell a
+    whole file from a download that stopped halfway. §6.4 draws the same line: until something
+    has been restored, the honest word is "copies", not "backups".
+
+    **Nothing is pruned in a run that had a problem.** The prune deletes the oldest copies, and
+    a run that could not verify what it just uploaded is exactly the run that must not.
+    """
+    # Imported here, not at module scope, because `log_ingest` imports starlette and this
+    # script's real job is the money database, the ledger and the repo mirror. It is a declared
+    # dependency (requirements.txt), so a failure to import is a broken environment and is
+    # reported as a problem rather than swallowed as "no logs today".
+    try:
+        from prospector.log_ingest import day_files, log_dir
+    except Exception as exc:
+        return [], 0, [f"log archive could not read the ingest's own naming rule: "
+                       f"{type(exc).__name__}: {exc}"]
+
+    directory = log_dir()
+    day = today or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if not directory.is_dir():
+        # The truth on any machine that does not run the ingest, and stated rather than silent:
+        # a reader who sees `logs=0` needs to know whether there were none or nobody looked.
+        print(f"  log archive: {directory} does not exist, nothing to copy")
+        return [], 0, []
+
+    closed = sorted((d, svc, path) for d, svc, path in day_files(directory) if d < day)
+    existing = _remote_index(s3, bucket, LOGS_PREFIX)
+    uploaded: list[str] = []
+    total = 0
+    problems: list[str] = []
+
+    for file_day, svc, path in closed:
+        key = f"{LOGS_PREFIX}{svc}-{file_day}.jsonl.gz"
+        if key in existing:
+            continue
+        handle = tempfile.NamedTemporaryFile(suffix=".jsonl.gz", delete=False)
+        handle.close()
+        gz = Path(handle.name)
+        try:
+            with path.open("rb") as src, gzip.open(gz, "wb", compresslevel=6) as dst:
+                shutil.copyfileobj(src, dst, 1 << 20)
+            size = gz.stat().st_size
+            s3.upload_file(str(gz), bucket, key)
+        finally:
+            gz.unlink(missing_ok=True)
+        problem = _verify_log_archive(s3, bucket, key)
+        if problem:
+            # The object stays. It is still the only copy of that day that has ever left the
+            # machine, and deleting it to keep the bucket tidy would turn a doubt into a loss.
+            problems.append(problem)
+            continue
+        uploaded.append(key)
+        total += size
+
+    if problems:
+        print(f"  log archive: {len(problems)} problem(s), nothing pruned", file=sys.stderr)
+    else:
+        _prune_log_archives(s3, bucket, keep_days=keep_days, today=day)
+    return uploaded, total, problems
+
+
 def verify_sample(s3, bucket: str, n: int = DEFAULT_SAMPLE) -> tuple[int, int, list[str]]:
     """Download a random sample and compare SHA-256 with the local file."""
     local = _dossier_files()
@@ -851,6 +1021,11 @@ def main() -> int:
                              f"(default {DEFAULT_LEDGER_KEEP})")
     parser.add_argument("--skip-mirror", action="store_true",
                         help="do not push the git mirror")
+    parser.add_argument("--skip-logs", action="store_true",
+                        help="do not copy the ingest's closed day files to the cold tier")
+    parser.add_argument("--logs-keep-days", type=int, default=DEFAULT_LOGS_KEEP_DAYS,
+                        help="how many days of cold-tier log archives to keep; 0 disables "
+                             f"pruning (default {DEFAULT_LOGS_KEEP_DAYS})")
     parser.add_argument("--mirror-only", action="store_true",
                         help="push the git mirror and nothing else; for a checkout whose store "
                              "lives on another machine")
@@ -880,10 +1055,20 @@ def main() -> int:
     uploaded = skipped = 0
     ledger_key = db_key = mirror_key = ""
     mirror_bytes = 0
+    log_keys: list[str] = []
+    log_bytes = 0
+    log_problems: list[str] = []
     if not args.verify_only:
         uploaded, skipped, ledger_key, db_key = _retry_on_skew(
             sync, s3, bucket, db_keep=args.db_keep, ledger_keep=args.ledger_keep
         )
+        # After the store, before the mirror. The mirror is the only step that can be absent on
+        # a legitimate host (a container ships code, not a checkout), so putting the logs after
+        # it would make them the thing that silently stops running wherever the mirror does.
+        if not args.skip_logs:
+            log_keys, log_bytes, log_problems = _retry_on_skew(
+                archive_logs, s3, bucket, keep_days=args.logs_keep_days
+            )
         if args.skip_mirror:
             pass
         elif not _is_git_worktree(REPO_ROOT):
@@ -903,6 +1088,7 @@ def main() -> int:
             )
 
     ok, total, problems = _retry_on_skew(verify_sample, s3, bucket, args.sample)
+    problems.extend(log_problems)
     for problem in problems:
         print(f"  {problem}", file=sys.stderr)
 
@@ -913,6 +1099,9 @@ def main() -> int:
         + (f" ledger={ledger_key}" if ledger_key else "")
         + (f" db={db_key}" if db_key else "")
         + (f" mirror={mirror_key} bytes={mirror_bytes}" if mirror_key else "")
+        # Always printed, even at zero. "logs=0" on a host with no ingest is an answer; a
+        # missing word is indistinguishable from a step that stopped running.
+        + (f" logs={len(log_keys)} bytes={log_bytes}" if not args.verify_only else "")
     )
     return 0 if verdict == "PASS" else 1
 

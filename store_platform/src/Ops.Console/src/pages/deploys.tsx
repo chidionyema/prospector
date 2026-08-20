@@ -11,8 +11,9 @@
  * trigger paths, the last successful run's head commit, the live Fly release and the commits on
  * origin/main since — and this renders that. UNKNOWN is shown as a problem, never as silence.
  */
+import Confirm from '@/components/Confirm';
 import Shell from '@/components/Shell';
-import { AsOf, Card, Empty, Note, Pill, Problem, Scroll } from '@/components/ui';
+import { AsOf, Card, Empty, Mono, Note, Pill, Problem, Scroll } from '@/components/ui';
 import { ago } from '@/lib/time';
 import { useOps } from '@/lib/useOps';
 
@@ -34,6 +35,16 @@ type Deployable = {
   fly_at?: string | null;
   pending_commits?: { sha: string; at: string; subject: string }[];
   running?: { status: string; url: string; sha: string; age_s: number | null }[];
+  /** The catalogued tool that ships this one, or null when there is no button. */
+  deploy_tool_id?: string | null;
+  /** What ships it: the button's purpose, or the reason there is no button. Never blank. */
+  deploy_how?: string;
+  deploy_danger?: string | null;
+  /** The catalogued tool that puts this one back on its previous image, or null. */
+  rollback_tool_id?: string | null;
+  /** What puts it back: the button's purpose, or the reason there is no button. Never blank. */
+  rollback_how?: string;
+  rollback_danger?: string | null;
 };
 
 type Fleet = {
@@ -127,6 +138,57 @@ function Deployable({ d }: { d: Deployable }) {
           {pending.length > 10 && <Note>and {pending.length - 10} more waiting</Note>}
         </Scroll>
       )}
+
+      {/*
+        The button the founder asked for on 2026-08-19: "all our services must be deployable from
+        the ops dashboard". Before it, this page could say the storefront was five commits behind
+        and the only way to close the gap was a terminal. It runs the same catalogued tool the
+        /tools page runs, through the same preview-then-confirm gate, so there is no second write
+        path to audit — the browser sends an id, never a command.
+      */}
+      <div className="mt-3">
+        {d.deploy_tool_id ? (
+          <Confirm
+            action="tools.run"
+            payload={() => ({ id: d.deploy_tool_id })}
+            label={`Deploy ${d.name} now`}
+            kind="danger"
+            renderPreview={(pv) => (
+              <div>
+                <Mono>{String(pv.command ?? '')}</Mono>
+                {pv.danger ? <Note>{String(pv.danger)}</Note> : null}
+                <Note>{String(pv.note ?? '')}</Note>
+              </div>
+            )}
+          />
+        ) : (
+          <Note>not deployable from here — {d.deploy_how}</Note>
+        )}
+      </div>
+      {/*
+        Rollback sits beside Deploy, not on another page. An operator who has just shipped a bad
+        build is the least likely person to go looking for the undo, so it is where the mistake
+        was made. It redeploys the PREVIOUS Fly image: no build, no CI, seconds not minutes.
+      */}
+      <div className="mt-2">
+        {d.rollback_tool_id ? (
+          <Confirm
+            action="tools.run"
+            payload={() => ({ id: d.rollback_tool_id })}
+            label={`Roll ${d.name} back`}
+            kind="danger"
+            renderPreview={(pv) => (
+              <div>
+                <Mono>{String(pv.command ?? '')}</Mono>
+                {pv.danger ? <Note>{String(pv.danger)}</Note> : null}
+                <Note>{String(pv.note ?? '')}</Note>
+              </div>
+            )}
+          />
+        ) : (
+          <Note>no rollback from here — {d.rollback_how}</Note>
+        )}
+      </div>
     </Card>
   );
 }

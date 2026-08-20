@@ -33,9 +33,18 @@ __pycache__/
 .lux/keys/
 *.log
 
-# Documentation and tests are not needed at runtime and are the bulk of the remaining
-# context. The tests still run in CI against the repo, not against the image.
-docs/
-specs/
+# docs/ and specs/ used to be excluded here, on the grounds that documentation is not needed
+# at runtime. That stopped being true on 2026-08-19, when the console gained a Docs tab and a
+# Share tab that both read the repo's own markdown. Measured on prospector-engine 2026-08-20:
+# `python -m prospector.ops.console_api read docs` returned count 0 with the note "there is no
+# docs/ directory in this checkout", and the tab rendered that as an empty screen. The founder
+# clicked it and reported that nothing happened.
+#
+# The screenshots still do not travel. docs/ is 25 MB, of which docs/design/ is 22 MB of PNG
+# render diffs that no console view opens; the text the console serves is 3.3 MB.
+#
+# tests/unit/test_the_image_ships_what_the_console_serves.py fails if a path a console read
+# view resolves under is excluded again.
+docs/design/
 .pytest_cache/
 htmlcov/
