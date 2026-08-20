@@ -2194,8 +2194,12 @@ def _emit_tick_digest(cfg, tick: dict) -> None:
         return
     send = _load_hermes_sender()
     if send is None:
-        logger.info("Tick digest sink unavailable (no %s); digest stayed local",
-                    "estate_alert.py")
+        # WARNING, not INFO. The old line named estate_alert.py, which reads as "this machine
+        # simply has no Hermes" — and on the Fly container that was true and harmless-looking
+        # while every digest was being dropped (issue #355). There is an in-repo sender now, so
+        # None here means a real defect.
+        logger.warning("Tick digest sink unavailable (no sender could be loaded); "
+                       "digest stayed local")
         return
     try:
         sent = send(text, debounce_key="prospector:tick_digest", debounce_s=7200.0,

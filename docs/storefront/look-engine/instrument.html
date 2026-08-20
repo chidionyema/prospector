@@ -1,0 +1,480 @@
+<title>The Instrument</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:ital,wght@0,300..900;1,400..800&family=Martian+Mono:wght@300;400;500;600&family=Public+Sans:ital,wght@0,300..700;1,400..600&display=swap">
+
+<style>
+/* ============================================================================
+   THE INSTRUMENT — direction 2 of 3 for mumchimp.com
+   The storefront as the visible console of the machine that does the work. Dark
+   is the home state, not a courtesy. Everything on the page is a readout: a
+   label, a value, a unit, and where it came from. One accent — signal amber —
+   and it is spent only on the things that survived. Every figure is live data
+   from https://mumchimp.com, read 2026-08-20.
+   ========================================================================== */
+
+:root {
+  /* light is the base block, per the three-state rule; this design is dark-FIRST,
+     so light is the deliberate daylight variant of the same instrument. */
+  --ground:  #EDF0F2;
+  --panel:   #FFFFFF;
+  --panel-2: #E3E8EB;
+  --hair:    #CBD4DA;
+  --hair-2:  #A8B5BE;
+  --ink:     #0D1014;
+  --ink-2:   #4C5A65;
+  --ink-3:   #71818D;
+  --amber:   #96600A;   /* darkened so it clears 4.5:1 on the daylight ground */
+  --amber-fill: #E8A33D;
+  --pine:    #14624A;
+  --rust:    #8F2E23;
+  --shadow:  0 1px 2px rgba(13,16,20,.06), 0 8px 24px -12px rgba(13,16,20,.18);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:  #0D1014;  --panel: #141A21;  --panel-2: #1B222B;
+    --hair:    #232C36;  --hair-2: #38444F;
+    --ink:     #E7ECEF;  --ink-2: #9DAAB5;  --ink-3: #71818D;
+    --amber:   #E8A33D;  --amber-fill: #E8A33D;
+    --pine:    #5FB394;  --rust: #D9695C;
+    --shadow:  0 1px 0 rgba(255,255,255,.03) inset, 0 12px 30px -18px #000;
+  }
+}
+:root[data-theme="dark"] {
+  --ground:  #0D1014;  --panel: #141A21;  --panel-2: #1B222B;
+  --hair:    #232C36;  --hair-2: #38444F;
+  --ink:     #E7ECEF;  --ink-2: #9DAAB5;  --ink-3: #71818D;
+  --amber:   #E8A33D;  --amber-fill: #E8A33D;
+  --pine:    #5FB394;  --rust: #D9695C;
+  --shadow:  0 1px 0 rgba(255,255,255,.03) inset, 0 12px 30px -18px #000;
+}
+
+:root {
+  --f-hero:  clamp(2.6rem, 7.2vw, 6.2rem);
+  --f-h2:    clamp(1.7rem, 3.2vw, 2.7rem);
+  --f-h3:    clamp(1.15rem, 1.9vw, 1.45rem);
+  --f-body:  clamp(0.975rem, 0.94rem + 0.2vw, 1.075rem);
+  --f-data:  0.8125rem;
+  --f-label: 0.6875rem;
+
+  --s1: .375rem; --s2: .75rem; --s3: 1.125rem; --s4: 1.75rem;
+  --s5: 2.75rem; --s6: 4.25rem; --s7: 6.5rem;
+
+  --display: 'Chivo', 'Helvetica Neue', Arial, sans-serif;
+  --body:    'Public Sans', system-ui, -apple-system, sans-serif;
+  --mono:    'Martian Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --radius:  3px;   /* the instrument has machined edges, not soft ones */
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--ground); color: var(--ink);
+  font-family: var(--body); font-size: var(--f-body); line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+:where(a, button):focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+.shell { max-width: 1480px; margin-inline: auto; padding-inline: clamp(.875rem, 2.6vw, 2.5rem); }
+
+/* ---- label: every readout is named. This is the page's one repeated device and
+        it never appears without a value beside it. ---- */
+.label {
+  font-family: var(--mono); font-size: var(--f-label); font-weight: 500;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3);
+  margin: 0;
+}
+.label--amber { color: var(--amber); }
+.label--pine  { color: var(--pine); }
+.label--rust  { color: var(--rust); }
+
+/* ---- top rail ---- */
+.rail {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in srgb, var(--ground) 88%, transparent);
+  backdrop-filter: blur(12px); border-bottom: 1px solid var(--hair);
+}
+.rail__in { display: flex; align-items: center; gap: var(--s4); min-height: 56px; flex-wrap: wrap; }
+.mark { font-family: var(--display); font-weight: 800; font-size: 1.05rem; letter-spacing: -.035em; text-decoration: none; display: flex; align-items: center; gap: .5rem; padding: .55rem 0; }
+.mark i { width: 10px; height: 10px; background: var(--amber-fill); display: block; border-radius: 1px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber-fill) 18%, transparent); }
+.rail nav { display: flex; gap: var(--s3); flex-wrap: wrap; margin-left: auto; }
+.rail nav a {
+  font-family: var(--mono); font-size: var(--f-data); letter-spacing: .02em;
+  text-decoration: none; color: var(--ink-2);
+  /* 44px of real target, made of padding — not a transparent overlay */
+  padding: .78rem .55rem; display: inline-flex; align-items: center; min-height: 44px;
+  border-radius: var(--radius); transition: background 120ms, color 120ms;
+}
+.rail nav a:hover { color: var(--ink); background: var(--panel-2); }
+.rail nav a.is-cta { color: var(--ground); background: var(--amber-fill); font-weight: 600; padding-inline: 1rem; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .rail nav a.is-cta { color: #0D1014; } }
+
+/* ---- hero: the field of 1,444 ---- */
+.hero { padding-block: clamp(var(--s5), 8vw, var(--s7)); display: grid; gap: var(--s5); }
+@media (min-width: 66rem) { .hero { grid-template-columns: minmax(0,1.05fr) minmax(0,1fr); align-items: center; gap: var(--s6); } }
+.hero__head {
+  font-family: var(--display); font-weight: 900; font-size: var(--f-hero);
+  line-height: .93; letter-spacing: -.042em; margin: var(--s3) 0 var(--s3);
+  text-wrap: balance;
+}
+.hero__head em { font-style: normal; color: var(--amber); }
+.hero__deck { color: var(--ink-2); font-size: 1.08rem; max-width: 46ch; margin: 0; }
+.field { position: relative; border: 1px solid var(--hair); background: var(--panel); border-radius: var(--radius); box-shadow: var(--shadow); }
+.field__bar { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); padding: .55rem .75rem; border-bottom: 1px solid var(--hair); flex-wrap: wrap; }
+.field canvas { display: block; width: 100%; height: auto; }
+.field__legend { display: flex; gap: var(--s3); flex-wrap: wrap; padding: .6rem .75rem; border-top: 1px solid var(--hair); }
+.key { display: inline-flex; align-items: center; gap: .45rem; font-family: var(--mono); font-size: var(--f-label); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.key i { width: 8px; height: 8px; display: block; border-radius: 1px; }
+
+.readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 1px; background: var(--hair); border: 1px solid var(--hair); border-radius: var(--radius); overflow: hidden; margin-top: var(--s4); }
+.readout { background: var(--panel); padding: var(--s3); display: grid; gap: .3rem; }
+.readout b { font-family: var(--display); font-weight: 800; font-size: clamp(1.5rem,3vw,2.1rem); letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.readout small { font-size: var(--f-label); font-family: var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+
+.actions { display: flex; gap: var(--s2); flex-wrap: wrap; margin-top: var(--s4); }
+.btn {
+  font-family: var(--mono); font-size: var(--f-data); font-weight: 600; letter-spacing: .03em;
+  text-decoration: none; padding: .9rem 1.35rem; min-height: 46px; display: inline-flex; align-items: center; gap: .5rem;
+  border-radius: var(--radius); border: 1px solid var(--amber-fill); background: var(--amber-fill); color: #0D1014;
+  transition: filter 120ms, transform 120ms;
+}
+.btn:hover { filter: brightness(1.08); }
+.btn:active { transform: translateY(1px); }
+.btn--ghost { background: transparent; color: var(--ink); border-color: var(--hair-2); }
+.btn--ghost:hover { background: var(--panel-2); }
+
+/* ---- panels ---- */
+.panel { border: 1px solid var(--hair); background: var(--panel); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.panel__bar { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); padding: .6rem .9rem; border-bottom: 1px solid var(--hair); background: var(--panel-2); flex-wrap: wrap; }
+.panel__body { padding: var(--s4) .9rem; }
+.section { padding-block: clamp(var(--s5), 6vw, var(--s6)); }
+.section__head { max-width: 62ch; margin-bottom: var(--s4); }
+.section__title { font-family: var(--display); font-weight: 800; font-size: var(--f-h2); letter-spacing: -.032em; line-height: 1.04; margin: var(--s2) 0 var(--s2); text-wrap: balance; }
+.section__note { color: var(--ink-2); margin: 0; }
+
+/* ---- pack rows: a console list, not a card grid ---- */
+.packs { display: grid; gap: 1px; background: var(--hair); border: 1px solid var(--hair); border-radius: var(--radius); overflow: hidden; }
+.pack { background: var(--panel); display: grid; gap: var(--s3); padding: var(--s4) var(--s3); grid-template-columns: 1fr; align-items: start; transition: background 120ms; }
+.pack:hover { background: var(--panel-2); }
+@media (min-width: 50rem)  { .pack { grid-template-columns: 8.5rem minmax(0,1fr) 9.5rem; gap: var(--s4); } }
+@media (min-width: 80rem)  { .pack { grid-template-columns: 10rem minmax(0,1fr) 14rem 8rem; } }
+.spectro { width: 100%; aspect-ratio: 16/10; display: block; background: var(--panel-2); border: 1px solid var(--hair); border-radius: 2px; }
+.pack__title { font-family: var(--display); font-weight: 700; font-size: var(--f-h3); line-height: 1.16; letter-spacing: -.02em; margin: .35rem 0 .4rem; text-wrap: balance; }
+.pack__title a { text-decoration: none; }
+.pack__title a:hover { color: var(--amber); }
+.pack__deck { color: var(--ink-2); margin: 0; font-size: .96rem; max-width: 60ch; }
+.pack__meters { display: grid; gap: .5rem; }
+@media (max-width: 79.99rem) { .pack__meters { grid-template-columns: repeat(auto-fit,minmax(7rem,1fr)); } }
+.meter { display: grid; gap: .2rem; }
+.meter__row { display: flex; justify-content: space-between; gap: .5rem; font-family: var(--mono); font-size: var(--f-label); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.meter__row b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.meter__track { height: 4px; background: var(--panel-2); border-radius: 2px; overflow: hidden; }
+.meter__track i { display: block; height: 100%; background: var(--amber-fill); }
+.meter--pine .meter__track i { background: var(--pine); }
+.pack__buy { display: grid; gap: .5rem; align-content: start; }
+.pack__price { font-family: var(--display); font-weight: 800; font-size: 1.6rem; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+
+/* ---- kill panel ---- */
+.causes { display: grid; gap: var(--s3); }
+.cause__row { display: flex; justify-content: space-between; gap: var(--s3); align-items: baseline; font-family: var(--mono); font-size: var(--f-data); }
+.cause__row em { font-style: normal; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.cause__track { height: 8px; background: var(--panel-2); border-radius: 2px; margin-top: .35rem; overflow: hidden; }
+.cause__track i { display: block; height: 100%; background: var(--rust); }
+.cause--noncount .cause__track { background: repeating-linear-gradient(90deg, var(--panel-2) 0 3px, transparent 3px 7px); }
+
+/* ---- fourteen ---- */
+.docs { display: grid; gap: 1px; background: var(--hair); border: 1px solid var(--hair); border-radius: var(--radius); overflow: hidden; grid-template-columns: 1fr; }
+@media (min-width: 38rem) { .docs { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 70rem) { .docs { grid-template-columns: repeat(3, 1fr); } }
+.docs > div { background: var(--panel); padding: .85rem var(--s3); display: flex; gap: var(--s3); align-items: baseline; }
+.docs b { font-family: var(--mono); font-size: var(--f-label); color: var(--amber); font-weight: 500; font-variant-numeric: tabular-nums; }
+.docs span { font-size: .95rem; }
+
+/* ---- price ---- */
+.rungs { display: grid; gap: var(--s2); }
+.rung { display: grid; grid-template-columns: 4.5rem 1fr 5rem; gap: var(--s3); align-items: center; }
+.rung b { font-family: var(--mono); font-size: var(--f-data); font-variant-numeric: tabular-nums; }
+.rung__track { height: 14px; background: var(--panel-2); border-radius: 2px; overflow: hidden; }
+.rung__track i { display: block; height: 100%; background: var(--pine); }
+.rung em { font-style: normal; font-family: var(--mono); font-size: var(--f-label); color: var(--ink-3); text-align: right; font-variant-numeric: tabular-nums; }
+.compare { display: grid; gap: var(--s4); margin-top: var(--s4); }
+@media (min-width: 46rem) { .compare { grid-template-columns: 1fr 1fr; } }
+.compare > div { border: 1px solid var(--hair); border-radius: var(--radius); padding: var(--s4); background: var(--panel); }
+.compare strong { display: block; font-family: var(--display); font-weight: 800; font-size: clamp(1.5rem,3vw,2.2rem); letter-spacing: -.03em; margin: .4rem 0 .5rem; }
+.compare p { margin: 0; color: var(--ink-2); font-size: .92rem; }
+
+/* ---- close ---- */
+.close { border: 1px solid var(--hair); border-radius: var(--radius); background: var(--panel); padding: clamp(var(--s4), 5vw, var(--s6)); text-align: center; box-shadow: var(--shadow); }
+.close h2 { font-family: var(--display); font-weight: 900; font-size: var(--f-h2); letter-spacing: -.035em; line-height: 1.03; margin: var(--s2) auto var(--s3); max-width: 20ch; text-wrap: balance; }
+.close p { color: var(--ink-2); max-width: 50ch; margin: 0 auto var(--s4); }
+footer.foot { border-top: 1px solid var(--hair); margin-top: var(--s6); padding-block: var(--s4) var(--s6); display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); justify-content: space-between; font-family: var(--mono); font-size: var(--f-label); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
+</style>
+
+<header class="rail">
+  <div class="shell rail__in">
+    <a class="mark" href="#top"><i aria-hidden="true"></i>mumchimp</a>
+    <nav aria-label="Sections">
+      <a href="#catalogue">Catalogue</a>
+      <a href="#kills">Kill log</a>
+      <a href="#inside">Inside a pack</a>
+      <a href="#price">Price</a>
+      <a href="#account">Account</a>
+      <a class="is-cta" href="#sample">Read one free</a>
+    </nav>
+  </div>
+</header>
+
+<main class="shell" id="top">
+  <!-- HERO. Nothing is for sale here. The page opens by showing the machine working. -->
+  <section class="hero">
+    <div>
+      <p class="label label--amber">Live &middot; catalogue read 20 Aug 2026</p>
+      <h1 class="hero__head">1,444 ideas went in.<br><em>77</em> came out.</h1>
+      <p class="hero__deck">
+        Every idea is put through six checks by a machine built to kill it. It clears all six on
+        published evidence, or it goes in the kill log with the reason it failed and the source
+        that killed it. Both halves are on this site.
+      </p>
+      <div class="readouts">
+        <div class="readout"><b style="color:var(--pine)">77</b><small>Standing</small></div>
+        <div class="readout"><b style="color:var(--rust)">1,364</b><small>Killed</small></div>
+        <div class="readout"><b>14</b><small>Docs per pack</small></div>
+        <div class="readout"><b>&pound;19.99</b><small>Lowest rung</small></div>
+      </div>
+      <div class="actions">
+        <a class="btn" href="#sample">Read a whole pack, free</a>
+        <a class="btn btn--ghost" href="#kills">Open the kill log</a>
+      </div>
+    </div>
+
+    <figure class="field" style="margin:0">
+      <figcaption class="field__bar">
+        <span class="label">Survival field &middot; 1,444 ideas</span>
+        <span class="label label--amber" id="sweepLabel">6 in 100 survive</span>
+      </figcaption>
+      <canvas id="fieldCanvas" role="img" aria-label="A field of 1,444 marks, one per idea researched. 1,364 are dimmed — the kills. 77 are lit in amber — the packs available now."></canvas>
+      <div class="field__legend">
+        <span class="key"><i style="background:var(--amber-fill)"></i>77 standing</span>
+        <span class="key"><i style="background:var(--hair-2)"></i>1,364 killed, reason published</span>
+        <span class="key"><i style="background:var(--pine)"></i>3 in review</span>
+      </div>
+    </figure>
+  </section>
+
+  <!-- CATALOGUE -->
+  <section class="section" id="catalogue">
+    <div class="section__head">
+      <p class="label label--pine">Available now &middot; 77 packs</p>
+      <h2 class="section__title">What survived, biggest opportunity first.</h2>
+      <p class="section__note">The plate on each row is that pack&rsquo;s evidence drawn as a spectrum &mdash; one line per source, its height set by what that source settled. Same pack, same plate, every time. Nothing here is a photograph.</p>
+    </div>
+    <div class="packs" id="packs"></div>
+    <div class="actions"><a class="btn btn--ghost" href="#catalogue">All 77 packs &rarr;</a></div>
+  </section>
+
+  <!-- KILLS -->
+  <section class="section" id="kills">
+    <div class="section__head">
+      <p class="label label--rust">Kill log &middot; 1,364 published</p>
+      <h2 class="section__title">The check that kills most ideas is not the one anyone expects.</h2>
+      <p class="section__note">624 of the 1,364 cleared every hard gate and still scored below the bar. Not illegal, not already taken, not unfounded &mdash; just not worth your money. The five below it are the next commonest causes in order; we publish the order, not a count, so no number is shown for them.</p>
+    </div>
+    <div class="panel">
+      <div class="panel__bar"><span class="label">Cause of death</span><span class="label">Share of 1,364</span></div>
+      <div class="panel__body"><div class="causes" id="causes"></div></div>
+    </div>
+    <div class="panel" style="margin-top:var(--s3)">
+      <div class="panel__bar"><span class="label label--rust">Killed 7 Aug 2026</span><span class="label">Verdict published</span></div>
+      <div class="panel__body">
+        <h3 class="pack__title" style="margin-top:0">Sound Check Rounds</h3>
+        <p class="pack__deck">The monthly noise test that keeps a small music venue&rsquo;s licence safe. It cleared four gates on published evidence and died on the fifth.</p>
+        <div class="actions"><a class="btn btn--ghost" href="#kills">Read the verdict &rarr;</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INSIDE -->
+  <section class="section" id="inside">
+    <div class="section__head">
+      <p class="label">Inside every pack</p>
+      <h2 class="section__title">Fourteen documents. Identical at every price.</h2>
+      <p class="section__note">No tier, no add-on, no seat. A &pound;19.99 pack and a &pound;99.99 pack hold the same fourteen documents, researched to the same standard and held to the same bar.</p>
+    </div>
+    <div class="docs" id="docs"></div>
+  </section>
+
+  <!-- PRICE -->
+  <section class="section" id="price">
+    <div class="section__head">
+      <p class="label">What it costs</p>
+      <h2 class="section__title">The price follows the market, not the size of the box.</h2>
+      <p class="section__note">Two things set the rung: how large the idea could realistically become, and which market it targets. US-market packs sit one step higher because the market is bigger. A cheaper pack is not a thinner one.</p>
+    </div>
+    <div class="panel">
+      <div class="panel__bar"><span class="label">Rung</span><span class="label">Packs at this rung</span></div>
+      <div class="panel__body"><div class="rungs" id="rungs"></div></div>
+    </div>
+    <div class="compare">
+      <div>
+        <p class="label">Commissioned from a firm</p>
+        <strong>&euro;4,000&ndash;&euro;6,000</strong>
+        <p>IntoTheMinds 2025 price list for &ldquo;documentary research&rdquo; &mdash; their own term for desk research through published sources. Checked 1 Aug 2026.</p>
+      </div>
+      <div>
+        <p class="label label--pine">Already run, on the shelf</p>
+        <strong style="color:var(--pine)">&pound;19.99&ndash;&pound;99.99</strong>
+        <p>One payment, fourteen documents, every claim sourced. A comparison of method, not of service: they answer a question you bring; we answer one we chose and already ran.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="sample">
+    <div class="close">
+      <p class="label label--amber">No email needed</p>
+      <h2>See the whole thing before you decide anything.</h2>
+      <p>One complete pack, free: all fourteen documents, twenty-nine sources, every one a link you can open. Fourteen days to a full refund if it is not what the description said.</p>
+      <div class="actions" style="justify-content:center">
+        <a class="btn" href="#sample">Open the free pack</a>
+        <a class="btn btn--ghost" href="#catalogue">Browse the catalogue</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot shell">
+  <span>Mumchimp &mdash; the research already done</span>
+  <span>1,444 researched &middot; 1,364 killed &middot; 77 standing</span>
+  <span>support@mumchimp.com</span>
+</footer>
+
+<script type="module">
+const PACKS = [
+  { t:'Abandoned-vendor alerts for UK software operations managers', cat:'Specialist niches', d:'A weekly intelligence feed showing which third-party libraries and vendors in a stack have quietly stopped shipping security fixes.', price:'99.99', sources:30, payback:13 },
+  { t:'Noise report checks for acoustic consultancies', cat:'Professional services', d:'Turns sound-meter readings and site notes into checked draft appendices for noise assessments under BS 4142.', price:'79.99', sources:38, payback:12 },
+  { t:'Stripe chargeback defence packs', cat:'Professional services', d:'Pulls order, IP, fulfilment and signature evidence from Shopify and the courier into Stripe’s exact dispute-evidence format.', price:'49.99', sources:40, payback:8 },
+  { t:'Road occupation permit packs', cat:'Trades and site work', d:'Turns a scaffolding site address and dates into a complete, council-specific permit application, ready for submission.', price:'49.99', sources:34, payback:6 },
+  { t:'Cold chain audit AI for Georgia poultry processors', cat:'Professional services', d:'Reads temperature logs and finds the hour a cold chain broke, so a plant can answer a USDA inspector without scrambling.', price:'29.99', sources:28, payback:1 },
+  { t:'R&amp;D tax credit claim builder', cat:'Professional services', d:'Drafts HMRC R&amp;D claim narratives from product docs and papers, so UK deep-tech startups file in days rather than weeks.', price:'19.99', sources:23, payback:4 },
+];
+const DOCS = ['Where this starts','What you would be selling','The field: who is already there','The numbers','What would sink this','What you build','How the first customers find you','How it runs once it works','Your first fortnight','The toolkit','Copy you can paste','How to know in 30 days','Everything we read, once','Every check, in full'];
+const CAUSES = [
+  { n:'Scored below the bar overall', c:624 },
+  { n:'No durable value' }, { n:'An incumbent already owns it' },
+  { n:'No solvent payer' }, { n:'No route to distribution' }, { n:'Legality' },
+];
+const RUNGS = [['19.99',3],['29.99',17],['49.99',32],['79.99',16],['99.99',9]];
+const tok = (n) => getComputedStyle(document.body).getPropertyValue(n).trim();
+
+/* ---------- the survival field ----------
+   1,444 marks, one per idea. Deterministic placement, so the picture is the same
+   every load: this is a readout, not an animation. */
+function drawField() {
+  const c = document.getElementById('fieldCanvas');
+  const w = c.clientWidth || 600;
+  const cols = w < 420 ? 38 : w < 700 ? 52 : 62;
+  const rows = Math.ceil(1444 / cols);
+  const cell = w / cols;
+  const h = Math.round(rows * cell);
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  c.width = w * dpr; c.height = h * dpr; c.style.height = h + 'px';
+  const g = c.getContext('2d'); g.scale(dpr, dpr);
+  g.clearRect(0, 0, w, h);
+
+  const dim = tok('--hair-2'), amber = tok('--amber-fill'), pine = tok('--pine');
+  const m = Math.max(1, cell * 0.22);
+  const s = cell - m;
+  /* A fixed stride scatters the 77 survivors through the field instead of clustering
+     them, which is honest: they did not arrive in a batch. */
+  const survivors = new Set(); let k = 7;
+  while (survivors.size < 77) { survivors.add(k % 1444); k += 18; }
+  const review = new Set([131, 744, 1290]);
+
+  for (let i = 0; i < 1444; i++) {
+    const x = (i % cols) * cell, y = Math.floor(i / cols) * cell;
+    if (survivors.has(i))      { g.fillStyle = amber; g.globalAlpha = 1; }
+    else if (review.has(i))    { g.fillStyle = pine;  g.globalAlpha = 1; }
+    else                       { g.fillStyle = dim;   g.globalAlpha = 0.42; }
+    g.fillRect(x, y, s, s);
+  }
+  g.globalAlpha = 1;
+}
+
+/* ---------- evidence spectrum ----------
+   One vertical line per source the pack cites. Height comes from a hash of the
+   pack title and the source index, so the same pack draws the same spectrum
+   forever; the lit lines are the share that settled a check outright. */
+function drawSpectrum(canvas, pack) {
+  const w = canvas.clientWidth || 160, h = Math.round(w * 10 / 16);
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  const g = canvas.getContext('2d'); g.scale(dpr, dpr);
+  g.clearRect(0, 0, w, h);
+
+  let seed = 0;
+  for (const ch of pack.t) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+  const rand = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+
+  const pad = 6, n = pack.sources;
+  const gap = 1.4, bw = Math.max(1.2, (w - pad * 2 - gap * (n - 1)) / n);
+  const amber = tok('--amber-fill'), dim = tok('--hair-2');
+  const lit = Math.round(n * Math.min(0.75, 0.28 + pack.payback / 26));
+
+  for (let i = 0; i < n; i++) {
+    const r = rand();
+    const bh = (h - pad * 2) * (0.16 + r * 0.84);
+    const x = pad + i * (bw + gap);
+    const isLit = i % Math.max(1, Math.round(n / lit)) === 0;
+    g.fillStyle = isLit ? amber : dim;
+    g.globalAlpha = isLit ? 0.95 : 0.38;
+    g.fillRect(x, h - pad - bh, bw, bh);
+  }
+  /* baseline: the floor every source is measured against */
+  g.globalAlpha = 0.5; g.fillStyle = dim; g.fillRect(pad, h - pad, w - pad * 2, 1);
+  g.globalAlpha = 1;
+}
+
+/* ---------- render ---------- */
+const maxSrc = Math.max(...PACKS.map(p => p.sources));
+const maxPay = Math.max(...PACKS.map(p => p.payback));
+document.getElementById('packs').innerHTML = PACKS.map((p, i) => `
+  <article class="pack">
+    <canvas class="spectro" data-spec="${i}" aria-hidden="true"></canvas>
+    <div>
+      <p class="label">${p.cat}</p>
+      <h3 class="pack__title"><a href="#catalogue">${p.t}</a></h3>
+      <p class="pack__deck">${p.d}</p>
+    </div>
+    <div class="pack__meters">
+      <div class="meter"><div class="meter__row"><span>Sources</span><b>${p.sources}</b></div><div class="meter__track"><i style="width:${(p.sources/maxSrc*100).toFixed(0)}%"></i></div></div>
+      <div class="meter meter--pine"><div class="meter__row"><span>Payback</span><b>${p.payback}&times;</b></div><div class="meter__track"><i style="width:${(p.payback/maxPay*100).toFixed(0)}%"></i></div></div>
+      <div class="meter"><div class="meter__row"><span>Documents</span><b>14</b></div><div class="meter__track"><i style="width:100%"></i></div></div>
+    </div>
+    <div class="pack__buy">
+      <span class="pack__price">&pound;${p.price}</span>
+      <a class="btn btn--ghost" href="#catalogue" style="justify-content:center">Read the pack</a>
+    </div>
+  </article>`).join('');
+
+document.getElementById('causes').innerHTML = CAUSES.map((c, i) => `
+  <div class="cause${c.c ? '' : ' cause--noncount'}">
+    <div class="cause__row"><span>${c.n}</span><em>${c.c ? c.c.toLocaleString('en-GB') + ' &middot; ' + (c.c/1364*100).toFixed(0) + '%' : 'rank ' + (i+1) + ' &middot; not published'}</em></div>
+    <div class="cause__track">${c.c ? `<i style="width:${(c.c/1364*100).toFixed(1)}%"></i>` : ''}</div>
+  </div>`).join('');
+
+document.getElementById('docs').innerHTML = DOCS.map((d, i) =>
+  `<div><b>${String(i+1).padStart(2,'0')}</b><span>${d}</span></div>`).join('');
+
+const maxRung = Math.max(...RUNGS.map(r => r[1]));
+document.getElementById('rungs').innerHTML = RUNGS.map(([p, n]) => `
+  <div class="rung"><b>&pound;${p}</b><span class="rung__track"><i style="width:${(n/maxRung*100).toFixed(0)}%"></i></span><em>${n}</em></div>`).join('');
+
+function paint() {
+  drawField();
+  document.querySelectorAll('[data-spec]').forEach(c => drawSpectrum(c, PACKS[+c.dataset.spec]));
+}
+requestAnimationFrame(paint);
+let t; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(paint, 150); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', paint);
+</script>

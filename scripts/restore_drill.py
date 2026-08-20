@@ -135,8 +135,12 @@ def _dossier_files(dossier_dir: Path) -> list[Path]:
 
     `rglob`, not `glob`, and that is a measured decision rather than a style one. The live index
     carries 9 rows under `store/dossiers/quarantine_ungrounded/`, which a top-level `*.json` glob
-    does not see — the first run of this drill failed on exactly those 9 rows. `backup_store.py`
-    still uses the non-recursive glob (`backup_store.py:sync`), so those dossiers are not in R2.
+    does not see — the first run of this drill failed on exactly those 9 rows.
+
+    This docstring used to end: "`backup_store.py` still uses the non-recursive glob
+    (`backup_store.py:sync`), so those dossiers are not in R2." That is false, and the citation
+    was wrong as well as the claim — `backup_store._dossier_files` is `DOSSIER_DIR.rglob`.
+    Measured against the live bucket 2026-08-20: 0 of 3,622 local dossiers were missing from R2.
     """
     if not dossier_dir.is_dir():
         return []

@@ -1,0 +1,60 @@
+<style>
+/* ============================================================================
+   THE STRUCTURAL SWITCHES — the differences a token cannot express.
+
+   A colour is a token. A masthead that centres, a headline that sets in caps, a
+   card that loses its box: those are STRUCTURE, and no amount of palette states
+   them. They used to be stated as `[data-look="ledger"] .masthead { ... }` —
+   seventeen rules, each naming one of the ten looks.
+
+   Naming a look in CSS is what gate A42 forbids, and the reason is the eleventh
+   look: a rule addressed to `ledger` is a rule the next look cannot have without
+   a deploy, which makes the ops console (C23/C24) a liar. The console can write
+   a seed and a switch into a row; it cannot write a stylesheet.
+
+   So each rule below is keyed on WHAT IT DOES, and any look may ask for it by
+   setting the switch. Same seventeen declarations, no look named. Adding the
+   eleventh look is now a row of data, and a look that asks for a switch nobody
+   implemented fails the gate rather than silently doing nothing.
+   ========================================================================== */
+
+/* A masthead set like a front page: centred, and the wordmark as big as the
+   sheet allows. */
+[data-masthead="centred"] .masthead__dateline { justify-content: center; text-align: center; }
+[data-masthead-rule="double"] .masthead { border-bottom: 3px double var(--hair-strong); padding-bottom: var(--s3); }
+[data-wordmark="sheet"] .wordmark { font-size: clamp(2.6rem, 9vw, 6rem); }
+
+/* A readout: a boxed panel on its own surface, the way an instrument frames a
+   measurement rather than letting it sit on the page. */
+[data-readout="boxed"] .readout { border: 1px solid var(--hair); border-radius: var(--radius); padding: var(--s2) var(--s3); background: var(--surface); }
+
+/* How a plate meets the text under it: an underline in the accent, or capped
+   corners that carry the card's radius across the top only. */
+[data-plate-edge="underline"] .plate { border-bottom: 2px solid var(--accent); }
+[data-plate-edge="capped"] .plate { border-radius: var(--radius) var(--radius) 0 0; }
+
+/* Navigation set in spaced capitals — a filing label rather than a link. */
+[data-nav="filed"] nav.bar a { text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* A section head ruled above and below, as a prospectus rules its headings. */
+[data-section-head="ruled"] .section__head { border-block: 1px solid var(--hair-strong); padding-block: var(--s2); }
+
+/* The dropped capital that opens an almanac's first paragraph. */
+[data-dropcap="on"] .hero__deck::first-letter { float: left; font-family: var(--display); font-size: 3.4em; line-height: 0.78; padding: 0.08em 0.1em 0 0; }
+
+/* Registration marks at the corners of a figure, as a workbench drawing carries
+   crop marks. */
+[data-figure-marks="corners"] .figure { position: relative; }
+[data-figure-marks="corners"] .figure::before, [data-figure-marks="corners"] .figure::after { content: ""; position: absolute; width: 14px; height: 14px; border: 1px solid var(--accent); }
+[data-figure-marks="corners"] .figure::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+[data-figure-marks="corners"] .figure::after { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+
+/* Headlines in capitals, the voice of a broadside. */
+[data-headline-case="upper"] .hero__head, [data-headline-case="upper"] .close h2 { text-transform: uppercase; }
+
+/* Panels with no box at all: a single rule on top, the page's own ground, no
+   shadow and no radius. The quietest a card can be while still being a card. */
+[data-panel="flat"] .pack, [data-panel="flat"] .close, [data-panel="flat"] .panel { border: 0; border-top: 1px solid var(--hair-strong); border-radius: 0; background: var(--ground); box-shadow: none; }
+[data-panel="flat"] .packs, [data-panel="flat"] .docs { background: var(--ground); border: 0; }
+[data-panel="flat"] .panel__bar { background: var(--ground); }
+</style>

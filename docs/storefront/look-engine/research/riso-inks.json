@@ -1,0 +1,838 @@
+[
+{
+"name": "Apricot",
+"hex": "F6A04D",
+"rgb": "246,160,77",
+"cmyk": "0,35,69,4",
+"cielab": "74,30,56",
+"pantone": "143 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Aqua",
+"hex": "5EC8E5",
+"rgb": "94,200,229",
+"cmyk": "49,0,11,0",
+"cielab": "71,-30,-26",
+"pantone": "637 U",
+"brand": "Riso",
+"series": "Custom",
+"japanese_name": "\u30a2\u30af\u30a2"
+},
+{
+"name": "Bisque",
+"hex": "F2CDCF",
+"rgb": "242,205,207",
+"cmyk": "1,22,7,0",
+"cielab": "87,15,22",
+"pantone": "503 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Black",
+"hex": "000000",
+"rgb": "0,0,0",
+"cmyk": "0,0,0,100",
+"pantone": "Black U",
+"brand": "Riso",
+"series": "Standard",
+"japanese_name": "\u30d6\u30e9\u30c3\u30af"
+},
+{
+"name": "Blue",
+"hex": "0078BF",
+"rgb": "0,120,191",
+"cmyk": "99,22,0,1",
+"pantone": "3005 U",
+"brand": "Riso",
+"series": "Standard",
+"japanese_name": "\u30d6\u30eb\u30fc"
+},
+{
+"name": "Brick",
+"hex": "A75154",
+"rgb": "167,81,84",
+"cmyk": "8,85,59,18",
+"cielab": "46,37,17",
+"pantone": "1807 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Bright Gold",
+"hex": "BA8032",
+"rgb": "186,128,50",
+"cmyk": "3,36,97,9",
+"cielab": "59,20,50",
+"pantone": "131 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Bright Olive Green",
+"hex": "B49F29",
+"rgb": "180,159,41",
+"cmyk": "5,8,100,15",
+"cielab": "66,0,60",
+"pantone": "103 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Bright Red",
+"hex": "f15060",
+"rgb": "241,80,96",
+"cmyk": "0,67,60,5",
+"cielab": "55,66,35",
+"pantone": "032 U",
+"brand": "Riso",
+"series": "Standard",
+"japanese_name": "\u30d6\u30e9\u30a4\u30c8\u30ec\u30c3\u30c9"
+},
+{
+"name": "Brown",
+"hex": "925F52",
+"rgb": "146,95,82",
+"cmyk": "18,62,84,23",
+"cielab": "35,8,15",
+"pantone": "7526 U",
+"brand": "Riso",
+"series": "Standard",
+"japanese_name": "\u30d6\u30e9\u30a6\u30f3"
+},
+{
+"name": "Bubblegum",
+"hex": "F984CA",
+"rgb": "249,132,202",
+"cmyk": "5,48,0,0",
+"cielab": "71,52,-13",
+"pantone": "212 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Burgundy",
+"hex": "914e72",
+"rgb": "145,78,114",
+"cmyk": "24,94,1,21",
+"cielab": "41,23,6",
+"pantone": "235 U",
+"brand": "Riso",
+"series": "Standard",
+"japanese_name": "\u30d0\u30fc\u30ac\u30f3\u30c7\u30a3\u30fc\u30ec\u30c3\u30c9"
+},
+{
+"name": "Category:Riso compatible inks"
+},
+{
+"name": "Charcoal",
+"hex": "70747C",
+"rgb": "112,116,124",
+"cmyk": "57,46,38,11",
+"cielab": "49,0,-5",
+"pantone": "7540 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Citron",
+"hex": "FAF3B7",
+"rgb": "250,243,183",
+"brand": "Riso",
+"series": "Custom",
+"japanese_name": "\u30b7\u30c8\u30ed\u30f3"
+},
+{
+"name": "Clear Medium",
+"rgb": "242,242,242",
+"brand": "Riso",
+"series": "Custom",
+"japanese_name": "\u900f\u660e\u306a\u57f9\u5730"
+},
+{
+"name": "Copper",
+"hex": "BD6439",
+"rgb": "189,100,57",
+"cmyk": "5,54,95,8",
+"cielab": "53,35,42",
+"pantone": "167 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Coral",
+"hex": "FF8E91",
+"rgb": "255,142,145",
+"cmyk": "0,44,43,0",
+"cielab": "78,38,16",
+"pantone": "177 U",
+"brand": "Riso",
+"series": "Custom",
+"japanese_name": "\u30b3\u30fc\u30e9\u30eb"
+},
+{
+"name": "Cornflower",
+"hex": "62a8e5",
+"rgb": "98,168,229",
+"cmyk": "54,10,0,0",
+"cielab": "64,-11,-36",
+"pantone": "292 U",
+"brand": "Riso",
+"series": "Special Edition",
+"japanese_name": "\u30b3\u30fc\u30f3\u30d5\u30e9\u30ef\u30fc"
+},
+{
+"name": "Cranberry",
+"hex": "BA0C24",
+"rgb": "186,12,36",
+"cmyk": "0,94,81,27",
+"cielab": "50,48,17",
+"pantone": "200 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Crimson",
+"hex": "E45D50",
+"rgb": "228,93,80",
+"cmyk": "0,59,65,11",
+"cielab": "58,56,37",
+"pantone": "485 U",
+"brand": "Riso",
+"series": "Special Edition",
+"japanese_name": "\u30af\u30ea\u30e0\u30be\u30f3"
+},
+{
+"name": "Dark Mauve",
+"hex": "BD8CA6",
+"rgb": "189,140,166",
+"cmyk": "12,44,7,5",
+"cielab": "64,23,-5",
+"pantone": "687 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Emerald",
+"hex": "19975D",
+"rgb": "25,151,93",
+"cmyk": "82,0,92,0",
+"cielab": "55,-45,19",
+"pantone": "355 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Flat Gold",
+"hex": "BB8B41",
+"rgb": "187,139,65",
+"cmyk": "6,26,97,15",
+"cielab": "44,6,30",
+"pantone": "126 U",
+"brand": "Riso",
+"series": "Standard",
+"japanese_name": "\u30d5\u30e9\u30c3\u30c8\u30b4\u30fc\u30eb\u30c9"
+},
+{
+"name": "Fluorescent Green",
+"hex": "44D62C",
+"rgb": "68,214,44",
+"cmyk": "68,0,79,16",
+"cielab": "85,-47,33",
+"pantone": "802 U",
+"brand": "Riso",
+"series": "Custom",
+"japanese_name": "\u86cd\u5149\u30b0\u30ea\u30fc\u30f3"
+},
+{
+"name": "Fluorescent Orange",
+"hex": "FF7477",
+"rgb": "255,116,119",
+"cmyk": "0,55,53,0",
+"cielab": "75,61,35",
+"pantone": "805 U",
+"brand": "Riso",
+"series": "Special Edition",
+"japanese_name": "\u86cd\u5149\u30aa\u30ec\u30f3\u30b8"
+},
+{
+"name": "Fluorescent Pink",
+"hex": "FF48B0",
+"rgb": "255,72,176",
+"cmyk": "0,72,31,0",
+"cielab": "71,75,-16",
+"pantone": "806 U",
+"brand": "Riso",
+"series": "Standard",
+"japanese_name": "\u86cd\u5149\u30d4\u30f3\u30af"
+},
+{
+"name": "Fluorescent Red",
+"hex": "FF4C65",
+"rgb": "255,76,101",
+"cmyk": "0,81,44,0",
+"cielab": "69,67,20",
+"pantone": "812 U",
+"brand": "Riso",
+"series": "Custom",
+"japanese_name": "\u86cd\u5149\u30ec\u30c3\u30c9"
+},
+{
+"name": "Fluorescent Yellow",
+"hex": "F7FF00",
+"rgb": "247,255,0",
+"cmyk": "3,0,100,0",
+"cielab": "97,-19,51",
+"pantone": "803 U",
+"brand": "Riso",
+"series": "Custom",
+"japanese_name": "\u86cd\u5149\u30a4\u30a8\u30ed\u30fc"
+},
+{
+"name": "Forest",
+"hex": "516E5A",
+"rgb": "81,110,90",
+"cmyk": "72,11,91,41",
+"cielab": "44,-15,7",
+"pantone": "357 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Granite",
+"hex": "A5AAA8",
+"rgb": "165,170,168",
+"cmyk": "36,22,30,2",
+"cielab": "69,-2,0",
+"pantone": "7538 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Grape",
+"hex": "6C5D80",
+"rgb": "108,93,128",
+"cmyk": "69,85,10,11",
+"cielab": "42,12,-17",
+"pantone": "2695 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Grass",
+"hex": "397E58",
+"rgb": "57,126,88",
+"cmyk": "80,3,93,17",
+"cielab": "45,-28,8",
+"pantone": "356 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Gray",
+"hex": "928D88",
+"rgb": "146,141,136",
+"cmyk": "10,10,13,36",
+"cielab": "59,1,3",
+"pantone": "403 U",
+"brand": "Riso",
+"series": "Special Edition",
+"japanese_name": "\u30b0\u30ec\u30fc"
+},
+{
+"name": "Green",
+"hex": "00A95C",
+"rgb": "0,169,92",
+"cmyk": "73,0,81,0",
+"cielab": "58,-52,19",
+"pantone": "354 U",
+"brand": "Riso",
+"series": "Standard",
+"japanese_name": "\u30b0\u30ea\u30fc\u30f3"
+},
+{
+"name": "Hunter Green",
+"hex": "407060",
+"rgb": "64,112,96",
+"cmyk": "96,7,80,33",
+"cielab": "34,-12,-1",
+"pantone": "330 U",
+"brand": "Riso",
+"series": "Standard",
+"japanese_name": "\u30cf\u30f3\u30bf\u30fc\u30b0\u30ea\u30fc\u30f3"
+},
+{
+"name": "Indigo",
+"hex": "484D7A",
+"rgb": "72,77,122",
+"cmyk": "97,82,3,18",
+"cielab": "42,6,-26",
+"pantone": "2758 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Ivy",
+"hex": "169B62",
+"rgb": "22,155,98",
+"cmyk": "71,0,72,0",
+"cielab": "48,-49,20",
+"pantone": "347 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Kelly Green",
+"hex": "67b346",
+"rgb": "103,179,70",
+"cmyk": "52,0,86,0",
+"cielab": "64,-45,41",
+"pantone": "368 U",
+"brand": "Riso",
+"series": "Special Edition",
+"japanese_name": "\u30b1\u30ea\u30fc\u30b0\u30ea\u30fc\u30f3"
+},
+{
+"name": "Lagoon",
+"hex": "2F6F65",
+"rgb": "47,97,101",
+"cmyk": "98,16,47,34",
+"cielab": "38,-16,-9",
+"pantone": "323 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Lake",
+"hex": "235BA8",
+"rgb": "35,91,168",
+"cmyk": "93,54,0,0",
+"cielab": "34,13,-51",
+"pantone": "293 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Light Gray",
+"hex": "88898A",
+"rgb": "136,137,138",
+"cmyk": "25,17,15,44",
+"cielab": "65,2,0",
+"pantone": "424 U",
+"brand": "Riso",
+"series": "Standard",
+"japanese_name": "\u30e9\u30a4\u30c8\u30b0\u30ec\u30fc"
+},
+{
+"name": "Light Lime",
+"hex": "E3ED55",
+"rgb": "227,237,85",
+"cmyk": "10,0,60,0",
+"cielab": "91,-17,69",
+"pantone": "387 U",
+"brand": "Riso",
+"series": "Special Edition",
+"japanese_name": "\u9ec4\u7dd1"
+},
+{
+"name": "Light Mauve",
+"hex": "E6B5C9",
+"rgb": "230,181,201",
+"cmyk": "2,28,4,0",
+"cielab": "79,22,-3",
+"pantone": "7430 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Light Teal",
+"hex": "009DA5",
+"rgb": "0,157,165",
+"cmyk": "93,0,36,0",
+"cielab": "58,-44,-14",
+"pantone": "320 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Mahogany",
+"hex": "8E595A",
+"rgb": "142,89,90",
+"cmyk": "24,77,67,25",
+"cielab": "44,22,10",
+"pantone": "491 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Marine Red",
+"hex": "D2515E",
+"rgb": "210,81,94",
+"cmyk": "1,91,72,3",
+"cielab": "54,54,23",
+"pantone": "186 U",
+"brand": "Riso",
+"series": "Standard",
+"japanese_name": "\u30ea\u30bd\u30fc\u30de\u30ea\u30fc\u30f3\u30ec\u30c3\u30c9"
+},
+{
+"name": "Maroon",
+"hex": "9E4C6E",
+"rgb": "158,76,110",
+"cmyk": "11,96,5,25",
+"cielab": "45,39,-2",
+"pantone": "221 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Medium Blue",
+"hex": "3255A4",
+"rgb": "50,85,164",
+"cmyk": "87,59,0,0",
+"cielab": "36,14,-48",
+"pantone": "286 U",
+"brand": "Riso",
+"series": "Standard",
+"japanese_name": "\u30df\u30c7\u30a3\u30a2\u30e0\u30d6\u30eb\u30fc"
+},
+{
+"name": "Melon",
+"hex": "FFAE3B",
+"rgb": "255,174,59",
+"cmyk": "0,32,77,0",
+"cielab": "77,39,72",
+"pantone": "137 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Metallic Gold",
+"hex": "AC936E",
+"rgb": "172,147,110",
+"cmyk": "22,33,68,8",
+"cielab": "67,8,20",
+"pantone": "874 U",
+"brand": "Riso",
+"series": "Special Edition",
+"japanese_name": "\u30d5\u30e9\u30c3\u30bf\u30ea\u30c3\u30af\u30b4\u30fc\u30eb\u30c9"
+},
+{
+"name": "Midnight",
+"hex": "435060",
+"rgb": "67,80,96",
+"cmyk": "98,60,33,47",
+"cielab": "35,2,-11",
+"pantone": "296 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Mint",
+"hex": "82D8D5",
+"rgb": "130,216,213",
+"cmyk": "38,0,16,0",
+"cielab": "82,-31,-7",
+"pantone": "3242 U",
+"brand": "Riso",
+"series": "Custom",
+"japanese_name": "\u30df\u30f3\u30c8"
+},
+{
+"name": "Mist",
+"hex": "B8C7C4",
+"rgb": "184,199,196",
+"cmyk": "15,4,11,6",
+"pantone": "5665 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Moss",
+"hex": "68724D",
+"rgb": "104,114,77",
+"cmyk": "38,11,89,42",
+"cielab": "37,-8,13",
+"pantone": "371 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Orange",
+"hex": "FF6C2F",
+"rgb": "255,108,47",
+"cmyk": "0,58,82,0",
+"cielab": "67,56,63",
+"pantone": "Orange 021 U",
+"brand": "Riso",
+"series": "Standard",
+"japanese_name": "\u30aa\u30ec\u30f3\u30b8"
+},
+{
+"name": "Orchid",
+"hex": "BB76CF",
+"rgb": "187,118,207",
+"cmyk": "28,51,0,0",
+"cielab": "51,21,-34",
+"pantone": "2582 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Paprika",
+"hex": "EE7F4B",
+"rgb": "238,127,75",
+"cmyk": "0,47,68,7",
+"cielab": "66,44,48",
+"pantone": "158 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Pine",
+"hex": "237E74",
+"rgb": "35,126,116",
+"cmyk": "94,4,62,8",
+"cielab": "49,-34,0",
+"pantone": "3295 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Plum",
+"hex": "845991",
+"rgb": "132,89,145",
+"cmyk": "54,81,0,0",
+"cielab": "45,26,-23",
+"pantone": "2603 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Pumpkin",
+"hex": "FF6F4C",
+"rgb": "255,111,76",
+"cmyk": "0,56,70,0",
+"cielab": "67,58,51",
+"pantone": "1655 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Purple",
+"hex": "765BA7",
+"rgb": "118,91,167",
+"cmyk": "61,73,0,0",
+"cielab": "33,16,-22",
+"pantone": "2685 U",
+"brand": "Riso",
+"series": "Standard",
+"japanese_name": "\u30d1\u30fc\u30d7\u30eb"
+},
+{
+"name": "Raisin",
+"hex": "775D7A",
+"rgb": "119,93,122",
+"cmyk": "40,63,9,35",
+"cielab": "43,16,-12",
+"pantone": "519 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Raspberry Red",
+"hex": "B44B65",
+"rgb": "180,75,101",
+"cmyk": "26,83,47,6",
+"cielab": "47,45,8",
+"pantone": "207 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Red",
+"hex": "FF665E",
+"rgb": "255,102,94",
+"cmyk": "0,60,63,0",
+"cielab": "62,63,43",
+"pantone": "WARM RED U",
+"brand": "Riso",
+"series": "Standard",
+"japanese_name": "\u30ec\u30c3\u30c9"
+},
+{
+"name": "Riso-Federal Blue",
+"hex": "3D5588",
+"rgb": "61,85,136",
+"cmyk": "100,65,1,17",
+"cielab": "37,2,-38",
+"pantone": "281 U",
+"brand": "Riso",
+"series": "Standard",
+"japanese_name": "\u30ea\u30bd\u30fc \u30d5\u30a7\u30c7\u30e9\u30eb\u30d6\u30eb\u30fc"
+},
+{
+"name": "Scarlet",
+"hex": "F65058",
+"rgb": "246,80,88",
+"cmyk": "0,67,64,4",
+"cielab": "57,63,38",
+"pantone": "185 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Sea Blue",
+"hex": "0074A2",
+"rgb": "0,116,162",
+"cmyk": "100,4,4,24",
+"cielab": "44,-18,-35",
+"pantone": "307 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Sea Foam",
+"hex": "62C2B1",
+"rgb": "98,194,177",
+"cmyk": "53,0,33,0",
+"cielab": "63,-38,3",
+"pantone": "570 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Sky Blue",
+"hex": "4982cf",
+"rgb": "73,130,207",
+"cmyk": "70,30,0,0",
+"cielab": "55,-3,-42",
+"pantone": "285 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Slate",
+"hex": "5E695E",
+"rgb": "94,105,94",
+"cmyk": "66,41,71,29",
+"cielab": "43,-6,5",
+"pantone": "5605 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Smoky Teal",
+"hex": "5F8289",
+"rgb": "95,130,137",
+"cmyk": "70,27,36,6",
+"cielab": "51,-11,-9",
+"pantone": "5483 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Spruce",
+"hex": "4A635D",
+"rgb": "74,99,93",
+"cmyk": "87,30,71,39",
+"cielab": "40,-11,-1",
+"pantone": "567 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Steel",
+"hex": "375E77",
+"rgb": "55,94,119",
+"cmyk": "97,36,10,41",
+"cielab": "38,-8,-19",
+"pantone": "302 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Sunflower",
+"hex": "FFB511",
+"rgb": "255,181,17",
+"cmyk": "0,29,93,0",
+"pantone": "116 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Teal",
+"hex": "00838A",
+"rgb": "0,131,138",
+"cmyk": "100,1,40,7",
+"cielab": "37,-30,-9",
+"pantone": "321 U",
+"brand": "Riso",
+"series": "Standard",
+"japanese_name": "\u30c6\u30a3\u30fc\u30eb\u30b0\u30ea\u30fc\u30bd"
+},
+{
+"name": "Tomato",
+"hex": "D2515E",
+"rgb": "210,81,94",
+"cmyk": "1,91,72,3",
+"cielab": "54,54,23",
+"pantone": "186 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Turquoise",
+"hex": "00AA93",
+"rgb": "0,170,147",
+"cmyk": "68,0,39,0",
+"cielab": "54,-51,6",
+"pantone": "3275 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Violet",
+"hex": "9d7ad2",
+"rgb": "157,122,210",
+"cmyk": "40,51,0,0",
+"cielab": "55,23,-41",
+"pantone": "2097 U",
+"brand": "Riso",
+"series": "Standard",
+"japanese_name": "\u30f4\u30a1\u30a4\u30aa\u30ec\u30c3\u30c8"
+},
+{
+"name": "White",
+"hex": "FFFFFF",
+"rgb": "255,255,255",
+"cmyk": "0,0,0,0",
+"cielab": "95,0,0",
+"brand": "Riso",
+"series": "Custom",
+"japanese_name": "\u767d"
+},
+{
+"name": "Wine",
+"hex": "914E72",
+"rgb": "145,78,114",
+"cmyk": "24,94,1,21",
+"cielab": "43,33,-6",
+"pantone": "235 U",
+"brand": "Riso",
+"series": "Special Edition"
+},
+{
+"name": "Yellow",
+"hex": "ffe800",
+"rgb": "255,232,0",
+"cmyk": "0,9,100,0",
+"cielab": "90,-3,90",
+"pantone": "Yellow U",
+"brand": "Riso",
+"series": "Standard",
+"japanese_name": "\u30a4\u30a8\u30ed\u30fc"
+}
+]

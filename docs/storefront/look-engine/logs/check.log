@@ -1,0 +1,13 @@
+$ node check.mjs
+started  2026-08-20T19:00:37Z
+node     v26.3.0
+---
+
+ALL PASS — 10 looks x 2 themes x 20 pairs = 400 checks
+10 of 10 looks are generated from a seed; 0 still carry hand-picked hex.
+A43 PASS — no hand-written colour in the look table, every look owns a seed.
+A42 PASS — 0 CSS rules name a look; 12 switch values across 11 axes, all implemented and all implemented rules declared. The switch space alone is 3,072 structures.
+GATE AUDIT PASS — 8 gate numbers used by the tools, all defined in the program doc with the title the tool means.
+---
+exit     0
+duration 0s

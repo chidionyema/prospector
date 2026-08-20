@@ -32,7 +32,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from prospector.jsonl_atomic import append_jsonl
-from prospector.scheduler import paths
+
+# `telegram_sender` is the fallback alert sink: a sibling module importing nothing but the
+# stdlib, so there is no cycle and no reason to defer it. See `_load_repo_sender`.
+from prospector.scheduler import paths, telegram_sender
 
 logger = logging.getLogger(__name__)
 
@@ -291,7 +294,52 @@ TELEGRAM_KEYS = frozenset({
 })
 
 
+def _under_pytest() -> bool:
+    """True while a test is running. A function, not an inline check, so a test can lift it.
+
+    `monkeypatch.delenv("PYTEST_CURRENT_TEST")` in a fixture does NOT work: pytest re-sets that
+    variable for each phase of each test, so it is back before the test body runs and a fixture
+    that deletes it grades nothing. Patching this function is the only way to exercise the
+    sender-selection path the way production reaches it.
+    """
+    return "PYTEST_CURRENT_TEST" in os.environ
+
+
+def _load_repo_sender():
+    """The in-repo Telegram sender. Always returns one.
+
+    WHY THIS EXISTS (issue #355). Every sink below and the Hermes one above are things that live
+    on the founder's Mac. Since the Fly cutover on 2026-08-18 the engine runs in a container with
+    no `$HOME/.hermes`, so `_load_estate_sender()` returned None and the engine's own log recorded
+    `Tick digest sink unavailable (no estate_alert.py); digest stayed local` while both MiniMax
+    tiers were exhausted and generation produced nothing. The founder found out by noticing the
+    ops console was stale.
+
+    NO try/except around the import, AND no credential check. `telegram_sender` is a sibling
+    module in this package importing nothing but the stdlib, so an ImportError is a broken
+    deployment: it belongs in a traceback, not in a handler that quietly leaves the estate with
+    no rail — which is the same shape of failure as the one this whole change exists to fix. And
+    a sender with no `TELEGRAM_BOT_TOKEN` names the missing variable at WARNING when it is
+    called; refusing to return one logs "sink unavailable", which reads as "there is no rail
+    here" and is the exact message that hid this for two days.
+    """
+    return telegram_sender.send_operator_alert
+
+
 def _load_hermes_sender():
+    """The off-machine sender: Hermes' if this estate has it, otherwise the in-repo one.
+
+    The order is deliberate. On the founder's Mac, Hermes holds the credentials in `~/.hermes/.env`
+    and shares one debounce file with every other estate alarm, so it must win where it exists.
+    Everywhere else — the Fly container, a fresh clone, a new laptop — the in-repo sender is the
+    rail, reading its credentials from the environment.
+    """
+    if _under_pytest():
+        return None
+    return _load_estate_sender() or _load_repo_sender()
+
+
+def _load_estate_sender():
     """Return Hermes' `send_operator_alert`, or None if the estate isn't present/importable.
 
     UNDER PYTEST THIS ALWAYS RETURNS None, and `dry_run` is not considered a sufficient fence.
@@ -301,7 +349,7 @@ def _load_hermes_sender():
     30 minutes. Loading the module at all is the side effect; refusing to load it is the fix.
     Tests that need to exercise this path monkeypatch THIS function.
     """
-    if "PYTEST_CURRENT_TEST" in os.environ:
+    if _under_pytest():
         return None
     if not _HERMES_ALERT_PATH.exists():
         return None
@@ -313,13 +361,13 @@ def _load_hermes_sender():
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         return getattr(mod, "send_operator_alert", None)
-    except Exception:  # noqa: BLE001 — a broken estate degrades to the local sinks, never a crash
-        # Logged at ERROR with a traceback because the two callers (`_telegram_push`,
-        # `_emit_tick_digest`) both report None as "sink unavailable (no <path>)" at INFO — the
-        # message for an estate that ISN'T INSTALLED. The `_HERMES_ALERT_PATH.exists()` check
-        # above already covers that case, so reaching here means the file is present and BROKEN,
-        # and every CRITICAL in TELEGRAM_KEYS (liveness, stranded_passes, moat_blind) is being
-        # dropped on the floor. That must not be indistinguishable from "no estate here".
+    except Exception:  # noqa: BLE001 — a broken estate degrades to the repo sender, never a crash
+        # Logged at ERROR with a traceback because the caller returns None for an estate that
+        # ISN'T INSTALLED too, and the `_HERMES_ALERT_PATH.exists()` check above already covers
+        # that case: reaching here means the file is PRESENT and BROKEN, which is a defect on this
+        # machine rather than a machine that never had Hermes. Since 2026-08-20 the alert still
+        # goes out — `_load_hermes_sender` falls through to the in-repo sender — but a silently
+        # broken Hermes would then hide behind a working fallback forever.
         logger.exception("Hermes sender at %s is present but failed to load — Telegram alerts and "
                          "tick digests are NOT being delivered", _HERMES_ALERT_PATH)
         return None
@@ -338,7 +386,11 @@ def _telegram_push(record: dict) -> None:
         return
     send = _load_hermes_sender()
     if send is None:
-        logger.info("Telegram sink unavailable (no %s); alert stayed local", _HERMES_ALERT_PATH)
+        # Since the in-repo sender landed there is no such thing as "this machine has no rail":
+        # `_load_hermes_sender` only returns None under pytest, or when the in-repo module itself
+        # failed to import, and that import failure is already logged with a traceback. So this is
+        # a WARNING, not the INFO it used to be — INFO is what let issue #355 sit for two days.
+        logger.warning("Telegram sink unavailable (no sender could be loaded); alert stayed local")
         return
     line = (f"{_ICON.get(record.get('severity'), '')} Prospector [{record.get('severity')}] "
             f"{record.get('title')}: {record.get('message')}")

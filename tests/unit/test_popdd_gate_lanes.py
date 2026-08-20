@@ -150,6 +150,37 @@ class TestTheLaneMapCoversEachSourceKind:
         assert lanes == ["web"]
         assert unclassified == []
 
+    def test_the_look_engine_tools_select_the_look_engine_lane(self, runner):
+        """The exact regression: 20 staged .mjs/.js/.css files under docs/storefront/look-engine
+
+        were all in SOURCE_EXTS and matched no lane, so the gate refused the whole directory as
+        unproven and it could not be committed at all.
+        """
+        lanes, unclassified = runner.lanes_for(
+            [
+                "docs/storefront/look-engine/verify.mjs",
+                "docs/storefront/look-engine/parts/03-looks.js",
+                "docs/storefront/look-engine/parts/06-switches.css",
+            ]
+        )
+        assert lanes == ["lookengine"]
+        assert unclassified == []
+
+    def test_every_look_engine_step_is_one_that_can_refuse(self, runner):
+        """A lane step that logs a fault and exits 0 makes the lane green while grading nothing.
+
+        Both steps below were mutation-proved before they were added: check.mjs exits 1 on a hex
+        written into a look, on a `[data-look=...]` selector in the stylesheet, and on a tool
+        claiming an undefined gate number; palette-test.mjs exits 1 when one `min:` in the pair
+        table is raised. tools.mjs was in this lane and was removed for failing that test — it
+        regenerated the ledger page with a lie in it and exited 0.
+
+        This assertion is deliberately exact, so adding a step means saying here that you
+        mutation-proved it.
+        """
+        steps = [argv[-1] for _, argv in runner.LANES["lookengine"].steps]
+        assert steps == ["check.mjs", "palette-test.mjs"], steps
+
     def test_the_python_lane_lints_before_it_tests(self, runner):
         """W2.3: ruff is part of the python proof, and DECLARES itself repo-wide.
 
