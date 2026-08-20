@@ -301,3 +301,145 @@ def test_the_ingest_port_is_not_published_publicly():
     assert "8613" not in published, (
         "the log ingest port appears in fly.toml's published service block, which would put "
         "a disk-writing endpoint on the public internet")
+
+
+# --------------------------------------------------------------------------- OTLP (#501)
+# The OTLP DECODING is pinned in tests/unit/test_otlp.py against bytes the OpenTelemetry .NET
+# exporter really wrote. What is asserted here is the ENDPOINT: that OTLP arrives under the same
+# auth, the same caps and the same drop-never-block rule as everything else, and that a producer
+# we did not write can tell whether its lines landed.
+
+import pathlib
+
+OTLP_URL = "/internal/logs/otlp"
+DOTNET_PAYLOAD = (pathlib.Path(__file__).resolve().parents[1]
+                  / "fixtures" / "otlp" / "dotnet_1_15_3_logs.protobuf")
+PB = {"Content-Type": "application/x-protobuf"}
+
+
+def otlp_json(svc="engine", evt="tick.started", body="a sentence"):
+    return {"resourceLogs": [{
+        "resource": {"attributes": [
+            {"key": "service.name", "value": {"stringValue": svc}}]},
+        "scopeLogs": [{"scope": {"name": "s"}, "logRecords": [{
+            "body": {"stringValue": body},
+            "severityText": "Information",
+            "attributes": [{"key": "evt", "value": {"stringValue": evt}}],
+        }]}],
+    }]}
+
+
+def test_otlp_needs_the_same_bearer_key(client):
+    """A new route is a new way in. Adding one that forgot auth would put the whole log store
+    behind nothing at all."""
+    assert client.post(OTLP_URL, json=otlp_json()).status_code == 401
+    assert client.post(OTLP_URL, json=otlp_json(),
+                       headers={"Authorization": "Bearer wrong"}).status_code == 401
+
+
+def test_otlp_json_lands_as_the_same_line_ndjson_would(client, ingest):
+    r = client.post(OTLP_URL, json=otlp_json(), headers=AUTH)
+    assert r.status_code == 200, r.text
+    assert r.headers["X-Accepted"] == "1"
+    assert r.headers["X-Dropped"] == "0"
+
+    files = list(ingest.glob("engine-*.jsonl"))
+    assert len(files) == 1, "OTLP did not write an engine day file: %s" % list(ingest.glob("*"))
+    written = json.loads(files[0].read_text().splitlines()[0])
+    assert written["svc"] == "engine"
+    assert written["evt"] == "tick.started"
+    assert written["lvl"] == "info"
+    assert written["msg"] == "a sentence"
+    assert written["host"], "host must be stamped by the ingest"
+
+
+def test_the_real_dotnet_payload_lands_end_to_end(client, ingest):
+    """The whole of #501 in one assertion: the exporter Store.Api compiles, posting its own
+    bytes, ending up as a line in the same store every other service writes to."""
+    r = client.post(OTLP_URL, content=DOTNET_PAYLOAD.read_bytes(), headers={**AUTH, **PB})
+    assert r.status_code == 200, r.text
+    assert r.headers["X-Accepted"] == "1"
+    files = list(ingest.glob("store-api-*.jsonl"))
+    assert len(files) == 1, "the .NET payload wrote nothing: %s" % list(ingest.glob("*"))
+    written = json.loads(files[0].read_text().splitlines()[0])
+    assert written["msg"] == "checkout session cs_test_123 expired after 30 min"
+    assert written["lvl"] == "warn"
+
+
+def test_both_route_spellings_reach_the_same_handler(client, ingest):
+    """An OTLP client is usually configured with a BASE url and appends `/v1/logs` itself. If
+    only one spelling existed, half the clients in the world would 404 with no line written."""
+    for url in (OTLP_URL, OTLP_URL + "/v1/logs"):
+        r = client.post(url, json=otlp_json(), headers=AUTH)
+        assert r.status_code == 200, "%s -> %s" % (url, r.status_code)
+    assert len(list(ingest.glob("engine-*.jsonl"))[0].read_text().splitlines()) == 2
+
+
+def test_a_bad_otlp_payload_is_400_and_writes_nothing(client, ingest):
+    r = client.post(OTLP_URL, content=b"\x0b\x00", headers={**AUTH, **PB})
+    assert r.status_code == 400
+    assert list(ingest.glob("*.jsonl")) == []
+
+
+def test_an_oversized_otlp_body_is_413(client, ingest, monkeypatch):
+    monkeypatch.setenv("PROSPECTOR_LOG_MAX_BODY_BYTES", "200")
+    r = client.post(OTLP_URL, json=otlp_json(body="x" * 500), headers=AUTH)
+    assert r.status_code == 413
+    assert list(ingest.glob("*.jsonl")) == []
+
+
+def test_too_many_records_in_one_request_is_413(client, ingest, monkeypatch):
+    monkeypatch.setenv("PROSPECTOR_LOG_MAX_LINES", "2")
+    payload = otlp_json()
+    payload["resourceLogs"][0]["scopeLogs"][0]["logRecords"] *= 3
+    r = client.post(OTLP_URL, json=payload, headers=AUTH)
+    assert r.status_code == 413
+    assert list(ingest.glob("*.jsonl")) == []
+
+
+def test_a_drop_is_reported_in_the_spec_s_own_field(client, ingest):
+    """`X-Dropped` means nothing to a stock OpenTelemetry exporter. OTLP says a partial success
+    is reported as `rejectedLogRecords` in the response body, and that is the only channel a
+    producer we did not write will ever read."""
+    payload = otlp_json()
+    # No service.name on the second record, so it is unroutable and must be dropped.
+    payload["resourceLogs"].append({
+        "resource": {"attributes": []},
+        "scopeLogs": [{"scope": {"name": "s"}, "logRecords": [
+            {"body": {"stringValue": "orphan"}}]}]})
+    r = client.post(OTLP_URL, json=payload, headers=AUTH)
+    assert r.status_code == 200
+    assert r.headers["X-Accepted"] == "1"
+    assert r.headers["X-Dropped"] == "1"
+    assert r.json()["partialSuccess"]["rejectedLogRecords"] == "1"
+
+
+def test_a_clean_otlp_export_returns_the_empty_success_message(client, ingest):
+    """OTLP: success is 200 with a serialised ExportLogsServiceResponse. All-default means zero
+    bytes in protobuf and `{}` in JSON. A client that parses the body must not choke."""
+    assert client.post(OTLP_URL, json=otlp_json(), headers=AUTH).json() == {}
+    r = client.post(OTLP_URL, content=DOTNET_PAYLOAD.read_bytes(), headers={**AUTH, **PB})
+    assert r.content == b"", "a clean protobuf export must return an empty message, got %r" % r.content
+
+
+def test_a_protobuf_partial_success_is_a_readable_message(client, ingest):
+    """The bytes we hand back have to be the message we claim, not a shape that only looks
+    right. Decoded with our own reader: field 1 is partial_success, whose field 1 is the count.
+    """
+    from prospector import otlp as otlp_mod
+    body = log_ingest._otlp_response(3, "application/x-protobuf").body
+    outer = otlp_mod._fields(body)
+    inner = otlp_mod._fields(bytes(otlp_mod._one(outer, 1)))
+    assert otlp_mod._one(inner, 1) == 3
+
+
+def test_otlp_is_rate_limited_by_the_same_limiter(client, ingest, monkeypatch):
+    """One producer switching to OTLP must not get an exemption from the cap that protects the
+    disk from all the others."""
+    monkeypatch.setenv("PROSPECTOR_LOG_RATE_LIMIT_RPS", "1")
+    log_ingest._LIMITER = log_ingest.RateLimiter(log_ingest.rate_limit_rps())
+    payload = otlp_json()
+    payload["resourceLogs"][0]["scopeLogs"][0]["logRecords"] *= 5
+    r = client.post(OTLP_URL, json=payload, headers=AUTH)
+    assert int(r.headers["X-Dropped"]) >= 1, "the rate limit did not apply to OTLP: %s" % r.headers
+    assert log_ingest._INGEST.counters["dropped_rate_limited"] >= 1

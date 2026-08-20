@@ -36,6 +36,12 @@
     <PackageReference Include="Crux.Storage" />
     <PackageReference Include="Crux.Resilience" />
     <PackageReference Include="Crux.Observability" />
+    <!-- Issue #501. The SDK and four instrumentation packages already arrive through
+         Crux.Observability; the EXPORTER did not, so nothing was ever emitted. Measured
+         2026-08-20 from src/Store.Api/obj/project.assets.json: this package depends only on
+         OpenTelemetry 1.15.3, which is already in the graph, so it adds no transitive weight
+         to the money path. -->
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
   </ItemGroup>
 
   <ItemGroup>

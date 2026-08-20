@@ -21,6 +21,16 @@ public static class CentralLogMapper
         RegexOptions.IgnoreCase | RegexOptions.Compiled,
         TimeSpan.FromSeconds(1));
 
+    /// <summary>What a redacted value is replaced with, on every transport.</summary>
+    public const string Redacted = "[redacted]";
+
+    /// <summary>
+    /// Whether an attribute name must have its value replaced before the line leaves this
+    /// process. Public because the OTLP transport redacts in a processor rather than in this
+    /// mapper, and a second copy of the pattern is a second thing to forget to update.
+    /// </summary>
+    public static bool IsSecretName(string name) => SecretName.IsMatch(name);
+
     private static readonly Regex EvtClean = new(
         "[^a-z0-9._-]+", RegexOptions.Compiled, TimeSpan.FromSeconds(1));
 
@@ -80,7 +90,7 @@ public static class CentralLogMapper
         void Put(string name, string value)
         {
             ctx ??= new Dictionary<string, string>(StringComparer.Ordinal);
-            ctx[name] = SecretName.IsMatch(name) ? "[redacted]" : value;
+            ctx[name] = IsSecretName(name) ? Redacted : value;
         }
 
         if (state is not null)

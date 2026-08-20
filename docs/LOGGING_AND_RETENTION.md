@@ -527,6 +527,30 @@ binding it to the private 6PN network, not the public listener.
 Rate limit: 100 requests/second/service, dropped not queued. A logging endpoint that applies
 backpressure to the caller lets a log problem become an outage.
 
+The same ingest also accepts OTLP, so a producer we did not write can send to it without a
+translator:
+
+```
+POST /internal/logs/otlp          (and /internal/logs/otlp/v1/logs)
+Authorization: Bearer <STORE_INTERNAL_API_KEY>
+Content-Type: application/x-protobuf  or  application/json
+Body: an OTLP ExportLogsServiceRequest, same 1 MB and 1000-record caps
+```
+
+Two spellings of the route because an OTLP client is usually handed a BASE url and appends the
+signal path itself. Measured 2026-08-20: OpenTelemetry .NET 1.15.3 appends nothing and posts to
+the configured url verbatim, so both had to exist.
+
+Both content types, because there is no choice. Measured 2026-08-20 against
+`OpenTelemetry.Exporter.OpenTelemetryProtocol` 1.15.3: `OtlpExportProtocol` offers `Grpc` and
+`HttpProtobuf` and nothing else. A JSON-only ingest could never have received Store.Api's
+exporter, which is why `prospector/otlp.py` reads protobuf rather than only OTLP-shaped JSON.
+
+Responses follow OTLP rather than the NDJSON route: `200` with an empty `ExportLogsServiceResponse`
+when everything was accepted, `200` with `partialSuccess.rejectedLogRecords` when some were
+dropped, and the same `400`/`401`/`413`/`429` otherwise. A producer we did not write cannot read
+our `X-Dropped` header, so the drop count has to travel in the protocol's own field.
+
 ### 4.6 Files, rotation and caps
 
 Files live at `/data/logs/` on `prospector-engine`, one file per service per UTC day:
@@ -709,7 +733,7 @@ Every option below was rejected for cost, lock-in, or both. R7 is zero new recur
 | **Datadog** | Priced per host and per GB ingested. The most expensive option on this list by a wide margin. | Total. Agent, tags, dashboards, monitors. | **Rejected.** Violates R7 immediately and R8 permanently. |
 | **Sentry** | Free tier exists for errors. | Moderate. | **Not rejected — out of scope.** Sentry is error tracking, not logging. `ErrorBoundary.tsx:32` records it as "a deferred, founder-gated decision" and it stays that way. It would not satisfy R1, R2 or R4. |
 | **A second Fly machine as a log host** | Roughly the cost of one more `shared-cpu-1x` machine plus a volume. | None. | **Rejected on cost only.** The `prospector-engine` volume has 18G free (§1.2). Paying for a second machine to hold 500 MB when an existing machine has 18G spare fails R7 and P8. |
-| **OpenTelemetry collector** (the process) | Free software; a second process to run, configure, deploy and migrate. | Low — OTLP is a standard. | **Rejected, and this one holds.** It is a pipeline with no destination: every destination on this list is rejected, so the collector would move bytes from A to A. |
+| **OpenTelemetry collector** | Free software; needs somewhere to send data. | Low — OTLP is a standard. | **Still rejected, for a different reason (2026-08-20, issue #501).** It was rejected as a pipeline with no destination. Since then the ingest itself learned OTLP (§4.5), so we ARE the destination and the collector has no job left to do. Speaking a standard is not lock-in: a producer can be pointed at a real collector later by changing one url, and nothing here depends on a vendor. |
 | **OTLP** (the wire format) | £0. It is a POST of JSON; no collector is required to speak it. | None. CNCF standard, not a vendor. | **This row was missing, and its absence was an error — see the correction below.** |
 | **`fly logs` piped into a file on the Mac** | £0. | None. | **Rejected as the primary mechanism.** It is a tail: when the collector is down or the Mac sleeps, those lines are gone forever, and there is no way to tell afterwards that they are missing. Silent, unmeasurable loss is worse than no logs, because it looks the same as quiet. Fine as a debugging tool; not a design. |
 
