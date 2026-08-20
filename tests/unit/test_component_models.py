@@ -27,6 +27,22 @@ from prospector import operator as op
 from prospector.ops import console_api as api
 
 
+@pytest.fixture(autouse=True)
+def _stub_provider_credentials(monkeypatch):
+    """The metered adapters refuse to construct without a key, and every test here builds one.
+
+    `MiniMaxOperator.__init__` raises `RuntimeError("MINIMAX_API_KEY not set")` (operator.py:719)
+    and DeepSeek the same at :942. What these tests assert is WHICH MODEL NAME arrives at the
+    built object, never whether this machine can authenticate. Demanding a real key makes the file
+    pass on a laptop that holds one and fail on a runner that does not, for a reason unrelated to
+    the claim. Measured: CI run 32313139559 failed three tests here on exactly that, while the
+    same three were green locally. The openrouter tests below set their own key via patch.dict,
+    which overrides this.
+    """
+    for var in ("MINIMAX_API_KEY", "DEEPSEEK_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY"):
+        monkeypatch.setenv(var, "test-key-not-a-credential")
+
+
 def _cfg():
     return load_config()
 
