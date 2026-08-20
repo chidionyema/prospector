@@ -388,3 +388,63 @@ Not `sops` — see 3.0. Run on the laptop that holds the key.
 | S2 | Rotate `PROSPECTOR_ENTITLEMENTS_API_KEY` and `STORE_INTERNAL_API_KEY`, exposed 2026-08-18 | **founder** | — |
 | S3 | Bring the 5 CI credentials under a declared source of truth | agent, after Part 3 lands | consolidation |
 | S4 | Make `secrets.sh check` detect a value that DIFFERS between sinks, not only one that is absent | agent, after Part 3 lands | the detect half of 2.6 |
+| S5 | Fix `encrypt_stdin` (`deploy/secrets.sh:62-68`) to encrypt to a recipients FILE, not to one key derived from the local identity | agent | must land BEFORE S1, or the next `set` silently strips every recovery recipient |
+| S6 | Escrow the commit-gate signing key (R-K1, R-K2) somewhere outside a code tree | **founder** — it is a secret value | every recovery drill; the estate is one delete from an unrecoverable gate |
+| S7 | Package `popdd` so a fresh clone can run the commit gate (R-K3) | agent, needs an owner | the portability contract and every migration target |
+| S8 | Name ONE owner for the stale-`CLAUDE.md`-from-no-ref guard (R-K5) | **founder** — founder ruled 2026-08-20 that one person builds it | three sessions hit it the same day |
+
+---
+
+## Part 6 — SECURITY AND BUSINESS RISK REGISTER (opened 2026-08-20)
+
+This part exists because of a specific failure of this programme, not as a formality. Parts 1-5
+graded the secrets we knew we had: the age file, the CI credentials, the provider keys. The
+estate's single worst secret was not in any of them, and neither was it in the daily stack audit.
+It was found by a peer session on its way to doing something else, roughly one command away from
+being destroyed permanently.
+
+Risk is rated on what it costs the BUSINESS if it fires, and on whether it can be undone.
+
+| # | Risk | Fires when | Business cost | Undo | Status |
+|---|---|---|---|---|---|
+| R-K1 | **One signing key, gitignored, and every copy of it is inside a code tree.** Measured 2026-08-20: 40 `agent.pem` files across `~/Documents/code`, the iCloud code clone and `~/.lux`, 20 distinct keys, and exactly **one** of those 20 verifies the tracked seed receipts (file sha `c0de7d01f49c`, verifier id `f12fbf94ba535a51`). It has 14 copies, so deleting one worktree does not destroy it. | an **estate-wide** worktree sweep runs — precisely the cleanup proposed on 2026-08-20 — or the laptop is lost. Not a single `rm -rf`; that was the first framing and the count disproves it | no worktree in the estate can pass its own commit gate again; every session is blocked from committing at once | **NONE.** `.gitignore:92` keeps it out of git, no backup job covers `.lux/keys`, and the signer is HMAC so it cannot be re-derived | OPEN — held in `~/.claude/estate-cleanup-hold`, which protects the named files and nothing else |
+| R-K2 | **No escrow.** No copy of that key exists outside a code tree. | R-K1 fires, or the laptop is lost | same as R-K1, plus no recovery on new hardware | none | OPEN — S6 |
+| R-K3 | **The gate's library is outside the repo.** `popdd.agent` resolves to `/Users/chidionyema/Documents/code/popdd-py/`. | a fresh clone is made anywhere — a new machine, a hosted runner, a migration target | the commit gate cannot run at all, so the migration target cannot prove its own work | reversible, but it is a packaging job | OPEN — S7. Breaks the one surviving clause of the old "no hosted service" rule: *a fresh clone plus an env file must still be able to run the whole engine* |
+| R-K4 | **Auto-created keys hide the failure.** `HmacSigner.load_or_create_key` (`/Users/chidionyema/Documents/code/popdd-py/popdd/agent.py:68` — an absolute path because the module is not in this repo at all; that is R-K3) silently mints a key when a worktree has none. 22 of the 23 distinct keys are these. | any worktree made without `setup_worktree.sh` | the tree's gate is dead from birth and reports `Chain valid: False` while every lane passes, so the agent debugs their own diff instead | reversible per tree | OPEN — devops owner by founder ruling; do not start it |
+| R-K5 | **A worktree can lose its git registration and keep serving rules.** `wt-storeroot` returns `fatal: not a git repository` for every command while its `CLAUDE.md` is still injected as project instructions from no ref — measured 361 lines adrift, carrying a rule that is false on main. | `git worktree prune` runs in a clone that cannot resolve a tree | agents work from rules nothing owns and cannot commit; time lost debugging phantom failures | files survive; registration does not | OPEN — one owner to be named; see the note under S8 |
+
+### 6.1 What the audit missed, and why that is the real finding
+
+`scripts/process_audit.py` runs daily and grades production, CI runners, deploys, launchd jobs,
+workflows, enforcement, specialist probes and worktree drift. On the morning of 2026-08-20 it
+graded all of them and reported nothing about any risk in the table above.
+
+Every collector in it asked the same shape of question: **is this thing running.** Not one asked
+**if this were deleted right now, could we get it back.** A key that is present and working scores
+identically to a key that is present, working, and irreplaceable — right up to the moment it is
+gone, at which point the audit has nothing to say either.
+
+The class: **an audit of liveness reads as an audit of safety.** Both produce a clean report on a
+healthy day, and they diverge only on the day that matters.
+
+Closed mechanically, not with this document: `grade_recoverability()` in `scripts/process_audit.py`
+is a new collector that asks only the recovery question, and `tests/unit/test_the_stack_audit_grades_recoverability.py`
+fails if it stops asking. Measured on this estate the day it was written: 4 BAD rows, 62 seconds.
+
+**The counts are a floor, and the doc is not the source of truth.** They come from a pruned `find` over three roots, so any tree it could not finish is missing from them. Re-measure with `scripts/process_audit.py`, whose `recoverability` section runs the same search and grades it; if this table and the probe disagree, the probe is right and this table is stale.
+
+### 6.2 Two traps inside the probe itself, both already paid for
+
+**An unfinished search is not an empty one.** The first version used a plain `find` over both code
+roots. Both hit a 25-second timeout and returned zero keys — and zero keys is the loudest alarm the
+collector has, so it would have reported "this Mac cannot sign at all" every day, on an estate
+holding 78 key files. Pruning `node_modules`, `.venv`, `.next`, `dist` and `.git` brings the same
+search to 26s and 35s, and a root that still cannot finish is now reported as a separate WARN that
+says every count below it is a floor.
+
+**Two identifiers for one key, one of them fictional.** `9372897386a5` was broadcast between two
+sessions as the working key's hash and passed on as measured. It reproduces as nothing — not the
+file bytes, not the stripped text, not the decoded secret — and its author retracted it. The
+correct pair is the file digest `c0de7d01f49c` and the derived `verifier_id` `f12fbf94ba535a51`
+(`/Users/chidionyema/Documents/code/popdd-py/popdd/receipt.py:123-125`). The probe uses the file digest deliberately: the other one requires
+decoding a private key, and a daily audit has no business doing that.

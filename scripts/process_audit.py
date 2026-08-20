@@ -36,8 +36,10 @@ import json
 import os
 import plistlib
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -1231,6 +1233,194 @@ def _grade_scheduled_workflows() -> list[tuple[str, str, str]]:
     return rows
 
 
+# --------------------------------------------------------------------------------------------
+# Recoverability. Added 2026-08-20 after the audit was measured MISSING the estate's single worst
+# risk: this file graded launchd jobs, workflows, deploys and worktrees, and reported a healthy
+# estate on a day when one `rm -rf` of one directory would have permanently ended every worktree's
+# ability to pass its own commit gate. Nothing here asks "is it running". Everything here asks
+# "if this were deleted right now, could we get it back".
+# --------------------------------------------------------------------------------------------
+
+TRACKED_SEEDS = (".lux/receipts/2026-06-17.jsonl", ".lux/receipts/prospector-test-0.jsonl")
+
+
+def _agent_keys() -> tuple[list[Path], list[str]]:
+    """Every agent.pem this Mac can see, plus the roots the search could NOT finish.
+
+    Two things this learned the hard way, both measured 2026-08-20.
+
+    It must PRUNE. An unpruned `find` over either code root hit a 25s timeout and returned zero
+    keys -- and zero keys is the probe's loudest alarm, so the first version of this collector
+    would have reported "this Mac cannot sign at all" every single day, on an estate with 77 keys
+    in it. Pruning node_modules, .venv, .next, dist and .git brings the same search to 26s and 35s.
+
+    It must report an UNFINISHED search separately from an empty one. Those two states produce the
+    identical empty list and mean opposite things, which is the same defect that had this whole
+    audit printing a traceback and calling it a clean report.
+    """
+    roots = [Path.home() / "Documents" / "code",
+             Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs"
+             / "Documents" / "code", Path.home() / ".lux"]
+    prune = ["node_modules", ".venv", ".next", "dist", ".mypy_cache", ".git"]
+    expr: list[str] = ["("]
+    for i, d in enumerate(prune):
+        expr += (["-o"] if i else []) + ["-name", d]
+    expr += [")", "-prune", "-o", "-path", "*/.lux/keys/agent.pem", "-print"]
+
+    found: list[Path] = []
+    unfinished: list[str] = []
+    for r in roots:
+        if not r.is_dir():
+            continue
+        code, out = sh(["find", str(r), "-maxdepth", "7", *expr], 120)
+        if code != 0 and not out.strip():
+            unfinished.append(str(r))
+            continue
+        found += [Path(ln) for ln in out.splitlines() if ln.strip()]
+    return sorted(set(found)), unfinished
+
+
+def _digest(path: Path) -> str:
+    """Identify a key by the sha256 of its FILE BYTES. Never read, log or return the value.
+
+    Two identifiers for this key circulated between sessions on 2026-08-20 and one of them,
+    `9372897386a5`, was simply wrong -- it was passed on as measured when it was not, and it
+    reproduces as nothing. The file digest is the cheap one and it is the one this probe uses,
+    so the estate has ONE name for the key. `popdd/receipt.py:123` derives a second identifier
+    (`verifier_id`, sha256 of the DECODED secret) which is fine to quote but requires decoding a
+    private key, and a daily audit has no business doing that.
+    """
+    import hashlib
+    return hashlib.sha256(path.read_bytes()).hexdigest()[:12]
+
+
+def _verifies_tracked_seeds(key: Path) -> bool | None:
+    """Does this key verify the receipts that are IN GIT? None when it cannot be decided.
+
+    The signer is HMAC (`popdd/agent.py:68`), so it is symmetric: a key auto-created by
+    `load_or_create_key` because its worktree had none can never verify a receipt signed by a
+    different key. That is why 27 of the 28 keys on this Mac verify nothing, and why a worktree
+    with an auto-created key has a dead commit gate from the day it is born -- reported as
+    `Chain valid: False` while every lane passes, which reads as somebody's diff.
+
+    None, not False, when the machinery is unavailable. A probe that cannot run must say so
+    rather than return the same answer as a real failure.
+    """
+    seeds = [ROOT / s for s in TRACKED_SEEDS]
+    if not all(s.is_file() for s in seeds):
+        return None
+    try:
+        from popdd.agent import PopddAgent
+    except Exception:
+        return None
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        (root / ".lux" / "keys").mkdir(parents=True)
+        (root / ".lux" / "receipts").mkdir(parents=True)
+        shutil.copy2(key, root / ".lux" / "keys" / "agent.pem")
+        for s in seeds:
+            shutil.copy2(s, root / ".lux" / "receipts" / s.name)
+        try:
+            PopddAgent._CACHE.pop(str(root), None)
+            return bool(PopddAgent(root).verify_chain().get("valid"))
+        except Exception:
+            return None
+
+
+def grade_recoverability() -> list[tuple[str, str, str]]:
+    """Grade what the estate could NOT get back if it were deleted in the next minute.
+
+    Measured 2026-08-20 and the reason this collector exists: exactly one agent.pem on this Mac
+    verifies the tracked seed receipts, it is gitignored (`.gitignore:92`) so nothing in git
+    restores it, and it lives in `.claude/worktrees/agent-aaecfffaa54620133` -- the OLDEST
+    worktree on the machine, which is the first thing any age-ordered cleanup removes. Two
+    sessions were within one `--apply` of ending the commit gate for every worktree in the
+    estate, permanently, and this audit would have reported nothing either before or after.
+
+    Reported, never repaired. Installing a key is the devops owner's job by founder ruling, and
+    a probe that silently fixed the thing it grades would destroy the only evidence that the
+    problem recurs.
+    """
+    rows: list[tuple[str, str, str]] = []
+
+    keys, unfinished = _agent_keys()
+    if unfinished:
+        rows.append((WARN, "signing key search",
+                     "could not finish searching " + ", ".join(unfinished) + " -- every count "
+                     "below is a FLOOR, not a total, and an apparent single key may not be one"))
+    if not keys:
+        rows.append((BAD if not unfinished else WARN, "signing keys",
+                     "no agent.pem found in any root that finished -- either the search roots are "
+                     "wrong or this Mac cannot sign at all"))
+        return rows
+
+    # One verify per DISTINCT key, not per file. The estate carries 77 agent.pem files across two
+    # clones and most are byte-identical copies; verifying each file would multiply the cost of a
+    # daily job by ~20 for no extra information.
+    by_digest: dict[str, Path] = {}
+    for k in keys:
+        by_digest.setdefault(_digest(k), k)
+    verdicts = {k: _verifies_tracked_seeds(k) for k in by_digest.values()}
+    working = [k for k, v in verdicts.items() if v is True]
+    undecided = [k for k, v in verdicts.items() if v is None]
+
+    if undecided and not working:
+        rows.append((WARN, "signing keys", f"{len(undecided)} of {len(by_digest)} distinct key(s) could not be "
+                                           "TESTED (popdd import or tracked seeds missing), so "
+                                           "this probe proved nothing -- treat as unknown"))
+    elif not working:
+        rows.append((BAD, "signing keys", f"NONE of {len(by_digest)} distinct agent.pem files verify the tracked "
+                                          "seed receipts. No worktree in this estate can pass its "
+                                          "own commit gate, and there is no recovery path in git"))
+    elif len(working) == 1:
+        k = working[0]
+        inside_repo_admin = ".claude/worktrees/" in str(k) or "/worktrees/" in str(k)
+        rows.append((BAD if inside_repo_admin else WARN, "signing keys",
+                     f"exactly ONE of {len(by_digest)} distinct keys ({len(keys)} files) verifies the tracked seeds (sha "
+                     f"{_digest(k)}), and it is gitignored -- delete it and the commit gate is "
+                     f"gone estate-wide with no way back: {k}"))
+        if inside_repo_admin:
+            rows.append((BAD, "signing key location",
+                         "the only working key lives inside a WORKTREE, which is a directory "
+                         "cleanups are built to remove. Age-ordered cleanup takes the oldest "
+                         "first, and this is the oldest tree on the machine"))
+    else:
+        rows.append((OK, "signing keys",
+                     f"{len(working)} of {len(by_digest)} distinct keys verify the tracked seeds -- deleting "
+                     "any one of them is survivable"))
+
+    hold = Path.home() / ".claude" / "estate-cleanup-hold"
+    held = hold.read_text(encoding="utf-8") if hold.is_file() else ""
+    for k in working:
+        tree = str(k).split("/.lux/keys/")[0]
+        if tree not in held:
+            rows.append((BAD, "cleanup hold",
+                         f"the working key's tree is NOT in {hold} -- nothing stops a cleanup "
+                         f"removing it: {tree}"))
+
+    escrowed = [k for k in working if "/worktrees/" not in str(k) and str(ROOT) not in str(k)]
+    if working and not escrowed:
+        rows.append((BAD, "key escrow",
+                     "no copy of the working key exists outside a code tree. There is no restore "
+                     "path: it is gitignored, so a clone cannot bring it back, and no backup job "
+                     "covers .lux/keys"))
+
+    try:
+        import popdd.agent as _pa
+        lib = Path(_pa.__file__).resolve()
+        if ROOT not in lib.parents:
+            rows.append((BAD, "gate portability",
+                         f"the signing library is OUTSIDE this repo ({lib}), so a fresh clone plus "
+                         "an env file cannot run the commit gate -- which is the one part of the "
+                         "old 'no hosted service' rule CLAUDE.md still says is load-bearing"))
+        else:
+            rows.append((OK, "gate portability", "signing library resolves inside this repo"))
+    except Exception as exc:  # noqa: BLE001
+        rows.append((WARN, "gate portability", f"could not resolve popdd.agent: {exc}"))
+
+    return rows
+
+
 def _section(title: str, grader) -> tuple[str, list[tuple[str, str, str]]]:
     """Run one grader, and turn a crash into a FAIL ROW instead of a dead audit.
 
@@ -1274,6 +1464,7 @@ def main() -> int:
         _section("specialist probes", grade_specialists),
         _section("worktree drift", grade_worktree_drift),
         _section("orphaned directories", orphaned_worktrees),
+        _section("recoverability", grade_recoverability),
     ]
 
     if args.json:
