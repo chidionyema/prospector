@@ -169,8 +169,9 @@ describe('it cannot become an outage', () => {
     for (let i = 0; i < 1200; i += 1) ship({ svc: 'store-web', evt: 'x', msg: `line-${i}` });
     expect(counters.dropped_full).toBe(200);
     await flush();
-    const sentMessages = fetchMock.mock.calls
-      .flatMap(([, init]) => String((init as RequestInit).body).trim().split('\n'))
+    const calls = fetchMock.mock.calls as unknown as [string, RequestInit][];
+    const sentMessages = calls
+      .flatMap(([, init]) => String(init.body).trim().split('\n'))
       .map((l) => (JSON.parse(l) as { msg: string }).msg);
     expect(sentMessages).toHaveLength(1000);
     // The newest survived; the first 200 are the ones that went.
