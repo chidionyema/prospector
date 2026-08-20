@@ -209,7 +209,7 @@ or it is decoration. Until then, the command that answers "did the backup run?" 
 fly ssh console -a prospector-engine -C 'cat /data/store/ops/receipts/backup_store.py.json'
 ```
 
-### 0.4 The twelve gaps graded against the eight requirements
+### 0.4 The gaps graded against the eight requirements
 
 The M-series was written before the bar was stated, so it was never checked against it. Doing that
 check is the point of this section, and it finds that **two of the eight requirements have no M at
@@ -228,7 +228,7 @@ all**, which no amount of progress on M1–M12 would ever close.
 
 **The finding, stated plainly.** M1–M12 is a good plan for moving *prospector*. The founder asked
 for something that moves *any* estate and can audit one it has never seen. B7 and B8 are not
-refinements of the existing twelve; they are a different deliverable, and pretending otherwise is
+refinements of the existing set; they are a different deliverable, and pretending otherwise is
 how a programme reports 80% complete against a bar it cannot reach.
 
 **What follows from that, and what does not.** It does not follow that we should stop and build a
@@ -318,7 +318,7 @@ storefront adapter, a drill runner, and the chaos and end-to-end suites.
 
 ---
 
-## 3. The twelve gaps, stated as what breaks today
+## 3. The fifteen gaps, stated as what breaks today
 
 Written in `docs/BACKLOG.md` format. Every item has: **Breaks today** with a number or a `file:line`,
 a **Story** in the founder's words, **Done when** as a command someone can run, and **Costs** S/M/L.
@@ -697,6 +697,90 @@ decision, never automatically.
 
 ---
 
+### M14 — Nothing has ever been put under load. **P1, M**
+
+**Founder, 2026-08-20:** *"stress testing"*, in the same breath as chaos and security, and under
+*"a low nintennace stack wheere everyhting works and slef heals"*.
+
+**Breaks today.** There is no load generator in this estate. Measured 2026-08-20: no locust, no k6,
+no wrk, no vegeta, no artillery, and no hand-rolled concurrency harness anywhere in the tree. The
+two files whose names suggest otherwise are not that — `scripts/load_gate.py` decides whether THIS
+MACHINE is currently fit to produce a trustworthy test result, and `tools/corpus/load.py` loads a
+text corpus. Both are useful and neither generates load. This paragraph replaces an earlier claim
+in §6 that named them as stress-testing assets; that claim came from a filename search and was
+wrong.
+
+So every capacity number the estate has ever quoted is an inference from single-request timings.
+Nobody knows what the storefront does at 50 concurrent buyers, what the engine does when the moat
+is asked for 16 verdicts at once on a benched brain, or where the Fly volume's IO ceiling is. The
+one place this was measured — `minimax_concurrency` at 16/16 with zero 429s — was measured against
+a provider, not against our own machine.
+
+**Story.** Know the ceiling before a customer finds it. The number that matters is not "how fast is
+one request", it is "at what concurrency does the thing that earns money start refusing people, and
+what breaks first when it does".
+
+**Done when.**
+
+1. One load profile per earning path, committed: the storefront's browse-to-buy, and the engine's
+   verdict lane. Not a synthetic benchmark — the real endpoints with real payload shapes.
+2. Each profile prints a **saturation point**: the concurrency at which p95 leaves its agreed band,
+   plus what the box was doing while it ran (`load_gate.py` already prints exactly that, and this
+   is the right use of it).
+3. A run against **staging, never production** — which makes M14 depend on M13.
+4. The result is a committed number with a date, not a claim. It goes stale, and a stale capacity
+   number is re-measured rather than re-quoted.
+
+**Costs.** M. The generator is off-the-shelf; the work is defining the profiles and having somewhere
+safe to point them. Depends on **M13**.
+
+**What it is NOT.** It is not a performance optimisation project. The deliverable is a known ceiling
+and a known first failure, not a faster number.
+
+---
+
+### M15 — Nothing attacks this system. **P1, M**
+
+**Founder, 2026-08-20:** *"secitory etsing"*.
+
+**Breaks today, and this one is partly covered — say which part.** Static analysis and dependency
+advisories DO run in CI: `bandit` and `dep_advisory` (`.github/workflows/ci.yml:595,679`, with
+scripts at `.github/scripts/`), and `npm audit --audit-level=high` on both web apps
+(`ci.yml:1028,1158`). `docs/ARCHITECTURE_SECURITY_BASELINE.md` Part 3 records the posture and Part
+3's "Open findings" lists what is known. `docs/personas/security.md` is 768 lines of review
+standard.
+
+What is missing is anything that **attacks the running system**. Every control above reads source
+or a dependency manifest. Measured 2026-08-20: no secret scanner in CI (no gitleaks, no
+trufflehog), so a committed credential is caught by a human or not at all; nothing exercises
+authentication or authorisation against a live endpoint; nothing tries to buy something it should
+not be able to buy; and the fulfilment fence — the thing standing between a payment and delivery —
+has never been probed by anything other than its own unit tests.
+
+**Story.** A reviewer reading the code and an attacker holding a request are not the same test, and
+the second one is the one a customer's money depends on.
+
+**Done when.**
+
+1. **Secret scanning in CI**, on every push and on the whole history once. It is the cheapest item
+   here and the only one that catches a mistake already made.
+2. **The money path is probed from outside**: an unauthenticated request to every fulfilment
+   endpoint, a request for someone else's order, a price tampered in flight. Each asserts a refusal
+   with the right status, against staging.
+3. **The published surface is enumerated** — every endpoint the internet can reach, generated from
+   the app rather than typed — so "what is exposed" is a probe and not a paragraph.
+4. **Findings have owners and dates**, appended to `ARCHITECTURE_SECURITY_BASELINE.md` Part 3 rather
+   than to a new document.
+
+**Costs.** M, and item 1 is S on its own and should not wait for the rest. Depends on **M13** for
+items 2 and 3, because probing production for authorisation holes is the one test that must never
+run against real buyers.
+
+**What it is NOT.** It is not a penetration test of a third party's infrastructure, and it is not a
+compliance exercise. It is our own surface, attacked by us, on a machine we own.
+
+---
+
 ## 4. Hermes is the test case
 
 The founder asked for Hermes to be *"use[d] as test"*, and it is the right one: it is real,
@@ -754,7 +838,7 @@ This section used to carry a HYPOTHESIS marker saying `WebSearch` was refused by
 so the right-hand column was knowledge rather than a fetched source. That is no longer true, and the
 audit's verdicts outrank the table above wherever the two differ. What it changed:
 
-- **Five of the twelve gaps stop being things we build** — M1, M2, M4, M6 and M10 all have an
+- **Five of the gaps stop being things we build** — M1, M2, M4, M6 and M10 all have an
   existing tool that does the job.
 - **Inventory (M1): use Steampipe, do not write one.** The table above says "none needed"; that was
   wrong once the bar became *"probe and audit any systen"* rather than probe this one.
@@ -975,11 +1059,13 @@ Founder, 2026-08-20: *"wwe also have the chose testing"*, *"stress testing"*, *"
 |---|---|---|
 | Chaos | **M7**, with a done-when and three scenarios | build it; tooling decided (Pumba, Toxiproxy) |
 | End-to-end | **M8** | build it; Playwright is already in the repo |
-| Stress and load | **no gap owns this** | **write M14.** Assets exist unclaimed: `scripts/load_gate.py`, `tools/corpus/load.py` |
-| Security | **no gap owns this** | **write M15.** `docs/ARCHITECTURE_SECURITY_BASELINE.md` measures state; nothing attacks it |
+| Stress and load | **M14**, written 2026-08-20 | build it. There is **no** load generator in the estate — `scripts/load_gate.py` grades machine fitness and `tools/corpus/load.py` loads text; neither makes load |
+| Security | **M15**, written 2026-08-20 | build it. bandit, dep_advisory and `npm audit` already run in CI; nothing attacks the running system, and there is no secret scanner |
 
-Two of the four disciplines the founder named have no owner in the gap list. Writing M14 and M15 is
-the first action of this phase, and it is small — the assets are already on disk.
+Two of the four disciplines the founder named had no owner in the gap list. **M14 and M15 are now
+written** (§3). Neither is as cheap as it first looked: the stress assets I named from a filename
+search turned out to be a machine-fitness probe and a corpus loader, so M14 starts from nothing;
+M15 starts from more than nothing, because static analysis and dependency advisories already run.
 
 **Exit:** `tests/chaos/` holds one scenario per named risk, each asserting the *observable*
 consequence rather than the internal state; a load run has a published number; a security pass has
@@ -1149,9 +1235,11 @@ environment the code is running in, so this cannot regress into a file again.
 | Stress / load | *"stress testing"* | **NO GAP OWNS THIS.** Assets exist and are unclaimed: `scripts/load_gate.py`, `tools/corpus/load.py`. k6 was considered in §5 and deferred |
 | Security | *"secitory etsing"* | **NO GAP OWNS THIS.** `docs/ARCHITECTURE_SECURITY_BASELINE.md` measures state; nothing attacks it. `docs/personas/security.md` exists |
 
-So two of the four have no owner in the twelve gaps. That is the finding, not a plan: stress and
-security testing need gaps of their own before they can be sequenced, and writing them is work,
-not a note.
+Two of the four had no owner when this note was written. **M14 (stress) and M15 (security) were
+written into §3 the same day.** M14 starts from nothing — there is no load generator in the estate,
+and the two files a filename search suggested were assets turn out to be a machine-fitness probe
+and a corpus loader. M15 starts from more than nothing: bandit, dep_advisory and `npm audit`
+already run in CI, so what is missing is anything that attacks the system while it is running.
 
 **Tracking.** *"we ned trackinng etrene"*, and earlier *"dont lose track of your project work"*,
 *"you re not tracing context"*. The rule that follows: a thread that is not on disk does not
