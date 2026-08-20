@@ -346,12 +346,33 @@ def axis_a4(store: Path) -> Axis:
 
     cases = [c for c in (raw.get("per_case") or []) if isinstance(c, dict)]
     gate_matched = sum(1 for c in cases if c.get("gate_match"))
+    # Provenance, because this axis has two ways of printing a plausible wrong number.
+    # (1) AGE. `setup_worktree.sh:186` CoW-clones `store/golden_runs` out of the main checkout,
+    #     so every worktree carries a frozen snapshot. Measured 2026-08-20: seven worktrees each
+    #     held the same 77 records, newest 5.42 days old, while the canonical store had no
+    #     `golden_runs` directory at all — the same question answered two ways by cwd alone.
+    # (2) STORE. Which root was read decides the answer, so it is reported, never assumed.
+    # The stamp is authoritative: over all 77 records the filename stamp and the record's own
+    # `timestamp` field agreed exactly, 0 mismatches. A file mtime would instead date the CLONE.
+    stamp = latest.name.rsplit("_", 1)[-1].removesuffix(".json")
     detail = {
         "run": latest.name,
         "operator": raw.get("operator"),
         "cases": len(cases),
         "stored_runs": len(runs),
+        "store": str(store),
+        "config_hash": raw.get("config_hash"),
     }
+    try:
+        measured = datetime.strptime(stamp, "%Y%m%dT%H%M%S%f").replace(tzinfo=timezone.utc)
+    except ValueError:
+        detail["age_days"] = None
+        detail["measured_at"] = f"unparsable stamp {stamp!r}"
+    else:
+        detail["measured_at"] = measured.isoformat()
+        detail["age_days"] = round(
+            (datetime.now(timezone.utc) - measured).total_seconds() / 86400.0, 2
+        )
     if cases:
         detail["gate_accuracy_pct"] = round(100.0 * gate_matched / len(cases), 1)
         detail["gate_matched"] = f"{gate_matched}/{len(cases)}"
