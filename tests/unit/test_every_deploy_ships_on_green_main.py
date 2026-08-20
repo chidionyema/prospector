@@ -1,20 +1,32 @@
-"""Every deployable component ships when main goes green, or this file goes red.
+"""Every deployable component ships when main moves, or this file goes red.
 
-A push made with the default GITHUB_TOKEN starts no workflow runs. So once
-`.github/workflows/automerge.yml` began doing the merging, the merge commit it creates could not
-trigger any deploy workflow by itself, and an explicit `workflow_dispatch` became the only route
-to production.
+THE ROUTE TO PRODUCTION CHANGED ON 2026-08-20, and this file changed with it.
 
-That list of dispatches was written by hand from another file's `on.push.paths`, kept in step by
-a comment. It drifted, and the drift cost a day of silent non-delivery: `deploy-api.yml` last ran
-at 2026-08-18T05:01:55Z while #358 and #342 changed Store.Api and merged that evening, and
-`deploy-web.yml` last ran from a push at 2026-08-18T13:33:57Z while #349, #363 and #365 changed
-Store.Web after it. Nothing failed. Nothing was red. The code just never reached production
+Until then `.github/workflows/automerge.yml` did the merging, and a push made with the default
+GITHUB_TOKEN starts no workflow runs -- so the merge commit automerge created could not trigger
+any deploy by itself, and an explicit `workflow_dispatch` was the only route to production. That
+hand-written dispatch list drifted from the workflows' own path filters and cost a day of silent
+non-delivery: `deploy-api.yml` last ran at 2026-08-18T05:01:55Z while #358 and #342 changed
+Store.Api and merged that evening, and `deploy-web.yml` last ran from a push at
+2026-08-18T13:33:57Z while #349, #363 and #365 changed Store.Web after it. Nothing failed.
+Nothing was red. The code just never reached production
 (`docs/incidents/INC-2026-08-19-automerge-shipped-only-the-engine.json`).
 
-A missing dispatch leaves no artifact, so no alert in this estate can fire on it. Every alert
-here fires on something that ran and failed. This test is the only machine that can see an action
-that did not happen, and it sees it by comparing the two lists that must agree.
+automerge.yml was DELETED on 2026-08-20 by founder decision -- "no autonerge goee autodeploy
+stays" -- because the branch update it performed moved fifteen pull request heads and jammed the
+board for thirty hours. A human `gh pr merge` is not a GITHUB_TOKEN push, so the merge commit now
+DOES start workflow runs, and every deploy workflow's own `on.push` is the primary route to
+production. The first test below is the one that pins that.
+
+The dispatch map did not die with automerge. `.github/workflows/main-admission-guard.yml` still
+carries it, for the one case where a push cannot start anything: when the guard REVERTS a bad
+merge, that revert is a GITHUB_TOKEN push, so production would keep running the reverted code
+until some unrelated merge happened to ship it. That map has the same drift failure mode as the
+old one, and the same comparison catches it.
+
+A missing deploy leaves no artifact, so no alert in this estate can fire on it. Every alert here
+fires on something that ran and failed. This test is the only machine that can see an action that
+did not happen, and it sees it by comparing the two lists that must agree.
 """
 from __future__ import annotations
 
@@ -25,7 +37,7 @@ import pytest
 import yaml
 
 WORKFLOWS = Path(__file__).resolve().parents[2] / ".github" / "workflows"
-AUTOMERGE = WORKFLOWS / "automerge.yml"
+GUARD = WORKFLOWS / "main-admission-guard.yml"
 
 
 def _load(path: Path) -> dict:
@@ -39,13 +51,19 @@ def _on(doc: dict) -> dict:
 
 
 def _script() -> str:
-    return _load(AUTOMERGE)["jobs"]["merge"]["steps"][0]["with"]["script"]
+    """The admission guard's repair step -- the one that puts production back after a revert."""
+    for step in _load(GUARD)["jobs"]["admit"]["steps"]:
+        if step.get("name") == "Put the estate back, not just git":
+            return step["with"]["script"]
+    raise AssertionError(
+        "main-admission-guard.yml no longer repairs the estate after a revert, so nothing "
+        "re-deploys production when a bad merge is taken back out")
 
 
 def _deploy_map() -> dict[str, re.Pattern]:
-    """automerge.yml's `DEPLOY` object: one workflow filename to one path regex."""
-    block = re.search(r"const DEPLOY = \{(.*?)\n\}", _script(), re.S)
-    assert block, "automerge.yml no longer declares a DEPLOY object of workflow -> path regex"
+    """The guard's `DEPLOY` object: one workflow filename to one path regex."""
+    block = re.search(r"const DEPLOY = \{(.*?)\n\s*\}", _script(), re.S)
+    assert block, "the admission guard no longer declares a DEPLOY object of workflow -> regex"
     out = {}
     for name, body in re.findall(r"'([\w.-]+\.yml)':\s*/(.+?)/,", block.group(1)):
         out[name] = re.compile(body)
@@ -54,9 +72,9 @@ def _deploy_map() -> dict[str, re.Pattern]:
 
 
 def _inputs_map() -> dict[str, dict]:
-    """automerge.yml's `INPUTS` object, read as the dispatch payload per workflow."""
-    block = re.search(r"const INPUTS = \{(.*?)\n\}", _script(), re.S)
-    assert block, "automerge.yml no longer declares an INPUTS object"
+    """The guard's `INPUTS` object, read as the dispatch payload per workflow."""
+    block = re.search(r"const INPUTS = \{(.*?)\n\s*\}", _script(), re.S)
+    assert block, "the admission guard no longer declares an INPUTS object"
     out = {}
     for name, body in re.findall(r"'([\w.-]+\.yml)':\s*\{(.*?)\},", block.group(1)):
         pairs = re.findall(r"(\w+):\s*'([^']*)'", body)
@@ -68,8 +86,12 @@ def _deploy_workflows() -> list[Path]:
     return sorted(WORKFLOWS.glob("deploy-*.yml"))
 
 
+def _push(path: Path) -> dict:
+    return (_on(_load(path)).get("push") or {})
+
+
 def _push_paths(path: Path) -> list[str]:
-    return list(((_on(_load(path)).get("push") or {}).get("paths")) or [])
+    return list(_push(path).get("paths") or [])
 
 
 def _sample(glob: str) -> str:
@@ -87,23 +109,45 @@ def test_there_is_at_least_one_deploy_workflow_to_grade():
     assert len(found) >= 3, f"expected engine, api and web deploys, found {found}"
 
 
-def test_every_deploy_workflow_is_dispatched_after_a_merge():
-    """The defect itself: a deployable component that automerge does not know about."""
+@pytest.mark.parametrize("wf", [p.name for p in _deploy_workflows()])
+def test_every_deploy_ships_on_a_push_to_main(wf: str):
+    """The primary route to production since automerge.yml was deleted on 2026-08-20.
+
+    A deploy workflow with no `push` trigger ships only when somebody remembers to dispatch it by
+    hand, which is the exact silent non-delivery this file was written for. `branches: [main]` is
+    asserted too: a deploy that also fired on a feature branch would put unreviewed code in
+    production, which is a worse failure than not shipping.
+    """
+    push = _push(WORKFLOWS / wf)
+    assert push, (
+        f"{wf} has no on.push trigger. Merging a change to what it deploys would ship nothing, "
+        f"and nothing would be red -- that is the 2026-08-18 incident, exactly.")
+    assert push.get("branches") == ["main"], (
+        f"{wf} deploys on pushes to {push.get('branches')!r}. It must be main and only main.")
+    assert _push_paths(WORKFLOWS / wf), (
+        f"{wf} watches no paths, so every merge in the repo deploys it")
+
+
+def test_every_deploy_workflow_is_redeployed_after_a_revert():
+    """The defect itself, on the recovery half: a deployable component the guard does not know
+    about stays on the reverted code until some unrelated merge happens to ship it."""
     listed = set(_deploy_map())
     on_disk = {p.name for p in _deploy_workflows()}
     assert on_disk <= listed, (
-        f"{sorted(on_disk - listed)} exist(s) but automerge.yml never dispatches it, so merging a "
-        f"change to it will not deploy it. Add it to the DEPLOY object with the paths it watches.")
+        f"{sorted(on_disk - listed)} exist(s) but main-admission-guard.yml never dispatches it, "
+        f"so reverting a bad merge will not take it out of production. Add it to the DEPLOY "
+        f"object with the paths it watches.")
     assert listed <= on_disk, (
-        f"automerge.yml dispatches {sorted(listed - on_disk)}, which is not a workflow on disk")
+        f"main-admission-guard.yml dispatches {sorted(listed - on_disk)}, which is not a workflow "
+        f"on disk")
 
 
 @pytest.mark.parametrize("wf", [p.name for p in _deploy_workflows()])
 def test_the_dispatch_paths_match_the_workflows_own_push_filter(wf: str):
     """Both directions.
 
-    A path the workflow watches but automerge does not: merging that file deploys nothing.
-    A path automerge carries but the workflow no longer watches: automerge deploys on a change
+    A path the workflow watches but the guard does not: reverting that file re-deploys nothing.
+    A path the guard carries but the workflow no longer watches: the guard deploys on a change
     the workflow itself would ignore, which is the same drift pointing the other way.
     """
     pattern = _deploy_map()[wf]
@@ -112,8 +156,8 @@ def test_the_dispatch_paths_match_the_workflows_own_push_filter(wf: str):
 
     for glob in globs:
         assert pattern.match(_sample(glob)), (
-            f"{wf} watches {glob!r} on push, but automerge.yml's regex does not match "
-            f"{_sample(glob)!r}. A merge touching that path would not deploy.")
+            f"{wf} watches {glob!r} on push, but the admission guard's regex does not match "
+            f"{_sample(glob)!r}. A revert touching that path would not re-deploy.")
 
     # And back the other way: every alternation branch in the regex must be something the
     # workflow actually watches.
@@ -125,49 +169,57 @@ def test_the_dispatch_paths_match_the_workflows_own_push_filter(wf: str):
     for branch in body[2:-1].split("|"):
         literal = branch.replace("\\/", "/").replace("\\.", ".").rstrip("$")
         assert literal in globs or literal in prefixes, (
-            f"automerge.yml deploys {wf} for {literal!r}, which is not in its on.push.paths "
+            f"the admission guard deploys {wf} for {literal!r}, which is not in its on.push.paths "
             f"({globs}). One of the two is stale.")
 
 
 @pytest.mark.parametrize("wf", [p.name for p in _deploy_workflows()])
-def test_each_deploy_can_actually_be_dispatched_with_what_automerge_sends(wf: str):
+def test_each_deploy_can_actually_be_dispatched_with_what_the_guard_sends(wf: str):
     """A dispatch that names an input the workflow does not declare is rejected by the API, and a
     required input left out takes the workflow's own default - which is how a production deploy
     quietly becomes a dry run."""
     doc = _load(WORKFLOWS / wf)
     trigger = _on(doc).get("workflow_dispatch")
     assert trigger is not None, (
-        f"{wf} has no workflow_dispatch trigger, so automerge cannot start it at all. A merge is "
-        f"the only other route and a GITHUB_TOKEN merge starts nothing.")
+        f"{wf} has no workflow_dispatch trigger, so the admission guard cannot start it at all "
+        f"after a revert. The revert push is made with GITHUB_TOKEN and starts nothing.")
 
     declared = (trigger or {}).get("inputs") or {}
     sent = _inputs_map().get(wf, {})
 
     assert not (set(sent) - set(declared)), (
-        f"automerge sends {sorted(set(sent) - set(declared))} to {wf}, which does not declare "
+        f"the guard sends {sorted(set(sent) - set(declared))} to {wf}, which does not declare "
         f"it. createWorkflowDispatch rejects the whole call.")
 
     required = {k for k, v in declared.items() if isinstance(v, dict) and v.get("required")}
     assert required <= set(sent), (
-        f"{wf} requires {sorted(required - set(sent))} and automerge does not send it")
+        f"{wf} requires {sorted(required - set(sent))} and the guard does not send it")
 
     # Inputs with a default are the dangerous ones: omitting them succeeds and does something
     # other than what was meant. Name them explicitly.
     defaulted = {k for k, v in declared.items()
                  if isinstance(v, dict) and "default" in v} - required
     assert defaulted <= set(sent), (
-        f"{wf} declares {sorted(defaulted - set(sent))} with a default that automerge does not "
+        f"{wf} declares {sorted(defaulted - set(sent))} with a default that the guard does not "
         f"override. Relying on another file's default is how a prod deploy becomes a test one.")
 
 
-def test_a_deploy_only_follows_a_green_ci_run():
-    """The whole pipeline rests on automerge running after CI passed, not beside it."""
-    wr = _on(_load(AUTOMERGE))["workflow_run"]
-    assert wr["workflows"] == ["CI"], f"automerge no longer waits on CI: {wr['workflows']}"
-    assert "completed" in wr["types"]
-    gate = _load(AUTOMERGE)["jobs"]["merge"]["if"]
-    assert "conclusion == 'success'" in gate, (
-        f"automerge's gate no longer requires a successful CI run: {gate}")
+def test_something_still_takes_a_bad_merge_back_out_of_production():
+    """The whole pipeline rests on main being admitted only after a green CI run.
+
+    automerge.yml used to be the thing that merged only a green run. It is gone, and merging is
+    the author's job now, so the enforcement moved entirely to the admission guard: it watches
+    pushes to main and reverts a merge with no green run at its head. If that ever stops watching
+    main, nothing in this estate refuses red code in production -- branch protection answers 403
+    on this plan.
+    """
+    push = _push(GUARD)
+    assert push.get("branches") == ["main"], (
+        f"the admission guard no longer watches pushes to main: {push!r}")
+    script = _script()
+    assert "createWorkflowDispatch" in script, (
+        "the admission guard reverts git but no longer re-deploys, so production keeps running "
+        "the code that was just taken out of main")
 
 
 def test_the_ops_console_is_one_of_the_parts_that_ships_this_way():
@@ -178,7 +230,7 @@ def test_the_ops_console_is_one_of_the_parts_that_ships_this_way():
         f"deploy-engine.yml does not watch the ops console source: {globs}")
     assert _deploy_map()["deploy-engine.yml"].match(
         "store_platform/src/Ops.Console/src/pages/index.tsx"), (
-        "automerge does not dispatch the engine deploy for an ops console change")
+        "the admission guard does not re-deploy the engine for an ops console change")
 
 
 def test_the_dispatch_list_and_the_inputs_list_name_the_same_workflows():

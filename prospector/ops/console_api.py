@@ -57,7 +57,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 from prospector import content_contract, pack_linter
-from prospector.operator import BUILDABLE_TIERS
+from prospector.operator import BUILDABLE_TIERS, COMPONENTS
 
 #: Bumped when the JSON contract changes shape. The web app asserts on it at boot, so a console
 #: talking to an older engine says so instead of rendering blanks.
@@ -1663,7 +1663,90 @@ def _read_deploys(cfg, args: dict) -> dict:
         cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=300)
     if not proc.stdout.strip():
         raise RuntimeError(f"deploy_status.py produced nothing: {proc.stderr[-400:]}")
-    return json.loads(proc.stdout)
+    view = json.loads(proc.stdout)
+    for row in view.get("deployables", []):
+        row.update(_deploy_route(str(row.get("name") or "")))
+        row.update(_rollback_route(str(row.get("name") or "")))
+    return view
+
+
+#: The tool that ships one service. Named once, so the button lookup below and the registry
+#: row cannot drift apart.
+_DEPLOY_NOW = "scripts/deploy_now.py"
+
+
+def _deploy_route(name: str) -> dict:
+    """How the operator ships one deployable FROM THIS PAGE, or why there is no button.
+
+    The founder's instruction, 2026-08-19: "all our services must be deployable from the ops
+    dashboard". This page could say the storefront was behind main and offer nothing to do about
+    it, which meant shipping needed someone with a shell.
+
+    `deploy_tool_id` is the id of the TOOLS row that ships it, looked up by the command rather
+    than hardcoded, so renaming the row cannot leave a button pointing at nothing. When there is
+    no button, `deploy_how` says what does ship it — never silence.
+    """
+    for tool in TOOLS:
+        if tool["path"] == _DEPLOY_NOW and tool["command"].split()[-1] == name:
+            return {"deploy_tool_id": tool["id"], "deploy_how": tool["purpose"],
+                    "deploy_danger": tool["danger"]}
+
+    try:
+        scripts_dir = str(_REPO_ROOT / "scripts")
+        if scripts_dir not in sys.path:  # called once per deployable, per page read
+            sys.path.insert(0, scripts_dir)
+        import deploy_now  # type: ignore
+    except ImportError as exc:
+        # Narrow on purpose, and it says so rather than returning silence: this happens on a
+        # checkout older than the commit that added the script, which is exactly when the
+        # operator is looking at this page to roll that checkout forward.
+        return {"deploy_tool_id": None,
+                "deploy_how": f"this checkout has no deploy routes yet ({exc}); roll it forward "
+                              f"with scripts/live_checkout.py --update",
+                "deploy_danger": None}
+    route = deploy_now.routes().get(name, {})
+    if route.get("kind") == "manual":
+        return {"deploy_tool_id": None, "deploy_how": route["why"], "deploy_danger": None}
+    if route.get("kind") == "button":
+        return {"deploy_tool_id": None, "deploy_how": route["where"], "deploy_danger": None}
+    return {"deploy_tool_id": None,
+            "deploy_how": "no route: this can only be shipped from a terminal",
+            "deploy_danger": None}
+
+
+#: The tool that puts one service back on its previous image. Named once, for the same reason as
+#: _DEPLOY_NOW: the button lookup and the registry row cannot drift apart.
+_ROLLBACK_NOW = "scripts/rollback_now.py"
+
+
+def _rollback_route(name: str) -> dict:
+    """How the operator puts one deployable BACK from this page, or why there is no button.
+
+    Deploy and rollback are looked up the same way and rendered side by side on purpose. An
+    operator who can ship from a page and cannot unship from it will reach for a terminal at the
+    exact moment that costs the most.
+    """
+    for tool in TOOLS:
+        if tool["path"] == _ROLLBACK_NOW and tool["command"].split()[-1] == name:
+            return {"rollback_tool_id": tool["id"], "rollback_how": tool["purpose"],
+                    "rollback_danger": tool["danger"]}
+
+    try:
+        scripts_dir = str(_REPO_ROOT / "scripts")
+        if scripts_dir not in sys.path:  # called once per deployable, per page read
+            sys.path.insert(0, scripts_dir)
+        import rollback_now  # type: ignore
+    except ImportError as exc:
+        return {"rollback_tool_id": None,
+                "rollback_how": f"this checkout has no rollback routes yet ({exc}); roll it "
+                                f"forward with scripts/live_checkout.py --update",
+                "rollback_danger": None}
+    route = rollback_now.routes().get(name, {})
+    if route.get("kind") == "none":
+        return {"rollback_tool_id": None, "rollback_how": route["why"], "rollback_danger": None}
+    return {"rollback_tool_id": None,
+            "rollback_how": "no rollback route: this service cannot be put back from here",
+            "rollback_danger": None}
 
 
 READS: dict[str, Callable[[Any, dict], Any]] = {
@@ -1711,7 +1794,7 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
 # --------------------------------------------------------------------------- #
 #: Groups are named for what the knob DOES, not for its YAML path. An operator looking for "how
 #: many ideas per batch" should not have to know it is called `batch_size` under `schedule`.
-GROUP_ORDER = ["work", "evidence", "brains", "speed", "money", "content"]
+GROUP_ORDER = ["work", "evidence", "brains", "models", "speed", "money", "content"]
 GROUP_BLURBS = {
     "content": ("Which content rules may REFUSE a pack. Every rule grades either way; these "
                 "switches decide whether a breach blocks the sale or only lands on the receipt. "
@@ -1719,10 +1802,16 @@ GROUP_BLURBS = {
                 "of the catalogue the moment it is promoted."),
     "work": "How much the engine takes on, and when it stops taking on more.",
     "evidence": "Where the engine looks for proof, and what counts as relevant.",
-    "brains": ("Which brain does which job, and which model each one runs. Every role the "
-               "engine has is here: the verdict chain and its trusted roster, the cheap chain, "
-               "the pack writer, the marketing writer, and the model pin for each provider. "
-               "The highest blast radius in the portal."),
+    "brains": ("Which brain does which job. Every role the engine has is here: the verdict "
+               "chain and its trusted roster, the cheap chain, the pack writer and the "
+               "marketing writer. WHICH MODEL each of them runs is the next section. The "
+               "highest blast radius in the portal."),
+    "models": ("Which model version each brain runs. Two layers, and the second wins: the "
+               "PROVIDER DEFAULT applies everywhere that provider is used, and a PER-CHAIN PIN "
+               "overrides it for one chain only — so the verdict chain and the cheap chain can "
+               "run different MiniMax versions without either being able to move the other. "
+               "Blank means the layer above applies. `scripts/model_pin_probe.py` prints what "
+               "each chain resolves to, by building the operator and asking it."),
     "speed": "How many calls run at once. Throughput, not correctness.",
     "money": "The daily ceiling and where the warning fires.",
 }
@@ -1838,32 +1927,31 @@ KNOBS: list[dict] = [
     # ---- the model each brain runs ----
     # A tier name says WHICH adapter; these say which model that adapter asks for. Swapping
     # MiniMax M3 for another version is a change of THIS value, not of the chain above.
-    {"path": ["model"], "group": "brains", "kind": "str",
-     "label": "Verdict model pin (blank = each provider default)",
-     "help": "Applied only to the provider it names, by prefix match in `_build_operator`. Blank "
-             "means every brain uses its own default from the pins below. Wrong here is not a "
-             "typo you see — it is a provider erroring on an unknown model on every call."},
-    {"path": ["model_fast"], "group": "brains", "kind": "str",
-     "label": "Cheap-call model pin (query-gen, prescreen)",
-     "help": "Same rule as the pin above, for the mechanical calls. Blank falls back to the "
-             "main pin, then to the provider default."},
-    {"path": ["model_defaults", "minimax"], "group": "brains", "kind": "str",
+    #
+    # `model` and `model_fast` USED TO BE HERE. They were removed on 2026-08-19 because they did
+    # nothing. `_build_operator` decided which provider they applied to by matching a name
+    # prefix; the value it computed reached one construction site (`ollama`), whose prefix list
+    # was empty, so the match was always False and the model always None. An operator could set
+    # either from this page, get a green write, a history row and the new value read back, and
+    # change no call anywhere. They are the reason the per-chain pins below name their provider
+    # instead of implying it. Both keys stay in config.yaml, blank, so a stale file still parses.
+    {"path": ["model_defaults", "minimax"], "group": "models", "kind": "str",
      "label": "MiniMax model", "help": "The model the `minimax` tier asks for. This is where a "
      "different MiniMax version goes — the tier name stays `minimax`."},
-    {"path": ["model_defaults", "minimax_fast"], "group": "brains", "kind": "str",
+    {"path": ["model_defaults", "minimax_fast"], "group": "models", "kind": "str",
      "label": "MiniMax model for cheap calls",
      "help": "M3 by standing order: MiniMax has no non-reasoning model, so a `_fast` pin here "
              "buys nothing unless it names a genuinely different model."},
-    {"path": ["model_defaults", "minimax_m27"], "group": "brains", "kind": "str",
+    {"path": ["model_defaults", "minimax_m27"], "group": "models", "kind": "str",
      "label": "Second MiniMax tier model",
      "help": "The whole point of the `minimax_m27` tier is being a DIFFERENT model from the one "
              "above, so an M3 stall does not imply this one stalls too. Setting both the same "
              "makes the second tier inert depth."},
-    {"path": ["model_defaults", "deepseek"], "group": "brains", "kind": "str",
+    {"path": ["model_defaults", "deepseek"], "group": "models", "kind": "str",
      "label": "DeepSeek model",
      "help": "Read only when `deepseek` appears in a chain above. Naming a model here does not "
              "put DeepSeek to work; adding it to a chain does."},
-    {"path": ["model_defaults", "ollama"], "group": "brains", "kind": "str",
+    {"path": ["model_defaults", "ollama"], "group": "models", "kind": "str",
      "label": "Ollama model (local)",
      "help": "Fully local, zero token cost, CPU-only on this box. Same rule: this pin is inert "
              "until `ollama` is in a chain."},
@@ -1953,6 +2041,45 @@ def _content_rule_knobs() -> list[dict]:
 # Appended rather than written inline so the generation stays one obvious block. `extend`, not a
 # second list, because `KNOBS_BY_KEY` below and every consumer of `KNOBS` must see one list.
 KNOBS.extend(_content_rule_knobs())
+
+# ---- the per-chain model pins, generated from the components the engine actually has ----
+#
+# GENERATED, NOT HAND-WRITTEN, and that is the point. Every other knob on this page is typed out
+# because its meaning is specific; these are one sentence repeated per chain, and hand-typing
+# them is how a provider gets added to `component_models` in config.yaml and stays uneditable
+# here for six weeks. The source is `operator.COMPONENTS` x the providers each chain can name,
+# so a new provider row in config.yaml appears on this page without anyone remembering to add it.
+#
+# Still an allow-list: the pairs come from a table in code, not from whatever config.yaml happens
+# to contain, so a stray key in the file cannot become a writable console field.
+_CHAIN_BLURB = {
+    "moat": ("the verdict chain. This is the money path — the brain that rules a PASS or KILL "
+             "on the £49 deliverable"),
+    "noncritical": "the cheap chain: inventing ideas, prescreening and scoring",
+    "artifact": "the pack writer — the prose a buyer actually reads",
+    "marketing": "the marketing writer — titles, one-liners, shelf copy",
+    "grounding": "the retrieval brain that searches the web for evidence",
+}
+_CHAIN_PROVIDERS = {
+    "moat": ("claude_cli", "minimax"),
+    "noncritical": ("minimax", "minimax_m27", "deepseek", "ollama", "openrouter"),
+    "artifact": ("claude_cli", "minimax"),
+    "marketing": ("claude_cli", "minimax"),
+    "grounding": ("claude_cli",),
+}
+for _comp in COMPONENTS:
+    for _prov in _CHAIN_PROVIDERS.get(_comp, ()):
+        KNOBS.append({
+            "path": ["component_models", _comp, _prov],
+            "group": "models", "kind": "str",
+            "high_blast": _comp == "moat",
+            "label": f"{_comp} on {_prov}",
+            "help": (f"The model {_prov} runs for {_CHAIN_BLURB.get(_comp, _comp)}. Blank uses "
+                     f"the provider default above, so this field only matters when this chain "
+                     f"should differ from the rest of the estate. It does NOT give this chain "
+                     f"its own health: dead marks and circuit breakers are keyed on the tier "
+                     f"NAME, so benching {_prov} anywhere benches it here too."),
+        })
 
 KNOBS_BY_KEY: dict[str, dict] = {".".join(k["path"]): k for k in KNOBS}
 
@@ -3181,6 +3308,12 @@ TOOLS: list[dict] = [
        "/processes", cmd=".venv/bin/python scripts/workflow_health.py"),
     _t("scripts/main_red.py", "Why is main red, and what fixes it?", False,
        "/processes", cmd=".venv/bin/python scripts/main_red.py"),
+    _t("scripts/estate_inventory.py",
+       "What does this estate own, and is every resource described and restorable?", True,
+       "/processes",
+       cmd=".venv/bin/python scripts/estate_inventory.py --out store/estate_inventory.json"),
+    _t("scripts/model_pin_probe.py", "Which model is each brain actually running?", False,
+       "/config", cmd=".venv/bin/python scripts/model_pin_probe.py"),
     _t("prospector/run.py", "Operator state and quotas", False, "/engine",
        cmd=".venv/bin/python -m prospector.run operators"),
     _t("prospector/run.py", "Manage ambition lanes", True, "/tools",
@@ -3403,6 +3536,72 @@ TOOLS: list[dict] = [
     _t("scripts/deploy_status.py", "Start stopped CI runners when deploys are queued behind them",
        True, "/deploys", cmd=".venv/bin/python scripts/deploy_status.py --fix", risk="external",
        danger="starts Fly machines on prospector-ci; only acts when runs are actually queued"),
+    # --- registered 2026-08-19, on the founder's instruction that "all our services must be
+    # deployable from the ops dashboard". Before these, /deploys could say the storefront was
+    # behind main and offer nothing to do about it: shipping meant someone with a shell typing
+    # `gh workflow run`. Every route is in scripts/deploy_now.py and
+    # tests/unit/test_every_service_can_be_deployed_from_the_console.py fails when a deployable
+    # has no route and no button.
+    #
+    # `external` on all of them: a dispatch starts a GitHub run that deploys to Fly, and no
+    # local store snapshot can roll that back. The undo is a redeploy of the previous commit.
+    _t("scripts/deploy_now.py", "How does each service ship, and what can this page deploy?",
+       False, "/deploys", cmd=".venv/bin/python scripts/deploy_now.py --list"),
+    _t("scripts/deploy_now.py", "Deploy the engine now (and the admin console inside it)", True,
+       "/deploys", cmd=".venv/bin/python scripts/deploy_now.py engine", risk="external",
+       danger="deploys whatever is on main right now, including work merged since you looked at "
+              "this page. prospector-engine is one machine with strategy=immediate, so the "
+              "scheduler, consumer, watchdog and console all restart"),
+    _t("scripts/deploy_now.py", "Deploy the store API now", True, "/deploys",
+       cmd=".venv/bin/python scripts/deploy_now.py store-api", risk="external",
+       danger="deploys whatever is on main right now. Checkout and fulfilment restart"),
+    _t("scripts/deploy_now.py", "Deploy the storefront now", True, "/deploys",
+       cmd=".venv/bin/python scripts/deploy_now.py store-web", risk="external",
+       danger="deploys whatever is on main right now to mumchimp.com, the page buyers see"),
+    # searxng has no workflow, so this one builds from THIS checkout. deploy_now refuses when the
+    # shipping paths are dirty, which is what stops another session's uncommitted edit shipping.
+    _t("scripts/deploy_now.py", "Deploy the search endpoint (searxng) now", True, "/deploys",
+       cmd=".venv/bin/python scripts/deploy_now.py searxng", risk="external",
+       danger="no CI workflow exists for searxng, so this builds from the console host's "
+              "checkout; it refuses if the shipping paths are modified"),
+    # Rollback, 2026-08-20. Founder: "this is deploying to prod, needs to be absolutely rock solid
+    # and bulletproof, rollback also, verified with automated tests and a drill function in ops".
+    # A Deploy button with no Rollback button lets the operator break production from a web page
+    # and then need a shell to fix it, which is worse than having neither.
+    #
+    # These deploy an image that ALREADY EXISTS on Fly (the previous release's ImageRef), so they
+    # run in seconds, build nothing, and cannot pick up whatever is in the console host's working
+    # tree. `external` for the same reason as the deploy rows: no local store snapshot undoes them.
+    _t("scripts/rollback_now.py",
+       "Drill the rollback path: resolve every previous image and health-check every service",
+       False, "/deploys", cmd=".venv/bin/python scripts/rollback_now.py --drill"),
+    _t("scripts/rollback_now.py", "Roll the engine back to its previous image", True, "/deploys",
+       cmd=".venv/bin/python scripts/rollback_now.py engine", risk="external",
+       danger="puts prospector-engine back on the image it ran before the last deploy. The "
+              "scheduler, consumer, watchdog and console all restart. It does NOT change main: "
+              "the next merge touching the engine ships the current code again, so revert the "
+              "commit too"),
+    _t("scripts/rollback_now.py", "Roll the store API back to its previous image", True, "/deploys",
+       cmd=".venv/bin/python scripts/rollback_now.py store-api", risk="external",
+       danger="puts prospector-store-api back on its previous image. Checkout and fulfilment "
+              "restart, and a buyer mid-checkout retries. It does NOT change main - revert the "
+              "commit too"),
+    _t("scripts/rollback_now.py", "Roll the storefront back to its previous image", True,
+       "/deploys", cmd=".venv/bin/python scripts/rollback_now.py store-web", risk="external",
+       danger="puts mumchimp.com back on its previous image. Buyers see the older page within "
+              "seconds. It does NOT change main - revert the commit too"),
+    _t("scripts/rollback_now.py", "Roll the search endpoint (searxng) back to its previous image",
+       True, "/deploys", cmd=".venv/bin/python scripts/rollback_now.py searxng", risk="external",
+       danger="puts prospector-searxng back on its previous image. Measured 2026-08-20 it has "
+              "only ever had ONE release, so this refuses until it has been deployed twice"),
+    # The scheduled half of the drill. Registered 2026-08-20 because a Deploy button and a Roll
+    # back button are two controls with no feedback: measured that day, nothing on this estate
+    # made an HTTP request to mumchimp.com except the drill, and the drill only ran when someone
+    # clicked it. `external` and writes=False: it changes nothing here, but a Telegram alert
+    # cannot be unsent, which is what "the local half only" says on the button.
+    _t("scripts/service_health.py",
+       "Ask every deployed service whether it is still serving (alerts on the second failure)",
+       False, "/deploys", cmd=".venv/bin/python scripts/service_health.py", risk="external"),
     # Registered 2026-08-19. `ci_capacity.py` answers whether CI FITS; this answers whether it
     # can RUN AT ALL. The two are separate questions and the estate has been wrong about the
     # second one twice in a day: a fleet scaled up whose machines were left stopped, and an
@@ -3482,6 +3681,14 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     "scripts/test_impacted.py": "picks the tests a local edit can affect; a developer's loop",
     "scripts/verify_engine_change.sh": "the pre-commit proof that an engine change is safe",
     "tools/commit_mine.sh": "commits exactly the named paths; a developer's git helper",
+    "scripts/backup_agent_estate.py": "archives ~/.claude on this developer laptop. Production "
+                                      "runs from a detached mirror of main on Fly, where that "
+                                      "directory does not exist, so the button would back up "
+                                      "nothing. Its schedule is a launchd job on the Mac",
+    "scripts/founder_tasks.py": "prints and syncs the founder's own task list, which lives in "
+                                "GitHub issues labelled founder-task. It is read by the session "
+                                "state probe before an agent starts, not by an operator running "
+                                "the platform, and the console already links the issue list",
     "tools/backfill_human_register.py": "a one-off repair that back-filled the human register after a schema change; kept for the record, not for re-running",
     "tools/register_repair_probe.py": "reports rows the human register cannot resolve; a developer's diagnostic, and it names local paths an operator has no access to",
     "scripts/claudeignore_sync.py": "compiles .claudeignore into the Read() deny rules in ~/.claude/settings.json; it configures an agent on a developer's machine, and the engine has no ~/.claude to write to",

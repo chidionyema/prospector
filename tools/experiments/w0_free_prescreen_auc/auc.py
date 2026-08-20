@@ -10,6 +10,14 @@ import json, os, re, math, random, collections
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+# The store is wherever PROSPECTOR_STORE_DIR points, which on the engine is a mounted volume.
+# These globs were relative to the working directory, so they read whatever `store/` happened
+# to sit beside the shell. INC-2026-08-18-store-resolver.
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(HERE))))
+from prospector.config import store_root  # noqa: E402
+
 rows = json.load(open(os.path.join(HERE, 'labelled.json')))
 
 # ---- labels: PASS=1, KILL=0. defer has no outcome -> excluded.
@@ -20,7 +28,7 @@ print(f"labelled usable: {len(data)}  (pass={sum(1 for r in data if r['decision'
 # ---- re-read the raw candidate text fields (extract.py kept only a few)
 import glob
 raw = {}
-for f in glob.glob('store/dossiers/*.json'):
+for f in glob.glob(str(store_root() / 'dossiers' / '*.json')):
     try:
         d = json.load(open(f))
     except Exception:

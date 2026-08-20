@@ -44,6 +44,7 @@ from starlette.responses import JSONResponse, PlainTextResponse, Response
 from starlette.routing import Route
 
 from .config import store_root
+from .otlp import JSON_TYPES, OtlpDecodeError, decode
 
 # --------------------------------------------------------------------------- caps
 # Every one of these is an env override so a test can drive the boundary without
@@ -524,6 +525,32 @@ _INGEST = Ingest()
 _LIMITER = RateLimiter(rate_limit_rps())
 
 
+def _accept(parsed: list[dict], malformed: int) -> tuple[int, int, int]:
+    """Rate limit, write, count. Shared so NDJSON and OTLP cannot drift on the drop rules.
+
+    Returns (accepted, dropped, rate_limited). Every path DROPS; none queues, none blocks.
+    A 429 tells a well-behaved producer to slow down; a producer that ignores it still
+    cannot hurt the disk.
+    """
+    if malformed:
+        _INGEST.counters["dropped_malformed"] += malformed
+
+    allowed: list[dict] = []
+    limited = 0
+    for line in parsed:
+        if _LIMITER.allow(line["svc"]):
+            allowed.append(line)
+        else:
+            limited += 1
+    if limited:
+        _INGEST.counters["dropped_rate_limited"] += limited
+
+    counts = _INGEST.write(allowed)
+    dropped = malformed + limited + counts["dropped_oversize_line"] \
+        + counts["dropped_file_full"] + counts["dropped_write_error"]
+    return counts["accepted"], dropped, limited
+
+
 async def post_logs(request: Request) -> Response:
     if not authorised(request.headers.get("authorization")):
         return PlainTextResponse("unauthorised", status_code=401)
@@ -561,29 +588,95 @@ async def post_logs(request: Request) -> Response:
             continue
         parsed.append(line)
 
-    if malformed:
-        _INGEST.counters["dropped_malformed"] += malformed
-
-    # Rate limit per service, and DROP rather than queue. A 429 tells a well-behaved
-    # producer to slow down; a producer that ignores it still cannot hurt the disk.
-    allowed: list[dict] = []
-    limited = 0
-    for line in parsed:
-        if _LIMITER.allow(line["svc"]):
-            allowed.append(line)
-        else:
-            limited += 1
-    if limited:
-        _INGEST.counters["dropped_rate_limited"] += limited
-
-    counts = _INGEST.write(allowed)
-    dropped = malformed + limited + counts["dropped_oversize_line"] \
-        + counts["dropped_file_full"] + counts["dropped_write_error"]
-
-    headers = {"X-Accepted": str(counts["accepted"]), "X-Dropped": str(dropped)}
-    if limited and not counts["accepted"]:
+    accepted, dropped, limited = _accept(parsed, malformed)
+    headers = {"X-Accepted": str(accepted), "X-Dropped": str(dropped)}
+    if limited and not accepted:
         return PlainTextResponse("rate limited", status_code=429, headers=headers)
     return Response(status_code=204, headers=headers)
+
+
+def _otlp_response(rejected: int, content_type: str) -> Response:
+    """The spec's own response, so a drop is visible to any OTLP client, not just to ours.
+
+    OTLP/HTTP says a success is 200 with a serialised `ExportLogsServiceResponse`. That message
+    has one optional field, `partial_success`, and an all-default message serialises to zero
+    bytes -- so full success is an empty body in protobuf and `{}` in JSON. Reporting drops
+    through `rejectedLogRecords` is what makes this endpoint honest to a producer we did not
+    write: our own `X-Dropped` header means nothing to a stock exporter.
+    """
+    if content_type in JSON_TYPES:
+        body = json.dumps({"partialSuccess": {
+            "rejectedLogRecords": str(rejected),
+            "errorMessage": "dropped by the ingest cap or the service gate",
+        }} if rejected else {}).encode("utf-8")
+        return Response(body, status_code=200, media_type="application/json")
+
+    if not rejected:
+        return Response(b"", status_code=200, media_type="application/x-protobuf")
+    # ExportLogsServiceResponse{1: ExportLogsPartialSuccess{1: int64 rejected_log_records}}
+    inner = b"\x08" + _varint_bytes(rejected)
+    body = b"\x0a" + _varint_bytes(len(inner)) + inner
+    return Response(body, status_code=200, media_type="application/x-protobuf")
+
+
+def _varint_bytes(value: int) -> bytes:
+    out = bytearray()
+    while True:
+        byte = value & 0x7F
+        value >>= 7
+        out.append(byte | (0x80 if value else 0))
+        if not value:
+            return bytes(out)
+
+
+async def post_otlp(request: Request) -> Response:
+    """OTLP/HTTP logs, JSON or protobuf, onto the same lines the NDJSON endpoint writes.
+
+    Same bearer auth, same body caps, same per-service rate limit, same drop-never-block rule.
+    The only thing this endpoint adds is a decoder: `prospector/otlp.py` turns one
+    `ExportLogsServiceRequest` into §4.3 objects, and `normalise` still has the last word on
+    every one of them -- including `svc`, which is the filename gate and is not duplicated here.
+    """
+    if not authorised(request.headers.get("authorization")):
+        return PlainTextResponse("unauthorised", status_code=401)
+
+    content_type = (request.headers.get("content-type") or "").split(";")[0].strip().lower()
+
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > max_body_bytes():
+        return PlainTextResponse("body too large", status_code=413)
+
+    body = await request.body()
+    if len(body) > max_body_bytes():
+        return PlainTextResponse("body too large", status_code=413)
+
+    try:
+        records = decode(body, content_type)
+    except OtlpDecodeError as exc:
+        return PlainTextResponse("bad OTLP payload: %s" % exc, status_code=400)
+
+    if len(records) > max_lines_per_batch():
+        return PlainTextResponse("too many log records", status_code=413)
+
+    host = request.client.host if request.client else "unknown"
+    now = _now()
+    parsed: list[dict] = []
+    malformed = 0
+    for record in records:
+        line = normalise(record, host, now)
+        if line is None:
+            malformed += 1
+            continue
+        parsed.append(line)
+
+    accepted, dropped, limited = _accept(parsed, malformed)
+    response = _otlp_response(dropped, content_type)
+    response.headers["X-Accepted"] = str(accepted)
+    response.headers["X-Dropped"] = str(dropped)
+    if limited and not accepted:
+        return PlainTextResponse("rate limited", status_code=429,
+                                 headers=dict(response.headers))
+    return response
 
 
 async def get_stats(request: Request) -> Response:
@@ -621,6 +714,11 @@ async def get_health(request: Request) -> Response:
 
 app = Starlette(routes=[
     Route("/internal/logs", post_logs, methods=["POST"]),
+    Route("/internal/logs/otlp", post_otlp, methods=["POST"]),
+    # An OTLP client is usually given a BASE url and appends the signal path itself -- the
+    # OpenTelemetry .NET exporter does exactly this unless a per-signal endpoint is set. Both
+    # spellings reach the same handler so a stock client works with the base url alone.
+    Route("/internal/logs/otlp/v1/logs", post_otlp, methods=["POST"]),
     Route("/internal/logs/stats", get_stats, methods=["GET"]),
     Route("/internal/logs/health", get_health, methods=["GET"]),
 ])

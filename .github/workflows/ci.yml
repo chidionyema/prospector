@@ -168,163 +168,29 @@ jobs:
       web: ${{ steps.filter.outputs.web }}
       console: ${{ steps.filter.outputs.console }}
     steps:
-      # ─── MAIN COMES FIRST: NO PR BUILD WHILE MAIN IS RED OR MID-RUN ───────────────
+      # ─── THE "MAIN COMES FIRST" GATE WAS REMOVED HERE ON 2026-08-20 ───────────────
       #
-      # Founder directives 2026-08-19: "i dont see hwy any pr should run when nain is red",
-      # "this nust be visibke so it can be fied as priority", and, after watching a PR job take
-      # a runner out from under a queued main run, "nain should be priority over feaature
-      # branches ... this should never happen".
+      # It refused to build a pull request while main's CI was queued, in progress, or last
+      # red, and it recorded that refusal as a FAILED check on the pull request.
       #
-      # WHAT IT DOES. On a pull_request event it refuses to build for either of two reasons:
-      #   1. A CI run on main is queued or in progress. Main gets the machines first. A feature
-      #      branch never competes with the branch it merges into.
-      #   2. Main's last completed CI run did not succeed. A PR cannot be greener than main.
-      # Check 1 comes first, because an in-flight main run is the more urgent fact and it is
-      # what a stale green from an hour ago hides.
+      # It could not do what it claimed. It was a check, not a reservation: it cannot hand main
+      # a runner. It can only fail every other branch while main waits for one — and main was
+      # waiting BECAUSE pull request runs held the runners.
       #
-      # WHY IT IS THE FIRST STEP OF `changes` RATHER THAN ITS OWN JOB. A separate job would
-      # need its own runner slot, which is the resource the gate exists to protect. `changes`
-      # already runs first and everything else declares `needs: changes`, so failing here stops
-      # the whole run for the price of a few seconds on the light pool.
+      # Measured 2026-08-20, 12 of 12 runners busy, main's run 32327977452 queued since 03:22:
+      # PR #517 was failed in 18 seconds with `main's CI is QUEUED at 0fa8f9a6`, having
+      # compiled nothing. Two of its jobs read `changes, ci-ok` and the rest read `skipping`.
       #
-      # THE COST IT PREVENTS, measured 2026-08-19. Main was red on one test. Twenty-one PR runs
-      # were queued ahead of main own fix run, so main — the only run whose colour every other
-      # run inherits — could not get a machine. Every one of those PR runs was doomed to fail on
-      # main defect and spent ~26 minutes of a heavy runner proving it. Worse, the starvation
-      # was self-sustaining: as each PR job finished, the next queued PR job took the freed
-      # runner, so main crawled through its five heavy jobs one gap at a time.
+      # Then it fed itself. A refusal recorded as red reads like a broken branch, so somebody
+      # re-runs it, which queues another build, which takes another runner, which starves main
+      # further. Four re-runs of #500 and #495 on 2026-08-20 all failed this way without
+      # compiling a line.
       #
-      # THE ESCAPE HATCH, and it is deliberate. The PR that FIXES main must be able to build
-      # while main is red, or the estate deadlocks. Label that PR `fixes-main` and this step
-      # stands aside. `workflow_dispatch` is a second hatch: this only gates `pull_request`.
+      # A refusal is not a test result. Main stays protected by main-admission-guard, which
+      # reverts a merge with no green run at its head — a rule that acts on main itself instead
+      # of on every other branch.
       #
-      # A WEDGED MAIN RUN MUST NOT BECOME A TOTAL OUTAGE. Check 1 only counts main runs younger
-      # than STALE_MINUTES. A run stuck queued for hours is not in flight, it is broken, and
-      # blocking every PR in the repo behind it would turn one bad run into an estate-wide stop.
-      #
-      # IT FAILS OPEN. An API error, or a main with no completed CI run at all, warns and
-      # passes. A gate that guesses must guess towards letting work through, because a gate
-      # that blocks the whole repo on its own bug is worse than the problem it polices.
-      - name: Main must be green before any PR builds
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const STALE_MINUTES = 90;
-
-            // ── THE ESCAPE HATCH, READ LIVE. ──────────────────────────────────────────
-            // `github.event.pull_request.labels` is a snapshot frozen when the run STARTED.
-            // Label a PR `fixes-main` after its run began and that payload never sees it, so
-            // the hatch is shut at the exact moment it exists for. Measured 2026-08-19: this
-            // gate refused PR #443, the PR that carries this gate and fixes main, because the
-            // label arrived ninety seconds after the run did. Founder: "this should obviosly
-            // eclude nain, basi edge case". Ask the API for the labels the PR has NOW, so
-            // labelling and re-running is enough.
-            let labels = [];
-            try {
-              const res = await github.rest.issues.listLabelsOnIssue({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number,
-              });
-              labels = res.data.map((l) => l.name);
-            } catch (e) {
-              core.warning(`Could not read this PR's labels (${e.message}) — gate fails open.`);
-              return;
-            }
-
-            if (labels.includes('fixes-main')) {
-              core.info("PR is labelled `fixes-main` — it repairs main, so it is not gated.");
-              return;
-            }
-
-            const refuse = async (heading, lines) => {
-              const msg = lines.join('\n');
-              await core.summary
-                .addHeading(heading, 2)
-                .addRaw(msg.replace(/\n/g, '<br>'))
-                .write();
-              core.setFailed(msg);
-            };
-
-            // ── CHECK 1: main gets the machines first. ────────────────────────────────
-            let active = [];
-            try {
-              for (const status of ['in_progress', 'queued']) {
-                const res = await github.rest.actions.listWorkflowRuns({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  workflow_id: 'ci.yml',
-                  branch: 'main',
-                  status,
-                  per_page: 20,
-                });
-                active = active.concat(res.data.workflow_runs);
-              }
-            } catch (e) {
-              core.warning(`Could not read main's live runs (${e.message}) — gate fails open.`);
-              active = [];
-            }
-
-            const now = Date.now();
-            const live = active.filter((r) => {
-              const age = now - new Date(r.run_started_at).getTime();
-              return age < STALE_MINUTES * 60 * 1000;
-            });
-
-            if (live.length) {
-              const r = live[0];
-              return await refuse('main is building — feature branches wait', [
-                `main's CI is ${r.status.toUpperCase()} at ${r.head_sha.slice(0, 8)}.`,
-                `This PR was not built, because main gets the machines before any feature branch.`,
-                ``,
-                `Main is the branch every PR inherits its colour from, so it is never made to`,
-                `queue behind the branches that merge into it.`,
-                ``,
-                `  ${r.html_url}`,
-                ``,
-                `Re-run this PR once main has finished. If THIS PR is the one that fixes main,`,
-                `label it \`fixes-main\` and it will not be gated.`,
-              ]);
-            }
-
-            // ── CHECK 2: main must be green. ──────────────────────────────────────────
-            let latest;
-            try {
-              const res = await github.rest.actions.listWorkflowRuns({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: 'ci.yml',
-                branch: 'main',
-                status: 'completed',
-                per_page: 1,
-              });
-              latest = res.data.workflow_runs[0];
-            } catch (e) {
-              core.warning(`Could not read main's CI history (${e.message}) — gate fails open.`);
-              return;
-            }
-
-            if (!latest) {
-              core.warning("main has no completed CI run — gate fails open.");
-              return;
-            }
-
-            const sha = latest.head_sha.slice(0, 8);
-            if (latest.conclusion === 'success') {
-              core.info(`main is green at ${sha} (run ${latest.id}) and not mid-run — carrying on.`);
-              return;
-            }
-
-            return await refuse('main is red — fix main first', [
-              `main is ${latest.conclusion.toUpperCase()} at ${sha}.`,
-              `This PR was not built, because a PR cannot be greener than the branch it merges into.`,
-              ``,
-              `FIX MAIN FIRST. That is the whole queue's top priority:`,
-              `  ${latest.html_url}`,
-              ``,
-              `If THIS PR is the one that fixes main, label it \`fixes-main\` and re-run.`,
-            ]);
+      # The GitHub Actions queue already orders the work. Nothing here needs to help it.
 
       # WHY THE BOX IS SLOW, PRINTED BEFORE ANYTHING ELSE RUNS.
       #
@@ -690,6 +556,26 @@ jobs:
         # ops/config/ci_capacity.yaml checks, and what nothing checked while CI moved hosts.
         run: |
           set -eu
+          # The two security scans used to run AFTER this step, serially: Bandit 66s and the
+          # dependency advisory scan 41s, measured on run 32327682394 in a 597s job. Neither
+          # reads anything pytest writes and neither writes anything pytest reads — Bandit
+          # reads the checkout through its own uvx environment, and the advisory scan only
+          # freezes the shared venv — so they start here and are graded in their own step
+          # after the golden gate. They cost the suite some CPU on a 4-vCPU runner; they no
+          # longer cost it 107 seconds of wall clock.
+          SCAN_PIDS=""
+          for scan in bandit dep_advisory; do
+            rm -f "/tmp/scan-$scan.rc" "/tmp/scan-$scan.log"
+            ( bash ".github/scripts/${scan}_scan.sh" > "/tmp/scan-$scan.log" 2>&1
+              echo $? > "/tmp/scan-$scan.rc" ) &
+            SCAN_PIDS="$SCAN_PIDS $!"
+            echo "started $scan in the background (pid $!)"
+          done
+          # A scan must never outlive the step that started it. If pytest fails, `set -eu`
+          # leaves through this trap and the background jobs die with it, so the run reports
+          # the test failure rather than a scan orphaned into the next job.
+          trap 'for pid in $SCAN_PIDS; do kill "$pid" 2>/dev/null || true; done' EXIT
+
           files=$(git ls-files 'tests' \
                   | grep -E '(^|/)test_[^/]+\.py$' \
                   | grep -v -e 'tests/test_ui_theme\.py$' -e 'tests/test_golden_set\.py$')
@@ -703,6 +589,13 @@ jobs:
           # nothing. The `count` check three lines up is what makes the split safe.
           # shellcheck disable=SC2086
           python -m pytest -q $files -n 4 --tb=short -p no:warnings
+
+          # The suite passed, so the scans are allowed to finish. Clearing the trap first is
+          # what makes `wait` reachable: with it still armed, the shell's normal exit would
+          # kill the jobs it is about to wait on.
+          trap - EXIT
+          for pid in $SCAN_PIDS; do wait "$pid" || true; done
+          echo "security scans finished; graded below"
 
       # ── Hard gate ──────────────────────────────────────────────
       # Block the pipeline if the golden set does not achieve 100 %
@@ -735,74 +628,35 @@ jobs:
       # tools/experiments/g_generation_ab.py and skipped it, reporting "syntax error while parsing
       # AST from file" into a JSON field nothing read. A skipped file is an unscanned file, so the
       # step now pins the interpreter AND fails if bandit's `errors` array is non-empty.
-      - name: Bandit security scan
+      # ── Security: the code, and the dependencies ───────────────
+      # Both scans were STARTED by the Test suite step above and have been running alongside
+      # it. This step is where they are graded, and it is written so it cannot fail open: a
+      # scan that died without writing its exit code fails the job exactly like a scan that
+      # found something. `.rc` is deleted before each scan starts, so a stale file from an
+      # earlier job on the same runner cannot stand in for a scan that never ran.
+      #
+      # The scan bodies, and the reasoning behind each threshold, are in
+      # `.github/scripts/bandit_scan.sh` and `.github/scripts/dep_advisory_scan.sh`.
+      - name: Security scans
         run: |
           set -eu
-          uvx --python "${PYTHON_VERSION}" bandit \
-            -r prospector ops scripts tools -q -f json -o /tmp/bandit-all.json || true
-          python - <<'PY'
-          import json, sys
-          skipped = json.load(open("/tmp/bandit-all.json"))["errors"]
-          if skipped:
-              for e in skipped:
-                  print(f"::error::bandit could not read {e['filename']}: {e['reason']}")
-              sys.exit("bandit skipped a file, so it did not scan it")
-          PY
-          python - <<'PY'
-          import collections, json
-          rows = json.load(open("/tmp/bandit-all.json"))["results"]
-          by = collections.Counter((r["issue_severity"], r["test_id"]) for r in rows)
-          print(f"{len(rows)} findings, not enforced below HIGH:")
-          for (sev, tid), n in by.most_common():
-              print(f"  {sev:<6} {tid} {n}")
-          PY
-          uvx --python "${PYTHON_VERSION}" bandit \
-            -r prospector ops scripts tools -q --severity-level high \
-            || { echo "::error::Bandit found a HIGH severity issue. If the hash is an identifier"
-                 echo "::error::rather than a security decision, pass usedforsecurity=False."
-                 exit 1; }
-          echo "no HIGH severity findings"
-
-      # ── Security: the dependencies ─────────────────────────────
-      # pip-audit against the Python Advisory Database. It reads a frozen list rather than
-      # requirements.txt on purpose: freeze reports what the job will actually import, pins and
-      # transitive packages included, and needs no resolution step. requirements.txt would miss
-      # an advisory that arrives through a dependency of a dependency, which is how both of the
-      # .NET advisories this repo has carried arrived.
-      #
-      # The grep drops the two line shapes pip-audit cannot read: `-e <path or VCS url>` and
-      # `name @ file:///...`. Both name a checkout rather than a released version, so there is no
-      # advisory to look up, and pip-audit does not skip them — it aborts the whole run with
-      # "is not a valid editable requirement" and audits nothing. Measured on the founder's
-      # laptop: three such lines out of 121, and the step failed outright until they were cut.
-      # CI builds its venv from requirements.txt alone and has none of them, which is exactly why
-      # this would only ever have broken locally.
-      #
-      # Measured 2026-08-19 on origin/main: "No known vulnerabilities found". This goes in green.
-      #
-      # `uv pip freeze`, not `python -m pip freeze`. The shared venv above is built by
-      # `uv venv`, and uv does not install pip into a venv it creates. So the first form is a
-      # ModuleNotFoundError in the only environment this step ever runs in:
-      #
-      #   .../ci-venvs/py3.14-e49c923ecd1f4b82/bin/python: No module named pip
-      #
-      # `set -eu` does not set pipefail, so the failing command was the LEFT side of a pipe and
-      # the step's status came from grep instead. It went red either way, but on the wrong
-      # command, which is why the log reads as a scan failure rather than a missing module.
-      - name: Dependency advisory scan
-        run: |
-          set -euo pipefail
-          uv pip freeze > /tmp/all-packages.txt
-          # grep exits 1 when it filters everything out, which under pipefail would read as a
-          # scan failure rather than an empty list. The floor below is what actually grades it.
-          grep -vE '^-e|@ ' /tmp/all-packages.txt > /tmp/frozen.txt || true
-          n="$(wc -l < /tmp/frozen.txt | tr -d ' ')"
-          echo "packages audited: $n of $(wc -l < /tmp/all-packages.txt | tr -d ' ')"
-          # A scan of an empty list passes and reports nothing. Measured on origin/main the
-          # venv holds 121 packages, so under 20 means uv read a different environment rather
-          # than that this repo got smaller.
-          [ "$n" -ge 20 ] || { echo "::error::froze $n packages, so this is not the venv the suite runs"; exit 1; }
-          uvx pip-audit -r /tmp/frozen.txt
+          failed=0
+          for scan in bandit dep_advisory; do
+            echo "── $scan ──────────────────────────────────────────────"
+            [ -f "/tmp/scan-$scan.log" ] && cat "/tmp/scan-$scan.log"
+            if [ ! -f "/tmp/scan-$scan.rc" ]; then
+              echo "::error::$scan recorded no exit code, so it did not finish"
+              failed=1
+              continue
+            fi
+            rc=$(cat "/tmp/scan-$scan.rc")
+            if [ "$rc" -ne 0 ]; then
+              echo "::error::$scan failed with exit $rc"
+              failed=1
+            fi
+          done
+          [ "$failed" -eq 0 ] || exit 1
+          echo "both security scans passed"
       # ────────────────────────────────────────────────────────────
 
   # ──────────────────────────────────────────────────────────────────

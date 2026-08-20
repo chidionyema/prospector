@@ -200,8 +200,17 @@ Tonight two sessions fixed the same one-line drift independently, ten minutes ap
 
 ### "My PR merged but nothing changed in production"
 
-A merge is not a deploy. The deploy dispatch lives in `.github/workflows/automerge.yml` and
-selects workflows by path filter.
+A merge is not a deploy, but since 2026-08-20 it is very close to one. Each `deploy-*.yml`
+carries its own `on: push: {branches: [main], paths: [...]}`, so a human merge starts the deploys
+whose paths it touched. Nothing dispatches them centrally any more: the automerge
+workflow did that, and it was deleted the same day (founder decision -- the branch update it
+performed moved fifteen pull request heads and jammed the board for thirty hours).
+
+The one push that starts nothing is a push made with the default `GITHUB_TOKEN` -- GitHub refuses
+to build its own token's pushes. That is why `.github/workflows/main-admission-guard.yml` still
+carries a `DEPLOY` path map: when it reverts a bad merge, it has to dispatch the deploys by hand or
+production keeps running the reverted code. `tests/unit/test_every_deploy_ships_on_green_main.py`
+compares that map against the three workflows' own path filters, in both directions.
 
 ```bash
 .venv/bin/python scripts/deploy_status.py     # is the live stack running what is on main?

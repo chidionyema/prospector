@@ -191,7 +191,7 @@ dropping the second paragraph and tightening padding recovers ~90px of the 218px
 Harness `store_platform/src/Store.Web/scripts/design-audit/audit.mjs`, reporter `report.mjs`.
 Run 2026-08-08T02:16Z against **https://mumchimp.com** (§6: live is the baseline), Chromium
 headless, 16 routes × 6 viewports = **96 pairs, 0 errors**, 208 screenshots in `docs/audit/`,
-raw numbers in `docs/audit/audit-raw.json`. Reproduce:
+raw numbers in `docs/audit/audit-raw.json`. Reproduce:  <!-- doc-lint-ok: written by the audit run below; the output is not committed -->
 
 ```bash
 cd store_platform/src/Store.Web

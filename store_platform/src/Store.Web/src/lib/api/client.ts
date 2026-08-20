@@ -552,6 +552,40 @@ export function recordAnalyticsEvent(body: AnalyticsEventBody): void {
   }
 }
 
+export interface ClientErrorReport {
+  where: string;
+  message: string;
+  stack: string;
+  componentStack: string;
+}
+
+/** Fire-and-forget crash report to our OWN server at `/api/client-log`, which forwards it to the
+ *  central log as `svc: "store-web"`. The browser never talks to the ingest directly: it is
+ *  private-network only and its key would end up in client JavaScript.
+ *
+ *  This lives here rather than in the error boundary because UI-STANDARDS §4 is "components never
+ *  call fetch directly", and an error boundary is a component. `recordAnalyticsEvent` above is the
+ *  same shape for the same reason.
+ *
+ *  It can never throw. The caller is inside a boundary that has ALREADY caught one error, and a
+ *  reporter that throws there takes out the recovery panel and gives the buyer the blank white
+ *  page the boundary exists to prevent. `keepalive` because the most likely next thing the buyer
+ *  does is reload, and a normal fetch is cancelled by the navigation that follows it. */
+export function reportClientError(body: ClientErrorReport): void {
+  try {
+    void fetch('/api/client-log', {
+      method: 'POST',
+      keepalive: true,
+      headers: correlated({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(body),
+    }).catch(() => {
+      /* best effort; the caller's console.error is the copy that always exists */
+    });
+  } catch {
+    /* no fetch, no network: nothing here may reach the caller */
+  }
+}
+
 export interface OrderDetails {
   packId: string;
   packTitle: string;

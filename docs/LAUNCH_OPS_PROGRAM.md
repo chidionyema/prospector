@@ -412,7 +412,7 @@ and the founder can read all six on the console without a terminal.
 3. Move superseded docs to `docs/attic/` with a one-line reason. Never delete — the incidents are
    the reasoning behind current rules.
 4. ~~Fix `RUN.md:95` (Gemini) and `RUN.md:60`~~ **DONE 2026-08-18.** Step 7 already pointed at
-   `publish/publish.py`, the real 10,627-byte module; the 0-byte `prospector/publish.py` stub it
+   `publish/publish.py`, the real 10,627-byte module. There used to be a 0-byte `prospector/publish.py` stub beside it; that file was deleted in #312 and no longer exists, which is why the shorthand it  <!-- doc-lint-ok: the sentence is about a file deleted in #312; naming it is the point -->
    used to name has no importer anywhere in the repo and is deleted. Three Gemini references
    survived the earlier pass — the retrieval line in step 4, the `generate --resume` comment and a
    heading claiming the batch command reads `GEMINI_API_KEY`. All three now name the config key
