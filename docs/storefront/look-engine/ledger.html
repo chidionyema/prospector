@@ -1,0 +1,554 @@
+<title>The Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Source+Serif+4:ital,opsz,wght@0,8..60,300..700;1,8..60,300..600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
+
+<style>
+/* ============================================================================
+   THE LEDGER — direction 1 of 3 for mumchimp.com
+   A broadsheet whose front page leads with the failures. The paper is a cool
+   grey-green newsprint rather than the usual cream; kills are set in oxblood,
+   survivors in pine, and rules appear only where a column genuinely breaks.
+   Every number on this page came off the live site on 2026-08-20.
+   ========================================================================== */
+
+/* ---- tokens: light is the base, both dark states redefine only these ---- */
+:root {
+  --paper:      #E6E7E1;   /* cool newsprint, green-biased grey */
+  --paper-2:    #DDDFD7;   /* the second stock, for insets */
+  --ink:        #16181A;
+  --ink-2:      #4A4F4C;   /* biased toward the pine, never neutral grey */
+  --ink-3:      #797E78;
+  --rule:       #C2C4BB;
+  --rule-heavy: #16181A;
+  --oxblood:    #7A1F1B;   /* kills */
+  --pine:       #1F4A3C;   /* survivors */
+  --plate-ink:  #16181A;
+  --plate-bg:   #DDDFD7;
+  --focus:      #7A1F1B;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:      #14161A;
+    --paper-2:    #1B1E22;
+    --ink:        #E8E9E3;
+    --ink-2:      #A9AFAA;
+    --ink-3:      #7C827D;
+    --rule:       #333833;
+    --rule-heavy: #E8E9E3;
+    --oxblood:    #D4695E;
+    --pine:       #74B49A;
+    --plate-ink:  #E8E9E3;
+    --plate-bg:   #1B1E22;
+    --focus:      #D4695E;
+  }
+}
+:root[data-theme="dark"] {
+  --paper:      #14161A;  --paper-2: #1B1E22;
+  --ink:        #E8E9E3;  --ink-2:   #A9AFAA;  --ink-3: #7C827D;
+  --rule:       #333833;  --rule-heavy: #E8E9E3;
+  --oxblood:    #D4695E;  --pine:    #74B49A;
+  --plate-ink:  #E8E9E3;  --plate-bg: #1B1E22;
+  --focus:      #D4695E;
+}
+
+/* ---- one type scale, fluid, nothing off it ---- */
+:root {
+  --f-masthead: clamp(3.6rem, 14vw, 11rem);
+  --f-lead:     clamp(2.1rem, 5.4vw, 4.2rem);
+  --f-head:     clamp(1.55rem, 2.9vw, 2.5rem);
+  --f-sub:      clamp(1.15rem, 1.7vw, 1.5rem);
+  --f-body:     clamp(1rem, 0.96rem + 0.22vw, 1.14rem);
+  --f-small:    0.875rem;
+  --f-micro:    0.6875rem;
+
+  --s-1: 0.375rem; --s-2: 0.75rem; --s-3: 1.25rem; --s-4: 2rem;
+  --s-5: 3rem;     --s-6: 4.5rem; --s-7: 7rem;
+
+  --serif:   'Source Serif 4', 'Iowan Old Style', Georgia, serif;
+  --display: 'Bodoni Moda', 'Didot', 'Bodoni MT', Georgia, serif;
+  --mono:    'Spline Sans Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --measure: 34rem;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: var(--f-body);
+  line-height: 1.58;
+  -webkit-font-smoothing: antialiased;
+  font-optical-sizing: auto;
+}
+a { color: inherit; }
+:where(a):focus-visible, :where(button):focus-visible {
+  outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 2px;
+}
+
+/* ---- the sheet ---- */
+.sheet { max-width: 1440px; margin-inline: auto; padding-inline: clamp(1rem, 3.2vw, 3.5rem); }
+.rule       { border: 0; border-top: 1px solid var(--rule); margin: 0; }
+.rule-heavy { border: 0; border-top: 3px solid var(--rule-heavy); margin: 0; }
+
+/* ---- eyebrow: the one repeated device, and it always names a real thing ---- */
+.eyebrow {
+  font-family: var(--mono); font-size: var(--f-micro); font-weight: 600;
+  letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3);
+  display: flex; align-items: baseline; gap: var(--s-2);
+}
+.eyebrow--kill { color: var(--oxblood); }
+.eyebrow--live { color: var(--pine); }
+
+/* ---- masthead ---- */
+.masthead { padding-top: clamp(var(--s-3), 3vw, var(--s-5)); }
+.masthead__dateline {
+  display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-4);
+  font-family: var(--mono); font-size: var(--f-micro); letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--ink-3); padding-bottom: var(--s-2);
+}
+.masthead__dateline b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.masthead__name {
+  font-family: var(--display); font-weight: 500; font-size: var(--f-masthead);
+  line-height: 0.82; letter-spacing: -0.035em; margin: var(--s-3) 0 var(--s-3);
+  text-align: center; font-optical-sizing: auto;
+}
+.masthead__name i { font-style: italic; font-weight: 400; }
+
+nav.bar {
+  display: flex; flex-wrap: wrap; justify-content: center;
+  gap: clamp(var(--s-3), 3vw, var(--s-5));
+  padding: 0.9rem 0;   /* 44px+ tap target comes from this padding, not from a min-height hack */
+}
+nav.bar a {
+  font-family: var(--mono); font-size: var(--f-small); letter-spacing: 0.06em;
+  text-decoration: none; padding: 0.65rem 0.25rem; display: inline-block;
+  border-bottom: 2px solid transparent; transition: border-color 120ms, color 120ms;
+}
+nav.bar a:hover { border-bottom-color: var(--oxblood); }
+
+/* ---- the front page grid ---- */
+.front { display: grid; gap: var(--s-5); padding-block: var(--s-5); }
+@media (min-width: 62rem) {
+  .front { grid-template-columns: 1fr minmax(17rem, 21rem); gap: 0; }
+  .front__aside { border-left: 1px solid var(--rule); padding-left: var(--s-4); margin-left: var(--s-4); }
+}
+
+.lead__head {
+  font-family: var(--display); font-weight: 700; font-size: var(--f-lead);
+  line-height: 0.98; letter-spacing: -0.02em; text-wrap: balance;
+  margin: var(--s-3) 0 var(--s-3);
+}
+.lead__deck { font-size: var(--f-sub); color: var(--ink-2); max-width: var(--measure); margin: 0 0 var(--s-4); }
+.lead__deck strong { color: var(--ink); font-weight: 600; }
+
+/* the hundred — the most characteristic object this business owns */
+.hundred { display: grid; grid-template-columns: repeat(20, 1fr); gap: 2px; max-width: 30rem; margin-bottom: var(--s-3); }
+@media (max-width: 30rem) { .hundred { grid-template-columns: repeat(10, 1fr); } }
+.hundred i { aspect-ratio: 1; background: var(--rule); display: block; }
+.hundred i.live { background: var(--pine); }
+.hundred__key { font-family: var(--mono); font-size: var(--f-micro); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); display: flex; gap: var(--s-3); flex-wrap: wrap; }
+.hundred__key b { font-weight: 600; }
+.hundred__key .k-live { color: var(--pine); }
+
+.cta-row { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center; margin-top: var(--s-4); }
+.btn {
+  font-family: var(--mono); font-size: var(--f-small); font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; text-decoration: none;
+  padding: 0.95rem 1.5rem; min-height: 44px; display: inline-flex; align-items: center;
+  background: var(--ink); color: var(--paper); border: 1px solid var(--ink);
+  transition: background 120ms, color 120ms;
+}
+.btn:hover { background: var(--oxblood); border-color: var(--oxblood); color: #fff; }
+.btn--quiet { background: transparent; color: var(--ink); }
+.btn--quiet:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+/* ---- the standing kill column ---- */
+.obit { border-top: 3px solid var(--oxblood); padding-top: var(--s-2); }
+.obit__date { font-family: var(--mono); font-size: var(--f-micro); letter-spacing: 0.14em; text-transform: uppercase; color: var(--oxblood); }
+.obit__title { font-family: var(--display); font-size: var(--f-head); font-weight: 600; line-height: 1.04; margin: var(--s-2) 0 var(--s-1); letter-spacing: -0.015em; }
+.obit__deck { color: var(--ink-2); font-size: 0.98rem; margin: 0 0 var(--s-3); }
+.obit__link { font-family: var(--mono); font-size: var(--f-small); text-decoration: none; border-bottom: 1px solid var(--oxblood); color: var(--oxblood); padding-bottom: 2px; }
+
+.checks { list-style: none; margin: var(--s-4) 0 0; padding: 0; }
+.checks li { display: flex; justify-content: space-between; gap: var(--s-2); padding: 0.55rem 0; border-top: 1px solid var(--rule); font-family: var(--mono); font-size: var(--f-small); }
+.checks li span:last-child { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+/* ---- section furniture ---- */
+.section { padding-block: clamp(var(--s-5), 7vw, var(--s-7)); }
+.section__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-3); margin-bottom: var(--s-4); }
+.section__title { font-family: var(--display); font-weight: 700; font-size: var(--f-head); letter-spacing: -0.02em; margin: var(--s-2) 0 0; }
+.section__note { color: var(--ink-2); max-width: var(--measure); margin: 0; }
+
+/* ---- pack stories ---- */
+.stories { display: grid; gap: 0; }
+.story {
+  display: grid; gap: var(--s-3); padding-block: var(--s-4);
+  border-top: 1px solid var(--rule);
+  grid-template-columns: 1fr;
+}
+@media (min-width: 44rem) { .story { grid-template-columns: 12rem 1fr; gap: var(--s-4); align-items: start; } }
+@media (min-width: 75rem) { .story { grid-template-columns: 14rem 1fr 13rem; } }
+.story--lead { border-top: 3px solid var(--rule-heavy); }
+.plate { width: 100%; aspect-ratio: 1; background: var(--plate-bg); display: block; }
+.story__body { min-width: 0; }
+.story__title { font-family: var(--display); font-size: clamp(1.4rem, 2.3vw, 2rem); font-weight: 600; line-height: 1.06; letter-spacing: -0.018em; margin: var(--s-2) 0; text-wrap: balance; }
+.story__title a { text-decoration: none; background-image: linear-gradient(var(--oxblood), var(--oxblood)); background-size: 0% 2px; background-repeat: no-repeat; background-position: 0 100%; transition: background-size 180ms; padding-bottom: 2px; }
+.story__title a:hover { background-size: 100% 2px; }
+.story__deck { color: var(--ink-2); margin: 0; max-width: var(--measure); }
+.story__facts { display: flex; flex-direction: column; gap: 0; }
+@media (max-width: 74.99rem) { .story__facts { flex-direction: row; flex-wrap: wrap; gap: var(--s-3); margin-top: var(--s-3); } }
+.fact { display: flex; justify-content: space-between; gap: var(--s-2); font-family: var(--mono); font-size: var(--f-small); padding: 0.4rem 0; border-top: 1px solid var(--rule); }
+@media (max-width: 74.99rem) { .fact { border-top: 0; padding: 0; gap: 0.4rem; } }
+.fact b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.fact--price b { color: var(--pine); }
+.readon { font-family: var(--mono); font-size: var(--f-small); text-decoration: none; border-bottom: 1px solid currentColor; display: inline-block; margin-top: var(--s-3); padding-bottom: 2px; }
+
+/* ---- the kill bar chart ---- */
+.causes { display: grid; gap: var(--s-2); margin-top: var(--s-4); }
+.cause { display: grid; grid-template-columns: 1fr; gap: var(--s-1); }
+.cause__row { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-3); font-family: var(--mono); font-size: var(--f-small); }
+.cause__row span:last-child { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.cause__bar { height: 10px; background: var(--rule); }
+.cause__bar i { display: block; height: 100%; background: var(--oxblood); }
+.cause--unpublished .cause__bar { background: repeating-linear-gradient(135deg, var(--rule) 0 4px, transparent 4px 8px); }
+
+/* ---- price rungs ---- */
+.rungs { display: grid; gap: 0; margin-top: var(--s-4); }
+.rung { display: grid; grid-template-columns: 5.5rem 1fr auto; gap: var(--s-3); align-items: center; padding: 0.7rem 0; border-top: 1px solid var(--rule); }
+.rung__price { font-family: var(--display); font-size: 1.35rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.rung__bar { height: 12px; background: var(--pine); opacity: 0.85; }
+.rung__count { font-family: var(--mono); font-size: var(--f-small); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+.compare { background: var(--paper-2); padding: var(--s-4); margin-top: var(--s-5); display: grid; gap: var(--s-3); }
+@media (min-width: 48rem) { .compare { grid-template-columns: 1fr 1fr; gap: var(--s-5); } }
+.compare__fig { font-family: var(--display); font-size: clamp(1.8rem, 3.4vw, 2.8rem); font-weight: 600; line-height: 1; letter-spacing: -0.02em; }
+.compare__note { color: var(--ink-2); font-size: 0.95rem; margin: var(--s-2) 0 0; }
+
+/* ---- the fourteen ---- */
+.docs { columns: 1; column-gap: var(--s-5); margin-top: var(--s-4); }
+@media (min-width: 40rem) { .docs { columns: 2; } }
+@media (min-width: 68rem) { .docs { columns: 3; } }
+.doc { break-inside: avoid; display: flex; gap: var(--s-3); padding: 0.6rem 0; border-top: 1px solid var(--rule); }
+.doc b { font-family: var(--mono); font-size: var(--f-micro); color: var(--ink-3); font-weight: 500; padding-top: 0.32rem; font-variant-numeric: tabular-nums; }
+.doc span { font-size: 0.98rem; }
+
+/* ---- categories index ---- */
+.index { display: grid; gap: 0; margin-top: var(--s-4); }
+@media (min-width: 48rem) { .index { grid-template-columns: 1fr 1fr; column-gap: var(--s-6); } }
+.index a { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-3); padding: 0.8rem 0; border-top: 1px solid var(--rule); text-decoration: none; min-height: 44px; }
+.index a:hover span:first-child { color: var(--oxblood); }
+.index b { font-family: var(--mono); font-size: var(--f-small); color: var(--ink-3); font-variant-numeric: tabular-nums; font-weight: 500; }
+
+/* ---- closing ---- */
+.close { text-align: center; padding-block: var(--s-7); border-top: 3px solid var(--rule-heavy); }
+.close__head { font-family: var(--display); font-size: var(--f-lead); font-weight: 700; letter-spacing: -0.022em; line-height: 1.02; margin: var(--s-3) auto; max-width: 18ch; text-wrap: balance; }
+.close__note { color: var(--ink-2); max-width: 42ch; margin: 0 auto var(--s-4); }
+
+footer.foot { border-top: 1px solid var(--rule); padding-block: var(--s-4) var(--s-6); display: flex; flex-wrap: wrap; gap: var(--s-3) var(--s-4); justify-content: space-between; font-family: var(--mono); font-size: var(--f-micro); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+</style>
+
+<div class="sheet">
+  <header class="masthead">
+    <div class="masthead__dateline">
+      <span>Thursday 20 August 2026</span>
+      <span>Researched <b>1,444</b></span>
+      <span>Killed <b>1,364</b></span>
+      <span>Standing <b>77</b></span>
+      <span>From <b>£19.99</b></span>
+    </div>
+    <hr class="rule">
+    <h1 class="masthead__name">Mum<i>chimp</i></h1>
+    <hr class="rule-heavy">
+    <nav class="bar" aria-label="Sections">
+      <a href="#survivors">The survivors</a>
+      <a href="#kills">The kill log</a>
+      <a href="#inside">Inside a pack</a>
+      <a href="#price">What it costs</a>
+      <a href="#index">Categories</a>
+      <a href="#account">Account</a>
+    </nav>
+    <hr class="rule">
+  </header>
+
+  <main>
+    <!-- LEAD: the thesis, not the offer. Nothing is for sale above this fold. -->
+    <div class="front">
+      <article class="lead">
+        <p class="eyebrow eyebrow--live"><span>The standing figure</span></p>
+        <h2 class="lead__head">Six in a hundred survive the checks.</h2>
+        <p class="lead__deck">
+          Every square below is one hundredth of what we researched. <strong>1,444 ideas</strong> went in.
+          <strong>1,364</strong> died against evidence we publish. The rest are the catalogue.
+        </p>
+        <div class="hundred" id="hundred" role="img" aria-label="A hundred squares; six are filled, representing the six in a hundred ideas that survive every check."></div>
+        <p class="hundred__key">
+          <span class="k-live">&#9632; <b>6</b> survived</span>
+          <span>&#9632; <b>94</b> killed, with the check each one failed</span>
+        </p>
+        <div class="cta-row">
+          <a class="btn" href="#sample">Read a whole pack, free</a>
+          <a class="btn btn--quiet" href="#kills">See what we killed</a>
+        </div>
+      </article>
+
+      <aside class="front__aside">
+        <p class="eyebrow eyebrow--kill"><span>Killed this week</span></p>
+        <div class="obit">
+          <p class="obit__date">7 August 2026</p>
+          <h3 class="obit__title">Sound Check Rounds</h3>
+          <p class="obit__deck">The monthly noise test that keeps a small music venue&rsquo;s licence safe. Cleared four gates. Died on the fifth.</p>
+          <a class="obit__link" href="#kills">Read the verdict &rarr;</a>
+        </div>
+        <ul class="checks" aria-label="The six checks every idea faces">
+          <li><span>Is the pain real?</span><span>01</span></li>
+          <li><span>Does the value last?</span><span>02</span></li>
+          <li><span>Who already owns it?</span><span>03</span></li>
+          <li><span>Can the payer pay?</span><span>04</span></li>
+          <li><span>Is there a way in?</span><span>05</span></li>
+          <li><span>Is it legal?</span><span>06</span></li>
+        </ul>
+      </aside>
+    </div>
+
+    <!-- SURVIVORS -->
+    <section class="section" id="survivors">
+      <hr class="rule-heavy">
+      <div class="section__head">
+        <div>
+          <p class="eyebrow eyebrow--live" style="margin-top:1rem"><span>Available now</span><span>&mdash;</span><span>77 packs</span></p>
+          <h2 class="section__title">They passed every check they faced.</h2>
+        </div>
+        <p class="section__note">Every claim sourced, every number traceable to a page you can open. The plate beside each is drawn from that pack&rsquo;s own evidence &mdash; source count, payback, price rung. No two are alike, and none is a photograph.</p>
+      </div>
+      <div class="stories" id="stories"></div>
+      <a class="btn btn--quiet" href="#survivors" style="margin-top:2rem">Browse all 77 packs</a>
+    </section>
+
+    <!-- KILLS -->
+    <section class="section" id="kills">
+      <hr class="rule-heavy">
+      <div class="section__head">
+        <div>
+          <p class="eyebrow eyebrow--kill" style="margin-top:1rem"><span>The kill log</span></p>
+          <h2 class="section__title">The check that kills most ideas is not the one people expect.</h2>
+        </div>
+        <p class="section__note">Of <b>1,364</b> kills, <b>624</b> died on the same one: the idea cleared every hard gate and still did not score high enough to be worth your money. Not illegal. Not taken. Not unfounded. Just not good enough to publish.</p>
+      </div>
+      <div class="causes" id="causes"></div>
+      <a class="readon" href="#kills">Every kill, with its reason and its evidence &rarr;</a>
+    </section>
+
+    <!-- INSIDE -->
+    <section class="section" id="inside">
+      <hr class="rule-heavy">
+      <div class="section__head">
+        <div>
+          <p class="eyebrow" style="margin-top:1rem"><span>Inside every pack</span></p>
+          <h2 class="section__title">Fourteen documents. The same fourteen, at every price.</h2>
+        </div>
+        <p class="section__note">No tier, no add-on, no upsell. A £19.99 pack and a £99.99 pack contain the same fourteen documents, researched to the same standard and held to the same bar.</p>
+      </div>
+      <div class="docs" id="docs"></div>
+    </section>
+
+    <!-- PRICE -->
+    <section class="section" id="price">
+      <hr class="rule-heavy">
+      <div class="section__head">
+        <div>
+          <p class="eyebrow" style="margin-top:1rem"><span>What it costs</span></p>
+          <h2 class="section__title">The price follows the market, not the size of the box.</h2>
+        </div>
+        <p class="section__note">Two things set the rung: how big the idea could realistically become, and which market it targets. A weekend business and a venture-scale one get the same fourteen documents.</p>
+      </div>
+      <div class="rungs" id="rungs"></div>
+      <div class="compare">
+        <div>
+          <p class="eyebrow"><span>Commissioned, from a firm</span></p>
+          <p class="compare__fig">&euro;4,000 &ndash; &euro;6,000</p>
+          <p class="compare__note">IntoTheMinds 2025 price list, for &ldquo;documentary research&rdquo; &mdash; their term for desk research through published sources. Checked 1 August 2026.</p>
+        </div>
+        <div>
+          <p class="eyebrow eyebrow--live"><span>Already run, on the shelf</span></p>
+          <p class="compare__fig" style="color:var(--pine)">&pound;19.99 &ndash; &pound;99.99</p>
+          <p class="compare__note">One payment. Fourteen documents. Every claim sourced. This is a comparison of method, not of service: they answer a question you bring, we answer one we chose and already ran.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- INDEX -->
+    <section class="section" id="index">
+      <hr class="rule-heavy">
+      <div class="section__head">
+        <div>
+          <p class="eyebrow" style="margin-top:1rem"><span>Categories</span></p>
+          <h2 class="section__title">Where the survivors are.</h2>
+        </div>
+      </div>
+      <div class="index" id="index-list"></div>
+    </section>
+
+    <!-- CLOSE -->
+    <section class="close" id="sample">
+      <p class="eyebrow eyebrow--live" style="justify-content:center"><span>No email needed</span></p>
+      <h2 class="close__head">Read a whole pack before you decide anything.</h2>
+      <p class="close__note">All fourteen documents. Twenty-nine sources, every one a link you can open. If it is not what the description said, fourteen days, refunded in full, no forms.</p>
+      <div class="cta-row" style="justify-content:center">
+        <a class="btn" href="#sample">Open the free pack</a>
+        <a class="btn btn--quiet" href="#survivors">Browse the catalogue</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>Mumchimp &mdash; business ideas with the research already done</span>
+    <span>1,444 researched &middot; 1,364 killed &middot; 77 standing</span>
+    <span>support@mumchimp.com</span>
+  </footer>
+</div>
+
+<script type="module">
+const SITE = { researched: 1444, killed: 1364, available: 77 };
+const PACKS = [
+  { t:'Abandoned-vendor alerts for UK software operations managers', cat:'Specialist niches',
+    d:'A weekly intelligence feed showing which third-party libraries and vendors in a stack have quietly stopped shipping security fixes.',
+    price:'99.99', sources:30, payback:13, seed:3007 },
+  { t:'Noise report checks for acoustic consultancies', cat:'Professional services',
+    d:'Turns sound-meter readings and site notes into checked draft appendices for noise assessments under BS 4142.',
+    price:'79.99', sources:38, payback:12, seed:3812 },
+  { t:'Stripe chargeback defence packs', cat:'Professional services',
+    d:'Pulls order, IP, fulfilment and signature evidence from Shopify and the courier into Stripe&rsquo;s exact dispute-evidence format.',
+    price:'49.99', sources:40, payback:8, seed:4008 },
+  { t:'Road occupation permit packs', cat:'Trades and site work',
+    d:'Turns a scaffolding site address and dates into a complete, council-specific permit application, ready for submission.',
+    price:'49.99', sources:34, payback:6, seed:3406 },
+  { t:'Cold chain audit AI for Georgia poultry processors', cat:'Professional services',
+    d:'An AI auditor that reads temperature logs and finds the hour a cold chain broke, so a plant can answer a USDA inspector without scrambling.',
+    price:'29.99', sources:28, payback:1, seed:2801 },
+  { t:'R&amp;D tax credit claim builder', cat:'Professional services',
+    d:'Drafts HMRC R&amp;D claim narratives from product docs and papers, so UK deep-tech startups file in days rather than weeks.',
+    price:'19.99', sources:23, payback:4, seed:2304 },
+];
+const CATEGORIES = [
+  ['Professional services',19],['Care and benefits claims',10],['Specialist niches',9],
+  ['Trades and site work',8],['Red-tape and licensing',7],['Property and probate',4],
+  ['Pay and worker rights',3],['Housing and tenancy',2],['Creator rights',1],['The pet economy',1],
+];
+const DOCS = ['Where this starts','What you would be selling','The field: who is already there','The numbers',
+  'What would sink this','What you build','How the first customers find you','How it runs once it works',
+  'Your first fortnight','The toolkit','Copy you can paste','How to know in 30 days',
+  'Everything we read, once','Every check, in full'];
+const CAUSES = [
+  { n:'Scored below the bar overall', c:624, published:true },
+  { n:'No durable value', published:false }, { n:'An incumbent already owns it', published:false },
+  { n:'No solvent payer', published:false }, { n:'No route to distribution', published:false },
+  { n:'Legality', published:false },
+];
+
+/* ---- the hundred ---- */
+const hundred = document.getElementById('hundred');
+const live = new Set([13, 27, 41, 58, 72, 91]);
+hundred.innerHTML = Array.from({ length: 100 }, (_, i) => `<i class="${live.has(i) ? 'live' : ''}"></i>`).join('');
+
+/* ---- pack plates: engraved rosettes, drawn from the pack's own evidence ----
+   Radius is source count, the lobes are the payback multiple, the hatch density is the
+   price rung. Same pack, same plate, every time — there is no randomness here, only the
+   data, so a plate is a reading of the pack rather than decoration. */
+function drawPlate(canvas, pack) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const size = canvas.clientWidth || 200;
+  canvas.width = size * dpr; canvas.height = size * dpr;
+  const g = canvas.getContext('2d');
+  g.scale(dpr, dpr);
+  const cs = getComputedStyle(document.body);
+  const ink = cs.getPropertyValue('--plate-ink').trim();
+  const bg  = cs.getPropertyValue('--plate-bg').trim();
+  g.fillStyle = bg; g.fillRect(0, 0, size, size);
+
+  const cx = size / 2, cy = size / 2;
+  const R = size * 0.40;
+  const lobes = Math.max(3, Math.min(14, pack.payback + 2));
+  const rings = Math.max(6, Math.round(pack.sources / 2));
+
+  g.strokeStyle = ink; g.lineWidth = 0.6; g.globalAlpha = 0.85;
+  for (let r = 0; r < rings; r++) {
+    const f = (r + 1) / rings;
+    g.beginPath();
+    for (let a = 0; a <= 360; a += 2) {
+      const rad = a * Math.PI / 180;
+      const wobble = 1 + 0.14 * Math.sin(lobes * rad + f * Math.PI) * f;
+      const rr = R * f * wobble;
+      const x = cx + Math.cos(rad) * rr, y = cy + Math.sin(rad) * rr;
+      a === 0 ? g.moveTo(x, y) : g.lineTo(x, y);
+    }
+    g.globalAlpha = 0.18 + 0.55 * f;
+    g.stroke();
+  }
+  /* one tick per source, on the rim — the plate literally counts the evidence */
+  g.globalAlpha = 1; g.lineWidth = 1.1;
+  for (let s = 0; s < pack.sources; s++) {
+    const a = (s / pack.sources) * Math.PI * 2 - Math.PI / 2;
+    const r1 = R * 1.06, r2 = R * (s % 5 === 0 ? 1.19 : 1.13);
+    g.beginPath();
+    g.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1);
+    g.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2);
+    g.stroke();
+  }
+}
+
+/* ---- stories ---- */
+document.getElementById('stories').innerHTML = PACKS.map((p, i) => `
+  <article class="story${i === 0 ? ' story--lead' : ''}">
+    <canvas class="plate" data-plate="${i}" aria-hidden="true"></canvas>
+    <div class="story__body">
+      <p class="eyebrow"><span>${p.cat}</span></p>
+      <h3 class="story__title"><a href="#survivors">${p.t}</a></h3>
+      <p class="story__deck">${p.d}</p>
+      <a class="readon" href="#survivors">Read the pack &rarr;</a>
+    </div>
+    <div class="story__facts">
+      <span class="fact"><span>Sources</span><b>${p.sources}</b></span>
+      <span class="fact"><span>Payback</span><b>${p.payback}&times;</b></span>
+      <span class="fact fact--price"><span>Price</span><b>&pound;${p.price}</b></span>
+    </div>
+  </article>`).join('');
+
+function paintPlates() {
+  document.querySelectorAll('[data-plate]').forEach((c) => drawPlate(c, PACKS[+c.dataset.plate]));
+}
+requestAnimationFrame(paintPlates);
+addEventListener('resize', () => { clearTimeout(window.__t); window.__t = setTimeout(paintPlates, 150); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', paintPlates);
+
+/* ---- causes ---- */
+document.getElementById('causes').innerHTML = CAUSES.map((c, i) => `
+  <div class="cause${c.published ? '' : ' cause--unpublished'}">
+    <div class="cause__row">
+      <span>${c.n}</span>
+      <span>${c.published ? c.c.toLocaleString('en-GB') + ' of 1,364' : 'rank ' + (i + 1) + ' &middot; count not published'}</span>
+    </div>
+    <div class="cause__bar">${c.published ? `<i style="width:${(c.c / 1364 * 100).toFixed(1)}%"></i>` : ''}</div>
+  </div>`).join('');
+
+/* ---- rungs ---- */
+const RUNGS = [['19.99',3],['29.99',17],['49.99',32],['79.99',16],['99.99',9]];
+const maxRung = Math.max(...RUNGS.map(r => r[1]));
+document.getElementById('rungs').innerHTML = RUNGS.map(([price, n]) => `
+  <div class="rung">
+    <span class="rung__price">&pound;${price}</span>
+    <span class="rung__bar" style="width:${(n / maxRung * 100).toFixed(1)}%"></span>
+    <span class="rung__count">${n} pack${n === 1 ? '' : 's'}</span>
+  </div>`).join('');
+
+/* ---- docs & index ---- */
+document.getElementById('docs').innerHTML = DOCS.map((d, i) =>
+  `<div class="doc"><b>${String(i + 1).padStart(2, '0')}</b><span>${d}</span></div>`).join('');
+document.getElementById('index-list').innerHTML = CATEGORIES.map(([n, c]) =>
+  `<a href="#index"><span>${n}</span><b>${c}</b></a>`).join('');
+</script>
