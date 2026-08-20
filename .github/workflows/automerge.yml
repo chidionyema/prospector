@@ -51,7 +51,16 @@ permissions:
   contents: write
   pull-requests: write
   actions: write # to dispatch main's CI and the engine deploy after the merge
-  checks: read # the stranded-PR sweep reads check runs on each open PR's head sha
+  # An explicit permissions block sets every scope it does NOT list to `none`. The stranded-PR
+  # sweep reads GET /commits/<sha>/check-runs, which needs this one, and without it that call
+  # returned 403 "Resource not accessible by integration" -- measured 2026-08-19T20:53:41Z,
+  # after the merge of #451 had already landed.
+  checks: read
+  # `issues.addLabels` is how a stuck PR gets the `needs-rebase` label -- the only place the
+  # problem is visible where a person looks. Both calls sit inside a try, so a missing scope
+  # does not fail the job: it warns, and the label silently never appears. That is worse than
+  # a crash, because the workflow keeps reporting success while its visibility mechanism is off.
+  issues: write
 
 # One merge at a time. Two merges racing onto main is how a green PR lands on top of a commit
 # its own CI run never saw.
@@ -299,8 +308,17 @@ jobs:
             // re-prove a failure its author already has to fix.
             const sweepMax = Number(process.env.SWEEP_MAX || '3')
             let swept = 0
-            const open = await github.paginate(github.rest.pulls.list,
-                                               {owner, repo, state: 'open', per_page: 100})
+            // Listing the open PRs is a read that can fail on its own, and it sits outside
+            // the per-PR try below. Left unguarded it kills the job for the same reason the
+            // check-runs read did. Nothing between here and the end of the loop is allowed to
+            // reach the dispatch.
+            let open = []
+            try {
+              open = await github.paginate(github.rest.pulls.list,
+                                           {owner, repo, state: 'open', per_page: 100})
+            } catch (e) {
+              core.warning(`could not list open pull requests, so no PR was swept: ${e.message}`)
+            }
             for (const pr of open) {
               if (swept >= sweepMax) {
                 core.info(`sweep cap ${sweepMax} reached - the rest wait for the next merge`)
@@ -310,23 +328,34 @@ jobs:
               if (pr.labels.map(l => l.name).some(n => HOLD.has(n))) continue
               if (prs.some(p => p.number === pr.number)) continue
 
-              const {data: cmp} = await github.rest.repos.compareCommits(
-                {owner, repo, base: 'main', head: pr.head.sha})
-              if (cmp.behind_by === 0) continue
-
-              // "Green" is read from the check runs on the head sha, never from
-              // mergeable_state: GitHub computes that lazily and answers `unknown` on a first
-              // read, which would make the sweep skip the very PRs it exists to rescue.
-              const {data: checks} = await github.rest.checks.listForRef(
-                {owner, repo, ref: pr.head.sha, per_page: 100})
-              const runs = checks.check_runs
-              if (runs.length === 0) continue
-              const green = runs.every(
-                c => c.status === 'completed' &&
-                     ['success', 'skipped', 'neutral'].includes(c.conclusion))
-              if (!green) continue
-
+              // EVERY call for this PR is inside the try, reads included. It used to start at
+              // updateBranch, which left compareCommits and checks.listForRef able to throw
+              // out of the whole job. On 2026-08-19 listForRef threw 403 and killed the run
+              // before anything after it ran, so the merge of #451 landed on main and main was
+              // never graded. A best-effort rescue must never be able to do that.
+              //
+              // Two guards, not one, and they are independent on purpose. This try stops the
+              // sweep throwing. The dispatch of main's CI and of each deploy now runs ABOVE the
+              // sweep rather than below it, so even a throw this try somehow misses cannot cost
+              // a deploy. Ordering is the guard that does not depend on catching the right
+              // exception.
               try {
+                const {data: cmp} = await github.rest.repos.compareCommits(
+                  {owner, repo, base: 'main', head: pr.head.sha})
+                if (cmp.behind_by === 0) continue
+
+                // "Green" is read from the check runs on the head sha, never from
+                // mergeable_state: GitHub computes that lazily and answers `unknown` on a first
+                // read, which would make the sweep skip the very PRs it exists to rescue.
+                const {data: checks} = await github.rest.checks.listForRef(
+                  {owner, repo, ref: pr.head.sha, per_page: 100})
+                const runs = checks.check_runs
+                if (runs.length === 0) continue
+                const green = runs.every(
+                  c => c.status === 'completed' &&
+                       ['success', 'skipped', 'neutral'].includes(c.conclusion))
+                if (!green) continue
+
                 await github.rest.pulls.updateBranch(
                   {owner, repo, pull_number: pr.number, expected_head_sha: pr.head.sha})
                 // The update was pushed with GITHUB_TOKEN, so it started no run of its own.

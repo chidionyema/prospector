@@ -247,6 +247,36 @@ jobs:
           git commit -m "chore(web): refresh Playwright visual baselines on Linux"
           git push origin HEAD:${{ github.ref_name }}
 
+  # ----------------------------------------------------------------------------------------
+  # THE ALARM IS ITS OWN JOB, and that is the fix for a defect that ran silently for weeks.
+  #
+  # These two steps used to sit at the end of the `visual-baselines` job. That job only runs on
+  # `workflow_dispatch` with `update_visual_baselines`, so on the daily schedule and on every
+  # deploy it was SKIPPED, and a skipped job runs no steps. A red live smoke therefore told
+  # nobody. That is the silence recorded in memory
+  # `a-check-that-runs-after-deploy-cannot-prevent-a-deploy.md`. Measured 2026-08-19: five
+  # consecutive live-smoke runs failed and not one issue was opened.
+  #
+  # It also inherited that job's `permissions: {contents: write}`. A JOB-level block REPLACES the
+  # top-level one rather than adding to it, so the top-level `issues: write` was gone and all four
+  # issues.* calls below would have returned 403 even on the one trigger that did run them.
+  # tests/unit/test_a_workflow_permission_block_covers_its_api_calls.py refuses that class now.
+  # ----------------------------------------------------------------------------------------
+  alarm:
+    needs: [smoke, a11y, lighthouse]
+    # `always()` so it speaks when a check FAILED, which is the entire point. The second half
+    # keeps it quiet when the deploy guard dropped all three: "no smoke ran" is not evidence the
+    # site is green, and must not close an open issue.
+    if: ${{ always() && !(needs.smoke.result == 'skipped'
+                          && needs.a11y.result == 'skipped'
+                          && needs.lighthouse.result == 'skipped') }}
+    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'fly' }}
+    # It writes one issue and nothing else. No checkout, so no contents scope.
+    permissions:
+      issues: write
+
+    steps:
+
 
       # ------------------------------------------------------------------------------------
       # THE ALERT. This workflow went red on 2026-08-19 and stayed red for 30 hours, and
@@ -270,7 +300,9 @@ jobs:
       # check goes red anyway.
       # ------------------------------------------------------------------------------------
       - name: Raise the alarm (live smoke is red)
-        if: failure()
+        # `failure()` would read THIS job's status, and this job runs no checks of its own.
+        # The verdict lives in the three jobs it needs.
+        if: ${{ contains(needs.*.result, 'failure') }}
         uses: actions/github-script@v7
         with:
           script: |
@@ -317,7 +349,10 @@ jobs:
             core.notice(`live smoke red — opened #${made.number}`)
 
       - name: Stand the alarm down (live smoke is green again)
-        if: success()
+        # Only a clean sweep stands the alarm down. A cancelled run proves nothing, and
+        # closing the issue on it would report the site green on no evidence.
+        if: ${{ !contains(needs.*.result, 'failure')
+                && !contains(needs.*.result, 'cancelled') }}
         uses: actions/github-script@v7
         with:
           script: |
