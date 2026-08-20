@@ -3646,6 +3646,12 @@ TOOLS: list[dict] = [
 NOT_AN_OPS_TOOL: dict[str, str] = {
     # developer and CI tooling — it runs in a terminal or in GitHub Actions, never from an ops page
     "scripts/ci-gate.sh": "the POPDD CI gate; GitHub Actions runs it, not an operator",
+    "scripts/green_guard_cause.py": "asks whether main was ALREADY red before a given commit "
+                                   "landed, so the green guard does not revert an innocent "
+                                   "one. The main-green-guard workflow runs it with the "
+                                   "offending sha and a GITHUB_TOKEN; without that sha it "
+                                   "has no question to answer. The operator's version of "
+                                   "this question is the `scripts/main_red.py` button",
     "scripts/ci_runner_tools.py": "checks that the runner image carries the binaries our "
                                   "workflows call; it grades the PATH of whatever machine "
                                   "runs it, so on the operator's Mac it would grade the Mac. "
@@ -3675,6 +3681,12 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
                                     "developer laptop. Production is a detached mirror of main "
                                     "with no worktrees, so there is nothing here for it to "
                                     "snapshot",
+    "scripts/agent_estate_sync.py": "mirrors ~/.claude — the laws and the hook scripts every "
+                                   "agent session reads — into this repo, and reports the "
+                                   "drift between the two. That estate exists only on the "
+                                   "developer laptop; production is a container with no "
+                                   "~/.claude at all, so from an ops page it would grade "
+                                   "nothing",
     "scripts/guard_dead_branch_push.py": "a git pre-push hook; git fires it, and it acts on the "
                                          "push happening in that terminal. There is no push to "
                                          "guard from an ops page",
