@@ -65,33 +65,17 @@ public sealed class FakePaymentProvider : IPaymentProvider
         string title, long pricePence, string currency, IDictionary<string, string> metadata, CancellationToken ct) =>
         throw new NotSupportedException();
 
-    /// <summary>
-    /// Every correlation id handed to this provider, hosted and embedded alike, in call order.
-    /// </summary>
-    /// <remarks>
-    /// Recorded rather than asserted here so a test can prove the endpoint actually passed the
-    /// buyer's id down. Without this the whole chain could be wired and pass its unit tests
-    /// while the endpoint quietly sent null.
-    /// </remarks>
-    public IList<string?> CorrelationIds { get; } = [];
-
     public Task<CheckoutHandle> CreateCheckoutAsync(
-        IReadOnlyList<CheckoutLine> lines, string? buyerEmail, string successUrl, string cancelUrl,
-        string? correlationId, CancellationToken ct)
-    {
-        CorrelationIds.Add(correlationId);
-        return HostedHandle is null
+        IReadOnlyList<CheckoutLine> lines, string? buyerEmail, string successUrl, string cancelUrl, CancellationToken ct) =>
+        HostedHandle is null
             ? throw new NotSupportedException()
             : Task.FromResult(HostedHandle);
-    }
 
     public Task<CheckoutHandle?> CreateEmbeddedCheckoutAsync(
-        IReadOnlyList<CheckoutLine> lines, string? buyerEmail, string returnUrl, string? correlationId,
-        CancellationToken ct)
+        IReadOnlyList<CheckoutLine> lines, string? buyerEmail, string returnUrl, CancellationToken ct)
     {
         EmbeddedCalls++;
         EmbeddedReturnUrls.Add(returnUrl);
-        CorrelationIds.Add(correlationId);
         return Task.FromResult(EmbeddedHandle);
     }
 }
