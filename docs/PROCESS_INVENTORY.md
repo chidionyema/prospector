@@ -171,6 +171,8 @@ Declared here, owned elsewhere. They are listed so the audit can grade them rath
 | `e2e-live-smoke.yml` | workflow_run | Playwright against the live site after a deploy. |
 | `escape-hatch-drill.yml` | schedule, dispatch | Weekly proof that the state can be pulled off Fly intact. |
 | `weekly-estate-review.yml` | schedule Mondays 08:00 UTC, dispatch | Grades the incident loop and opens one issue. |
+| `main-green-guard.yml` | workflow_run | main went red: re-run the failed jobs once, and revert the commit if it fails again. The RECOVERY. |
+| `main-admission-guard.yml` | push to main | Asks of every new commit on main "did this arrive as a pull request CI proved green". If not, opens an issue and reverts it, within seconds of the push rather than after CI concludes. The PREVENTION, and the replacement for the branch protection this plan will not sell us — `gh api .../branches/main/protection` answers 403 "Upgrade to GitHub Pro". |
 
 ---
 
