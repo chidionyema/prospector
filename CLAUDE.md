@@ -56,6 +56,7 @@ docs.** Every cut below names where its detail went. Verbatim pre-cut text:
 | `docs/WAYS_OF_WORKING.md` | 25 rules, each a named repeated failure. Part 7 marks which are machine-enforced. `scripts/session_check.py` enforces the first five. |
 | `docs/PLATFORM_MANIFESTO.md` | The constitution: ten platform laws, portability targets and drills, the automation audit. Read before proposing anything structural. |
 | `docs/decisions/` | Settled decisions with the evidence. ADR 0002: the engine stays Python; bug rate is fixed by standards S1–S6, not a rewrite. |
+| `docs/CI_DEBUG_RUNBOOK.md` | **Read this before acting on anything red** — a failing PR, a red main, a deploy that did not happen. Symptom to command, plus tonight's false alarms and what each instrument lies about. The one line: every instrument here reports a SHAPE (a count, a colour, a status letter, an exit code) and none report the CONTENT. Open the job log first. |
 | `docs/INCIDENT_PROCESS.md` | When something breaks, the fix is half the job. Sweep the siblings, land a mechanism, grade it. Records `docs/incidents/*.json`; gate `.venv/bin/python scripts/incident.py check`; `scripts/incident.py friction`. |
 | `docs/COST_PROGRAM.md` | All cost work and all cost measurements. Append there, never here. |
 | `docs/GRAPHIFY_ENFORCEMENT_SPEC.md` | Estate-wide graph freshness. §7 is the operating manual. |
