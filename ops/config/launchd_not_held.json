@@ -1,0 +1,12 @@
+{
+  "_what": "Labels declared in ops/launchd/ that launchd is deliberately NOT holding.",
+  "_how": "scripts/launchd_plists.py --assert-held fails on every declared label launchd is not holding UNLESS the label appears here with a reason. The reason is required and must be checkable by someone who was not there: cite the doc, the decision or the switch.",
+  "_why_json_not_yaml": "This file is read by a script the docs run under the system python3, which has no PyYAML. The launchd declarations beside it are JSON for the same reason.",
+  "not_held": {
+    "ai.hermes.ngrok": "the ngrok tunnel is off on purpose -- scripts/process_audit.py says so in the grade_launchd comment, and nothing on this estate depends on a public tunnel today",
+    "com.prospector.consumer": "runs on Fly on the same machine as the scheduler; it publishes, so it touches money -- docs/ENGINE_MIGRATION_PROGRAM.md:444",
+    "com.prospector.live-update": "it exists to roll the prospector-live laptop checkout forward; on Fly a deploy is the update, so it dies at cutover -- docs/ENGINE_MIGRATION_PROGRAM.md:448. The operator's switch store/scheduler/NO_AUTO_UPDATE (created 2026-08-18) says the same thing.",
+    "com.prospector.scheduler": "the engine runs on Fly (prospector-engine) since the 2026-08-18 cutover -- docs/ENGINE_MIGRATION_PROGRAM.md:443",
+    "com.prospector.watchdog": "restarts a stalled tick, which is useless on a machine that is off; Fly's own restart policy owns this now -- docs/ENGINE_MIGRATION_PROGRAM.md:445 and EDGE-7 at :147"
+  }
+}

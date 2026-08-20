@@ -480,8 +480,18 @@ Counting words inside `msg` is what produced 97 instead of 8.
 
 R2 is the requirement that pays for this whole design.
 
-- `Store.Web` generates a `corr` on first page load and sends it as header `X-Corr-Id`.
-- `Store.Api` reads that header, and where it is absent mints one at the edge.
+- `Store.Web` generates a `corr` on the visit's first API call and sends it as header
+  `X-Correlation-Id` (`src/lib/api/correlation.ts`). **The header name is not the `X-Corr-Id` this
+  document first proposed.** `Store.Api` already runs `Crux.Observability`'s correlation
+  middleware (`Program.cs`, `app.UseCorrelationId()`), which reads `X-Correlation-ID`, mints a GUID
+  when no header arrives, puts that id in every framework log scope, and stamps it on every
+  outbound HTTP call. Introducing a second header would have produced TWO ids per request — the
+  package's GUID in the framework's log lines and ours in the Stripe metadata — and everything
+  would have looked healthy while joining up to nothing. One header means one id.
+- `Store.Api` reads that header, and where it is absent adopts the id the package minted at the
+  edge (`HttpContextExtensions.GetCorrelationId`). It is sanitised to `[A-Za-z0-9._-]` and 64
+  characters before it reaches a log line or Stripe, because a hostile header is otherwise a log
+  forgery and a 500-character Stripe metadata value is a refused checkout.
 - The id is written onto the Stripe Checkout Session metadata at creation
   (`CheckoutEndpoints.cs`, where the session is minted).
 - The webhook reads it back off the session and puts it on the fulfilment log lines
@@ -549,9 +559,17 @@ A `/logs` page in the existing Ops.Console, served through the existing dispatch
 (`prospector/ops/console_api.py` — `read` verb, allow-listed view). Filters: service, level,
 time range, correlation id, free text.
 
-The console cannot import Python and does not read the volume directly. It calls the dispatcher,
-which fetches from the engine over the private network. This keeps the existing rule intact:
-reads cannot write, and the verb in argv is the fence.
+The console cannot import Python and does not read the volume directly. It calls the dispatcher
+(`prospector.ops.console_api`, view `logs`), which keeps the existing rule intact: reads cannot
+write, and the verb in argv is the fence.
+
+**The dispatcher reads the day files directly rather than calling the ingest over HTTP**, which is
+a change from this section's first draft. Measured reason: `deploy/engine/supervisord.conf` runs
+`[program:ops-console]` and `[program:log-ingest]` on the same machine, so an HTTP hop adds no
+isolation and one failure mode — the logs would become unreadable exactly when the ingest is the
+process that died, which is when they are worth most. `log_ingest.search()` is that reader, and
+every bound it applies is in its result (`truncated`, `files_capped`, `unreadable`) so a bounded
+search can never be mistaken for a quiet estate.
 
 ### 4.8 Why plain files satisfies R8
 
@@ -701,23 +719,113 @@ Every option below was rejected for cost, lock-in, or both. R7 is zero new recur
 Each step is one pull request. Each is independently useful. Each ships report-only first where
 it writes anything (P3).
 
-**Step 1 — Fix the backup. One line.**
-Correct the `--mirror-only` argument in `com.prospector.backup`. Regenerate the plist from the
-tracked declaration with `scripts/launchd_plists.py` rather than editing
-`~/Library/LaunchAgents/` by hand, so the tracked file and the installed file cannot drift again.
-Add a test that every flag in every `ops/launchd/*.json` `ProgramArguments` exists in the script
-it invokes. That test is what stops this class of failure, not the fix.
-*Verification:* the job runs and `store/backup.log` gains an entry dated today.
+**Step 1 — Fix the backup. CLOSED, and the premise was wrong.**
+Measured 2026-08-20: `--mirror-only` is a real flag (`scripts/backup_store.py:854`, and `:786` in
+the live checkout), so there was no bad argument to correct. The guard this step asked for already
+exists and is green: `tests/unit/test_launchd_checks_the_script_not_the_interpreter.py`, 4 passed.
 
-**Step 2 — Alert on a failed scheduled job.**
-Extend `prospector/scheduler/alerts.py` so a launchd job exiting non-zero raises. Today nothing
-does. This is why Step 1's defect survived at least a day.
-*Verification:* deliberately break a job in a worktree, confirm an alert fires.
+The job is still failing, for a different reason, and the difference is the whole point of this
+document. Run by hand with launchd's exact `ProgramArguments` it PASSES:
 
-**Step 3 — Move the two `/tmp` loggers onto real disk.**
-`com.prospector.ops-console` and `com.prospector.control-center` to `store/logs/`. Add
-`store/logs/*.log` to `ops/config/log_rotation.yaml` with a stated reason and a limit.
-*Verification:* reboot, confirm the files are still there.
+    STORE_BACKUP PASS mirror=repo/2026-08-19T233340Z.bundle bytes=66664795   (2026-08-20 00:33)
+
+Under launchd the same argv exits 78. Nothing recorded that. All three channels are empty:
+`store/backup.log` (the job's own `StandardOutPath` AND `StandardErrorPath`) has an mtime of
+2026-08-17 09:38 and its last line is that day's PASS; the wrapper's receipt ledger
+`~/.hermes/state/capability_receipts.jsonl` has no `com.prospector.backup` row after 2026-08-19
+09:09, and every row it does have says `exit_code: 0`; and `launchctl list` is the only place in
+the estate that knows the number 78.
+
+A job whose stdout, stderr and receipt ledger are all silent about a failure it definitely had is
+not an under-logged job. It is an unobserved one, and no amount of shipping logs helps if the
+failing run emits none. That is why Step 2 is graded on a DURABLE RECORD rather than on log
+volume, and it is why `--mirror-only` under launchd stays open separately (task #92 proposes
+unloading this job entirely, since the store it guards is no longer canonical).
+
+**Step 2 — Alert on a failed scheduled job. DONE.**
+The instruction above was to extend `prospector/scheduler/alerts.py` because "today nothing does".
+Measured 2026-08-20, that was half wrong, and the wrong half is the interesting one.
+`scripts/process_audit.py` already grades every launchd job on this Mac AND every supervisord
+program inside `prospector-engine` (`grade_fly` marks non-RUNNING BAD, and marks "could not ask
+supervisorctl" BAD too), and it already had an `--alert` flag. The rail existed. It could not fire.
+
+`alert()` imported `~/.hermes/scripts/estate_alert.py` — a module in another project's checkout.
+On any host without Hermes, which includes `prospector-engine` where production runs, the import
+raised, the function returned the string `could not alert: No module named estate_alert`, and
+NOTHING GRADED THAT STRING. The audit printed it, exited 1 for the findings, and the estate went
+on being reported as watched. Same class as a workflow that can never run: the failure is
+indistinguishable from ordinary output.
+
+The fix routes through this repo's own alert door, `prospector.scheduler.alerts.emit_alert`, which
+is strictly wider than what it replaced: it appends the record to `alerts.jsonl` with an fsync
+BEFORE any sink is tried, and its Telegram sink loads the same Hermes sender this used to import,
+so nothing is lost where Hermes IS present. When every sink is missing there is still a receipt
+saying the estate was failing at this time. A broken alert path now returns
+`ALERT PATH BROKEN (<Type>: <msg>) -- N failing went unsent`, which no reader mistakes for success.
+
+Live evidence that made this a P0 rather than a tidy-up, all measured 2026-08-20:
+`com.prospector.backup` last exit 78, `com.prospector.process-audit` last exit 2, and the laptop
+backup silently dead since 2026-08-17 (see Step 1).
+
+*Verification:* `tests/unit/test_a_failing_job_must_raise.py`, 7 passed. Mutation-checked by
+restoring the old unreachable-import behaviour: 4 of the 7 fail, including
+`test_a_failing_audit_leaves_a_durable_record_with_no_sinks_at_all`. The tests deliberately do not
+assert a notification was delivered — no test can promise that, and one that mocked a sink into
+returning True would be testing the mock. They assert the durable record, under an autouse fixture
+that neutralises every sink, which is the permanent state of any host without Hermes.
+
+**Step 3 — The two `/tmp` loggers. DONE, by deleting both jobs rather than moving their logs.**
+The instruction above was to point `com.prospector.ops-console` and
+`com.prospector.control-center` at `store/logs/` and give that a prune target. Measured
+2026-08-20, before any edit, neither job was running and one of them no longer existed:
+
+```
+$ launchctl print gui/501/com.prospector.ops-console
+Could not find service "com.prospector.ops-console" in domain for user gui: 501
+$ launchctl print-disabled gui/501 | grep ops-console
+        "com.prospector.ops-console" => disabled
+$ lsof -nP -iTCP:8611 -sTCP:LISTEN        # nothing
+$ ls ~/Library/LaunchAgents/com.prospector.control-center.plist
+ls: No such file or directory
+```
+
+The console moved to Fly. It is `[program:ops-console]` in `deploy/engine/supervisord.conf`,
+its two streams go to `/dev/stdout` and `/dev/stderr`, supervisord hands those to the container
+log, and Part 4's ingest is what carries them off the machine. So the console's logs already
+land where this document says they should, and moving a dead Mac job's `/tmp` files would have
+polished a job nothing runs. Both were retired instead:
+
+| label | what was done | evidence it was safe |
+|---|---|---|
+| `com.prospector.ops-console` | `launchctl bootout`, plist renamed `.RETIRED-2026-08-20` | already `disabled`, nothing on 8611, running on Fly |
+| `com.prospector.control-center` | nothing to do | no plist, no snapshot, no override |
+| `com.haworks.continuous-review` | `launchctl bootout`, plist retired | another project; `BROKEN` on every `--check` |
+| `com.haworks.test-coverage` | `launchctl bootout`, plist retired | another project; `BROKEN` on every `--check` |
+| `com.tie.ai-review` | `launchctl bootout`, plist retired | another project; `BROKEN` on every `--check` |
+
+The last three are not Prospector's and were never meant to be tracked here. They were on this
+Mac, `scripts/launchd_plists.py` snapshotted them because nothing said not to, and once their
+checkouts went away `--check` printed three permanent `BROKEN` findings about jobs this repo
+does not own. `--check` went from 11 findings to 1 after the retirement and re-snapshot, and the
+one that remains is real: `com.prospector.process-audit` names a script the stale `prospector-live`
+checkout does not have yet.
+
+**What stops this coming back** is not the retirement, which any reinstall undoes. It is two
+rules read out of files in this repository, so they hold on CI and not just on the Mac that has
+the plists — `tests/unit/test_launchd_tracks_only_prospector.py`:
+
+1. `com.haworks.` and `com.tie.` are in `_FOREIGN_PREFIXES`, so `--snapshot` cannot re-adopt
+   them, and the test fails if either prefix is dropped from that tuple.
+2. **No tracked job may declare a log path under `/tmp`.** macOS purges `/tmp` on reboot, so a
+   log there cannot answer a question tomorrow — which is the defect this step existed to fix,
+   stated once as a rule instead of twice as a fix. The check reads `StandardOutPath`,
+   `StandardErrorPath` and every other string in the plist, so a redirect hidden in an argv is
+   caught too.
+
+*Verification:* 5 passed. Mutation-checked three ways, each killing exactly one test: drop
+`com.haworks.` from `_FOREIGN_PREFIXES`; give a tracked job a `/tmp` `StandardOutPath`; put a
+`com.haworks.*` snapshot back in `ops/launchd/`. Restored: 23 passed across all four launchd
+suites. `rg -n '/tmp/' ops/launchd/` returns nothing.
 
 **Step 4 — Bring `prospector-engine` into the repo. DONE.**
 `deploy/engine/fly.toml` is committed and is what the app is deployed from, alongside
@@ -726,12 +834,11 @@ with 558M of live state and zero references in its own repository cannot be oper
 restored.
 *Verification:* `fly config show -a prospector-engine` matches `deploy/engine/fly.toml`.
 
-**Step 5 — Back up the engine volume.**
-Add a third source to `ops/config/offsite_backup.yaml` for `prospector-engine:/data/store`.
-Config only if the existing engine already handles the fetch shape; a small engine change
-otherwise.
-*Verification:* a `money-db`-style receipt for the new source appears in
-`store/offsite_backup.log`.
+**Step 5 — Back up the engine volume. ALREADY CLOSED.**
+Measured 2026-08-20: `ops/config/offsite_backup.yaml` already declares three engine sources —
+`engine-ledger` (:121), `engine-store-db` (:130) and `repo-mirror` (:139) — each with
+`max_age_hours: 30`, and each written by the `[program:backup]` entry in
+`deploy/engine/supervisord.conf`. Nothing to add. The step was written against an older config.
 
 **Step 6 — The ingest endpoint, engine side.**
 `POST /internal/logs` on `prospector-engine`, private network only. Writes
@@ -751,25 +858,86 @@ An `ILoggerProvider` that batches to the ingest. This is the first PR that touch
 service, so it is the first that needs the money-path review. It adds logging only.
 *Verification:* a checkout in test mode produces lines in `/data/logs/store-api-*.jsonl`.
 
-**Step 9 — The correlation id.**
-`X-Corr-Id` through web → api → Stripe session metadata → webhook → fulfilment → delivery.
-Money-path review again.
-*Verification:* one test purchase yields one `corr` value that appears in every stage, queried
-with a single `grep`.
+**Step 9 — The correlation id. DONE.**
+`X-Correlation-Id` through web → api → Stripe session metadata → webhook → fulfilment. Not
+`X-Corr-Id`: see §4.4 for why a second header would have produced two ids per request.
+*Verified in the suite:* `Store.Tests` 425 passed, including `CorrelationIdIsOneIdTests`, which
+drives the real middleware pipeline and asserts the id this service uses IS the one the package
+minted — so a rename inside `Crux.Observability` fails the build instead of silently re-splitting
+the trail. `Store.Web` 874 passed, including a source scan asserting all ten calls to our own API
+carry the header. Both guards were mutation-checked: removing the adoption branch gives
+`Failed! - Failed: 1`, and stripping `correlated(` from one call site gives `Tests 1 failed`.
+*NOT yet verified live:* nobody has run a real purchase end to end and grepped one `corr` across
+all stages. That proof belongs to the scheduled buy-a-pack drill (M8), and until it runs this step
+is proven in-process only.
 
-**Step 10 — The console page.**
+**Step 10 — The console page. DONE.**
 `/logs` in Ops.Console, through the existing dispatcher read verb. Registered in the view
 allow-list, which the drift test in `tests/unit/test_console_tools_run.py`
 (`test_the_browser_view_allowlist_matches_the_gateway`) already enforces.
-*Verification:* the page renders and the drift test passes.
+*Verified:* `test_the_browser_view_allowlist_matches_the_gateway` passes with `logs` on both
+sides, and `tests/unit/test_log_search.py` (16 tests) drives the reader — including the cases
+where it stops early, so a bounded search can never render as a quiet estate.
 
-**Step 11 — The retention sweeper.**
-A new `ops/automations/log_retention.py` + `ops/config/log_retention.yaml` (doc-lint-ok:
-neither exists yet — this step is what creates them), following the
-`ops/automations` contract exactly: report-only by default, `--fix` to delete, `--json` for the
-console, exit 0 clean / 1 findings / 2 cannot establish. Fails closed if it cannot establish a
-file's age (P6).
-*Verification:* report mode names the files it would delete and deletes nothing.
+**Step 11 — The retention sweeper. DONE, and not as this step instructed.**
+The instruction above was to write a new module, `ops/automations/log_retention.py` (doc-lint-ok),
+carrying its own declaration, `ops/config/log_retention.yaml` (doc-lint-ok). Neither should ever
+exist, and the reason is worth recording because the same mistake is available on every future
+step of this document.
+
+`ops/automations/log_rotation.py` already implements the whole contract this step asked for:
+report-only by default, `--fix` to delete, `--json`, `--config PATH`, exit 0 clean / 1 findings /
+2 could not establish, plus two things the new module would not have had on day one — a
+`max_delete` cap that refuses a glob that matches more than its author believed, and
+`resolve_prune`, which will not follow a symlink, will not cross a `.git` segment and skips any
+file git is tracking. A second module would have been a second copy of a tested engine, and the
+copy is where the next deletion accident lives.
+
+So Step 11 is two edits to files that already exist, and a test that pins the one thing the edits
+cannot prove about each other.
+
+*The declaration.* One prune target appended to `ops/config/log_rotation.yaml`:
+`/data/logs/*.jsonl`, `older_than_days: 14`, no `keep_newest`. Age only is deliberate — a count
+bound holds a file forever on a service that stopped emitting, and that is precisely the case
+where a stale log still contains personal data (§5.3) and no longer answers any question.
+
+*The path is absolute on purpose, and this was the second design.* The first attempt set
+`PROSPECTOR_LOG_DIR=/data/logs` in `deploy/engine/Dockerfile`, `deploy/engine/fly.toml` and the
+Mac plist, and declared the target as `$PROSPECTOR_LOG_DIR/*.jsonl`. It was built, tested green
+and then reverted, for two measured reasons:
+
+- `ops/launchd/*.json` is a SNAPSHOT of the plists installed on this Mac, not a source that
+  anything installs from — `scripts/launchd_plists.py` has `--check` and `--snapshot` and no
+  installer, and it duly reported the edit as *drift*. Committing it would have asserted a
+  machine state that does not exist.
+- An unset variable is not a quiet no-op in this engine. `_assert_expanded` raises
+  `CannotEstablish`, and `run()` catches that at the top level and returns `status="unknown"`
+  for the WHOLE run. A Mac that never got the variable would therefore also stop reporting on
+  Hermes' logs, the Adobe pile and the daemon's own stdout — one missing variable blanking four
+  unrelated targets.
+
+`/data/logs` simply does not exist on this Mac, so the target reports zero files, which is the
+truth. The cost is that the string restates what `log_ingest.log_dir()` derives from the store
+root, and that cost is paid by the test below.
+
+*Something has to run it.* Measured before this step,
+`rg -n log_rotation ops/launchd/ .github/workflows/ deploy/engine/` returned exactly one hit —
+the Mac plist. Nothing pruned `/data/logs` at all, so the declaration alone would have been a
+policy that is off. `[program:log-retention]` in `deploy/engine/supervisord.conf` runs it daily
+(the bound is 14 days; a sweep a few hours late deletes the same files) through `receipt.sh`, so
+the exit code lands in `$PROSPECTOR_STORE_DIR/ops/receipts/` — a silently failing sweep is the
+Step 2 defect again, and this is what stops it being invisible. `priority=50` puts it after every
+program that produces logs; it holds no descriptor on what it deletes and opens no database, so
+it cannot wedge a producer.
+
+*Verification:* `tests/unit/test_log_retention_sweeps_where_the_logs_land.py`, 8 passed.
+Report mode names the old files and deletes nothing; `--fix` deletes past the window and leaves a
+file one hour inside it; the glob leaves a `.json` and a `.db` sitting beside the logs. The test
+that justifies the whole file asserts that the declared glob's parent equals
+`log_ingest.log_dir()` under the `PROSPECTOR_STORE_DIR` the engine Dockerfile declares, so the
+two halves cannot drift apart in silence. Mutation-checked four ways — remove
+`[program:log-retention]`, point the glob at `/data/store/logs`, widen the window to 30 days, drop
+`--fix` — each kills exactly one test, and the restore is green.
 
 **Step 12 — Cold tier and the restore drill.**
 Daily gzip of yesterday's files to R2 `prospector-backup/logs/` with a 90-day lifecycle rule.

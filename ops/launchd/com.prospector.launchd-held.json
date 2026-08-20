@@ -1,0 +1,23 @@
+{
+  "EnvironmentVariables": {
+    "HOME": "/Users/chidionyema",
+    "PATH": "/usr/local/bin:/Users/chidionyema/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "PROSPECTOR_STORE_DIR": "/Users/chidionyema/Documents/code/prospector/store"
+  },
+  "Label": "com.prospector.launchd-held",
+  "ProgramArguments": [
+    "/Users/chidionyema/Documents/code/prospector/.venv/bin/python",
+    "/Users/chidionyema/.hermes/scripts/launchd_receipt.py",
+    "--label",
+    "com.prospector.launchd-held",
+    "--",
+    "/Users/chidionyema/Documents/code/prospector/.venv/bin/python",
+    "/Users/chidionyema/Documents/code/prospector/scripts/launchd_plists.py",
+    "--assert-held"
+  ],
+  "RunAtLoad": true,
+  "StandardErrorPath": "/Users/chidionyema/Documents/code/prospector/store/scheduler/launchd-held.log",
+  "StandardOutPath": "/Users/chidionyema/Documents/code/prospector/store/scheduler/launchd-held.log",
+  "StartInterval": 3600,
+  "WorkingDirectory": "/tmp"
+}
