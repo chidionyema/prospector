@@ -164,6 +164,21 @@ jobs:
                 // ----- 2. up to date, but never graded, or refused rather than failed -----
                 if (green) continue
 
+                // ----- parked: somebody else's job, on purpose -----
+                // `action_required` is the fourth way a pull request stalls without being at
+                // fault, and this workflow deliberately does NOT fix it.
+                // `.github/workflows/approve-parked-runs.yml` owns that class, on a ten-minute
+                // schedule, so it also fires at the many times neither of this workflow's
+                // triggers does.
+                //
+                // This block existed here for one commit and was removed rather than kept
+                // alongside it. Two workflows owning one repair is how #426 became unmergeable:
+                // two independently-written tools under one name, each with its own passing
+                // tests, and no way to resolve them without deleting tested work. The other
+                // implementation is also the better one -- it requires the parked run's actor to
+                // be `github-actions[bot]`, a second safety condition this one did not have.
+                if (ci && ci.conclusion === 'action_required') continue
+
                 let why = null
                 if (!ci) {
                   why = 'its head has no CI run at all'

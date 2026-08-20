@@ -87,6 +87,7 @@ checkout. See the "Where production runs" section of `CLAUDE.md`.
 | `com.prospector.live-update` | every 60s | `scripts/live_checkout.py --unattended`; rolls the live checkout forward to `origin/main`. |
 | `com.prospector.backup` | 03:40 | `scripts/backup_store.py --mirror-only`. **The git bundle mirror, and the only thing that writes it.** The full store backup runs on Fly under `fly:prospector-engine`; this job is not a duplicate of it. |
 | `com.prospector.offsite-backup` | 03:50 | `ops.automations.offsite_backup --fix`. |
+| `com.prospector.log-rotation` | every 21600s | `ops.automations.log_rotation --fix`; rotates the store's log files so a runaway writer cannot fill the disk. |
 
 Three failover jobs run from `~/.prospector/bin/failover`, which is installed by the engine
 migration and lives outside this repo. `docs/ENGINE_MIGRATION_PROGRAM.md` is the specification.

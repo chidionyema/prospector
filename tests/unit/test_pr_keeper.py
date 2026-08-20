@@ -84,7 +84,7 @@ def _run(*, prs, behind=0, runs=(), jobs=(), event="workflow_run",
     }
     harness = """
 const S = %s
-const calls = {dispatch: [], update: [], label: [], comment: [], cancel: []}
+const calls = {dispatch: [], update: [], label: [], comment: [], cancel: [], approve: []}
 const logs = []
 const boom = (m) => { throw new Error(m) }
 
@@ -119,6 +119,7 @@ const github = {rest: {
     listJobsForWorkflowRun: async () => ({data: {jobs: S.jobs}}),
     createWorkflowDispatch: async (a) => { calls.dispatch.push(a); return {data: {}} },
     cancelWorkflowRun: async (a) => { calls.cancel.push(a); return {data: {}} },
+    approveWorkflowRun: async (a) => { calls.approve.push(a); return {data: {}} },
   },
   issues: {
     addLabels: async (a) => { calls.label.push(a); return {data: {}} },
@@ -263,6 +264,50 @@ class TestItLeavesARealFailureAlone:
                    jobs=[{"name": "changes", "conclusion": "failure"}])
         assert out["calls"]["cancel"] == []
         assert "cancelWorkflowRun" not in _script()
+
+
+class TestAParkedRunIsSomebodyElsesJob:
+    """`action_required` is the fourth way a pull request stalls without being at fault, and this
+    workflow deliberately leaves it alone.
+
+    `.github/workflows/approve-parked-runs.yml` owns it, on a ten-minute schedule, so it fires at
+    the many moments neither of this workflow's triggers does. An earlier commit here approved
+    parked runs too; it was removed rather than kept beside it. Two workflows owning one repair is
+    how #426 became unmergeable -- two independently-written tools under one name, each with its
+    own passing tests, and no way to resolve them without deleting tested work.
+
+    The other implementation is also the safer one: it additionally requires the parked run's
+    actor to be `github-actions[bot]`, which this one never checked.
+    """
+
+    def test_it_does_not_approve_a_parked_run(self):
+        out = _run(prs=[pull()], behind=0, runs=[run(conclusion="action_required")])
+        assert out["calls"]["approve"] == []
+
+    def test_it_does_not_dispatch_around_a_parked_run_either(self):
+        """Dispatching a second build would pay for the same work twice and leave the parked run
+        parked, which is what everything reading `statusCheckRollup` still sees."""
+        out = _run(prs=[pull()], behind=0, runs=[run(conclusion="action_required")])
+        assert out["calls"]["dispatch"] == []
+
+    def test_no_second_workflow_in_this_tree_approves_them_either(self):
+        """The guard is AT MOST ONE owner, which is the failure that made #426 unmergeable: two
+        independently-written tools under one name, each with its own passing tests, and no way to
+        resolve them without deleting tested work.
+
+        It is deliberately not `exactly one`. As of 2026-08-20 the count in this tree is ZERO --
+        `approve-parked-runs.yml` is on `ci/pipeline-failure-ledger` (#480) and not yet on main --
+        and asserting `exactly one` here would make THIS branch red for work sitting in somebody
+        else's pull request. A test that goes red because another PR has not landed is a test that
+        turns one queue into two.
+        """
+        owners = sorted(
+            f.name for f in WORKFLOW.parent.glob("*.yml")
+            if "approveWorkflowRun" in f.read_text())
+        assert len(owners) <= 1, (
+            f"{owners} all approve parked workflow runs. One class, one owner: two of them race, "
+            "double-approve, and each one's tests pass while the pair is wrong.")
+        assert WORKFLOW.name not in owners
 
 
 class TestItRespectsWhoOwnsTheBranch:
