@@ -22,8 +22,31 @@
     "sweep_command": "rg -n 'conclusion' .github/workflows/ -g '*.yml'",
     "siblings_found": 3,
     "siblings_fixed": 1,
-    "note": "The class is a guard keyed on ONE value of a status field and blind to the rest. Three live siblings. (1) main-green-guard.yml:68,:87 \u2014 the incident itself, FIXED. (2) automerge.yml:87-88 \u2014 the job fires on success or failure only, so a CANCELLED CI run never triggers the sweep that rescues stranded pull requests; this is why no automerge run ever fired for #474 while it sat green and unmerged. OPEN. (3) automerge.yml:317 \u2014 the sweep's mergeability read counts `skipped` as green, which is the same lie the checks page tells, in code; while main is red it rescues pull requests that cannot build. OPEN. ci.yml:314 is the consumer of the unknown state rather than a sibling: treating a non-success main as non-green is correct, and with the restart job an unknown main now resolves in minutes instead of hours.",
-    "hypothesis_killed": "That automerge's unconditional `dispatching CI on main` (automerge.yml:340) was flooding main's queue and causing the cancellations. Measured before acting: `gh api .../workflows/ci.yml/runs?branch=main` shows 12 push runs and only 2 workflow_dispatch runs on main since 21:00Z. The automerge job is gated on a pull_request-sourced run, so it skips on main's own pushes. No storm. No fix made."
+    "note": "Three sites found by `rg -n 'conclusion' .github/workflows/ -g '*.yml'`. One was a real defect and is fixed. The other two were claims in an earlier draft of this record that the measurement then falsified; both are written up above with the command that killed them, because a wrong entry in this ledger is worse than no entry.",
+    "hypothesis_killed": [
+      "That automerge's unconditional `dispatching CI on main` (automerge.yml:340) was flooding main's queue and causing the cancellations. Measured before acting: `gh api .../workflows/ci.yml/runs?branch=main` shows 12 push runs and only 2 workflow_dispatch runs on main since 21:00Z. The automerge job is gated on a pull_request-sourced run, so it skips on main's own pushes. No storm. No fix made.",
+      "That the green guard could revert its own revert and loop. Read the shipped file: the `decide` step refuses on `/^revert/i.test(subject)` and again on one revert per hour. Guarded twice already; no change made."
+    ],
+    "siblings": [
+      {
+        "site": ".github/workflows/main-green-guard.yml:68,:87",
+        "finding": "both jobs require conclusion == 'failure', so a cancelled, timed_out or stale run on main is watched by nothing.",
+        "state": "FIXED",
+        "fix": "the `restart` job, commit 3af703b6, proved by tests/unit/test_a_main_run_with_no_verdict_gets_asked_again.py"
+      },
+      {
+        "site": ".github/workflows/automerge.yml:87-88",
+        "finding": "the job fires on success or failure only, so a CANCELLED CI run never triggers the rescue sweep.",
+        "state": "MEASURED, NOT A DEFECT - no change made",
+        "evidence": "Measured 2026-08-20T00:30Z. The claim recorded here earlier - that this is why no automerge run ever fired for #474 - is FALSE. `gh run list --workflow automerge.yml --limit 10` shows automerge firing every few minutes: 32317578137, 32317352186, 32316627287, 32316584880, 32316247396, 32315967737, 32315480702 all completed/success inside 35 minutes. The sweep runs on every other pull request's CI completion, so it is not starved by main's cancelled runs. Adding `cancelled` would add automerge runs (roughly a quarter of CI runs end cancelled) for a benefit I could not demonstrate. Not shipped."
+      },
+      {
+        "site": ".github/workflows/automerge.yml:317",
+        "finding": "the sweep's mergeability read counts `skipped` as green.",
+        "state": "MEASURED, NOT A DEFECT - no change made",
+        "evidence": "Measured 2026-08-20. Two reasons the earlier claim here was wrong. First, `skipped` MUST be allowed: every pull request path-filters some job out, so removing it would stop the sweep rescuing anything. Second, the red-main case it was supposed to catch is already caught elsewhere - when main is red ci.yml's `changes` job concludes FAILURE, and `ci-ok` (ci.yml:1328, `needs: [changes, guard, python, engine, dotnet, nextjs, ops-console]`, `case success|skipped`) therefore concludes FAILURE too. `failure` is not in the allowed list, so `green` is already false. Not shipped."
+      }
+    ]
   },
   "third_order": {
     "tier": "heal",
