@@ -480,8 +480,18 @@ Counting words inside `msg` is what produced 97 instead of 8.
 
 R2 is the requirement that pays for this whole design.
 
-- `Store.Web` generates a `corr` on first page load and sends it as header `X-Corr-Id`.
-- `Store.Api` reads that header, and where it is absent mints one at the edge.
+- `Store.Web` generates a `corr` on the visit's first API call and sends it as header
+  `X-Correlation-Id` (`src/lib/api/correlation.ts`). **The header name is not the `X-Corr-Id` this
+  document first proposed.** `Store.Api` already runs `Crux.Observability`'s correlation
+  middleware (`Program.cs`, `app.UseCorrelationId()`), which reads `X-Correlation-ID`, mints a GUID
+  when no header arrives, puts that id in every framework log scope, and stamps it on every
+  outbound HTTP call. Introducing a second header would have produced TWO ids per request — the
+  package's GUID in the framework's log lines and ours in the Stripe metadata — and everything
+  would have looked healthy while joining up to nothing. One header means one id.
+- `Store.Api` reads that header, and where it is absent adopts the id the package minted at the
+  edge (`HttpContextExtensions.GetCorrelationId`). It is sanitised to `[A-Za-z0-9._-]` and 64
+  characters before it reaches a log line or Stripe, because a hostile header is otherwise a log
+  forgery and a 500-character Stripe metadata value is a refused checkout.
 - The id is written onto the Stripe Checkout Session metadata at creation
   (`CheckoutEndpoints.cs`, where the session is minted).
 - The webhook reads it back off the session and puts it on the fulfilment log lines
@@ -549,9 +559,17 @@ A `/logs` page in the existing Ops.Console, served through the existing dispatch
 (`prospector/ops/console_api.py` — `read` verb, allow-listed view). Filters: service, level,
 time range, correlation id, free text.
 
-The console cannot import Python and does not read the volume directly. It calls the dispatcher,
-which fetches from the engine over the private network. This keeps the existing rule intact:
-reads cannot write, and the verb in argv is the fence.
+The console cannot import Python and does not read the volume directly. It calls the dispatcher
+(`prospector.ops.console_api`, view `logs`), which keeps the existing rule intact: reads cannot
+write, and the verb in argv is the fence.
+
+**The dispatcher reads the day files directly rather than calling the ingest over HTTP**, which is
+a change from this section's first draft. Measured reason: `deploy/engine/supervisord.conf` runs
+`[program:ops-console]` and `[program:log-ingest]` on the same machine, so an HTTP hop adds no
+isolation and one failure mode — the logs would become unreadable exactly when the ingest is the
+process that died, which is when they are worth most. `log_ingest.search()` is that reader, and
+every bound it applies is in its result (`truncated`, `files_capped`, `unreadable`) so a bounded
+search can never be mistaken for a quiet estate.
 
 ### 4.8 Why plain files satisfies R8
 
@@ -751,17 +769,26 @@ An `ILoggerProvider` that batches to the ingest. This is the first PR that touch
 service, so it is the first that needs the money-path review. It adds logging only.
 *Verification:* a checkout in test mode produces lines in `/data/logs/store-api-*.jsonl`.
 
-**Step 9 — The correlation id.**
-`X-Corr-Id` through web → api → Stripe session metadata → webhook → fulfilment → delivery.
-Money-path review again.
-*Verification:* one test purchase yields one `corr` value that appears in every stage, queried
-with a single `grep`.
+**Step 9 — The correlation id. DONE.**
+`X-Correlation-Id` through web → api → Stripe session metadata → webhook → fulfilment. Not
+`X-Corr-Id`: see §4.4 for why a second header would have produced two ids per request.
+*Verified in the suite:* `Store.Tests` 425 passed, including `CorrelationIdIsOneIdTests`, which
+drives the real middleware pipeline and asserts the id this service uses IS the one the package
+minted — so a rename inside `Crux.Observability` fails the build instead of silently re-splitting
+the trail. `Store.Web` 874 passed, including a source scan asserting all ten calls to our own API
+carry the header. Both guards were mutation-checked: removing the adoption branch gives
+`Failed! - Failed: 1`, and stripping `correlated(` from one call site gives `Tests 1 failed`.
+*NOT yet verified live:* nobody has run a real purchase end to end and grepped one `corr` across
+all stages. That proof belongs to the scheduled buy-a-pack drill (M8), and until it runs this step
+is proven in-process only.
 
-**Step 10 — The console page.**
+**Step 10 — The console page. DONE.**
 `/logs` in Ops.Console, through the existing dispatcher read verb. Registered in the view
 allow-list, which the drift test in `tests/unit/test_console_tools_run.py`
 (`test_the_browser_view_allowlist_matches_the_gateway`) already enforces.
-*Verification:* the page renders and the drift test passes.
+*Verified:* `test_the_browser_view_allowlist_matches_the_gateway` passes with `logs` on both
+sides, and `tests/unit/test_log_search.py` (16 tests) drives the reader — including the cases
+where it stops early, so a bounded search can never render as a quiet estate.
 
 **Step 11 — The retention sweeper.**
 A new `ops/automations/log_retention.py` + `ops/config/log_retention.yaml` (doc-lint-ok:
