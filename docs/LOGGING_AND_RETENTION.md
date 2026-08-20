@@ -774,10 +774,58 @@ assert a notification was delivered — no test can promise that, and one that m
 returning True would be testing the mock. They assert the durable record, under an autouse fixture
 that neutralises every sink, which is the permanent state of any host without Hermes.
 
-**Step 3 — Move the two `/tmp` loggers onto real disk.**
-`com.prospector.ops-console` and `com.prospector.control-center` to `store/logs/`. Add
-`store/logs/*.log` to `ops/config/log_rotation.yaml` with a stated reason and a limit.
-*Verification:* reboot, confirm the files are still there.
+**Step 3 — The two `/tmp` loggers. DONE, by deleting both jobs rather than moving their logs.**
+The instruction above was to point `com.prospector.ops-console` and
+`com.prospector.control-center` at `store/logs/` and give that a prune target. Measured
+2026-08-20, before any edit, neither job was running and one of them no longer existed:
+
+```
+$ launchctl print gui/501/com.prospector.ops-console
+Could not find service "com.prospector.ops-console" in domain for user gui: 501
+$ launchctl print-disabled gui/501 | grep ops-console
+        "com.prospector.ops-console" => disabled
+$ lsof -nP -iTCP:8611 -sTCP:LISTEN        # nothing
+$ ls ~/Library/LaunchAgents/com.prospector.control-center.plist
+ls: No such file or directory
+```
+
+The console moved to Fly. It is `[program:ops-console]` in `deploy/engine/supervisord.conf`,
+its two streams go to `/dev/stdout` and `/dev/stderr`, supervisord hands those to the container
+log, and Part 4's ingest is what carries them off the machine. So the console's logs already
+land where this document says they should, and moving a dead Mac job's `/tmp` files would have
+polished a job nothing runs. Both were retired instead:
+
+| label | what was done | evidence it was safe |
+|---|---|---|
+| `com.prospector.ops-console` | `launchctl bootout`, plist renamed `.RETIRED-2026-08-20` | already `disabled`, nothing on 8611, running on Fly |
+| `com.prospector.control-center` | nothing to do | no plist, no snapshot, no override |
+| `com.haworks.continuous-review` | `launchctl bootout`, plist retired | another project; `BROKEN` on every `--check` |
+| `com.haworks.test-coverage` | `launchctl bootout`, plist retired | another project; `BROKEN` on every `--check` |
+| `com.tie.ai-review` | `launchctl bootout`, plist retired | another project; `BROKEN` on every `--check` |
+
+The last three are not Prospector's and were never meant to be tracked here. They were on this
+Mac, `scripts/launchd_plists.py` snapshotted them because nothing said not to, and once their
+checkouts went away `--check` printed three permanent `BROKEN` findings about jobs this repo
+does not own. `--check` went from 11 findings to 1 after the retirement and re-snapshot, and the
+one that remains is real: `com.prospector.process-audit` names a script the stale `prospector-live`
+checkout does not have yet.
+
+**What stops this coming back** is not the retirement, which any reinstall undoes. It is two
+rules read out of files in this repository, so they hold on CI and not just on the Mac that has
+the plists — `tests/unit/test_launchd_tracks_only_prospector.py`:
+
+1. `com.haworks.` and `com.tie.` are in `_FOREIGN_PREFIXES`, so `--snapshot` cannot re-adopt
+   them, and the test fails if either prefix is dropped from that tuple.
+2. **No tracked job may declare a log path under `/tmp`.** macOS purges `/tmp` on reboot, so a
+   log there cannot answer a question tomorrow — which is the defect this step existed to fix,
+   stated once as a rule instead of twice as a fix. The check reads `StandardOutPath`,
+   `StandardErrorPath` and every other string in the plist, so a redirect hidden in an argv is
+   caught too.
+
+*Verification:* 5 passed. Mutation-checked three ways, each killing exactly one test: drop
+`com.haworks.` from `_FOREIGN_PREFIXES`; give a tracked job a `/tmp` `StandardOutPath`; put a
+`com.haworks.*` snapshot back in `ops/launchd/`. Restored: 23 passed across all four launchd
+suites. `rg -n '/tmp/' ops/launchd/` returns nothing.
 
 **Step 4 — Bring `prospector-engine` into the repo. DONE.**
 `deploy/engine/fly.toml` is committed and is what the app is deployed from, alongside
