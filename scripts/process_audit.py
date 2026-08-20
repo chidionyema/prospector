@@ -1244,6 +1244,32 @@ def _grade_scheduled_workflows() -> list[tuple[str, str, str]]:
 TRACKED_SEEDS = (".lux/receipts/2026-06-17.jsonl", ".lux/receipts/prospector-test-0.jsonl")
 
 
+#: The two clones this estate keeps its code in. Anything under either of them is a CODE TREE,
+#: which is exactly what an estate cleanup is entitled to delete.
+CODE_ROOTS = (Path.home() / "Documents" / "code",
+              Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs"
+              / "Documents" / "code")
+
+#: Where a copy of the signing key is kept so that a cleanup cannot reach it. Outside every code
+#: tree by construction.
+ESCROW_DIR = Path.home() / ".prospector" / "escrow"
+
+
+def _is_escrowed(path: Path) -> bool:
+    """Whether this copy would survive an estate-wide sweep of the code trees.
+
+    Escrow is a question about LOCATION, not about the file being unusual. The first version of
+    this asked "is it outside a worktree and outside ROOT", which counted a sibling code tree --
+    `~/Documents/code/signalengine/.lux/keys/agent.pem` -- as an escrow copy. That tree is
+    deleted by exactly the same sweep as the worktrees, so the probe would have reported the
+    estate protected on the strength of a copy that dies at the same moment as all the others.
+    """
+    s = str(path)
+    if "/worktrees/" in s:
+        return False
+    return not any(str(r) in s for r in CODE_ROOTS)
+
+
 def _agent_keys() -> tuple[list[Path], list[str]]:
     """Every agent.pem this Mac can see, plus the roots the search could NOT finish.
 
@@ -1258,9 +1284,7 @@ def _agent_keys() -> tuple[list[Path], list[str]]:
     identical empty list and mean opposite things, which is the same defect that had this whole
     audit printing a traceback and calling it a clean report.
     """
-    roots = [Path.home() / "Documents" / "code",
-             Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs"
-             / "Documents" / "code", Path.home() / ".lux"]
+    roots = list(CODE_ROOTS) + [Path.home() / ".lux"]
     prune = ["node_modules", ".venv", ".next", "dist", ".mypy_cache", ".git"]
     expr: list[str] = ["("]
     for i, d in enumerate(prune):
@@ -1277,6 +1301,13 @@ def _agent_keys() -> tuple[list[Path], list[str]]:
             unfinished.append(str(r))
             continue
         found += [Path(ln) for ln in out.splitlines() if ln.strip()]
+
+    # The escrow copy does not live under `.lux/keys/`, and it is the whole point of the escrow
+    # that it is nowhere near a code tree -- so neither the roots above nor the path pattern
+    # would ever reach it. A probe that cannot see the escrow reports "no escrow" forever, which
+    # is a guard that can never go green however correctly the estate behaves.
+    if (ESCROW_DIR / "agent.pem").is_file():
+        found.append(ESCROW_DIR / "agent.pem")
     return sorted(set(found)), unfinished
 
 
@@ -1357,12 +1388,18 @@ def grade_recoverability() -> list[tuple[str, str, str]]:
     # One verify per DISTINCT key, not per file. The estate carries 77 agent.pem files across two
     # clones and most are byte-identical copies; verifying each file would multiply the cost of a
     # daily job by ~20 for no extra information.
-    by_digest: dict[str, Path] = {}
+    # Dedup for the VERIFY, keep every path for the LOCATION questions. The first version threw
+    # the copies away and kept one representative per digest, so "is it escrowed" and "is its
+    # tree held" could only ever see a single location for a key that has 42 copies -- both
+    # graded the estate on an accident of which path `find` happened to print first.
+    paths_by_digest: dict[str, list[Path]] = {}
     for k in keys:
-        by_digest.setdefault(_digest(k), k)
-    verdicts = {k: _verifies_tracked_seeds(k) for k in by_digest.values()}
-    working = [k for k, v in verdicts.items() if v is True]
-    undecided = [k for k, v in verdicts.items() if v is None]
+        paths_by_digest.setdefault(_digest(k), []).append(k)
+    verdicts = {d: _verifies_tracked_seeds(ps[0]) for d, ps in paths_by_digest.items()}
+    working = [d for d, v in verdicts.items() if v is True]
+    undecided = [d for d, v in verdicts.items() if v is None]
+    by_digest = paths_by_digest  # len() reads below are about DISTINCT keys
+    working_copies = [p for d in working for p in paths_by_digest[d]]
 
     if undecided and not working:
         rows.append((WARN, "signing keys", f"{len(undecided)} of {len(by_digest)} distinct key(s) could not be "
@@ -1373,17 +1410,24 @@ def grade_recoverability() -> list[tuple[str, str, str]]:
                                           "seed receipts. No worktree in this estate can pass its "
                                           "own commit gate, and there is no recovery path in git"))
     elif len(working) == 1:
-        k = working[0]
-        inside_repo_admin = ".claude/worktrees/" in str(k) or "/worktrees/" in str(k)
-        rows.append((BAD if inside_repo_admin else WARN, "signing keys",
-                     f"exactly ONE of {len(by_digest)} distinct keys ({len(keys)} files) verifies the tracked seeds (sha "
-                     f"{_digest(k)}), and it is gitignored -- delete it and the commit gate is "
-                     f"gone estate-wide with no way back: {k}"))
-        if inside_repo_admin:
+        digest = working[0]
+        copies = paths_by_digest[digest]
+        safe = [c for c in copies if _is_escrowed(c)]
+        # Say what is true: ONE key can sign, and it has N copies. The first version of this row
+        # said "delete it and the commit gate is gone estate-wide with no way back", which was
+        # written before anyone counted -- the key had 42 copies at the time, so no single delete
+        # could do that. Overstating a real risk is not a safe error: it is the version a reader
+        # checks once, disproves, and then discounts the rest of the row.
+        rows.append((WARN if safe else BAD, "signing keys",
+                     f"exactly ONE of {len(by_digest)} distinct keys ({len(keys)} files) verifies the "
+                     f"tracked seeds (sha {digest}). It has {len(copies)} copies, "
+                     f"{len(safe)} of them outside every code tree. It is gitignored, so git "
+                     f"restores none of them"))
+        if not safe:
             rows.append((BAD, "signing key location",
-                         "the only working key lives inside a WORKTREE, which is a directory "
-                         "cleanups are built to remove. Age-ordered cleanup takes the oldest "
-                         "first, and this is the oldest tree on the machine"))
+                         f"all {len(copies)} copies of the only working key are inside code "
+                         f"trees, which is what an estate-wide cleanup is built to delete. One "
+                         f"sweep and no worktree can pass its own commit gate again"))
     else:
         rows.append((OK, "signing keys",
                      f"{len(working)} of {len(by_digest)} distinct keys verify the tracked seeds -- deleting "
@@ -1391,19 +1435,26 @@ def grade_recoverability() -> list[tuple[str, str, str]]:
 
     hold = Path.home() / ".claude" / "estate-cleanup-hold"
     held = hold.read_text(encoding="utf-8") if hold.is_file() else ""
-    for k in working:
+    for k in working_copies:
+        if _is_escrowed(k):
+            continue  # not in a tree a cleanup walks, so a hold entry would be meaningless
         tree = str(k).split("/.lux/keys/")[0]
         if tree not in held:
             rows.append((BAD, "cleanup hold",
                          f"the working key's tree is NOT in {hold} -- nothing stops a cleanup "
                          f"removing it: {tree}"))
 
-    escrowed = [k for k in working if "/worktrees/" not in str(k) and str(ROOT) not in str(k)]
+    escrowed = [k for k in working_copies if _is_escrowed(k)]
     if working and not escrowed:
         rows.append((BAD, "key escrow",
                      "no copy of the working key exists outside a code tree. There is no restore "
                      "path: it is gitignored, so a clone cannot bring it back, and no backup job "
-                     "covers .lux/keys"))
+                     f"covers .lux/keys. Fix: copy one into {ESCROW_DIR}"))
+    elif escrowed:
+        rows.append((OK, "key escrow",
+                     f"{len(escrowed)} copy/copies of the working key survive a sweep of the code "
+                     f"trees, e.g. {escrowed[0]}. Off-machine escrow is a separate question and "
+                     "this row does not speak to it"))
 
     try:
         import popdd.agent as _pa

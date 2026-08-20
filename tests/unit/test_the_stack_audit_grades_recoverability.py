@@ -124,3 +124,96 @@ def test_the_probe_identifies_a_key_by_digest_and_never_by_value(pa, tmp_path):
     d = pa._digest(k)
     assert d == hashlib.sha256(b"super secret bytes").hexdigest()[:12]
     assert "super secret" not in d and len(d) == 12
+
+
+def test_a_copy_in_a_SIBLING_code_tree_is_not_escrow(pa):
+    """Escrow is a question about location, and code trees all die in the same sweep.
+
+    The first version asked "outside a worktree and outside ROOT", which counted
+    ~/Documents/code/signalengine/.lux/keys/agent.pem as an escrow copy. That tree is deleted by
+    exactly the sweep the escrow exists to survive, so the probe would have reported the estate
+    protected on the strength of a copy that dies at the same moment as every other one.
+    """
+    sibling = pa.CODE_ROOTS[0] / "signalengine" / ".lux" / "keys" / "agent.pem"
+    assert pa._is_escrowed(sibling) is False
+
+    other_clone = pa.CODE_ROOTS[1] / "prospector" / ".lux" / "keys" / "agent.pem"
+    assert pa._is_escrowed(other_clone) is False
+
+
+def test_a_worktree_copy_is_not_escrow(pa):
+    wt = pa.CODE_ROOTS[0] / "prospector" / ".claude" / "worktrees" / "agent-x" / ".lux" / "keys" / "agent.pem"
+    assert pa._is_escrowed(wt) is False
+
+
+def test_the_escrow_location_counts_as_escrow(pa):
+    """And it is outside every code root, which is the property that makes it escrow."""
+    assert pa._is_escrowed(pa.ESCROW_DIR / "agent.pem") is True
+    assert not any(str(r) in str(pa.ESCROW_DIR) for r in pa.CODE_ROOTS)
+
+
+def test_the_probe_can_SEE_the_escrow_copy(pa, tmp_path, monkeypatch):
+    """A probe that cannot see the escrow reports "no escrow" however correct the estate is.
+
+    The escrow copy is not under `.lux/keys/`, and it is deliberately nowhere near a code tree,
+    so neither the search roots nor the path pattern reach it. It has to be added explicitly, and
+    a guard that can never go green is worse than no guard.
+    """
+    escrow = tmp_path / "escrow"
+    escrow.mkdir()
+    (escrow / "agent.pem").write_bytes(b"x" * 64)
+    monkeypatch.setattr(pa, "ESCROW_DIR", escrow)
+    monkeypatch.setattr(pa, "CODE_ROOTS", (tmp_path / "nowhere",))
+    keys, _unfinished = pa._agent_keys()
+    assert (escrow / "agent.pem") in keys
+
+
+def test_the_one_key_row_states_the_COPY_COUNT_and_does_not_overstate(pa, tmp_path, monkeypatch):
+    """The row said "delete it and the commit gate is gone estate-wide with no way back".
+
+    The key had 42 copies when that sentence was written, so no single delete could do it.
+    Overstating a real risk is not a safe error: it is the version a reader checks once,
+    disproves, and then discounts the rest of the row. This asserts on the row the grader
+    EMITS, never on the source text -- a guard that greps its own file grades the comment
+    explaining the fix as though it were the defect.
+    """
+    root = tmp_path / "code"
+    a = root / "wt-one" / ".lux" / "keys" / "agent.pem"
+    b = root / "wt-two" / ".lux" / "keys" / "agent.pem"
+    for f in (a, b):
+        f.parent.mkdir(parents=True)
+        f.write_bytes(b"k" * 64)
+
+    monkeypatch.setattr(pa, "CODE_ROOTS", (root,))
+    monkeypatch.setattr(pa, "ESCROW_DIR", tmp_path / "no-escrow-here")
+    monkeypatch.setattr(pa, "_agent_keys", lambda: ([a, b], []))
+    monkeypatch.setattr(pa, "_verifies_tracked_seeds", lambda k: True)
+
+    rows = pa.grade_recoverability()
+    keyrow = next(r for r in rows if r[1] == "signing keys")
+
+    # Two files, one distinct key, so the row must say two copies -- not "delete it and it is
+    # gone", which is what the deduped version could not help saying.
+    assert "2 copies" in keyrow[2]
+    assert "0 of them outside every code tree" in keyrow[2]
+    assert any(r[1] == "key escrow" and r[0] == pa.BAD for r in rows)
+
+
+def test_an_escrowed_copy_flips_the_escrow_row_to_OK(pa, tmp_path, monkeypatch):
+    """And the probe must be able to go green, or it is not a guard, it is a permanent alarm."""
+    root = tmp_path / "code"
+    intree = root / "wt-one" / ".lux" / "keys" / "agent.pem"
+    intree.parent.mkdir(parents=True)
+    intree.write_bytes(b"k" * 64)
+    escrow = tmp_path / "escrow"
+    escrow.mkdir()
+    (escrow / "agent.pem").write_bytes(b"k" * 64)
+
+    monkeypatch.setattr(pa, "CODE_ROOTS", (root,))
+    monkeypatch.setattr(pa, "ESCROW_DIR", escrow)
+    monkeypatch.setattr(pa, "_agent_keys", lambda: ([intree, escrow / "agent.pem"], []))
+    monkeypatch.setattr(pa, "_verifies_tracked_seeds", lambda k: True)
+
+    rows = pa.grade_recoverability()
+    assert any(r[1] == "key escrow" and r[0] == pa.OK for r in rows)
+    assert not any(r[1] == "signing key location" for r in rows)
