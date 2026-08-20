@@ -1,0 +1,51 @@
+# Put stopped CI runner machines back, on a schedule, with no agent involved.
+#
+# THIS MUST NOT RUN ON THE FLEET IT HEALS. `runs-on: ubuntu-latest` is deliberate and is the
+# whole point of the file: a self-hosted runner cannot start a dead self-hosted fleet, because
+# when the fleet is down there is no runner left to pick this job up. Every other workflow in
+# this repository targets the `fly` pool; this one must not. Do not "fix" it to match.
+#
+# WHY HOURLY AND NOT EVERY FEW MINUTES. GitHub bills a one-minute MINIMUM per job, so the
+# cadence is a spend decision. Measured 2026-08-19: private repo on the Free plan = 2,000
+# GitHub-hosted minutes a month, and no other workflow uses a GitHub-hosted runner, so the
+# budget is intact. Hourly is 720 runs = 720 minutes = 36% of it. Every 15 minutes would be
+# 2,880 minutes and would blow the allowance outright. The headroom is not spare: ci.yml falls
+# back to `ubuntu-latest` when the CI_*_RUNS_ON variables are unset, so these minutes are the
+# emergency reserve for CI itself, and a monitor must not eat the escape hatch it protects.
+#
+# A RED RUN HERE MEANS CI CAPACITY IS DEGRADED. It does not mean a test failed. That
+# distinction is the reason the 2026-08-19 outage cost hours: a machine killed mid-job surfaces
+# as `The self-hosted runner lost communication with the server`, which reads like a broken
+# test and is not one.
+name: ci-fleet-keeper
+
+on:
+  schedule:
+    - cron: "17 * * * *"   # not on the hour: :00 is the busiest minute on GitHub's scheduler
+  workflow_dispatch:
+
+# Never two keepers at once, and never cancel one mid-start: a cancelled run can leave the
+# fleet half-started and the report describing a state that no longer exists.
+concurrency:
+  group: ci-fleet-keeper
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  keep:
+    runs-on: ubuntu-latest   # see header. NOT the fly pool.
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start any machine below the declared floor
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          # Absent today. Without it the machine half still works and the registration half
+          # reports that it was not graded, rather than reporting a clean fleet it never read.
+          # Issue #436 tracks getting one.
+          RUNNER_ADMIN_PAT: ${{ secrets.RUNNER_ADMIN_PAT }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python3 scripts/ci_fleet_keeper.py --start
