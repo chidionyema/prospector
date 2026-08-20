@@ -56,8 +56,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-from prospector import content_contract, pack_linter
-from prospector.operator import BUILDABLE_TIERS, COMPONENTS
+from prospector import content_contract
+
+# `prospector.tiers`, not `prospector.operator`. Both names are re-exported from operator,
+# but importing operator to read two tuples costs ~1.0s (it pulls telemetry and the config
+# machinery) and every one of the 36 console views spawns this module fresh.
+from prospector.tiers import BUILDABLE_TIERS, COMPONENTS
 
 #: Bumped when the JSON contract changes shape. The web app asserts on it at boot, so a console
 #: talking to an older engine says so instead of rendering blanks.
@@ -1295,6 +1299,13 @@ def _read_shelf(cfg, args: dict) -> dict:
         # A pack that was never published has no receipt by definition, so this hit exactly the
         # rows `shelf.publish_pending` was written for.
         receipt = _lint_receipt(root, cid)
+        # IMPORTED HERE, NOT AT MODULE TOP. `pack_linter` pulls `requests`, which measured
+        # 1.6-5.9s of import on this laptop, and this is its ONLY call site in this file.
+        # Every one of the 36 console views spawns this module fresh, so a top-level import
+        # charged that cost to `read docs` and `read status` too, which never touch a lint
+        # receipt. The import is cached after the first call inside one process.
+        from prospector import pack_linter
+
         current = pack_linter.receipt_is_current(receipt)
         if receipt is not None and not current:
             fix = "shelf.regate"
