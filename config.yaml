@@ -184,6 +184,33 @@ component_models:
   grounding:
     claude_cli:  ""
 
+# ADD A PROVIDER WITHOUT A SOURCE EDIT.
+#
+# Any provider that speaks the OpenAI-compatible `/chat/completions` shape can be declared here
+# instead of written as a new adapter class plus a new branch in `_build_operator`. The name
+# becomes usable in `operator:`, `noncritical_operator:`, `artifact_operator:`,
+# `marketing_operator:` and `component_models:` exactly like a built-in tier name.
+#
+# A DECLARED PROVIDER IS PROVISIONAL UNTIL IT IS ALSO NAMED IN `moat_primary:` ABOVE. Until then
+# anything it rules is stamped `provisional`, never publishes on PASS, and is re-vetted — which
+# is the point: adding a brain and trusting it with the £49 deliverable are separate decisions.
+# Promotion is the golden gate (`python -m prospector.golden`), not this block.
+#
+# `api_key_env` is the NAME of an environment variable, never the key: this file is committed.
+# A tier whose key is unset is dropped from the chain at construction, so the run fails over
+# instead of failing mid-candidate. `fast_model` is used for mechanical calls (query-gen,
+# prescreen); blank means the one model serves both. `max_tokens` defaults to 8192 and
+# `timeout_s` to 300. Nothing here is enabled — this block is an example, commented out.
+#
+# providers:
+#   acme:
+#     base_url:    "https://api.acme.example/v1"
+#     api_key_env: "ACME_API_KEY"
+#     model:       "acme-large"
+#     fast_model:  "acme-small"
+#     max_tokens:  8192
+#     timeout_s:   300
+
 # MODEL PIN FOR THE CLAUDE FALLBACK. Founder directive 2026-08-19: both estates must fall back
 # to the CHEAPEST Claude, enforced and documented. Blank => prospector.claude_cli
 # CHEAPEST_CLAUDE_MODEL (claude-haiku-4-5-20251001). Never leave the claude CLI unpinned: it
