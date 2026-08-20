@@ -57,11 +57,18 @@ export default defineConfig({
     },
     { name: 'a11y', testMatch: '**/a11y.spec.ts' },
   ],
+  // BUILD, then start. `next start` serves whatever `.next` happens to be on disk, and it does not
+  // check whether that build matches the source — so a spec run against a stale bundle passes,
+  // fails, or reports overflow on a page nobody has touched, and every one of those readings is
+  // about code that is no longer here. Measured 2026-08-20: a stale bundle reported `/config`
+  // overflowing by 7px at 320px, twice, including on a control run with the change reverted, which
+  // is exactly how a stale reading gets mistaken for a confirmed one. The same spec against a
+  // fresh build: 6 passed, 0 failed. The build costs under a minute and buys the run its meaning.
   webServer: {
-    command: `npx next start -p ${PORT}`,
+    command: `npx next build && npx next start -p ${PORT}`,
     port: PORT,
     reuseExistingServer: false,
-    timeout: 120_000,
+    timeout: 300_000,
     env: {
       CONTROL_CENTER_PASSWORD: PASSWORD,
       PROSPECTOR_ROOT: ROOT,

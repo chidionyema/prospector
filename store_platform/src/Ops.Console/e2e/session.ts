@@ -25,6 +25,7 @@ export const SCREENS = [
   '/catalogue',
   '/tools',
   '/audit',
+  '/reports',
 ] as const;
 
 export async function signIn(page: Page): Promise<void> {
