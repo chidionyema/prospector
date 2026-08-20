@@ -1,0 +1,269 @@
+# Every resource this business runs on, what file describes it, and how it comes back.
+#
+# HOW TO READ THIS FILE. It is not the inventory. `scripts/estate_inventory.py` finds what is
+# actually running by asking the platforms, and then looks each resource up in here. This file
+# only ever answers two questions about a resource that already exists:
+#
+#   described_by  -- which committed file would let someone rebuild this somewhere else
+#   restore       -- the command that does it
+#
+# So this file cannot hide a resource. Deleting a line here does not make something disappear
+# from the inventory; it makes it appear as UNDESCRIBED and the run exits non-zero. That is the
+# whole design: a declaration that could conceal a resource would be a declaration nobody can
+# trust after the first time someone is in a hurry.
+#
+# WHY IT IS THIS SHORT. 140 resources, well under 140 entries. A family entry covers many
+# resources at once, but only through a form that stays per-resource:
+#
+#   described_by_template  -- each member must have its OWN committed file, e.g. every launchd
+#                             job needs ops/launchd/<label>.json. Add a 17th job with no JSON
+#                             and the run goes red even though the family is declared.
+#   names_listed_in        -- each member's name must appear in that committed file. A secret
+#                             set on an app but missing from the file a move reads is exactly
+#                             the secret that makes the new provider come up broken.
+#
+# Both are stricter than one hand-written entry per resource, not looser: they read the
+# describing file's CONTENTS instead of only checking that a path exists.
+#
+# THE TWO ADMISSIONS, AND WHY THEY ARE DIFFERENT.
+#   admitted_gaps  -- excuses the resource entirely. Every one names an open issue. Use this
+#                     only where the resource itself is undecided.
+#   restore_gap    -- excuses ONLY the restore column. The describing checks still run and can
+#                     still fail. This is the honest state of most of the estate: we know what
+#                     a thing is and where it is written down, and the one-command rebuild is
+#                     not built yet. Blanket-admitting those would also stop grading whether
+#                     they are described, which is the check that catches new drift.
+#
+# THE RESTORE COLUMN IS ALSO THE PORTABILITY AUDIT. Any restore below that names a provider CLI
+# is a resource we have not yet put behind the twelve-verb contract in deploy/PORTABILITY.md.
+# They are meant to be visible, not tidied away.
+
+# ---------------------------------------------------------------------------------------------
+# What belongs to us. The discoverers ask the world; this is how they tell our things apart
+# from everything else in the same accounts.
+# ---------------------------------------------------------------------------------------------
+owns:
+  fly_app_prefixes: [prospector-, hermes-]
+  domains: [mumchimp.com]
+  ci_app: prospector-ci
+  log_host_app: prospector-engine
+  github_repo: chidionyema/prospector
+  launchd_prefixes: [com.prospector, ai.hermes, com.chidionyema, com.estate, com.signalengine]
+  supervisord_configs: [deploy/engine/supervisord.conf]
+  stripe_key_env: STRIPE_LIVE_API_KEY
+
+resources:
+
+  # --- compute -------------------------------------------------------------------------------
+  # Each app is described by the fly.toml that would recreate it. The engine is the only one
+  # with a portable restore: cutover.sh drives the twelve-verb contract and neither end of it is
+  # hardcoded, so the same command moves it to a rented box.
+  "compute:prospector-engine":
+    described_by: deploy/engine/fly.toml
+    restore: bash deploy/cutover.sh --from laptop --to fly
+
+  "compute:prospector-store-api":
+    described_by: store_platform/deploy/fly/api.fly.toml
+    restore: fly deploy -c store_platform/deploy/fly/api.fly.toml
+    why: the money path. Checkout, entitlements and downloads.
+
+  "compute:prospector-store-web":
+    described_by: store_platform/deploy/fly/web.fly.toml
+    restore: fly deploy -c store_platform/deploy/fly/web.fly.toml
+
+  "compute:prospector-searxng":
+    described_by: deploy/searxng/fly.toml
+    restore: fly deploy -c deploy/searxng/fly.toml
+    why: >-
+      self-hosted search behind the grounding chain. Losing it does not stop the shop, it stops
+      new ideas being verified.
+
+  "compute:prospector-ci":
+    described_by: deploy/runner/fly.toml
+    restore: bash deploy/runners.sh up 4
+
+  "compute:hermes-ci":
+    described_by: deploy/runner/fly.hermes-ci.toml
+    restore: bash deploy/runners.sh up 1
+
+  # --- datastore -----------------------------------------------------------------------------
+  "datastore:prospector-engine/prospector_store":
+    described_by: deploy/engine/fly.toml
+    restore: .venv/bin/python scripts/backup_store.py --restore <dir>
+    why: >-
+      dossiers, the spend ledger and the catalogue index. The restore is proven on a schedule by
+      scripts/restore_drill.py rather than asserted here.
+
+  "datastore:prospector-store-api/store_data":
+    described_by: store_platform/deploy/fly/api.fly.toml
+    restore_gap:
+      issue: 79
+      why: >-
+        this is the only record of who bought what. ops/automations/offsite_backup.py copies it
+        off Fly nightly, so the bytes are safe; what does not exist is a command that puts them
+        back. M11 records a proven restore per datastore.
+
+  # --- object storage ------------------------------------------------------------------------
+  "object_storage:prospector-backup":
+    described_by: ops/config/offsite_backup.yaml
+    restore_gap:
+      issue: 79
+      why: >-
+        the bucket that holds every other restore. Recreating it in a new account is manual: no
+        command in this repo creates a bucket, so a move starts by making one by hand.
+
+  "object_storage:prospector-packs":
+    described_by: store_platform/.env.production.example
+    restore_gap:
+      issue: 79
+      why: >-
+        delivered packs. A buyer's download link resolves here, so an empty bucket in a new
+        account fails after the money is taken, not before.
+
+  # --- dns -----------------------------------------------------------------------------------
+  "dns:mumchimp.com":
+    described_by: deploy/dns/mumchimp.com.zone
+    restore_gap:
+      issue: 99
+      why: >-
+        the zone is committed and diffed daily by .github/workflows/dns-drift-drill.yml, so
+        drift is caught. Applying it is still a person in the GoDaddy control panel. #99 puts
+        the zone under octoDNS, which turns this column into a command.
+
+  # --- tls -----------------------------------------------------------------------------------
+  # A cutover that restores compute, volume, DNS and secrets and forgets the certificate ends
+  # with a storefront browsers refuse to open.
+  "tls_certificate:*":
+    described_by: deploy/tls/certificates.yaml
+    restore: see the reissue command per hostname in deploy/tls/certificates.yaml
+
+  # --- secrets ---------------------------------------------------------------------------------
+  # Names only, everywhere. No value is read by the inventory and none is written down here.
+  "secret:prospector-engine/*":
+    described_by: deploy/secrets.required
+    names_listed_in: deploy/secrets.required
+    restore: bash deploy/secrets.sh push fly
+
+  # Two values are set as secrets on the engine and are not secret: a URL and a boolean flag.
+  # They are declared in the app's own config, which is where they belong.
+  "secret:prospector-engine/SEARXNG_URL":
+    described_by: deploy/engine/fly.toml
+    restore: bash deploy/secrets.sh push fly
+  "secret:prospector-engine/ENGINE_BACKUPS_ENABLED":
+    described_by: deploy/engine/fly.toml
+    restore: bash deploy/secrets.sh push fly
+
+  "secret:prospector-store-api/*":
+    described_by: store_platform/.env.production.example
+    names_listed_in: store_platform/.env.production.example
+    restore: bash deploy/secrets.sh push fly
+
+  "secret:prospector-store-web/*":
+    described_by: deploy/secrets.required
+    names_listed_in: deploy/secrets.required
+    restore: bash deploy/secrets.sh push fly
+
+  # The runner apps get two credentials and nothing else, deliberately: they execute code from
+  # every pull request, including one an outsider opened, so the money keys never go near them.
+  "secret:prospector-ci/*":
+    described_by: deploy/runners.sh
+    restore: bash deploy/runners.sh up 4
+  "secret:hermes-ci/*":
+    described_by: deploy/runners.sh
+    restore: bash deploy/runners.sh up 1
+
+  # --- log sinks -------------------------------------------------------------------------------
+  # Discovered by listing /data/logs on the engine, not by reading the rotation config. Reading
+  # the config would grade the answer against the answer sheet: every sink found would be
+  # described by construction, and the log tree that fills the volume at 3am is precisely the one
+  # no config mentions.
+  "log_sink:/data/logs/*":
+    described_by: ops/config/log_rotation.yaml
+    names_listed_in: ops/config/log_rotation.yaml
+    match: glob
+    restore: not_applicable
+    restore_why: >-
+      logs are output, not state. The copy that must survive is the offsite one, which is the
+      resource M10 (#112) makes real; restoring a log file in place would be a fiction.
+
+  # --- scheduled jobs --------------------------------------------------------------------------
+  "scheduled_job:launchd/*":
+    described_by_template: ops/launchd/{name}.json
+    restore_gap:
+      issue: 82
+      why: >-
+        all sixteen live jobs have a committed JSON, and scripts/launchd_plists.py --check
+        proves the installed plist still matches it. What no script does is install them on a
+        fresh machine, which is the developer half of the stack and is M2's job.
+
+  "scheduled_job:supervisord/*":
+    described_by: deploy/engine/supervisord.conf
+    restore: bash deploy/cutover.sh --from laptop --to fly
+    why: >-
+      these nine ride the engine image, so the cutover that moves the engine moves them. That is
+      why moving jobs off launchd and into supervisord is the direction of travel.
+
+  "scheduled_job:workflow/*":
+    described_by_template: .github/workflows/{name}
+    restore_gap:
+      issue: 114
+      why: >-
+        the six scheduled workflows are committed and move with the repo, so a new GitHub org
+        picks them up on push. Any other CI host would need them rewritten, and nothing today
+        measures that.
+
+  # --- ci runners ------------------------------------------------------------------------------
+  # A pool, not a list of machines. Runner machines are created and destroyed by the hour under
+  # generated names, so naming one here guarantees this file is wrong by tomorrow.
+  "ci_runner:prospector-ci/app":
+    described_by: deploy/runner/fly.toml
+    restore: bash deploy/runners.sh up 4
+
+# ---------------------------------------------------------------------------------------------
+# Admitted gaps. Each one names an open issue and excuses the resource entirely. They are listed
+# by the run, every run, so the count is visible rather than forgotten.
+# ---------------------------------------------------------------------------------------------
+admitted_gaps:
+  "compute:prospector-hermes":
+    issue: 74
+    why: >-
+      the app that started this. It has run in production for months with no committed fly.toml
+      of any kind, which is why nothing in the repo could tell anyone it existed. #74 decides:
+      commit a config and keep it, or destroy it.
+
+  "datastore:prospector-hermes/hermes_state":
+    issue: 74
+    why: 3GB of state belonging to an app whose future is undecided. It moves or dies with #74.
+
+  "secret:prospector-hermes/*":
+    issue: 74
+    why: >-
+      thirty-two secrets on an undescribed app, including an Anthropic key. They are worth
+      auditing when #74 decides whether the app survives; describing them first would be writing
+      down the contents of a box we may throw away.
+
+  "secret:prospector-engine/FLY_API_TOKEN":
+    issue: 102
+    why: >-
+      the engine holds a token for its own platform. #102 scopes it. Writing it into a
+      describing file before it is scoped would spread an over-broad credential, not describe it.
+
+  "secret:github/*":
+    issue: 102
+    why: >-
+      three Fly deploy tokens held by GitHub Actions. Same decision as above and the same issue:
+      what they are allowed to do is not settled, so what they are is not worth recording yet.
+
+# ---------------------------------------------------------------------------------------------
+# Classes this run may legitimately fail to probe. Anything not listed here that comes back
+# blind fails the run, because a class nobody could look at reports zero resources and zero
+# reads exactly like healthy.
+# ---------------------------------------------------------------------------------------------
+admitted_blind_classes:
+  payment_integration:
+    issue: 102
+    why: >-
+      listing Stripe webhook endpoints needs the live key in the environment. On the engine,
+      where this runs on a schedule, it is there. On a laptop or in CI it is not, and it must
+      not be: an agent process that can read the live Stripe key is a worse problem than an
+      unprobed class. Blind here means "ask the engine", not "no webhooks".
