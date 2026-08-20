@@ -566,7 +566,14 @@ jobs:
           SCAN_PIDS=""
           for scan in bandit dep_advisory; do
             rm -f "/tmp/scan-$scan.rc" "/tmp/scan-$scan.log"
-            ( bash ".github/scripts/${scan}_scan.sh" > "/tmp/scan-$scan.log" 2>&1
+            # `set +e` inside the subshell is load-bearing. This block inherits the step's
+            # `set -e`, so a scan that exits non-zero killed the subshell BEFORE it could
+            # write its `.rc` file — and the grading step then reported "recorded no exit
+            # code, so it did not finish" for a scan that finished and found something. It
+            # failed the job either way, so nothing was let through; it just named the wrong
+            # reason, on the one line anyone reads. Measured on run 32345786916.
+            ( set +e
+              bash ".github/scripts/${scan}_scan.sh" > "/tmp/scan-$scan.log" 2>&1
               echo $? > "/tmp/scan-$scan.rc" ) &
             SCAN_PIDS="$SCAN_PIDS $!"
             echo "started $scan in the background (pid $!)"

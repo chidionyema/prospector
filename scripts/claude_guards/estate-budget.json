@@ -1,0 +1,10 @@
+{
+  "_comment": "Estate spend policy. Thresholds are USD per LOCAL calendar day, measured by ~/.claude/scripts/estate_spend.py against Claude Code's own transcripts (not our logging). Changing policy is a config edit, never a code edit.",
+  "warn_usd": 120.0,
+  "_halt_usd_note": "0 = DISARMED. Halt fires on the DAEMON leg only (prospector-daemon owner), because PAUSE can only stop the daemon; interactive coding is unstoppable and would otherwise trip it. warn_usd fires on the ESTATE total.",
+  "halt_usd": 0.0,
+  "pause_files": [
+    "~/Documents/code/prospector/store/scheduler/PAUSE"
+  ],
+  "digest_debounce_s": 3600
+}
