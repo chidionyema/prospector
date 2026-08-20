@@ -4465,6 +4465,12 @@ def main() -> None:
     from .telemetry import route_logs_to_file
     log_path = cfg_for_log.store_dir / "prospector.jsonl"
     route_logs_to_file(str(log_path))
+    # Also ship every record to the central ingest on the engine, so "where are the logs"
+    # has one answer instead of one per process (docs/LOGGING_AND_RETENTION.md Part 4).
+    # `attach` is a no-op without STORE_INTERNAL_API_KEY, so a developer laptop and a test
+    # run ship nothing, and it can never raise: the handler does no I/O in the caller.
+    from .log_shipper import attach as _attach_central_log
+    _attach_central_log("consumer" if getattr(args, "command", "") == "consume" else "engine")
     from . import progress
     progress.note(f"audit log → {log_path}")
 

@@ -1,4 +1,5 @@
 import { API_FETCH_BASE } from '@/lib/config';
+import { correlated } from '@/lib/api/correlation';
 import { nodash } from '@/lib/text';
 // `import type` only, and that is the whole reason a `.server` module may be named here: the
 // statement is erased at compile time, so none of killLog.server's filesystem reads reach the
@@ -269,7 +270,7 @@ function inTheSiteVoice<T extends Pack>(pack: T): T {
 }
 
 export async function fetchCatalog(): Promise<Pack[]> {
-  const res = await fetch(`${API_FETCH_BASE}/catalog`);
+  const res = await fetch(`${API_FETCH_BASE}/catalog`, { headers: correlated() });
   if (!res.ok) throw new Error('Failed to fetch catalog');
   const packs: Pack[] = await res.json();
   return packs.map(inTheSiteVoice);
@@ -316,7 +317,7 @@ export async function joinWaitlist(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const res = await fetch(`${API_FETCH_BASE}/catalog/waitlist`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: correlated({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(signup),
   });
   if (res.ok) return { ok: true };
@@ -361,7 +362,7 @@ function checkoutBody(buyerEmail: string | null | undefined, rest: Record<string
 export async function createStripeCheckout(packId: string, buyerEmail?: string | null): Promise<string> {
   const res = await fetch(`${API_FETCH_BASE}/packs/${packId}/checkout`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: correlated({ 'Content-Type': 'application/json' }),
     body: checkoutBody(buyerEmail),
   });
   if (!res.ok) {
@@ -394,7 +395,7 @@ export async function createEmbeddedCheckout(
 ): Promise<CheckoutSession> {
   const res = await fetch(`${API_FETCH_BASE}/packs/${packId}/checkout`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: correlated({ 'Content-Type': 'application/json' }),
     body: checkoutBody(buyerEmail, { embedded: true }),
   });
   if (!res.ok) {
@@ -452,7 +453,7 @@ export async function createCartCheckout(
 ): Promise<string> {
   const res = await fetch(`${API_FETCH_BASE}/checkout`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: correlated({ 'Content-Type': 'application/json' }),
     body: checkoutBody(buyerEmail, { packIds }),
   });
 
@@ -487,7 +488,7 @@ function assertStripeCheckoutUrl(url: unknown): string {
 /** Throws `ApiError` (declared above) rather than a bare Error, so a caller can tell "gone" from
  *  "down". Message and `instanceof Error` are unchanged, so existing catch blocks behave as before. */
 export async function fetchPackDetails(id: string): Promise<PackDetails> {
-  const res = await fetch(`${API_FETCH_BASE}/catalog/${id}`);
+  const res = await fetch(`${API_FETCH_BASE}/catalog/${id}`, { headers: correlated() });
   if (!res.ok) throw new ApiError('Failed to fetch pack details', res.status);
   return inTheSiteVoice(await res.json());
 }
@@ -496,7 +497,7 @@ export async function fetchPackDetails(id: string): Promise<PackDetails> {
  *  failure so a stats outage never blocks the catalogue from rendering. */
 export async function fetchCatalogStats(): Promise<CatalogStats | null> {
   try {
-    const res = await fetch(`${API_FETCH_BASE}/catalog/stats`);
+    const res = await fetch(`${API_FETCH_BASE}/catalog/stats`, { headers: correlated() });
     if (!res.ok) return null;
     return await res.json();
   } catch {
@@ -541,7 +542,7 @@ export function recordAnalyticsEvent(body: AnalyticsEventBody): void {
     void fetch(`${API_FETCH_BASE}/events`, {
       method: 'POST',
       keepalive: true,
-      headers: { 'Content-Type': 'application/json' },
+      headers: correlated({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(body),
     }).catch(() => {
       /* swallowed */
@@ -559,7 +560,7 @@ export interface OrderDetails {
 }
 
 export async function fetchOrder(token: string): Promise<OrderDetails> {
-  const res = await fetch(`${API_FETCH_BASE}/api/orders/${token}`);
+  const res = await fetch(`${API_FETCH_BASE}/api/orders/${token}`, { headers: correlated() });
   if (res.status === 404) throw new Error('not_found');
   if (!res.ok) throw new Error('Failed to fetch order');
   return res.json();
@@ -592,7 +593,7 @@ export interface SessionOrder {
 /** Resolve the checkout session the buyer just completed into real download links.
  *  This is what makes the purchase deliverable on-screen rather than only by email. */
 export async function fetchOrderBySession(sessionId: string): Promise<SessionOrder> {
-  const res = await fetch(`${API_FETCH_BASE}/api/orders/by-session/${encodeURIComponent(sessionId)}`);
+  const res = await fetch(`${API_FETCH_BASE}/api/orders/by-session/${encodeURIComponent(sessionId)}`, { headers: correlated() });
   if (!res.ok) throw new Error('Failed to resolve checkout session');
   return res.json();
 }
