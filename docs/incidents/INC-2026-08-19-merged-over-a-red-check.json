@@ -1,0 +1,41 @@
+{
+  "id": "INC-2026-08-19-merged-over-a-red-check",
+  "opened": "2026-08-19",
+  "title": "Six pull requests merged in three minutes over a failing ci-ok, and main went red for over an hour",
+  "severity": "high",
+  "detected_by": "founder",
+  "first_order": {
+    "what_broke": "PR #460 added `scripts/pr_triage.py` with no row in the ops-console tool registry. Its own CI failed on `tests/unit/test_console_tools_run.py::test_console_tool_registry_has_no_drift` at 21:46:09Z and named the file. `ci-ok` failed with it. The PR merged 19 minutes later anyway and main went red. It was not alone: six PRs merged between 22:05:14Z and 22:08:25Z — #458, #460, #457, #456, #455, #463 — every one with `merged_by: chidionyema` and `auto_merge: null`.",
+    "receipt": "gh pr view 460 --json statusCheckRollup at merge time: `changes=FAILURE guard=CANCELLED python=SKIPPED ci-ok=FAILURE`, merged_at 2026-08-19T22:05:30Z. Failing job log 96234883271: `AssertionError: ... assert not ['scripts/pr_triage.py']` at 21:46:09Z. Attribution: `gh api repos/chidionyema/prospector/pulls/{455,456,457,458,460,463} -q .merged_by.login` returns `chidionyema` for all six; automerge.yml merges with secrets.GITHUB_TOKEN and is always attributed to app/github-actions, so none of these were automerge.",
+    "fixed_by": "PR #474 registered the tool (peer session); PR #472 restores the innocent commit the green guard removed."
+  },
+  "cause_chain": [
+    "A tool landed on main without the ops-console row its own test requires.",
+    "The test caught it on the PR, 19 minutes before the merge. The evidence existed and was ignored.",
+    "Nothing refused the merge. Native branch protection is unavailable on this GitHub plan — `403 Upgrade to GitHub Pro` on both /branches/main/protection and /rulesets — so `ci-ok` is a required check in name only.",
+    "`~/.claude/scripts/rule-guard.py::_merge_refusal` fences a `gh pr merge` typed into a shell on this box. It cannot see a merge made from the GitHub web UI, and six merges in three minutes and fourteen seconds is the shape of a web UI session, not of six shell commands.",
+    "CLASS: a rule enforced only at one of several entry points is not enforced. The guard covers the entry an agent uses and leaves the entry a person uses wide open, so the estate believes it is protected while the most common path is unguarded."
+  ],
+  "second_order": {
+    "sweep_command": "gh api 'repos/chidionyema/prospector/pulls?state=closed&per_page=100' -q '.[]|select(.merged_at)|.number,(.merged_by.login)' | paste - - | rg -v 'github-actions'",
+    "siblings_found": 6,
+    "siblings_fixed": 0,
+    "note": "RUN 2026-08-19. The six are the incident itself; the sweep is what establishes that they are a batch rather than one slip, which is what moves the diagnosis from 'someone made a mistake' to 'the path is unguarded'. Not fixed, because the fix is not a code change to those PRs — it is a refusal that reaches the web UI, and the only mechanism that can is a required status check, which needs a paid plan. That is a founder decision and is named as one below."
+  },
+  "third_order": {
+    "tier": "refuse",
+    "mechanism": "NOT LANDED. Three candidates, cheapest first: (1) `.github/workflows/main-green-guard.yml` already reverts a red main, so the damage is bounded — but it reverts the HEAD, not the cause, which is its own incident. (2) A `workflow_run` job that comments on and re-opens any PR merged while its own `ci-ok` was not SUCCESS: detection, not refusal, but it reaches every entry point. (3) GitHub Pro, which makes `ci-ok` a genuinely required check and refuses the merge in the UI itself. Only (3) is a real refusal, and it costs money, so it is the founder's call.",
+    "landed_on": null,
+    "note": "Documented in docs/CI_DEBUG_RUNBOOK.md under 'What is guarded, and what is still only words' — listed as an admission, not a plan."
+  },
+  "grade": {
+    "signature": "a pull request whose merge commit lands while its own ci-ok check is not SUCCESS",
+    "before": 6,
+    "after": null,
+    "window_days": 14,
+    "verdict": "unproven",
+    "graded_on": null
+  },
+  "issue": null,
+  "state": "open"
+}

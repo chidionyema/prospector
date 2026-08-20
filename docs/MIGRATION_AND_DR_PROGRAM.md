@@ -659,6 +659,44 @@ not have a redundancy problem, we have a backup problem. That is why this is M12
 
 ---
 
+### M13 — A staging environment, with the laptop as the emergency fallback. **P1, M**
+
+**Founder, 2026-08-19:** *"when setting u staging env, also setup laptop as energency fallback"* —
+said in the same breath as *"prod is canonical, we need a way to keep local in sync"*, and the two
+are one requirement, not two.
+
+**Breaks today.** There is no staging environment at all. Every change is proved in production or
+not proved. And the laptop, which held the whole estate until 2026-08-18, is now neither: it is not
+production, and nothing keeps it current enough to become production if Fly is lost. It holds a
+store 277,000 ledger lines and 654 dossiers behind, with a 42-hour-stale heartbeat (issue #454).
+A fallback that has not been fed is a fallback that will not start.
+
+**Story.** One environment to prove a change in before customers meet it, and one machine that can
+take over if the platform under production disappears — and they are the same build, because a
+staging environment that continuously restores production's state IS a warm fallback, and a warm
+fallback that nobody exercises IS the thing that fails the drill.
+
+**Done when.**
+
+1. A `staging` target exists in `deploy/targets/` and a committed compose/fly file describes it.
+   Nothing in it is hand-made.
+2. Staging is fed by a **restore from production's backup**, on a schedule — not by a copy of a
+   copy. That makes the restore drill (M4) and the staging refresh the same job, so the drill runs
+   continuously instead of quarterly, and staging's freshness is the receipt that the backup works.
+3. The **laptop is a declared fallback target** with the same adapter, the same restore feed, and a
+   documented promotion path: one command that makes it serve, plus the DNS edit (M9).
+4. A probe FAILS when the fallback's state is older than an agreed RPO. Staleness must be loud.
+   Prose was the only thing asserting there was one store, and prose cannot fail.
+
+**Costs.** M. Most of the machinery is M4's restore path and M3's adapter; this is a third target
+and a schedule, not a new mechanism. Depends on **M4**, **M11** and the sync built for #454.
+
+**What it is NOT.** It is not a second live engine. Two engines keep two spend ledgers and can spend
+twice the daily cap (see M12). The fallback is COLD-to-WARM: fed, provable, and started by a
+decision, never automatically.
+
+---
+
 ## 4. Hermes is the test case
 
 The founder asked for Hermes to be *"use[d] as test"*, and it is the right one: it is real,
@@ -863,7 +901,12 @@ Each of these changes what gets built, and no default is safe enough to assume.
 5. **DNS: move the zone to a provider with an API, or keep GoDaddy?** An API makes cutover scriptable
    and the zone diffable without scraping. Staying put is one less account to protect. Blocks
    **M9(c)**.
-6. **Store API redundancy.** A second machine needs the SQLite write to move to one primary, or a
+6. **~~Which store is canonical?~~ DECIDED 2026-08-19.** Founder: *"prod is canonical, we need a
+   way to keep local in sync"*. `/data/store` on the Fly volume is the source of truth; the laptop
+   copy is a replica and the emergency fallback (**M13**). What remains is build, not decision:
+   a sync down, and a probe that fails when a reader's store is not the store production writes.
+   Tracked on issue #454. `CLAUDE.md` and the `where-production-runs` skill are corrected.
+7. **Store API redundancy.** A second machine needs the SQLite write to move to one primary, or a
    swap to Postgres — which re-introduces a managed database, the first lock-in
    `deploy/PORTABILITY.md` refuses. Recommendation: leave it single, fix the backup, revisit after
    M4. Blocks **M12**.
