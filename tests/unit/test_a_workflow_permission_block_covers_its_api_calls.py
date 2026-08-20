@@ -44,8 +44,10 @@ CALL_RE = re.compile(r"github\.rest\.([a-zA-Z]+)\.([a-zA-Z]+)")
 # applied to a pull request number is satisfied by `pull-requests: write` as well as
 # `issues: write`, and the call site cannot be known statically.
 SCOPES: dict[str, tuple[str, ...]] = {
+    "actions.approveWorkflowRun": ("actions:write",),
     "actions.cancelWorkflowRun": ("actions:write",),
     "actions.createWorkflowDispatch": ("actions:write",),
+    "actions.listJobsForWorkflowRun": ("actions:read",),
     "actions.listWorkflowRuns": ("actions:read",),
     "actions.listWorkflowRunsForRepo": ("actions:read",),
     "actions.reRunWorkflowFailedJobs": ("actions:write",),
@@ -57,6 +59,7 @@ SCOPES: dict[str, tuple[str, ...]] = {
     "issues.listForRepo": ("issues:read",),
     "issues.listLabelsOnIssue": ("issues:read", "pull-requests:read"),
     "issues.update": ("issues:write",),
+    "pulls.get": ("pull-requests:read",),
     "pulls.list": ("pull-requests:read",),
     "pulls.listFiles": ("pull-requests:read",),
     "pulls.merge": ("pull-requests:write",),

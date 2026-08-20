@@ -4,21 +4,20 @@
     "PATH": "/usr/local/bin:/Users/chidionyema/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
     "PROSPECTOR_STORE_DIR": "/Users/chidionyema/Documents/code/prospector/store"
   },
-  "Label": "com.prospector.process-audit",
+  "Label": "com.prospector.launchd-held",
   "ProgramArguments": [
     "/Users/chidionyema/Documents/code/prospector/.venv/bin/python",
     "/Users/chidionyema/.hermes/scripts/launchd_receipt.py",
     "--label",
-    "com.prospector.process-audit",
+    "com.prospector.launchd-held",
     "--",
     "/Users/chidionyema/Documents/code/prospector/.venv/bin/python",
-    "/Users/chidionyema/Documents/code/prospector/scripts/process_audit.py",
-    "--quiet",
-    "--alert"
+    "/Users/chidionyema/Documents/code/prospector/scripts/launchd_plists.py",
+    "--assert-held"
   ],
-  "RunAtLoad": false,
-  "StandardErrorPath": "/Users/chidionyema/Documents/code/prospector/store/scheduler/process-audit.err.log",
-  "StandardOutPath": "/Users/chidionyema/Documents/code/prospector/store/scheduler/process-audit.out.log",
+  "RunAtLoad": true,
+  "StandardErrorPath": "/Users/chidionyema/Documents/code/prospector/store/scheduler/launchd-held.log",
+  "StandardOutPath": "/Users/chidionyema/Documents/code/prospector/store/scheduler/launchd-held.log",
   "StartInterval": 3600,
   "WorkingDirectory": "/tmp"
 }
