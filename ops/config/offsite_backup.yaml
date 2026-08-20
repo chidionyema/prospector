@@ -144,3 +144,20 @@ watch:
       losing Fly. This is the half of DR that a database backup does not cover: restoring data
       with no code to run against it is not a restore.
     max_age_hours: 30
+
+  - name: engine-logs
+    prefix: logs/
+    writer: scripts/backup_store.py archive_logs(), supervisord [program:backup], daily
+    why: >-
+      Every log line the estate has ever collected lives on one Fly volume,
+      vol_42kyqo6g0kdzew14, and ops/automations/log_rotation.py deletes it at 14 days. So
+      without this prefix, losing the volume loses the whole record and keeping the volume
+      loses it anyway after a fortnight. One object per service per day,
+      logs/<svc>-<day>.jsonl.gz, kept 90 days.
+    # Same 30h as the three above, and the reason it is safe here is worth stating because the
+    # `dossiers/` entry was REFUSED on exactly this ground. A content mirror's newest-object age
+    # tracks engine output, so it goes red on a quiet day. This is a dated series: one new object
+    # per service per day, uploaded the day after the file closes. The only way it stops moving
+    # is that no service in the estate wrote a single line all day, and on a machine running the
+    # scheduler, the consumer and the API that means the estate stopped, which is worth a red.
+    max_age_hours: 30

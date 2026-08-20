@@ -939,11 +939,48 @@ two halves cannot drift apart in silence. Mutation-checked four ways — remove
 `[program:log-retention]`, point the glob at `/data/store/logs`, widen the window to 30 days, drop
 `--fix` — each kills exactly one test, and the restore is green.
 
-**Step 12 — Cold tier and the restore drill.**
-Daily gzip of yesterday's files to R2 `prospector-backup/logs/` with a 90-day lifecycle rule.
-Then run the §6.4 drill once and write the date and result into `store/backup.log`.
-*Verification:* step 5 of the drill passes — a historical grant token decrypts against the
-restored key ring.
+**Step 12 — Cold tier. DONE, with the retention moved into the code and the drill split off.**
+`archive_logs()` in `scripts/backup_store.py` gzips every CLOSED day file to
+`prospector-backup/logs/<svc>-<day>.jsonl.gz`, one object per service per day. It runs inside the
+existing `[program:backup]` in `deploy/engine/supervisord.conf`, daily, alongside the money
+database, the ledger and the repo mirror. This closes the gap the document is named after: until
+now every log line the estate had ever collected lived on one Fly volume and
+`ops/automations/log_rotation.py` deleted it at 14 days, so losing the volume lost the whole
+record and keeping the volume lost it anyway after a fortnight.
+
+Three things landed differently from the plan above, each for a reason worth keeping.
+
+*The 90 days are pruned in this repository's code, not by an R2 lifecycle rule.* A lifecycle rule
+is cheaper — no LIST, no DELETE, and it keeps working while this job is off. It is also a fact
+that would live in a provider account and nowhere in this repository, and the platform rule is
+that a fresh clone plus an env file is the whole system. The three series already in that script
+prune in code for the same reason; a fourth series pruning somewhere else is the one nobody
+remembers when this estate leaves Fly. `_prune_log_archives()` reads the day out of the KEY, never
+out of `LastModified`, because an object copied inside the bucket during a provider move gets a
+fresh `LastModified` while still holding a log from March.
+
+*Today's file is never captured.* The ingest names a file from its own clock at write time and
+appends to today's file continuously, so it is the one file guaranteed to be mid-write. Only days
+strictly before today are copied.
+
+*The §6.4 drill is not this step's verification.* Its step 5 decrypts a historical grant token
+against a restored key ring, which needs a throwaway Fly app and belongs with the restore
+programme, not here. What replaced it is a proof specific to logs and it runs on every upload:
+each new object is fetched back over the network, streamed through `gzip` a line at a time, and
+every record is parsed and checked for the five fields `log_ingest.normalise` guarantees
+(`ts`, `svc`, `lvl`, `evt`, `host`). A problem fails the run, the object is left where it is
+because it is still the only copy of that day that ever left the machine, and nothing is pruned.
+Reading it back rather than re-checking the local file is the point: what a restore will have is
+the bytes on R2. `verify: nonempty` was deleted from `ops/config/offsite_backup.yaml` on
+2026-08-19 because a size cannot tell a whole file from a download that stopped halfway, and a
+gzip that stops halfway is the same failure on the way out.
+
+*Verification:* `tests/unit/test_log_cold_tier.py`, 22 tests, mutation-proved. Beyond the upload
+itself it pins the two ways this can be switched off with nothing going red — `[program:backup]`
+passing `--skip-logs`, and the `engine-logs` entry in `ops/config/offsite_backup.yaml` drifting
+off `LOGS_PREFIX` — and the coupling that makes it a mechanism rather than two settings: the
+backup period must fit inside the hot tier's `older_than_days` twice over, or a log file can be
+deleted having never been copied.
 
 ---
 
