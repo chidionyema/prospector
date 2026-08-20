@@ -24,6 +24,7 @@ import argparse
 import json
 import os
 import re
+import statistics
 import sys
 from collections import Counter
 from datetime import datetime, timedelta, timezone
@@ -390,12 +391,30 @@ def axis_a5(scan: dict) -> Axis:
 
 
 def axis_a6(store: Path, scan: dict) -> Axis:
-    axis = Axis("A6", "cost", "USD per 1000 verdicts")
+    """Cost per candidate vetted, joined on the candidate id the cost row itself carries.
+
+    This axis used to divide TOTAL ledger spend by the check count of the dossier corpus. Those
+    are two different populations over two different time windows — on the canonical store
+    2026-08-20 the ledger's cost rows were hours old while the corpus was months old — so the
+    quotient was arithmetic rather than a measurement. It is now a self-join: only rows that
+    name a `candidate_id` count, and the denominator is the distinct ids in those same rows.
+
+    The row is emitted by the Claude CLI adapter and carries the provider's OWN billed figure,
+    not a price table of ours, so this is a meter reading rather than an estimate. Rows with a
+    cost but no candidate id (a warm-up or a non-vetting call) are reported separately and never
+    folded into the per-candidate number.
+    """
+    axis = Axis("A6", "cost", "USD per candidate vetted (median)")
     ledger = store / "prospector.jsonl"
     if not ledger.exists():
         return axis.unobtainable("store/prospector.jsonl is absent", f"wc -l {ledger}")
-    spend = 0.0
+
     rows = 0
+    per_candidate: dict[str, float] = {}
+    calls_per_candidate: Counter[str] = Counter()
+    attributed_calls = 0
+    unattributed_usd = 0.0
+    unattributed_calls = 0
     with ledger.open(encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
@@ -406,28 +425,57 @@ def axis_a6(store: Path, scan: dict) -> Axis:
                 rec = json.loads(line)
             except ValueError:
                 continue
+            if not isinstance(rec, dict):
+                continue
+            cost = None
             for key in ("cost_usd", "cost", "usd"):
-                val = rec.get(key) if isinstance(rec, dict) else None
+                val = rec.get(key)
                 if isinstance(val, (int, float)):
-                    spend += float(val)
+                    cost = float(val)
                     break
-    checks = scan["checks"]
-    if not checks:
+            if cost is None or cost <= 0:
+                continue
+            cid = str(rec.get("candidate_id") or "").strip()
+            if not cid:
+                unattributed_usd += cost
+                unattributed_calls += 1
+                continue
+            per_candidate[cid] = per_candidate.get(cid, 0.0) + cost
+            calls_per_candidate[cid] += 1
+            attributed_calls += 1
+
+    if not per_candidate:
+        priced = unattributed_calls
         return axis.unobtainable(
-            f"ledger has {rows} rows but the store holds no checks to divide by", f"wc -l {ledger}"
-        )
-    if spend <= 0:
-        return axis.unobtainable(
-            f"no ledger row in {rows} carries a cost field, so cost per verdict is an ESTIMATE "
-            "rather than a meter reading. Item 1.3 in the action plan is the fix.",
+            f"no ledger row in {rows} carries BOTH a cost field and a candidate_id, so cost per "
+            f"candidate cannot be joined ({priced} priced row(s) name no candidate). Check the "
+            "store: a cost meter that reads zero on one store and non-zero on another is a "
+            "pointer bug, not an absent meter.",
             f"wc -l {ledger}",
         )
+
+    costs = sorted(per_candidate.values())
+    calls = sorted(calls_per_candidate.values())
     return axis.set(
-        round(1000.0 * spend / checks, 4),
+        round(statistics.median(costs), 4),
         f"wc -l {ledger}",
         ledger_rows=rows,
-        total_usd=round(spend, 4),
-        checks=checks,
+        candidates_priced=len(costs),
+        priced_calls=attributed_calls,
+        mean_usd=round(sum(costs) / len(costs), 4),
+        min_usd=round(costs[0], 4),
+        max_usd=round(costs[-1], 4),
+        calls_per_candidate_median=statistics.median(calls),
+        attributed_usd=round(sum(costs), 4),
+        unattributed_usd=round(unattributed_usd, 4),
+        unattributed_calls=unattributed_calls,
+        note=(
+            "MEDIAN, not mean: the spread is wide (a vet that retries costs several times a vet "
+            "that does not), so the mean tracks the tail rather than the typical candidate. "
+            "Both are printed. This counts only what a provider billed and reported back; a "
+            "provider that reports no cost is invisible here and its calls are free of charge to "
+            "this number, not free of charge to the business."
+        ),
     )
 
 

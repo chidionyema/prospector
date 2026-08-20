@@ -112,12 +112,41 @@ defining property and it is why this needs a mechanical probe, not vigilance.
 | 2 | `kill_decay.py:18::get_active_steers` | 0 | open — kill-rate steering never activates |
 | 3 | `kill_decay.py:257::re_seed_suggestions` | 0 | open — suggestions never refresh |
 | 4 | `kill_decay.py:120::check_diversity_floor` | 0 | open — no kill-clustering detection |
+| 4a | `kill_decay.py::get_stale_domains` | 0 | open — same module, same sweep |
+| 4b | `kill_decay.py::decayed_kill_ids` / `iter_revet_claims` | 0 | open — **and would return 0 rows if wired**; see below |
 | 5 | `scheduler/guard.py:266::guard_check` | 0 | open — deprecated; `guard_from_config` is live |
 
-> Rows 1–5 are **AGENT-REPORTED (unverified)** — from a caller-graph sweep excluding `tests/` and
-> `scripts/`. Each must be re-verified on disk before any of them is wired. Rows 2–4 are the same
-> module, which suggests `kill_decay.py` is dead wholesale rather than three separate omissions;
-> that is a hypothesis, not a finding.
+> Rows 1 and 5 remain **AGENT-REPORTED (unverified)** — from a caller-graph sweep excluding
+> `tests/` and `scripts/`. Each must be re-verified on disk before it is wired.
+>
+> **Rows 2–4b are VERIFIED on disk, 2026-08-20.** `rg` over the tree for all six public names in
+> `kill_decay.py`, excluding the module itself and `tests/`, returns only two `specs/*.md` design
+> documents and this file. The earlier hypothesis — "`kill_decay.py` is dead wholesale" — is now a
+> finding: the module has no production caller at all, not three separate omissions.
+>
+> **Row 4b carries a second defect, and it is the one that matters if anyone wires this module.**
+> `decayed_kill_ids` requires a top-level `verdict == "KILL"` and reads its date from
+> `killed_at` / `timestamp` / `ts`. Real dossiers carry neither. Measured over the 2,698
+> `*.kill.json` files in `store/dossiers/`: **0 have a top-level `verdict` key** (they carry
+> `decision`, whose value is the lowercase string `kill` on all 2,698) and **0 have `killed_at`**
+> (they carry `created_at`, on all 2,698).
+>
+> Two angles, and they agree. The key census above is one. Running the function against that real
+> corpus is the other: `decayed_kill_ids` returns **0 ids** at `half_life=30/revisit_below=0.5`, at
+> `revisit_below=1.0`, and at `half_life=365/revisit_below=1.0` — the last of which every one of
+> the 2,698 kills should clear.
+>
+> So the R2 per-candidate claim lock (`prospector/claim_lock.py`, `tests/unit/test_claim_lock.py`)
+> guards a walker that yields nothing. Its tests pass because their fixture writes
+> `{candidate_id, verdict, killed_at, domain}` — a four-key shape production has never written.
+> This is the same fixture defect that hid the lint-receipt bug in `tests/test_kill_decay.py`, in a
+> second file.
+>
+> **Deliberately not fixed here.** Correcting the read keys would make 2,698 killed candidates
+> eligible for re-vet the moment anything calls the walker, and a re-vet spends money on the moat.
+> That is a founder decision (LAW 11), not a drive-by patch, and there is no caller today so
+> nothing is currently broken by leaving it. Wire the caller and fix the keys in the same change,
+> with a bound on how many re-vets a tick may start.
 
 Same sweep reported, also unverified: **`adaptive.py` is fully wired** (all 8 functions called from
 `run.py` / `diagnostics.py`), **no write-only fields remain in the Dossier model**, and **index

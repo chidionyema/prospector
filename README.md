@@ -15,6 +15,13 @@ output**: the receipt that the filter is real and grounded.
 
 ## Start here
 
+> **[THE GOLD STAR PLAN](https://claude.ai/code/artifact/ef6fe784-7f6c-4981-85cd-37dfbe40b696)** — adopted 20 August 2026 as the target the platform is
+> being built toward. The ten planes, all 52 requirements with the drill that proves each one, how
+> much of the estate can sensibly move to Kubernetes, and the tooling we standardise on. Its source
+> of truth is [docs/MIGRATION_AND_DR_PROGRAM.md](docs/MIGRATION_AND_DR_PROGRAM.md) §10 and §11 —
+> the page renders those two sections, so when they disagree the document wins and the page gets
+> republished.
+
 This README documents the **engine**. The estate is bigger than the engine, and the two doors into
 the rest of it are:
 
