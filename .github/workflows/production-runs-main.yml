@@ -145,8 +145,12 @@ jobs:
               core.notice(`opened #${issue.number}`)
             }
 
+      # NOT `success()`. The step exits 0 for five reasons and only two of them mean
+      # production matches main -- the others are "waiting for CI", "a deploy is already
+      # running" and "just dispatched one". `success()` closed this issue on all five and
+      # commented that production matched main when it did not.
       - name: Close the drift issue, because production matches main again
-        if: success()
+        if: steps.reconcile.outputs.outcome == 'ok'
         uses: actions/github-script@v7
         with:
           script: |

@@ -77,6 +77,7 @@ introduced twice" below. |
 | 6.7 | Catalogue & intent search | P1 | ❌ not started | Skills-picker not yet merged into a single intent input. |
 | 6.8 | Pack pages & /sample | P2 | ❌ not started | Standard defined, next pass. |
 | 7 | Performance & transitions | P2 | 🟡 partial | **View transitions are shipped**, not "not started": `@view-transition { navigation: auto }` (`globals.css:575`), a 0.16s root cross-fade (`:584`), per-card shared elements via `viewTransitionName` (`PackMark.tsx:65`, name minted by `lib/packMark.ts:132` with a `pm-` prefix because the value is a CSS custom-ident), and reduced-motion coverage for the pseudo-tree (`:596`). `site_spec_probe.py --section 7`. **Unmeasured:** LCP <1.2s — no number has been taken, so that half is neither done nor failing, it is unknown, and the row stays 🟡 until someone measures it. |
+| 12 | "Run your idea through the engine" — the vetting desk | P1 | ❌ not started | Founder 2026-08-21, "killer featuure", registered users only. Spec §12 below. Not blocked: the cost claim that read as a blocker was withdrawn the same day — see §12.6. [`REQUIREMENTS.md`](REQUIREMENTS.md) R12. |
 
 ### The spec contradicted itself once — resolved
 
@@ -2051,3 +2052,202 @@ Re-measured after the fix, same probe, same widths: header y=44 h=59, hero grid 
 right-hand panel y=155 h=567, h1 y=297.2 h=168, sub y=483.6 h=54 -- every row identical on both
 documents. The only remaining difference is text width (h1 421px drawn against 436px built), which
 is the headline copy differing, not layout.
+
+## 12. "Run your idea through the engine" — the vetting desk (founder, 2026-08-21)
+
+The founder called this on 2026-08-21: **"and also the run you idea through engine"**,
+**"needs adding to requrenents"**, **"new featire in the way"**, **"killer featuure"**,
+**"needs uxx and fe input"**, **"talke to peeers to flesh out dtails"**, and — the line that
+decides the whole abuse surface — **"only for registered uers i nust say"**.
+
+**It is a registered-user feature on the storefront, not internal dogfooding.** The register
+recorded it as "run our own ideas through the engine" for a week. That reading is wrong and is
+corrected in [`REQUIREMENTS.md`](REQUIREMENTS.md) R12: an internal batch job needs no UX and no
+front end, and the founder asked for both.
+
+**What it is.** A registered user types their own business idea. The engine runs the same six
+checks it runs on every candidate — `pain_reality`, `value_durability`, `incumbency`,
+`payer_solvency`, `distribution`, `legality` — on the same brains, with the same kill-fast
+short-circuit, and returns the same cited verdict. Nothing about the run is a demo path. If it
+is not the real engine it is worth nothing, because the entire claim is that the verdict is
+evidence rather than an opinion.
+
+### 12.1 The wait is the product
+
+Do not put a spinner on this. The most convincing thing the engine does is **read the web in
+front of you**, and a progress bar is the one treatment that hides it.
+
+**Lead with one plain-English question at a time, not the six check names.** Six unfamiliar
+words resolving at once reads as machinery rather than as thinking. The sequence a visitor
+sees is: *"Does anyone actually have this problem?"* → *"Would they still have it in three
+years?"* → *"Who already sells this?"* Under the live question, **stream each URL as it is
+fetched, with the domain legible**. That is the proof, and it is free — the fetches are
+happening anyway.
+
+**The six-check rail is a secondary column that fills in behind.** It becomes legible
+retroactively, once each row carries a verdict and a source. By the end the visitor has been
+taught the vocabulary by watching it resolve, which is the only way six technical words are
+ever going to land.
+
+### 12.2 Before they type
+
+Not an empty box, and **not a prefilled example**. A prefilled example gets Enter pressed on
+it without reading, and then the first thing the visitor sees is somebody else's idea.
+
+Put **a real recent vet above the box**, cited reason visible, **ideally a KILL**. It proves
+the thing is real, it teaches the output format before they need to read one, and it
+normalises a KILL as a respectable answer rather than a rejection.
+
+### 12.3 When it is a KILL
+
+**The verdict is a statement about the world, never about them.** Two things the page must do
+that the internal dossier does not:
+
+1. **Name what would change the answer** — *"this passes if you can show one buyer already
+   paying for X"*. That sentence is derivable from the kill gate that fired. It is never
+   invented, and it must cite the same passage the KILL cited.
+2. **Label the kill-fast grey-out as respect for their time** — *"we stopped here: the
+   remaining four checks cost real money and this was already answered."* Without that line,
+   four greyed rows read as a broken run.
+
+### 12.4 The run has its own URL from the first second
+
+**A run must survive the tab closing.** Its own URL, minted before the first check, resumable,
+shareable. Three reasons, and the third is the commercial one:
+
+- a vet is up to seven checks against live retrieval, which is longer than a person will sit
+  still for;
+- it is the only honest way to hand back a run the moat could not finish;
+- it is the share mechanic, and **"the engine killed my idea and here is why" is far more
+  shareable than a pass.**
+
+### 12.5 Degrade honestly when the moat cannot finish
+
+Fold the run's event stream into what the screen shows, and add no judgement of its own:
+render the checks that **did** rule, each with its citation, name the ones the moat could not
+reach, and offer to finish it and mail the result.
+
+`kit/migrate/progress.py` is the prior art, and it is on `main` as of `ab8bbad7`. It folds a
+run's event stream into what a screen shows and adds no judgement of its own, which is the same
+shape this needs. Reuse it rather than writing a second fold.
+
+**Check that path before you build against it.** This paragraph has now been wrong in both
+directions inside 24 hours: it first claimed the file as existing prior art while `ab8bbad7` was
+still unmerged, was corrected to say the file did not exist, and then `ab8bbad7` landed on main
+and the correction went stale in the same session that wrote it. A claim about whether a file
+exists is true at one commit, never in general. The command is
+`git ls-tree origin/main kit/migrate/`.
+
+**What must never be built is a green that means "we could not ask".** That is the exact defect
+`verify.py:365` / `:693` exists to prevent inside the engine — a failed call DEFERS, it never
+contributes an `unverifiable` to a gate — and a public page is not allowed to undo it.
+
+### 12.6 The money rail
+
+**Correction, 2026-08-21, same day it was written.** This section first said the MiniMax adapter
+emits no cost row, therefore `spend.daily_cap_usd` caps only the `claude_cli` fallback, therefore
+no public write path could ship until an adapter fix landed. **That was false and the blocker is
+withdrawn.** It is kept here rather than deleted because the way it was wrong is the useful part.
+
+The chain, each link confirmed on disk:
+
+- the daily cap enforces rows tagged `event: "spend"`, summing `amount_usd` — `scheduler/guard.py:315`,
+  with the two accumulators spelled out in the docstring at `:271`. It deliberately does **not**
+  enforce `cost_usd` rows: those are the subscription leg, the Claude Code CLI's own
+  `total_cost_usd`, in the file's own words "API-equivalent, not invoiced";
+- MiniMax is priced — `telemetry.py:189`, `minimax` and `minimax_m27` both at $0.30/$0.30;
+- its adapter passes real token counts — `MiniMaxOperator._raw_once` calls `record_usage(...)` with
+  `prompt_tokens` / `completion_tokens` off the stream's usage block, `operator.py:896`;
+- `record_usage` emits `event: "spend"` with an `amount_usd` whenever cost is above zero,
+  `telemetry.py:305`.
+
+**So MiniMax already emits a metered row and is already inside the cap.** There is no adapter fix
+and nothing here blocks this feature.
+
+**How the false version was reached, because the same trap is one grep away from anyone.** Three
+angles were offered for it — priced rows all naming `claude`, latency rows split 78/5, an empty
+`store/dossiers/` — and all three were counts of the same file. Two greps of one ledger cannot
+disagree with each other. The second instrument had to be the code that *reads* the ledger, and
+that code is the thing that says the two buckets are separate and only one of them is the cap.
+
+**What is actually true, and it is smaller.** Measured 2026-08-21 on
+`/Users/chidionyema/Documents/code/prospector/store/prospector.jsonl`, 528 rows: **0 metered rows
+totalling $0.0000**, 39 subscription rows totalling $2.2455, and `store/dossiers/` holds 0 files.
+So **cost per vet is unobtainable from this store, because this store carries no priced run** —
+that is a statement about one nearly-empty local store, not about the engine. Production runs in
+the `prospector-engine` Fly app, and the real figure has to be measured where that writes. Until
+someone does, this spec carries no per-vet number, and a rail sized from a guess is not a rail.
+
+**The rails that stand, none of which depended on the withdrawn claim:**
+
+- **registered users only** — the founder's ruling, 2026-08-21: *"only for registered uers i nust
+  say"*. One free run per browser would have been a speed bump, because a browser is free to make
+  and an attacker makes thousands. Registration is the identity gate;
+- **its own sub-cap and its own ledger key.** Registration bounds *who*, not *how many*, and a
+  public path on the shared `daily_cap_usd` competes with the catalogue for the same allowance.
+  The catalogue is the business; a stranger's vet is marketing;
+- **the public path sheds FIRST as the cap is approached**, so a busy desk can never starve the
+  daemon;
+- **a cheap `prescreen.py` pass before any moat call**, which is what bounds one registered user
+  pasting the same idea forty times.
+
+### 12.7 What is not decided yet
+
+- **Per-user allowance**: how many vets a registered user gets, and whether the paid tier is
+  a bundle or per-vet. Founder decision, not ours.
+- ~~Front-end wiring~~ — **decided, see §12.8.** This bullet said SSE was the obvious
+  candidate. That is the wrong call, and the measurement against it is in §12.8.
+- **Does a visitor's idea enter the catalogue?** It must not, by default — they typed it, it is
+  theirs — but that is a founder call about the product, not an engineering default.
+
+### 12.8 How it is wired — POST a job, poll it. Not SSE.
+
+Measured 2026-08-21. Three facts, each of which removes a decision rather than adding one.
+
+**1. This is not the storefront's first long job with a progress surface. One already ships, and
+a paying buyer already sees it.** `store_platform/src/Store.Web/src/pages/orders/success.tsx` is
+POST-then-poll: `POLL_INTERVAL_MS = 2000` (`:13`), `MAX_POLL_ATTEMPTS = 12` (`:18`), six phases
+(`resolving | ready | no-session | timed-out | unfulfilled | revoked`), a progress bar driven by
+`pollAttempt / MAX_POLL_ATTEMPTS` (`:440`), and terminal states that end the poll early instead of
+running the ceiling out.
+
+**Read the comment at `:14-17` before building this.** The ceiling used to be 20 attempts, tuned
+for a delay nobody had ever observed, and all the extra ceiling did was prolong the runs that were
+never going to resolve. **Reuse the component; do not reuse the constants** — that surface is
+bounded at 24 seconds and a vet runs minutes.
+
+**2. SSE is rejected on capacity, not on taste.** `prospector-engine` is one machine on
+`internal_port = 8611`. One open connection per visitor is a capacity question that has to be
+answered before launch, and polling never asks it. Ship the poll; add SSE later behind the same
+job id if the desk earns it.
+
+**3. The public route does not go through the ops read door, and there is a pattern to copy
+rather than invent.** The console's read door is a session-gated allowlist
+(`store_platform/src/Ops.Console/src/pages/api/ops/read/[view].ts`), and a drift test refuses a
+commit unless the Python gateway and that file agree. **Exactly one read is reachable without a
+console session — `share_open` — and it is deliberately absent from that allowlist**, with its own
+route at `pages/api/s/[token].ts`; the reasoning is written down at
+`tests/unit/test_console_tools_run.py:353-358`. That is the shape to copy: **a dedicated public
+route naming its one read as a literal, never a hole punched in the admin allowlist.**
+
+The job machinery to copy is `_act_tools_run` (`prospector/ops/console_api.py:2960`) plus
+`_read_job` (`:3101`) — POST a job, it writes receipts to `store/ops/intents.jsonl`, the read
+greps them back by job id. **Reusable as a pattern, never as an endpoint**: it is admin-authed and
+it takes a repo-relative tool path to execute, and a stranger naming what runs is the last thing
+that door should accept.
+
+**The shareable result is already solved.** `share.mint` returns `/s/<token>`; the token is
+unguessable, only its sha256 is on disk, and it is checked again at read time rather than only at
+mint. The same shape carries a vet result and delivers the growth loop of §12.4 with no second
+auth story. The web never touches `store/` — it asks the engine, and `PROSPECTOR_STORE_DIR` pins
+where the engine writes.
+
+**Queued-and-notify is out of v1**, and the reason is the opposite of the obvious one: it is
+*more* new surface, not less. Notify needs an address, which needs a form, a consent decision,
+deliverability, bounce handling and a spam target. Polling adds no new infrastructure at all —
+the component exists, the public-route pattern exists, the job-and-receipt pattern exists.
+
+**A cheap prescreen runs before any moat call.** Registration (§12.6) bounds who, and the spend
+sub-cap bounds how much, but neither bounds one registered user pasting the same idea forty times.
+`prescreen.py` is the existing first triage gate and it is the cheap one: it runs first, and the
+per-user bound is decided in this spec rather than after launch.

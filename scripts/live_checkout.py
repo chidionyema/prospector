@@ -32,6 +32,16 @@ import subprocess
 import sys
 from pathlib import Path
 
+# The estate has exactly one flyctl resolver and this file used to carry a second, worse
+# spelling of it: `shutil.which("fly")`. That is why the deploy reconciler was blind from CI.
+# `superfly/flyctl-actions/setup-flyctl` installs the binary under the name `flyctl` and puts
+# only that name on PATH, so `which("fly")` found nothing on every GitHub runner. Measured
+# 2026-08-21 in run 32445393577: "Added flyctl to the path", and then, one step later,
+# "deployed (unreadable) (fly CLI not on PATH)". Nine consecutive reconciler runs failed that
+# way and each opened a critical about a drift it had never been able to measure.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from rollback_now import find_fly  # noqa: E402
+
 DEV = Path("/Users/chidionyema/Documents/code/prospector")
 LIVE = Path("/Users/chidionyema/Documents/code/prospector-live")
 #: The LAPTOP store, used only to check the pre-cutover launchd plists against each other.
@@ -425,7 +435,15 @@ ALLOW_UNVERIFIED_DEPLOY = DEV / "store" / "scheduler" / "ALLOW_UNVERIFIED_DEPLOY
 #: `cancelled`. This gate read that as `fail` and refused to roll production forward onto
 #: a commit whose tests had all passed. A green build cannot be allowed to read as red
 #: because an unrelated automation was cancelled.
-_IGNORED_WORKFLOWS = ("deploy", "smoke", "e2e", "auto-merge", "automerge", "cancel")
+#: `production runs main` is on this list for the same reason `deploy` is: it reports where
+#: production IS, not whether the commit is good. Leaving it off was a loop. It fails whenever
+#: production has drifted, this gate then read main as `fail`, and both routes that could have
+#: closed the drift -- `deploy_reconcile.py` and the console's update button -- refused because
+#: main was "red". Measured 2026-08-21 on e900a9ad, with every code lane green:
+#: ('fail', 'production runs main=failure, ..., PR keeper=cancelled, ...').
+_IGNORED_WORKFLOWS = ("deploy", "smoke", "e2e", "auto-merge", "automerge", "cancel",
+                      "production runs main", "pr keeper", "drill", "fleet",
+                      "weekly estate review", "approve parked runs")
 
 
 def ci_verdict(sha: str) -> tuple[str, str]:
@@ -481,6 +499,13 @@ def ci_verdict(sha: str) -> tuple[str, str]:
     # failure is how one workflow with a path filter walls every deploy. Dropping the rows
     # BEFORE the emptiness check keeps the safe answer: a commit whose only run was skipped
     # is "none", which this gate refuses, not "pass".
+    # Do NOT extend this to `cancelled`. It is tempting -- a cancelled run graded nothing, which
+    # is word for word the reason `skipped` is dropped -- and it is wrong, because it is not
+    # true of the ROW, only of the WORKFLOW. A CI run cancelled by the next merge landing on
+    # top, sitting beside a green `Main admission guard` row on the same sha, would then read
+    # `pass` and ship a commit CI never graded: exactly the 2026-08-17 shape that
+    # tests/unit/test_deploy_gate_on_ci_verdict.py exists to refuse. Whether a workflow has an
+    # opinion about the code is a fact about the workflow, so it belongs in the list above.
     relevant = [r for r in relevant if r[2] != "skipped"]
     if not relevant:
         return "none", "no CI run recorded against this commit"
@@ -500,9 +525,10 @@ def fly_machine_state() -> str:
     `fly status` reports an app whose machine is stopped, so the app is not the question.
     Same JSON read as deploy/targets/fly.sh t_health, for the same reason.
     """
-    if not shutil.which("fly"):
+    fly = find_fly()
+    if not fly:
         return "unknown (fly CLI not on PATH)"
-    rc, out = run(["fly", "machines", "list", "-a", FLY_APP, "--json"], timeout=60)
+    rc, out = run([fly, "machines", "list", "-a", FLY_APP, "--json"], timeout=60)
     if rc != 0:
         return f"unknown (fly machines list rc={rc})"
     try:
@@ -528,9 +554,10 @@ def deployed_commit() -> tuple[str, str]:
             return IMAGE_STAMP.read_text(encoding="utf-8").strip(), "read inside the container"
         except OSError as exc:
             return "", f"{IMAGE_STAMP} unreadable: {exc}"
-    if not shutil.which("fly"):
+    fly = find_fly()
+    if not fly:
         return "", "fly CLI not on PATH and not running inside the image"
-    rc, out = run(["fly", "ssh", "console", "-a", FLY_APP, "-C",
+    rc, out = run([fly, "ssh", "console", "-a", FLY_APP, "-C",
                    f"/bin/cat {IMAGE_STAMP}"], timeout=120)
     match = _STAMP_RE.search(out)
     if match:
