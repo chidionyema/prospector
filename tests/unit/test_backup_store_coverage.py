@@ -60,6 +60,10 @@ class FakeS3:
     def get_object(self, Bucket, Key):  # noqa: N803
         return {"Body": io.BytesIO(self.objects[Key])}
 
+    def head_object(self, Bucket, Key):  # noqa: N803
+        return {"ContentLength": len(self.objects[Key]),
+                "ETag": '"%s"' % hashlib.md5(self.objects[Key]).hexdigest()}  # noqa: S324
+
     def delete_object(self, Bucket, Key):  # noqa: N803
         self.objects.pop(Key, None)
         self.deleted.append(Key)
@@ -467,6 +471,92 @@ def test_a_zero_byte_source_dossier_does_not_fail_the_restore(store, tmp_path, c
     assert "bbb.kill.json (0B, local file is unparseable too)" in out
 
 
+# ── The ledger had no way home until 2026-08-21 ───────────────────────────────
+# `sync()` uploaded it daily from 2026-07-31. `restore()` covered the dossiers, `restore_db()`
+# covered the index, and the audit trail -- the one artifact that cannot be rebuilt from any
+# other -- had an upload path and no download. These tests exist so it cannot go missing again.
+def _seed_ledger(store, fake, lines: list[bytes]) -> str:
+    (store / "prospector.jsonl").write_bytes(b"".join(lines))
+    bs.sync(fake, "b")
+    return sorted(k for k in fake.objects if k.startswith(bs.LEDGER_PREFIX))[-1]
+
+
+def test_the_ledger_comes_back_out_of_the_bucket(store, tmp_path, capsys):
+    """The round trip nobody could do before. Bytes in, same bytes out, records counted."""
+    fake = FakeS3()
+    body = [b'{"n": %d}\n' % i for i in range(50)]
+    key = _seed_ledger(store, fake, body)
+
+    dest = tmp_path / "restored"
+    assert bs.restore_ledger(fake, "b", dest) == key
+    out = dest / "prospector.jsonl"
+    assert out.read_bytes() == b"".join(body)
+    assert "50 records" in capsys.readouterr().out
+
+
+def test_a_download_that_stops_short_is_fatal(store, tmp_path):
+    """Truncation is the failure this whole exercise came from, so it must exit, not warn.
+
+    scripts/engine_failover.py grew 215 lines detecting short `fly ssh sftp` transfers by hand
+    because sftp exited 0 on them. Comparing bytes read to Content-Length is the two-line
+    version, and this test is what stops someone deleting it as redundant.
+    """
+    fake = FakeS3()
+    _seed_ledger(store, fake, [b'{"n": 1}\n'])
+
+    class ClaimsMore(FakeS3):
+        def head_object(self, Bucket, Key):  # noqa: N803
+            head = super().head_object(Bucket=Bucket, Key=Key)
+            head["ContentLength"] += 4096      # the bucket says more than the body delivers
+            return head
+
+    liar = ClaimsMore()
+    liar.objects = fake.objects
+    with pytest.raises(SystemExit) as exc:
+        bs.restore_ledger(liar, "b", tmp_path / "restored")
+    assert "stopped short" in str(exc.value)
+
+
+def test_a_corrupted_gzip_stream_is_fatal(store, tmp_path):
+    """The CRC32 was computed at compression time, so it is a referent outside this process."""
+    fake = FakeS3()
+    key = _seed_ledger(store, fake, [b'{"n": %d}\n' % i for i in range(200)])
+    fake.objects[key] = fake.objects[key][:-40]        # lop the CRC and some payload off
+
+    with pytest.raises(SystemExit) as exc:
+        bs.restore_ledger(fake, "b", tmp_path / "restored")
+    assert "did not decompress cleanly" in str(exc.value)
+
+
+def test_a_record_of_nul_bytes_is_reported_and_the_restore_still_finishes(store, tmp_path, capsys):
+    """Measured on the live ledger 2026-08-21: 42 records are runs of NUL bytes, and reading
+    Fly's own file at byte 275,480,676 shows the same NULs -- the engine wrote them and the
+    backup copied them faithfully. Making that fatal is the trap `restore()` already documents:
+    the run went red on every live host and `restore_db` never executed once. So the broken
+    record must come back, be counted, and not stop the restore."""
+    fake = FakeS3()
+    body = [b'{"n": 1}\n', b"\x00" * 64 + b"\n", b'{"n": 3}\n']
+    _seed_ledger(store, fake, body)
+
+    dest = tmp_path / "restored"
+    bs.restore_ledger(fake, "b", dest)             # must NOT raise
+    assert (dest / "prospector.jsonl").read_bytes() == b"".join(body)
+    out = capsys.readouterr().out
+    assert "3 records" in out
+    assert "1 of 3 records do not parse" in out
+
+
+def test_the_ledger_is_restored_before_the_index(store, tmp_path, monkeypatch):
+    """Order is load-bearing. The comment at `restore()` records that a hard exit above
+    `restore_db` meant it never ran at all; the ledger is the artifact that cannot be rebuilt,
+    so it goes first among the two."""
+    fake = FakeS3()
+    _seed_ledger(store, fake, [b'{"n": 1}\n'])
+    order: list[str] = []
+    monkeypatch.setattr(bs, "restore_ledger", lambda *a, **k: order.append("ledger") or "")
+    monkeypatch.setattr(bs, "restore_db", lambda *a, **k: order.append("db") or "")
+    bs.restore(fake, "b", tmp_path / "restored")
+    assert order == ["ledger", "db"], order
 # ── Gap 3: the ledger was uploaded every day and never read back ──────────────
 # Found 2026-08-21. `LEDGER_PREFIX` appeared at exactly three sites in the repo -- the
 # constant, the upload key, and the pruner's list call. `restore()` walked DOSSIER_PREFIX and
