@@ -1,11 +1,11 @@
 // @ledger writes | node verify.mjs | The browser gate: 10 designed + 3 rolled looks x 4 viewports x 2 themes (gate A54), plus the 20 screenshots the contact sheet shows.
 /* Playwright is not a dependency of this prototype; it is borrowed from the storefront's own
- * node_modules. The path is absolute because that is where it lives on this machine, and it
- * is overridable because that will not be true on the next one:
+ * node_modules. It is resolved from THIS file's own location, so it works in the main
+ * checkout and in every worktree. It stays overridable for a machine that keeps it elsewhere:
  *   PLAYWRIGHT_MJS=/path/to/playwright/index.mjs node <tool>.mjs
  */
 const { chromium } = await import(process.env.PLAYWRIGHT_MJS
-  || '/private/tmp/claude-501/-Users-chidionyema-Documents-code-prospector/3fa47c70-c6d2-4273-9620-19dc9810b132/scratchpad/wt-redesign/store_platform/src/Store.Web/node_modules/playwright/index.mjs');
+  || new URL('../../../store_platform/src/Store.Web/node_modules/playwright/index.mjs', import.meta.url).href);
 import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 
 const FILE = 'file://' + process.cwd() + '/looks-engine.html';
@@ -24,7 +24,10 @@ const VPS = [{n:'phone-390',w:390,h:844},{n:'tablet-834',w:834,h:1194},{n:'lapto
    docs/STOREFRONT_REDESIGN_PROGRAM.md:466, and A53 is the highest number that document
    uses. Two gates sharing a number is a trap: a green "A46" here would read as evidence
    for a criterion nobody has started. Read the doc before you number the next one. */
-const ROLLS = [101, 102, 103];
+/* Overridable, because grading a candidate set means putting THOSE seeds through this gate.
+   The default is unchanged, so the standing A54 proof still runs three fixed looks a failure
+   can be reproduced from: ROLLS=623,878 node verify.mjs grades those two instead. */
+const ROLLS = (process.env.ROLLS || '101,102,103').split(',').map(Number).filter(Number.isFinite);
 mkdirSync('shots', { recursive: true });
 
 const browser = await chromium.launch();

@@ -117,12 +117,11 @@ if (!a42) console.log(`A42 PASS — 0 CSS rules name a look; ${declared.length} 
  * the doc already has there, and the doc cannot renumber underneath us silently.
  */
 /* The program doc is the authority on what each gate number means, so this tool reads it.
- * Two locations, in order: the copy two directories up, which is where it sits when these
- * tools live in the repo at docs/storefront/look-engine/, then the worktree they were
- * written in. PROGRAM_DOC overrides both. */
+ * One location: the copy two directories up, which is where it sits when these tools live
+ * in the repo at docs/storefront/look-engine/. PROGRAM_DOC overrides it. The scratchpad
+ * worktree that used to be the second entry was wiped on 2026-08-21 and is not coming back. */
 const DOC = [process.env.PROGRAM_DOC,
   new URL('../../STOREFRONT_REDESIGN_PROGRAM.md', import.meta.url).pathname,
-  '/private/tmp/claude-501/-Users-chidionyema-Documents-code-prospector/3fa47c70-c6d2-4273-9620-19dc9810b132/scratchpad/wt-redesign/docs/STOREFRONT_REDESIGN_PROGRAM.md',
 ].filter(Boolean).find((f) => existsSync(f));
 const CLAIMED = {
   42: 'no CSS rule may name a look',
