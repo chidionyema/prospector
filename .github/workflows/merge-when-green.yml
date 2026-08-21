@@ -1,0 +1,121 @@
+# Merge a pull request that is green, up to date and unblocked. Nothing else does.
+#
+# WHAT WAS BROKEN. `automerge.yml` was deleted with the integration batch in #522 on 2026-08-20,
+# and nothing replaced it. Every workflow around it still reads as though it is there:
+# `pr-keeper.yml` says in its own header "leaves the green ones to automerge", and
+# `main-admission-guard.yml` says "automerge.yml already refuses to merge anything that is not
+# green". Both describe a file that is not in the tree. So a pull request that goes green is
+# finished and then simply stops, and the only thing that moves it is a person typing a command.
+#
+# WHAT THAT COSTS, measured 2026-08-21 at 11:20 BST: 7 open pull requests, all 7 `CLEAN`, none
+# with a failing check, the oldest raised at 02:11Z and still open 8h49m later. The founder, the
+# same morning: "should not have prs ready juust stting there", "this is how we get pileup and
+# contention", "and then need capacity unnecessrily". The last one is the second-order effect and
+# it is the expensive one: idle branches are re-graded by `pr-keeper`'s 15-minute tick and by
+# every push to main, so a queue that merges nothing still burns the CI fleet, and the fleet is
+# then read as too small. That misreading has already been paid for once, on 2026-08-19, when six
+# machines were bought to fix a queue that was not queueing.
+#
+# WHY NOT NATIVE AUTO-MERGE. The repository allows it (`allow_auto_merge: true`, measured
+# 2026-08-21), but GitHub only lets you ARM it on a pull request that is currently BLOCKED by a
+# required status check, and required checks need branch protection, which this plan answers
+# `403 Upgrade to GitHub Pro` for. A pull request that is already green cannot be armed at all,
+# which is exactly the population sitting in the queue now.
+#
+# WHAT IT REFUSES TO MERGE, each a real case rather than a precaution:
+#   draft                      the author is still writing it
+#   mergeStateStatus != CLEAN  covers BEHIND (pr-keeper updates it), DIRTY (a conflict, a person),
+#                              BLOCKED and UNSTABLE (a check failing or still running)
+#   no checks at all           that is unproven, not green
+#   any completed check that is not SUCCESS/SKIPPED/NEUTRAL
+#   the `hold`, `do-not-merge` or `wip` label   the one-word way for any session or the founder
+#                              to stop one merge without turning the mechanism off
+#
+# It merges with `--merge`, never squash: `main-admission-guard.yml` reads `Merge pull request
+# #N` and `... (#N)` out of the commit subject to audit that a merge was allowed, and reverts
+# with `-m 1`, which needs the two parents a merge commit has.
+name: Merge when green
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  # An event-only trigger cannot see a pull request that went green while this workflow did not
+  # exist, and that is the whole backlog on the day it lands. The tick also covers a run that
+  # completed while pushes were frozen. It merges at most MAX_PER_RUN, so one bad batch can never
+  # take the entire queue in a single tick.
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  # Never two merges at once: the second would be computing its own mergeability against a main
+  # the first is in the middle of moving.
+  group: merge-when-green
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge every pull request that is genuinely finished
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          MAX_PER_RUN: '6'
+        run: |
+          set -euo pipefail
+          gh pr list --state open --limit 50 \
+            --json number,isDraft,mergeStateStatus,labels,statusCheckRollup,title \
+            > prs.json
+          python3 - <<'PY' > todo.txt
+          import json
+          HOLD = {"hold", "do-not-merge", "wip"}
+          for pr in json.load(open("prs.json")):
+              why = None
+              labels = {l["name"].lower() for l in pr.get("labels") or []}
+              checks = pr.get("statusCheckRollup") or []
+              done = [c for c in checks if (c.get("status") or "COMPLETED") == "COMPLETED"]
+              bad = [c for c in done
+                     if (c.get("conclusion") or "") not in ("SUCCESS", "SKIPPED", "NEUTRAL")]
+              if pr["isDraft"]:
+                  why = "draft"
+              elif labels & HOLD:
+                  why = "labelled " + ",".join(sorted(labels & HOLD))
+              elif pr["mergeStateStatus"] != "CLEAN":
+                  why = "state " + pr["mergeStateStatus"]
+              elif not checks:
+                  why = "no checks ran, so it is unproven rather than green"
+              elif len(done) != len(checks):
+                  why = str(len(checks) - len(done)) + " check(s) still running"
+              elif bad:
+                  why = "failing: " + ",".join(c.get("name", "?") for c in bad[:3])
+              # Every pull request is printed, merged or not. A queue that silently drops one is
+              # how a branch waits a day for a reason nobody can see.
+              print("MERGE" if why is None else "SKIP.", pr["number"],
+                    why or "green, clean, unblocked", "|", pr["title"][:60])
+          PY
+          cat todo.txt
+          merged=0
+          while read -r verdict number rest; do
+            [ "$verdict" = "MERGE" ] || continue
+            if [ "$merged" -ge "$MAX_PER_RUN" ]; then
+              echo "stopping at $MAX_PER_RUN this run; the next tick takes the rest"
+              break
+            fi
+            # A pull request can go stale between the listing and this line, because a merge
+            # earlier in this same loop just moved main. The command refuses on its own in that
+            # case, and the refusal is reported and skipped rather than failing the whole run.
+            if gh pr merge "$number" --merge --delete-branch; then
+              merged=$((merged + 1))
+              echo "landed #$number"
+            else
+              echo "could not land #$number; leaving it for the next tick"
+            fi
+          done < todo.txt
+          echo "landed $merged pull request(s)"
