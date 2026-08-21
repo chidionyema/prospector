@@ -99,6 +99,21 @@ def child_env(verb_env: dict[str, str], base: dict[str, str] | None = None) -> d
     return {**(os.environ if base is None else base), **verb_env}
 
 
+def step_vars(step: dict[str, Any]) -> dict[str, str]:
+    """The variables one step hands its adapter. BOTH ends, on the move and on the rollback.
+
+    `from` is computed by the compiler and was, until this was fixed, used only to label the
+    console event -- so the adapter was told where the resource was GOING and never where it
+    was. `deploy/cutover.sh` needs both (`--from X --to Y`), and so does putting it back: a
+    rollback is the same move with the ends swapped, which the adapter can only do if it holds
+    both. The rollback path was worse than the step path, carrying neither end.
+    """
+    return {"RESOURCE": step["resource"],
+            "FROM": str(step.get("from") or ""),
+            "TO": str(step.get("to") or ""),
+            "VERB": step["verb"], "CLASS": step["class"], "STEP_ID": step["id"]}
+
+
 def run_step(step: dict[str, Any], *, verb_env: dict[str, str],
              runner: Callable[..., subprocess.CompletedProcess]) -> None:
     """Hand one step to its class adapter. The adapter owns the substrate; this owns nothing."""
@@ -174,8 +189,7 @@ def execute(plan: dict[str, Any], *, sink: Callable[[dict[str, Any]], None],
                was=step.get("from"), will_be=step.get("to"), elapsed_s=round(elapsed, 1))
         beat = _heartbeat(sink, step, clock, started)
         try:
-            run_step(step, verb_env={"RESOURCE": step["resource"], "TO": str(step.get("to") or "")},
-                     runner=runner)
+            run_step(step, verb_env=step_vars(step), runner=runner)
         except StepFailed as failure:
             beat.set()
             _event(sink, "step_failed", step=step["id"], klass=step["class"],
@@ -183,8 +197,7 @@ def execute(plan: dict[str, Any], *, sink: Callable[[dict[str, Any]], None],
             _event(sink, "rollback_started", step=step["id"])
             unwinding = _heartbeat(sink, step, clock, started)
             try:
-                run_step({**step, "verb": "rollback"}, verb_env={"RESOURCE": step["resource"]},
-                         runner=runner)
+                run_step({**step, "verb": "rollback"}, verb_env=step_vars(step), runner=runner)
             except StepFailed as unwound:
                 unwinding.set()
                 _event(sink, "rollback_failed", step=step["id"], detail=unwound.detail,

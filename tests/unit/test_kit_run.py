@@ -27,10 +27,11 @@ from kit.migrate.run import (
 )
 
 
-def step(sid, klass, verb="move", needs=(), resource=None, downtime="none"):
+def step(sid, klass, verb="move", needs=(), resource=None, downtime="none",
+         frm="fly", to="sshdocker"):
     return {"id": sid, "class": klass, "verb": verb, "needs": list(needs),
             "adapter": f"kit/classes/{klass}.sh", "resource": resource or f"{klass}-1",
-            "from": "fly", "to": "sshdocker", "downtime": downtime, "described_by": None}
+            "from": frm, "to": to, "downtime": downtime, "described_by": None}
 
 
 def plan(*steps, skipped=(), resources=None):
@@ -245,3 +246,27 @@ def test_every_adapter_call_in_a_real_run_carries_a_path():
     assert adapter.envs, "no adapter was called"
     for env in adapter.envs:
         assert env.get("PATH"), "an adapter was handed an environment with no PATH"
+
+
+def test_the_adapter_is_told_where_the_resource_is_now_not_only_where_it_is_going():
+    """`from` was computed by the compiler and used only to label the console event.
+
+    An adapter that knows only TO cannot build `--from X --to Y`, and cannot put the resource
+    back, because putting it back is the same move with the ends swapped.
+    """
+    adapter = Adapter()
+    events, sink = collect()
+    execute(plan(step("s1", "compute", frm="laptop", to="fly")), sink=sink, runner=adapter)
+    env = adapter.envs[0]
+    assert env["FROM"] == "laptop"
+    assert env["TO"] == "fly"
+
+
+def test_the_rollback_call_carries_both_ends_too():
+    """The rollback path used to carry neither end -- it was worse than the step path."""
+    adapter = Adapter(fail_on=["kit/classes/compute.sh"])
+    events, sink = collect()
+    execute(plan(step("s1", "compute", frm="laptop", to="fly")), sink=sink, runner=adapter)
+    rollbacks = [e for c, e in zip(adapter.calls, adapter.envs, strict=True) if c[1] == "rollback"]
+    assert rollbacks, "no rollback was attempted"
+    assert rollbacks[0]["FROM"] == "laptop" and rollbacks[0]["TO"] == "fly"
