@@ -14,6 +14,33 @@
 # This is a contract for a temporary arrangement. The engine is being moved to hosted capacity;
 # until it is, CI has to share this box without stalling it.
 
+# ---------------------------------------------------------------------- where CI runs now
+# UBUNTU-LATEST, NOT THE FLY FLEET, SINCE 2026-08-21. The founder made the repository public,
+# which is what made GitHub-hosted runners free, and all four runner variables were set to
+# `ubuntu-latest` the same day:
+#
+#   CI_RUNS_ON=ubuntu-latest  CI_HEAVY_RUNS_ON=ubuntu-latest
+#   CI_LIGHT_RUNS_ON=ubuntu-latest  CI_DEPLOY_RUNS_ON=ubuntu-latest
+#
+# This file was not moved with them, so `pools.*.label` still said `fly` and check 1b in
+# scripts/ci_capacity.py failed every pull request opened after the flip. Measured: #643 and
+# #644 both red on `guard` at the step "CI still fits on the machine it runs on"; #639 through
+# #642 green, because their guard ran before the variables changed. The guard was right and the
+# contract was stale.
+#
+# WHAT IS NOW STALE IN THIS FILE, said plainly rather than left as a trap. The `autoscale_*`
+# and `fleet.*` rows below, and check 3 in scripts/ci_capacity.py, describe the `prospector-ci`
+# Fly machines. Nothing dispatches to them any more. They are only read by
+# `scripts/ci_capacity.py --live`, which is an operator command and not a CI step, so they
+# cannot fail a pull request -- but an operator running --live today is grading a fleet that
+# takes no work. Deleting them is a separate change from unblocking the pipeline.
+#
+# `box.cpus` is deliberately NOT touched here. 4 is what the file already said and the
+# arithmetic still holds at 4; whether a GitHub-hosted runner is actually that wide is a
+# measurement nobody has taken on this account. Take it before trusting the number:
+#   gh api repos/chidionyema/prospector/actions/runners  (hosted runners do not appear)
+#   or add `nproc && free -g` to a job and read it off one run.
+
 box:
   # THE RUNNER MACHINE, not the founder's laptop. Rewritten 2026-08-18 when CI moved to Fly.
   #
@@ -102,7 +129,7 @@ pools:
     # repository variables CI_HEAVY_RUNS_ON, CI_LIGHT_RUNS_ON and CI_RUNS_ON were set to
     # `fly` at 12:01 on 2026-08-19; this file has to agree or scripts/ci_capacity.py fails
     # the guard job on every branch.
-    label: fly
+    label: ubuntu-latest
     jobs: [python, engine, dotnet]
   # Short jobs: a checkout, a doc lint, a shell loop over already-computed results. They must
   # never wait behind a suite -- `ci-ok` queueing behind a 24-minute python job is what left runs
@@ -130,7 +157,7 @@ pools:
     ephemeral: 10
     variable: CI_LIGHT_RUNS_ON
     # Same fleet, same label, same reason as heavy above.
-    label: fly
+    label: ubuntu-latest
     jobs: [changes, guard, ci-ok, nextjs, ops-console]
 
 # HOW MANY MACHINES MAY BE RUNNING AT ONCE, AND HOW FEW.
