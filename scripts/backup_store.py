@@ -1025,6 +1025,45 @@ def restore(s3, bucket: str, dest: Path) -> int:
     return len(remote)
 
 
+def money_state(s3, bucket: str) -> dict:
+    """What the bucket holds for the two money files: newest key, size and age in hours.
+
+    One seam, two callers, and that is the point. `scripts/engine_failover.py` asks it how far
+    back a failover would start; the ops console asks it whether the backup is still running.
+    Before this existed the console showed nothing about the store backup at all -- its only
+    output was store/offsite_backup.log, which nothing read -- so the backup could have stopped
+    for a week and the first sign would have been a failed restore.
+    """
+    now = datetime.now(timezone.utc)
+    out: dict = {"bucket": bucket, "checked_at": now.isoformat()}
+    for label, prefix in (("ledger", LEDGER_PREFIX), ("db", DB_PREFIX)):
+        newest = None
+        token = None
+        while True:
+            kwargs = {"Bucket": bucket, "Prefix": prefix, "MaxKeys": 1000}
+            if token:
+                kwargs["ContinuationToken"] = token
+            page = s3.list_objects_v2(**kwargs)
+            for obj in page.get("Contents", []):
+                if newest is None or obj["Key"] > newest["Key"]:
+                    newest = obj
+            if not page.get("IsTruncated"):
+                break
+            token = page.get("NextContinuationToken")
+        if newest is None:
+            out[label] = None
+            continue
+        out[label] = {
+            "key": newest["Key"],
+            "bytes": newest["Size"],
+            "age_h": round((now - newest["LastModified"]).total_seconds() / 3600, 2),
+        }
+    ages = [v["age_h"] for v in (out.get("ledger"), out.get("db")) if v]
+    out["oldest_age_h"] = max(ages) if ages else None
+    out["complete"] = out.get("ledger") is not None and out.get("db") is not None
+    return out
+
+
 class _CountingReader:
     """Wrap a boto3 StreamingBody and count what was actually read off the wire.
 
@@ -1165,6 +1204,9 @@ def main() -> int:
                         help="upload nothing; just prove the remote copy matches local")
     parser.add_argument("--restore", metavar="DIR",
                         help="download every backed-up dossier into DIR and verify each")
+    parser.add_argument("--money-state", action="store_true",
+                        help="print JSON describing the newest ledger and index snapshots in "
+                             "the bucket, and how old they are. Uploads nothing")
     parser.add_argument("--restore-money", metavar="DIR",
                         help="download ONLY the ledger and the index into DIR and verify both. "
                              "What a failover needs: the 1,581 dossiers are a catalogue that can "
@@ -1193,6 +1235,10 @@ def main() -> int:
     args = parser.parse_args()
 
     s3, bucket = _client()
+
+    if args.money_state:
+        print(json.dumps(money_state(s3, bucket), indent=2))
+        return 0
 
     if args.restore_money:
         # Deliberately not a subset flag on --restore. A failover restores two files onto a
