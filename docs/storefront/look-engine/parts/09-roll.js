@@ -33,6 +33,12 @@ const SWITCHES = {
   figureMarks:  { d: 'plain',    v: ['corners'],              p: 0.3 },
   headlineCase: { d: 'sentence', v: ['upper'],                p: 0.25 },
   panel:        { d: 'raised',   v: ['flat'],                 p: 0.35 },
+  /* THE COMPOSITION ITSELF. p is high on purpose: a roll that keeps the default
+     broadsheet is a roll that looks like every other roll, which is the complaint
+     this axis exists to answer. */
+  layout:       { d: 'broadsheet', v: ['plate-left', 'stack', 'frieze', 'poster',
+                                       'column', 'readout-first', 'rail', 'split',
+                                       'memo'],               p: 0.85 },
 };
 
 /* The faces, with the metrics each one actually needs. A didone at 0.99 leading is right and
