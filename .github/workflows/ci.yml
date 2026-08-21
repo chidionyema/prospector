@@ -445,7 +445,10 @@ jobs:
     needs: changes
     if: needs.changes.outputs.python == 'true'
     runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
-    # 60 is a STOPGAP, not the fix. The fix is recycling the runner machines; see below.
+    # 40 minutes, and the founder ruled on why it is not 60: "thats not the fix". Raising the
+    # ceiling hides a throttled runner instead of un-throttling it. The cause is measured below
+    # so that the next session reading a cancelled `python` job does not re-diagnose it, and
+    # the actual fix is recycling the runner machines.
     #
     # MEASURED 2026-08-21 on the real fleet. A CI runner is a `shared-cpu-4x` Fly machine, and
     # its share of the host collapses as the machine's uptime grows. Two 20-second samples of
@@ -483,9 +486,10 @@ jobs:
     #     --jq '.conclusion, (.steps[] | "\(.number) \(.conclusion) \(.name)")'
     # A cancelled job whose every step is `success`, with its last steps missing, is this.
     #
-    # So 60 buys headroom over a THROTTLED run of two and a half minutes of real work. It stops
-    # the false red. It does not make CI faster and it does not touch the cause.
-    timeout-minutes: 60
+    # A raised ceiling would buy headroom over a THROTTLED run and stop the false red, without
+    # making CI any faster and without touching the cause. The ceiling stays at 40; a runner
+    # young enough to get its own CPU finishes the same 7093 tests in 156 seconds.
+    timeout-minutes: 40
 
     steps:
       - uses: actions/checkout@v4
