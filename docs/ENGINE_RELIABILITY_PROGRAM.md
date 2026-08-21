@@ -548,6 +548,101 @@ reset it to `{}` when that raised, so the console rendered `reason: null`. **A p
 without a reason reads to the next person exactly like a crash.** JSON still wins when it parses;
 a plain sentence now becomes the reason with `actor: hand`.
 
+## 9. The pipeline gap — production could run code main had already taken back
+
+Founder, 2026-08-21, on being shown that the fix for the console outage only changed production
+once it was deployed: **"why, this is a gap is our pipeline process"**, and then **"we need to
+iron it out properly"**.
+
+### What was measured, three angles, all on 2026-08-21
+
+1. **The deploy does not wait for CI.** `.github/workflows/deploy-engine.yml` fires on `push` to
+   `main`. Its only gate is `deploy: needs: test`, and that `test` job is the Ops.Console lane —
+   `npx tsc --noEmit` and `npx vitest run`. Nothing else is graded before the image ships. The
+   probe printed the proof during this very session: production on `61cfb7d1` while
+   `scripts/live_checkout.py` reported `CI on it   pending: still in_progress` for that same
+   commit.
+2. **One of the two main guards reverts without re-deploying.** `main-admission-guard.yml` does
+   the right thing: its step "Put the estate back, not just git" dispatches every deploy the bad
+   commit had already set off. `main-green-guard.yml` does not. It pushes the revert with
+   `GITHUB_TOKEN`, which starts no workflow runs — deliberately, so it cannot recurse — and then
+   dispatches CI and only CI. Its own header says it plainly: *"WHAT IT DOES TO PRODUCTION.
+   Nothing directly."* Eight reverts landed on main in the three days to 2026-08-21.
+3. **Nothing compared the running image to main.** Before this work, `rg deployed_commit` and
+   `rg GIT_SHA` matched exactly one file in the repo — `scripts/live_checkout.py` — which runs
+   when a person runs it. None of the fifteen workflows checked for drift.
+   `com.prospector.live-update`, the launchd job that would have run the probe every 60 seconds,
+   is not loaded.
+
+Put together: a red commit can reach production, be reverted on main, and **keep serving**, with
+every instrument in the estate reading green. A deploy that never happens leaves no failed run
+behind, so no alert here could ever have fired on it.
+
+### What was built
+
+`scripts/deploy_reconcile.py` plus `.github/workflows/production-runs-main.yml`. It asks the one
+question that stays true whatever the cause: **is the image production is running the one main
+says it should be?** When it is not, and the difference is real, it dispatches
+`deploy-engine.yml`. It never builds and never pushes, so there is still exactly one route to
+production with its gates and its rollback intact.
+
+It reuses rather than reimplements. `live_checkout.deployed_commit()` reads `/app/GIT_SHA`,
+`live_checkout.ci_verdict()` grades main, and `live_checkout._deployed_changes()` reads the
+shipped-paths filter out of `deploy-engine.yml` on origin/main — a second copy of that filter
+would drift silently in the one direction that matters, production graded current while a real
+change sits unshipped, and `test_the_deploy_path_filter_is_never_copied_into_this_script` fails
+if anyone copies it.
+
+**The eight refusals, which are most of the value:**
+
+| situation | what it does | why |
+|---|---|---|
+| main's CI is `fail`, `none` or `unknown` | refuses, opens the issue | shipping an ungraded commit to close a drift is worse than the drift |
+| the image stamp cannot be read | refuses, opens the issue | "I could not tell" is never "it is fine", and never a licence to deploy |
+| a deploy is already running | waits | the same reason `deploy-engine.yml` sets `cancel-in-progress: false` |
+| 3 deploys already dispatched in 6h | refuses, opens the issue | every release up to v15 shipped without `GIT_SHA`; a drift that cannot close would otherwise pay for a Fly build every hour, forever |
+| a secret is staged on the app | refuses, names the secret | **a Fly deploy APPLIES staged secrets.** Without this the robot turns "a session staged a credential" into "it is live in production", hourly, with nobody in the path at the moment it happens. Not hypothetical: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_HOME_CHANNEL` were staged on this app on 2026-08-20 precisely so they would not go live until someone chose |
+| the secret list cannot be read | refuses | flyctl and the token are both in the step's env, so a failure there is a fault rather than an absence |
+| `~/.prospector/ACTIVE` says a side that is not `fly` | refuses | `AUTOFAILOVER` is armed, so the serving side can move with no human. Deploying the side that is not serving restarts four processes on a box nobody is using |
+| `~/.prospector/ACTIVE` is absent | **proceeds, and says so** | the opposite direction from every other row, deliberately. That marker lives in a home directory on the laptop and can never exist on a GitHub runner, so refusing on absence would make the robot permanently inert in the only place it actually runs |
+
+It also does nothing when the commits differ but nothing the image ships does. A docs merge is
+not a drift, and an alarm that is usually wrong is one that gets ignored.
+
+**Triggers and cost.** Hourly cron, plus one run every time CI concludes on main — which is the
+moment a drift can first be healed, and exactly the case a `main-green-guard` revert leaves
+behind. About 24 runs a day, each a checkout, a flyctl setup and one `fly ssh` read.
+
+**Alerting.** A failure opens a GitHub issue titled `production is not running main`, reuses that
+issue rather than duplicating it while the drift lasts, and closes it on the first run that finds
+production on main. The alarm step hangs off `failure()` of the check itself and nothing
+narrower, because a reporting mechanism whose trigger is narrower than the thing it reports on is
+never reached while every instrument still reads green
+(`tests/unit/test_an_alarm_must_run_when_the_thing_it_alarms_on_fails.py`).
+
+### The last four rows of that table are LAW 11 paying for itself
+
+The first three refusals were mine. The last four came back from a peer review of the plan,
+before it landed, and neither of the two risks behind them was visible from inside this
+session: that a Fly deploy applies staged secrets, and that `~/.prospector/ACTIVE` can move
+the serving side with no human. The correction to the correction was mine — the peer asked
+for a refusal when `ACTIVE` is not `fly`, which would have made the robot inert on
+`ubuntu-latest`, where that file cannot exist at all.
+
+One more thing the estate refused, and was right to: the workflow was first called
+`deploy-reconcile.yml`. `tests/unit/test_every_deploy_ships_on_green_main.py:86` globs
+`deploy-*.yml` and holds every match to the contract of a workflow that SHIPS code — on a
+push to main, in the admission guard's re-dispatch map, with matching path filters. This one
+dispatches a deploy and never ships anything, so it is `production-runs-main.yml` now.
+
+### What this does NOT fix, and why it was not taken unilaterally
+
+Hole 1 stays open. The reconciler heals a bad state; it does not prevent one. Making
+`deploy-engine.yml` wait for CI green — a `workflow_run` gate instead of `on: push` — would stop
+an ungraded commit reaching production at all, but it also changes the deploy latency for every
+merge and puts the deploy behind a ~25 minute CI run, which is the kind of change that needs the
+founder's ruling rather than an agent's. It is the next decision on this file, not a task.
+
 ## Open decisions (not taken unilaterally)
 
 1. **Re-vet the 5 pre-gate PASSes now?** Needs a live moat, costs CLI slots, touches live catalogue

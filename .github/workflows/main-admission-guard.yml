@@ -268,9 +268,9 @@ jobs:
                 '',
                 '## How to land it properly',
                 '',
-                'Open a pull request, let CI finish, and let `automerge.yml` merge it. It merges',
-                'only a head sha CI proved green and only when the branch is not behind main, so',
-                'no click is needed and nothing red can land.',
+                'Open a pull request, let CI finish, and merge it once it is green:',
+                '`gh pr merge <n> --merge`. automerge.yml was deleted on 2026-08-20, so every',
+                'merge is a person now, and this guard is what audits that the person waited.',
                 '',
                 'If this really was a deliberate hotfix straight to main, the commit needed a',
                 '`Founder-override: <reason>` line in its message. That hatch is the founder\'s.',
@@ -338,8 +338,11 @@ jobs:
             const bad = process.env.BAD_SHA
             const done = []
 
-            // Copied verbatim from automerge.yml:114. If you edit one, edit both --
-            // tests/unit/test_main_admission_guard.py fails when they drift apart.
+            // These mirror each deploy workflow's own `paths:` filter. automerge.yml held
+            // the original and was DELETED on 2026-08-20, so there is no second copy to keep
+            // in step any more -- tests/unit/test_main_admission_guard.py:381 records that the
+            // two drift tests went with it. The list that matters now is the one in each
+            // deploy workflow; if you add a path there, add it here.
             const DEPLOY = {
               'deploy-engine.yml': /^(prospector\/|scripts\/|deploy\/engine\/|store_platform\/src\/Ops\.Console\/|requirements\.txt$|config\.yaml$|\.github\/workflows\/deploy-engine\.yml$)/,
               'deploy-web.yml': /^(store_platform\/src\/Store\.Web\/|store_platform\/deploy\/fly\/web\.fly\.toml$|store_platform\/scripts\/deploy_web\.sh$|store_platform\/scripts\/predeploy_guard\.sh$|\.github\/workflows\/deploy-web\.yml$)/,
