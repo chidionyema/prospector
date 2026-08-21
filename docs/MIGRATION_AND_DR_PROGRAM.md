@@ -1067,10 +1067,17 @@ way of *rebuilding from a copy*.
 | The restore contract itself | **fixed 2026-08-20** | commit `5db638e2` — ETag is the only fatal check |
 | Signing key escrowed off every code tree | done | `~/.prospector/escrow/`, mode 400 |
 | Signing key escrowed **off the machine** | **open, founder's action** | P3 on the register |
+| **The encrypted secret store committed to `origin/main`** | **NOT DONE — and it was believed done.** `git ls-tree -r origin/main -- deploy/` has no `.age` file; the only copies are four automatic *"snapshot of uncommitted work"* commits on no branch | F-44. Founder's action: git history cannot be un-published |
+| **`.env` present and every symlink to it live** | **restored 2026-08-21** after being missing, with 31 dead links across 114 trees | `find`-based census, re-run: 33 resolving, 0 dead |
 
 **Exit:** one live run of `deploy/engine/offsite_drill.sh` on `prospector-engine` exits 0 and writes
 a receipt. Until that run exists, the drill is proved by test and not by use, and this phase stays
 open. **Next command:** wait for the weekly timer, or trigger it by hand on the machine.
+
+**Second exit condition, added 2026-08-21:** the secret store is decryptable **from `origin/main`**
+into a scratch tree and every name in `deploy/secrets.required` is present. Today that command
+cannot be run at all, because the file is not on the branch. A backup that survives only inside an
+automatic snapshot is not a backup; it is a near miss that has already been cashed once.
 
 ### 6.2 Phase 1 — know what we have. **M1, M9, M11. P0.**
 
@@ -1082,6 +1089,8 @@ reading three lists and reconciling them by hand. Everything downstream needs th
 | Commit the DNS zone, diff it daily | M9(a) | S | a committed zone file, and a scheduled diff that goes red on drift |
 | One inventory across all ten resource classes | M1 | M | one probe prints every resource; a test fails when a class is unclaimed |
 | Every datastore named, with its size and its backup | M11 | M | the table is generated, not typed |
+| **One inventory of every configuration value, not just secrets** | F-41 | M | a probe prints every runtime value and where it is declared; today it is spread over **six kinds of place** — 261 env-ish files in 114 trees, 6 Fly `[env]` blocks, `config.yaml`, 25 launchd plists, 7 Actions variables, 13 Fly apps |
+| **A drift check that fails when a value differs from its declared home** | F-42 | M | the probe run against every target exits non-zero on the first disagreement |
 
 DNS goes first because it is the only entry on the risk register with **no substitute**: lose the
 zone and there is nothing to restore it from. It is an afternoon.
@@ -1493,8 +1502,8 @@ run, **○** not started, **⛔** blocked on a decision in §7.
 | F-01 | Every runtime component moves to any provider by writing one adapter against `deploy/PORTABILITY.md`, and nothing else in the estate learns the provider's name | contract test + a real move | D-P1.1 | 4 | ◐ |
 | F-02 | A whole move runs end to end with no human in a terminal | one recorded cutover | D-P1.2, D-P9.2 | 4 | ○ |
 | F-03 | The old provider is decommissioned only after the new one is proven serving | `deploy/decommission.sh` refuses without proof | D-P1.4 | 4 | ◐ |
-| F-39 | **Every plane has a Kubernetes deliverable, not compute alone** — the estate runs entirely on a cluster with no Fly-specific and no laptop-specific piece left behind | the ten-plane bring-up: each plane's own drill run against the cluster, not merely a pod that starts | D-P1.5 | 6 | ○ |
-| F-40 | **The same manifests bring the estate up on a managed CLOUD cluster and on an ON-PREMISES cluster**, with no per-substrate fork | the bring-up run on both, and the two rendered manifest sets diffed to empty | D-P1.6 | 6 | ○ |
+| F-39 | **THE WHOLE STACK MOVES, not compute alone.** Every one of the ten planes has a deliverable on the target substrate — state, secrets, identity and DNS, observability, jobs, the money path, delivery, control and the knowledge base — with no Fly-specific and no laptop-specific piece left behind. Founder, 2026-08-21: *"the whole stack"* | the ten-plane bring-up: **each plane's own drill run on the new substrate**, not merely a pod that starts. A move where the engine serves and the jobs, the alerts or the money path did not come with it is a failed move, not a partial one | D-P1.5 | 6 | ○ |
+| F-40 | **The same manifests bring the estate up on AWS, on GCP, on Fly and ON-PREMISES**, with no per-substrate fork. Founder, 2026-08-21: *"this gold standard can be ported to any provider... provider agnostic... even onprem also"* | the bring-up run on a managed cloud cluster and on an on-premises cluster, and the two rendered manifest sets diffed to empty | D-P1.6 | 6 | ○ |
 | F-04 | At least two substrates are proven, not one | a drill on k8s and on sshdocker | D-P1.3 | 4 | ○ |
 
 #### P2 State
@@ -1507,7 +1516,7 @@ run, **○** not started, **⛔** blocked on a decision in §7.
 | F-08 | State moves with compute inside the same cutover, to a stated RPO | cutover drill measures bytes and lag | D-P2.4 | 4 | ○ |
 | F-08a | **Every copy of a money file is proven COMPLETE against its source before it is allowed to replace the previous copy** — size equal to the source, and the format opened and read, never a byte count | the truncation drill: cut a transfer mid-file and require the copy to be refused | D-P2.5 | 0 | ○ |
 
-#### P3 Secrets — a first-class plane, at the founder's instruction
+#### P3 Secrets and configuration — a first-class plane, at the founder's instruction
 
 | ID | Requirement | Proven by | Deliverable | Ph | St |
 |---|---|---|---|---|---|
@@ -1516,6 +1525,10 @@ run, **○** not started, **⛔** blocked on a decision in §7.
 | F-11 | A secret is rotated in one action, everywhere it is consumed, with the old one revoked | rotation drill on one low-risk key | D-P3.3 | 2 | ○ |
 | F-12 | No secret can reach git, a log line, argv or shell history — refused by a machine, not by care | a guard in the commit gate + a test | D-P3.4 | 1 | ◐ |
 | F-13 | The signing key has an off-machine escrow with a tested restore | restore the key from escrow into a scratch tree | D-P3.5 | 0 | ◐ |
+| F-41 | **Every configuration value the estate reads at runtime is named in one inventory**, generated by a probe from source — not only secrets, but endpoints, flags and tuning knobs | probe output diffed against a live dump of every target | D-P3.6 | 1 | ○ |
+| F-42 | **No runtime value is defined in two places.** One value, one declared home, rendered outward to every target | a drift probe that fails when a target's live value differs from its declared home | D-P3.7 | 1 | ○ |
+| F-43 | **A new environment receives its complete non-secret configuration in the same one command that fetches its secrets** — new laptop, new cluster, new provider, no human reading a value | the new-laptop drill from a clean clone (shares F-10's drill) | D-P3.2 (M2) | 2 | ⛔ |
+| F-44 | **The encrypted secret store is committed and proven restorable from `origin/main`**, so no secret depends on an uncommitted working file surviving on one disk | decrypt from `origin/main` into a scratch tree and diff the NAME list against `deploy/secrets.required` | D-P3.7 | 0 | ○ |
 
 `docs/SECRETS_PROGRAM.md` holds the risk register R-K1..R-K5 and stays the detail. This register
 holds the requirement and the deliverable; the two are cross-linked and must not restate each other.
@@ -1597,14 +1610,16 @@ holds the requirement and the deliverable; the two are cross-linked and must not
 | N-11 | **One place per fact** — a fact lives in one document | today **79** documents, no spine | D-P10.1, D-P10.4 | ○ |
 | N-12 | **Auditability** — every claim on the console comes from a probe, never from a document | 0 hand-written status strings | the console's own test | ◐ |
 | N-13 | **Provability under stress** — load, chaos and security testing exist and run | the three suites, scheduled | M14, M15, M7 | ○ |
-| N-14 | **Portability breadth** — more than one destination is proven | **≥ 2 substrates** with a green drill; today **1** | D-P1.3 | ○ |
+| N-14 | **Portability breadth** — more than one destination is proven, and the set is not a shortlist the estate is comfortable with | **≥ 2 substrates** with a green drill before the bar is met, and the target set is **AWS, GCP, Fly, on-premises**; today **1** | D-P1.3 | ○ |
+| N-15 | **Config sprawl** — configuration lives in one declared place per value, not scattered across checkouts, deploy files and consoles | **0 drifted keys**; today the census is **261 env-ish files across 114 trees**, 6 `[env]` blocks in Fly configs, 43 top-level keys in `config.yaml`, 25 launchd plists with their own environment, 7 GitHub Actions variables and 13 Fly apps holding their own secret sets | the F-42 drift probe | ○ |
 
 ### 11.4 Coverage — what this register makes visible
 
-Counting the rows above: **41 functional and 14 non-functional requirements — 55 in all. 3 are
-proven. 11 are built but never run. 37 are not started. 4 are blocked on a decision only you can
-make** (§7). Counted by command, never asserted:
-`sed -n '1414,1526p' docs/MIGRATION_AND_DR_PROGRAM.md | grep -cE '^\| F-'` and the same for `N-`.
+Counting the rows above: **45 functional and 15 non-functional requirements — 60 in all. 3 are
+proven. 11 are built but never run. 41 are not started. 5 are blocked on a decision only you can
+make** (§7). Counted by command, never asserted — and the command carries no line range, because
+the last one went stale the first time a row was inserted above it:
+`grep -cE '^\| F-' docs/MIGRATION_AND_DR_PROGRAM.md` and the same for `N-`.
 
 Three of those blocks stop whole planes rather than single deliverables, which is why they are the
 most valuable thing you can clear:
