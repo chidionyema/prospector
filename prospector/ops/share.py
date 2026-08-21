@@ -36,6 +36,7 @@ import re
 import secrets
 import subprocess
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 #: What a share can cover. `file` is one path. `tree` is a directory and everything under it,
@@ -83,8 +84,12 @@ def _compile_deny(globs: tuple[str, ...]):
     """Precompile every deny pattern into the three tests `is_denied` runs.
 
     THIS IS A SPEED FIX AND NOTHING ELSE. The answers are identical to the fnmatch loop it
-    replaces -- `tests/unit/test_share_deny_globs.py` runs both implementations over every
-    tracked file and a crafted adversarial set and asserts the same pattern comes back.
+    replaces -- `tests/ops/test_share_deny_is_unchanged_by_compilation.py` runs both
+    implementations over every tracked file and a crafted adversarial set and asserts the same
+    pattern comes back. That citation read `tests/unit/test_share_deny_globs.py` until
+    2026-08-21; `git log --all -- <that path>` returns nothing, so it named a file that has
+    never existed on any branch. A docstring that cites a guard nobody can find reads as proof
+    and is not one.
 
     The measurement that bought it: the shares view calls this once per repo file, and with
     2,169 files and 39 patterns that was 140,716 `fnmatch.fnmatch` calls per page load --
@@ -153,6 +158,8 @@ def is_denied(rel: str) -> str:
     return ""
 
 
+
+
 def _git_tracked(repo_root: Path) -> list[str] | None:
     """Every file git tracks, or None when git cannot answer here.
 
@@ -172,11 +179,16 @@ def _git_tracked(repo_root: Path) -> list[str] | None:
     return [p for p in out.stdout.decode("utf-8", "replace").split("\0") if p]
 
 
-def _walked(repo_root: Path) -> list[str]:
+def _walked(repo_root: Path, keep: Callable[[str], bool] | None = None) -> list[str]:
     """Every file in the tree, minus the denied ones. The container path.
 
     Prunes denied directories as it descends rather than filtering at the end, because walking
     `node_modules/` only to throw it away is how a listing takes minutes.
+
+    `keep` narrows the population BEFORE the deny-list runs. It is a COST change and not a fence
+    change: every path that survives `keep` is still put through `is_denied`, so nothing reaches
+    a caller that the fence would have refused. A caller that wants only documents pays the
+    deny-list on documents instead of on all ~2,200 files in the tree.
     """
     found: list[str] = []
     for dirpath, dirnames, filenames in os.walk(repo_root):
@@ -185,15 +197,24 @@ def _walked(repo_root: Path) -> list[str]:
         dirnames[:] = [d for d in dirnames if not is_denied(f"{prefix}{d}/x")]
         for name in filenames:
             rel = f"{prefix}{name}"
+            if keep is not None and not keep(rel):
+                continue
             if not is_denied(rel):
                 found.append(rel)
     return found
 
 
-def shareable_files(repo_root: Path) -> list[str]:
-    """Every path this repo will serve, sorted. Both sources pass through `is_denied`."""
+def shareable_files(repo_root: Path, *, keep: Callable[[str], bool] | None = None) -> list[str]:
+    """Every path this repo will serve, sorted. Both sources pass through `is_denied`.
+
+    `keep` is an optional predicate on the repo-relative path, applied BEFORE the deny-list — see
+    `_walked`. The fence still runs on every path that comes back, so narrowing can only ever
+    return fewer paths, never a path the full call would have refused.
+    """
     tracked = _git_tracked(repo_root)
-    raw = tracked if tracked is not None else _walked(repo_root)
+    raw = tracked if tracked is not None else _walked(repo_root, keep=keep)
+    if keep is not None:
+        raw = [p for p in raw if keep(p)]
     return sorted({p for p in raw if not is_denied(p)})
 
 

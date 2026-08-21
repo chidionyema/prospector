@@ -939,6 +939,69 @@ B5 is the precondition. Nothing learned on this list can be decided until random
 exists, and its own kill condition is honest: if 30 days cannot produce 126 catalogue views, no
 A/B test is fittable on this site and every click-dependent proposal closes.
 
+### 9.3b The named case the opening document could not write — shipped 2026-08-21
+
+`pack_floors.exec_summary_md` states its own ceiling in its docstring, and both halves of it
+are true:
+
+> The WSJ formula wants a person: one named case, then the widening. This renderer cannot
+> write one. It makes no model call [...] An invented protagonist would be the single worst
+> thing this pack could contain.
+
+Both true, and together they were read as "no named case is possible". That inference is
+false. The dossier already holds real named cases: the passages retrieval fetched and a
+`supported` check cited. Quoting one verbatim, with its URL under it, is not an invented
+protagonist — it is the same standard of proof the rest of this repo already enforces.
+
+`prospector/pack_lede.py` selects one. It makes no model call, invents no text, and prints
+the source URL rather than a link with anchor text we chose.
+
+**Measured over the 108 `*.pass.json` dossiers in the live store, and the first two numbers
+are the interesting ones — both were the module grading a proxy, caught by reading its own
+output rather than by a test:**
+
+| Filter set | Yield | What the output actually contained |
+|---|---|---|
+| Named actor + a number | 89 of 108 (**82.4%**) | `"Temperature Log Book 6 Month Food Hygiene."` — a product listing. "Month Food Hygiene" is capitalised and "6" is a number. |
+| + finite verb, + a 40% cap on capitalised words | 40 of 108 (**37.0%**) | A scraped shipping table (`"EVER MACH Oakland / Elevated / ERD drift expectation +1 to +7 days..."`), which arrives as ONE sentence because its cells carry no full stop; and French metal-detecting law (`"penalties run to €1,500 for unauthorized detection"`) opening an **AI training-data provenance** pack — cited by a check about penalties that was correctly ruled `supported`. |
+| + no blank line inside a sentence, + >= 2 content words shared with the candidate | 19 of 108 (**17.6%**) | What ships. |
+
+The third row is the contract every floor in this pack already keeps: **89 of 108 packs get
+nothing here.** An absent specific is an absent line, never a padded generic one.
+
+Three of the 19, verbatim, each with its live URL in the pack:
+
+- *"For projects certified by DECD on or after January 1, 2021, that exceed $2.5 million in
+  credit, the production company must apply and receive an audit"* — Georgia film compliance.
+- *"The letter will typically say that HMRC has identified your 'adjusted net income' (ANI)
+  for the tax year 2024-25 and/or 2025-26 as £60,000 or more..."* — HMRC child benefit.
+- *"Manufacturing is the UK's largest claimant sector by value, with an average claim of
+  £72,000 (HMRC, 2024), and the 20% above-the-line credit rises to 27% under ERIS..."* — R&D
+  tax credits.
+
+**The class this closes, and it is the one on the goal-guard list: a proxy grades nothing.**
+"Has a capitalised token and a digit" is a proxy for "names somebody who did something with a
+stake attached", and at 82.4% it was matching page furniture. Neither correction came from a
+failing test. Both came from printing the actual output and reading it. Every filter is now
+pinned by a test in `tests/unit/test_the_pack_opens_with_a_cited_case.py`, and the two
+sentences above are the fixtures — the real strings, not invented ones.
+
+**And the third instance of the same class was in the TESTS, caught by mutation.** The first
+version of `tests/unit/test_the_pack_opens_with_a_cited_case.py` had one rejection fixture per
+filter, all 17 green. Eleven deliberate bugs planted in `pack_lede.py` — accept any verdict,
+treat scraped blocks as prose, drop the topic filter, drop the verb, drop the stake, make the
+ranking arbitrary — and **6 of the 11 SURVIVED**. Each fixture was being rejected by two or
+three filters at once, so the filter under test never ran. The money-outranks-percentage test
+was the clearest: its percentage and duration sentences shared only one content word with the
+topic, so both were filtered out before ranking and the test was asserting on a list of one.
+
+The fix is structural, and it is the rule for any future filter added here: **every negative
+fixture is ONE property removed from a single `BASE` that is asserted to pass in the same
+test.** A variant can then only be failing on the property that was changed. Re-run 2026-08-21 against the rewritten tests, with a MAX_CHARS mutant added to the original eleven: **12 of 12 caught, 0 survivors.**
+
+**Follow-through:** SHIPPED — `prospector/pack_lede.py`, wired at `pack_floors.exec_summary_md`
+and `bridge.py`.
+
 ### 9.4 The constraint any fix must respect
 
 CLAUDE.md, "two loops never merge": demand never overrides truth. An engagement score may **rank**
@@ -1378,6 +1441,7 @@ they are marked FOUNDER and no agent can close them.**
 |---|---|---|
 | An `unverifiable` ruling no longer carries grounding confidence | `prospector/verify.py:761` | PR #570, merged. Corpus: 9,965 `unverifiable` checks scored mean 0.5627 against 0.5695 for `supported` — a +0.0019 gap, and 73.3% of unruled checks scored >= 0.5. `_calc_confidence` has no verdict term; it measures what retrieval returned. |
 | A research report must name its follow-through, and a test fails if one does not | `tests/unit/test_a_research_finding_must_name_its_follow_through.py` | PR #571, merged. 15 reports carry `**Follow-through:**` as SHIPPED / TICKET #n / NO ACTION + reason. The unknown branch calls `pytest.fail`, so a new state cannot pass silently. |
+| The opening document quotes a real named case out of a cited passage, instead of having none | `prospector/pack_lede.py`, wired at `pack_floors.py` `exec_summary_md` and `bridge.py` | Section 9.3b. 19 of 108 live pass dossiers (17.6%) produce one; the other 89 print nothing rather than a generic opener. Two earlier filter sets scored 82.4% and 37.0% and were both matching page furniture. |
 | The cost rule no longer contradicts the founder's own ruling in four places | this commit, A6 section + E-020 + E-103 + the axes table | Line 69 was corrected on 2026-08-20 and the other four sites were not. |
 
 ### 11.2 Open, and an agent can move them

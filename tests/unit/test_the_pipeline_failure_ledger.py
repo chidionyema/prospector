@@ -80,13 +80,30 @@ LEDGER: tuple[Mode, ...] = (
         "merge-robot-finishes-green-having-merged-nothing",
         "A robot with power over main swallows its own failure and reports success. A workflow "
         "that silently does nothing is worse than one that is absent, because it is trusted. The "
-        "merge robot itself is gone -- automerge.yml was deleted on 2026-08-20 and merging is the "
-        "author's job -- so the robot this now describes is main-admission-guard.yml, which "
+        "merge robot that row was written about is gone -- automerge.yml was deleted on "
+        "2026-08-20 -- and merge-when-green.yml replaced it on 2026-08-21 with its own row "
+        "below. The robot THIS row describes is main-admission-guard.yml, which "
         "REVERTS. Its proof executes the decide script in node against a stubbed Octokit rather "
         "than grepping the YAML for keywords, because a guard whose tests pass on a broken guard "
         "reports a safety it is not providing.",
         (".github/workflows/main-admission-guard.yml",),
         "tests/unit/test_main_admission_guard.py",
+        None,
+        None,
+    ),
+    Mode(
+        "a-merge-robot-merges-and-nothing-ships-what-it-merged",
+        "merge-when-green.yml merges with GITHUB_TOKEN, and GitHub starts NO workflow run from a "
+        "GITHUB_TOKEN push. So the deploys that a human merge would have started never run, and "
+        "the workflow has to dispatch them itself from a COPY of each deploy workflow's own "
+        "`paths:` filter. A copy drifts. When the copy is narrower than the original, the queue "
+        "drains, every pull request reads as merged, and production quietly stops tracking main "
+        "with nothing red anywhere -- bounded at about an hour by production-runs-main.yml's "
+        "cron, which is a detection, not a prevention. main-admission-guard.yml:381 records that "
+        "the two tests which used to grade exactly this drift were deleted with automerge.yml on "
+        "2026-08-20.",
+        (".github/workflows/merge-when-green.yml",),
+        "tests/unit/test_merge_when_green_dispatches_what_the_push_could_not.py",
         None,
         None,
     ),
