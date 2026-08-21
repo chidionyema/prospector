@@ -229,6 +229,58 @@ def test_an_unreadable_code_axis_says_so_out_loud():
     assert "UNKNOWN" in ef.standby_code_line({"error": "no checkout at /nope"})
 
 
+# --- cause 3, one level down: the drift figure existed for the CHECKOUT, not for the code that
+# --- actually runs. Measured 2026-08-21: ~/.prospector/bin/engine_failover.frozen.py was the
+# --- 2026-08-18 copy, 594 lines behind scripts/engine_failover.py, so commit 3f7550e5 (refuse a
+# --- standby pull that did not reach the end of the source) was merged and never reached the job
+# --- doing the pulling. Three short pulls were promoted and the standby spend ledger fell to
+# --- 1,572,864 bytes against a source of 454,701,248. `standby CODE:` read OK the whole time.
+
+
+@pytest.mark.parametrize(
+    "run,expect_ok",
+    [
+        ({"same_file": True, "running": "/repo/scripts/engine_failover.py"}, True),
+        ({"same_file": False, "digest": "aaaaaaaaaaaa", "checkout_digest": "aaaaaaaaaaaa"}, True),
+        ({"same_file": False, "digest": "aaaaaaaaaaaa", "checkout_digest": "bbbbbbbbbbbb"}, False),
+        ({"error": "no such file"}, False),
+    ],
+)
+def test_a_frozen_copy_that_differs_from_the_checkout_never_reads_ok(run, expect_ok):
+    ef = _load("engine_failover")
+    line = ef.running_code_line(run)
+    assert (" OK " in line) is expect_ok, line
+
+
+def test_the_drifted_copy_names_the_command_that_fixes_it():
+    """A red line an operator cannot act on gets muted. This one carries its own remedy."""
+    ef = _load("engine_failover")
+    line = ef.running_code_line(
+        {"same_file": False, "digest": "aaaaaaaaaaaa", "checkout_digest": "bbbbbbbbbbbb"})
+    assert "install_failover_watch.sh" in line, line
+
+
+def test_the_running_copy_is_compared_by_content_not_by_mtime():
+    """Two bytes-identical files with different timestamps are the SAME code.
+
+    Grading a copy by its mtime is the proxy this estate keeps paying for: it goes red on a
+    harmless `cp` and green on a file edited in place. The probe hashes the bytes."""
+    ef = _load("engine_failover")
+    probe = ef.probe_running_code()
+    assert probe.get("error") is None, probe
+    # _load() imports the checkout copy itself, so the probe must say so rather than invent a
+    # comparison between one file and itself.
+    assert probe.get("same_file") is True, probe
+
+
+def test_status_actually_prints_the_running_code_line():
+    """Wiring, not behaviour. A correct helper nothing calls is the exact shape of cause 3:
+    the number was computable and never printed for the whole of the period it was wrong."""
+    body = (ROOT / "scripts" / "engine_failover.py").read_text()
+    assert "running_code_line(" in body.split("def cmd_status", 1)[-1] or \
+        body.count("running_code_line(") >= 2, "status never renders the line it computes"
+
+
 def test_t_stop_actually_uses_the_sparing_list():
     """Wiring, not behaviour: t_stop cannot be run in a test without stopping the estate.
 
