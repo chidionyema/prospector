@@ -4,7 +4,7 @@
 > fast"*, then *"you need to breakit downto spec"*.
 >
 > This is the build spec. `docs/MIGRATION_AND_DR_PROGRAM.md` holds the 60 requirements and the
-> evidence; this file holds the *thing to build*: nine components, their interfaces, and the
+> evidence; this file holds the *thing to build*: twelve components, their interfaces, and the
 > order that makes each one provable on the day it lands.
 >
 > Every claim about what exists today was measured on `origin/main` on 2026-08-21 and carries a
@@ -12,7 +12,7 @@
 
 ---
 
-## 1. The bar, cut into five numbers
+## 1. The bar, cut into seven numbers
 
 Founder, 2026-08-19, verbatim:
 
@@ -32,9 +32,57 @@ Five clauses, each with a number a drill can fail on:
 | A2 | the whole stack | **0 resources left behind**, across all 10 classes | the probe runs at both ends; the diff must be empty |
 | A3 | no downtime | **0s customer-visible**, background pause **≤ 120s** | a prober hits the public endpoints every 250ms through the whole run and counts non-200s |
 | A4 | from the dashboard, real-time | started from a console page, **no step ≥ 5s without an event** | the event stream is the progress bar; a gap is a defect |
-| A5 | reusable, any project | **0 lines naming prospector** in the runner | a test greps the runner tree for the project's own names |
+| A5 | reusable, any project | **0 product names** anywhere under `kit/` | `test_kit_names_no_product.py` greps `kit/` for every declared product's names |
+| A6 | fully operational, ready to sell | **1 synthetic purchase completes** at the target, inside the same 1800s | the drill buys something in test mode end to end: DNS, TLS, storefront, checkout, webhook, catalogue row |
+| A7 | scales to n projects | **1 declaration file per project, 0 code changes** to add the second | the drill runs the kit against a second declaration |
 
 **A3 needs one ruling from you and it is the only thing in this spec that does.** See §7.
+
+### 1.1 The three scenarios that define done
+
+Founder, 2026-08-21: *"scenarios to cosider if i had to nove to eks tonorrow gold standard can i
+do it, if i had to nove to snaller less known platforn or onpren can i do it fron ops dashboad,
+seanless ly in 0 niutes and be fully operational ready to sell ?"*
+
+These are the goals. The programme is finished when all three go green from the dashboard, inside
+1800s, ending in a completed purchase. Three rather than one, because each stresses something the
+other two cannot reach.
+
+| | Scenario | What it stresses that the others do not | The adapter it proves | Where it will hurt |
+|---|---|---|---|---|
+| **G1** | **EKS tomorrow** — managed Kubernetes at a hyperscaler | An image registry that is not the platform's own (ECR); cloud identity as a precondition to every other step; a `StorageClass` and a claim instead of a mounted directory; the cluster's own DNS in front of ours | `deploy/targets/k8s.sh` (269 lines) | The adapter has only ever met small clusters. Identity and the registry are two auth surfaces it has never touched, and both fail at minute 2, not minute 20 — so the plan compiler must check them in `plan`, not discover them in `move`. |
+| **G2** | **A smaller, less known platform** — a VPS, Hetzner, OVH, anything with no adapter worth writing | There is no provider API at all. Only SSH and Docker. Everything the platform used to give free — TLS termination, a private network, a secret store, log collection, health checks — is now ours to supply | `deploy/targets/sshdocker.sh` (90 lines) | This is the lowest common denominator, and therefore the real test of portability. If the bar is met here it is met everywhere. |
+| **G3** | **On-premises** — our own hardware | Possibly no public address and a router in the way; TLS with no cloud DNS API to answer the challenge; backups must physically leave the building; power and disks become our problem | `sshdocker` plus a DNS-01 path through the registrar | The certificate is the trap. Without a platform to terminate TLS, the challenge has to be answered at the domain registrar, which is a third party we re-point rather than a resource we move. |
+
+**A hyperscaler is not a lock-in problem and EKS is legal.** `deploy/PORTABILITY.md:127` refuses a
+managed **database**, not managed compute. G1 is a supported destination; G2 and G3 are what stop
+it becoming the only one.
+
+### 1.2 Ready to sell — the clause that stops "it is up" counting as "it works"
+
+A6 exists because every other clause can pass while the business cannot take money. Pods can be
+running, the probe diff can be empty, and a shopper still meets an expired certificate, or a
+payment webhook still pointing at the machine we just left.
+
+**One check covers all of it: complete a purchase at the target, in test mode, before the clock
+stops.** That single transaction exercises DNS, TLS, the storefront, the API, the database, the
+payment integration's webhook, and the catalogue write — in the order a customer meets them. It
+cannot pass while any of those is still pointing at the old home.
+
+### 1.3 Move, re-point, rebuild — three verbs, not one
+
+The plan compiler must know which of these each resource needs, because the failure modes differ
+and only one of them is a copy.
+
+| Kind | What it means | Examples | The risk |
+|------|---------------|----------|----------|
+| **Move** | Bytes travel; the target must end up holding what the source held | the engine store, the storefront database, object storage | Silent partial copy. Answered by a manifest checked at both ends — `scripts/store_migrate.py` already does this. |
+| **Re-point** | Nothing travels. A **third party** is holding a pointer at us and must be told the new address | Stripe webhook endpoints, DNS records, the registrar, alert destinations, log shipping | Forgetting one. Nothing breaks at cutover; it breaks at the next event, hours later. This is the class that "nothing being used can be missed out" is really about. |
+| **Rebuild** | Nothing travels and nothing is told; the thing is made again from a declaration | containers, TLS certificates, scheduled jobs, CI runners | Drift between the declaration and what was actually running. Answered by the probe running at **both** ends and diffing. |
+
+`scripts/estate_inventory.py:289` already discovers the hardest re-point case — it lists Stripe's
+webhook endpoints from Stripe's own API rather than from our declaration, which is the only way
+to find one nobody wrote down.
 
 ## 2. What already exists, measured
 
@@ -51,6 +99,73 @@ and nothing joins them.
 
 **The join is the product.** `cutover.sh` should not carry a hardcoded phase list. It should
 execute a plan compiled from what the probe found, one class adapter per class.
+
+### 2.1 Decoupling — measured, not assumed
+
+Founder, 2026-08-21: *"so a lot of out tooling needs decoupling fron prospector"*, *"prospector
+first"*, *"but can be used for ay project"*, *"as a conpany we cn have other producs"*, *"can
+scale to supprt n projects"*.
+
+The instinct is right and the size of the job is smaller than it looks. Measured on `origin/main`,
+2026-08-21 — reproduce with `rg -c -i prospector <file>`:
+
+| Tool | lines | `prospector` hits | imports the package | hardcoded absolute paths | Verdict |
+|------|------:|------------------:|--------------------:|-------------------------:|---------|
+| `scripts/estate_inventory.py` | 683 | **0** | 0 | 0 | **Already kit.** Takes a declaration (`:42`) and reads every project fact from it (`:187`–`:371`). |
+| `deploy/cutover.sh` | 153 | 6 | 0 | 0 | Kit after the names lift. |
+| `deploy/secrets.sh` | 160 | 4 | 0 | 0 | Kit after the names lift. |
+| `deploy/targets/sshdocker.sh` | 90 | 7 | 0 | 0 | Kit after the names lift. |
+| `deploy/targets/fly.sh` | 185 | 10 | 0 | 0 | Kit after the names lift. |
+| `deploy/targets/k8s.sh` | 269 | 14 | 0 | 0 | Kit after the names lift. |
+| `deploy/targets/laptop.sh` | 161 | 14 | 0 | 2 | Kit after the names lift. |
+| `scripts/store_migrate.py` | 451 | 11 | 0 | 0 | Kit; the class adapter for one datastore shape. |
+| `scripts/restore_drill.py` | 584 | 8 | 1 | 0 | Kit after the one import moves behind the declaration. |
+| `scripts/engine_failover.py` | 803 | 25 | **2** | 3 | **Stays prospector's.** It knows about spend ledgers and moat brains. Not kit, and pretending otherwise would drag the engine's business rules into every future product. |
+| `scripts/live_checkout.py` | 830 | 15 | 0 | 6 | **Stays prospector's.** Same reason. |
+
+**The finding: 0 of the hits in the kit column are couplings to prospector's *logic*. They are
+app and path NAMES** — `prospector-engine`, `store/`, `.prospector/ACTIVE`. A name is exactly what
+a declaration parameterises, which is why the probe already scores zero: it was written that way
+from the start.
+
+So decoupling is one mechanical job — lift names into the declaration — plus one judgement call,
+which is refusing to lift the two tools that encode prospector's own rules.
+
+### 2.2 How it scales to n projects
+
+One kit, one declaration per project, nothing else per project.
+
+```
+  kit/                          <- names no product; A5 is a test over this tree
+    probe/                      <- estate_inventory.py, already clean
+    migrate/plan.py             <- C1
+    migrate/run.py              <- C2
+    classes/*.sh                <- C3, C6..C9
+    targets/*.sh                <- exists: fly, k8s, sshdocker, laptop
+  projects/
+    prospector.yaml             <- the first tenant, and the only one today
+    <next-product>.yaml         <- adding this is the whole cost of product two
+```
+
+The declaration already has a working shape — `estate_inventory.py` reads `owns:` for domains,
+the repository, the log host, launchd prefixes, supervisord configs, the Stripe key name, the CI
+app and the Fly app prefixes (`:187`–`:371`). It grows two blocks: `targets:` (which substrates
+this product may live on, and their credentials by name) and `classes:` (per class, which adapter
+and what its verify means).
+
+**Three rules keep it honest as products are added:**
+
+1. **The kit never reads a project name.** A5's test greps `kit/` for every product's own names
+   and fails on a hit. This is the only thing standing between one kit and four forks of it.
+2. **A project is added by writing a declaration, never by editing the kit.** If product two needs
+   a kit change, that change is a missing *capability*, and it lands as a class or target adapter
+   that product one also gets.
+3. **Secrets are per project and never shared.** One declaration names its own secret set;
+   `deploy/secrets.required` becomes `projects/<name>.secrets.required`.
+
+**Prospector first, and that is a sequencing decision rather than a design one.** The kit is built
+against one real product so that the seams are proven by use instead of guessed at. Product two is
+the test of A7, and §5 puts it in the last slice for exactly that reason.
 
 ## 3. Architecture — three layers and one stream
 
@@ -80,11 +195,11 @@ Shape only — every number below is illustrative, and the real ones come from t
   "budget_s": 1800,
   "steps": [
     { "id": "secret/prospector-engine", "class": "secret", "resource": "prospector-engine",
-      "adapter": "deploy/classes/secret.sh", "needs": [],
+      "adapter": "kit/classes/secret.sh", "needs": [],
       "downtime": "zero", "budget_s": 60, "bytes": 0,
       "verify": "every name in deploy/secrets.required is present at the target" },
     { "id": "datastore/store", "class": "datastore", "resource": "store",
-      "adapter": "deploy/classes/datastore.sh", "needs": ["secret/prospector-engine"],
+      "adapter": "kit/classes/datastore.sh", "needs": ["secret/prospector-engine"],
       "downtime": "stop", "budget_s": 420, "bytes": 0,
       "verify": "scripts/store_migrate.py verify against the pack manifest" }
   ]
@@ -130,39 +245,47 @@ One writer, three readers, nothing to keep in step.
 A step that emits nothing for 5s fails clause A4. That is a hard rule in the runner, not a
 guideline: every long verb streams progress or it is not finished.
 
-## 4. The nine components
+## 4. The twelve components
 
-Ordered by the slice that needs them. "Done when" is always a drill that goes green, never a
-file that exists.
+Ordered by the slice that needs them. "Done when" is always a drill that goes green, never a file
+that exists.
 
 | C | Component | File | Done when |
 |---|-----------|------|-----------|
-| C1 | **Plan compiler** | `deploy/migrate/plan.py` | It compiles a plan from a real probe report, and a test proves every found resource is either in a step or in `skipped` with a reason. |
-| C2 | **Runner** | `deploy/migrate/run.py` | It executes a plan, honours `needs`, resumes with `--from-step`, rolls back on a failed `verify`, and emits an event per transition. |
-| C3 | **Class adapter: compute** | `deploy/classes/compute.sh` | It wraps the existing `cutover.sh` unchanged. Proves the contract fits what already works before six more are written to it. |
-| C4 | **Console page + live progress** | `prospector/ops/migration_view.py` | A page starts a run, shows a bar per step and the clock, and offers rollback. Registered the same way the other pages are (`prospector/ops/console_api.py`). |
+| C1 | **Plan compiler** | `kit/migrate/plan.py` | It compiles a plan from a real probe report, and a test proves every found resource is either in a step or in `skipped` with a reason. Refuses a plan whose adapter cannot honour a verb, rather than finding out at minute 20. |
+| C2 | **Runner** | `kit/migrate/run.py` | It executes a plan, honours `needs`, resumes with `--from-step`, rolls back on a failed `verify`, and emits an event per transition. |
+| C3 | **Class adapter: compute** | `kit/classes/compute.sh` | It wraps the existing `deploy/cutover.sh` unchanged. Proves the contract fits what already works before six more are written to it. |
+| C4 | **Console page + live progress** | `prospector/ops/migration_view.py` | A page picks a project and a target, starts a run, shows a bar per step and the clock, and offers rollback. |
 | C5 | **The drill and the clock** | `.github/workflows/migration-drill.yml` | A scheduled real migration, timed, with a downtime prober; red over 1800s or over any step's downtime class. |
-| C6 | **Class adapter: secret + config** | `deploy/classes/secret.sh` | A new target gets every name in `deploy/secrets.required` in one command. This is D8 landing, and it unblocks every other class. |
-| C7 | **Class adapter: datastore** | `deploy/classes/datastore.sh` | Engine store via `store_migrate.py`; storefront via `pg_dump`/`pg_restore` per the D6 ruling. Verified by row counts at both ends. |
-| C8 | **Class adapters: DNS + TLS** | `deploy/classes/{dns,tls}.sh` | Health-gated flip with the TTL pre-lowered, and a rollback that flips back. This is where clause A3 is won or lost. |
-| C9 | **Class adapters: the rest** | `deploy/classes/{scheduled_job,log_sink,object_storage,payment_integration}.sh` | The probe's diff at both ends is empty — clause A2. |
+| C6 | **Class adapter: secret + config** | `kit/classes/secret.sh` | A new target gets every name in the project's secret list in one command. This is D8 landing, and it unblocks every other class. |
+| C7 | **Class adapter: datastore** | `kit/classes/datastore.sh` | Engine store via `store_migrate.py`; storefront via `pg_dump`/`pg_restore` per the D6 ruling. Row counts equal at both ends. |
+| C8 | **Class adapters: DNS + TLS** | `kit/classes/{dns,tls}.sh` | Health-gated flip with the TTL pre-lowered, and a rollback that flips back. Includes the DNS-01 path through the registrar, which is what G3 needs and no platform supplies. |
+| C9 | **Class adapters: the rest** | `kit/classes/{scheduled_job,log_sink,object_storage,payment_integration}.sh` | The probe's diff at both ends is empty — clause A2. `payment_integration` is a **re-point**, not a move. |
+| C10 | **Project declaration + validator** | `kit/projects/schema.py`, `kit/projects/prospector.yaml` | A declaration is validated before a run starts, and a missing block fails at second 0 with the name of what is missing. This is the A7 seam. |
+| C11 | **The sell-path prober** | `kit/verify/can_we_sell.py` | It completes a test-mode purchase against a named base URL and asserts the catalogue row and the webhook delivery that follow. Red until all of DNS, TLS, storefront, API, database and payments point at the target. |
+| C12 | **The names lift, and the test that holds it** | `kit/` tree + `tests/unit/test_kit_names_no_product.py` | Every name in the table at §2.1 has moved into a declaration, and the test fails on any product name appearing under `kit/`. Clause A5 becomes mechanical instead of a promise. |
 
-## 5. Delivery order — five slices, each one provable
+## 5. Delivery order — six slices, each one provable
 
-Thin end to end first. The whole bar is demonstrated on one plane before any plane is done
+Thin end to end first. The whole bar is demonstrated on one class before any class is done
 properly, because a deep vertical proves nothing about the clock, the dashboard or the rollback.
 
-| Slice | Components | The drill that closes it | Clauses proved |
-|-------|-----------|--------------------------|----------------|
-| **S1 — the thin wire** | C1, C2, C3, C4 | Move the engine `fly → sshdocker` and back, started from the console, with a live bar and a stopwatch. | A1, A4 on one class; A5 by construction |
-| **S2 — credentials travel** | C6 | A new empty target gets every required secret in one command, and the engine starts there. | unblocks all of A2 |
-| **S3 — the data** | C7 | Engine store and storefront Postgres both move, row counts equal at both ends. | A1 under real bytes — the long pole |
-| **S4 — no downtime** | C8 | The public prober records 0 non-200s across a full storefront cutover. | A3 |
-| **S5 — nothing missed** | C9, C5 | Probe at both ends; diff empty. Drill runs on a schedule and can go red. | A2, and A1 becomes permanent |
+| Slice | Components | The drill that closes it | Clauses | Scenario |
+|-------|-----------|--------------------------|---------|----------|
+| **S1 — the thin wire** | C1, C2, C3, C4, C10, C12 | Move the engine `fly → sshdocker` and back, started from the console, with a live bar and a stopwatch. | A1, A4 on one class; A5 by test | G2 in miniature |
+| **S2 — credentials travel** | C6 | A new empty target gets every required secret in one command, and the engine starts there. | unblocks all of A2 | all three |
+| **S3 — the data** | C7 | Engine store and storefront Postgres both move; row counts equal at both ends. | A1 under real bytes — the long pole | all three |
+| **S4 — no downtime** | C8 | A prober hits the public endpoints every 250ms through a full storefront cutover and records 0 non-200s. | A3 | G3 needs the registrar path |
+| **S5 — ready to sell** | C11 | A test-mode purchase completes at the target inside the same 1800s. | **A6** | all three |
+| **S6 — nothing missed, everywhere** | C9, C5 | Probe at both ends, diff empty. Then the scenario matrix: G1, G2 and G3 each green, on a schedule. | A2, and A1 becomes permanent | **G1, G2, G3** |
 
-**S6 is the proof of clause A5 and it is cheap if S1 was built honestly:** point the probe at a
-second project, compile a plan, run it. If it needs a code change, C1 or C2 has prospector in it
-and the test in A5 should have caught it.
+**S7 is the proof of A7 and it is cheap if the kit was built honestly:** write a declaration for a
+second product and run the kit against it. If it needs a code change under `kit/`, C12's test
+should already have failed, and the change is a missing capability that product one also gets.
+
+**The scenario matrix is the finish line, not a bonus.** G1 exercises cloud identity and a
+registry; G2 exercises having no provider API at all; G3 exercises TLS and DNS with no platform
+behind them. A kit that passes one of the three is not portable, it is adapted.
 
 ## 6. What we are deliberately NOT building, so this stays fast
 
@@ -208,7 +331,7 @@ The programme has been producing documents faster than it has been producing dri
    existing; §4's "done when" column is the only definition.
 2. **Thin before deep.** S1 touches every layer and one class. It is the slice that finds the
    architectural mistakes, and it finds them on day one rather than at S5.
-3. **Six of the nine components are shell adapters against a contract that already works.** They
+3. **Six of the twelve components are shell adapters against a contract that already works.** They
    are parallel and independent once C1 and C2 exist, which is what makes the back half fast.
 4. **The probe was the expensive part and it is already written.** 683 lines, ten classes,
    discovering from the running world rather than from a declaration.
