@@ -84,8 +84,9 @@ that would settle it. A row with no proof is not done, however finished it feels
 | R51 | **A solid plan for how the whole thing gets delivered** | "i need a solit plan of how this whole thing will be delivedered" | **NOT STARTED** | R43 is the mechanism; this row is the deliverable he asked for and has not had |
 | R52 | **The database decisions** — storefront onto Postgres | "are yoy aware of the db decisions? storefrint to postgress etc" | **NOT STARTED** | asked and never answered. Unknown to this register: which store, which migration, who decided |
 | R53 | **DNS, everything** | "dns everthng" | **NOT STARTED** | asked and never answered |
-| R54 | **Every document the engine generates is in the admin portal, with no code change** | "tbhh we should not have to nake a chage, every single dic generatd should be there without having o ake cod change" — and, asked what done looked like, "that is the cceptance criteria" | **DONE** | `tests/ops/test_generated_docs_are_shareable.py` — 36 assertions, and the same five documents list whether or not `.git/` is present |
-| R55 | **Every listed document is readable in the portal and through a share link** | "this docentshould be nintable fron adnin portal every single doc should be" | **DONE** | `store_platform/src/Ops.Console/tests/doc-render.test.ts` — both readers draw through one renderer, and the frame is `sandbox="allow-same-origin"` with no scripts |
+| R54 | **Every document the engine generates is in the admin portal, with no code change** | "tbhh we should not have to nake a chage, every single dic generatd should be there without having o ake cod change" — and, asked what done looked like, "that is the cceptance criteria" | **DONE** | `tests/ops/test_generated_docs_are_shareable.py` — 42 tests passing (11 skipped: deny patterns that are directory rules), and the same documents list whether or not `.git/` is present. `store/scheduler/` is carved by document suffix at any depth, so the next generated file needs no edit |
+| R55 | **Every listed document is readable, in the portal and through a share link** | "this docentshould be nintable fron adnin portal every single doc should be" | **DONE** | `store_platform/src/Ops.Console/tests/doc-render.test.ts` — both readers draw through one renderer, and the frame is `sandbox="allow-same-origin"` with no scripts |
+| R56 | **A document generated from live runtime state is shown in the console and never handed to a share link** | not asked for; it is the safe half of R54 while Q7 is open | **DONE** | `prospector/ops/share.py::link_denied`, wired into `mint`, `open_share` and the mint picker. Measured against the checkout: shareable 2241, linkable 2240, delta is exactly `store/scheduler/ALERT.txt`. `tests/ops/test_generated_docs_are_shareable.py` grades both surfaces |
 
 ---
 
@@ -116,6 +117,7 @@ stop being rediscovered.
 | Q4 | Is per-check grounding verification an acceptable **operational** cost, or one-off only? | the standing ruling is that operational costs demand a more creative answer |
 | Q5 | Does `~/.claude` go to a **public** GitHub repository, or a private one? (R36) | it is outward-facing, and the directory holds credentials, transcripts and estate state — a secret audit must precede either answer |
 | Q6 | May an agent **page the founder's phone** out of hours, and at what severity? (R23) | it interrupts him, which is the cost this whole programme exists to reduce |
+| Q7 | May a generated **operational diagnostic** go behind a `/s/<token>` share link at all? (R56) | `DIAGNOSTICS_LATEST.txt` prints candidate titles and spend figures, and a share link is read with no session by whoever holds the token — so it decides what an outsider sees |
 
 ---
 
