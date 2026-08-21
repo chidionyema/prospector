@@ -14,7 +14,7 @@ that is not a file we can copy**.
 > founder said *"i dont have a wwhole stack or architectuure or platfon plan. i dont knoww what th
 > eplatfornwill look like when we are done"* and *"we qre just stuck and nocler guidanc"*.
 > **§10 is the target platform** — ten planes, one contract each, and what "done" looks like in a
-> paragraph. **§11 is the requirements register** — 39 functional and 14 non-functional
+> paragraph. **§11 is the requirements register** — 41 functional and 14 non-functional
 > requirements, each with the drill that proves it and the deliverable that builds it. §0–§9 grade
 > what is broken; §10–§11 say what we are building. When they disagree, §10 and §11 win.
 > **§12 answers how much of this can sensibly move to Kubernetes, and §13 names the final
@@ -1207,6 +1207,7 @@ Append here. One line per shipped item, with the receipt.
 | 2026-08-20 | F-08a | new requirement: a copy is not a backup until it is proven complete against its SOURCE | `~/.prospector/standby/prospector.jsonl` measured at 25,296,896 bytes, 6.2% of the 407,981,598-byte source, and every truncating sync logged as a success. Register now 39 functional + 14 non-functional = 53; 3 / 11 / 35 / 4 |
 | 2026-08-20 | §12 | how much of the estate can sensibly move to k8s, plane by plane: 2 whole, 5 half, 3 not at all | adapter read at `deploy/targets/k8s.sh`; `docker-desktop` live in `kubectl config get-contexts` |
 | 2026-08-20 | F-08a | first completeness measurement taken against a real copy: the R2 ledger object is **99.88% of the live source**, and the shortfall is append lag, not truncation | gzip trailer ISIZE 413,570,301 B vs `wc -c` 414,063,171 B on `prospector-engine`; ledger measured appending at 437 B/s over 120s, so a 492,870 B gap is ~19 min of appends against a ~16 min old snapshot |
+| 2026-08-21 | F-39, F-40 | **full portability to Kubernetes, not compute alone, on cloud AND on-prem** — added on founder instruction as future-plan requirements, with §12.1 costing the gap plane by plane | §12's measured today is 2 planes whole / 5 half / 3 not at all; the five halves are what F-39 buys. Register now **41 functional + 14 non-functional = 55; 3 / 11 / 37 / 4**, recounted by command, not asserted |
 | 2026-08-20 | §13 | the final tooling named — 7 decided, 4 proposed, 4 things deliberately not adopted | `command -v` sweep on this laptop: helm, sops, restic, rclone, ansible, kind, k3d absent |
 | 2026-08-20 | §10.4 | the k8s adapter question answered: nothing calls it, it has never run, and a free local cluster exists | `kubectl config get-contexts` → `docker-desktop` |
 | 2026-08-20 | F-07 | **the first off-machine restore this estate has ever completed** — the R2 catalogue index pulled down, decompressed and opened read-only | `db/prospector-2026-08-20.db.gz`, 975,480 B → 3,100,672 B; `PRAGMA integrity_check` = `ok`; 1 table, `dossiers`, **3,608 rows**. Second angle from `prospector-engine` itself: `LIVE_ROWS 3608` — exact agreement. F-07 stays ○: one source restored by hand is not "every backup, by a machine, scheduled" |
@@ -1422,6 +1423,8 @@ run, **○** not started, **⛔** blocked on a decision in §7.
 | F-01 | Every runtime component moves to any provider by writing one adapter against `deploy/PORTABILITY.md`, and nothing else in the estate learns the provider's name | contract test + a real move | D-P1.1 | 4 | ◐ |
 | F-02 | A whole move runs end to end with no human in a terminal | one recorded cutover | D-P1.2, D-P9.2 | 4 | ○ |
 | F-03 | The old provider is decommissioned only after the new one is proven serving | `deploy/decommission.sh` refuses without proof | D-P1.4 | 4 | ◐ |
+| F-39 | **Every plane has a Kubernetes deliverable, not compute alone** — the estate runs entirely on a cluster with no Fly-specific and no laptop-specific piece left behind | the ten-plane bring-up: each plane's own drill run against the cluster, not merely a pod that starts | D-P1.5 | 6 | ○ |
+| F-40 | **The same manifests bring the estate up on a managed CLOUD cluster and on an ON-PREMISES cluster**, with no per-substrate fork | the bring-up run on both, and the two rendered manifest sets diffed to empty | D-P1.6 | 6 | ○ |
 | F-04 | At least two substrates are proven, not one | a drill on k8s and on sshdocker | D-P1.3 | 4 | ○ |
 
 #### P2 State
@@ -1528,8 +1531,8 @@ holds the requirement and the deliverable; the two are cross-linked and must not
 
 ### 11.4 Coverage — what this register makes visible
 
-Counting the rows above: **39 functional and 14 non-functional requirements — 53 in all. 3 are
-proven. 11 are built but never run. 35 are not started. 4 are blocked on a decision only you can
+Counting the rows above: **41 functional and 14 non-functional requirements — 55 in all. 3 are
+proven. 11 are built but never run. 37 are not started. 4 are blocked on a decision only you can
 make** (§7). Counted by command, never asserted:
 `sed -n '1414,1526p' docs/MIGRATION_AND_DR_PROGRAM.md | grep -cE '^\| F-'` and the same for `N-`.
 
@@ -1623,6 +1626,42 @@ genuinely unlike Fly is the cheapest way to find out whether the eleven-verb con
 only well-written, and `kubectl config get-contexts` shows `docker-desktop` live on this laptop, so
 the proof costs nothing and needs no account. That is deliverable **D-P1.3** and it turns the first
 `◐` in §11 into a `✅`.
+
+### 12.1 Full portability, not just compute — the founder's additional requirement
+
+Founder, 2026-08-21: *"full protabui;ity? not just conpute"*, *"cloud and onpren"*, *"as additonal
+requirent"*, *"for future plans"*. Recorded as **F-39** and **F-40** in §11.2. This subsection says
+what the words cost, because the table above is a statement about today and the requirement is a
+statement about the target.
+
+The table above is the honest current answer and it is **compute-mostly**: two planes whole, five
+half, three not at all. F-39 says that is not the target. The gap is not a Kubernetes gap — it is
+the five halves and the three noes, and k8s has no opinion about any of them. What each one needs:
+
+| Plane | The half k8s does not carry | What F-39 requires us to build |
+|---|---|---|
+| P2 State | a PVC is a disk, not a backup | the backup, offsite copy and **restore** run as `CronJob`s in the cluster, proving themselves there — not from a laptop |
+| P3 Secrets | a `Secret` is base64, and it does not say where secrets come FROM | a bootstrap path a NEW cluster can pull from with one credential. **Still blocked on you** (§7) |
+| P4 Identity | the registrar account and the recovery path | external-dns plus a written, drilled registrar recovery — the account is not a manifest |
+| P5 Observability | paging a human | already solved in-repo and cluster-independent; it just has to be wired into the cluster's own alerting |
+| P8 Delivery | the domain and the edge in front | follows P4; the storefront container itself is trivial |
+| P9 Control | every button | each console verb must exist in the repo. **k8s does not make a missing verb appear** |
+| P7 Money | everything | `bridge.py`'s own contract. A third party over HTTPS is equally reachable from anywhere, which is why this plane is portable already |
+| P10 Knowledge | everything | git. Portable by construction |
+
+**F-40 is the part that is easy to state and easy to get wrong.** "Cloud and on-prem" is not two
+deployments, it is *one* set of manifests that must not fork. The three places a fork always starts:
+storage class names, load-balancer and ingress class, and how a `Secret` is populated. If those are
+parameters the drill is honest; if they are two files, we have two platforms wearing one name and
+the contract has quietly failed.
+
+**Cost, so the decision is a decision.** On-prem needs no account and can be proven free on
+`docker-desktop` or a spare box. A managed cloud cluster is an **operational** cost, not a one-off:
+roughly $70–100 a month for a small managed control plane plus nodes, before storage and egress.
+Under LAW 14 that number has to be worth paying, and today it buys a portability proof we can get
+most of for nothing locally. **My recommendation: prove F-39 on the free local cluster first,
+because the ten-plane bring-up is where the real work is, and only rent a cloud cluster to close
+F-40 once the on-prem half is green.** That way the meter starts on the last step, not the first.
 
 **What I would not do: run a self-managed control plane on the laptop as production.** It replaces
 one single point of failure with a more complicated one, and a control plane needs its own backups,
