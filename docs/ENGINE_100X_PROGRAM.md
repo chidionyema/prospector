@@ -910,3 +910,67 @@ index is empty, the engine can regenerate ideas it has already ruled on and not 
 `PROSPECTOR_STORE_DIR` declared it, whether it is the production path, catalogue rows by decision,
 and on-disk dossier files with lint receipts excluded by suffix. A read that fails is reported as
 `unknown` with the sqlite error, never as zero.
+
+### 9.6 The mechanism — three feedback loops, all carrying the same signal
+
+The form collapse is not only a filter effect. **Generation is drifting toward the frame on its
+own, and it is accelerating.** Measured on KILL dossiers only, which is generation's raw output
+before the filter picks anything (96.7% of the corpus is killed):
+
+| month | n | `<X> for <buyer>` |
+|---|---:|---:|
+| 2026-06 | 724 | 8.6% |
+| 2026-07 | 220 | 16.4% |
+| 2026-08 | 1,032 | **25.9%** |
+
+A 3.0x rise in two months, on large samples. Including PASSes the same trend reads 8.6% → 22.0%
+→ 29.4%. Within August the weekly figures are noisy (40.5% / 22.1% / 40.0% for weeks 31–33) and
+should not be read as a within-month trend; the monthly series is the claim.
+
+**Why generation drifts.** There are three paths from the filter back into generation, and every
+one of them carries viability information only:
+
+1. `prospector/adaptive.py:118 select_lenses` picks convergent or divergent lenses from
+   `exploration_level`, which is derived from the **kill rate**.
+2. `prospector/adaptive.py::get_recent_failure_modes` mines recent kill reasons, incumbents and
+   refuting sources and feeds them into the generate prompt. Its own docstring calls this "the
+   learning signal".
+3. `prospector/critique.py::_axes_brief` renders the composite axes from `cfg.weights`, heaviest
+   first, and `critique_revise` asks the model to rewrite each idea to remove its weakest axis.
+
+So the loop closes: the composite prefers one shape, the survivors are that shape, the feedback
+tells generation which shapes died, and generation converges. Nothing in any of the three paths
+can carry a signal about whether a person finds the idea interesting, because nothing measures it.
+
+**This changes the reading of two switches that are deliberately OFF.**
+
+`generation.critique_revise.enabled: false` (`config.yaml:1498`) is recorded as off for cost —
+one extra generation call per wave. That is not the important reason. `critique_revise` is a
+gradient step on the composite: it moves every idea toward the shape the composite already
+rewards. Turning it on would raise composite scores and accelerate the collapse, and the
+before/after would look like an improvement on every metric the engine currently has. **Do not
+enable it until an engagement metric exists to measure what it costs.**
+
+`lane_quota_mode: measured` (`config.yaml:1519`) is off with a reason already close to correct —
+"an unreserved value-weighting would starve [venture] into never producing the evidence that
+would revive it". The same argument applies to critique_revise and was not made there.
+
+**Caveat, stated rather than buried.** `select_lenses` landed 2026-08-19 and this corpus ends
+2026-08-15, so **none of the data above tests the lens rotation**. The drift measured here is the
+behaviour it was written to fix, not evidence that it failed. Re-run the monthly series against a
+corpus that extends past 2026-08-19 before crediting or blaming it:
+`scratchpad/measure_template.py` and the by-month block in this section.
+
+### 9.7 Where an engagement signal would attach
+
+The three paths in 9.6 are the attachment points, and they are the only ones. A fourth loop is not
+needed and would be a second implementation of one class. In priority order:
+
+1. **A rubric that scores one candidate for engagement**, independent of evidence volume — this is
+   the missing instrument and everything else waits on it. It must not read the retrieval count,
+   or it re-measures viability under a new name.
+2. **Rank only, at first.** Feed it into `score.py` as a reported column that orders survivors and
+   changes no gate. That is measurable against the baseline in 9.0 with no risk to the money path.
+3. **Steer second**, through `select_lenses` and the generate prompt, once the rubric has a
+   baseline and a null.
+4. **Never into `kill_filter`.** Section 9.4.
