@@ -1,0 +1,52 @@
+# The first project the kit moves.
+#
+# This file is the whole cost of adding a business to the migration kit. It does NOT
+# list resources: `resources_declaration` points at the file that describes them, and
+# `scripts/estate_inventory.py` finds what is actually running by asking the platforms.
+#
+# `names` is what clause A5 grades. Every one of these is a product name, so none of
+# them may appear anywhere under `kit/` — tests/unit/test_kit_names_no_product.py fails
+# if one does.
+
+project: prospector
+
+names:
+  - prospector
+  - mumchimp
+
+resources_declaration: ops/config/estate_resources.yaml
+
+# Which substrates each class may be moved to. A target absent from a class's list is
+# refused when the plan is COMPILED, not discovered when the run is half done.
+#
+# `datastore` and `compute` reach every substrate because the engine's state is files on
+# a mounted volume and the image is the one artifact (deploy/PORTABILITY.md).
+# `dns`, `tls_certificate`, `payment_integration` and `log_sink` are re-points: a third
+# party holds a pointer at us, and it is re-aimed rather than moved. Their target list is
+# the same, because what changes is the address, not the substrate they live on.
+classes:
+  secret:
+    targets: [fly, sshdocker, k8s, laptop]
+  datastore:
+    targets: [fly, sshdocker, k8s, laptop]
+  object_storage:
+    targets: [fly, sshdocker, k8s, laptop]
+  compute:
+    targets: [fly, sshdocker, k8s, laptop]
+  scheduled_job:
+    targets: [fly, sshdocker, k8s, laptop]
+  log_sink:
+    targets: [fly, sshdocker, k8s, laptop]
+  payment_integration:
+    targets: [fly, sshdocker, k8s, laptop]
+  tls_certificate:
+    targets: [fly, sshdocker, k8s, laptop]
+  dns:
+    targets: [fly, sshdocker, k8s, laptop]
+  ci_runner:
+    targets: [fly, sshdocker, k8s, laptop]
+
+# What "fully operational, ready to sell" is checked against once the move is done.
+# The prober is slice S5; this block is the seam it reads.
+sell_check:
+  storefront_url: https://mumchimp.com/
