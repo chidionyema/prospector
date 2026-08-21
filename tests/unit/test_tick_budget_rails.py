@@ -16,9 +16,12 @@ all 10800s accounted for) found:
     minimax spend                     $2.31
     => 1200s of wall clock PER SURVIVING CANDIDATE
 
-`batch_size` is 50. 50 candidates at that cost is roughly ten hours of work inside a
-10800s deadline on a 7200s interval, so NO budget makes the batch fit and any number that
-claims to is a lie about throughput. What a budget changes is WHICH failure happens:
+`batch_size` was 50 when this was measured, and it is 10 as of 2026-08-21 (config.yaml
+`schedule.batch_size`, cut while MiniMax is out of token plan — see the comment there). The
+arithmetic is unchanged and so is the conclusion: at 1200s per surviving candidate, even 10
+is roughly three hours of work inside a 10800s deadline on a 7200s interval, so NO budget
+makes the batch fit and any number that claims to is a lie about throughput. Re-read the
+config rather than this line; the number moves and the rail does not. What a budget changes is WHICH failure happens:
 
   before — `_force_exit_hung_tick`'s timer calls `os._exit` mid-candidate. The in-flight
            vet banks nothing, no tick row is written, and the daemon relaunches knowing
