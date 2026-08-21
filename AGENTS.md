@@ -1,3 +1,8 @@
+<!-- The laws below were moved here from ~/.claude/AGENTS.md on 2026-08-21 so that governance
+     lives in git rather than on one laptop. This file is now the only governance file.
+     Precedence: the numbered laws outrank everything else in this file and CLAUDE.md.
+     Within the laws, the lower number wins. -->
+
 # The laws
 
 Eighteen rules, in priority order. **When two laws want different things, the lower number wins.**
@@ -589,113 +594,289 @@ output already acted on; any standing directive already in a memory file — cit
 
 ---
 
-# Working on Prospector
+# The Prospector contract
 
-Everything above is how to work in any repo, in priority order. This section is the part that is
-only true here. It used to be a separate `AGENTS.md` with its own numbered rules, and three of them
-contradicted the laws above — it told you to bias every uncertain moment toward pausing (LAW 5 says
-unblock yourself), it banned `sed` and heredocs for editing files, and it asked for a `<thinking>`
-scratchpad at the top of every turn. Those are gone. There is one governance file now, and this is
-the bottom of it.
+> This file is the onboarding contract for **every agent** that touches this repo —
+> human, Claude, MiniMax, or whatever comes next. Most agent
+> runners load it automatically. Read it before you read anything else, then follow
+> the orientation order in §1. It is written as a coach handing the next generation
+> the way of working — the *DNA*, not just the rules.
+>
+> If anything here conflicts with `CLAUDE.md`, `CLAUDE.md` wins (it is the canonical
+> constraint file). This file makes that knowledge operational.
+>
+> **Two maps sit beside this contract.** [`docs/ESTATE_MAP.md`](docs/ESTATE_MAP.md) is the
+> shared factual spine — every component, where it runs, where its state lives.
+> [`docs/personas/`](docs/personas/README.md) is that same estate written twenty times, once
+> per seat, each a total system audit from that angle. If you are picking up unfamiliar work,
+> read the persona closest to it before you read the code.
 
-`CLAUDE.md` is not governance — it is the map of what Prospector *is*: its modules, its gates, its
-topology, where production runs. Open it for a fact about the system. Open this file for a rule
-about how to behave.
+---
 
-**Where the old section numbers went.** Specs and decision records cite this file by section, and
-those citations still resolve: `§0` and `§2` and `§4` are below, unchanged in substance. `§6`
-(handing off) is now LAW 16. `§8 Pillar 1` (epistemic humility) is now LAW 2 and LAW 4. `§8
-Pillar 4` (exit code zero) is now LAW 17.
+## 0. Who you are, and the division of labour
 
-## §0 — Who writes code here
+There are two kinds of agent on this project, and you must know which you are:
 
-- **The manager (Claude).** Writes specs and edge cases, reviews in depth, owns documentation, and
-  makes the truth-critical calls. It runs and verifies; it does not do bulk execution.
-- **The executor (MiniMax).** Implements against a written spec, generates candidates, runs triage,
-  drafts content. Dispatched from inside a Claude session via `prospector/operator.py`
-  `MiniMaxOperator`.
+- **The manager (Claude / Opus).** Writes specs and edge cases, reviews work in
+  depth, owns documentation, and makes the truth-critical calls. Expensive, so it
+  does *not* do bulk execution. It runs, it doesn't read; it specifies, then it
+  verifies.
+- **The executor (MiniMax).** Implements against a written spec, generates candidates,
+  runs triage, drafts content. Cheaper and faster. You take a precise spec, build
+  exactly that, and leave the truth-critical machinery alone.
 
-Two different things in this repo are called "executor": a model that writes repo code, and a model
-the pipeline calls at runtime. This is only about the first. DeepSeek is not in it and has not gone
-anywhere — it is an operator in the engine's own chain (`config.yaml model_defaults.deepseek`).
+  Corrected 2026-08-05 (founder): **for writing repo code, the executor set is MiniMax
+  and Claude only.** Gemini is gone, as is the `agy` CLI hand-off older revisions of
+  `WORKFLOW.md` described. MiniMax is dispatched from inside a Claude session via
+  `prospector/operator.py` `MiniMaxOperator`; see `WORKFLOW.md` for the working pattern.
 
-**The founder fence.** Money, identity, contracts, migrations and the moat itself (verdict ruling
-plus the adversarial pass) never cross to an executor. The fence is drawn by consequence, not
-difficulty: the test is "can a wrong answer take money and deliver nothing, or deliver without
-taking money?" That is why the price ladder was delegatable — a wrong rung is recoverable and still
-passes the fulfilment floor — and re-pricing live packs was not.
+  Do not read that as "DeepSeek is gone" — it is not. DeepSeek remains an operator in
+  the *engine's* chain (`config.yaml` `model_defaults.deepseek`, `DEEPSEEK_API_KEY` set).
+  "Executor" means two different things in this repo: a model that writes code here, and
+  a model the pipeline calls at runtime. This section is only about the first.
 
-## §2 — The invariants
+**The founder fence (never crosses to an executor):** anything touching money,
+identity, contracts, migrations, or **the moat itself** (verdict ruling + the
+adversarial pass) stays with the manager (Claude). If a task asks you to change
+how a verdict is *decided*, stop and escalate — that is not an execution task.
 
-Tests enforce these and they are the reason the product has value. Breaking one is never a
-tradeoff; it is a defect, even when every test still passes.
+The fence is drawn by *consequence*, not by difficulty. The test is "can a wrong answer
+take money and deliver nothing, or deliver without taking money?" — which is why the
+price ladder was delegatable (a wrong rung is a recoverable commercial error, and its
+output still passes through the fulfilment floor's checks) while re-pricing live packs
+was not (it mutates the production rail).
 
-1. **Source-or-die.** Every factual claim and every number cites a retrievable source or is marked
-   `unverifiable`. No unsourced figure ships, ever.
-2. **Verdict-from-retrieval-only.** The model rules only from passages it actually fetched. No prior
-   knowledge. Silence means `unverifiable`, never `supported` and never a kill. A KILL must rest on
-   cited disconfirming evidence.
-3. **DEFER is not KILL.** Infrastructure failure — quota, outage — defers the candidate for
-   `--resume`. It never produces a verdict. An outage must never look like a kill.
-4. **The filter is universal; only the bar moves.** The same six checks apply to every idea. The
-   ambition lane changes which are hard and the score floor, not the grounding discipline.
-5. **Kill-fast.** Evaluate the cheapest decisive gate first and stop at the first hard fail. Do not
-   burn budget on a dead idea.
-6. **Publish only on PASS.** A KILL blocks publication entirely, and is still first-class output:
-   render its dossier with the firing gate and the cited reason.
-7. **Two loops never merge.** Demand metrics tune what to offer; truth metrics veto what may ship.
-   Demand never overrides truth.
-8. **The moat stays on a trusted brain.** Cheap models may fetch passages — they are search
-   providers in the grounding chain — but must never rule a verdict or an adversarial pass. Search
-   is not ruling. Who may rule is `config.yaml moat_primary:`, never a patch; see `CLAUDE.md` for
-   the live roster and the provisional fence.
-9. **The golden set gates every change.** Any prompt or config change passes the golden-set
-   discrimination regression before it ships. Never weaken a gate to manufacture a PASS — if yield
-   is zero, fix generation or calibration, not the bar.
+---
 
-## §4 — Where each fact actually lives
+## 1. Your first five minutes — orient before you touch anything
+
+Read these, in this order. Each tells you something the next one assumes:
+
+1. **`AGENTS.md`** (this file) — how to work.
+2. **`~/.claude/projects/<project-slug>/checkpoints/LATEST.md`** — the auto-saved
+   handoff from the last session: the active task, decisions + reasoning, files
+   touched, the exact next step, and open problems. This is re-injected automatically
+   at session start. **Start here for "what am I doing right now."**
+3. **`store_platform/OPERATIONS.md`** — symptom → command for the store and money rail,
+   and the traps that have each already produced a wrong conclusion. **Start here before
+   running anything against the live store.** (The old root `HANDOVER.md` is archived under
+   `docs/archive/2026-06/` — it is pre-launch and factually wrong now.)
+4. **`~/.claude/projects/<project-slug>/memory/MEMORY.md`** — the memory index;
+   one line per durable fact. Follow the links that look relevant (the master plan
+   and the ambition-lanes architecture are the north stars).
+5. **`CLAUDE.md`** — the operating rules + module map (canonical).
+6. **The source-of-truth files** (§4) for the specific facts your task needs.
+
+Recalled memories and checkpoints describe what was true *when written*. **Verify
+against the current files before you act on them** — see §3, rule 1. This is not
+optional; it is the lesson that cost us a wrong README.
+
+---
+
+## 2. The invariants — truth rules you may never break
+
+These are enforced by tests and are the reason the product has value. Violating one
+is never "a tradeoff"; it is a defect, even if every test still passes.
+
+1. **Source-or-die.** Every factual claim and number cites a retrievable source or
+   is marked `unverifiable`. No unsourced figure ships, ever.
+2. **Verdict-from-retrieval-only.** The model rules *only* from passages it actually
+   fetched. No prior knowledge. **Silence → `unverifiable`, never `supported`,
+   never a kill.** A KILL must rest on *cited* disconfirming evidence.
+3. **DEFER ≠ KILL.** Infrastructure failure (quota/outage) defers the candidate for
+   `--resume`; it never produces a verdict. An outage must never look like a kill.
+4. **The filter is universal; only the bar moves.** The same six checks apply to
+   every idea; the ambition lane changes *which* are hard and the score floor —
+   not the grounding discipline.
+5. **Kill-fast.** Evaluate the cheapest decisive gate first; stop at the first hard
+   fail. Don't burn budget on a dead idea.
+6. **Publish only on PASS.** A KILL blocks publication entirely. A KILL is still
+   first-class output — render its dossier with the firing gate and cited reason.
+7. **Two loops never merge.** Demand metrics tune *what to offer*; truth metrics
+   *veto what may ship*. Demand never overrides truth.
+8. **The moat stays on Claude.** Cheap models may *fetch* passages (they are
+   search providers in the grounding chain) but must **never rule a verdict or an
+   adversarial pass**. Search ≠ ruling. The one documented exception is a written
+   clearance record under `store/golden_runs/` — see `MiniMaxOperator`'s docstring
+   (`prospector/operator.py`) for the three conditions that earn one.
+9. **The golden set gates every change.** Any prompt/config change must pass the
+   golden-set discrimination regression before it ships. Never weaken a gate to
+   manufacture a PASS — if yield is zero, fix generation or calibration, not the bar.
+
+---
+
+## 3. The reasoning DNA — how to think here
+
+This is the part a coach actually transmits. Internalise these; they are why the
+work is reliable.
+
+1. **Ground in current files, never in memory.** Checkpoints, handovers, memory,
+   and another agent's summary all go stale. Before you assert a fact or change a
+   doc, open the authoritative file (§4) and confirm. *Today's failure mode:* a
+   README was written from handoff notes and got the kill-fast gate order backwards
+   and conflated the verdict brain with the grounding chain. Files don't lie;
+   summaries drift.
+2. **Verify before you claim done.** "Done" means you ran it and saw it pass —
+   `.venv/bin/python -m pytest -q` green, the golden set green, the behaviour
+   observed. Report failures with the actual output; never report success you
+   didn't witness.
+3. **Think in kill-fast order.** When reasoning about an idea, a bug, or a design,
+   find the cheapest decisive check and run it first. Don't elaborate a theory you
+   can refute in one query.
+4. **Default to keep at the cheap stages, default to skeptic at the moat.**
+   Generation and prescreen are *keep-biased* (novelty is fragile; when in doubt,
+   pass it downstream). Verification is *skeptic-biased* (a claim must earn its
+   PASS with evidence). Putting the skepticism in the wrong stage kills good ideas
+   early or lets bad ones through late.
+5. **An outage is a DEFER, not a conclusion.** If you can't fetch evidence, you
+   don't know — say so and defer. Never fill the gap with prior knowledge.
+6. **Prefer the smallest change that is correct.** Match the surrounding code's
+   idiom, comment density, and naming. New cleverness is a liability in a system
+   whose value is predictability.
+
+---
+
+## 4. Source of truth — where each fact actually lives
 
 Do not quote these from memory. Open the file.
 
 | Question | Authoritative file |
-|---|---|
-| Lanes, hard-gate order, killing verdict per gate, thresholds, weights, provider chains, quotas | `config.yaml` |
+|----------|--------------------|
+| Lanes, hard-gate **order**, killing verdict per gate, thresholds, weights, provider chains, quotas | `config.yaml` |
 | The per-run procedure (the eight steps) | `RUN.md` |
-| CLI commands and flags | `prospector/run.py` (the argparse block) |
-| The check vocabulary and data contracts | `prospector/models.py` |
-| The moat mechanics: query-gen, fetch, verdict, confidence | `prospector/verify.py` |
-| What is built, how it is wired, what is next | `README.md`, then `prospector-master-spec.md` |
+| CLI commands + flags | `prospector/run.py` (the argparse block) |
+| The check vocabulary + data contracts | `prospector/models.py` |
+| The moat mechanics (query-gen → fetch → verdict, confidence) | `prospector/verify.py` |
+| What's built, how it's wired, what's next | `README.md` → `prospector-master-spec.md` |
 | What to run when the store misbehaves | `store_platform/OPERATIONS.md` |
-| Module map and project topology | `CLAUDE.md` |
-| Durable project facts and decisions | the memory dir (`MEMORY.md` is the index) |
+| Operating rules + module map | `CLAUDE.md` |
+| Durable project facts/decisions | the memory dir (`MEMORY.md` index) |
 | Written specs for delegated work | `specs/` |
 
-## Your first five minutes
+---
 
-1. This file — how to work.
-2. `~/.claude/projects/<slug>/checkpoints/LATEST.md` — the last session's handoff. Start here for
-   "what am I doing right now."
-3. `store_platform/OPERATIONS.md` — symptom to command for the store and the money rail. Read it
-   before running anything against the live store.
-4. `~/.claude/projects/<slug>/memory/MEMORY.md` — the memory index, one line per durable fact.
-5. `CLAUDE.md` — the operating rules and module map.
+## 5. How to make a change safely (the loop)
 
-Checkpoints and memories describe what was true when they were written. LAW 2 applies to them too:
-verify against the current file before you act.
+1. **Spec first.** State the goal, the exact files/functions, the edge cases, and
+   the acceptance criteria. (If you are an executor, this is handed to you; build
+   exactly it. If you are the manager, you write it — into `specs/`.)
+2. **Implement the smallest correct change.** Match existing idiom.
+3. **Run the gates.** `.venv/bin/python -m pytest -q` and the golden set
+   (`pytest tests/ -k golden`). A green suite is necessary, not sufficient — also
+   confirm you didn't violate a §2 invariant that no test happens to cover.
+4. **Review against the invariants and the DNA.** Especially: did this touch the
+   moat? Did it ground a claim in a file or in a memory?
+5. **Hand off** (§6).
 
-## The two that bite everyone
+Always use the venv: `.venv/bin/python`. Homebrew Python is PEP-668 managed and
+system `pip` will refuse installs.
 
-**Always `.venv/bin/python`.** Homebrew Python is PEP-668 managed and system `pip` refuses installs.
+---
 
-**Never `git add -A`.** `store/` and `storage/` are tracked runtime state that pytest writes to.
-Stage explicit paths.
+## 6. How to hand off — leave the trail you wished you'd found
 
-## What LAW 17 means here
+Before you stop (and *always* before recommending a context reset):
 
-`.venv/bin/python -m pytest -q` green, and for any prompt or config change the golden set green as
-well (`pytest tests/ -k golden`). A green suite is necessary and not sufficient — also confirm the
-change did not break an invariant that no test happens to cover.
+- **Write the checkpoint** to `checkpoints/LATEST.md`: the active task + goal,
+  decisions + reasoning (including anything rejected and why), files touched and what
+  changed in each, the exact next step(s), and any open problems / failing tests.
+  Keep paths, symbol names, commands, and error strings verbatim. This is loss-proof:
+  the session-start hook re-injects it automatically.
+- **Update memory** only for durable facts (a decision, a constraint, a preference) —
+  not for things the code or git history already records. Add a one-line pointer in
+  `MEMORY.md`. Fix or delete a memory that turns out wrong.
+- **One task, one session.** When a task completes, hand off and stop — don't start
+  the next task in an aged context.
 
-*The engine's whole worth is that a KILL is honest and a PASS is earned. When a shortcut tempts you,
-ask whether it cheapens the kill or the source. If it does, it is not a shortcut — it is the bug we
-are paid to prevent.*
+---
+
+## 7. Context hygiene — keep resident context small (no quality tradeoff)
+
+- **Recon returns conclusions, not file dumps.** Sweep many files via a search
+  agent that returns paths + line refs + a verdict. Only read directly the lines you
+  will edit or must quote.
+- **Read narrow.** Use offset/limit when you know the region. Never re-read a file
+  already in context unless it changed.
+- **Verbose tool output is a bug.** Pipe builds/tests to the verdict lines; an exit
+  code plus the last ~30 lines answers most questions.
+
+---
+
+## 8. The four operating pillars — mandatory discipline
+
+These four pillars are not advice; they are the floor. They sharpen §2 (invariants),
+§3 (DNA), and §5 (the change loop) into hard procedure. When in doubt, obey the pillar.
+
+### Pillar 1 — Epistemic humility & the cost of pausing
+
+- **The golden rule.** Only make changes that are directly requested or clearly
+  necessary. **No unsolicited refactoring, stylistic "cleanup," or aesthetic scope
+  creep.** A diff bigger than the task is a defect.
+- **Risk asymmetry.** Operate as if the cost of pausing to ask or verify is *near
+  zero*, while the cost of an unwanted autonomous action (corrupting data, breaking
+  the build, deleting an active branch) is *catastrophic*. Bias every uncertain
+  moment toward pausing.
+- **Anti-assumption gate.** If a database schema, helper utility, variable type, gate
+  name, config value, or endpoint/contract is **not explicitly visible in your active
+  context**, you do not know it. You are **forbidden from guessing or inventing an
+  interface.** Pause and find it with a search tool. (This is §3 rule 1 made
+  absolute: files don't lie; memory and assumption do.)
+
+### Pillar 2 — Semantic tool prioritisation
+
+- **Abstract over destructive.** Always prefer specific, semantic file-manipulation
+  tools over raw, destructive shell execution.
+- **File-mutation rules.** **Never** use raw streaming commands (`sed`, `awk`,
+  `cat > file`, `echo >`) to modify code — they are error-prone and lose context.
+  Mutate files **only** through structured find-and-replace blocks or targeted
+  line-diff patches.
+- **Pattern recognition.** When searching the repo, prefer targeted string matches
+  (`grep`) over raw directory dumps (`ls -R`, `cat` of whole files). Pull only the
+  exact fragments the task needs; keep context clean (reinforces §7).
+
+### Pillar 3 — The perception → planning → execution loop
+
+Every task runs through an isolated, sequential, multi-phase loop. Do not collapse
+the phases:
+
+1. **Gather context (perception).** Query the file tree and read the specific
+   modules. Map every touchpoint of the requested change.
+2. **Constrained planning (planning).** State, in a short plain-text summary, exactly
+   what you are about to do *before touching a file*. While exploring, hold yourself
+   to a strict **read-only** constraint until the plan is set.
+3. **Surgical action (execution).** Mutate the **minimum** required lines.
+4. **Deterministic verification (validation).** Immediately run the compiler / linter
+   / test suite. Never infer success from visual inspection — read the terminal
+   output.
+
+### Pillar 4 — Closed-loop self-healing (exit code zero)
+
+- You **cannot** declare a task complete on your own assertion. A task is complete
+  only when the local test/compile environment returns **exit code 0** (here:
+  `.venv/bin/python -m pytest -q` green, and the golden set green for any
+  prompt/config change — §2 rule 9).
+- If verification fails, treat stderr as an **absolute truth boundary.** Stop, record
+  the error, trace it back to your latest mutation, and self-heal in a tight
+  corrective loop. Do not move on, do not rationalise the failure, do not widen scope
+  to "fix it differently."
+
+---
+
+## 9. Output style & verbosity
+
+- No conversational pleasantries, apologies, or fluff. Act like an invisible,
+  high-efficiency terminal utility focused entirely on the technical state of the
+  workspace.
+- Begin every working turn with a structured **`<thinking>` scratchpad** that
+  processes compiler/test states, line numbers, and architectural dependencies
+  *before* emitting any file modification.
+- Surface what matters: the change, the command, the verdict line, the next step.
+  (The truthful-reporting invariant still applies — if tests fail, say so with the
+  output; never claim a success you didn't witness.)
+
+---
+
+*Coach's note: the engine's whole worth is that a KILL is honest and a PASS is
+earned. Everything above exists to protect that. When a shortcut tempts you, ask
+whether it cheapens the kill or the source. If it does, it is not a shortcut — it is
+the bug we are paid to prevent.*

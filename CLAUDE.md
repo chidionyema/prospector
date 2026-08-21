@@ -1,8 +1,9 @@
 # Prospector Operating Rules
 
-**This file is WHAT PROSPECTOR IS: its rules, its topology, its gates.** `AGENTS.md` at this repo
-root is HOW to work — the laws, in priority order — and it is the only governance file. The two
-never overlap: nothing generic belongs here, nothing about this project belongs there.
+**This file is WHAT PROSPECTOR IS: its module map, its topology, its gates.** `AGENTS.md` at this
+repo root is the only governance file: the eighteen laws in priority order, then the Prospector
+contract that says who writes code here and what stays true. Rules live there, not here. When the
+two disagree, `AGENTS.md` wins, and the lower-numbered law wins inside it.
 
 The old `LAW 0` block that used to headline this file is now LAW 6 in `AGENTS.md`, unchanged in
 substance. Root cause and the class of mistake still outrank everything below.
