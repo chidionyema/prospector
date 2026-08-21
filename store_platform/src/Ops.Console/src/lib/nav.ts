@@ -81,6 +81,7 @@ export const GROUPS: Group[] = [
       { href: '/tools', label: 'Tools', what: 'run a tool, and undo it' },
       { href: '/share', label: 'Share', what: 'give someone outside a link to a file or the repo' },
       { href: '/processes', label: 'Processes', what: 'every automated job, and what is failing' },
+      { href: '/workflows', label: 'Workflows', what: 'the CI fences themselves: still firing, red, or gone quiet' },
     ],
   },
 ];
