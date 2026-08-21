@@ -246,7 +246,8 @@ export default function AboutPage() {
               Read the free report
               <Icon name="arrowRight" size={14} />
             </Link>
-            <Link href="/" className="btn ghost">
+            {/* `/#catalog`, not `/` -- see the same note on `pages/faq.tsx`. */}
+            <Link href="/#catalog" className="btn ghost">
               Browse the packs
             </Link>
           </div>

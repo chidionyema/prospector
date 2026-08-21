@@ -179,15 +179,26 @@ def test_the_run_stays_inside_the_wall_clock_and_never_goes_silent(estate):
 # ── the wire, honestly broken ────────────────────────────────────────────────
 
 def test_a_class_with_no_adapter_fails_loudly_and_puts_the_resource_back(estate):
-    """Today only `compute` has an adapter. A plan naming a class that has none must fail at the
-    step, name it, roll back, and print what to type after the adapter is written -- not report
-    a move that did not happen. This test goes green for each class as it lands, which is what
-    makes it a coverage ledger rather than a snapshot.
+    """A plan naming a class that has no adapter must fail at the step, name it, roll back, and
+    print what to type after the adapter is written -- not report a move that did not happen.
+
+    THE CLASS COMES FROM `MISSING.md`, NOT FROM THIS FILE. It used to name `datastore`, which
+    stopped being unwired the day `kit/classes/datastore.sh` landed -- so writing an adapter
+    broke a test about adapters being absent, and the fix looked like deleting coverage. Reading
+    the ledger makes this a test of the FAILURE PATH, which is permanent, rather than a test of
+    which classes happen to be unwired today, which is not.
     """
+    unwired = sorted(line.split("`")[1]
+                     for line in (REPO / "kit" / "classes" / "MISSING.md").read_text().splitlines()
+                     if line.startswith("- `"))
+    if not unwired:
+        pytest.skip("every declared class is wired -- there is no missing adapter left to grade")
+    klass = unwired[0]
+
     (estate["substrate"] / "fly" / "ledger").write_text("rows")
     plan_path = compile_plan_file(
         estate,
-        resource("ledger", "datastore", "fly/deployed"),
+        resource("ledger", klass, "fly/deployed"),
     )
     code, events = execute_plan(estate, plan_path)
 
@@ -197,11 +208,11 @@ def test_a_class_with_no_adapter_fails_loudly_and_puts_the_resource_back(estate)
     view = read_progress(events)
     assert view["state"] == "stopped"
     stopped = [row for row in view["steps"] if row["state"] != "done"]
-    assert stopped and stopped[0]["class"] == "datastore"
+    assert stopped and stopped[0]["class"] == klass
     assert stopped[0]["state"] == "not_started", (
         "an adapter that could not be STARTED touched nothing; reporting a failed rollback "
         "sends an operator hunting for a resource that is exactly where they left it")
-    assert "kit/classes/datastore.sh" in stopped[0]["detail"], (
+    assert f"kit/classes/{klass}.sh" in stopped[0]["detail"], (
         "the failure must name the adapter that is missing, so the fix is obvious")
     assert view["needs_a_person"] is False, "nothing is stranded -- there is nothing to go and do"
 

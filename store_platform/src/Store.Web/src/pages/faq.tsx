@@ -251,7 +251,10 @@ export default function Faq() {
               · replies in under 1 business day
             </p>
           </div>
-          <Link href="/" className={buttonClasses({ variant: 'secondary' })}>
+          {/* `/#catalog`, not `/`. The home page is long; `/` drops a reader who has just had
+              their question answered at the top of the marketing copy and asks them to scroll for
+              the shelf. The anchor (`pages/index.tsx`, `id="catalog"`) puts them on it. */}
+          <Link href="/#catalog" className={buttonClasses({ variant: 'secondary' })}>
             Browse the catalogue
           </Link>
         </div>

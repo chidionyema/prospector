@@ -17,6 +17,7 @@
  * renders that, and the same script sends the same verdict to Telegram when it fails.
  */
 import Shell from '@/components/Shell';
+import SnapshotBar, { type Snapshot } from '@/components/SnapshotBar';
 import { AsOf, Card, Empty, Note, Pill, Problem, Scroll } from '@/components/ui';
 import { useOps } from '@/lib/useOps';
 
@@ -31,6 +32,7 @@ type ProcessesView = {
   failing: number;
   warnings: number;
   ok: boolean;
+  snapshot?: Snapshot;
 };
 
 /** The audit's grades and the console's tones are the same three words, deliberately. */
@@ -86,6 +88,7 @@ type AutomationsView = {
   needs_attention: number;
   automations: AutomationRow[];
   note?: string;
+  snapshot?: Snapshot;
 };
 
 /** `unknown` is not `ok`. An automation that could not answer sorts and colours with the failures. */
@@ -96,20 +99,34 @@ const AUTO_TONE: Record<AutomationRow['status'], 'ok' | 'warn' | 'bad'> = {
 };
 
 /**
- * The declared automations, each one run for real when this card loads.
+ * The declared automations, each one run for real — as of the last measurement, not this render.
  *
- * Not a cached status. `prospector/ops/automations_view.py` discovers every engine that has a
- * declaration and runs its `--json`, so this card needs no edit when the next automation lands.
- * Retention (`log_rotation`) is one of these: it freed 1,044 MB on its first scheduled run and
- * nothing on this console showed that it existed.
+ * `prospector/ops/automations_view.py` discovers every engine that has a declaration and runs its
+ * `--json`, so this card needs no edit when the next automation lands. Retention (`log_rotation`)
+ * is one of these: it freed 1,044 MB on its first scheduled run and nothing on this console showed
+ * that it existed.
+ *
+ * It used to run all of them at the moment you opened the tab, for 10.16s measured. That was never
+ * the right price for opening a tab, and the card above says how old the answer is instead.
  */
 function Automations() {
-  const { data, error } = useOps<AutomationsView>('automations', {}, { pollMs: 300_000 });
+  const { data, error, refresh } = useOps<AutomationsView>('automations', {}, { pollMs: 300_000 });
   if (error) return <Problem>{error}</Problem>;
-  if (!data) return <Note>running every automation — each one answers for itself</Note>;
+  if (!data) return <Note>reading the last run of every automation</Note>;
 
   const rows = data.automations ?? [];
+  const bar = (
+    <SnapshotBar
+      view="automations"
+      snapshot={data.snapshot}
+      what="every declared automation, run for real"
+      onRefreshed={refresh}
+    />
+  );
+  if (!data.snapshot?.have_snapshot) return bar;
   return (
+    <>
+      {bar}
     <Card
       title={`Automations (${data.count})`}
       tone={data.needs_attention ? 'warn' : 'ok'}
@@ -148,11 +165,14 @@ function Automations() {
         Both are on <code>/tools</code>, behind the same preview and rollback as everything else.
       </Note>
     </Card>
+    </>
   );
 }
 
 export default function Processes() {
-  const { data, envelope, error } = useOps<ProcessesView>('processes', {}, { pollMs: 300_000 });
+  const { data, envelope, error, refresh } = useOps<ProcessesView>('processes', {}, {
+    pollMs: 300_000,
+  });
 
   return (
     <Shell
@@ -160,9 +180,18 @@ export default function Processes() {
       intro="Everything scheduled on this estate, and whether it ran. Includes the guards themselves: a check that has been switched off is the one failure nothing else reports."
     >
       {error && <Problem>{error}</Problem>}
-      {!data && !error && <Note>reading the audit — it asks launchd, GitHub and every probe</Note>}
+      {!data && !error && <Note>reading the last audit</Note>}
 
       {data && (
+        <SnapshotBar
+          view="processes"
+          snapshot={data.snapshot}
+          what="the estate audit — launchd, Fly, GitHub and every probe"
+          onRefreshed={refresh}
+        />
+      )}
+
+      {data?.snapshot?.have_snapshot && (
         <>
           <Card
             title="Verdict"
