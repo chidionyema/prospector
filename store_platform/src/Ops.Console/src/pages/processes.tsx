@@ -191,6 +191,24 @@ export default function Processes() {
         />
       )}
 
+      {/*
+        * Everything below is gated on there being a snapshot, and the "read N ago" stamp was
+        * inside that gate. So the one page state where an operator most needs to know whether the
+        * estate was heard from — no audit yet — was the state that would not tell them. Measured
+        * 2026-08-21 by the e2e journey "every screen reads real data".
+        */}
+      {data && !data.snapshot?.have_snapshot && (
+        <Card
+          title="No audit has been taken yet"
+          right={<AsOf asOf={envelope?.as_of} tookMs={envelope?.took_ms} />}
+        >
+          <Note>
+            The view answered and has no audit to show. That is not the same as the read failing:
+            the stamp above says when this page last heard from the estate.
+          </Note>
+        </Card>
+      )}
+
       {data?.snapshot?.have_snapshot && (
         <>
           <Card
