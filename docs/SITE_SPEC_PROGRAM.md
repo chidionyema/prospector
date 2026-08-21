@@ -2123,10 +2123,15 @@ shareable. Three reasons, and the third is the commercial one:
 
 ### 12.5 Degrade honestly when the moat cannot finish
 
-`kit/migrate/progress.py` already folds a run's event stream into what a screen shows and adds
-no judgement of its own. The same fold works here: render the checks that **did** rule, each
-with its citation, name the ones the moat could not reach, and offer to finish it and mail the
-result.
+Fold the run's event stream into what the screen shows, and add no judgement of its own:
+render the checks that **did** rule, each with its citation, name the ones the moat could not
+reach, and offer to finish it and mail the result.
+
+**There is no such fold on `main` to reuse.** Until 2026-08-21 this paragraph claimed
+`kit/migrate/progress.py` as existing prior art. That file exists only on the unmerged branch  <!-- doc-lint-ok: naming the absent path IS the correction; the sentence says it is not on main -->
+`origin/kit/migration-e2e` at `ab8bbad7`, so the claim was false on main and anyone building to
+it would have gone looking for a file that is not there. Either build the fold here, or land
+that branch first and then reuse it.
 
 **What must never be built is a green that means "we could not ask".** That is the exact defect
 `verify.py:365` / `:693` exists to prevent inside the engine — a failed call DEFERS, it never
