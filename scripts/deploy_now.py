@@ -146,20 +146,59 @@ def find_gh() -> str | None:
 
 
 # --------------------------------------------------------------------------- #
+#: What `_run` reports when the command never answered, rather than raising. Both are the shell's
+#: own conventions, so a caller that only looks at the return code still does the right thing.
+RC_TIMEOUT = 124   # the exit code `timeout(1)` uses
+RC_NO_BINARY = 127  # the exit code a shell uses for "command not found"
+
+
 def _run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, capture_output=True, text=True, cwd=str(ROOT), timeout=120, **kw)
+    """Run a command and ALWAYS return a CompletedProcess, never an exception.
+
+    Every caller in this file already branches on `returncode`, and not one of them was inside a
+    try. So a `gh` that hung for 120 seconds, or a `git` that was not installed, came out of here
+    as a raw TimeoutExpired or FileNotFoundError and travelled all the way up through `deploy()`
+    to the console as a Python traceback. The operator pressed Deploy and got a stack trace with
+    no statement about whether anything shipped.
+
+    Turning both into a non-zero return code means every refusal path that already existed now
+    covers them, and the reason arrives on stderr where the callers already look for it.
+    """
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, cwd=str(ROOT),
+                              timeout=120, **kw)
+    except subprocess.TimeoutExpired as exc:
+        return subprocess.CompletedProcess(
+            cmd, RC_TIMEOUT, "", f"{cmd[0]} did not answer within {exc.timeout:g}s")
+    except OSError as exc:
+        return subprocess.CompletedProcess(cmd, RC_NO_BINARY, "", f"cannot run {cmd[0]}: {exc}")
 
 
-def _in_flight(gh: str, workflow: str) -> list[dict]:
+def _in_flight(gh: str, workflow: str) -> tuple[list[dict], str]:
+    """Runs of this workflow that have not finished, and why we could not tell if we could not.
+
+    The error is returned rather than swallowed because the two answers are not the same answer.
+    This used to return `[]` for BOTH "no run is in flight" and "GitHub did not tell me", so a
+    rate limit or a 502 from `gh run list` silently disabled the one check that stops a second
+    dispatch queueing behind the first and shipping the same commit twice. A check that a network
+    hiccup turns off is not a check.
+
+    Failing closed costs almost nothing here: if `gh run list` cannot reach the API then
+    `gh workflow run` almost certainly cannot either, so the deploy this refusal blocks would
+    have failed a moment later anyway, with a worse message.
+    """
     p = _run([gh, "run", "list", "--workflow", workflow, "--limit", "5",
               "--json", "status,url,headBranch,createdAt"])
     if p.returncode != 0:
-        return []
+        return [], ((p.stderr or p.stdout).strip().splitlines() or
+                    [f"gh run list exited {p.returncode}"])[0]
     try:
         runs = json.loads(p.stdout or "[]")
     except json.JSONDecodeError:
-        return []
-    return [r for r in runs if r.get("status") in _RUNNING]
+        return [], "gh run list did not return JSON, so whether a run is in flight is unknown"
+    if not isinstance(runs, list):
+        return [], "gh run list returned JSON that is not a list of runs"
+    return [r for r in runs if isinstance(r, dict) and r.get("status") in _RUNNING], ""
 
 
 def _newest_run_url(gh: str, workflow: str) -> str | None:
@@ -173,11 +212,19 @@ def _newest_run_url(gh: str, workflow: str) -> str | None:
     return runs[0]["url"] if runs else None
 
 
-def _dirty(paths: list[str]) -> list[str]:
+def _dirty(paths: list[str]) -> tuple[list[str], str]:
+    """Modified shipping paths, and why we could not look if we could not.
+
+    Both answers refuse the deploy, so the split is about the MESSAGE rather than the outcome. It
+    used to report a failed `git status` as the string "git status failed: ..." inside the list of
+    modified files, so the refusal told the operator their shipping paths were modified and named
+    a file that does not exist. They then go looking for an edit nobody made.
+    """
     p = _run(["git", "status", "--porcelain", "--"] + paths)
     if p.returncode != 0:
-        return [f"git status failed: {p.stderr.strip()}"]
-    return [line for line in p.stdout.splitlines() if line.strip()]
+        return [], ((p.stderr or p.stdout).strip().splitlines() or
+                    [f"git status exited {p.returncode}"])[0]
+    return [line for line in p.stdout.splitlines() if line.strip()], ""
 
 
 def print_routes() -> int:
@@ -219,7 +266,14 @@ def deploy(name: str, check_only: bool) -> int:
         return 2
 
     if kind == "script":
-        dirty = _dirty(r["clean_paths"])
+        dirty, why = _dirty(r["clean_paths"])
+        if why:
+            print(f"REFUSED: {name} builds from this checkout, and this host cannot say whether "
+                  f"its shipping paths are clean: {why}\n"
+                  "Refusing rather than guessing: a local build ships the working tree, so "
+                  "deploying blind here could put another session's half-finished edit into "
+                  "production.", file=sys.stderr)
+            return 2
         if dirty:
             print(f"REFUSED: {name} builds from this checkout and these shipping paths are "
                   f"modified:\n  " + "\n  ".join(dirty) +
@@ -231,7 +285,19 @@ def deploy(name: str, check_only: bool) -> int:
         if check_only:
             print("--check: nothing was deployed. Shipping paths are clean.")
             return 0
-        p = subprocess.run(cmd, cwd=str(ROOT), timeout=1500)
+        try:
+            p = subprocess.run(cmd, cwd=str(ROOT), timeout=1500)
+        except subprocess.TimeoutExpired:
+            # NOT the same as a failure. The build was still running when we stopped watching, so
+            # it may well finish and ship. Saying "deploy failed" here would send the operator to
+            # redeploy on top of a deploy that is still in flight.
+            print(f"TIMED OUT WATCHING: {' '.join(cmd)} was still running after 1500s and may "
+                  f"still be deploying. Do NOT redeploy yet - check /deploys, then this host.",
+                  file=sys.stderr)
+            return 1
+        except OSError as exc:
+            print(f"REFUSED: cannot run {cmd[0]}: {exc}", file=sys.stderr)
+            return 2
         return p.returncode
 
     gh = find_gh()
@@ -249,19 +315,40 @@ def deploy(name: str, check_only: bool) -> int:
 
     auth = _run([gh, "auth", "status"])
     if auth.returncode != 0:
+        # `.splitlines()[0]` on its own is an IndexError the moment gh exits non-zero and says
+        # nothing, which is exactly what a killed or sandboxed gh does. The refusal would crash
+        # instead of refusing, so the operator got a traceback rather than a reason.
+        detail = ((auth.stderr or auth.stdout).strip().splitlines() or
+                  [f"gh auth status exited {auth.returncode} without saying why"])[0]
         print("REFUSED: `gh auth status` failed on this host, so a dispatch would be rejected.\n"
-              "  " + (auth.stderr or auth.stdout).strip().splitlines()[0], file=sys.stderr)
+              "  " + detail, file=sys.stderr)
         return 2
 
     workflow = r["workflow"]
-    text = (ROOT / ".github" / "workflows" / workflow).read_text(encoding="utf-8")
+    path = ROOT / ".github" / "workflows" / workflow
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        # DEPLOYABLES names the workflow; the file is on disk. Rename one without the other and
+        # this button used to raise FileNotFoundError straight through the console.
+        print(f"REFUSED: {name} says it deploys via {workflow}, and that workflow is not "
+              f"readable at {path.relative_to(ROOT)}: {exc}\n"
+              "Either the workflow was renamed or deleted without updating DEPLOYABLES in "
+              "scripts/deploy_status.py, or this checkout is incomplete.", file=sys.stderr)
+        return 2
     try:
         inputs = dispatch_inputs(text)
     except ValueError as exc:
         print(f"REFUSED: {exc}", file=sys.stderr)
         return 2
 
-    live = _in_flight(gh, workflow)
+    live, unknown = _in_flight(gh, workflow)
+    if unknown:
+        print(f"REFUSED: cannot tell whether {workflow} already has a run in flight: {unknown}\n"
+              "Refusing rather than guessing. Dispatching blind can queue a second run behind the "
+              "first and deploy the same commit twice. Retry when GitHub answers again.",
+              file=sys.stderr)
+        return 2
     if live:
         first = live[0]
         print(f"REFUSED: {workflow} already has a run {first['status']} on "

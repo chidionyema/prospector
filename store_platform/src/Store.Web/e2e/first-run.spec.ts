@@ -73,12 +73,16 @@ const JARGON = /\b(killed|kill log|verdict|prescreen|dossier|the moat)\b/i;
 const FORWARD = 'main a[href^="/pack/"], main a[href="/#catalog"], main a[href^="/ideas"]';
 
 /**
- * FR3 DEBT, MEASURED 2026-08-21 AGAINST LIVE. These routes have zero forward links in `<main>`
- * today. They are waived so this gate is GREEN on main and REFUSES ANY NEW dead end — the list
- * is the work queue for `docs/FIRST_RUN_AND_NAVIGATION_PROGRAM.md`, and shrinking it to empty
- * closes the item. Never add a route here to make a build pass; add the link instead.
+ * FR3 DEBT. Empty, and it stays empty.
+ *
+ * It held ['/faq', '/about', '/terms', '/privacy', '/refund'] when this gate was written on
+ * 2026-08-21 — five routes with zero forward links in `<main>`, waived so the gate could be green
+ * on main and refuse any NEW dead end while the queue was worked. All five were fixed the same
+ * day: `/faq` and `/about` had a button pointing at `/`, the top of a long marketing page, and the
+ * three legal pages shared a closing block pointing at `/faq`. All five now point at `/#catalog`,
+ * the shelf itself. Never add a route here to make a build pass; add the link instead.
  */
-const FR3_WAIVED = new Set(['/faq', '/about', '/terms', '/privacy', '/refund']);
+const FR3_WAIVED = new Set<string>([]);
 
 for (const route of ROUTES) {
   test(`FR1 the brand is the first thing on ${route}`, async ({ page }) => {
