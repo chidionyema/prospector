@@ -16,3 +16,5 @@ _Run 2026-08-08T00:38:31+00:00 · `e2_persona_grounding.py` · registered COMMER
 - **personas_with_zero_dossiers**: ecommerce_seller
 
 Receipt: `tools/experiments/e2_persona_grounding_receipts.json` — reproduce with `.venv/bin/python tools/experiments/runner.py run E2`
+
+**Follow-through:** TICKET #565 — ecommerce_seller is configured and has produced zero dossiers, and the 12.87x pass-rate spread is confounded with the signals each persona draws, so re-weighting on it now would repeat the mistake E18 ruled against.
