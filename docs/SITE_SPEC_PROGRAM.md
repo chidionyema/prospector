@@ -77,6 +77,7 @@ introduced twice" below. |
 | 6.7 | Catalogue & intent search | P1 | ❌ not started | Skills-picker not yet merged into a single intent input. |
 | 6.8 | Pack pages & /sample | P2 | ❌ not started | Standard defined, next pass. |
 | 7 | Performance & transitions | P2 | 🟡 partial | **View transitions are shipped**, not "not started": `@view-transition { navigation: auto }` (`globals.css:575`), a 0.16s root cross-fade (`:584`), per-card shared elements via `viewTransitionName` (`PackMark.tsx:65`, name minted by `lib/packMark.ts:132` with a `pm-` prefix because the value is a CSS custom-ident), and reduced-motion coverage for the pseudo-tree (`:596`). `site_spec_probe.py --section 7`. **Unmeasured:** LCP <1.2s — no number has been taken, so that half is neither done nor failing, it is unknown, and the row stays 🟡 until someone measures it. |
+| 12 | "Run your idea through the engine" — the vetting desk | P1 | ❌ not started | Founder 2026-08-21, "killer featuure", registered users only. Spec §12 below. **Blocked on one thing:** the MiniMax adapter emits no `cost_usd`, so `spend.daily_cap_usd` caps only the Claude fallback — no public write path may ship until it does. [`REQUIREMENTS.md`](REQUIREMENTS.md) R12. |
 
 ### The spec contradicted itself once — resolved
 
@@ -2051,3 +2052,130 @@ Re-measured after the fix, same probe, same widths: header y=44 h=59, hero grid 
 right-hand panel y=155 h=567, h1 y=297.2 h=168, sub y=483.6 h=54 -- every row identical on both
 documents. The only remaining difference is text width (h1 421px drawn against 436px built), which
 is the headline copy differing, not layout.
+
+## 12. "Run your idea through the engine" — the vetting desk (founder, 2026-08-21)
+
+The founder called this on 2026-08-21: **"and also the run you idea through engine"**,
+**"needs adding to requrenents"**, **"new featire in the way"**, **"killer featuure"**,
+**"needs uxx and fe input"**, **"talke to peeers to flesh out dtails"**, and — the line that
+decides the whole abuse surface — **"only for registered uers i nust say"**.
+
+**It is a registered-user feature on the storefront, not internal dogfooding.** The register
+recorded it as "run our own ideas through the engine" for a week. That reading is wrong and is
+corrected in [`REQUIREMENTS.md`](REQUIREMENTS.md) R12: an internal batch job needs no UX and no
+front end, and the founder asked for both.
+
+**What it is.** A registered user types their own business idea. The engine runs the same six
+checks it runs on every candidate — `pain_reality`, `value_durability`, `incumbency`,
+`payer_solvency`, `distribution`, `legality` — on the same brains, with the same kill-fast
+short-circuit, and returns the same cited verdict. Nothing about the run is a demo path. If it
+is not the real engine it is worth nothing, because the entire claim is that the verdict is
+evidence rather than an opinion.
+
+### 12.1 The wait is the product
+
+Do not put a spinner on this. The most convincing thing the engine does is **read the web in
+front of you**, and a progress bar is the one treatment that hides it.
+
+**Lead with one plain-English question at a time, not the six check names.** Six unfamiliar
+words resolving at once reads as machinery rather than as thinking. The sequence a visitor
+sees is: *"Does anyone actually have this problem?"* → *"Would they still have it in three
+years?"* → *"Who already sells this?"* Under the live question, **stream each URL as it is
+fetched, with the domain legible**. That is the proof, and it is free — the fetches are
+happening anyway.
+
+**The six-check rail is a secondary column that fills in behind.** It becomes legible
+retroactively, once each row carries a verdict and a source. By the end the visitor has been
+taught the vocabulary by watching it resolve, which is the only way six technical words are
+ever going to land.
+
+### 12.2 Before they type
+
+Not an empty box, and **not a prefilled example**. A prefilled example gets Enter pressed on
+it without reading, and then the first thing the visitor sees is somebody else's idea.
+
+Put **a real recent vet above the box**, cited reason visible, **ideally a KILL**. It proves
+the thing is real, it teaches the output format before they need to read one, and it
+normalises a KILL as a respectable answer rather than a rejection.
+
+### 12.3 When it is a KILL
+
+**The verdict is a statement about the world, never about them.** Two things the page must do
+that the internal dossier does not:
+
+1. **Name what would change the answer** — *"this passes if you can show one buyer already
+   paying for X"*. That sentence is derivable from the kill gate that fired. It is never
+   invented, and it must cite the same passage the KILL cited.
+2. **Label the kill-fast grey-out as respect for their time** — *"we stopped here: the
+   remaining four checks cost real money and this was already answered."* Without that line,
+   four greyed rows read as a broken run.
+
+### 12.4 The run has its own URL from the first second
+
+**A run must survive the tab closing.** Its own URL, minted before the first check, resumable,
+shareable. Three reasons, and the third is the commercial one:
+
+- a vet is up to seven checks against live retrieval, which is longer than a person will sit
+  still for;
+- it is the only honest way to hand back a run the moat could not finish;
+- it is the share mechanic, and **"the engine killed my idea and here is why" is far more
+  shareable than a pass.**
+
+### 12.5 Degrade honestly when the moat cannot finish
+
+`kit/migrate/progress.py` already folds a run's event stream into what a screen shows and adds
+no judgement of its own. The same fold works here: render the checks that **did** rule, each
+with its citation, name the ones the moat could not reach, and offer to finish it and mail the
+result.
+
+**What must never be built is a green that means "we could not ask".** That is the exact defect
+`verify.py:365` / `:693` exists to prevent inside the engine — a failed call DEFERS, it never
+contributes an `unverifiable` to a gate — and a public page is not allowed to undo it.
+
+### 12.6 The money rail, and the one thing that blocks the whole feature
+
+**Cost per vet is UNOBTAINABLE today, and that is a defect rather than a gap in the research.**
+
+Measured 2026-08-21 against `/Users/chidionyema/Documents/code/prospector/store/prospector.jsonl`
+(528 rows): 39 rows carry a `cost_usd`, totalling $2.2455 — $0.0576 per priced **call**, and a
+full vet is up to seven checks. **But that number prices the wrong brain.** Two angles that fail
+differently and agree: every one of the 39 priced rows names `claude`, none names `minimax`; and
+of the 241 latency rows, 78 name `claude`, 5 name `minimax`, 1 `deepseek` — so MiniMax calls do
+happen and not one of them is priced. Third angle: `store/dossiers/` in that store holds 0 files,
+so there is no per-run figure to recover either.
+
+MiniMax **leads** and rules finally (`config.yaml:58`, `config.yaml:81`). `claude_cli` is the
+fallback. **The cost meter prices only the fallback.**
+
+The consequence decides the order of work. `spend.daily_cap_usd` is read off that same ledger,
+so **today's daily cap is a cap on the Claude fallback only** — while MiniMax leads, spend runs
+without the counter moving. Give a public endpoint that cap and you have given it no cap at all,
+and a viral front page and a denial-of-wallet attack become not merely indistinguishable but
+both invisible.
+
+**Therefore: the MiniMax adapter must emit a cost row before any public write path ships.** It
+is small and it is in one adapter. Until it exists, no budget rail on this estate can be
+trusted — this feature's or the daemon's. It is also the LAW 14 answer to "is this operational
+cost or one-off": you cannot classify a cost you cannot measure.
+
+Then, and only then:
+
+- **its own sub-cap and its own ledger key**, never the catalogue's. The catalogue is the
+  business; a stranger's vet is marketing, and marketing sheds first;
+- **the public path sheds FIRST as the cap is approached**, so a busy desk can never starve the
+  daemon;
+- **registered users only** — the founder's ruling, 2026-08-21. That is what makes the identity
+  side of the rail real: one free run per browser would have been a speed bump, because a
+  browser is free to make and an attacker makes thousands. Registration is the gate; the spend
+  sub-cap is the second rail behind it, because spend is the axis the damage is actually
+  measured in.
+
+### 12.7 What is not decided yet
+
+- **Per-user allowance**: how many vets a registered user gets, and whether the paid tier is
+  a bundle or per-vet. Founder decision, not ours.
+- **Front-end wiring**: the transport for the event stream (SSE against the run URL is the
+  obvious candidate given 12.4, but it is unmeasured here). A third peer lens was requested on
+  this and had not answered when this section was written; it is a spec gap, not a settled call.
+- **Does a visitor's idea enter the catalogue?** It must not, by default — they typed it, it is
+  theirs — but that is a founder call about the product, not an engineering default.
