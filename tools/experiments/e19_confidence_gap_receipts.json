@@ -1,0 +1,35 @@
+{
+  "store": "/Users/chidionyema/Documents/code/wt-engine100x/store/dossiers",
+  "dossiers": 2806,
+  "skipped_failed_or_degraded": 300,
+  "per_verdict": {
+    "unverifiable": {
+      "n": 9965,
+      "mean": 0.5627,
+      "median": 0.7,
+      "mean_citations": 3.8,
+      "pct_citing": 87.3
+    },
+    "supported": {
+      "n": 3079,
+      "mean": 0.5695,
+      "median": 0.6,
+      "mean_citations": 3.59,
+      "pct_citing": 100.0
+    },
+    "refuted": {
+      "n": 662,
+      "mean": 0.5418,
+      "median": 0.58,
+      "mean_citations": 3.29,
+      "pct_citing": 98.6
+    }
+  },
+  "confidence_gap_ruled_minus_unverifiable": 0.0019,
+  "ruled_n": 3741,
+  "unverifiable_n": 9965,
+  "unverifiable_at_or_above_0_5": 7304,
+  "unverifiable_at_or_above_0_5_pct": 73.3,
+  "median_inverted_vs_supported": true,
+  "verdict": "DEFECT \u2014 confidence does not separate ruled from unruled"
+}
