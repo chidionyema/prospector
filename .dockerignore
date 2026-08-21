@@ -54,11 +54,20 @@ __pycache__/
 # docs/ directory in this checkout", and the tab rendered that as an empty screen. The founder
 # clicked it and reported that nothing happened.
 #
-# The screenshots still do not travel. docs/ is 25 MB, of which docs/design/ is 22 MB of PNG
-# render diffs that no console view opens; the text the console serves is 3.3 MB.
+# The screenshots still do not travel, but the text beside them now does. Excluding all of
+# docs/design/ was too wide: measured 2026-08-21, it held 43 PNGs (21.5 MB) AND 25 text
+# documents (1.1 MB of html, md, json and css) that prospector.ops.docs_view.docs_index
+# lists. Those 25 were listed by the console and absent from the image, so the founder got a
+# row that opened onto nothing. The PNGs all sit in these two directories and no console read
+# view opens them, so naming the directories ships the text and leaves the images behind.
+#
+# Name DIRECTORIES here, not a glob like docs/design/**/*.png. A plain prefix is the shape
+# every matcher agrees on; mid-pattern ** is where Docker and the guard below can differ.
+# If a new PNG directory appears under docs/design/, add it as its own line.
 #
 # tests/unit/test_the_image_ships_what_the_console_serves.py fails if a path a console read
 # view resolves under is excluded again.
-docs/design/
+docs/design/diff/
+docs/design/visual/
 .pytest_cache/
 htmlcov/
