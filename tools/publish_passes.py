@@ -37,7 +37,9 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from prospector.artifacts import generate_artifacts, generate_marketing_content
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from prospector.artifacts import generate_artifacts, generate_marketing_content  # noqa: E402
 from prospector.config import load_config, store_root
 from prospector.models import (
     Candidate,
