@@ -68,6 +68,12 @@ ARMED_F = CTRL / "AUTOFAILOVER"
 FAILS_F = CTRL / "failcount"
 EVENTS_F = CTRL / "events.jsonl"
 STANDBY = CTRL / "standby"          # the pulled copy of Fly's money files
+#: The checkout a failback would start FROM. A different axis from the money files above:
+#: those carry the DATA, this carries the CODE, and the two rot independently and for
+#: unrelated reasons. Reporting one and calling it "the exposure" is what let the code axis
+#: reach 81 commits behind unnoticed.
+STANDBY_CHECKOUT = Path(os.environ.get(
+    "PROSPECTOR_STANDBY_CHECKOUT", "/Users/chidionyema/Documents/code/prospector-live"))
 
 FLY_APP = os.environ.get("PROSPECTOR_FLY_APP", "prospector-engine")
 LAPTOP_STORE = Path(os.environ.get("PROSPECTOR_STORE_DIR",
@@ -250,9 +256,88 @@ def probe_laptop(deep: bool = False) -> dict:
     return out
 
 
+def probe_standby_code() -> dict:
+    """How many commits behind origin/main is the failback checkout?
+
+    Deliberately does NOT fetch. This runs on every console status poll, and a probe that
+    reaches the network is a probe that hangs when the network does.
+
+    The cost of not fetching is the trap this estate already has a law about: `git rev-list
+    --count HEAD..origin/main` reports 0 against an `origin/main` nobody has fetched today, so
+    a 0 means EITHER "current" OR "nobody has looked in a week", and the two are the opposite
+    of each other. So the age of the ref the count was taken against is reported beside it,
+    and neither number means anything alone. A reader who sees behind=0 with ref_age_min=4300
+    is looking at an instrument that has not been told anything for three days.
+    """
+    out: dict = {"checkout": str(STANDBY_CHECKOUT)}
+    if not (STANDBY_CHECKOUT / ".git").exists():
+        out["error"] = f"no checkout at {STANDBY_CHECKOUT}"
+        return out
+    git = ["git", "-C", str(STANDBY_CHECKOUT)]
+    rc, head, err = sh(git + ["rev-parse", "--short", "HEAD"], timeout=20)
+    if rc != 0:
+        out["error"] = (err or "git rev-parse HEAD failed").strip()[:200]
+        return out
+    out["head"] = head.strip()
+    rc, count, err = sh(git + ["rev-list", "--count", "HEAD..origin/main"], timeout=20)
+    if rc != 0:
+        out["error"] = (err or "git rev-list failed").strip()[:200]
+        return out
+    try:
+        out["behind"] = int(count.strip())
+    except ValueError:
+        out["error"] = f"unreadable commit count: {count.strip()[:80]}"
+        return out
+    fetch_head = STANDBY_CHECKOUT / ".git" / "FETCH_HEAD"
+    try:
+        out["ref_age_min"] = round((time.time() - fetch_head.stat().st_mtime) / 60, 1)
+    except OSError:
+        # No FETCH_HEAD at all means nothing has ever fetched here, so `behind` was counted
+        # against whatever the clone was born with. Say so rather than reporting a number.
+        out["ref_age_min"] = None
+    return out
+
+
+def standby_code_line(code: dict) -> str:
+    """One line an operator can act on: how far back a failover would start, CODE axis.
+
+    Separate from probe_standby_code() so the wording is testable without a git repo, and so
+    the number cannot be computed and then never printed - which is what happened for the
+    whole of the period it was 81 commits behind.
+
+    behind==0 is only good news when the ref it was counted against is fresh. A zero taken
+    against a ref nobody has fetched in three days is the same reading as a zero taken one
+    minute after a deploy, and they mean opposite things, so an old ref never prints OK.
+    """
+    if code.get("error"):
+        return f"standby CODE: UNKNOWN - {code['error']}"
+    behind = code.get("behind")
+    head = code.get("head", "?")
+    age = code.get("ref_age_min")
+    age_txt = "ref NEVER fetched" if age is None else f"ref {age}m old"
+    fresh = age is not None and age < 60
+    mark = "OK" if behind == 0 and fresh else "!!"
+    return (f"standby CODE: {mark} {behind} commits behind origin/main at {head} "
+            f"({age_txt}) - a failover starts from THIS commit")
+
+
 def probe_standby() -> dict:
-    """How stale is the copy a failover would start from? This number IS the exposure."""
-    out: dict = {"files": {}}
+    """How far back would a failover start? Two axes, and BOTH of them are the exposure.
+
+    This docstring used to read "How stale is the copy a failover would start from? This
+    number IS the exposure", and it was false in the way that matters most: it described only
+    the money files. Measured 2026-08-21, the code axis it never looked at was 81 commits
+    behind origin/main, on the day that checkout was the failover target - so a failover would
+    have rolled production back 81 commits while `staleness_min` reported minutes and `usable`
+    reported True. An instrument that reports green on one axis while the other one is the
+    actual exposure is worse than no instrument, because it is the one the console prints.
+
+    `usable` deliberately still grades the DATA only. Code drift must not block a failover:
+    failing over to a checkout four commits behind beats staying down, and that is a decision
+    for the operator reading `code`, not for this function. Anything that folds `code` into
+    `usable` is changing what the estate does in an outage, which is not a refactor.
+    """
+    out: dict = {"files": {}, "code": probe_standby_code()}
     oldest = None
     for name in MONEY_FILES:
         f = STANDBY / name
@@ -313,6 +398,7 @@ def cmd_status(args) -> int:
     print(line(lap))
     sb = report["standby"]
     print(f"  standby copy: {'stale by %s min' % sb['staleness_min'] if sb['usable'] else 'MISSING - a failover would start from the laptop own store'}")
+    print("  " + standby_code_line(sb.get("code", {})))
     if report["consecutive_failed_polls"]:
         print(f"  !! {report['consecutive_failed_polls']} consecutive failed polls of the active side")
     # An unknown active side is not a side, so it cannot be indexed into `sides`. This used to

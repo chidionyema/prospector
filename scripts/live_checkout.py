@@ -652,6 +652,38 @@ def fly_report() -> int:
     return 0
 
 
+def _sync_failback_checkout(target: str) -> None:
+    """Move the failback checkout onto `target`. Never fails the caller.
+
+    A failback is the reason this checkout exists, so its currency is the DR exposure, not a
+    tidiness concern. But it is not the deploy: if the move fails, Fly is still serving the
+    right commit and the run must still report success. So this says what happened and
+    returns; the number itself is reported by engine_failover.probe_standby()["code"], which
+    is the instrument that grades it.
+
+    `--force` for the same reason the deploy path uses it: `_code_changes` has already proved
+    there is no modified tracked CODE here, so everything left dirty is tracked runtime state
+    under store/ and storage/ that every run rewrites, and a plain checkout aborts on exactly
+    those files.
+    """
+    try:
+        _, current = run(["git", "rev-parse", "HEAD"], cwd=DEPLOY_SOURCE)
+        if not target or current.strip() == target.strip():
+            return
+        rc, out = run(["git", "checkout", "--detach", "--force", target], cwd=DEPLOY_SOURCE)
+    except OSError as exc:
+        # run() only catches TimeoutExpired, so a cwd that has gone away raises out of the
+        # subprocess layer. The caller here has already released to Fly; an exception at this
+        # point would turn a successful deploy into a traceback.
+        print(f"  WARNING: cannot reach the failback checkout at {DEPLOY_SOURCE}: {exc}")
+        return
+    if rc != 0:
+        print(f"  WARNING: failback checkout is still at {current.strip()[:12]} — "
+              f"{out.strip()[:200]}")
+        return
+    print(f"  failback checkout moved to {target[:12]}")
+
+
 def fly_update(unattended: bool = False) -> int:
     """Build origin/main and release it to Fly, behind the same gates as the laptop path.
 
@@ -683,6 +715,15 @@ def fly_update(unattended: bool = False) -> int:
     _, target = run(["git", "rev-parse", "origin/main"], cwd=DEPLOY_SOURCE)
     live_sha, _ = deployed_commit()
     if live_sha[:40] == target and target:
+        # Fly is current, and THIS CHECKOUT is what a failback would start from, so it has to
+        # move too. This branch used to return here, and that is why the failover target rotted
+        # to 81 commits behind while every screen in the estate read green. Deploys come from
+        # the `Deploy Engine` workflow on a runner now, so Fly advances on its own and this is
+        # the only branch that ever runs -- the checkout was never moved by anything again.
+        # Moving it to `target` is safe by construction: `target` is the commit Fly is already
+        # serving, so it is graded and it is live. The refusal above has already proved there
+        # is no modified tracked CODE here.
+        _sync_failback_checkout(target)
         print(f"already deployed: {target[:12]} is what Fly is running")
         return fly_report()
 

@@ -77,9 +77,11 @@ downtime. Anything that still says otherwise is stale. The discriminator a proce
 ### When a candidate is parked: DEFER, and what unparks it
 
 A DEFER is not a verdict. It means the engine could not reach an answer — the brain was benched,
-the call raised, retrieval was down — so the row is put back rather than killed. `prospector/verify.py:580` and `prospector/verify.py:682`
-set `retrieval_failed=True` on any verdict call that raises, and the DEFER gate at `prospector/verify.py:1145`
-fires on it. This exists because the honest verdict on a check that never ran is "come back to it",
+the call raised, retrieval was down — so the row is put back rather than killed. `prospector/verify.py:589` and `prospector/verify.py:701`
+set `retrieval_failed=True` on any verdict call that raises, and the DEFER gate at `prospector/verify.py:1169`
+fires on it. The adversarial pass carries the same channel since 2026-08-21: `prospector/verify.py:1010`
+sets it when that call raises, and the gate at `prospector/verify.py:1284` defers instead of publishing
+a candidate whose final gate never ran. This exists because the honest verdict on a check that never ran is "come back to it",
 never "this idea is dead". Killing on an outage is a real defect this system has had:
 `store/dossiers/2102bacc6dd75cf9.kill.json` is a candidate killed by our own quota exhaustion, in a
 dossier that reads as fully reasoned.
