@@ -202,7 +202,7 @@ write. Nothing about the console needs a new concept.
 
 ---
 
-## D6 — Store API redundancy — **OPEN, for discussion**
+## D6 — Store API redundancy — **RULED 2026-08-21**
 
 **Founder:** *"lets discuss, we need to haave a k8 ready alternative also . for futture, solves
 these kinds sof problem, we need to brainstron what can work tody, ingle is fine but we need
@@ -247,6 +247,54 @@ in SQLite, not in Fly. k8s is worth having as a fourth deploy target so no platf
 estate hostage, and it is worth having before any second provider is chosen. It is not what makes
 the money path scale. That is the analysis the founder asked for before it is scheduled, and it is
 why it now sits last.
+
+### RULED 2026-08-21 — Postgres for the storefront, SQLite for everything else
+
+**Founder:** *"dont forget decision log, postgress for storefront, sqllite for the rest"*
+
+This overturns the recommendation directly above, which was to keep one SQLite writer and add
+Litestream. The recommendation is left in place unedited, because it is the record of what was
+weighed. What it got wrong: it priced the decision on today's data size and on write volume, and
+neither is the constraint that matters. The storefront is the part that takes money, and it is the
+one part of the estate that cannot move (`docs/MIGRATION_AND_DR_PROGRAM.md:192`). A single SQLite
+writer on a single mounted volume is what pins it there.
+
+**What the ruling changes, measured on this branch:**
+
+| | Today | After |
+|---|---|---|
+| Storefront data layer | EF Core + `Microsoft.EntityFrameworkCore.Sqlite` (`store_platform/src/Store.Api/Store.Api.csproj:13`), wired at `store_platform/src/Store.Api/Program.cs:29` `options.UseSqlite(connectionString)` | EF Core + Npgsql |
+| Connection string | `Data Source=/data/store.db` (`store_platform/deploy/fly/api.fly.toml:29`) | a Postgres connection string, from the secret store |
+| Machine count | fenced at exactly 1, because SQLite is a single writer | the fence dissolves; `prospector-store-web` already runs 2 |
+| Storefront backup | file copy off a live volume, which can tear | `pg_dump` / WAL archiving, which cannot |
+| Engine store | SQLite catalogue plus append-only JSONL | **unchanged — this is the "rest"** |
+| Litestream | proposed for the storefront | **still wanted, but for the engine's SQLite only** |
+
+**The one condition that keeps the portability rule intact.** `deploy/PORTABILITY.md:127` lists
+"Fly Postgres / Upstash / any managed database" as lock-in the estate refused. That refusal is
+about the word *managed*, not about Postgres. A Postgres we run ourselves — on the Kubernetes
+target that §5.2 of the programme now settles on — moves with the rest of the estate and keeps the
+rule. A managed Postgres from a provider's console would break it, and would also break the
+30-minute bar, because the data would sit somewhere the cutover script cannot reach. **So:
+self-hosted Postgres, and no exceptions to that.** Which operator runs it is the next thing to
+research, not something to assume here.
+
+**What this makes into work, in order:**
+
+1. Swap the EF provider — package reference, `Program.cs:29`, and
+   `store_platform/src/Store.Api/Persistence/StoreDbContextFactory.cs:18`.
+2. Regenerate the migrations. EF Core migrations are provider-specific, and everything in
+   `store_platform/src/Store.Catalog/Migrations` was generated against SQLite.
+3. **Move the tests with it.** `Store.Tests` builds its contexts on `UseSqlite(_connection)` in at
+   least five files. Left alone, the suite would grade a different database than production runs,
+   which is the same class of fault as a guard that grades a proxy. The tests need a real Postgres.
+4. Move the live data. It is 3.9 MB, so this is small — but it is orders, entitlements and the
+   audit trail, so it is a rehearsed move with a proven restore, not a copy.
+5. Rewrite the D2 money-restore drill against `pg_restore`, and re-time it.
+6. Remove the single-machine fence only after 1–5 are proven, never before.
+
+Nothing here is done until the D2 drill restores a Postgres storefront into a throwaway
+environment and `/health` answers.
 
 ---
 

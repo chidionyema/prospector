@@ -124,7 +124,7 @@ whichever end it lands.
 
 | Lock-in we refused | What we did |
 |---|---|
-| Fly Postgres / Upstash / any managed database | SQLite and append-only JSONL on the mounted volume. The data is files. |
+| Fly Postgres / Upstash / any **managed** database | The engine's data is files: SQLite and append-only JSONL on the mounted volume. The **storefront** moves to Postgres (founder ruling 2026-08-21, `docs/decisions/0003-migration-and-dr-rulings.md` D6) — **self-hosted, never managed**, so it still travels with the cutover. |
 | Fly Machines API called from application code | The engine never calls a platform API. Only the adapter does. |
 | A public hostname baked into the engine | Both dashboards bind to loopback. Access is `fly proxy` here, an SSH tunnel there. |
 | Secrets held only in the platform's secret store | `.env` on this laptop stays the source of truth, encrypted in the backup. `t_secrets` pushes it. Any platform can be filled from it in one command. |
