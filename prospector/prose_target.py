@@ -130,7 +130,10 @@ def grade_text(text: str, path: Optional[Path] = None) -> List[Dict[str, Any]]:
 #: `test_prose_target` pins the two sets equal.
 ADVICE = {
     "punct_hyphen_per_1k": {
-        "above": "compound stacking — 'Front-Door Key-Safe Re-Siting'. Write the words out.",
+        "above": "hyphenated modifiers stacked in front of nouns — 'the fixed-fee decision "
+                 "process'. Not the fixed compounds themselves ('one-off', 'self-employed'), "
+                 "which are single words: 83.4% of ours are ordinary and correctly spelled, "
+                 "and it is the RATE that is 6x the genre.",
         "below": "no hyphens at all, where a human writes the occasional compound.",
     },
     "punct_comma_per_1k": {
@@ -188,9 +191,12 @@ def advice_for(measure: str, side: str) -> str:
 # House voice binds here too: no dashes, no defining a thing by what it is not.
 PROMPT_RULE = {
     "punct_hyphen_per_1k": {
-        "above": "Write compounds out as words. 'A key safe re-sited by the front door', "
-                 "never 'Front-Door Key-Safe Re-Siting'. Hyphens are the loudest tell we "
-                 "have.",
+        "above": "Hyphens are the loudest tell we have, but do NOT unhyphenate a fixed "
+                 "compound: 'one-off', 'self-employed', 'follow-up' and 'part-time' are "
+                 "single words and splitting them is a spelling error. The rate comes from "
+                 "how OFTEN a hyphenated modifier is stacked in front of a noun. Move it "
+                 "after the noun instead: 'a decision on the fee', not 'the fixed-fee "
+                 "decision process'.",
         "below": "The occasional hyphenated compound is normal. Do not avoid them entirely.",
     },
     "punct_comma_per_1k": {
@@ -304,6 +310,8 @@ def repair_feedback(findings: List[Dict[str, Any]]) -> str:
     return (
         "Your previous draft sits outside the range of human writing on the measures "
         "below. Rewrite the prose to sit inside it. Do not change any figure, date, "
-        "source or named entity to do it, and do not cut evidence: this is about how the "
-        "sentences are built, never about what they say.\n" + "\n".join(lines)
+        "source or named entity to do it, and do not cut evidence.\n"
+        "Marking uncertainty is NOT changing what the draft says. Where the evidence "
+        "is partial, saying so in the sentence is required, not a softening of the "
+        "finding, and you may add or remove those words freely.\n" + "\n".join(lines)
     )
