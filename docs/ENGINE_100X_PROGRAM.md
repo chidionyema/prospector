@@ -994,6 +994,18 @@ behaviour it was written to fix, not evidence that it failed. Re-run the monthly
 corpus that extends past 2026-08-19 before crediting or blaming it:
 `scratchpad/measure_template.py` and the by-month block in this section.
 
+### 9.8 The downstream synthesis question — measured, and on the list
+
+Founder directive 2026-08-21: the engine generates ideas and nothing acts on the data it produces;
+the kill log should be mined for missed opportunities and synthesised into better ideas, *"a slower
+process but ca end up yield better output"*.
+
+The measurement is in **[docs/RESEARCH_INDEX.md section 10](RESEARCH_INDEX.md#10-the-downstream-synthesis-programme--mining-the-kill-log)**
+and it is not being built. Three numbers decide the design, so read them before proposing anything:
+the kill log holds **46,220 cited sources across 17,687 hosts**; **48.1% of kills are retrieval
+failures rather than idea failures** (67.6% in August); and `prospector/denylist.py` already owns
+kill-corpus mining while reading **18.8%** of the log and none of the sources.
+
 ### 9.7 Where an engagement signal would attach
 
 The three paths in 9.6 are the attachment points, and they are the only ones. A fourth loop is not
