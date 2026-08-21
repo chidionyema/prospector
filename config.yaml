@@ -583,9 +583,9 @@ retrieval:
   # claude_cli is the FAILOVER brain only (`operator:` heads minimax), so nothing is bought by
   # a wider ceiling here.
   #
-  # EDITING THIS NUMBER UP DOES NOTHING. `claude_cli.MAX_CLAUDE_CLI` clamps every path —
+  # EDITING THIS NUMBER UP DOES NOTHING. `claude_cli._CLAUDE_MAX_EVER` clamps every path —
   # config, dashboard overlay and PROSPECTOR_CLAUDE_CONCURRENCY alike — and logs a warning
-  # naming this directive. tests/unit/test_one_claude_cli_process.py fails if the clamp moves.
+  # naming this directive. tests/unit/test_claude_cli_is_never_concurrent.py fails if the clamp moves.
   claude_concurrency: 1          # max concurrent claude CLI subprocesses (failover brain only
                                  # now that grounding resolves on ddg/exa — see chain above)
   # cursor_concurrency REMOVED 2026-08-06 with the cursor_cli adapter.

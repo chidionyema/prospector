@@ -88,6 +88,61 @@ misconfiguration that reports success. Whatever we ship must assert
 `cache_read_input_tokens + cache_creation_input_tokens > 0` on the second call of a run and fail
 loudly if it is zero. A caching config with no assertion is a caching config that is off.
 
+That assertion ships WITH the API adapter, not before it. Measured 2026-08-20: `rg cache_control`
+over the whole tree returns nothing. We do not configure caching anywhere. `claude_cli.py:92-98`
+only READS `cache_read_input_tokens` and `cache_creation_input_tokens` back out of what the CLI
+reports. A test asserting a cache hit today would be grading the CLI's internal behaviour, not
+ours, and would go red for reasons no diff of ours could fix.
+
+---
+
+## 1a. Caching is already on, and it is worth 19%, not 90%
+
+Measured 2026-08-20 over the canonical ledger
+`/Users/chidionyema/Documents/code/prospector/store/prospector.jsonl`, all 39 rows that carry
+cache fields (every one of them a Claude CLI call — see the provenance limit in §0):
+
+| quantity | tokens |
+|---|---|
+| `cache_creation_input_tokens` (writes) | 841,319 |
+| `cache_read_input_tokens` (reads) | 524,698 |
+| plain uncached input | 389 |
+
+Read > 0 on 39 of 39 rows, so the cache is being HIT, not silently inert — the §1 trap is not
+firing on this path. But write > read on 39 of 39 as well, and that is the finding.
+
+**Each cached prefix is used 1.62 times.** Reads and writes report the same prefix, so
+`reads/writes = 0.624` is the number of re-uses after the first, and total uses `N = 1.624`.
+
+At Anthropic's ratios (write 1.25x base input, read 0.1x, uncached 1.0x), for one prefix of T
+tokens used N times:
+
+- cached: `1.25 + 0.1(N-1)` = **1.312 T**
+- uncached: `1.0 x N` = **1.624 T**
+- **saving: 19.2%**
+
+**Break-even is N = 1.278.** Below that, caching costs MORE than sending the tokens uncached,
+because a write is 1.25x and an uncached send is 1.0x — a cache entry written and never read is a
+25% penalty, not a saving. We are at 1.624, above break-even, but far closer to it than to the
+ceiling. At N = 10 the same arithmetic gives 79% off; at N = 50, 89%.
+
+**So the lever is REUSE, not enabling caching.** §2 row 1 says "up to 90% off" and that number is
+only reachable if a prefix is hit tens of times inside its TTL. Two things decide N and we control
+neither today:
+
+1. **TTL.** The default is 5 minutes. Anthropic sells a 1-hour TTL at 2x write instead of 1.25x —
+   which at N = 1.62 is strictly worse, and only pays once N rises past roughly 2.5. Setting it
+   needs `cache_control`, which needs the API adapter.
+2. **Prefix stability.** Anything per-call sitting before the end of the cached block changes the
+   prefix and guarantees a miss. `generate.py:518` claims the static taxonomy lives in
+   `generate_system.md` and is "cached by the model", cutting per-call tokens from ~2,500 to ~600.
+   That claim has never been measured per-call; N = 1.62 is consistent with it being partly true.
+
+**Do not re-quote "up to 90%" as an expected saving.** It is a ceiling under an assumption about
+reuse that the only measurement we have contradicts. The honest figure for the CLI path today is
+19.2%, and the work that moves it is the API adapter plus a prefix-stability measurement, not a
+config flag.
+
 ---
 
 ## 2. The levers, ranked, with what each is worth
@@ -96,7 +151,7 @@ Baseline $3.60 per 1000 verdicts. Each row assumes the ones above it are already
 
 | # | Lever | Effect | Independent? | Risk |
 |---|---|---|---|---|
-| 1 | Prompt caching on a stable preamble | up to 90% off the 88.2% | yes | the §1 trap |
+| 1 | Prompt caching on a stable preamble | **19.2% measured today** (§1a); up to 90% only at high reuse | yes | the §1 trap; and reuse, not the flag, is the binding constraint |
 | 2 | Merge the six check calls into one | 4.991x fewer calls, 2.8x fewer tokens | yes | quality — needs a golden gate |
 | 3 | Batch API | further 50% | stacks with 1 on Anthropic and Gemini | 24h latency |
 | 4 | Deterministic no-model prefilter | **4.69%, see §5** | yes | none by construction |
@@ -206,7 +261,7 @@ from the biggest one.
    provider's own published rate where the adapter does not report one, plus a `provider` field so
    the join does not depend on parsing `message`. A 19x claim measured only on the fallback brain
    cannot be verified after the fact.
-2. **Cache the preamble, padded to 4,096 tokens, with the assertion from §1.** Biggest lever,
+2. **Cache the preamble, padded to 4,096 tokens, with the assertion from §1.** Sized by §1a: on the CLI path caching is already on and already worth 19.2%, so the gain here is the difference between 1.62 re-uses and many, not the difference between off and on.
    no quality decision, and the assertion is what stops it being silently inert.
 3. **Merge the six check calls behind the golden gate.** 4.991x on calls. This one CAN change
    quality, so it does not ship without a gate run — and the gate's own instrument is saturated

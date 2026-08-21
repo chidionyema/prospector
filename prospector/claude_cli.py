@@ -109,7 +109,13 @@ def _clamped(n: int) -> int:
 
 
 # Cap concurrent heavy CLI subprocesses.
-_MAX_CLI = _clamped(os.environ.get("PROSPECTOR_CLAUDE_CONCURRENCY") or MAX_CLAUDE_CLI)
+# FOUNDER DIRECTIVE 2026-08-21, repeated: "i dont want consurreny onclaude code",
+# "its too expencice". ONE claude subprocess at a time, machine-wide, whatever config or the
+# environment asks for. It is a CLAMP and not a default, because the default is what kept
+# drifting back up (2 -> 4 by 2026-08-15). Pinned by
+# tests/unit/test_claude_cli_is_never_concurrent.py.
+_CLAUDE_MAX_EVER = 1
+_MAX_CLI = _CLAUDE_MAX_EVER
 # Machine-wide, not per-process — see prospector/cli_governor.py. The 45s "grounding queue
 # saturated" tail that killed job 20260730T212901866 was oversubscription across pipelines,
 # not a too-small limit here.
@@ -126,8 +132,11 @@ def configure_concurrency(n: int) -> None:
     (make_provider) before any calls are in flight.
     """
     global _CLI_SEM, _MAX_CLI
-    env = os.environ.get("PROSPECTOR_CLAUDE_CONCURRENCY")
-    n = _clamped(env) if env else _clamped(n)
+    if os.environ.get("PROSPECTOR_CLAUDE_CONCURRENCY"):
+        return
+    # Clamped, never raised. A config file, a plist or a caller asking for more than one
+    # claude subprocess gets one. See _CLAUDE_MAX_EVER above.
+    n = min(max(1, int(n)), _CLAUDE_MAX_EVER)
     with _SEM_LOCK:
         if n != _MAX_CLI:
             _MAX_CLI = n

@@ -389,7 +389,7 @@ def _sync_cli_concurrency(cfg) -> None:
         return
     try:
         from .claude_cli import configure_concurrency as _claude_conc
-        _claude_conc(int(getattr(r, "claude_concurrency", 2) or 2))
+        _claude_conc(int(getattr(r, "claude_concurrency", 1) or 1))
     except Exception:
         pass
 
