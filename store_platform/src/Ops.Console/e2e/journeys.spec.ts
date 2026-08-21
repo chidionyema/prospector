@@ -29,6 +29,39 @@ import { NOT_WALKED, SCREENS, allScreens, signIn } from './session';
 const DOC = 'docs/LINKS.md';
 
 /**
+ * The note every link this suite mints carries, so the suite can tell its own leftovers from a
+ * link a PERSON minted.
+ *
+ * This journey starts by revoking whatever live link is on `DOC`, so that its second run is not
+ * failed by its own first run. Without the check below that clean-up would also destroy a link
+ * the founder had minted and sent to somebody — silently, and it would look from the outside
+ * exactly like a token that expired the moment it was issued.
+ */
+const SHARE_NOTE = 'e2e: proving the share rail end to end';
+
+/**
+ * A live link on `DOC` that this suite did not mint, or null.
+ *
+ * Asked through the console's own read view rather than the panel, because the panel deliberately
+ * does not show a share's note — and the note is the only thing that says who minted it.
+ */
+async function foreignLiveShare(
+  page: import('@playwright/test').Page,
+): Promise<{ id: string; note: string } | null> {
+  const res = await page.request.get('/api/ops/read/shares');
+  if (!res.ok()) return null; // no answer is not evidence of a foreign link
+  const body = (await res.json()) as {
+    data?: { shares?: { id: string; status: string; scope: string; target: string; note: string }[] };
+  };
+  const rows = body.data?.shares ?? [];
+  return (
+    rows.find(
+      (r) => r.status === 'live' && r.scope === 'file' && r.target === DOC && r.note !== SHARE_NOTE,
+    ) ?? null
+  );
+}
+
+/**
  * Open the share panel if it is closed.
  *
  * `ShareDoc` renders the compact "Share this doc" button ONLY while its panel is closed, and the
@@ -310,6 +343,17 @@ test.describe('the control plane', () => {
     // matches none of those three names — so a visible opener IS the console saying it knows.
     // Do not gate on the Public/Private pill: `getByText` matches document prose too.
 
+    // This journey is about to revoke whatever live link is on this document. If a PERSON minted
+    // that link, revoking it destroys a link somebody is holding, and the failure they see is a
+    // link that stopped working for no stated reason. Stop instead.
+    const foreign = await foreignLiveShare(page);
+    expect(
+      foreign,
+      `${DOC} already has a live link this suite did not mint (note: "${foreign?.note ?? ''}", ` +
+        `id ${foreign?.id ?? ''}). Revoking it would destroy a link somebody is holding, so this ` +
+        'journey stops. Revoke it in the console yourself, or point DOC at another document.',
+    ).toBeNull();
+
     // Mint. `Confirm` previews first and applies second — that two-step is the safety rail, so
     // the test drives it rather than routing around it.
     await openSharePanel(page);
@@ -317,7 +361,7 @@ test.describe('the control plane', () => {
     // so this journey would fail on its second run for a reason that is not a defect. Start from
     // private, whatever the last run left behind.
     await makePrivate(page);
-    await page.getByLabel(/Who is it for/i).fill('e2e: proving the share rail end to end');
+    await page.getByLabel(/Who is it for/i).fill(SHARE_NOTE);
     await twoStep(page, 'Check what this covers', 'Mint the link');
 
     await expect(page.getByText(/Copy this now/i)).toBeVisible({ timeout: 60_000 });
