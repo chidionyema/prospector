@@ -94,7 +94,7 @@ An axis with no unit cannot be improved by 100x, because nobody can say what 100
 | A3b | Latency p95 | seconds, same | TBD | /100 | NOT MEASURED |
 | A4 | Discrimination | golden-set accuracy | 1.00 on 9 items | see below | measured, NO RESOLUTION |
 | A5 | Yield | PASSes per 1000 candidates that survive founder review | TBD | 100x | NOT MEASURED |
-| A6 | Cost | USD per 1000 verdicts | ~$3.60 (MiniMax M3, 10k in / 500 out assumed) | observation only | estimated, not measured |
+| A6 | Cost | USD per 1000 verdicts | ~$3.60 (MiniMax M3, 10k in / 500 out assumed) | **operational cost is a target** (wish 14) | estimated, not measured |
 | A7 | Grounding fidelity | % of ruled checks whose rationale shares a literal 12-word run with a passage it cites | **2.92%**, 109 of 3,732 ruled checks, Wilson 95% [2.43, 3.51] | 100% | **MEASURED 2026-08-20** — [instrument and null control](ENGINE_BASELINE_2026-08-20.md#3-a7-a-grounding-instrument-that-is-free-deterministic-and-passes-its-own-control) |
 | A8 | Abstention calibration | accuracy on attempted, vs % attempted | TBD | see E-045 | NOT MEASURED |
 
@@ -107,11 +107,27 @@ against it.
 
 So experiment **E-001 blocks every quality experiment**: build a golden set with resolution.
 
-### A6 is deliberately not a target
+### A6: a one-off cost is free, an operational cost is a target
 
-The founder's words are *"indepenent of cost"*. Cost is recorded so that a 100x latency win bought
-with a 1000x cost increase is visible as what it is, and so the founder can make the business call.
-It is never a reason to reject an experiment inside this programme.
+**This section said the opposite until 2026-08-21, and four places in this document still ran on
+the old rule.** The correction was made at line 69 (`independent of cost` -> SUPERSEDED) and nowhere
+else, which is this estate's most-repeated class: a fix applied to one of several identical sites.
+The three other sites are corrected in the same commit as this one.
+
+The founder's opening words were *"indepenent of cost"*. His later ruling splits that in two:
+
+- A **ONE-OFF** cost -- an experiment, a migration, a rented box that gets destroyed -- is
+  acceptable, and no experiment is rejected for being expensive. What is required is that the
+  estimate is written down BEFORE the run, in this document.
+- An **OPERATIONAL** cost -- one that bills forever and grows with volume -- is a target like any
+  other, and an answer that swaps an API bill for a rented-CPU bill is not a saving.
+
+Both halves are load-bearing. E-101 is the worked example: $12 of one-off spend was correct and
+bought the answer, and Stage B was killed precisely because 0.04 pairs/s on rented CPU would have
+been an operational cost forever.
+
+Cost is still recorded so that a 100x latency win bought with a 1000x cost increase is visible as
+what it is. It is no longer true that cost can never reject an experiment.
 
 ---
 
@@ -168,7 +184,7 @@ when run. Ordering within a group is by expected effect, not by ease.
 
 | ID | Hypothesis |
 |---|---|
-| E-020 | The six checks run SEQUENTIALLY under kill-fast. Kill-fast is a COST optimisation, and cost is no longer a constraint. Running all six concurrently and cancelling on the first hard fail should cut p50 by close to 6x on candidates that survive, at the price of wasted calls on candidates that die early. |
+| E-020 | The six checks run SEQUENTIALLY under kill-fast. Kill-fast is a COST optimisation, and its cost is OPERATIONAL, so under wish 14 it is a target rather than a free trade (this hypothesis was written when cost was declared not a constraint; see A6 above). Running all six concurrently and cancelling on the first hard fail should cut p50 by close to 6x on candidates that survive, at the price of wasted calls on candidates that die early. |
 | E-021 | Query generation, retrieval and the verdict call are three serial round trips per check. Pipelining check N+1's retrieval against check N's verdict hides most of the retrieval latency. |
 | E-022 | Retrieval fetches pages serially. Concurrent fetch with a bounded pool. |
 | E-023 | The six check prompts share a large system preamble. Provider prompt caching should cut both latency and tokens on checks 2-6. |
@@ -352,7 +368,7 @@ Ordered by expected value now that prior art is accounted for.
 | **E-100** | Move the ML sidecar out of `/tmp` and make `runner.py`'s reproduce-line true again. Add a check that fails when the sidecar interpreter is missing, rather than failing obscurely. | Every other local-model experiment is blocked on this, and the estate currently publishes a reproduce command that does not work. | IN PROGRESS |
 | **E-101** | **MiniCheck vs HHEM on OUR corpus**, same method as E17 so the numbers are comparable: AUC against moat verdicts, agreement per verdict class. Refuting outcome stated up front: if MiniCheck's AUC is not materially above HHEM's 0.673, the local-classifier route is dead for verdicts and only survives as a cascade screen. | E17 explicitly skipped it. It is the single open question with the largest consequence, and it costs no API money. | READY |
 | **E-102** | Re-run E15 to get a current A7 baseline on today's corpus, and record the corpus fingerprint. | The 48.9% is from 2026-08-07 and the store is live. A programme measuring improvement needs today's number, not a fortnight-old one. | READY, blocked on E-100 |
-| **E-103** | Concurrency across the six checks WITHIN one candidate, with kill-fast retained as a cancel rather than a gate. E3 measured concurrency across candidates; this is a different axis and it is the direct p50 win. | Cost is explicitly not a constraint, and kill-fast is a cost optimisation. | READY |
+| **E-103** | Concurrency across the six checks WITHIN one candidate, with kill-fast retained as a cancel rather than a gate. E3 measured concurrency across candidates; this is a different axis and it is the direct p50 win. | Kill-fast is a cost optimisation, and wasted calls are an OPERATIONAL cost, so wish 14 makes the trade explicit rather than free: the p50 win has to be worth the calls thrown away. Post the estimate before the run. | READY |
 | **E-104** | Golden set with resolution. Still the blocker for every quality claim: 1.00 on 9 items measures nothing. | Unchanged by prior art. | READY |
 | **E-105** | Roster breadth for availability: Cohere Command A+ (14.2% AA-Omniscience hallucination rate vs MiniMax M3's 18.4%) on the golden set. | A1 is 0% today. This is the only untested hosted model worth the run. | BLOCKED on E-104 |
 
@@ -1344,3 +1360,57 @@ reachable from the engine's own store: `store/dossiers/` holds 14 lint receipts 
 and the canonical store's dossier directory is empty. Every finding above is therefore a statement
 about the function, not about the catalogue. That is a fact about where the corpus lives, which is
 already a known defect and is with the platform engineer.
+
+---
+
+## 11. Action items, tracked — 2026-08-21
+
+The founder's instruction: *"research findings need o be fiolloweed htru"*, *"not just fucing
+wiring docs"*, *"the gol os the rearc is to inporve the systen nont to ead fuckig sunnaries"*.
+
+Every finding in the bench notes now has a number a machine can check. A finding with no row here
+is a finding that has not been followed through. **Four of these need the founder and nobody else;
+they are marked FOUNDER and no agent can close them.**
+
+### 11.1 Shipped — the system behaves differently now
+
+| What changed | Where | Proof |
+|---|---|---|
+| An `unverifiable` ruling no longer carries grounding confidence | `prospector/verify.py:761` | PR #570, merged. Corpus: 9,965 `unverifiable` checks scored mean 0.5627 against 0.5695 for `supported` — a +0.0019 gap, and 73.3% of unruled checks scored >= 0.5. `_calc_confidence` has no verdict term; it measures what retrieval returned. |
+| A research report must name its follow-through, and a test fails if one does not | `tests/unit/test_a_research_finding_must_name_its_follow_through.py` | PR #571, merged. 15 reports carry `**Follow-through:**` as SHIPPED / TICKET #n / NO ACTION + reason. The unknown branch calls `pytest.fail`, so a new state cannot pass silently. |
+| The cost rule no longer contradicts the founder's own ruling in four places | this commit, A6 section + E-020 + E-103 + the axes table | Line 69 was corrected on 2026-08-20 and the other four sites were not. |
+
+### 11.2 Open, and an agent can move them
+
+| Finding | Number | Blocked on |
+|---|---|---|
+| E-001: the golden set is saturated at 1.00 on 9 items, and it gates every quality experiment | #573 | nothing — this is the one to do first |
+| Six of nine axes have no baseline, so 1000x on them is undefined | #575 | nothing for A2/A3/A7; A8's second half needs #573 |
+| E-023: 11,250 chars of identical preamble on every call against 1,500 of evidence | #577 | nothing |
+| Soft early-exit is inert — 23.1% of every verdict call is bought after PASS is provably impossible | #578 | #579, and a LAW 11 broadcast |
+| Two dossiers PASSed although `pass_impossible_reason` says PASS was impossible | #579 | nothing |
+| Retrieval is the quality ceiling, not the model: 73.3% of checks abstain (E-042, E-043) | #582 | #573 |
+| E15: 45.8% of ruled rationales do not entail from the passages they cite (E-102) | #564 | a live brain |
+| L1: 21.84% of checks refetch a url already on disk | #566 | a founder call on the TTL |
+| E5: the coverage sampler's flag has never been switched on | #567 | nothing |
+| E2: one persona has never produced a dossier; 12.87x pass-rate spread unexploited | #565 | #552 |
+| Packaging, pricing and defensibility — the research that never launched | #583 | nothing |
+| Who buys a claim-level verdict with consequences attached | #584 | nothing |
+
+### 11.3 FOUNDER — no agent can close these
+
+| Decision | Number | What is actually being asked |
+|---|---|---|
+| A1 is 0%: the Fly engine has no trusted brain | #576 | MiniMax credit, or `claude setup-token` on the box. Money or a login. |
+| E-106 Groq free tier | #580 | May candidate text and retrieved passages be posted to a free tier whose retention terms we have not accepted? The capacity half is settled: 13.4 vets/day today, 37.3 after the call merge. TPM binds, RPM never does. |
+| Re-test E-101 against the graders it could not run | #581 | A one-off spend of under $1 against Google Check Grounding and Bedrock. Estimate posted before the run, per wish 14. |
+| L1 retrieval cache TTL | #566 | 21.84% reuse, 19.71% under a 30-day window. Whether a cached page is still evidence after 30 days is a standard-of-proof question, not an engineering one. |
+
+### 11.4 Closed by a measurement — do not rebuild these
+
+| Claim | Why it is closed |
+|---|---|
+| "Batching query generation across the six checks is worth ~2.5x" | **False, corrected on #560.** `gen_queries_batched` is already called at `verify.py:1087` with `llm_query_gen: true` at `config.yaml:572`. And `tools/engine_baseline.py:203` increments `paid` once per CHECK, so the 4.991 counts `verdict_for` calls only — 14,006 checks / 2,806 dossiers = 4.9915. Query generation was never in that number. |
+| "A BM25 near-miss passage index would pay for itself" | Measured 11.91% reuse against a 20% bar, an 8.1pp gap. Exact-key repeat on the shipped cache is 0.01%. |
+| "A free verifier we own can replace the paid call" | E-101, eight arms, 3,472 pairs each. Best 0.706 AUC, worst 0.408. Stands **on the arms tested** — #581 is the honest remainder. |
+| "The estate-map citation guard catches drifted citations" | It caught 1 of 3 identical +30-line drifts, because its +/-3 window let a citation inherit a neighbour's symbols. #572. |
