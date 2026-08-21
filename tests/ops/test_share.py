@@ -469,3 +469,76 @@ def test_the_fast_reject_never_waves_through_a_denied_path():
         if not share.is_denied(sample):
             served.append((pat, sample))
     assert not served, f"these deny patterns no longer refuse their own sample: {served}"
+
+
+# --------------------------------------------------------------------------- #
+# Public links: the same secret token, on a different clock
+# --------------------------------------------------------------------------- #
+# The founder ruled on what "public" means here on 2026-08-21, choosing between three
+# readings of "control if public or not". It is a decision about the CLOCK and nothing
+# else: a public link is the same unguessable token, refused by the same deny-list, logged
+# on the same read counter, and listed nowhere. It simply does not expire on its own.
+#
+# These tests exist to keep it that way. The dangerous drift is not the expiry — it is
+# somebody later reading "public" as "skip the fence", so the deny-list and the scope are
+# asserted again here on a public link rather than assumed from the private cases above.
+def test_a_public_link_does_not_expire_on_its_own(ops, repo, monkeypatch):
+    out = share.mint(ops, repo, scope="file", target="README.md", public=True)
+    assert out["expires_at"] is None
+    assert out["public"] is True
+
+    monkeypatch.setattr(share, "_now", lambda: time.time() + 400 * 86_400)
+    assert share.open_share(ops, repo, out["token"])["kind"] == "file", (
+        "a year later it must still open — that is the whole difference from a private link")
+
+
+def test_revoking_is_the_only_way_a_public_link_dies(ops, repo, monkeypatch):
+    out = share.mint(ops, repo, scope="file", target="README.md", public=True)
+    monkeypatch.setattr(share, "_now", lambda: time.time() + 400 * 86_400)
+
+    share.revoke(ops, out["id"])
+    with pytest.raises(PermissionError):
+        share.open_share(ops, repo, out["token"])
+
+
+def test_a_public_link_is_refused_by_the_same_deny_list(ops, repo):
+    """`public` must never read as "skip the fence"."""
+    out = share.mint(ops, repo, scope="repo", target="", public=True)
+    listing = share.open_share(ops, repo, out["token"])
+    names = {f["name"] for folder in listing["folders"] for f in folder["files"]} \
+        if "folders" in listing else set()
+    assert ".env" not in names
+    with pytest.raises((PermissionError, ValueError, FileNotFoundError)):
+        share.open_share(ops, repo, out["token"], ".env")
+
+
+def test_a_public_link_holds_its_scope(ops, repo):
+    out = share.mint(ops, repo, scope="tree", target="docs", public=True)
+    assert share.open_share(ops, repo, out["token"], "docs/GUIDE.md")["kind"] == "file"
+    with pytest.raises((PermissionError, ValueError, FileNotFoundError)):
+        share.open_share(ops, repo, out["token"], "prospector/run.py")
+
+
+def test_private_is_the_default_and_still_expires(ops, repo, monkeypatch):
+    """The other half of the pair. A flag that is always on says nothing."""
+    out = share.mint(ops, repo, scope="file", target="README.md", days=1)
+    assert out["public"] is False
+    assert isinstance(out["expires_at"], (int, float))
+
+    monkeypatch.setattr(share, "_now", lambda: time.time() + 2 * 86_400)
+    with pytest.raises(PermissionError):
+        share.open_share(ops, repo, out["token"])
+
+
+def test_a_row_minted_before_public_existed_is_read_the_old_way(ops, repo):
+    """Rows already on disk carry no `public` key. They must keep expiring, not become
+    immortal because a later reader saw a missing flag as False and a missing expiry as
+    None."""
+    now = time.time()
+    assert share.status_of({"expires_at": now + 100}, now=now) == "live"
+    assert share.status_of({"expires_at": now - 1}, now=now) == "expired"
+    assert share.status_of({}, now=now) == "expired", (
+        "a row with no expiry AT ALL is a broken row, not a public one")
+    assert share.status_of({"expires_at": None}, now=now) == "live"
+    assert share.status_of({"expires_at": None, "revoked_at": now}, now=now) == "revoked", (
+        "revoked outranks never-expiring")

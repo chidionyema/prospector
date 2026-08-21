@@ -23,6 +23,7 @@
 import { useState } from 'react';
 
 import Confirm from '@/components/Confirm';
+import FilePicker from '@/components/FilePicker';
 import Shell from '@/components/Shell';
 import { AsOf, Button, Card, Empty, Mono, Note, Pill, Problem, Spinner } from '@/components/ui';
 import { useOps } from '@/lib/useOps';
@@ -34,7 +35,9 @@ type ShareRow = {
   note: string;
   actor: string;
   created_at: number;
-  expires_at: number;
+  /** null on a PUBLIC link, which has no expiry and dies only when you revoke it. */
+  expires_at: number | null;
+  public?: boolean;
   revoked_at: number | null;
   reads: number;
   last_read_at: number | null;
@@ -55,6 +58,11 @@ function when(at: number | null): string {
   return new Date(at * 1000).toLocaleString();
 }
 
+/** How long a link lasts, in the words the operator chose it with. */
+function lifetime(isPublic: boolean | undefined, expiresAt: number | null): string {
+  return isPublic || expiresAt === null ? 'no expiry — until you revoke it' : when(expiresAt);
+}
+
 function tone(status: string): 'ok' | 'warn' | 'bad' | 'plain' {
   if (status === 'live') return 'ok';
   if (status === 'expired') return 'warn';
@@ -66,8 +74,16 @@ export default function Share() {
   const [target, setTarget] = useState('');
   const [days, setDays] = useState(7);
   const [note, setNote] = useState('');
+  /**
+   * Public or private, which here is a decision about the CLOCK and nothing else. The founder
+   * chose this meaning on 2026-08-21 over two wider ones: both kinds are the same unguessable
+   * token, refused by the same deny-list and logged on every read. A private link also dies on
+   * its own after `days`; a public one waits to be revoked. Neither is listed anywhere, and
+   * neither is reachable without the token.
+   */
+  const [isPublic, setIsPublic] = useState(false);
   /** The minted link, held only until the operator navigates away. It is never re-readable. */
-  const [minted, setMinted] = useState<{ url: string; expires: number } | null>(null);
+  const [minted, setMinted] = useState<{ url: string; expires: number | null } | null>(null);
   const [copied, setCopied] = useState(false);
 
   const shares = useOps<Shares>('shares');
@@ -120,32 +136,43 @@ export default function Share() {
           </label>
 
           {scope !== 'repo' ? (
-            <label className="flex flex-col gap-1 text-[13px]">
-              <span className="text-subtle">
-                {scope === 'file' ? 'Path to the file' : 'Path to the folder'}
-              </span>
-              <input
-                value={target}
-                onChange={(e) => setTarget(e.target.value)}
-                placeholder={scope === 'file' ? 'docs/PLATFORM_MANIFESTO.md' : 'docs'}
-                spellCheck={false}
-                className="tap rounded-sm border border-border-control bg-surface px-2 py-2 font-mono text-[16px]"
-              />
-            </label>
+            <FilePicker
+              scope={scope === 'tree' ? 'tree' : 'file'}
+              value={target}
+              onPick={setTarget}
+            />
           ) : null}
 
+          <label className="flex flex-col gap-1 text-[13px]">
+            <span className="text-subtle">How long it lasts</span>
+            <select
+              value={isPublic ? 'public' : 'private'}
+              onChange={(e) => setIsPublic(e.target.value === 'public')}
+              className="tap rounded-sm border border-border-control bg-surface px-2 py-2 text-[16px]"
+            >
+              <option value="private">Private — it expires on its own</option>
+              <option value="public">Public — no expiry, until you revoke it</option>
+            </select>
+            <span className="text-[12px] text-muted">
+              Both are the same secret link: unguessable, never listed anywhere, and unreachable
+              without it. The only difference is whether it dies on a clock or waits for you.
+            </span>
+          </label>
+
           <div className="flex flex-wrap gap-3">
-            <label className="flex flex-col gap-1 text-[13px]">
-              <span className="text-subtle">Days until it expires</span>
-              <input
-                type="number"
-                min={1}
-                max={shares.data?.max_days ?? 90}
-                value={days}
-                onChange={(e) => setDays(Number(e.target.value))}
-                className="tap w-28 rounded-sm border border-border-control bg-surface px-2 py-2 text-[16px]"
-              />
-            </label>
+            {!isPublic ? (
+              <label className="flex flex-col gap-1 text-[13px]">
+                <span className="text-subtle">Days until it expires</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={shares.data?.max_days ?? 90}
+                  value={days}
+                  onChange={(e) => setDays(Number(e.target.value))}
+                  className="tap w-28 rounded-sm border border-border-control bg-surface px-2 py-2 text-[16px]"
+                />
+              </label>
+            ) : null}
             <label className="flex flex-1 flex-col gap-1 text-[13px]">
               <span className="text-subtle">Who is it for (recorded, not shown to them)</span>
               <input
@@ -163,14 +190,20 @@ export default function Share() {
             kind="primary"
             applyLabel="Mint the link"
             disabled={scope !== 'repo' && !target.trim()}
-            payload={() => ({ scope, target: scope === 'repo' ? '' : target.trim(), days, note })}
+            payload={() => ({
+              scope,
+              target: scope === 'repo' ? '' : target.trim(),
+              days,
+              note,
+              public: isPublic,
+            })}
             renderPreview={(p) => {
               const sample = (p.sample as string[]) ?? [];
               return (
                 <div className="flex flex-col gap-2">
                   <div>
                     <strong>{String(p.covers)}</strong> file{p.covers === 1 ? '' : 's'}, readable by
-                    anyone with the link for {String(p.days)} days.
+                    anyone with the link, {String(p.lives_for ?? '')}.
                   </div>
                   <div className="text-[12px] text-muted">{String(p.note ?? '')}</div>
                   <ul className="m-0 list-none p-0 font-mono text-[12px] text-muted">
@@ -191,7 +224,7 @@ export default function Share() {
               setCopied(false);
               setMinted({
                 url: `${window.location.origin}${path}`,
-                expires: Number(receipt.expires_at ?? 0),
+                expires: receipt.expires_at == null ? null : Number(receipt.expires_at),
               });
               shares.refresh();
             }}
@@ -222,8 +255,12 @@ export default function Share() {
                       Open it
                     </a>
                     <span className="text-[12px] text-muted">
-                      Public: anyone with this link can read it, with no login, until{' '}
-                      {when(Number(receipt.expires_at ?? 0))} or until you revoke it.
+                      Anyone with this link can read it, with no login —{' '}
+                      {lifetime(
+                        Boolean(receipt.public),
+                        receipt.expires_at == null ? null : Number(receipt.expires_at),
+                      )}
+                      .
                     </span>
                   </div>
                 </div>
@@ -240,7 +277,9 @@ export default function Share() {
             <div className="wrap-any mt-2 font-mono text-[12.5px]">{minted.url}</div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button onClick={() => copy(minted.url)}>{copied ? 'Copied' : 'Copy link'}</Button>
-              <span className="text-[12px] text-muted">expires {when(minted.expires)}</span>
+              <span className="text-[12px] text-muted">
+                {minted.expires === null ? 'no expiry' : `expires ${when(minted.expires)}`}
+              </span>
             </div>
           </div>
         ) : null}
@@ -266,10 +305,11 @@ export default function Share() {
                   {r.scope === 'repo' ? 'the whole repo' : r.target}
                 </span>
                 <span className="text-[12px] text-subtle">{r.scope}</span>
+                {r.public ? <Pill tone="warn">public</Pill> : null}
               </div>
               <div className="mt-1 text-[12px] text-muted">
-                {r.note ? `${r.note} · ` : ''}minted {when(r.created_at)} · expires{' '}
-                {when(r.expires_at)} · {r.reads} read{r.reads === 1 ? '' : 's'}
+                {r.note ? `${r.note} · ` : ''}minted {when(r.created_at)} ·{' '}
+                {lifetime(r.public, r.expires_at)} · {r.reads} read{r.reads === 1 ? '' : 's'}
                 {r.last_read_at ? `, last ${when(r.last_read_at)}` : ''}
               </div>
               {r.status === 'live' ? (

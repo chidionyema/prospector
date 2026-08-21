@@ -608,6 +608,28 @@ def _read_shares(cfg, args: dict) -> dict:
     return out
 
 
+def _read_repo_files(cfg, args: dict) -> dict:
+    """Every file in this repo that may be shared, grouped by folder, with sizes.
+
+    Registered 2026-08-21, and the gap it closes is an odd one. `share.folder_view` was written,
+    tested, and called from exactly one place: `open_share`, which is what the person OUTSIDE the
+    console sees. The operator minting the link -- the only one who has to name a path -- was the
+    one party in the exchange with no way to look. So the share page asked them to type a
+    repo-relative path from memory, and a typo returned an error instead of a link. The founder:
+    "there is a path output but the whole thing isnt user friendly".
+
+    "ANY NEW FILE" NEEDS NO ACTION, and that is a property of this being a read rather than a
+    document. The list is `git ls-files` minus the deny-list, recomputed here every time. A file
+    committed a minute ago is in the next page load; a file that can never be shared is never in
+    it. A generated index would need a job to stay true, and a job that stops leaves an index
+    that lies.
+    """
+    from . import share as _share
+
+    root = _repo_root()
+    return _share.folder_view(root, _share.shareable_files(root))
+
+
 def _read_share_open(cfg, args: dict) -> dict:
     """THE ONE VIEW THAT ANSWERS WITHOUT A CONSOLE SESSION.
 
@@ -1829,6 +1851,7 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
     "metrics": _read_metrics,
     "docs": _read_docs,
     "incidents": _read_incidents,
+    "repo_files": _read_repo_files,
     "shares": _read_shares,
     "share_open": _read_share_open,
     "automations": _read_automations,
@@ -3365,6 +3388,7 @@ def _act_share_create(cfg, payload: dict, preview: bool) -> dict:
     target = str(payload.get("target") or "").strip()
     days = payload.get("days", _share.DEFAULT_DAYS)
     note = str(payload.get("note") or "").strip()
+    public = bool(payload.get("public"))
     root = _repo_root()
 
     if scope not in _share.SCOPES:
@@ -3377,15 +3401,19 @@ def _act_share_create(cfg, payload: dict, preview: bool) -> dict:
                        if scope == "repo" or f == target.strip("/")
                        or f.startswith(target.strip("/") + "/")]
         return {
-            "action": "share.create", "scope": scope, "target": target, "days": days,
+            "action": "share.create", "scope": scope, "target": target,
+            "days": 0 if public else days, "public": public,
             "covers": len(covered), "sample": covered[:20],
             "allow_list_source": _share.allow_list_source(root),
+            "lives_for": ("until you revoke it -- this link has no expiry" if public
+                          else f"{days} days, then it dies on its own"),
             "note": "Anyone holding the link can read every file listed above, with no login, "
                     "until it expires or you revoke it. Nothing outside that list is reachable "
-                    "through it.",
+                    "through it. A public link is the same secret link with no expiry -- it is "
+                    "not listed anywhere and it is not reachable without the token.",
         }
     return _share.mint(_store_ops_dir(cfg), root, scope=scope, target=target,
-                       days=days, note=note, actor="console")
+                       days=days, note=note, actor="console", public=public)
 
 
 def _act_share_revoke(cfg, payload: dict, preview: bool) -> dict:

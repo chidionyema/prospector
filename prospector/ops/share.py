@@ -306,30 +306,56 @@ def _now() -> float:
 
 
 def status_of(row: dict, now: float | None = None) -> str:
+    """live, expired or revoked. A PUBLIC share has no expiry, so `expires_at` is None.
+
+    The None case is written out rather than leaning on `or 0`, which is what the check used to
+    say: `float(row.get("expires_at") or 0) <= now` reads a missing expiry as the epoch and calls
+    a link that should never expire expired. A row with no `expires_at` KEY is a different
+    thing from one whose expiry is None, and it still fails closed. Revocation is checked
+    first either way — it is how a public link dies.
+    """
     now = _now() if now is None else now
     if row.get("revoked_at"):
         return "revoked"
-    if float(row.get("expires_at") or 0) <= now:
+    # The DEFAULT is 0, not None. A public row carries `"expires_at": None` deliberately; a row
+    # with no expiry key at all is a broken row and must fail closed, not become immortal.
+    expires_at = row.get("expires_at", 0)
+    if expires_at is not None and float(expires_at) <= now:
         return "expired"
     return "live"
 
 
 def mint(store_ops_dir: Path, repo_root: Path, *, scope: str, target: str,
-         days: int = DEFAULT_DAYS, note: str = "", actor: str = "console") -> dict:
+         days: int = DEFAULT_DAYS, note: str = "", actor: str = "console",
+         public: bool = False) -> dict:
     """Create a share and return it WITH its token, once.
 
     Refuses at mint time as well as at read time. Both checks are load-bearing: this one gives
     the operator an error they can act on, and the read-time one covers everything that changes
     between now and whenever the link is opened.
+
+    PUBLIC vs PRIVATE is a decision about the CLOCK, and nothing else. The founder's ruling,
+    2026-08-21, choosing it over two wider options: a public link is "the same secret link, no
+    expiry". So both kinds are the same unguessable token, both are refused by the same
+    deny-list, both are logged on every read, and both die the moment you revoke them. A private
+    link also dies on its own after `days`; a public one waits to be revoked.
+
+    What public deliberately does NOT mean here: it does not mint a readable URL, it does not
+    list the file anywhere, and it does not make anything crawlable. Nothing about a public link
+    is reachable without holding the token.
     """
     if scope not in SCOPES:
         raise ValueError(f"scope must be one of {', '.join(SCOPES)}")
-    try:
-        days = int(days)
-    except (TypeError, ValueError):
-        raise ValueError("days must be a whole number of days") from None
-    if not 1 <= days <= MAX_DAYS:
-        raise ValueError(f"days must be between 1 and {MAX_DAYS}")
+    public = bool(public)
+    if public:
+        days = 0  # recorded as "no expiry"; the days field is meaningless for a public link
+    else:
+        try:
+            days = int(days)
+        except (TypeError, ValueError):
+            raise ValueError("days must be a whole number of days") from None
+        if not 1 <= days <= MAX_DAYS:
+            raise ValueError(f"days must be between 1 and {MAX_DAYS}")
 
     target = (target or "").strip().strip("/")
     if scope == "repo":
@@ -356,7 +382,8 @@ def mint(store_ops_dir: Path, repo_root: Path, *, scope: str, target: str,
         "note": (note or "").strip()[:200],
         "actor": actor,
         "created_at": now,
-        "expires_at": now + days * 86_400,
+        "public": public,
+        "expires_at": None if public else now + days * 86_400,
         "revoked_at": None,
         "reads": 0,
         "last_read_at": None,
