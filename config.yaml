@@ -2633,7 +2633,30 @@ dedup_token_threshold: 0.34
 # stops the batch regardless. 0 disables the floor and restores the pure-share behaviour.
 schedule:
   cadence: daily
-  batch_size: 50
+  # 50 -> 10 on 2026-08-21, and this is a MEASURED response to a live condition, not a taste.
+  # Founder, verbatim: "when ninina is down we need to reduce the rate of processing across
+  # platfron, or when prinanry brain is down", "else the free ones will ehaust fast", "so just
+  # 10", "rather than 50".
+  #
+  # The condition is live right now. MiniMax heads every chain and its token plan is spent —
+  # HTTP 429, status_code 2056, "Token Plan usage limit reached" — so the brain actually serving
+  # is the free Groq tier appended to `operator:` the same day. Groq's free `on_demand` limits
+  # for `openai/gpt-oss-120b` are 30 RPM / 1,000 RPD / 8,000 TPM / 200,000 TPD, and one check
+  # call is ~12,750 characters, which puts the ceiling at 10-17 vets/day. A wave of 50 into a
+  # tier that can finish 10-17 does not produce more; it produces backlog and burns the daily
+  # quota before the drain gets any of it. That is the exact failure the founder named.
+  #
+  # This is the INTERIM. It is unconditional, so it also throttles the engine after MiniMax
+  # recovers, which is wrong in the other direction. R11 in docs/PROVIDER_PLUGGABILITY_PROGRAM.md
+  # is the real answer: clamp the wave only while the head of `operator:` carries a live dead
+  # mark and a tier behind it is alive, self-releasing when the head recovers. Raise this back to
+  # 50 when R11 lands, or sooner if MiniMax is funded — one line, and the console can turn it.
+  #
+  # `generation.candidates_per_signal` is NOT the same knob doubled. `_batch_size`
+  # (prospector/scheduler/run_scheduled.py:101) passes this as `k=` to `run_signal`, and
+  # `generate.py:362` reads `candidates_per_signal` only when no `k` is given. The daemon path
+  # uses this one; the CLI path uses the other. They are alternatives, not factors.
+  batch_size: 10
   # `interval_s` — seconds between production cycles. With `batch_size` above, these two are the
   # whole answer to how much this engine invents and how often. Until 2026-08-17 this number did
   # not exist here: the cadence was `--interval 7200` in com.prospector.scheduler.plist, so the

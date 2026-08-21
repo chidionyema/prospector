@@ -27,6 +27,7 @@ Founder directives, 2026-08-21, verbatim:
 | R8 | A provider enabled from ops can be **tested from ops**, confirming the MODEL answers | "when enabeld fron ops, should be able to test fron ops console and cconfirn nodel is active" |
 | R9 | A **heartbeat** — liveness is checked on a cadence, not only when a run happens to call | "need heatbeat" |
 | R10 | R8 and R9 cover **every model the platform can build**, not the configured chains | "for all nodels in platforn" |
+| R11 | When the **primary brain is down**, cut the processing rate across the platform — **10 instead of 50** — and make both the switch and the numbers editable from the ops console | "when ninina is down we need to reduce the rate of processing across platfron, or when prinanry brain is down", "else the free ones will ehaust fast", "so just 10", "rather than 50", "but fully confugurble fron ops" |
 
 Standing constraints that bind this work:
 
@@ -180,6 +181,7 @@ that runs before `load_config` installs the declared block.
 | R4 seamless add | **DONE for the engine and the config page** | a declaration is one config block; declared providers now carry console model pins |
 | R1 any provider, any part | **PARTLY** | moat/noncritical/artifact/marketing/grounding all accept a declared name; the trust fence still bars a declared provider from `moat_primary` until the founder says otherwise (Q2) |
 | R2 harness agent | **NOT STARTED** | see below |
+| R11 degraded-rate brake | **NOT BUILT** | designed and measured 2026-08-21; section 7 |
 
 Not yet done, and named rather than left implied:
 
@@ -194,3 +196,70 @@ Not yet done, and named rather than left implied:
 are Claude Code agent definitions and their `model:` frontmatter selects a Claude model through
 Claude Code's own runtime, which we do not control. Making R2 true for arbitrary providers is a
 different piece of work from R1 and must not be reported as covered by it.
+
+
+## 7. R11 — cut the rate when the primary brain is down
+
+Founder, 2026-08-21: "when ninina is down we need to reduce the rate of processing across
+platfron, or when prinanry brain is down", "else the free ones will ehaust fast", "so just 10",
+"rather than 50", "but fully confugurble fron ops".
+
+### "50" is one number wearing two names, not two that multiply
+
+| knob | value | who reads it |
+|---|---|---|
+| `schedule.batch_size` | 50 | the daemon — `_batch_size` (`prospector/scheduler/run_scheduled.py:101`), passed as `k=` to `run_signal` |
+| `generation.candidates_per_signal` | 50 | `prospector/generate.py:362`, only as the default when no `k` is passed — the CLI path |
+
+`run_signal(k=batch_size)` overrides `candidates_per_signal`, so on the daemon path only the
+first is live and on the CLI path only the second is. They are alternatives, not factors.
+Braking both to 10 is a 5x cut, not a 25x one.
+
+### The gap
+
+Every brake the scheduler already has fires on a different condition:
+`gate_generation_on_grounding` (`:660`) on degraded RETRIEVAL, `backlog_cap` (`:719`) on a stock
+ceiling, `_moat_blind_reason` (`:788`) only when EVERY brain is dead, and
+`_autopause_generation_on_barren_streak` (`:2174`) after N barren ticks. None fires when the
+PRIMARY is down and a fallback is alive — which is the case that does the most damage, because
+the wave still goes out at 50 and every call in it lands on the free tier.
+
+### Design
+
+**Trigger.** The head of `operator:` carries a live dead mark (`health.is_dead`) while a tier
+behind it is alive. Read once per tick, never cached.
+
+**Effect.** The wave size is clamped DOWN. It can never raise the rate, and a degraded value set
+above the normal one is coerced to the normal one.
+
+**One funnel.** `_batch_size` (`run_scheduled.py:101`) is the single place the daemon decides a
+wave size, so the brake goes there and cannot be half-applied. The CLI path takes the same clamp
+where `_declared_k` is resolved (`prospector/run.py:1919`).
+
+**Three new keys, all console-editable** — that is the second half of the requirement:
+
+| key | default |
+|---|---|
+| `schedule.rate_brake_on_primary_down` | `true` |
+| `schedule.degraded_batch_size` | `10` |
+| `generation.degraded_candidates_per_signal` | `10` |
+
+**It self-releases when the primary recovers**, unlike the barren-streak autopause. That autopause
+deliberately does not self-clear, because a self-resume puts the box back into the state that took
+the console down. A rate brake is a throttle, not a stop: it cannot re-create that state, and a
+throttle needing a human to lift it would leave the platform slow forever after one blip.
+
+**The drain is untouched.** Throttling it would leave the backlog the outage created unfinished,
+which is the opposite of CLAUDE.md's rule that generation must not outrun its own drain.
+
+### The blocker that turned out not to exist
+
+`prospector/ops/console_api.py` claimed `schedule.batch_size` could not be edited because
+`schedule:` was "a multi-line FLOW mapping". It is not one. Measured 2026-08-21, two angles:
+`config.yaml` writes `schedule:` in block style with no brace anywhere, and
+`yaml_surgery.apply_edits` on `schedule.batch_size`, `schedule.interval_s` and
+`generation.candidates_per_signal` returned no unresolved paths and rewrote all three lines. So
+"fully configurable from ops" needs nothing but the knob registrations. The false comment mattered
+enough to fix in the same change: `batch_size` is the platform's one production-rate control, and
+a comment saying it cannot be turned from the console sends the next agent around a wall that is
+not there.
