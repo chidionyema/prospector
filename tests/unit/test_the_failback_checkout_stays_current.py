@@ -19,6 +19,7 @@ green. Three independent causes, one test each here:
 from __future__ import annotations
 
 import importlib.util
+import os
 import subprocess
 from pathlib import Path
 
@@ -227,6 +228,78 @@ def test_zero_behind_only_reads_ok_when_the_ref_is_fresh(code, expect_ok):
 def test_an_unreadable_code_axis_says_so_out_loud():
     ef = _load("engine_failover")
     assert "UNKNOWN" in ef.standby_code_line({"error": "no checkout at /nope"})
+
+
+# --- cause 3, one level down: the drift figure existed for the CHECKOUT, not for the code that
+# --- actually runs. Measured 2026-08-21: ~/.prospector/bin/engine_failover.frozen.py was the
+# --- 2026-08-18 copy, 594 lines behind scripts/engine_failover.py, so commit 3f7550e5 (refuse a
+# --- standby pull that did not reach the end of the source) was merged and never reached the job
+# --- doing the pulling. Three short pulls were promoted and the standby spend ledger fell to
+# --- 1,572,864 bytes against a source of 454,701,248. `standby CODE:` read OK the whole time.
+
+
+@pytest.mark.parametrize(
+    "run,expect_ok",
+    [
+        ({"same_file": True, "running": "/repo/scripts/engine_failover.py"}, True),
+        ({"same_file": False, "digest": "aaaaaaaaaaaa", "checkout_digest": "aaaaaaaaaaaa"}, True),
+        ({"same_file": False, "digest": "aaaaaaaaaaaa", "checkout_digest": "bbbbbbbbbbbb"}, False),
+        ({"error": "no such file"}, False),
+    ],
+)
+def test_a_frozen_copy_that_differs_from_the_checkout_never_reads_ok(run, expect_ok):
+    ef = _load("engine_failover")
+    line = ef.running_code_line(run)
+    assert (" OK " in line) is expect_ok, line
+
+
+def test_the_drifted_copy_names_the_command_that_fixes_it():
+    """A red line an operator cannot act on gets muted. This one carries its own remedy."""
+    ef = _load("engine_failover")
+    line = ef.running_code_line(
+        {"same_file": False, "digest": "aaaaaaaaaaaa", "checkout_digest": "bbbbbbbbbbbb"})
+    assert "install_failover_watch.sh" in line, line
+
+
+def test_the_running_copy_is_compared_by_content_not_by_mtime(tmp_path, monkeypatch):
+    """Two bytes-identical files with different timestamps are the SAME code.
+
+    Grading a copy by its mtime is the proxy this estate keeps paying for: it goes red on a
+    harmless `cp` and green on a file edited in place. The probe hashes the bytes.
+
+    Built entirely in tmp_path, deliberately. The first version of this test asserted on the
+    real STANDBY_CHECKOUT, which is a laptop path (`engine_failover.py:76`); CI runs the repo at
+    /home/runner/_work and the test went red for the host it ran on rather than for the code.
+    """
+    ef = _load("engine_failover")
+    mirror_dir = tmp_path / "checkout" / "scripts"
+    mirror_dir.mkdir(parents=True)
+    mirror = mirror_dir / "engine_failover.py"
+    running = Path(ef.__file__)
+    mirror.write_bytes(running.read_bytes())
+    # Same bytes, an hour apart. mtime is the proxy; content is the answer.
+    os.utime(mirror, (0, 0))
+    monkeypatch.setattr(ef, "STANDBY_CHECKOUT", tmp_path / "checkout")
+
+    probe = ef.probe_running_code()
+    assert probe.get("error") is None, probe
+    assert probe.get("same_file") is False, probe
+    assert probe["digest"] == probe["checkout_digest"], probe
+    assert " OK " in ef.running_code_line(probe), probe
+
+    # And a real difference still reads as drift, so the test above is not passing by accident.
+    mirror.write_bytes(running.read_bytes() + b"\n# drift\n")
+    drifted = ef.probe_running_code()
+    assert drifted["digest"] != drifted["checkout_digest"], drifted
+    assert "!!" in ef.running_code_line(drifted), drifted
+
+
+def test_status_actually_prints_the_running_code_line():
+    """Wiring, not behaviour. A correct helper nothing calls is the exact shape of cause 3:
+    the number was computable and never printed for the whole of the period it was wrong."""
+    body = (ROOT / "scripts" / "engine_failover.py").read_text()
+    assert "running_code_line(" in body.split("def cmd_status", 1)[-1] or \
+        body.count("running_code_line(") >= 2, "status never renders the line it computes"
 
 
 def test_t_stop_actually_uses_the_sparing_list():
