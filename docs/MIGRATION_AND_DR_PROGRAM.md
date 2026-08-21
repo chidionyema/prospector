@@ -961,6 +961,76 @@ is worse than no verifier, because it is believed.**
 
 ---
 
+### 5.2 Revisited 2026-08-21 — the eleven tools were picked before Kubernetes was the answer
+
+Founder, 2026-08-21: *"so nay need to revisit tooling"*, *"ad see if justificitos still hold"*,
+*"againlook t open source also and see anyhing we can use"*, *"reliable"*, *"trusted"*.
+
+§5 and §5.1 picked eleven tools for an estate that ran on a laptop and on Fly. §10.4 then made a
+Kubernetes cluster the place both of those move to. Nobody read the two sections together. Reading
+them together drops two tools, shrinks two more, and adds one that does more of the work than any
+of the eleven.
+
+**The contradiction, in the document itself.** Line 865 says Dagu replaces all 31 launchd jobs.
+Line 1612 says a Kubernetes `CronJob` replaces the launchd jobs one for one. Both cannot be the
+plan. This is measured from the file, not argued.
+
+**1. Velero is the change that matters, and it did not exist as an option when §5 was written.**
+It backs up a whole cluster — the running things, the settings, and the disks — and restores it
+into a *different* cluster. That is the 30-minute move, done by a tool instead of by us. Broadcom
+gave it to the Cloud Native Computing Foundation on 11 March 2026. It is filed at the foundation's
+lowest tier because the paperwork is three months old, not because the tool is: it has been the
+usual way to back up a Kubernetes cluster for years, under its old name Heptio Ark.
+*What it changes:* requirement D-P1.5, the ten-plane bring-up, stops being eleven hand-written
+steps and becomes one restore, plus proof.
+*What it does not do:* it copies a SQLite file the same wrong way we do today. Point 3 below.
+
+**2. Dagu is dropped. Use `CronJob`.** Dagu was picked to replace 31 laptop jobs. Once those jobs
+run on a cluster, `CronJob` already does it, with history and retries, and there is nothing extra
+to install, learn or keep patched. A search for how Dagu behaves in production in 2026 returns
+nothing to read — that is the answer to *"trusted"*. If we later need one job to wait on another,
+the trusted choice is Argo Workflows, which is a graduated foundation project and whose scheduled
+jobs are built to behave like `CronJob`.
+
+**3. restic and Litestream both stand, and Velero does not replace either.** Velero copies a disk;
+it cannot make a live SQLite file safe to copy, which is the exact fault §5.1 point 3 already
+names in the Hermes database. Litestream keeps the money database continuously copied. restic
+keeps a copy that survives the cluster being gone, and its `check --read-data` opens the backup
+instead of grading the file — the reason it beat Kopia stands unchanged.
+
+**4. Two shrink, because the cluster does most of their job.** s6-overlay was chosen to keep
+processes alive inside a container; on a cluster that is the cluster's own job, so it is needed
+only where a container really must run two things. Gatus was chosen to check nine endpoints;
+the cluster checks its own, so Gatus is kept only for what the cluster cannot see — the public
+website, from outside. Healthchecks stays as the dead-man's switch: nothing inside a cluster can
+tell you the cluster stopped.
+
+**5. Secrets: SOPS with age still stands, and it is now better supported than when it was picked.**
+SOPS is a foundation project and age is a first-class way to encrypt with it. The popular
+alternative, the External Secrets Operator, needs a hosted secret manager to read from — we have
+none, the founder has rejected cloud key services by name, and adding one is a monthly bill and a
+new dependency. So: no change.
+
+**6. No change to** Steampipe (still the only answer to *"probe and audit any systen"*), octoDNS,
+Vector, OpenTofu (still parked until a second provider hurts), mise with a uv lock, Pumba and
+Toxiproxy, or Playwright.
+
+**Net: eleven tools become nine, and one of the nine is new.** Out: Dagu, s6-overlay as a general
+rule. In: Velero. Reduced in scope: Gatus.
+
+**Nothing here is settled until a drill proves it.** The claim that has to be tested first is
+Velero's: restore this estate into a second, empty cluster and run each plane's own check against
+it. Until that has run green, Velero is a decision on paper, which §5.1 already says is not an
+improvement.
+
+Sources: [Velero](https://velero.io/) ·
+[Broadcom donates Velero to CNCF, InfoQ, 2026-05](https://www.infoq.com/news/2026/05/broadcom-velero-cncf/) ·
+[Velero at CNCF](https://www.cncf.io/projects/velero/) ·
+[Argo Workflows scheduled workflows](https://argo-workflows.readthedocs.io/en/latest/cron-workflows/) ·
+[Kubernetes secrets in 2026: ESO, Sealed Secrets, SOPS, Vault](https://sanj.dev/post/kubernetes-secrets-management-comparison/)
+
+---
+
 ## 6. The delivery plan
 
 Founder, 2026-08-20: *"i need to see a detailed pla of how you are going to deliver this project.
