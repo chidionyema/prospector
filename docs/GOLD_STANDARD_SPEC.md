@@ -14,6 +14,11 @@
 
 ## 1. The bar, cut into seven numbers
 
+> `docs/PLATFORM_ENGINEERING_PRINCIPLES.md` is the outside view of this bar: ten principles
+> from the published discipline (CNCF, DORA, Team Topologies, AWS Well-Architected, Google DiRT),
+> each naming the clause below that it steers. It also carries two proposed clauses this table
+> does not have — an RPO and a source-is-gone scenario — which are in §7 below awaiting a ruling.
+
 Founder, 2026-08-19, verbatim:
 
 > *"if i have 30 ninutes to nigrate the wwhole stack, donain, third party deps/ donain ,
@@ -303,7 +308,13 @@ Each of these is a place the programme could sink a week and not move a clause.
 - **No orchestrator.** `docs/STACK_AUDIT.md` §5 already refused Kamal and Nomad. The runner is a
   Python file that shells out to adapters.
 
-## 7. The one thing that needs your ruling
+## 7. The three things that need your ruling
+
+A3 was the only one when this file was written. Research into the published platform-engineering
+discipline on 2026-08-21 added two more; both are argued in full in
+`docs/PLATFORM_ENGINEERING_PRINCIPLES.md` Part 3.
+
+### 7.1 Clause A3 — what may pause
 
 **Clause A3 has two readings and they cost very differently.**
 
@@ -323,6 +334,40 @@ Nobody experiences a paused batch; a shopper experiences a dropped request. Read
 number that only a machine can see, and it buys it in the one part of the system where a bug
 spends money twice. If you want reading 2 later, the lease is additive and the plan does not
 change shape — the engine step's `downtime` moves from `stop` to `zero` and nothing else moves.
+
+### 7.2 Proposed clause A8 — the RPO, with a number
+
+Every clause in §1 is about time or completeness. None is about **loss**. AWS Well-Architected
+REL13 treats recovery time and recovery point as two independent numbers, and a plan carrying only
+one of them is half a plan.
+
+Measured 2026-08-21: `RPO` and `RTO` appear **0 times** across `docs/`, `kit/`, `scripts/` and
+`deploy/` on `origin/main`. The only number acting as an RPO is `max_age_hours: 24`
+(`ops/config/offsite_backup.yaml:26`), which the money database inherits because its own source
+block sets no override.
+
+So the position today is: for a **planned** migration the effective RPO is 0, because the cutover
+recopies after the source stops. For an **unplanned** one it is **up to 24 hours of orders**. Those
+two numbers are a day apart and only the second was ever written down, in a config file, as a
+monitor threshold rather than as a business decision.
+
+**Recommendation: adopt A8 at 24 hours for now, and say so out loud rather than leaving it
+implicit.** Tightening it is a real cost — it means the order database stops being a file on one
+volume — and that cost belongs to the storefront-Postgres work already on the record, not here.
+
+### 7.3 Proposed scenario G4 — the source is gone
+
+G1, G2 and G3 differ in where we are going. None differs in what we still have: all three assume a
+readable source. Two angles say the kit cannot execute the other case. `kit/classes/datastore.sh`
+packs from `$FROM`, so a dead source yields no seed; and the target contract itself defines
+`t_pack` as *"pack this platform's store, for when it is the SOURCE of a move"*
+(`deploy/PORTABILITY.md:40`) — there is no verb for a source that is gone.
+
+The programme is called migration **and DR** and currently builds the first half.
+
+**Recommendation: add G4 — Fly unreachable, only the offsite bucket and the declarations as
+inputs, same 1800s, same completed purchase at the end.** `scripts/restore_drill.py` already does
+this for the engine store and is the seed of it; what it does not cover is everything else.
 
 ## 8. Speed — how this gets built fast
 
