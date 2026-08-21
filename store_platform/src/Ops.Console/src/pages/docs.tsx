@@ -232,6 +232,25 @@ function ShareDoc({ name }: { name: string }) {
     </>
   );
 
+  // Until the share list has answered, this component cannot know which of its two branches is
+  // the truth, and BOTH of them are writes. Offering either one is offering an action that may be
+  // retracted under the operator's hands. Measured 2026-08-21 by the e2e share journey: the mint
+  // form rendered for a document that already had a live link, accepted a note, and then vanished
+  // mid-action when the list arrived — silently, with nothing on screen to say what had happened.
+  // A write you cannot yet justify is a write you do not offer.
+  const stateKnown = !shares.error && !(shares.loading && !shares.data);
+
+  if (!stateKnown) {
+    return (
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        {status}
+        <Button disabled>
+          {shares.error ? 'Sharing unavailable' : 'Checking who can read it…'}
+        </Button>
+      </div>
+    );
+  }
+
   if (!panel) {
     return (
       <div className="mb-3 flex flex-wrap items-center gap-2">

@@ -19,7 +19,7 @@ const PASSWORD = 'e2e-password';
 
 //: The phone projects exist to check width, overflow and tap targets. These two ask different
 //: questions and set their own viewports, so they run in projects of their own.
-const NOT_THE_PHONE = ['**/a11y.spec.ts'];
+const NOT_THE_PHONE = ['**/a11y.spec.ts', '**/journeys.spec.ts'];
 
 export default defineConfig({
   testDir: './e2e',
@@ -56,6 +56,13 @@ export default defineConfig({
       use: { viewport: { width: 320, height: 568 } },
     },
     { name: 'a11y', testMatch: '**/a11y.spec.ts' },
+    //: The journeys ask whether the control plane WORKS, which is not a question about
+    //: width. Running them once per phone project would be the same proof twice.
+    {
+      name: 'journeys',
+      testMatch: '**/journeys.spec.ts',
+      use: { viewport: { width: 1280, height: 900 } },
+    },
   ],
   // BUILD, then start. `next start` serves whatever `.next` happens to be on disk, and it does not
   // check whether that build matches the source — so a spec run against a stale bundle passes,
