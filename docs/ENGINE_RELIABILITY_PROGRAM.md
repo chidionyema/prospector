@@ -639,9 +639,27 @@ dispatches a deploy and never ships anything, so it is `production-runs-main.yml
 
 Hole 1 stays open. The reconciler heals a bad state; it does not prevent one. Making
 `deploy-engine.yml` wait for CI green — a `workflow_run` gate instead of `on: push` — would stop
-an ungraded commit reaching production at all, but it also changes the deploy latency for every
-merge and puts the deploy behind a ~25 minute CI run, which is the kind of change that needs the
-founder's ruling rather than an agent's. It is the next decision on this file, not a task.
+an ungraded commit reaching production at all, at the price of the CI wait on every merge. That
+price is the founder's to accept, so it is the next decision on this file, not a task.
+
+**The price, measured rather than guessed.** This paragraph said "a ~25 minute CI run" until
+2026-08-21, which was a number from memory, and it made the case against waiting sound much
+stronger than it is. `gh run list --workflow ci.yml --branch main --limit 20`, taking
+`updatedAt - createdAt` so the queue is counted the way a waiting deploy would feel it:
+
+| population | n | median | min | max | green |
+|---|---|---|---|---|---|
+| CI on main, last 20 concluded | 20 | 8.5 min | 5.0 | 63.1 | 16/20 |
+| the last 12 of those | 12 | 5.7 min | 5.0 | 10.2 | — |
+| `deploy-engine.yml`, last 8 | 8 | 3.9 min | 3.2 | 4.7 | 8/8 |
+
+The 25.8, 31.9 and 63.1 minute runs are all older than the CI fleet work, so the recent figure is
+the one that decides this. **The gap, on the very commit that produced this section:** `61cfb7d1`
+deployed in 3.2 minutes and was graded in 5.3. The image was serving in production about two
+minutes before its own verdict arrived. Not hours — two minutes, on every merge, every time.
+
+At roughly six minutes of added latency, the argument against waiting is weak. The recommendation
+is to gate it. The ruling is still the founder's.
 
 ## Open decisions (not taken unilaterally)
 
