@@ -538,7 +538,7 @@ def _read_docs(cfg, args: dict) -> dict:
 
 
 def _read_automations(cfg, args: dict) -> dict:
-    """Every automation on this estate, each one run for real, right now.
+    """Every automation on this estate, each one run for real.
 
     Registered 2026-08-19. `automations_view.py` had existed for weeks with no caller: it was
     written, tested, and reachable from nothing — not READS, not the browser allow-list, not a
@@ -548,10 +548,16 @@ def _read_automations(cfg, args: dict) -> dict:
     The view discovers its own subjects, so a new automation is two files and no console edit.
     `tests/unit/test_a_view_module_with_no_caller_is_unreachable.py` fails if the next one is
     written and left unwired.
-    """
-    from .automations_view import read_automations
 
-    return read_automations(cfg, args)
+    SERVED FROM A SNAPSHOT since 2026-08-21, and this one changes what the page MEANS, so it says
+    so on the page. It used to run every automation at the moment you looked, for 10.16s. It now
+    shows the last such run and how long ago it was, and starts another in the background when
+    that is over five minutes old. Running every automation on this estate because somebody
+    opened a tab was never the right price. See `prospector/ops/slow_read.py`.
+    """
+    from . import slow_read
+
+    return slow_read.serve_merged("automations")
 
 
 def _read_incidents(cfg, args: dict) -> dict:
@@ -1649,16 +1655,17 @@ def _read_content_rules(cfg, args: dict) -> dict:
 def _read_processes(cfg, args: dict) -> dict:
     """Every automated process on this estate, graded -- see scripts/process_audit.py.
 
-    Exit 1 is the NORMAL answer here, not a failure to read. The script exits non-zero whenever
-    something is failing, which is exactly the state this page exists to show; treating that as an
-    error would blank the page at the only moment it matters.
+    SERVED FROM A SNAPSHOT since 2026-08-21, and it had to be. That script takes 141.8s measured
+    (34.6s user, 28.8s system, 44% CPU -- the rest is network wait), and `OPS_READ_TIMEOUT_MS` is
+    120_000. This panel could not succeed: it spun for two minutes and reported a gateway timeout,
+    every time. `prospector/ops/slow_read.py` carries the measurement and the design.
+
+    Exit 1 is still the NORMAL answer from the audit, not a failure to read, and the snapshot
+    writer treats it that way -- the test is whether stdout parsed, never the exit code.
     """
-    proc = subprocess.run(
-        [sys.executable, str(_AUDIT_SCRIPT), "--json"],
-        cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=240)
-    if not proc.stdout.strip():
-        raise RuntimeError(f"process_audit.py produced nothing: {proc.stderr[-400:]}")
-    return json.loads(proc.stdout)
+    from . import slow_read
+
+    return slow_read.serve_merged("processes")
 
 
 def _read_deploys(cfg, args: dict) -> dict:
@@ -1668,20 +1675,18 @@ def _read_deploys(cfg, args: dict) -> dict:
     merge sat undeployed for twelve hours behind a queued run, and the only way to see it was
     to compare a Fly release to origin/main by hand.
 
-    The exit code is deliberately ignored. `deploy_status.py` exits 1 when something is STALLED
-    and 2 when it could not measure something; both of those are the ANSWER, and treating them
-    as a failed read would blank the panel at the only moment it matters.
+    SERVED FROM A SNAPSHOT since 2026-08-21. Measured at 12.45s inside a page load, against a
+    median of 0.83s for the other 37 views -- it worked, it was just fifteen times the cost of
+    everything around it, because it asks Fly and GitHub over the network for every deployable.
+    The staleness window is the shortest of the three (240s) because a deploy can land at any
+    minute. See `prospector/ops/slow_read.py`.
+
+    The exit code is deliberately ignored there too. `deploy_status.py` exits 1 when something is
+    STALLED and 2 when it could not measure something; both of those are the ANSWER.
     """
-    proc = subprocess.run(
-        [sys.executable, str(_DEPLOY_SCRIPT), "--json"],
-        cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=300)
-    if not proc.stdout.strip():
-        raise RuntimeError(f"deploy_status.py produced nothing: {proc.stderr[-400:]}")
-    view = json.loads(proc.stdout)
-    for row in view.get("deployables", []):
-        row.update(_deploy_route(str(row.get("name") or "")))
-        row.update(_rollback_route(str(row.get("name") or "")))
-    return view
+    from . import slow_read
+
+    return slow_read.serve_merged("deploys")
 
 
 #: The tool that ships one service. Named once, so the button lookup below and the registry
@@ -3221,6 +3226,58 @@ def _act_share_revoke(cfg, payload: dict, preview: bool) -> dict:
     return _share.revoke(_store_ops_dir(cfg), share_id, actor="console")
 
 
+
+def _act_snapshot_refresh(cfg, payload: dict, preview: bool) -> dict:
+    """Re-measure one of the three slow views now, instead of waiting for a read to notice.
+
+    A read already starts a background refresh when its snapshot goes stale, so this button is
+    not how the page stays current -- it is for the moment after you have changed something and
+    want the answer now rather than in a quarter of an hour.
+
+    It runs on the ACT path deliberately. `OPS_ACT_TIMEOUT_MS` is 1_860_000 against the read
+    path's 120_000, and the estate audit measured 141.8s, so this is the only path in the console
+    on which it can finish at all.
+
+    Nothing is destroyed and nothing is spent. The producer re-reads Fly, GitHub and launchd and
+    overwrites one cache file, and a producer that fails leaves the previous answer in place.
+    """
+    from . import slow_read
+
+    view = str(payload.get("view") or "").strip()
+    if view not in slow_read.PRODUCERS:
+        raise ValueError(f"unknown view {view!r}; expected one of "
+                         f"{', '.join(sorted(slow_read.PRODUCERS))}")
+    before = slow_read.load(view)
+
+    if preview:
+        return {
+            "action": "snapshot.refresh",
+            "view": view,
+            "snapshot_now": before.get("captured_at_iso") or "there is no snapshot yet",
+            "age_s": before.get("age_s"),
+            "already_refreshing": before.get("refreshing"),
+            "effect": (f"Re-runs the {view} measurement for real and replaces the cached answer. "
+                       "Nothing else on the estate changes."),
+            "cost": ("Network only. The estate audit measured 141.8s on 2026-08-21 and the other "
+                     "two are around ten seconds, so expect to wait."),
+            "reversible": ("Nothing to reverse — it is a measurement. A run that fails leaves the "
+                           "previous answer untouched."),
+        }
+
+    receipt = slow_read.refresh(view, cfg)
+    if not receipt.get("written"):
+        raise RuntimeError(f"the {view} refresh did not produce an answer, so the previous one is "
+                           f"still in place: {receipt.get('reason')}")
+    after = slow_read.load(view)
+    return {
+        "action": "snapshot.refresh",
+        "view": view,
+        "took_s": receipt.get("took_s"),
+        "captured_at_iso": after.get("captured_at_iso"),
+        "note": f"{view} re-measured in {receipt.get('took_s')}s; the page is now current",
+    }
+
+
 ACTIONS: dict[str, Callable[[Any, dict, bool], dict]] = {
     "shelf.repair_copy": _act_shelf_repair_copy,
     "shelf.publish_pending": _act_shelf_publish_pending,
@@ -3241,6 +3298,7 @@ ACTIONS: dict[str, Callable[[Any, dict, bool], dict]] = {
     "engine.switch": _act_engine_switch,
     "engine.arm": _act_engine_arm,
     "engine.disarm": _act_engine_disarm,
+    "snapshot.refresh": _act_snapshot_refresh,
 }
 
 #: Actions the console refuses by name rather than by absence, so the error says WHY.
