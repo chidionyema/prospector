@@ -47,6 +47,7 @@ should be looked at, not assumed.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -321,6 +322,60 @@ def standby_code_line(code: dict) -> str:
             f"({age_txt}) - a failover starts from THIS commit")
 
 
+def probe_running_code() -> dict:
+    """Is the file running RIGHT NOW the same bytes as the checkout's copy?
+
+    A different axis again from `probe_standby_code`, and the one that was missing. That
+    function grades the CHECKOUT a failback starts from. This one grades the copy of this
+    script that launchd is actually executing, and the two are different files.
+
+    Measured 2026-08-21. `~/.prospector/bin/engine_failover.frozen.py` was the 2026-08-18 copy,
+    594 lines behind `scripts/engine_failover.py`. The launcher runs the frozen copy on purpose
+    -- a disaster-recovery tool that reads out of a git worktree dies when someone deletes the
+    worktree -- and it is refreshed only by `deploy/install_failover_watch.sh`, which nobody had
+    run in three days. So commit 3f7550e5, which refuses a standby pull that did not reach the
+    end of the source, was merged to main and never reached the job that does the pulling.
+    Three short pulls were promoted over the good copy and the standby spend ledger fell to
+    1,572,864 bytes against a source of 454,701,248. The checkout was 0 commits behind the
+    whole time, and that line printed OK.
+    """
+    out: dict = {"running": None, "checkout_copy": None}
+    try:
+        running = Path(__file__).resolve()
+        out["running"] = str(running)
+        mirror = (STANDBY_CHECKOUT / "scripts" / "engine_failover.py").resolve()
+        out["checkout_copy"] = str(mirror)
+        if running == mirror:
+            # Running straight out of the checkout. There is no second copy to drift, and
+            # saying "matches" here would invent a comparison that did not happen.
+            out["same_file"] = True
+            return out
+        out["same_file"] = False
+        out["digest"] = hashlib.sha256(running.read_bytes()).hexdigest()[:12]
+        out["checkout_digest"] = hashlib.sha256(mirror.read_bytes()).hexdigest()[:12]
+    except OSError as exc:
+        out["error"] = str(exc)[:200]
+    return out
+
+
+def running_code_line(run: dict) -> str:
+    """One line an operator can act on: is the failover code that RUNS the code that was fixed?
+
+    Split from the probe for the same reason `standby_code_line` is: so the wording is testable
+    without two copies of the file on disk, and so the comparison cannot be computed and then
+    never printed -- which is the shape of every defect this pair of lines exists to catch.
+    """
+    if run.get("error"):
+        return f"failover CODE: UNKNOWN - {run['error']}"
+    if run.get("same_file"):
+        return f"failover CODE: OK running from the checkout ({run.get('running', '?')})"
+    if run.get("digest") == run.get("checkout_digest"):
+        return f"failover CODE: OK frozen copy matches the checkout at {run.get('digest', '?')}"
+    return (f"failover CODE: !! the running copy is NOT the checkout copy "
+            f"({run.get('digest', '?')} vs {run.get('checkout_digest', '?')}) - "
+            f"re-run deploy/install_failover_watch.sh, or a merged fix is not what runs")
+
+
 def probe_standby() -> dict:
     """How far back would a failover start? Two axes, and BOTH of them are the exposure.
 
@@ -337,7 +392,8 @@ def probe_standby() -> dict:
     for the operator reading `code`, not for this function. Anything that folds `code` into
     `usable` is changing what the estate does in an outage, which is not a refactor.
     """
-    out: dict = {"files": {}, "code": probe_standby_code()}
+    out: dict = {"files": {}, "code": probe_standby_code(),
+                 "running_code": probe_running_code()}
     oldest = None
     for name in MONEY_FILES:
         f = STANDBY / name
@@ -399,6 +455,7 @@ def cmd_status(args) -> int:
     sb = report["standby"]
     print(f"  standby copy: {'stale by %s min' % sb['staleness_min'] if sb['usable'] else 'MISSING - a failover would start from the laptop own store'}")
     print("  " + standby_code_line(sb.get("code", {})))
+    print("  " + running_code_line(sb.get("running_code", {})))
     if report["consecutive_failed_polls"]:
         print(f"  !! {report['consecutive_failed_polls']} consecutive failed polls of the active side")
     # An unknown active side is not a side, so it cannot be indexed into `sides`. This used to
