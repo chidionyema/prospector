@@ -465,7 +465,68 @@ def _file_lists(path: str, needle: str, mode: str = "exact", ref: str = DEFAULT_
     return False
 
 
-def reconcile(found: list[Found], cfg: dict, committed: set[str] | None) -> list[Row]:
+def cited_issues(cfg: dict) -> set[int]:
+    """Every issue number the declaration cites as the owner of a gap."""
+    nums: set[int] = set()
+
+    def take(entry: object) -> None:
+        if isinstance(entry, dict) and str(entry.get("issue", "")).strip().isdigit():
+            nums.add(int(entry["issue"]))
+
+    for entry in (cfg.get("admitted_gaps") or {}).values():
+        take(entry)
+    for entry in (cfg.get("admitted_blind_classes") or {}).values():
+        take(entry)
+    for entry in (cfg.get("resources") or {}).values():
+        if isinstance(entry, dict):
+            take(entry.get("restore_gap"))
+    return nums
+
+
+def issue_states(nums: set[int]) -> dict[int, str | None]:
+    """Ask the tracker what state each cited issue is in. None means it could not be read.
+
+    An admission is a promise that somebody owns the gap, and the promise is worth nothing
+    once the issue is closed. Nothing checked that until 2026-08-21, when all six numbers in
+    the declaration turned out to be closed and five of them were CSS or copy tickets -- one
+    of them, an em-dash fix, was excusing the only record of who bought what.
+    """
+    states: dict[int, str | None] = {}
+    for n in sorted(nums):
+        try:
+            out = subprocess.run(
+                ["gh", "issue", "view", str(n), "--json", "state", "-q", ".state"],
+                capture_output=True, text=True, timeout=20, cwd=REPO,
+            )
+        except (OSError, subprocess.SubprocessError):
+            states[n] = None
+            continue
+        states[n] = out.stdout.strip().upper() or None if out.returncode == 0 else None
+    return states
+
+
+def stale_citation(num: object, states: dict[int, str | None]) -> str | None:
+    """Why this citation cannot excuse anything, or None when it can.
+
+    Every branch that is not a live open issue returns a reason. There is deliberately no
+    silent fall-through: an unreadable tracker must cost the same as a closed issue, because
+    the alternative is an excuse that quietly survives whatever it was waiting on.
+    """
+    if num is None or not str(num).strip().isdigit():
+        return f"it names {num!r}, which is not an issue number"
+    n = int(num)
+    if n not in states:
+        return f"issue #{n} was not checked"
+    state = states[n]
+    if state is None:
+        return f"issue #{n} could not be read"
+    if state != "OPEN":
+        return f"issue #{n} is {state.lower()}, so nothing owns this gap"
+    return None
+
+
+def reconcile(found: list[Found], cfg: dict, committed: set[str] | None,
+              states: dict[int, str | None]) -> list[Row]:
     """Join what is running to what the repo says about it.
 
     `committed` is every path on the ref. None means the ref could not be read, in which case
@@ -479,8 +540,12 @@ def reconcile(found: list[Found], cfg: dict, committed: set[str] | None) -> list
         entry = _lookup(resources, f.key)
         gap = _lookup(gaps, f.key)
         if gap:
-            row.admitted = str(gap.get("why", "")).strip()
-            row.problem = f"admitted gap (issue #{gap.get('issue', '?')})"
+            why = stale_citation(gap.get("issue"), states)
+            if why:
+                row.problem = f"admission does not hold: {why}"
+            else:
+                row.admitted = str(gap.get("why", "")).strip()
+                row.problem = f"admitted gap (issue #{gap.get('issue', '?')})"
             rows.append(row)
             continue
         if not entry:
@@ -521,9 +586,12 @@ def reconcile(found: list[Found], cfg: dict, committed: set[str] | None) -> list
             # still failed if they were going to, which is what catches the 17th launchd job
             # someone adds with no JSON beside it.
             rgap = entry.get("restore_gap")
-            if rgap:
+            why = stale_citation(rgap.get("issue"), states) if rgap else "there is none"
+            if rgap and not why:
                 row.restore = f"admitted gap (issue #{rgap.get('issue', '?')})"
                 row.admitted = str(rgap.get("why", "")).strip()
+            elif rgap:
+                row.problem = f"no restore command, and the admission does not hold: {why}"
             else:
                 row.problem = "no restore command"
         rows.append(row)
@@ -610,14 +678,17 @@ def render(rows: list[Row], blind: dict[str, str], stale: list[str]) -> str:
     return "\n".join(out)
 
 
-def verdict(rows: list[Row], blind: dict[str, str], cfg: dict) -> int:
+def verdict(rows: list[Row], blind: dict[str, str], cfg: dict,
+             states: dict[int, str | None]) -> int:
     """Non-zero when anything is undescribed, or when a class could not be probed and that
     blindness is not itself admitted. A silent hole must cost the same as a loud one."""
     if any(r.problem and not r.admitted for r in rows):
         return 1
     admitted_blind = cfg.get("admitted_blind_classes") or {}
-    if any(cls not in admitted_blind for cls in blind):
-        return 1
+    for cls in blind:
+        entry = admitted_blind.get(cls)
+        if not isinstance(entry, dict) or stale_citation(entry.get("issue"), states):
+            return 1
     return 0
 
 
@@ -648,7 +719,8 @@ def main(argv: list[str] | None = None) -> int:
     cfg = load_declaration(args.declaration)
     found, blind = sweep(cfg, tuple(args.only) if args.only else CLASSES)
     committed = tracked_paths(args.ref)
-    rows = reconcile(found, cfg, committed)
+    states = issue_states(cited_issues(cfg))
+    rows = reconcile(found, cfg, committed, states)
     stale = stale_entries(rows, cfg) if not args.only else []
 
     report = {
@@ -676,7 +748,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(report, indent=2))
     else:
         print(render(rows, blind, stale))
-    return verdict(rows, blind, cfg)
+    return verdict(rows, blind, cfg, states)
 
 
 if __name__ == "__main__":
