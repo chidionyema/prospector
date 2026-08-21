@@ -172,10 +172,28 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Lighthouse budgets against live
-        run: npm run test:lighthouse
+        # CHROME_PATH MUST BE THE EXECUTABLE, AND IT IS ASKED FOR RATHER THAN SPELLED OUT.
+        # It was `${{ github.workspace }}/.cache/ms-playwright` from 9d90427c (#398, 2026-08-19)
+        # until 2026-08-21. That is a browsers ROOT DIRECTORY, not a binary, and not even the
+        # right directory -- `npx playwright install` writes to `~/.cache/ms-playwright` unless
+        # PLAYWRIGHT_BROWSERS_PATH says otherwise, and nothing here sets it. So lhci got a path
+        # that was neither executable nor present, and every run since has died with
+        # `Chrome installation not found / Healthcheck failed!` -- measured on runs 96265960654,
+        # 96353533094, 96535652058 and 96705598103. NO BUDGET IN `lighthouserc.cjs` HAS EVER
+        # BEEN EVALUATED: the step has never once reached Lighthouse.
+        #
+        # Playwright knows where it put the browser, including the version-stamped directory name
+        # that changes on every playwright bump, so ask it. Hard-coding that path is how this
+        # breaks again silently the next time the dependency moves.
+        run: |
+          set -euo pipefail
+          CHROME_PATH="$(node -e "console.log(require('playwright-core').chromium.executablePath())")"
+          echo "resolved CHROME_PATH=$CHROME_PATH"
+          test -x "$CHROME_PATH"   # fail LOUDLY here, not 40 lines into an lhci healthcheck
+          export CHROME_PATH
+          npm run test:lighthouse
         env:
           LHCI_URL: ${{ vars.WEB_BASE_URL || 'https://mumchimp.com' }}
-          CHROME_PATH: ${{ github.workspace }}/.cache/ms-playwright
 
       - name: Upload Lighthouse reports
         if: always()
