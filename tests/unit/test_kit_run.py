@@ -171,15 +171,27 @@ def test_a_step_that_would_start_after_the_budget_is_blown_does_not_start():
     1800s was missed is a report; refusing to begin the next move is a decision, and it
     leaves the source intact for whoever has to put it back."""
     adapter = Adapter()
-    # started, s1 check, s1 done, s2 check -- the clock jumps past the budget between them.
+    # started, s1 check, s1 done, s2 check -- the clock jumps past the budget between them, then
+    # HOLDS. It holds rather than running dry because a test that supplies exactly as many ticks
+    # as the code takes is pinning the number of clock calls, which is not the promise; adding
+    # one terminal event to the failure path broke it while the behaviour was unchanged.
     ticks = iter([0.0, 0.0, 100.0, 5000.0])
+    last = [0.0]
+
+    def clock():
+        last[0] = next(ticks, last[0])
+        return last[0]
+
     events, sink = collect()
     code = execute(plan(step("s1", "secret"), step("s2", "compute", needs=["secret"])),
-                   sink=sink, runner=adapter, budget_s=1800.0, clock=lambda: next(ticks))
+                   sink=sink, runner=adapter, budget_s=1800.0, clock=clock)
     assert code == EX_FAILED
     blown = [e for e in events if e["kind"] == "budget_exceeded"]
     assert blown and blown[0]["step"] == "s2"
     assert [c[0] for c in adapter.calls] == ["kit/classes/secret.sh"]
+    assert events[-1]["kind"] == "run_done" and events[-1]["exit_code"] == EX_FAILED, (
+        "a run that stopped for time must SAY it stopped -- a console tailing this file sees "
+        "nothing else, and a stream that just ends looks identical to a wedged one")
 
 
 # ── the sink a console actually reads ────────────────────────────────────────
@@ -270,3 +282,29 @@ def test_the_rollback_call_carries_both_ends_too():
     rollbacks = [e for c, e in zip(adapter.calls, adapter.envs, strict=True) if c[1] == "rollback"]
     assert rollbacks, "no rollback was attempted"
     assert rollbacks[0]["FROM"] == "laptop" and rollbacks[0]["TO"] == "fly"
+
+
+def test_every_way_a_run_can_end_ends_with_one_run_done_carrying_the_code():
+    """Three endings, one terminal event. Before this, only the happy path emitted `run_done`,
+    so the two endings a person actually has to act on were the two with no sign they had
+    happened -- the events stopped, which is also what a killed process looks like."""
+    endings = {
+        0: Adapter(),
+        EX_FAILED: Adapter(fail_on={"kit/classes/compute.sh"}),
+    }
+    for expected, adapter in endings.items():
+        events, sink = collect()
+        code = execute(plan(step("s1", "compute")), sink=sink, runner=adapter)
+        assert code == expected
+        terminal = [e for e in events if e["kind"] == "run_done"]
+        assert len(terminal) == 1, f"{len(terminal)} terminal events, expected exactly 1"
+        assert terminal[0]["exit_code"] == expected
+        assert events[-1] is terminal[0], "the terminal event must be the LAST one"
+
+    # And the worst ending of all: the rollback failed too, so a person has to go and look.
+    events, sink = collect()
+    code = execute(plan(step("s1", "compute")), sink=sink,
+                   runner=Adapter(fail_on={"kit/classes/compute.sh"}, rollback_fails=True))
+    assert code == EX_FAILED
+    assert events[-1]["kind"] == "run_done" and events[-1]["exit_code"] == EX_FAILED
+    assert any(e["kind"] == "rollback_failed" for e in events)
