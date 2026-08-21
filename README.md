@@ -656,10 +656,10 @@ rather than a style guide.
 
 Engine-level contracts:
 
-- **[AGENTS.md](AGENTS.md)** — the onboarding contract for any agent working on this
-  repo: orientation order, the truth invariants, the reasoning DNA, and how to pick up
-  the handover. Read it first.
-- **[CLAUDE.md](CLAUDE.md)** — operating rules + module map (the canonical constraints).
+- **[AGENTS.md](AGENTS.md)** — the only governance file: eighteen laws in priority order,
+  then the part that is only true here (who writes code, the truth invariants, where each
+  fact lives). Read it first.
+- **[CLAUDE.md](CLAUDE.md)** — what Prospector is: the module map, the gates, the topology.
 - **[RUN.md](RUN.md)** — the eight-step per-run procedure with concrete commands.
 - **[prospector-master-spec.md](prospector-master-spec.md)** — full spec: prompts,
   golden-set acceptance tests, roadmap.
