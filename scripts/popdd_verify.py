@@ -95,7 +95,7 @@ DRAIN_TIMEOUT_SECONDS = 30
 
 # Extensions that must be covered by SOME lane. A file with one of these that matches no
 # lane blocks the commit rather than sailing through unproven.
-SOURCE_EXTS = {".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".cs", ".csproj", ".css"}
+SOURCE_EXTS = {".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".cs", ".csproj", ".css", ".rs"}
 
 # Extensions the storefront's own proof (tsc + vitest) can speak to. `.json` is here for
 # package.json / tsconfig.json, which change what typecheck and vitest actually run.
@@ -126,6 +126,25 @@ CONSOLE_REL = "store_platform/src/Ops.Console/"
 # build one self-contained page. Its extensions are all in SOURCE_EXTS, so before this lane
 # existed every one of its files read as unproven and the directory could not be committed.
 LOOKENGINE_REL = "docs/storefront/look-engine/"
+
+# The Rust engine. Its own tree, its own toolchain, no Python in it. Before this lane existed
+# a commit of nothing but .rs files reported "no source changes staged — nothing to prove" and
+# was allowed, because `.rs` was in neither SOURCE_EXTS nor any lane — so it was not even
+# recorded as unclassified. That is the same shape as the `.yaml` hole above: a gate that says
+# green while grading nothing. Measured 2026-08-21 before the fix:
+#   lanes_for(["engine-rs/crates/prospector-core/src/decision.rs"]) -> ([], [])
+RUST_REL = "engine-rs/"
+RUST_DIR = ROOT / "engine-rs"
+
+# rustup installs to ~/.cargo/bin, which a git hook's environment does not have on PATH.
+CARGO = Path.home() / ".cargo" / "bin" / "cargo"
+
+# Not source, but a change to any of them changes what every Rust build and lint does, so they
+# belong in the lane's catchment as much as a .rs file. rust-toolchain.toml is the sharpest:
+# it pins the compiler version, so editing it can turn a green tree red with no code change.
+RUST_CONFIG_FILES = frozenset({
+    "Cargo.toml", "Cargo.lock", "clippy.toml", "rustfmt.toml", "deny.toml", "rust-toolchain.toml",
+})
 
 # ── the engine lane's catchment ───────────────────────────────────────────────
 # The daemon is steered by two kinds of file, and until 2026-08-14 one of them was proven by
@@ -237,6 +256,35 @@ def _parse_engine(stdout: str) -> tuple[int, int, list[str]]:
     return passed, failed, failed_checks
 
 
+def _parse_cargo(stdout: str) -> tuple[int, int, list[str]]:
+    """Read cargo's own summary lines.
+
+    `cargo test` prints one `test result:` line PER TARGET (lib, each integration test, the
+    doctests), so the counts are summed rather than taken from the last line — reading only
+    the last one reports the doctest target's 0 passed and calls a whole workspace proven.
+
+    fmt and clippy print no counts at all. That is fine and deliberate: the step loop breaks
+    on a non-zero exit, so their own status blocks the commit before this parser is reached,
+    and a `-D warnings` clippy failure is an exit code, not a number to parse.
+    """
+    passed = failed = 0
+    failures: list[str] = []
+    for line in stdout.splitlines():
+        t = line.strip()
+        if t.startswith("test result:"):
+            # The first field is "ok. 5 passed", not "5 passed" — cargo puts the verdict
+            # word in front of the count. Read the token ADJACENT to the keyword rather
+            # than the first token of the field.
+            for count, word in re.findall(r"(\d+)\s+(passed|failed)", t):
+                if word == "passed":
+                    passed += int(count)
+                else:
+                    failed += int(count)
+        elif t.startswith("test ") and t.endswith("... FAILED"):
+            failures.append(t[:120])
+    return passed, failed, failures[:50]
+
+
 def _parse_lookengine(stdout: str) -> tuple[int, int, list[str]]:
     """Count the look-engine tools' own verdict lines ('A43 PASS — ...', 'FAIL ...').
 
@@ -288,6 +336,35 @@ LANES: dict[str, Lane] = {
             ("pytest", [sys.executable, "-m", "pytest", "-q", "--tb=no", "-rf"]),
         ),
         parser=_parse_pytest,
+    ),
+    # The Rust engine. Three steps, cheapest first, so a formatting slip comes back in a
+    # second instead of after a full compile.
+    #
+    # cargo-audit and cargo-deny are deliberately NOT here, and they are in ci.yml's `rust`
+    # job instead. Both need the network — audit clones the RustSec advisory database, deny
+    # reads the crates.io index — and a commit hook that fails when the wifi drops is a gate
+    # that teaches people to pass --no-verify. The questions they answer ("is a dependency
+    # known-vulnerable", "may we legally ship it") also cannot be changed by an edit to a .rs
+    # file; they change when Cargo.lock changes or when the world changes, and CI sees both.
+    #
+    # CARGO is an absolute path because the hook does not inherit an interactive shell, so
+    # ~/.cargo/bin is not on PATH and `cargo` would be "command not found" — which the step
+    # loop would report as a failed proof rather than as a missing toolchain.
+    "rust": Lane(
+        key="rust",
+        label="rust — fmt + clippy -D warnings + cargo test",
+        target="prospector:rust-engine",
+        steps=(
+            ("fmt", [str(CARGO), "fmt", "--all", "--", "--check"]),
+            ("clippy", [str(CARGO), "clippy", "--workspace", "--all-targets",
+                        "--all-features", "--", "-D", "warnings"]),
+            ("test", [str(CARGO), "test", "--workspace", "--all-features"]),
+        ),
+        parser=_parse_cargo,
+        cwd=RUST_DIR,
+        # Fail closed. Without CARGO in preflight a machine with no Rust toolchain would skip
+        # the lane, and skipping is how an unproven commit reads as green.
+        preflight=(RUST_DIR / "Cargo.toml", CARGO),
     ),
     # The storefront proof CI itself does NOT fully run: ci.yml's `nextjs` job runs
     # typecheck + build but never `npm test`, so these 523 vitest tests have no other
@@ -386,7 +463,7 @@ LANES: dict[str, Lane] = {
 # `lookengine` (~3s) is cheaper still and would lead on that rule alone, but
 # test_popdd_gate_lanes.py:289 pins the engine at position 0 on purpose, and 15 seconds is
 # not worth loosening a guard another session wrote.
-LANE_ORDER = ("engine", "lookengine", "console", "web", "dotnet", "python")
+LANE_ORDER = ("engine", "lookengine", "rust", "console", "web", "dotnet", "python")
 
 
 def lanes_for(paths: list[str]) -> tuple[list[str], list[str]]:
@@ -419,6 +496,10 @@ def lanes_for(paths: list[str]) -> tuple[list[str], list[str]]:
             lanes.add("ops")
         elif path.startswith(LOOKENGINE_REL) and ext in SOURCE_EXTS:
             lanes.add("lookengine")
+        elif path.startswith(RUST_REL) and (
+            ext == ".rs" or Path(path).name in RUST_CONFIG_FILES
+        ):
+            lanes.add("rust")
         elif ext == ".py":
             lanes.add("python")
         elif ext in (".cs", ".csproj"):

@@ -344,6 +344,52 @@ class TestTheLaneMapCoversEachSourceKind:
     def test_the_engine_lane_runs_before_the_expensive_ones(self, runner):
         assert runner.LANE_ORDER[0] == "engine", runner.LANE_ORDER
 
+    def test_rust_sources_reach_the_rust_lane(self, runner):
+        """Before 2026-08-21 a commit of nothing but .rs files was allowed with
+        "no source changes staged — nothing to prove". `.rs` was in neither SOURCE_EXTS nor
+        any lane, so it was not even recorded as unclassified: the gate said green having
+        graded nothing, which is the defect the whole lane system exists to prevent."""
+        lanes, unclassified = runner.lanes_for(
+            ["engine-rs/crates/prospector-core/src/decision.rs"])
+        assert lanes == ["rust"], lanes
+        assert not unclassified
+
+    def test_the_rust_lane_covers_the_files_that_change_what_a_build_does(self, runner):
+        """rust-toolchain.toml pins the compiler, so editing it can turn a green tree red
+        with no code change. Cargo.lock decides which dependency versions are compiled, and
+        clippy.toml decides which lints fire. None of them are source, and all of them are
+        the lane's business."""
+        for name in ("Cargo.toml", "Cargo.lock", "rust-toolchain.toml",
+                     "clippy.toml", "rustfmt.toml", "deny.toml"):
+            lanes, unclassified = runner.lanes_for([f"engine-rs/{name}"])
+            assert lanes == ["rust"], f"engine-rs/{name} -> {lanes}"
+            assert not unclassified
+
+    def test_a_rust_file_outside_the_engine_tree_blocks_rather_than_passing(self, runner):
+        """The lane is scoped to engine-rs/, so a .rs anywhere else has no proof. It must be
+        refused by name, not silently allowed — an unclassified file is a question for a
+        human, and sailing through is an answer nobody gave."""
+        lanes, unclassified = runner.lanes_for(["tools/stray.rs"])
+        assert lanes == []
+        assert unclassified == ["tools/stray.rs"]
+
+    def test_the_rust_lane_fails_closed_without_a_toolchain(self, runner):
+        """A machine with no cargo must BLOCK, not skip. Skipping is how an unproven commit
+        reads as green, and rustup installs outside the PATH a git hook inherits."""
+        rust = runner.LANES["rust"]
+        assert runner.CARGO in rust.preflight, rust.preflight
+        assert rust.cwd == runner.RUST_DIR
+        argv0 = {step[1][0] for step in rust.steps}
+        assert argv0 == {str(runner.CARGO)}, f"a step calls bare cargo: {argv0}"
+
+    def test_the_rust_lane_denies_warnings(self, runner):
+        """clippy without -D warnings prints and exits 0, which makes the whole
+        [workspace.lints] block decoration rather than a gate."""
+        clippy = next(a for name, a in runner.LANES["rust"].steps if name == "clippy")
+        assert "-D" in clippy and "warnings" in clippy, clippy
+        fmt = next(a for name, a in runner.LANES["rust"].steps if name == "fmt")
+        assert "--check" in fmt, fmt
+
     def test_a_mixed_commit_runs_every_lane_cheapest_first(self, runner):
         lanes, _ = runner.lanes_for([
             "prospector/run.py",
@@ -365,6 +411,7 @@ class TestTheLaneMapCoversEachSourceKind:
             ".cs": "store_platform/src/Store.Api/X.cs",
             ".csproj": "store_platform/src/Store.Api/Store.Api.csproj",
             ".css": "store_platform/src/Store.Web/src/styles/globals.css",
+            ".rs": "engine-rs/crates/prospector-core/src/decision.rs",
         }
         assert set(samples) == runner.SOURCE_EXTS, "a new source extension needs a lane + a sample"
         for ext, path in samples.items():
