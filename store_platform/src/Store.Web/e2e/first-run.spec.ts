@@ -46,6 +46,7 @@ import { test, expect } from '@playwright/test';
  */
 const ROUTES = [
   '/',
+  '/packs',
   '/ideas',
   '/how-it-works',
   '/faq',

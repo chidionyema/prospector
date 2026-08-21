@@ -174,7 +174,7 @@ All of them need a same-origin path proxy (a Next.js `rewrites()` entry) because
 | FR-3 | `/about` — add a forward link in `<main>` | **done 2026-08-21** — same, `/` → `/#catalog` |
 | FR-4 | `/refund` — add a forward link in `<main>` | **done 2026-08-21** — in `components/LegalDoc.tsx`, so it fixed `/terms` and `/privacy` too |
 | FR-5 | `/terms`, `/privacy` — decide whether a legal page should sell, or be waived permanently with a reason | **decided 2026-08-21: it should.** A reader who opens the refund policy before buying is the most likely buyer on the site, and the closing block was already selling — it just pointed at `/faq`. `FR3_WAIVED` is now empty |
-| FR-10 | **14 of 77 packs are 3 clicks from everywhere.** Measured 2026-08-21 against live: home links 63, `/ideas` links 0 packs (its 15 links are categories), and the union of the 15 category pages is 77. The 14 are behind the home page's collapsed groups (`pages/index.tsx:1445` shows 2 of N groups, `:1494` shows 3 of each until `showAll`), so they exist in the sitemap and in no server-rendered listing a reader or a crawler can walk in two clicks. Needs a design call: render all groups, paginate, or add a plain index | not started |
+| FR-10 | **14 of 77 packs are 3 clicks from everywhere.** Measured 2026-08-21 against live: home links 63, `/ideas` links 0 packs (its 15 links are categories), and the union of the 15 category pages is 77. The 14 are behind the home page's collapsed groups (`pages/index.tsx:1445` shows 2 of N groups, `:1494` shows 3 of each until `showAll`), so they exist in the sitemap and in no server-rendered listing a reader or a crawler can walk in two clicks. Needs a design call: render all groups, paginate, or add a plain index | **shipped 2026-08-21, issue #611** — option 3, a plain `/packs` index (`src/pages/packs.tsx`) linked once from the footer. See §7 |
 | FR-6 | `/sample` promises differ from delivery | **done 2026-08-21.** The page was right and every link into it was wrong. `data/sample-report.json` ships `sectionsShown: 3` against `sectionsTotal: 14` and names the other eleven in `withheld`; the founder settled that on 2026-08-15 and `pages/sample.tsx` was rewritten the same day. The three strings in `lib/siteCopy.ts` were not: `sampleLinkHero` (homepage hero), `sampleLinkPanel` (the pack page buy rail) and `sampleLink` (`/faq`, `/ideas`, the mobile bar) all still said "a full pack free". All three now say "the opening of a real pack". `__tests__/sampleOfferIsTrue.test.ts` reads the fixture and fails if any of them claims a whole pack while the fixture withholds sections |
 | FR-7 | `/sample` has no buy call to action | **withdrawn 2026-08-21 — the row was stale.** `pages/sample.tsx:495` is an `id="buy"` block headed "Now read one that survived all of it.", whose primary button is "Browse the packs" → `/#catalog`, with "See how the filter works" beside it. The waitlist form sits UNDER it, deliberately. Nothing to do |
 | FR-8 | Stripe checkout-session webhooks into a funnel table | not started |
@@ -272,9 +272,44 @@ two. The cause is at `pages/index.tsx:1445`, which renders 2 of N groups until `
 
 Arithmetic: every entry route that reaches 63 would reach 77, and the total goes 707 -> 847.
 
-**Fixing FR-10 alone takes Axis N1 from 83.5% to 100% at two clicks**, and 7.4% to 9.1% at one. It is
-the only work left on this axis, and it needs a design call rather than a link: render every group
-server-side, paginate, or add a plain index page.
+**Fixing FR-10 alone takes Axis N1 from 83.5% to 100% at two clicks.** It is the only work left on
+this axis, and it needs a design call rather than a link: render every group server-side, paginate,
+or add a plain index page.
+
+The "and 7.4% to 9.1% at one" that stood here until 2026-08-21 was wrong, and wrong in an
+instructive way: 9.1% is 77/847, which only happens if a route that already links 63 packs links all
+77 at ONE click. That is true of option 1 (render every group on the home page) and of nothing else.
+The option taken is a separate page, so its packs sit at depth two from every entry route and the
+one-click figure does not move at all. A projection is a claim about a specific design; carrying it
+across to a different design is how a number survives the decision that invalidated it.
+
+### What was built for FR-10, and what it is still owed
+
+Shipped 2026-08-21 on `web/every-pack-two-clicks`, issue #611:
+
+- `src/pages/packs.tsx` — a server-rendered index of the whole catalogue, grouped by market,
+  sorted by title, no cap and no client state. It reuses `PackRowList`, adds no visual language,
+  and touches neither the home page's shelf caps nor `/ideas`.
+- One footer link, `MarketingLayout.tsx:403`. The footer renders on every page, the legal ones
+  included (`LegalDoc.tsx:113` goes through `MarketingLayout`; confirmed against live). That single
+  anchor is what puts every pack two clicks from every entry route.
+- `src/__tests__/everyPackIsListed.test.tsx` — three cases, mutation-proved both ways: a
+  `.slice(0, 5)` in `getServerSideProps` fails two of them, a `.slice(0, 1)` in the component fails
+  the render one and leaves the props one green. The count is asserted against the catalogue the
+  page was handed, never against a number written in the test, so the shelf grades itself as it
+  grows.
+- `/packs` added to `sitemap.xml.tsx` and to `ROUTES` in `e2e/first-run.spec.ts`.
+
+**Deliberately NOT added to `ENTRY` in `reachability.mjs`.** As an entry route it would score every
+pack at one click and lift the number by grading the fix with the fix. The eleven routes and the 847
+pairs stay exactly as the baseline had them, so the only thing that can move the figure is that
+those eleven other pages now reach the whole shelf through the footer.
+
+**Owed: the live re-measure.** The projected result is 847/847 at two clicks (100%) and an unchanged
+63/847 at one, by the mechanism above. It is a projection until
+`node scripts/reachability.mjs` is run against `https://mumchimp.com` after this deploys, and the
+measured row is written in beside the baseline. A projection in this section is exactly the thing
+the paragraph above it is about.
 
 **Cost class: ONE-OFF.** Every number above comes from HTTP fetches of pages we already serve. No new
 service, no subscription, no rented box.
