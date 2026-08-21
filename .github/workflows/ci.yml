@@ -1330,11 +1330,31 @@ jobs:
           rustup show active-toolchain
           cargo --version && rustc --version && cargo clippy --version
 
+      # ~/.cargo/bin IS IN HERE ON PURPOSE, AND IT IS 94% OF THIS JOB.
+      #
+      # `cargo install cargo-audit cargo-deny --locked` below builds both tools from source.
+      # They land in ~/.cargo/bin, which this cache did not cover, so every single run
+      # recompiled them. Measured on the `rust` job of run 32533139696 (PR #644), by step:
+      #
+      #   Show the pinned toolchain       10s
+      #   Format                           0s
+      #   Clippy                           0s
+      #   Tests                            0s
+      #   Install supply-chain tools     311s   <-- this
+      #   Audit dependencies               3s
+      #   Supply-chain policy              0s
+      #
+      # 311 of 331 seconds compiling two tools that had not changed. `cargo install` is a
+      # no-op when the same version is already present -- it prints "already installed" and
+      # exits 0 -- so a cache hit turns that step into nothing. The restore-keys fallback
+      # means a Cargo.lock change still finds the binaries; only a genuine version bump pays
+      # the 311s again.
       - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
+            ~/.cargo/bin
             engine-rs/target
           key: rust-${{ runner.os }}-${{ hashFiles('engine-rs/Cargo.lock', 'engine-rs/rust-toolchain.toml') }}
           restore-keys: rust-${{ runner.os }}-
