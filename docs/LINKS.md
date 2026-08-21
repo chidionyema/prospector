@@ -27,7 +27,8 @@ here describes what the estate IS, and this one describes what it is FOR.
 
 | What | Page | File |
 |---|---|---|
-| The target platform, the ten planes, and the 55 requirements with the drill that proves each one | [THE GOLD STAR PLAN](https://claude.ai/code/artifact/ef6fe784-7f6c-4981-85cd-37dfbe40b696) | `docs/MIGRATION_AND_DR_PROGRAM.md` |
+| The target platform, the ten planes, and the 60 requirements with the drill that proves each one | [THE GOLD STAR PLAN](https://claude.ai/code/artifact/ef6fe784-7f6c-4981-85cd-37dfbe40b696) | `docs/MIGRATION_AND_DR_PROGRAM.md` |
+| The build spec: nine components, their interfaces, and the five slices that deliver them | — | `docs/GOLD_STANDARD_SPEC.md` |
 
 ---
 

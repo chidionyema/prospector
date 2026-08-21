@@ -1,5 +1,11 @@
 # Platform independence, migration and disaster recovery
 
+> **The build spec is `docs/GOLD_STANDARD_SPEC.md`.** This file is the requirements and the
+> evidence — what must be true and what proves it. That file is the thing to build: nine
+> components, their interfaces, and the five slices that land them, each closed by a drill.
+> Founder, 2026-08-21: *"you need to get faster ad have aplan to deliver gold standard super
+> fast"*, *"you need to breakit downto spec"*.
+
 **Headline requirement, in the founder's words: platform independence.** Everything below serves it.
 A component is platform independent when a committed file describes it, an adapter moves it, a drill
 has already moved it, and losing the platform costs a DNS edit rather than a rebuild.
@@ -1032,6 +1038,9 @@ Sources: [Velero](https://velero.io/) ·
 ---
 
 ## 6. The delivery plan
+
+> Phases 0–6 below are the REQUIREMENT order. The BUILD order is five slices in
+> `docs/GOLD_STANDARD_SPEC.md` §5, thin end-to-end first, and it is the one to work to.
 
 Founder, 2026-08-20: *"i need to see a detailed pla of how you are going to deliver this project.
 this is a sassive transfornation proect and our buniess is dependent on the success of this
