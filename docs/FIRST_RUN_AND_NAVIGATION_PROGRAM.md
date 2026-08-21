@@ -116,13 +116,18 @@ there and `/ideas` is graded like every other route. Against live it carries 15 
 
 **Measured, both directions, with the identical spec** (2026-08-21):
 
-| target | FR1 | FR2 | FR3 |
-|---|---|---|---|
-| live mumchimp.com, before the fix | fails on every route | fails on every route | passes where not waived |
-| local build, kill ribbon scoped to `/kill-log` | 10/10 pass | 10/10 pass | passes where not waived |
+| target | total | passed | failed | skipped |
+|---|---|---|---|---|
+| live mumchimp.com, before the fix | 30 | 5 | **20** | 5 |
+| local build, kill ribbon scoped to `/kill-log` | 30 | 24 | **0** | 6 |
 
-Local run: **24 passed, 6 skipped, 0 failed**. `npm run lint` 0 errors, `npm test` 896/896,
-`next build` typecheck clean.
+The 20 live failures are FR1 on all ten routes and FR2 on all ten routes — the defect was on
+every marketing page, not only the home page the founder happened to open. FR3 passed on the
+five routes it was not waived on, in both runs. The sixth local skip is `/ideas` on FR3, which
+is the no-catalogue condition above and not a waiver.
+
+Alongside: `npm run lint` 0 errors (108 pre-existing warnings), `npm test` 896 passed across 85
+files, `next build` typecheck clean, and the POPDD gate PASS on the commit.
 
 ## 4. The method, and what it is not
 
