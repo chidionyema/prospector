@@ -1005,7 +1005,13 @@ def alert(payload: dict, cfg=None) -> str:
                    severity="critical", key="process-audit",
                    title=f"process audit: {failing} failing",
                    message=f"process audit: {failing} failing\n" + "\n".join(lines[:12]),
-                   throttle_s=3600, failing=failing, checks=names[:12])
+                   throttle_s=3600, failing=failing, checks=names[:12],
+                   # The COUNT oscillates (31 -> 32 -> 30 -> 31) as unrelated checks flap, and the
+                   # count is in both the title and the message. Digesting either would re-alert
+                   # every hour and change nothing. The identity of this condition is WHICH checks
+                   # are failing, sorted so ordering cannot fake a change; `names` is every failing
+                   # check, not the truncated 12 the message shows.
+                   identity="|".join(sorted(names)))
     except Exception as exc:  # noqa: BLE001 -- see the docstring; this must not fail the audit
         return f"ALERT PATH BROKEN ({type(exc).__name__}: {exc}) -- {failing} failing went unsent"
     return f"alert recorded ({failing} failing: {', '.join(names[:4])})"

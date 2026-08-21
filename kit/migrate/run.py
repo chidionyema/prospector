@@ -38,10 +38,15 @@ HEARTBEAT_S = 4.0  # under A4's 5s, so a slow step still speaks before the bar i
 class StepFailed(Exception):
     """A step's adapter exited non-zero. Carries the step so the caller can roll back."""
 
-    def __init__(self, step: dict[str, Any], detail: str) -> None:
+    def __init__(self, step: dict[str, Any], detail: str, *, started: bool = True) -> None:
         super().__init__(detail)
         self.step = step
         self.detail = detail
+        #: Did the adapter actually RUN? An adapter that could not be started touched nothing,
+        #: so there is nothing to undo -- and telling an operator at 3am that a rollback failed
+        #: says a resource is stranded half-moved when in fact none of it happened. The two
+        #: nights are not the same night and the console must not print the worse one.
+        self.started = started
 
 
 def _event(sink: Callable[[dict[str, Any]], None], kind: str, **fields: Any) -> None:
@@ -54,14 +59,23 @@ def ordered(steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
     The compiler already sorts by prerequisite depth. This re-checks it, because a plan is a
     file and a file can be hand-edited between compiling and running -- which is exactly the
     thing someone does at minute 3 of a bad night.
+
+    It grades ORDER, and only order. A prerequisite class that is nowhere in the plan is not
+    late, it is absent: the probe found no resource of that class, so there is nothing to wait
+    for. Reading absent as out-of-order refused every plan that did not happen to contain a
+    secret -- which is every single-class move, and so every drill and every targeted repair.
+    Whether the plan accounts for everything is clause A2, and `covers_every_resource` is where
+    that is decided; two checks answering one question is how they end up disagreeing.
     """
+    present = {step["class"] for step in steps}
     done: set[str] = set()
     for step in steps:
-        missing = [n for n in step.get("needs", ()) if n not in done and n != step["class"]]
-        if missing:
+        late = [n for n in step.get("needs", ())
+                if n in present and n not in done and n != step["class"]]
+        if late:
             raise ValueError(
-                f"step {step['id']} ({step['class']}) needs {missing} which no earlier step "
-                f"provides -- the plan is out of order, recompile it rather than editing it"
+                f"step {step['id']} ({step['class']}) needs {late}, which the plan runs AFTER "
+                f"it -- the plan is out of order, recompile it rather than editing it"
             )
         done.add(step["class"])
     return steps
@@ -116,9 +130,22 @@ def step_vars(step: dict[str, Any]) -> dict[str, str]:
 
 def run_step(step: dict[str, Any], *, verb_env: dict[str, str],
              runner: Callable[..., subprocess.CompletedProcess]) -> None:
-    """Hand one step to its class adapter. The adapter owns the substrate; this owns nothing."""
-    done = runner([step["adapter"], step["verb"]], env=child_env(verb_env),
-                  capture_output=True, text=True)
+    """Hand one step to its class adapter. The adapter owns the substrate; this owns nothing.
+
+    An adapter that cannot be STARTED is a failed step, not a crashed runner. `subprocess.run`
+    raises `OSError` for a missing file, a file with no execute bit, and a script with no
+    interpreter line -- and an exception raised here escapes the whole walk: no `step_failed`,
+    no rollback, no terminal event. The operator's console showed the events stop and their
+    terminal showed a Python traceback, at whatever minute the plan first named a class nobody
+    had written an adapter for. A class declared and unwired is the ordinary case in a kit that
+    is still being built, so this is the ordinary path, not the exotic one.
+    """
+    try:
+        done = runner([step["adapter"], step["verb"]], env=child_env(verb_env),
+                      capture_output=True, text=True)
+    except OSError as unrunnable:
+        raise StepFailed(step, f"cannot run {step['adapter']}: {unrunnable.strerror or unrunnable}",
+                         started=False) from unrunnable
     if done.returncode != 0:
         tail = (done.stderr or done.stdout or "").strip().splitlines()[-3:]
         raise StepFailed(step, " / ".join(tail) or f"exit {done.returncode}")
@@ -158,6 +185,12 @@ def execute(plan: dict[str, Any], *, sink: Callable[[dict[str, Any]], None],
     the step that failed -- the ones behind it succeeded and their adapters own their own
     reversal, so unwinding them here would be this runner making a decision, which is exactly
     what it is built not to do.
+
+    EVERY exit goes out through one `run_done`, carrying the code. The walk used to return
+    straight out of the loop on any failure, so the only terminal event in the stream was the
+    one on the happy path -- and a console tailing a failed run saw the events simply stop.
+    Stopped, wedged, and killed are three different nights, and the person watching could not
+    tell them apart from the only thing they can see.
     """
     covers_every_resource(plan)
     steps = ordered(plan.get("steps", []))
@@ -169,6 +202,18 @@ def execute(plan: dict[str, Any], *, sink: Callable[[dict[str, Any]], None],
         _event(sink, "left_behind", resource=skip["resource"], klass=skip["class"],
                reason=skip["reason"])
 
+    code = _walk(steps, sink=sink, runner=runner, from_step=from_step, budget_s=budget_s,
+                 clock=clock, started=started)
+    elapsed = clock() - started
+    _event(sink, "run_done", elapsed_s=round(elapsed, 1), exit_code=code,
+           within_budget=elapsed <= budget_s)
+    return code
+
+
+def _walk(steps: list[dict[str, Any]], *, sink: Callable[[dict[str, Any]], None],
+          runner: Callable[..., subprocess.CompletedProcess], from_step: str | None,
+          budget_s: float, clock: Callable[[], float], started: float) -> int:
+    """The steps themselves. Returns the exit code; emits no terminal event of its own."""
     reached = from_step is None
     for step in steps:
         if not reached:
@@ -193,7 +238,12 @@ def execute(plan: dict[str, Any], *, sink: Callable[[dict[str, Any]], None],
         except StepFailed as failure:
             beat.set()
             _event(sink, "step_failed", step=step["id"], klass=step["class"],
-                   detail=failure.detail)
+                   detail=failure.detail, started=failure.started)
+            if not failure.started:
+                _event(sink, "rollback_skipped", step=step["id"],
+                       reason="the adapter never ran, so nothing was touched",
+                       resume_with=f"--from-step {step['id']}")
+                return EX_FAILED
             _event(sink, "rollback_started", step=step["id"])
             unwinding = _heartbeat(sink, step, clock, started)
             try:
@@ -210,9 +260,8 @@ def execute(plan: dict[str, Any], *, sink: Callable[[dict[str, Any]], None],
         beat.set()
         _event(sink, "step_done", step=step["id"], elapsed_s=round(clock() - started, 1))
 
-    _event(sink, "run_done", elapsed_s=round(clock() - started, 1),
-           within_budget=(clock() - started) <= budget_s)
     return 0
+
 
 
 def jsonl_sink(stream: Any) -> Callable[[dict[str, Any]], None]:

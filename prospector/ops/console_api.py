@@ -581,6 +581,22 @@ def _read_incidents(cfg, args: dict) -> dict:
     return incidents_view(_repo_root())
 
 
+def _read_migration(cfg, args: dict) -> dict:
+    """What can be moved, where to, and how the live run is going.
+
+    Registered 2026-08-21. Founder's bar: "get this done fron ops dashboard and prove and see
+    realtine progress." The runner already said what it was doing, into a JSON-lines file, so
+    proving a migration meant reading a log over somebody's shoulder. The judgement stays in
+    `kit/migrate/progress.py`, which is arithmetic over the runner's own events -- so the bar
+    on this page and the exit code of the run can never disagree.
+
+    It reads. Starting a run is the tool runner's job; this hands back the argv and nothing else.
+    """
+    from .migration_view import migration_view
+
+    return migration_view(_repo_root(), project=args.get("project") or None)
+
+
 def _read_shares(cfg, args: dict) -> dict:
     """Every share link, live and dead, plus what this repo is willing to serve.
 
@@ -1824,6 +1840,7 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
     "metrics": _read_metrics,
     "docs": _read_docs,
     "incidents": _read_incidents,
+    "migration": _read_migration,
     "shares": _read_shares,
     "share_open": _read_share_open,
     "automations": _read_automations,
