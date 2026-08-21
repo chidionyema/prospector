@@ -72,7 +72,8 @@ def run(*, conclusion="success", status="completed", number=1, name="CI", run_id
 
 
 def _run(*, prs, behind=0, runs=(), jobs=(), event="workflow_run",
-         update_error=None, compare_error=None, main_green_at=MAIN_GREEN) -> dict:
+         update_error=None, compare_error=None, main_green_at=MAIN_GREEN,
+         main_green_runs=None, main_green_error=None) -> dict:
     """Execute the keeper in node against a stubbed Octokit and return every call it made."""
     stubs = {
         "prs": prs,
@@ -83,6 +84,12 @@ def _run(*, prs, behind=0, runs=(), jobs=(), event="workflow_run",
         "update_error": update_error,
         "compare_error": compare_error,
         "main_green_at": main_green_at,
+        # On `schedule` and `workflow_dispatch` there is no workflow_run payload, so the keeper
+        # asks the API when main last went green instead. Default it to the same instant the
+        # event would have carried, so every existing test means what it meant before.
+        "main_green_runs": ([{"updated_at": MAIN_GREEN}]
+                            if main_green_runs is None else list(main_green_runs)),
+        "main_green_error": main_green_error,
     }
     harness = """
 const S = %s
@@ -118,6 +125,8 @@ const github = {rest: {
   },
   actions: {
     listWorkflowRunsForRepo: async () => ({data: {workflow_runs: S.runs}}),
+    listWorkflowRuns: async () => S.main_green_error
+      ? boom(S.main_green_error) : ({data: {workflow_runs: S.main_green_runs}}),
     listJobsForWorkflowRun: async () => ({data: {jobs: S.jobs}}),
     createWorkflowDispatch: async (a) => { calls.dispatch.push(a); return {data: {}} },
     cancelWorkflowRun: async (a) => { calls.cancel.push(a); return {data: {}} },
@@ -415,3 +424,86 @@ class TestTheWorkflowItself:
             "contents": "read", "pull-requests": "write",
             "actions": "write", "issues": "write",
         }
+
+
+class TestTheClockTicksEvenWhenNothingHappens:
+    """Every other trigger on this workflow is an EVENT, so a pull request only gets looked at
+    when somebody does something. A run killed at 03:00, with main already green, therefore
+    waits for the next person to push. `~/.claude/scripts/pr-reactor.py` watches the classes
+    this file owns and escalates when the owner has provably not fired; that is the gap it
+    found on 2026-08-21.
+    """
+
+    def test_it_runs_on_a_schedule(self):
+        doc = yaml.safe_load(WORKFLOW.read_text())
+        on = doc.get(True) or doc.get("on")
+        assert "schedule" in on, (
+            "pr-keeper only fires on events, so nothing looks at a stalled pull request "
+            "until a person pushes")
+
+    def test_the_cadence_fits_inside_the_watchdog_grace_window(self):
+        """45 minutes is pr-reactor.py's GRACE_S. The owner must get more than one attempt
+        inside it, or the watchdog escalates something that was about to fix itself."""
+        doc = yaml.safe_load(WORKFLOW.read_text())
+        on = doc.get(True) or doc.get("on")
+        minutes = on["schedule"][0]["cron"].split()[0]
+        assert minutes.startswith("*/"), minutes
+        every = int(minutes[2:])
+        assert every * 2 <= 45, f"a {every}-minute tick gives the owner one shot in 45 minutes"
+
+    def test_a_schedule_enumerates_because_it_has_no_pull_request_payload(self):
+        out = _run(prs=[pull()], runs=[], event="schedule")
+        assert [c["ref"] for c in out["calls"]["dispatch"]] == ["feat/x"]
+
+
+class TestACronDoesNotTurnOneRefusalIntoNinetySixADay:
+    """The staleness bound reads `if (at && ...)`, so an EMPTY value does not relax it -- it
+    removes it. MAIN_GREEN_AT is empty on schedule, so without asking the API for the same
+    fact, every refused build is re-dispatched on every tick, each re-run fails the same way,
+    and each failure re-arms the next one. Measured 2026-08-21: the three tests below fail
+    against the workflow as it stood before the `schedule:` was added.
+    """
+
+    JOBS = ({"name": "changes", "conclusion": "failure"},
+            {"name": "ci-ok", "conclusion": "failure"})
+
+    def test_a_refusal_older_than_mains_recovery_is_still_re_run(self):
+        out = _run(prs=[pull()], runs=[run(conclusion="failure", created_at=EARLY)],
+                   jobs=self.JOBS, event="schedule", main_green_at=None)
+        assert len(out["calls"]["dispatch"]) == 1
+
+    def test_a_refusal_newer_than_mains_recovery_is_left_alone(self):
+        """Main is not why it was refused, so re-running it only spends a runner."""
+        out = _run(prs=[pull()], runs=[run(conclusion="failure", created_at=LATE)],
+                   jobs=self.JOBS, event="schedule", main_green_at=None)
+        assert out["calls"]["dispatch"] == []
+
+    def test_it_fails_closed_when_the_api_cannot_say(self):
+        out = _run(prs=[pull()], runs=[run(conclusion="failure", created_at=EARLY)],
+                   jobs=self.JOBS, event="schedule", main_green_at=None,
+                   main_green_error="API down")
+        assert out["calls"]["dispatch"] == [], (
+            "a keeper that cannot tell whether a refusal is stale must not spend a runner "
+            "guessing -- the next tick is fifteen minutes away and will have the answer")
+
+    def test_it_fails_closed_when_main_has_never_been_green(self):
+        out = _run(prs=[pull()], runs=[run(conclusion="failure", created_at=EARLY)],
+                   jobs=self.JOBS, event="schedule", main_green_at=None, main_green_runs=[])
+        assert out["calls"]["dispatch"] == []
+
+
+class TestRepeatingNinetySixTimesADayIsSafe:
+    """Everything this workflow does now happens 96 times a day whether or not anyone pushes.
+    Anything that is not idempotent becomes a thread nobody reads."""
+
+    def test_a_behind_branch_is_told_once_and_only_once(self):
+        first = _run(prs=[pull()], behind=5, event="schedule")
+        assert len(first["calls"]["comment"]) == 1
+        again = _run(prs=[pull(labels=["needs-rebase"])], behind=5, event="schedule")
+        assert again["calls"]["comment"] == [], (
+            "the label is what remembers; commenting on every tick is 96 comments a day")
+
+    def test_a_run_still_in_flight_is_never_touched(self):
+        out = _run(prs=[pull()], runs=[run(status="in_progress", conclusion=None)],
+                   event="schedule")
+        assert out["calls"]["dispatch"] == []

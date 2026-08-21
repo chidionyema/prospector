@@ -36,6 +36,21 @@ on:
   workflow_run:
     workflows: [CI]
     types: [completed]
+  # Every trigger above is an EVENT. If nothing happens, this workflow does not run -- so a
+  # pull request whose run was killed at 03:00, with main already green, waits for the next
+  # person to push before anybody looks at it. Measured 2026-08-21 by `~/.claude/scripts/
+  # pr-reactor.py`, which watches the classes this file owns and escalates when the owner has
+  # provably not fired: that is the gap it found.
+  #
+  # Fifteen minutes is chosen, not tidy: the watchdog's grace window is 45 minutes, so the
+  # owner gets exactly three attempts before a human is told. `CI_RUNS_ON` is `fly`, a
+  # self-hosted fleet already paid for, so the tick costs no GitHub minutes.
+  #
+  # A `schedule:` only ever runs from the DEFAULT BRANCH. The pull request that adds this
+  # cannot demonstrate it; the honest proof is a `workflow_dispatch` run before merge and one
+  # observed cron run after.
+  schedule:
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 concurrency:
@@ -71,6 +86,32 @@ jobs:
         with:
           script: |
             const {owner, repo} = context.repo
+
+            // WHEN MAIN LAST WENT GREEN -- and why this is computed rather than just read.
+            //
+            // MAIN_GREEN_AT comes from the `workflow_run` payload, so it is EMPTY on schedule
+            // and on workflow_dispatch. The staleness bound further down reads it as
+            // `if (at && ...)`, which means an empty value does not relax the bound -- it
+            // removes it. Every refused build is then re-dispatched on every single tick, each
+            // re-run fails the same way, and each failure re-arms the next tick. On a manual
+            // dispatch that was a latent bug nobody hit. On a fifteen-minute cron it is a loop
+            // that burns a runner 96 times a day, for ever.
+            //
+            // So ask the API for the same fact the event would have handed us.
+            let mainGreenAt = process.env.MAIN_GREEN_AT || ''
+            if (!mainGreenAt) {
+              try {
+                const {data: mr} = await github.rest.actions.listWorkflowRuns(
+                  {owner, repo, workflow_id: 'ci.yml', branch: 'main',
+                   status: 'success', per_page: 1})
+                if ((mr.workflow_runs || []).length) {
+                  mainGreenAt = mr.workflow_runs[0].updated_at
+                }
+              } catch (e) {
+                core.warning(`could not read main's last green CI run: ${e.message}`)
+              }
+            }
+            core.info(`main last went green at ${mainGreenAt || 'UNKNOWN'}`)
             // Same set automerge.yml holds: a pull request parked on purpose is not stuck.
             const HOLD = new Set(['hold', 'do-not-merge', 'wip'])
             const report = []
@@ -215,8 +256,13 @@ jobs:
                     // `changes` job failing for any permanent reason of its own would be
                     // re-dispatched once on every single merge to main, for ever, and each
                     // re-run would fail the same way and re-arm the next one.
-                    const at = process.env.MAIN_GREEN_AT
-                    if (at && new Date(ci.created_at) > new Date(at)) {
+                    const at = mainGreenAt
+                    if (!at) {
+                      // Fail CLOSED. A robot that cannot tell whether the refusal is stale must
+                      // not spend a runner guessing; the next tick is fifteen minutes away and
+                      // will have the answer.
+                      core.info(`#${pr.number}: cannot tell when main last went green - not re-dispatching`)
+                    } else if (new Date(ci.created_at) > new Date(at)) {
                       core.info(`#${pr.number}: refused AFTER main went green, so main is not why`)
                     } else {
                       why = 'its build was refused while main was red, not failed'
