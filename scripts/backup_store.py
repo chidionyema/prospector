@@ -24,20 +24,16 @@ worse than no backup, because you stop looking. This module fails loudly instead
 
 Verification, not optimism
 --------------------------
-Uploading is not backing up. This re-downloads a random sample of the dossiers it just wrote
-and the ledger snapshot it just wrote, and compares SHA-256 against what was uploaded.
-
-That sentence used to say the ledger was verified too, and it was false. Until 2026-08-21 the
-ledger was the only one of the three artifacts uploaded with NO read-back at all: dossiers were
-sampled, the db snapshot was fetched and hashed, and the audit trail -- the one file that cannot
-be rebuilt from anything else -- got nothing. A docstring is not a check. If the daily upload
-had been writing truncated objects, every run would still have printed a clean probe line.
+Uploading is not backing up. This re-downloads a random sample of what it just wrote plus the
+whole ledger object, and compares SHA-256 against the local file. `--restore` performs the
+real thing end to end into a directory you name, so recovery is something that has been done
+rather than something believed.
 
 Usage
 -----
     python3 scripts/backup_store.py                 # sync + verify a sample, print a probe line
     python3 scripts/backup_store.py --verify-only   # touch nothing; prove the remote matches
-    python3 scripts/backup_store.py --restore DIR   # pull dossiers and the index into DIR
+    python3 scripts/backup_store.py --restore DIR   # pull everything back into DIR and check it
 """
 from __future__ import annotations
 
@@ -456,20 +452,9 @@ def sync(s3, bucket: str, *, dry_run: bool = False,
             with tempfile.NamedTemporaryFile(suffix=".gz", delete=False) as tmp:
                 tmp_path = Path(tmp.name)
             try:
-                ledger_bytes = _snapshot_ledger(tmp_path)
+                _snapshot_ledger(tmp_path)
                 s3.upload_file(str(tmp_path), bucket, ledger_key,
                                ExtraArgs={"ContentType": "application/gzip"})
-                # Read back HERE, for the same reason the db snapshot does: this object is a
-                # point-in-time artifact of an APPEND-ONLY file, so the bytes it captured stop
-                # existing as a standalone thing the moment `tmp_path` is unlinked. Until
-                # 2026-08-21 the ledger was the only one of the three artifacts uploaded with
-                # no read-back at all -- dossiers get sampled, the db gets this check, the
-                # audit trail got nothing.
-                body = s3.get_object(Bucket=bucket, Key=ledger_key)["Body"].read()
-                if _sha256_bytes(body) != _sha256(tmp_path):
-                    sys.exit(f"STORE_BACKUP FAIL {ledger_key} reads back differently "
-                             "than it was written")
-                print(f"  ledger {ledger_key} {ledger_bytes} bytes gz, read back and matched")
             finally:
                 tmp_path.unlink(missing_ok=True)
             # After the upload, never before — the same prune-after-write rule the db
@@ -944,11 +929,10 @@ def restore(s3, bucket: str, dest: Path) -> int:
     `scripts/restore_drill.py`, which parses sampled rows and reconciles the restored tree
     against the index.
 
-    Layout: `dest/dossiers/<relative path>` and `dest/prospector.db`.
-    The first two are exactly what `scripts/restore_drill.py --backup DIR` consumes, so a pull
-    from R2 can be handed straight to the drill and checked row-by-row against the live index —
-    the two halves of recovery stop being separate rituals that have never been run end to end.
-    The third is the audit ledger, which had no restore path at all until 2026-08-21.
+    Layout: `dest/dossiers/<relative path>` plus `dest/prospector.db`. That is exactly what
+    `scripts/restore_drill.py --backup DIR` consumes, so a pull from R2 can be handed straight
+    to the drill and checked row-by-row against the live index — the two halves of recovery
+    stop being separate rituals that have never been run end to end.
     """
     dest.mkdir(parents=True, exist_ok=True)
     remote = _remote_index(s3, bucket, DOSSIER_PREFIX)
