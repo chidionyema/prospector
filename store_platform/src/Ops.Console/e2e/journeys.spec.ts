@@ -58,15 +58,121 @@ async function openSharePanel(page: import('@playwright/test').Page): Promise<vo
   ).toBeVisible({ timeout: 30_000 });
 }
 
-/** Revoke the document's live link if it has one, so the journey starts from a known state. */
-async function makePrivate(page: import('@playwright/test').Page): Promise<void> {
-  const off = page.getByRole('button', { name: 'Turn it off' });
-  if (!(await off.count())) return;
-  await off.first().click();
+/**
+ * Drive one `Confirm` two-step: preview, tick any acknowledgement it demands, then apply.
+ *
+ * `Confirm` renders the apply button ONLY once the preview came back and the stage is 'confirm'
+ * (`src/components/Confirm.tsx:188`). A preview the gateway refuses puts the component straight
+ * back to 'idle' and prints the reason in a `Problem`. Clicking the apply button directly then
+ * waits the whole test timeout on a locator that will never exist, and reports "waiting for
+ * getByRole(...)" — the one thing it never reports is the refusal, which is the entire answer.
+ * Measured 2026-08-21: journey 5 burned 240s that way, twice, while the reason sat on screen.
+ */
+/**
+ * What the page is actually showing, for a failure message.
+ *
+ * A Playwright timeout names the locator it wanted and nothing else, so every one of them reads
+ * the same whatever went wrong. These three lines are what tell them apart: which buttons exist,
+ * what is in red, and what the main column says.
+ */
+async function describePage(page: import('@playwright/test').Page): Promise<string> {
+  const buttons = (await page.getByRole('button').allInnerTexts())
+    .map((t) => t.trim())
+    .filter(Boolean);
+  const said = (await page.locator('.text-bad-strong').allInnerTexts())
+    .map((t) => t.trim())
+    .filter(Boolean);
+  const whole = (await page.locator('main').first().innerText())
+    .replace(/\s*\n\s*/g, ' | ')
+    .slice(0, 900);
+  return (
+    `  every button on the page: ${buttons.join(' / ') || '(none)'}\n` +
+    `  everything in red on the page: ${said.join(' / ') || '(nothing)'}\n` +
+    `  the page now reads: ${whole}`
+  );
+}
+
+async function twoStep(
+  page: import('@playwright/test').Page,
+  previewLabel: string,
+  applyLabel: string,
+): Promise<void> {
+  const previewButton = page.getByRole('button', { name: previewLabel });
+  const box = previewButton.locator('xpath=ancestor::*[self::div][1]');
+  // Click waits for the button to be actionable, and if it never becomes actionable it waits the
+  // WHOLE remaining test budget and then reports "waiting for getByRole(...)" — which names the
+  // control it wanted and says nothing about what the page is showing instead. Measured
+  // 2026-08-21: journey 5 spent 240s that way waiting for "Turn it off". Bound the wait, then say
+  // what is on screen.
+  try {
+    await previewButton.waitFor({ state: 'visible', timeout: 45_000 });
+  } catch {
+    throw new Error(
+      `"${previewLabel}" never appeared, so the two-step write could not start.\n` +
+        (await describePage(page)),
+    );
+  }
+  await previewButton.click();
+  const apply = page.getByRole('button', { name: applyLabel });
+  try {
+    await apply.waitFor({ state: 'visible', timeout: 45_000 });
+  } catch {
+    // Three different failures land here and they need telling apart. The button still reading
+    // "checking…" means the preview request never came back. The button back to its own label
+    // with a `Problem` beside it means the gateway refused and said why. The button back to its
+    // own label with NOTHING beside it means the click never reached `doPreview` at all.
+    const stillThere = await previewButton.count();
+    const label = stillThere ? (await previewButton.first().innerText()).trim() : '(gone)';
+    const said = (await page.locator('.text-bad-strong').allInnerTexts())
+      .map((t) => t.trim())
+      .filter(Boolean);
+    const near = stillThere ? (await box.first().innerText()).trim().replace(/\n+/g, ' | ') : '';
+    // When the button is GONE the interesting question is what replaced it, so print the page.
+    const whole = (await page.locator('main').first().innerText())
+      .replace(/\s*\n\s*/g, ' | ')
+      .slice(0, 900);
+    throw new Error(
+      `"${previewLabel}" never reached the confirm step, so "${applyLabel}" never rendered.\n` +
+        `  the preview button now reads: ${label}\n` +
+        `  everything in red on the page: ${said.join(' / ') || '(nothing)'}\n` +
+        `  the block the button sits in: ${near || '(the button is gone)'}\n` +
+        `  the page now reads: ${whole}`,
+    );
+  }
+  // The acknowledgement tickbox only exists once the preview has been read, and only for the
+  // writes that reveal themselves to be destructive. Tick it when it is there.
   const ack = page.locator('input[type="checkbox"]');
   if (await ack.count()) await ack.first().check();
-  await page.getByRole('button', { name: 'Yes, make it private' }).click();
-  await expect(page.getByText('Private').first()).toBeVisible({ timeout: 60_000 });
+  await apply.click();
+}
+
+/**
+ * Revoke the document's live link if it has one, so the journey starts from a known state.
+ *
+ * Read the CONTROLS, never the prose. This helper used to decide by `getByText('Public')`, which
+ * matches a substring anywhere on the page, case-insensitively — and the document under test,
+ * `docs/LINKS.md:18`, is a page about shareable links whose own text reads "Nothing here is
+ * public." So the helper saw "Public", concluded the document was live, and waited 240s for a
+ * revoke button that could not exist, on a document the share store said was already private
+ * (measured 2026-08-21: both of its shares `revoked`).
+ *
+ * The two controls below live INSIDE the open share panel, exactly one of them exists at a time,
+ * and no document's prose can imitate a button. They are the console's own answer.
+ */
+async function makePrivate(page: import('@playwright/test').Page): Promise<void> {
+  const revoke = page.getByRole('button', { name: 'Turn it off' });
+  const mintField = page.getByLabel(/Who is it for/i);
+  await expect(
+    revoke.or(mintField).first(),
+    'the share panel is open but shows neither the revoke button nor the mint form',
+  ).toBeVisible({ timeout: 60_000 });
+  if (!(await revoke.count())) return;
+  await twoStep(page, 'Turn it off', 'Yes, make it private');
+  await expect(
+    mintField,
+    'the link was revoked but the mint form did not come back, so the panel never re-read the ' +
+      'share list',
+  ).toBeVisible({ timeout: 60_000 });
 }
 
 test.describe('the control plane', () => {
@@ -199,6 +305,11 @@ test.describe('the control plane', () => {
         'search matched it at all',
     ).toBeVisible({ timeout: 60_000 });
 
+    // The assertion above is also the "state is known" gate. While the share list is still in
+    // flight, `ShareDoc` renders one disabled button reading "Checking who can read it…", which
+    // matches none of those three names — so a visible opener IS the console saying it knows.
+    // Do not gate on the Public/Private pill: `getByText` matches document prose too.
+
     // Mint. `Confirm` previews first and applies second — that two-step is the safety rail, so
     // the test drives it rather than routing around it.
     await openSharePanel(page);
@@ -207,8 +318,7 @@ test.describe('the control plane', () => {
     // private, whatever the last run left behind.
     await makePrivate(page);
     await page.getByLabel(/Who is it for/i).fill('e2e: proving the share rail end to end');
-    await page.getByRole('button', { name: 'Check what this covers' }).click();
-    await page.getByRole('button', { name: 'Mint the link' }).click();
+    await twoStep(page, 'Check what this covers', 'Mint the link');
 
     await expect(page.getByText(/Copy this now/i)).toBeVisible({ timeout: 60_000 });
     const url = ((await page.locator('.font-mono').filter({ hasText: /\/s\// }).first().innerText()) ?? '').trim();
@@ -227,10 +337,11 @@ test.describe('the control plane', () => {
 
       // Now turn it off, and prove the stranger loses it.
       await page.bringToFront();
-      await expect(page.getByText('Public').first()).toBeVisible({ timeout: 30_000 });
       await openSharePanel(page);
+      // `makePrivate` waits for the revoke button and asserts the mint form comes back, so it
+      // already proves the console flipped from public to private. A `getByText('Private')` here
+      // would only prove the word is somewhere on a page that also contains the document's prose.
       await makePrivate(page);
-      await expect(page.getByText('Private').first()).toBeVisible({ timeout: 60_000 });
 
       await theirs.goto(url, { waitUntil: 'domcontentloaded' });
       await expect(
