@@ -24,16 +24,21 @@ worse than no backup, because you stop looking. This module fails loudly instead
 
 Verification, not optimism
 --------------------------
-Uploading is not backing up. This re-downloads a random sample of what it just wrote plus the
-whole ledger object, and compares SHA-256 against the local file. `--restore` performs the
-real thing end to end into a directory you name, so recovery is something that has been done
-rather than something believed.
+Uploading is not backing up. This re-downloads a random sample of the dossiers it just wrote
+plus the whole ledger object, and compares SHA-256 against what was uploaded. `--restore`
+performs the real thing end to end into a directory you name -- dossiers, the index and the
+ledger -- so recovery is something that has been done rather than something believed.
+
+The ledger half of that sentence was false until 2026-08-21. The daily upload had no read-back
+and there was no download path in the repo at all: `LEDGER_PREFIX` appeared three times, at the
+constant, the upload key and the pruner. Every artifact this module writes must have a function
+here that brings it back, and a test that runs the round trip.
 
 Usage
 -----
     python3 scripts/backup_store.py                 # sync + verify a sample, print a probe line
     python3 scripts/backup_store.py --verify-only   # touch nothing; prove the remote matches
-    python3 scripts/backup_store.py --restore DIR   # pull everything back into DIR and check it
+    python3 scripts/backup_store.py --restore DIR   # pull dossiers, index and ledger into DIR
 """
 from __future__ import annotations
 
@@ -452,9 +457,20 @@ def sync(s3, bucket: str, *, dry_run: bool = False,
             with tempfile.NamedTemporaryFile(suffix=".gz", delete=False) as tmp:
                 tmp_path = Path(tmp.name)
             try:
-                _snapshot_ledger(tmp_path)
+                ledger_bytes = _snapshot_ledger(tmp_path)
                 s3.upload_file(str(tmp_path), bucket, ledger_key,
                                ExtraArgs={"ContentType": "application/gzip"})
+                # Read back HERE, for the same reason the db snapshot does: this object is a
+                # point-in-time artifact of an APPEND-ONLY file, so the bytes it captured stop
+                # existing as a standalone thing the moment `tmp_path` is unlinked. Until
+                # 2026-08-21 the ledger was the only one of the three artifacts uploaded with
+                # no read-back at all -- dossiers get sampled, the db gets this check, the
+                # audit trail got nothing.
+                body = s3.get_object(Bucket=bucket, Key=ledger_key)["Body"].read()
+                if _sha256_bytes(body) != _sha256(tmp_path):
+                    sys.exit(f"STORE_BACKUP FAIL {ledger_key} reads back differently "
+                             "than it was written")
+                print(f"  ledger {ledger_key} {ledger_bytes} bytes gz, read back and matched")
             finally:
                 tmp_path.unlink(missing_ok=True)
             # After the upload, never before — the same prune-after-write rule the db
@@ -929,10 +945,11 @@ def restore(s3, bucket: str, dest: Path) -> int:
     `scripts/restore_drill.py`, which parses sampled rows and reconciles the restored tree
     against the index.
 
-    Layout: `dest/dossiers/<relative path>` plus `dest/prospector.db`. That is exactly what
-    `scripts/restore_drill.py --backup DIR` consumes, so a pull from R2 can be handed straight
-    to the drill and checked row-by-row against the live index — the two halves of recovery
-    stop being separate rituals that have never been run end to end.
+    Layout: `dest/dossiers/<relative path>`, `dest/prospector.db` and `dest/prospector.jsonl`.
+    The first two are exactly what `scripts/restore_drill.py --backup DIR` consumes, so a pull
+    from R2 can be handed straight to the drill and checked row-by-row against the live index —
+    the two halves of recovery stop being separate rituals that have never been run end to end.
+    The third is the audit ledger, which had no restore path at all until 2026-08-21.
     """
     dest.mkdir(parents=True, exist_ok=True)
     remote = _remote_index(s3, bucket, DOSSIER_PREFIX)
@@ -1018,6 +1035,7 @@ def restore(s3, bucket: str, dest: Path) -> int:
               f"it was given (ETag verified above); these local files changed after upload, "
               f"which is what a live daemon does. e.g. {', '.join(sorted(diverged)[:3])}")
     restore_db(s3, bucket, dest)
+    restore_ledger(s3, bucket, dest)
     return len(remote)
 
 
@@ -1058,6 +1076,57 @@ def restore_db(s3, bucket: str, dest: Path) -> str:
         conn.close()
     print(f"  restored {key} -> {out.name}, integrity ok, "
           + ", ".join(f"{n}={c}" for n, c in sorted(counts.items())))
+    return key
+
+
+def restore_ledger(s3, bucket: str, dest: Path) -> str:
+    """Pull the newest ledger snapshot into `dest/prospector.jsonl` and prove it reads. Returns its key.
+
+    Until 2026-08-21 this function did not exist. The ledger was uploaded every day to
+    `ledger/prospector-<day>.jsonl.gz` and pruned to the newest 30, and nothing in this repo
+    could bring one back: `LEDGER_PREFIX` appeared at exactly three sites -- the constant, the
+    upload key, and the pruner's list call. `restore()` walked `DOSSIER_PREFIX` and then called
+    `restore_db`. The audit trail went out and had no way in.
+
+    The NEWEST snapshot is the whole ledger, not a fragment, because the file is append-only
+    and each day's object is a whole-lines prefix of it (`_snapshot_ledger`). So recovery is
+    one object, and the older dated keys are history rather than pieces to reassemble.
+
+    What is checked, and why these and not a hash of the bytes against themselves: gzip must
+    decompress (a truncated upload dies here), and every line must parse as JSON (the artifact
+    is JSONL, and bytes that arrive but do not parse are not a restored audit trail). Both are
+    hard exits. There is no useful degraded mode for "your audit trail came back unreadable" --
+    the same rule `restore_db` applies to the index.
+    """
+    keys = sorted(_remote_index(s3, bucket, LEDGER_PREFIX))
+    if not keys:
+        print("  no ledger snapshot in the bucket", file=sys.stderr)
+        return ""
+    # Stand-alone entry point, same as restore_db: someone reaching for only the audit trail
+    # should not die on a missing directory.
+    dest.mkdir(parents=True, exist_ok=True)
+    key = keys[-1]
+    try:
+        raw = gzip.decompress(s3.get_object(Bucket=bucket, Key=key)["Body"].read())
+    except (OSError, EOFError) as exc:
+        sys.exit(f"STORE_BACKUP RESTORE FAIL {key} does not decompress: {exc}")
+
+    out = dest / LEDGER.name
+    out.write_bytes(raw)
+
+    lines = 0
+    for n, line in enumerate(raw.splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            json.loads(line)
+        except ValueError as exc:
+            sys.exit(f"STORE_BACKUP RESTORE FAIL {key} line {n} is not JSON: {exc}")
+        lines += 1
+    if not lines:
+        sys.exit(f"STORE_BACKUP RESTORE FAIL {key} restored no ledger rows")
+
+    print(f"  restored {key} -> {out.name}, {lines} rows, every one parses")
     return key
 
 

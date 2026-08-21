@@ -465,3 +465,119 @@ def test_a_zero_byte_source_dossier_does_not_fail_the_restore(store, tmp_path, c
     out = capsys.readouterr().out
     assert "1 restored objects do not parse as JSON" in out
     assert "bbb.kill.json (0B, local file is unparseable too)" in out
+
+
+# ── Gap 3: the ledger went to R2 every day and had no way back ────────────────
+# Found 2026-08-21. `LEDGER_PREFIX` appeared at exactly three sites in the repo -- the
+# constant, the upload key, and the pruner's list call. `restore()` walked DOSSIER_PREFIX and
+# then called `restore_db`. Nothing anywhere downloaded a ledger object. The daily upload also
+# had no read-back, so the audit trail was the one artifact of the three written blind.
+def test_restore_brings_the_ledger_back_and_every_row_parses(store, tmp_path, capsys):
+    s3 = FakeS3()
+    bs.sync(s3, "b")
+    dest = tmp_path / "restored"
+    bs.restore(s3, "b", dest)
+
+    out = dest / "prospector.jsonl"
+    assert out.is_file(), "the ledger is uploaded daily and must come back"
+    assert out.read_text(encoding="utf-8") == '{"n": 1}\n{"n": 2}\n'
+    assert "2 rows, every one parses" in capsys.readouterr().out
+
+
+def test_the_newest_ledger_snapshot_is_the_one_restored(store, tmp_path):
+    """The ledger is append-only and each object is a whole-lines prefix of it, so the newest
+    key is the whole trail. An older key is history, never a piece to reassemble."""
+    s3 = FakeS3()
+    bs.sync(s3, "b")
+    s3.objects[bs.LEDGER_PREFIX + "prospector-2020-01-01.jsonl.gz"] = gzip.compress(
+        b'{"n": "stale"}\n'
+    )
+    key = bs.restore_ledger(s3, "b", tmp_path / "restored")
+
+    assert "2020-01-01" not in key
+    assert (tmp_path / "restored" / "prospector.jsonl").read_text() == '{"n": 1}\n{"n": 2}\n'
+
+
+def test_a_ledger_snapshot_that_does_not_decompress_fails_the_restore(store, tmp_path):
+    s3 = FakeS3()
+    _, _, ledger_key, _ = bs.sync(s3, "b")
+    s3.objects[ledger_key] = b"\x1f\x8b" + b"\x00" * 40   # gzip magic, nothing behind it
+
+    with pytest.raises(SystemExit, match="does not decompress"):
+        bs.restore_ledger(s3, "b", tmp_path / "restored")
+
+
+def test_a_ledger_row_that_is_not_json_fails_the_restore(store, tmp_path):
+    """Unlike a dossier, a ledger row that does not parse IS fatal. A dossier tree survives one
+    broken file — the drill reconciles it against the index. An audit trail with an unreadable
+    row is not an audit trail, and there is no degraded mode worth offering for it."""
+    s3 = FakeS3()
+    _, _, ledger_key, _ = bs.sync(s3, "b")
+    s3.objects[ledger_key] = gzip.compress(b'{"n": 1}\nnot json at all\n')
+
+    with pytest.raises(SystemExit, match="line 2 is not JSON"):
+        bs.restore_ledger(s3, "b", tmp_path / "restored")
+
+
+def test_restore_without_a_ledger_snapshot_still_restores_dossiers(store, tmp_path, capsys):
+    s3 = FakeS3()
+    bs.sync(s3, "b")
+    for key in [k for k in s3.objects if k.startswith(bs.LEDGER_PREFIX)]:
+        del s3.objects[key]
+    assert bs.restore(s3, "b", tmp_path / "restored") == 3
+    assert "no ledger snapshot in the bucket" in capsys.readouterr().err
+
+
+def test_the_ledger_upload_is_read_back_and_a_corrupted_write_is_caught(store):
+    """The db snapshot has had this check since it was written; the ledger had none. An upload
+    nobody reads back is a write into a bucket you find out about on the day you need it."""
+    s3 = FakeS3()
+
+    real_upload = s3.upload_file
+
+    def corrupt_the_ledger(filename, Bucket, Key, ExtraArgs=None):  # noqa: N803
+        real_upload(filename, Bucket, Key, ExtraArgs)
+        if Key.startswith(bs.LEDGER_PREFIX):
+            s3.objects[Key] = b"something else entirely"
+
+    s3.upload_file = corrupt_the_ledger
+    with pytest.raises(SystemExit, match="reads back differently"):
+        bs.sync(s3, "b")
+
+
+def test_every_uploaded_prefix_has_a_function_that_brings_it_back(store, tmp_path):
+    """THE CLASS, not the instance. The ledger was uploaded for weeks with no download path and
+    no test noticed, because every test asked about an artifact somebody had remembered. This
+    one asks the question the other way round: for each prefix this module writes to, is there
+    anything in the module that reads that prefix back?
+
+    A new prefix with no restore path fails here on the day it is added, which is the only day
+    it is cheap to fix."""
+    import inspect
+
+    src = inspect.getsource(bs)
+    prefixes = {
+        name: getattr(bs, name)
+        for name in dir(bs)
+        if name.endswith("_PREFIX") and isinstance(getattr(bs, name), str)
+    }
+    assert prefixes, "no *_PREFIX constants found — this test has lost its subject"
+
+    s3 = FakeS3()
+    bs.sync(s3, "b")
+    written = {p for p in prefixes.values() if any(k.startswith(p) for k in s3.objects)}
+    assert written, "sync() wrote nothing under any known prefix"
+
+    missing = []
+    for name, prefix in sorted(prefixes.items()):
+        if prefix not in written:
+            continue
+        # A restore path is a call that LISTS or GETS this prefix outside the pruner.
+        reads = [
+            line.strip()
+            for line in src.splitlines()
+            if name in line and ("_remote_index" in line or "get_object" in line)
+        ]
+        if not reads:
+            missing.append(f"{name} ({prefix}) is uploaded and never read back")
+    assert not missing, "; ".join(missing)
