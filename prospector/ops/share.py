@@ -120,6 +120,61 @@ _ANY_BASE_RE = re.compile(
 _ANY_PREFIX = tuple(p.lower()[:-1] for p in DENY_GLOBS if p.lower().endswith("/*"))
 
 
+#: Directories that sit UNDER a denied root and hold nothing but documents this engine writes at
+#: runtime, so a document written into one of them is shareable. Read `_carved` for what this
+#: does and does not open up, and `link_denied` for the half of it an outsider never sees.
+#:
+#: WHY IT EXISTS. Every document this engine generates at runtime is written into `store/`:
+#: `store/scheduler/DIAGNOSTICS_LATEST.txt` and `ALERT.txt`, from `prospector/diagnostics.py:257`
+#: and `prospector/scheduler/alerts.py:151`. `store/*` refuses them, so the docs portal listed
+#: none of them -- measured 2026-08-21, with both sitting on disk and one written twenty minutes
+#: before. The founder's rule is that a generated document appears in the portal with no code
+#: change; an exact list of paths would have satisfied today and broken on the next one.
+#:
+#: WHY A DIRECTORY AND NOT A SUFFIX. `store/**/*.md` is the obvious rule and it is the wrong one:
+#: `store/dossiers/` and `store/runs/` hold generated business content, and a suffix carve is a
+#: standing invitation to hand a prospect dossier to whoever holds a share link.
+#:
+#: WHY `store/launch/` IS NOT HERE, having been in the first cut of this carve. Three reasons,
+#: any one of them enough. Those files are not written at runtime -- they are three proof
+#: documents generated once in June and committed. They are TRACKED, so `.dockerignore:8`
+#: (`store/`) keeps them out of the image while `git ls-files` still lists them on a laptop,
+#: which is the "listed row opens onto nothing in production" defect wearing a new face; that is
+#: what `tests/unit/test_the_image_ships_what_the_console_serves.py` caught. And
+#: `store/launch/test-card-proof.md:40` carries a live grant token, which is a bearer credential
+#: for `/orders/{token}` and `/download/{token}`. Nothing in a path or a suffix could have told
+#: the carve that. It is the reason `link_denied` exists below.
+GENERATED_DOC_DIRS = ("store/scheduler/",)
+
+#: The suffixes a carved directory may hand over. Anything else in there stays denied, so a key
+#: or a database that lands in one of these directories is still refused.
+GENERATED_DOC_SUFFIXES = (".md", ".html", ".htm", ".txt")
+
+#: The deny patterns the carve is allowed to overrule: the two whole-directory rules, and only
+#: those. A secret pattern (`*.pem`, `*.key`, `*.db`, ...) appears EARLIER in `DENY_GLOBS`, so
+#: `is_denied` returns it first and the carve never sees a directory pattern to overrule. That
+#: ordering is the safety argument and it is pinned by the test named above.
+_CARVEABLE = ("store/*", "storage/*")
+
+
+def _carved(low: str, reason: str) -> bool:
+    """Is `low` a document in a carved directory, refused only for being in a denied root?
+
+    `low` is already lowercased and stripped, as `is_denied` has it. `reason` is the pattern that
+    refused it. Both conditions must hold: the refusal must be a whole-directory rule, and the
+    path must be a document directly under one of the carved directories.
+    """
+    if reason not in _CARVEABLE:
+        return False
+    if not low.startswith(GENERATED_DOC_DIRS):
+        return False
+    # AT ANY DEPTH, deliberately. A generator that starts writing `store/launch/2026-08-21/x.md`
+    # must not need a code change to be seen, which is the whole point of the carve. It is only
+    # safe because the claim being made is about the DIRECTORY -- that it holds operational
+    # documents and nothing else -- and that claim does not weaken one level down.
+    return low.endswith(GENERATED_DOC_SUFFIXES)
+
+
 def is_denied(rel: str) -> str:
     """The reason `rel` may never be shared, or "" if it may.
 
@@ -138,13 +193,13 @@ def is_denied(rel: str) -> str:
         return ""
     for pat, path_re, base_re, prefix in _DENY_COMPILED:
         if path_re.match(low):
-            return pat
+            return "" if _carved(low, pat) else pat
         # EVERY PATTERN IS ALSO MATCHED AGAINST THE BASENAME. Without this, `id_rsa*` refuses
         # `id_rsa` at the repo root and hands over `keys/id_rsa`, which is the same key one
         # directory down. Found by the parametrised test on 2026-08-19, before this shipped.
         # The directory patterns carry a `/`, so they never match a basename by accident.
         if base_re is not None and base_re.match(base):
-            return pat
+            return "" if _carved(low, pat) else pat
         # Belt and braces on the directory patterns, and it is REDUNDANT TODAY -- measured
         # 2026-08-21. The comment here used to claim `store/*` matches `store/a` but not
         # `store/a/b` under fnmatch. That is false: fnmatch's `*` crosses `/` (it translates to
@@ -154,7 +209,38 @@ def is_denied(rel: str) -> str:
         # and because it is the one check that does not depend on fnmatch keeping that
         # behaviour. Do not add a pattern that RELIES on it; write the pattern to stand alone.
         if prefix is not None and low.startswith(prefix):
-            return pat
+            return "" if _carved(low, pat) else pat
+    return ""
+
+
+def link_denied(rel: str) -> str:
+    """The reason `rel` may not go behind a share LINK, or "" if it may. "" is not permission —
+    `is_denied` still decides that, and this function answers only the narrower question.
+
+    THE TWO SURFACES ARE NOT THE SAME SURFACE, and until this function existed they were. `/docs`
+    is behind a session: the founder, signed in, on his own console. `/s/<token>` is not: whoever
+    holds the token reads the file, and `public` in this module is a decision about the CLOCK and
+    nothing else — a public link is the same secret token with no expiry. So there was no content
+    tier anywhere, and adding the carve above without this would have put runtime documents one
+    mint away from an outsider.
+
+    WHAT IT REFUSES, and why it is the carved directories exactly. Those documents are rendered
+    from LIVE RUNTIME STATE, so no path and no suffix can say what today's body contains.
+    `render_batch_diagnostics` (prospector/diagnostics.py) writes candidate titles under
+    `── Closest-to-pass kills ──` and spend figures under `── Cost ──`. A pattern rule pins the
+    pattern; it cannot pin the content, and the content is what changes every tick. The founder
+    therefore sees every generated document in his own console with no code change, which is what
+    he asked for, and none of them can be handed out by accident.
+
+    Whether an operational diagnostic may go to an outsider at all is his ruling, not this file's.
+    Until he makes it, the answer that cannot leak is the one that ships.
+    """
+    reason = is_denied(rel)
+    if reason:
+        return reason
+    low = (rel or "").lower().lstrip("/")
+    if low.startswith(GENERATED_DOC_DIRS):
+        return "generated from live runtime state; visible in the console, not on a link"
     return ""
 
 
@@ -204,6 +290,31 @@ def _walked(repo_root: Path, keep: Callable[[str], bool] | None = None) -> list[
     return found
 
 
+def _walked_dirs(
+    repo_root: Path, dirs: tuple[str, ...], keep: Callable[[str], bool] | None = None
+) -> list[str]:
+    """Every file under `dirs`, repo-relative, deny-list NOT applied.
+
+    The caller applies the fence, exactly as it does to the two sources it unions this with, so
+    this can never widen what is shareable -- it only widens what is CONSIDERED. A directory that
+    does not exist contributes nothing rather than raising: these are runtime output directories
+    and a fresh checkout has none of them.
+    """
+    found: list[str] = []
+    for d in dirs:
+        base = repo_root / d
+        if not base.is_dir():
+            continue
+        for path in base.rglob("*"):
+            if not path.is_file():
+                continue
+            rel = path.relative_to(repo_root).as_posix()
+            if keep is not None and not keep(rel):
+                continue
+            found.append(rel)
+    return found
+
+
 def shareable_files(repo_root: Path, *, keep: Callable[[str], bool] | None = None) -> list[str]:
     """Every path this repo will serve, sorted. Both sources pass through `is_denied`.
 
@@ -213,9 +324,30 @@ def shareable_files(repo_root: Path, *, keep: Callable[[str], bool] | None = Non
     """
     tracked = _git_tracked(repo_root)
     raw = tracked if tracked is not None else _walked(repo_root, keep=keep)
+    # THE CARVED DIRECTORIES ARE ALWAYS WALKED, and NEITHER source above can supply them.
+    # `git ls-files` cannot see a generated document, because generated means untracked. And
+    # `_walked` prunes a denied directory as it descends rather than filtering files at the end,
+    # so it drops the whole of `store/` on the `store/*` rule and never reaches a file for the
+    # carve in `is_denied` to consider. That pruning is a deliberate cost decision -- walking
+    # `node_modules/` to throw it away is how a listing takes minutes -- so the fix is to walk the
+    # two carved directories separately rather than to weaken the prune. Everything this adds is
+    # still put through `is_denied` below, so it widens what is CONSIDERED and never what is
+    # allowed.
+    raw = list(raw) + _walked_dirs(repo_root, GENERATED_DOC_DIRS, keep=keep)
     if keep is not None:
         raw = [p for p in raw if keep(p)]
     return sorted({p for p in raw if not is_denied(p)})
+
+
+def linkable_files(repo_root: Path) -> list[str]:
+    """Every file that may go behind a share LINK. What the operator picks a mint target from.
+
+    `shareable_files` answers the wider question — what the console may show — and the two must
+    not be confused at a picker. A picker that offers a file `mint` then refuses is the same
+    defect the founder named one turn earlier in a different place: "there is a path output but
+    the whole thing isnt user friendly".
+    """
+    return [f for f in shareable_files(repo_root) if not link_denied(f)]
 
 
 def revision(repo_root: Path) -> str:
@@ -384,7 +516,11 @@ def mint(store_ops_dir: Path, repo_root: Path, *, scope: str, target: str,
     elif not target:
         raise ValueError(f"a {scope} share needs a path")
     else:
-        reason = is_denied(target if scope == "file" else f"{target}/x")
+        # `link_denied`, not `is_denied`: minting IS the act of putting a path behind a
+        # sessionless link, so the link tier is the one that decides here. It returns the
+        # deny-list pattern unchanged when that is what refused, so the operator still gets
+        # told WHICH rule stopped them.
+        reason = link_denied(target if scope == "file" else f"{target}/x")
         if reason:
             raise ValueError(f"{target!r} can never be shared: it matches {reason!r}")
         resolved = _resolve_under(repo_root, target)
@@ -528,7 +664,7 @@ def open_share(store_ops_dir: Path, repo_root: Path, token: str, name: str = "",
     if scope in ("tree", "repo") and not name:
         # Recomputed here, every single read. That is what makes a `repo` link a live view of the
         # tree rather than a snapshot of the day it was minted — see `folder_view`.
-        files = [f for f in shareable_files(repo_root) if _in_scope(row, f)]
+        files = [f for f in linkable_files(repo_root) if _in_scope(row, f)]
         _record_read(store_ops_dir, row, "(index)", viewer)
         return {"kind": "index", "scope": scope, "target": target,
                 "files": files, "count": len(files),
@@ -537,7 +673,7 @@ def open_share(store_ops_dir: Path, repo_root: Path, token: str, name: str = "",
 
     if not _in_scope(row, rel):
         raise PermissionError("this link does not cover that file.")
-    if is_denied(rel):
+    if link_denied(rel):
         raise PermissionError("that file is never shareable.")
 
     path = _resolve_under(repo_root, rel)
