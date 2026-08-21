@@ -51,6 +51,7 @@ import json
 import os
 import re
 import shutil
+import sqlite3
 import subprocess
 import sys
 import time
@@ -82,6 +83,7 @@ HEARTBEAT_STALE_S = int(os.environ.get("PROSPECTOR_HEARTBEAT_STALE_S", "300"))
 # caches - is reproducible, so the standby copy does not carry it and the sync stays cheap
 # enough to run every fifteen minutes.
 MONEY_FILES = ("prospector.jsonl", "prospector.db")
+_TAIL_WINDOW = 262144          # bytes read from the end to find the last record boundary
 
 
 def on_fly() -> bool:
@@ -425,6 +427,149 @@ def do_failover() -> int:
     return 2
 
 
+def _trim_partial_tail(path: Path) -> int:
+    """Cut a trailing incomplete record off a pulled JSONL. Returns the bytes removed.
+
+    The source is APPEND-ONLY and is being appended to while it is read, so a transfer that
+    finished perfectly normally can still end mid-record: the writer added a partial line after
+    the reader passed that offset. Refusing on a ragged tail would therefore reject good copies
+    intermittently and page somebody about a file that was fine.
+
+    An append-only ledger is defined by its COMPLETE lines. A trailing partial record carries
+    nothing that is lost by dropping it, so the ragged tail is trimmed and the copy is kept. The
+    refusal is reserved for the shrink, which is the condition that actually means "truncated".
+
+    Read only the tail: these ledgers run to hundreds of megabytes and this runs every 15
+    minutes. 256 KB is far more than any single record and costs one seek.
+    """
+    try:
+        size = path.stat().st_size
+        with path.open("rb") as fh:
+            fh.seek(max(0, size - _TAIL_WINDOW))
+            window = fh.read()
+    except OSError:
+        return 0
+    if not window:
+        return 0
+    last_nl = window.rfind(b"\n")
+    if last_nl == -1:
+        return 0                        # no complete record in the window; leave it to the
+                                        # shrink rule, which is what grades this case
+    keep_to = (size - len(window)) + last_nl + 1
+    if keep_to >= size:
+        return 0                        # already ends on a record boundary
+    trailing = window[last_nl + 1:]
+    try:
+        json.loads(trailing.decode("utf-8", "replace"))
+    except ValueError:
+        pass
+    else:
+        return 0                        # a complete record with no closing newline
+    with path.open("r+b") as fh:
+        fh.truncate(keep_to)
+    return size - keep_to
+
+
+def _shrink_is_waived() -> bool:
+    """Consume a one-shot permission to accept a smaller file, and say so loudly.
+
+    A rotation on Fly or a VACUUM of the db really can shrink the source. That is rare and it is
+    a decision. An environment variable would be set once in a plist to get one rotation through
+    and then stay set forever, silently, with the guard gone and no trace -- the same shape as an
+    expired dead mark. So the switch is a FILE THAT IS DELETED AS IT IS CONSUMED, and honouring
+    it emits a critical event, so the process audit reports that the guard was waived rather than
+    reporting nothing.
+    """
+    token = STANDBY / "ALLOW_SHRINK"
+    if not token.exists():
+        return False
+    token.unlink(missing_ok=True)
+    event("sync_shrink_waived", severity="critical")
+    return True
+
+
+def _source_size(name: str) -> int | None:
+    """How many bytes the file has on Fly right now, or None if the box could not be asked.
+
+    This is the only check that can tell a FINISHED transfer from a STOPPED one, and it is worth
+    the extra round trip every fifteen minutes for exactly that reason.
+
+    Grading the arrival against the local previous copy instead grades it against local history,
+    and local history is the thing a truncating sync corrupts. Once one fragment is on disk it
+    becomes the floor, and every later fragment only has to beat the fragment: measured
+    2026-08-20 the floor was 25,296,896 bytes against a 407,981,598-byte source, so a pull cut at
+    200 MB would have been accepted and enshrined as the next floor. Peer session wt-storeroot-4a
+    found that hole in the first version of this guard.
+
+    A failed probe returns None rather than raising, and the caller falls back to the monotonic
+    rule and SAYS which check it ran. A guard that cannot ask the source is weaker; it must not
+    also be silent about it.
+    """
+    rc, so, _se = sh(["fly", "ssh", "console", "-a", FLY_APP, "-C",
+                      f"/bin/sh -c 'wc -c < /data/store/{name}'"], timeout=90)
+    if rc != 0:
+        return None
+    digits = re.search(r"\d+", so or "")
+    return int(digits.group()) if digits else None
+
+
+def _db_is_intact(path: Path) -> bool:
+    """Does the pulled SQLite file actually open and read, page by page?
+
+    Size cannot answer this one. `fly ssh sftp get` copies a database that is being WRITTEN, so
+    a transfer can finish, arrive at exactly the right length, and still hold pages from two
+    different states of the file. That copy opens perfectly and fails on the first real read -
+    which is worse than a truncated ledger, because it fails during a failover rather than
+    during the sync.
+
+    Read-only URI so the check cannot itself write a journal beside the file. The guard wraps the
+    QUERY, not the connect: a torn database connects without complaint and raises on the scan.
+    """
+    try:
+        con = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=30)
+    except sqlite3.Error:
+        return False
+    try:
+        row = con.execute("PRAGMA integrity_check").fetchone()
+        return bool(row) and row[0] == "ok"
+    except sqlite3.Error:
+        return False
+    finally:
+        con.close()
+
+
+def _rejects_arrival(tmp: Path, dest: Path, name: str, source: int | None) -> str:
+    """Say why a pulled file must not replace the standby copy, or "" to accept it.
+
+    Three checks, in order of how directly they answer "did the transfer finish":
+
+      1. Against the SOURCE size. Equal or larger means the reader reached EOF; smaller means it
+         stopped. This is the real test and it is used whenever the probe answered.
+      2. Against the copy already held, only when the probe did NOT answer. Weaker, because the
+         copy already held may itself be a fragment, but a ratchet is still better than nothing.
+      3. For the database, that it opens and scans. Size says nothing about a torn snapshot.
+
+    A stale whole file beats a fresh fragment every time, so a refusal keeps what is on disk.
+    """
+    arrived = tmp.stat().st_size
+    if arrived == 0:
+        return "arrived with no complete record"
+
+    if source is not None:
+        if arrived < source and not _shrink_is_waived():
+            return (f"{arrived:,} bytes arrived of the {source:,} on Fly - the transfer stopped "
+                    f"short (touch {STANDBY / 'ALLOW_SHRINK'} if the source really did shrink)")
+    elif dest.exists() and arrived < dest.stat().st_size:
+        if not _shrink_is_waived():
+            return (f"could not read the source size, and {arrived:,} bytes is smaller than the "
+                    f"{dest.stat().st_size:,} already held (touch "
+                    f"{STANDBY / 'ALLOW_SHRINK'} if the source really did shrink)")
+
+    if name.endswith(".db") and not _db_is_intact(tmp):
+        return "arrived as a SQLite file that does not pass an integrity check"
+    return ""
+
+
 def cmd_sync(args) -> int:
     """Pull Fly's money files down to the standby copy. Bounds what a failover would lose."""
     if active_side() != "fly":
@@ -435,17 +580,64 @@ def cmd_sync(args) -> int:
     ok = True
     for name in MONEY_FILES:
         tmp = STANDBY / (name + ".partial")
+        # Ask the source how big it is BEFORE pulling it. The answer is what turns "is this file
+        # plausible" into "did this transfer finish"; see _source_size.
+        src_size = _source_size(name)
         rc, so, se = sh(["fly", "ssh", "sftp", "get", "-a", FLY_APP,
                          f"/data/store/{name}", str(tmp)], timeout=600)
         # `fly ssh sftp` has exited 0 on a failed transfer before (it cost cutover attempt 6),
-        # so the size is what is trusted, never the exit status.
+        # so the exit status is never trusted. What replaced it was `size > 0`, which is a
+        # PROXY for completeness and grades nothing: a transfer cut off at any point is
+        # non-empty, so it passed, and `tmp.replace` then destroyed the last good copy.
+        #
+        # Measured 2026-08-20. The mirror tracked the source exactly, 407,230,958 bytes at
+        # 18:50 rising to 407,981,598 at 20:26. Then three consecutive pulls hit the 600s
+        # timeout and were promoted anyway: 17,170,432 bytes, then 10,027,008, then
+        # 25,296,896 - each one a prefix ending mid-line, each one overwriting the whole
+        # copy before it. The log printed every fragment's byte count as a success line, so
+        # the rail read healthy while the standby ledger fell to 6.2% of the source. This is
+        # the disaster-recovery copy of the money file for a business running on one Fly app.
+        #
+        # The check that replaced it grades the arrival against the SOURCE size, read off Fly
+        # just before the pull. Grading it against the copy already on disk was the first
+        # version and it has a hole: a fragment on disk becomes the floor, so the next fragment
+        # only has to beat the fragment.
+        #
+        # Two conditions, two treatments, because they are not the same failure:
+        #   SHRINK -> REFUSE. The ledger is append-only, so a pull smaller than the copy already
+        #      on disk is a truncated transfer, always. A stale whole file beats a fresh fragment
+        #      every time, so the good copy stays and the arrival is parked beside it.
+        #   RAGGED TAIL -> TRIM. The source is being APPENDED TO while it is read, so a transfer
+        #      that finished normally can still end mid-record. Refusing on that would reject
+        #      good copies intermittently. An append-only ledger is defined by its complete
+        #      lines, so the partial one is cut and the copy is kept.
+        # A legitimate shrink (a rotation on Fly, a VACUUM of the db) is real but rare, and it
+        # must be a deliberate act rather than something a timeout can do by accident. The
+        # switch is a one-shot file, `standby/ALLOW_SHRINK`, deleted as it is consumed.
         if not tmp.exists() or tmp.stat().st_size == 0:
             print(f"sync: {name} did not arrive ({(se or so).strip()[:120]})", file=sys.stderr)
             tmp.unlink(missing_ok=True)
             ok = False
             continue
-        tmp.replace(STANDBY / name)     # atomic: a half-pulled file is never the standby copy
-        print(f"sync: {name} {(STANDBY / name).stat().st_size:,} bytes")
+        dest = STANDBY / name
+        # Completeness FIRST, on the bytes as they arrived, because the trim below deliberately
+        # makes the file smaller and the completeness test is a size test.
+        reason = _rejects_arrival(tmp, dest, name, src_size)
+        if not reason and name.endswith(".jsonl"):
+            trimmed = _trim_partial_tail(tmp)
+            if trimmed:
+                print(f"sync: {name} trimmed {trimmed:,} bytes of an incomplete trailing record")
+        if reason:
+            kept = STANDBY / (name + ".rejected")
+            tmp.replace(kept)
+            print(f"sync: {name} REFUSED - {reason}; kept the existing copy "
+                  f"({dest.stat().st_size:,} bytes) and parked the arrival at {kept.name}",
+                  file=sys.stderr)
+            event("sync_rejected", file=name, reason=reason)
+            ok = False
+            continue
+        tmp.replace(dest)               # atomic: a half-pulled file is never the standby copy
+        print(f"sync: {name} {dest.stat().st_size:,} bytes")
     event("sync", ok=ok, staleness_min=probe_standby()["staleness_min"])
     return 0 if ok else 1
 

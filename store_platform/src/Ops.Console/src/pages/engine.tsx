@@ -228,6 +228,25 @@ export default function Engine() {
       </Card>
 
       <Card
+        title="Processes"
+        right={<AsOf asOf={pause.envelope?.as_of} tookMs={pause.envelope?.took_ms} />}
+      >
+        {jobs.length === 0 ? (
+          <div className="text-[13px] text-subtle">asking launchctl…</div>
+        ) : null}
+        <div className="flex flex-col gap-4">
+          {jobs.map((j) => (
+            <ProcessCard key={j.label} job={j} beat={beats[j.role]} onDone={pause.refresh} />
+          ))}
+        </div>
+        <Note>
+          Two different questions. The heartbeat says the process was alive a moment ago. launchd
+          says whether anything will start it again when it dies. A process can be beating now and
+          still be unheld, which is how the engine stayed dead for hours on 16 August.
+        </Note>
+      </Card>
+
+      <Card
         title="Stops"
         right={<AsOf asOf={pause.envelope?.as_of} tookMs={pause.envelope?.took_ms} />}
       >

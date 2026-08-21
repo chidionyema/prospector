@@ -202,6 +202,7 @@ receipt.
 | E-101 | 2026-08-20 | Can a local open verifier rule the moat's verdicts? 8 arms scored, 3,472 pairs each, 3 lexical baselines included so a neural arm that loses to string overlap is visible. Two angles, because agreement with our own rulings is contaminated by E15's 48.9% rationale infidelity: (a) AUC against the moat's own decisions, (b) a control of cited premises against constructed unrelated ones, labels by construction. | **DONE — the answer is NO.** Angle (a): 0.476–0.562, a coin toss. Angle (b): best arm **0.706 AUC**, worst **0.408**, below random. Throughput 0.04 pairs/s on rented CPU, which would have been an operational cost forever. Stage B killed before spending a further ~$50 and 55 hours. Total spend $12; the 16-core box and its 60GB volume were destroyed the same turn. | `tools/experiments/_verifiers.py`, `_verifier_sidecar.py`, `_prove_causal_wiring.py` (17 checks, mutation-proved 4 RED). Section "E-101" below. Padding control: `e101_stageB_fly.py:183` left-padding verified, right padding moves a score 0.249 while left differs from batch=1 by 0.0023. |
 | E-103 | 2026-08-20 | What does one verdict actually cost us, and is merging the six per-candidate check calls into one worth building? Two independent angles: call count from the dossier corpus, token anatomy from the prompt files on disk. | **DONE.** Corpus n=1,696 completed vets, 2,929 dossiers, 14,006 checks. **4.679 paid model calls per vet** (median 6); 60.1% of vets run all six checks; kill-fast rarely fires because `refuted` is only 4.7% of checks. Fixed preamble is ~11,250 chars on EVERY call (template 4,895 + style 1,247 + exemplars 885 + candidate median 4,220) against 1,500 chars of actual evidence — **7.5x more boilerplate than evidence**. Merged: ~59,700 → ~21,450 input chars per vet = **2.8x on tokens, 4.679x on calls**. My earlier "up to 6x" was wrong and was corrected to the founder unprompted. Founder ruling: *"ok let doi it regardless, add to list"*. | Corpus at `tools/experiments/_corpus.py`; `retrieval_failed` is TRUE on 0 of 14,006 checks, so no deferred run pollutes the denominator (peer 1e's survivorship objection, answered). |
 | E-104 | 2026-08-20 | Is a claim-level verdict against retrieved evidence a defensible product, or is it already commoditised? 68 sourced pages. | **DONE — the verifier is not the moat.** Per-answer citation is commoditised: four rivals at $10–$14 per 1k grounded requests, Anthropic Citations at no surcharge. But **zero of thirteen major providers rule on a claim against retrieved evidence**; the verdict-shaped products that exist are Bedrock contextual grounding ($0.10/1k), Bedrock Automated Reasoning ($0.17/1k, against a formal policy not the open web) and Google Check Grounding ($0.00075/1k). Closest direct competitor WebCite at ~$0.16 per verification. The verification vendors are being absorbed — Arize→Dynatrace $915M (13 Aug 2026), Galileo→Cisco (9 Apr 2026), TruEra→Snowflake, Logically→administration. **What is defensible is the corpus, the declared standard of proof, the audit trail and the liability — not the model.** | Section 5 below carries the load-bearing entries. |
+| E-106 | 2026-08-20 | Founder's question: can Groq's free tier serve as a fallback brain? Quotas read off `console.groq.com/docs/rate-limits` today, divided into E-103's measured prompt anatomy. | **PARTLY — it is a floor, not a drain.** `openai/gpt-oss-120b` free is 30 RPM / 1,000 RPD / **8,000 TPM** / **200,000 TPD**. Our check call is ~12,750 chars, so **8,000 TPM is smaller than two of our calls** and TPM binds long before RPM. Ceiling: **10-17 vets/day** today, **28-47/day** after the approved merge. That cannot drain a 224-row defer backlog or keep up with `batch_size` 15/tick. It CAN score the golden set that blocks E-001, and it takes A1 off zero for $0. | Section 8.7 below. Assumption: 4 chars/token, sensitivity run at 3 and 5. |
 
 ---
 
@@ -653,7 +654,14 @@ needed its second, construction-labelled angle.
 3. **Granite Guardian 3.3 (Apache 2.0, 76.5) on our pairs.** The laptop cannot host it — Python
    3.14.6 x86_64 has no torch wheel, so anything local must sit behind the Ollama daemon, which is
    down. A hosted endpoint answers it without buying hardware.
-4. **Who buys a claim-level verdict with consequences attached** — pharma review, advertising
+4. **Do Groq's free-tier terms allow our candidate text?** E-106 (§8.7) answered the capacity
+   half of the founder's question from published quotas. The half that is not arithmetic is
+   whether free-tier traffic is retained or used for training. E-104's finding is that **the
+   corpus and the audit trail are the asset, not the model**, so posting candidate text and
+   retrieved passages to a free tier is a business decision about the asset, not a technical one.
+   It is the founder's call and it is the only thing blocking the wiring. The quotas page does
+   not answer it; it needs Groq's terms of service read directly.
+5. **Who buys a claim-level verdict with consequences attached** — pharma review, advertising
    substantiation, ESG. E-104 found no per-verdict product priced for a business carrying
    liability. That is either an opening or the reason nobody bothered, and the two look identical
    from outside.
@@ -685,3 +693,83 @@ came out of the peer review of that plan and must survive into the implementatio
   minutes and would have prevented a false claim reaching the founder.
 - **`cmd | tail` reports tail's exit status.** It bit this session again on a brain probe that
   printed nothing and reported `exit=0`. Capture the status before any pipe.
+
+## 8.7 E-106 — Groq's free tier as a fallback brain
+
+Founder's question, 2026-08-20: *"as part of research outstanding can we use groq free tier as
+fallback"*. Groq was already named in E-011 as roster breadth, but nobody had put a number on it.
+
+**The answer is: yes as a floor, no as a drain.** It cannot carry the backlog. It can take A1 off
+zero and it can score the golden set that blocks everything else, and it costs nothing.
+
+### The quotas, read off the source
+
+From `https://console.groq.com/docs/rate-limits`, fetched 2026-08-20. Free plan:
+
+| Model | RPM | RPD | TPM | TPD |
+|---|---|---|---|---|
+| `openai/gpt-oss-120b` | 30 | 1,000 | **8,000** | **200,000** |
+| `openai/gpt-oss-20b` | 30 | 1,000 | 8,000 | 200,000 |
+| `qwen/qwen3.6-27b` | 30 | 1,000 | 8,000 | 200,000 |
+| `groq/compound` | 30 | **250** | **70,000** | not listed |
+| `groq/compound-mini` | 30 | 250 | 70,000 | not listed |
+
+### What that is worth against our own measured call
+
+E-103 measured the call, so this is division rather than estimation. One check call is ~11,250
+chars of fixed preamble plus ~1,500 chars of evidence = **~12,750 chars ≈ 3,188 tokens**. A vet
+is 4.679 paid calls. The approved merge takes a whole vet to ~21,450 chars ≈ 5,363 tokens.
+
+| | today, six calls | after the merge |
+|---|---|---|
+| calls that fit in 8,000 TPM | **2 per minute** | 1 per minute |
+| calls in 200,000 TPD | 62 | 37 |
+| **vets per day** | **13.4** | **37.3** |
+
+**TPM is the binding constraint and RPM never binds.** 30 requests a minute is generous; 8,000
+tokens a minute is smaller than three of our calls. Anyone reading the RPM column alone concludes
+this tier is ten times more useful than it is.
+
+**Sensitivity.** The one soft link is 4 chars per token. At 3 the answer is 10.1 vets/day and 28.0
+merged; at 5 it is 16.8 and 46.6. **10-17 today, 28-47 merged**, and the verdict does not change
+anywhere in that range. Replace the assumption with a measurement by tokenising a real prompt
+rather than by arguing about the ratio.
+
+### Why that is not a drain
+
+`schedule.batch_size` is 15 candidates per tick and the defer backlog is 224 rows. At 13 vets a
+day the free tier is behind generation from the first tick and would take about seventeen days to
+clear the backlog it starts with. It is not the answer to A2.
+
+### Why it is still worth wiring
+
+1. **A1 is measured at 0%.** Sixty-two trusted-fence-safe calls a day for nothing is not a small
+   number when the current number is zero. The engine currently produces nothing at all.
+2. **It scores E-001, which blocks every quality experiment.** The nine-item set costs ~28,700
+   tokens, 14% of one day's allowance. A 100-item replacement costs ~319,000 tokens, so it runs
+   over two days at no cost. E-001 needs a brain exactly once, to score a set it does not need a
+   brain to build.
+3. **The fence already exists and needs no promotion.** Groq would sit outside `moat_primary()`,
+   so `is_provisional_provider` (`operator.py:1451`) stamps anything it rules `provisional`, and
+   `run.py:864` bars publication on PASS. Adding it is a config line and an adapter, not a
+   golden-gate promotion. It is the same shape the estate already supports for DeepSeek.
+
+### Two traps to record before anyone builds it
+
+**`groq/compound` looks like the better model and is the wrong one.** Its 70,000 TPM is 8.75x the
+binding constraint, which makes it tempting. It is an agentic system with **built-in web search**,
+and this engine's first rule is verdict-from-retrieval-only: the model rules on passages *we*
+fetched, and silence is `unverifiable`. A model that can search on its own breaks the provenance
+the whole product is built on. If it is ever used, its own search must be provably off, and
+proving that is more work than the extra quota is worth.
+
+**Free-tier terms are a business decision, not a technical one.** See §8.4 item 4. Not wired until
+the founder rules.
+
+### The cost estimate, before anything runs (wish 14)
+
+**$0.00.** No card, no rented box, no operational line. The paid Groq tier is money and therefore
+the founder's, and this experiment is designed so that the free tier answers it without reaching
+that question. If the free tier proves useful, the paid tier's price becomes a separate ticket
+with its own estimate.
+

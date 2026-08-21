@@ -680,6 +680,11 @@ class Config:
     # block instead of ~85 source edits across 12 files. Declaring one does NOT make it
     # trusted: it rules `provisional` until it is ALSO named in `moat_primary:` above.
     providers: dict = field(default_factory=dict)
+    # Heartbeat cadences, from `config.yaml heartbeat:`. Two of them, because a probe is a real
+    # call: `metered_interval_s` governs the tiers that bill (one claude_cli probe measured
+    # $0.049 on 2026-08-21), `interval_s` the free ones. An empty dict uses the defaults in
+    # `prospector/ops/heartbeat.py`, so a config with no heartbeat block still beats.
+    heartbeat: dict = field(default_factory=dict)
     retrieval: Retrieval = field(default_factory=Retrieval)
     thresholds: Thresholds = field(default_factory=Thresholds)
     admissibility: Admissibility = field(default_factory=Admissibility)
@@ -1211,6 +1216,7 @@ def load_config(path: str | Path | None = None) -> Config:
     set_declared(declared_providers)
     cfg = Config(
         providers=declared_providers,
+        heartbeat=dict(raw.get("heartbeat") or {}),
         operator=raw.get("operator", "mock"),
         model=raw.get("model", ""),
         model_fast=raw.get("model_fast", ""),
