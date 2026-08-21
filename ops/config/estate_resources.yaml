@@ -97,7 +97,7 @@ resources:
   "datastore:prospector-store-api/store_data":
     described_by: store_platform/deploy/fly/api.fly.toml
     restore_gap:
-      issue: 79
+      issue: 588
       why: >-
         this is the only record of who bought what. ops/automations/offsite_backup.py copies it
         off Fly nightly, so the bytes are safe; what does not exist is a command that puts them
@@ -107,7 +107,7 @@ resources:
   "object_storage:prospector-backup":
     described_by: ops/config/offsite_backup.yaml
     restore_gap:
-      issue: 79
+      issue: 588
       why: >-
         the bucket that holds every other restore. Recreating it in a new account is manual: no
         command in this repo creates a bucket, so a move starts by making one by hand.
@@ -115,7 +115,7 @@ resources:
   "object_storage:prospector-packs":
     described_by: store_platform/.env.production.example
     restore_gap:
-      issue: 79
+      issue: 588
       why: >-
         delivered packs. A buyer's download link resolves here, so an empty bucket in a new
         account fails after the money is taken, not before.
@@ -124,10 +124,10 @@ resources:
   "dns:mumchimp.com":
     described_by: deploy/dns/mumchimp.com.zone
     restore_gap:
-      issue: 99
+      issue: 589
       why: >-
         the zone is committed and diffed daily by .github/workflows/dns-drift-drill.yml, so
-        drift is caught. Applying it is still a person in the GoDaddy control panel. #99 puts
+        drift is caught. Applying it is still a person in the GoDaddy control panel. #589 puts
         the zone under octoDNS, which turns this column into a command.
 
   # --- tls -----------------------------------------------------------------------------------
@@ -190,7 +190,7 @@ resources:
   "scheduled_job:launchd/*":
     described_by_template: ops/launchd/{name}.json
     restore_gap:
-      issue: 82
+      issue: 590
       why: >-
         all sixteen live jobs have a committed JSON, and scripts/launchd_plists.py --check
         proves the installed plist still matches it. What no script does is install them on a
@@ -206,7 +206,7 @@ resources:
   "scheduled_job:workflow/*":
     described_by_template: .github/workflows/{name}
     restore_gap:
-      issue: 114
+      issue: 591
       why: >-
         the six scheduled workflows are committed and move with the repo, so a new GitHub org
         picks them up on push. Any other CI host would need them rewritten, and nothing today
@@ -225,31 +225,31 @@ resources:
 # ---------------------------------------------------------------------------------------------
 admitted_gaps:
   "compute:prospector-hermes":
-    issue: 74
+    issue: 587
     why: >-
       the app that started this. It has run in production for months with no committed fly.toml
-      of any kind, which is why nothing in the repo could tell anyone it existed. #74 decides:
+      of any kind, which is why nothing in the repo could tell anyone it existed. #587 decides:
       commit a config and keep it, or destroy it.
 
   "datastore:prospector-hermes/hermes_state":
-    issue: 74
-    why: 3GB of state belonging to an app whose future is undecided. It moves or dies with #74.
+    issue: 587
+    why: 3GB of state belonging to an app whose future is undecided. It moves or dies with #587.
 
   "secret:prospector-hermes/*":
-    issue: 74
+    issue: 587
     why: >-
       thirty-two secrets on an undescribed app, including an Anthropic key. They are worth
-      auditing when #74 decides whether the app survives; describing them first would be writing
+      auditing when #587 decides whether the app survives; describing them first would be writing
       down the contents of a box we may throw away.
 
   "secret:prospector-engine/FLY_API_TOKEN":
-    issue: 102
+    issue: 592
     why: >-
-      the engine holds a token for its own platform. #102 scopes it. Writing it into a
+      the engine holds a token for its own platform. #592 scopes it. Writing it into a
       describing file before it is scoped would spread an over-broad credential, not describe it.
 
   "secret:github/*":
-    issue: 102
+    issue: 592
     why: >-
       three Fly deploy tokens held by GitHub Actions. Same decision as above and the same issue:
       what they are allowed to do is not settled, so what they are is not worth recording yet.
@@ -261,7 +261,7 @@ admitted_gaps:
 # ---------------------------------------------------------------------------------------------
 admitted_blind_classes:
   payment_integration:
-    issue: 102
+    issue: 593
     why: >-
       listing Stripe webhook endpoints needs the live key in the environment. On the engine,
       where this runs on a schedule, it is there. On a laptop or in CI it is not, and it must

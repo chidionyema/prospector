@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List, Sequence
 
+from .pack_lede import select_lede
 from .plain_text import publish_pass, to_plain_text
 from .trimming import as_phrase, cap_words
 
@@ -283,7 +284,8 @@ def claim_safe_marketing(
     ]
 
 
-def exec_summary_md(candidate: Any, checks: Sequence[Any] = ()) -> str:
+def exec_summary_md(candidate: Any, checks: Sequence[Any] = (),
+                    sources: Sequence[Any] = ()) -> str:
     """The opening: the situation, then why it is a business. Rewritten 2026-08-15.
 
     WHAT THIS USED TO BE, AND WHY IT CHANGED
@@ -344,6 +346,26 @@ def exec_summary_md(candidate: Any, checks: Sequence[Any] = ()) -> str:
     # was. A newspaper puts that sentence directly under the headline and so does this now.
     if one:
         lines += [f"**{one}**", ""]
+
+    # --- The named case, when the dossier actually holds one. ---
+    #
+    # The docstring above says this renderer cannot write a named case and that an invented
+    # protagonist would be the worst thing the pack could contain. Both are still true. This
+    # does not write one: `pack_lede.select_lede` QUOTES one, verbatim, out of a passage a
+    # `supported` check already cited, and prints the URL under it.
+    #
+    # It sits directly under the standfirst because that is the position the 2026-08-15
+    # rewrite established for the most concrete thing available, and a cited situation with a
+    # named body and a number in it is more concrete than the payer description below.
+    #
+    # Measured 2026-08-21 over 108 pass dossiers: 19 of them (17.6%) hold a line that clears
+    # every filter. The other 89 get nothing here, which is the same contract every floor in
+    # this pack keeps -- an absent specific is an absent line, never a padded generic one.
+    # The topic is the candidate's own words. Without it a supported check's off-subject
+    # citation becomes the pack's opening sentence.
+    lede = select_lede(sources, checks, " ".join(x for x in (title, one, who) if x))
+    if lede:
+        lines += [lede.as_markdown(), ""]
 
     # --- The lede: who is living with this today. ---
     #

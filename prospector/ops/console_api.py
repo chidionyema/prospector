@@ -552,7 +552,7 @@ def _read_docs(cfg, args: dict) -> dict:
 
 
 def _read_automations(cfg, args: dict) -> dict:
-    """Every automation on this estate, each one run for real, right now.
+    """Every automation on this estate, each one run for real.
 
     Registered 2026-08-19. `automations_view.py` had existed for weeks with no caller: it was
     written, tested, and reachable from nothing — not READS, not the browser allow-list, not a
@@ -562,10 +562,16 @@ def _read_automations(cfg, args: dict) -> dict:
     The view discovers its own subjects, so a new automation is two files and no console edit.
     `tests/unit/test_a_view_module_with_no_caller_is_unreachable.py` fails if the next one is
     written and left unwired.
-    """
-    from .automations_view import read_automations
 
-    return read_automations(cfg, args)
+    SERVED FROM A SNAPSHOT since 2026-08-21, and this one changes what the page MEANS, so it says
+    so on the page. It used to run every automation at the moment you looked, for 10.16s. It now
+    shows the last such run and how long ago it was, and starts another in the background when
+    that is over five minutes old. Running every automation on this estate because somebody
+    opened a tab was never the right price. See `prospector/ops/slow_read.py`.
+    """
+    from . import slow_read
+
+    return slow_read.serve_merged("automations")
 
 
 def _read_incidents(cfg, args: dict) -> dict:
@@ -616,6 +622,28 @@ def _read_shares(cfg, args: dict) -> dict:
     if args.get("files"):
         out["files"] = _share.shareable_files(root)
     return out
+
+
+def _read_repo_files(cfg, args: dict) -> dict:
+    """Every file in this repo that may be shared, grouped by folder, with sizes.
+
+    Registered 2026-08-21, and the gap it closes is an odd one. `share.folder_view` was written,
+    tested, and called from exactly one place: `open_share`, which is what the person OUTSIDE the
+    console sees. The operator minting the link -- the only one who has to name a path -- was the
+    one party in the exchange with no way to look. So the share page asked them to type a
+    repo-relative path from memory, and a typo returned an error instead of a link. The founder:
+    "there is a path output but the whole thing isnt user friendly".
+
+    "ANY NEW FILE" NEEDS NO ACTION, and that is a property of this being a read rather than a
+    document. The list is `git ls-files` minus the deny-list, recomputed here every time. A file
+    committed a minute ago is in the next page load; a file that can never be shared is never in
+    it. A generated index would need a job to stay true, and a job that stops leaves an index
+    that lies.
+    """
+    from . import share as _share
+
+    root = _repo_root()
+    return _share.folder_view(root, _share.shareable_files(root))
 
 
 def _read_share_open(cfg, args: dict) -> dict:
@@ -1693,16 +1721,17 @@ def _read_content_rules(cfg, args: dict) -> dict:
 def _read_processes(cfg, args: dict) -> dict:
     """Every automated process on this estate, graded -- see scripts/process_audit.py.
 
-    Exit 1 is the NORMAL answer here, not a failure to read. The script exits non-zero whenever
-    something is failing, which is exactly the state this page exists to show; treating that as an
-    error would blank the page at the only moment it matters.
+    SERVED FROM A SNAPSHOT since 2026-08-21, and it had to be. That script takes 141.8s measured
+    (34.6s user, 28.8s system, 44% CPU -- the rest is network wait), and `OPS_READ_TIMEOUT_MS` is
+    120_000. This panel could not succeed: it spun for two minutes and reported a gateway timeout,
+    every time. `prospector/ops/slow_read.py` carries the measurement and the design.
+
+    Exit 1 is still the NORMAL answer from the audit, not a failure to read, and the snapshot
+    writer treats it that way -- the test is whether stdout parsed, never the exit code.
     """
-    proc = subprocess.run(
-        [sys.executable, str(_AUDIT_SCRIPT), "--json"],
-        cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=240)
-    if not proc.stdout.strip():
-        raise RuntimeError(f"process_audit.py produced nothing: {proc.stderr[-400:]}")
-    return json.loads(proc.stdout)
+    from . import slow_read
+
+    return slow_read.serve_merged("processes")
 
 
 def _read_deploys(cfg, args: dict) -> dict:
@@ -1712,20 +1741,18 @@ def _read_deploys(cfg, args: dict) -> dict:
     merge sat undeployed for twelve hours behind a queued run, and the only way to see it was
     to compare a Fly release to origin/main by hand.
 
-    The exit code is deliberately ignored. `deploy_status.py` exits 1 when something is STALLED
-    and 2 when it could not measure something; both of those are the ANSWER, and treating them
-    as a failed read would blank the panel at the only moment it matters.
+    SERVED FROM A SNAPSHOT since 2026-08-21. Measured at 12.45s inside a page load, against a
+    median of 0.83s for the other 37 views -- it worked, it was just fifteen times the cost of
+    everything around it, because it asks Fly and GitHub over the network for every deployable.
+    The staleness window is the shortest of the three (240s) because a deploy can land at any
+    minute. See `prospector/ops/slow_read.py`.
+
+    The exit code is deliberately ignored there too. `deploy_status.py` exits 1 when something is
+    STALLED and 2 when it could not measure something; both of those are the ANSWER.
     """
-    proc = subprocess.run(
-        [sys.executable, str(_DEPLOY_SCRIPT), "--json"],
-        cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=300)
-    if not proc.stdout.strip():
-        raise RuntimeError(f"deploy_status.py produced nothing: {proc.stderr[-400:]}")
-    view = json.loads(proc.stdout)
-    for row in view.get("deployables", []):
-        row.update(_deploy_route(str(row.get("name") or "")))
-        row.update(_rollback_route(str(row.get("name") or "")))
-    return view
+    from . import slow_read
+
+    return slow_read.serve_merged("deploys")
 
 
 #: The tool that ships one service. Named once, so the button lookup below and the registry
@@ -1840,6 +1867,7 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
     "metrics": _read_metrics,
     "docs": _read_docs,
     "incidents": _read_incidents,
+    "repo_files": _read_repo_files,
     "migration": _read_migration,
     "shares": _read_shares,
     "share_open": _read_share_open,
@@ -1868,7 +1896,7 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
 # --------------------------------------------------------------------------- #
 #: Groups are named for what the knob DOES, not for its YAML path. An operator looking for "how
 #: many ideas per batch" should not have to know it is called `batch_size` under `schedule`.
-GROUP_ORDER = ["work", "evidence", "brains", "models", "speed", "money", "content"]
+GROUP_ORDER = ["work", "evidence", "bar", "brains", "models", "speed", "money", "content"]
 GROUP_BLURBS = {
     "content": ("Which content rules may REFUSE a pack. Every rule grades either way; these "
                 "switches decide whether a breach blocks the sale or only lands on the receipt. "
@@ -1876,6 +1904,11 @@ GROUP_BLURBS = {
                 "of the catalogue the moment it is promoted."),
     "work": "How much the engine takes on, and when it stops taking on more.",
     "evidence": "Where the engine looks for proof, and what counts as relevant.",
+    "bar": ("How good an idea has to be before it may be SOLD. These two decide the pass rate "
+            "directly, and they are the only knobs in the portal that can empty the shelf "
+            "without anything looking broken -- raise either one far enough and every candidate "
+            "is killed by a number rather than by evidence. Both are moat-affecting, so a change "
+            "here drops the certification until a golden run re-earns it."),
     "brains": ("Which brain does which job. Every role the engine has is here: the verdict "
                "chain and its trusted roster, the cheap chain, the pack writer and the "
                "marketing writer. WHICH MODEL each of them runs is the next section. The "
@@ -1972,6 +2005,14 @@ KNOBS: list[dict] = [
      "help": "One bounded live search per tick. Generation is suppressed only while retrieval is "
              "ACTUALLY degraded, and it self-clears when the outage ends. Generation volume does "
              "not create backlog; failed retrieval does."},
+    {"path": ["active_lanes"], "group": "work", "high_blast": True,
+     "label": "Which lanes the engine works", "kind": "list",
+     "choices": ["side_hustle", "smb", "growth", "venture"],
+     "help": "The market lanes generation rotates through. The four choices are the four keys "
+             "under `lanes:` in config.yaml, which is where each lane's own gates and thresholds "
+             "live -- a lane named here with no block there has no rules of its own. Emptying "
+             "the list stops the engine inventing anything at all, which is why it is marked "
+             "high blast."},
     # ---- evidence ----
     {"path": ["retrieval", "provider"], "group": "evidence",
      "label": "Search engines, in order", "kind": "list",
@@ -1991,6 +2032,26 @@ KNOBS: list[dict] = [
      "min": 0.0, "max": 1.0,
      "help": "Below this a passage is not evidence. Raising it escalates the search chain more "
              "often, which costs time; lowering it admits weaker passages."},
+    # ---- bar ----
+    # Both sit inside the ("thresholds",) fence in config_editor.MOAT_AFFECTING_KEYS already, and
+    # the bounds below are the SAME bounds config_editor.validate_config enforces. They are
+    # restated here because a knob carries its own min/max to the browser;
+    # tests/ops/test_every_console_knob_is_live.py reads both and fails if they drift apart, so
+    # the portal can never offer a value the validator refuses on save.
+    {"path": ["thresholds", "min_composite_to_pass"], "group": "bar", "high_blast": True,
+     "label": "Composite score an idea must reach to PASS", "kind": "float",
+     "min": 0.0, "max": 20.0,
+     "help": "The six axes are scored 1-5 and weighted into one number; this is the bar that "
+             "number must clear. On disk it is 2.5. `prospector/pass_ceiling.py` is the check "
+             "that catches the version of this nothing can satisfy -- with the weights summing "
+             "to 1.0, every axis at 5 gives 5.0, so anything above that kills every candidate no "
+             "matter how good it is, and nothing else in the engine would say why."},
+    {"path": ["thresholds", "confidence_floor"], "group": "bar", "high_blast": True,
+     "label": "Confidence a check needs before it counts", "kind": "float",
+     "min": 0.0, "max": 1.0,
+     "help": "Below this a check is treated as unverifiable rather than as an answer. Raising it "
+             "makes the engine stricter about its own certainty, and at 1.0 nothing is ever "
+             "certain enough, so nothing passes. On disk it is 0.4."},
     # ---- brains (high blast) ----
     {"path": ["operator"], "group": "brains", "high_blast": True,
      "label": "Verdict chain — who is asked, in order", "kind": "list",
@@ -2047,6 +2108,12 @@ KNOBS: list[dict] = [
      "label": "DeepSeek model",
      "help": "Read only when `deepseek` appears in a chain above. Naming a model here does not "
              "put DeepSeek to work; adding it to a chain does."},
+    {"path": ["claude_cli_model"], "group": "models", "kind": "str",
+     "label": "Claude Code CLI model",
+     "help": "Which model the Claude Code CLI is asked for, when `claude_cli` is in a chain. "
+             "Blank means the CLI's own default. It is a TOP-LEVEL key rather than one under "
+             "`model_defaults`, because the CLI is a subscription tier and not a metered "
+             "provider -- read at `operator.py:1965` and `retrieval.py:2426`."},
     {"path": ["model_defaults", "ollama"], "group": "models", "kind": "str",
      "label": "Ollama model (local)",
      "help": "Fully local, zero token cost, CPU-only on this box. Same rule: this pin is inert "
@@ -2084,6 +2151,19 @@ KNOBS: list[dict] = [
      "label": "Minimum pack-writing time (seconds)", "kind": "int", "min": 0, "max": 86400,
      "help": "A floor under the fraction above, so a short deadline cannot leave a PASS with too "
              "little time to render the artifact a buyer actually reads."},
+    {"path": ["retrieval", "vet_workers"], "group": "speed",
+     "label": "Candidate vets in flight at once", "kind": "int", "min": 1, "max": 64,
+     "help": "How many candidates are vetted in parallel. KEEP IT AT OR BELOW the MiniMax "
+             "number above: every vet drives calls through that chain, so a higher number here "
+             "adds no throughput, it only queues -- oversubscribing the CLI is what produced the "
+             "HTTP-429 flapping on 2026-08-06. PROSPECTOR_VET_WORKERS overrides it for one "
+             "manual run (`prospector/run.py::_vet_workers`)."},
+    {"path": ["retrieval", "breaker_failure_threshold"], "group": "speed",
+     "label": "Failures before a provider is benched", "kind": "int", "min": 1, "max": 20,
+     "help": "Consecutive TRANSIENT failures before the breaker opens and the chain falls "
+             "through to the next tier. Permanent exhaustion -- a spend limit, a 402 -- benches "
+             "a brain immediately and never waits for this count. Lower fails over sooner, and "
+             "also benches a brain that was only briefly busy."},
     # ---- money ----
     {"path": ["spend", "daily_cap_usd"], "group": "money",
      "label": "Daily spend ceiling (USD)", "kind": "float", "min": 0.0, "max": 1000.0,
@@ -2092,6 +2172,26 @@ KNOBS: list[dict] = [
     {"path": ["spend", "warn_at_usd"], "group": "money",
      "label": "Warn at (USD)", "kind": "float", "min": 0.0, "max": 1000.0,
      "help": "Where the alert rail fires, below the ceiling."},
+    # THE SECOND LEDGER. The two above govern INVOICED spend -- ledger rows tagged
+    # `event: "spend"` with an `amount_usd`. The two below govern the SUBSCRIPTION leg: the
+    # Claude Code CLI's own `total_cost_usd`, which is API-equivalent rather than billed, written
+    # with no `event` key. They are separate ceilings because they are separate money, and a
+    # figure read against the wrong one is the mistake both key names exist to prevent.
+    {"path": ["spend", "daily_subscription_cap_usd"], "group": "money",
+     "label": "Daily subscription-equivalent ceiling (USD)", "kind": "float",
+     "min": 0.0, "max": 1000.0,
+     "help": "0.0 means NO CAP, same as the ceiling above. Above this the tick HALTS -- "
+             "generation and drain together. It covers the tiers in `ops/spend.py "
+             "SUBSCRIPTION_TIERS`, which today is claude_cli alone; a tier is metered instead "
+             "whenever `telemetry.get_price` gives it a non-zero price."},
+    {"path": ["spend", "daily_subscription_soft_cap_usd"], "group": "money",
+     "label": "Stop inventing at (USD subscription-equivalent)", "kind": "float",
+     "min": 0.0, "max": 1000.0,
+     "help": "0.0 means off. A BRAKE, not a halt: above this the tick stops generating and keeps "
+             "draining, so work already minted still reaches a verdict. Set it BELOW the "
+             "subscription ceiling above -- at or above it the hard cap halts the tick first and "
+             "this never fires, which the daemon logs as a warning rather than an error "
+             "(`scheduler/run_scheduled.py:570`)."},
 ]
 
 
@@ -3377,6 +3477,7 @@ def _act_share_create(cfg, payload: dict, preview: bool) -> dict:
     target = str(payload.get("target") or "").strip()
     days = payload.get("days", _share.DEFAULT_DAYS)
     note = str(payload.get("note") or "").strip()
+    public = bool(payload.get("public"))
     root = _repo_root()
 
     if scope not in _share.SCOPES:
@@ -3389,15 +3490,19 @@ def _act_share_create(cfg, payload: dict, preview: bool) -> dict:
                        if scope == "repo" or f == target.strip("/")
                        or f.startswith(target.strip("/") + "/")]
         return {
-            "action": "share.create", "scope": scope, "target": target, "days": days,
+            "action": "share.create", "scope": scope, "target": target,
+            "days": 0 if public else days, "public": public,
             "covers": len(covered), "sample": covered[:20],
             "allow_list_source": _share.allow_list_source(root),
+            "lives_for": ("until you revoke it -- this link has no expiry" if public
+                          else f"{days} days, then it dies on its own"),
             "note": "Anyone holding the link can read every file listed above, with no login, "
                     "until it expires or you revoke it. Nothing outside that list is reachable "
-                    "through it.",
+                    "through it. A public link is the same secret link with no expiry -- it is "
+                    "not listed anywhere and it is not reachable without the token.",
         }
     return _share.mint(_store_ops_dir(cfg), root, scope=scope, target=target,
-                       days=days, note=note, actor="console")
+                       days=days, note=note, actor="console", public=public)
 
 
 def _act_share_revoke(cfg, payload: dict, preview: bool) -> dict:
@@ -3418,6 +3523,58 @@ def _act_share_revoke(cfg, payload: dict, preview: bool) -> dict:
                 "note": "The link stops working immediately. This cannot be undone; mint a new "
                         "one if you need to share again."}
     return _share.revoke(_store_ops_dir(cfg), share_id, actor="console")
+
+
+
+def _act_snapshot_refresh(cfg, payload: dict, preview: bool) -> dict:
+    """Re-measure one of the three slow views now, instead of waiting for a read to notice.
+
+    A read already starts a background refresh when its snapshot goes stale, so this button is
+    not how the page stays current -- it is for the moment after you have changed something and
+    want the answer now rather than in a quarter of an hour.
+
+    It runs on the ACT path deliberately. `OPS_ACT_TIMEOUT_MS` is 1_860_000 against the read
+    path's 120_000, and the estate audit measured 141.8s, so this is the only path in the console
+    on which it can finish at all.
+
+    Nothing is destroyed and nothing is spent. The producer re-reads Fly, GitHub and launchd and
+    overwrites one cache file, and a producer that fails leaves the previous answer in place.
+    """
+    from . import slow_read
+
+    view = str(payload.get("view") or "").strip()
+    if view not in slow_read.PRODUCERS:
+        raise ValueError(f"unknown view {view!r}; expected one of "
+                         f"{', '.join(sorted(slow_read.PRODUCERS))}")
+    before = slow_read.load(view)
+
+    if preview:
+        return {
+            "action": "snapshot.refresh",
+            "view": view,
+            "snapshot_now": before.get("captured_at_iso") or "there is no snapshot yet",
+            "age_s": before.get("age_s"),
+            "already_refreshing": before.get("refreshing"),
+            "effect": (f"Re-runs the {view} measurement for real and replaces the cached answer. "
+                       "Nothing else on the estate changes."),
+            "cost": ("Network only. The estate audit measured 141.8s on 2026-08-21 and the other "
+                     "two are around ten seconds, so expect to wait."),
+            "reversible": ("Nothing to reverse — it is a measurement. A run that fails leaves the "
+                           "previous answer untouched."),
+        }
+
+    receipt = slow_read.refresh(view, cfg)
+    if not receipt.get("written"):
+        raise RuntimeError(f"the {view} refresh did not produce an answer, so the previous one is "
+                           f"still in place: {receipt.get('reason')}")
+    after = slow_read.load(view)
+    return {
+        "action": "snapshot.refresh",
+        "view": view,
+        "took_s": receipt.get("took_s"),
+        "captured_at_iso": after.get("captured_at_iso"),
+        "note": f"{view} re-measured in {receipt.get('took_s')}s; the page is now current",
+    }
 
 
 ACTIONS: dict[str, Callable[[Any, dict, bool], dict]] = {
@@ -3441,6 +3598,7 @@ ACTIONS: dict[str, Callable[[Any, dict, bool], dict]] = {
     "engine.switch": _act_engine_switch,
     "engine.arm": _act_engine_arm,
     "engine.disarm": _act_engine_disarm,
+    "snapshot.refresh": _act_snapshot_refresh,
 }
 
 #: Actions the console refuses by name rather than by absence, so the error says WHY.
@@ -3688,8 +3846,18 @@ TOOLS: list[dict] = [
        cmd=".venv/bin/python -m ops.automations.stranded_packs"),
     _t("ops/automations/retired_terms.py", "Retired wording still in the tree", False,
        "/processes", cmd=".venv/bin/python -m ops.automations.retired_terms"),
-    _t("ops/automations/human_register.py", "Figures a human still has to verify", False,
-       "/processes", cmd=".venv/bin/python -m ops.automations.human_register"),
+    # The purpose text here read "Figures a human still has to verify" until 2026-08-21,
+    # which is review_figures.py's purpose two rows up. The console told the operator this
+    # panel was about figure verification; it is about whether every lint record carries the
+    # human-register block the style panel reads.
+    _t("ops/automations/human_register.py", "Lint records missing the human-register block",
+       False, "/processes", cmd=".venv/bin/python -m ops.automations.human_register"),
+    # The META-diagnostic beside it. human_register says which packs sit outside the human
+    # band; this says whether the repair turn spent on them is moving the number. Measured
+    # 2026-08-21: five of six armed measures responding, hedges_per_1k moved 1% in five days.
+    _t("ops/automations/prose_repair_effect.py",
+       "Is the prose repair turn actually moving the number", False, "/processes",
+       cmd=".venv/bin/python -m ops.automations.prose_repair_effect"),
     # --- integrity / probes ---
     _t("scripts/backup_store.py", "Back up dossiers and ledger to R2", True, "/tools",
        risk="external"),

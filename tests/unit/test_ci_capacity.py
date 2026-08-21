@@ -72,6 +72,29 @@ def test_a_declared_width_that_ci_yml_does_not_run_fails(sandbox: Path):
     assert "ci.yml runs 2" in r.stderr
 
 
+def test_a_width_written_in_a_comment_is_not_a_width_the_job_runs(sandbox: Path):
+    """The failure that actually happened, on pull request #568, 2026-08-21.
+
+    `_explicit_n` greps the job block for `pytest ... -n N`, and a grep over source grades the
+    source's own prose too. A comment was added inside the `python` job reading "a 4-core box:
+    `pytest -n 4` plus bandit plus pip-audit". The checker then read widths [4, 2] on a job
+    running one command at `-n 2`, took the max, and printed "ci capacity contract: holds" --
+    so the one drift this file exists to catch became invisible, and the test above went red
+    with no defect in the workflow it was grading.
+    """
+    ci = sandbox / ".github/workflows/ci.yml"
+    text = ci.read_text()
+    text = text.replace("-n 4 --tb=short", "-n 2 --tb=short", 1)
+    text = text.replace(
+        "\n  python:\n",
+        "\n  python:\n    # a 4-core box: `pytest -n 4` plus bandit plus pip-audit\n", 1)
+    assert "# a 4-core box" in text, "the python job header moved; this fixture is stale"
+    ci.write_text(text)
+    r = run(sandbox)
+    assert r.returncode == 1, f"a commented width hid a real one:\n{r.stdout}\n{r.stderr}"
+    assert "ci.yml runs 2" in r.stderr, r.stderr
+
+
 def test_a_pool_naming_a_job_that_does_not_exist_fails(sandbox: Path):
     """A renamed or deleted job leaves the contract describing a workflow that is gone."""
     cfg = sandbox / "ops/config/ci_capacity.yaml"

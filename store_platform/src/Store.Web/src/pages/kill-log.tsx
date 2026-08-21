@@ -598,6 +598,7 @@ export default function KillLogPage({
                   key={entry.slug}
                   id={entry.slug}
                   className="klrow scroll-mt-24 cursor-pointer"
+                  data-testid="kill-record"
                   onClick={() => toggle(entry.slug, entry.gateLabel)}
                 >
                     <h3>
@@ -643,19 +644,19 @@ export default function KillLogPage({
                           (`mockups/kill-log.html`, `.klrow > p.m.num`). `.m` is the mono meta
                           line; `num` is the tabular-figures class every counted line on the site
                           carries, and this line is a date and a count. */}
-                      <p className="m num">
+                      <p className="m num" data-testid="kill-meta">
                         {formatDate(entry.date)} &middot; {entry.sources}{' '}
                         {entry.sources === 1 ? 'source' : 'sources'}
                       </p>
                       <span className="side">
                         <VerdictChip kind="killed" />
-                        <span className="mono num">
+                        <span className="mono num" data-testid="kill-gate">
                           {entry.gateLabel}
                           {isStageLabel(entry.gateLabel) && <span className="text-subtle"> stage</span>}
                         </span>
                       </span>
                   {isOpen && (
-                    <div className="mt-3 rounded-ctl bg-surface3 px-3 py-4 [grid-column:1/-1]">
+                    <div className="mt-3 rounded-ctl bg-surface3 px-3 py-4 [grid-column:1/-1]" data-testid="kill-detail">
                         {/* The argument arrives from /api/kill-log-detail, once per session. Until
                             it does the row says what it is waiting for: an empty panel under a
                             row a reader just opened reads as a broken page, and this is the page

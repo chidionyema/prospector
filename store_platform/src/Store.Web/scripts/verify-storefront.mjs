@@ -90,7 +90,7 @@ for (const vp of [{ w: 390, n: '390px' }, { w: 1280, n: '1280px' }]) {
     ok('no text escapes its card', r.esc.length === 0, r.esc.slice(0, 6).join(' | '));
     if (path === '/') {
       ok('H1 exact', r.h1 === 'Business ideas with the research already done.', JSON.stringify(r.h1));
-      ok('sample link exact', r.tlink === 'Read a full pack free — no email needed', JSON.stringify(r.tlink));
+      ok('sample link exact', r.tlink === 'Read the opening of a real pack free — no email needed', JSON.stringify(r.tlink));
       if (vp.w === 1280) {
         console.log('  proof lines:', JSON.stringify(r.proof));
         console.log('  market tags:', JSON.stringify(r.market));

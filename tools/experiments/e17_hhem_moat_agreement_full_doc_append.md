@@ -25,3 +25,5 @@ Limitations:
 - MiniCheck was not run and not downloaded — see the `minicheck` probe for what is actually in the local HF cache.
 
 Receipt: `tools/experiments/e17_hhem_moat_agreement_full_receipts.json` — reproduce with `.venv/bin/python tools/experiments/runner.py run E17 --all`
+
+**Follow-through:** NO ACTION — AUC 0.567 over 2,012 checks. HHEM does not separate ruled from unverifiable well enough to gate on, and this run is the evidence for that refusal.

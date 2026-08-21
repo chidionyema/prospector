@@ -9,3 +9,5 @@
 - $/vetted: {"metered_usd_per_vetted": 0.008824, "subscription_usd_per_vetted": 2.848443}
 
 Re-run: `.venv/bin/python tools/experiments/w02_standing_receipt.py --days 7`
+
+**Follow-through:** SHIPPED prospector/verify.py — the confidence inversion this receipt has been reporting since it was written is guarded in PR #570: an unverifiable ruling scores 0.0 grounding confidence. Full-corpus measurement in `tools/experiments/e19_confidence_gap.py`. No line number on purpose; grep `Verdict.UNVERIFIABLE`.

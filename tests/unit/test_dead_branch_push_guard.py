@@ -272,6 +272,30 @@ def test_the_pr_it_opens_is_a_draft(fake_estate):
     assert create and "--draft" in create[0], create
 
 
+def test_the_last_line_names_the_pr_so_a_tailed_push_still_reads_true(fake_estate):
+    """MEASURED FAILURE, 2026-08-21. The rescue worked -- commits pushed, PR #603 open -- and the
+    agent that ran the push read it as a failure and made a second branch by hand, producing PR
+    #604 on the same tip and a second CI run on a shared fleet.
+
+    The cause is where the good news sits. This hook returns 1 (correctly: the ORIGINAL push must
+    not happen), so git prints "error: failed to push some refs" AFTER everything below. A caller
+    that pipes the push through `| tail -4` -- which is house style here, because push output is
+    long -- sees git's error and whatever the hook happened to print last. So the last thing the
+    hook prints has to be the fact that changes what the caller does next: the work is already
+    pushed and already has a PR.
+    """
+    path, log = fake_estate
+    got = _run(
+        f"refs/heads/feat/dead {SHA} refs/heads/feat/dead {ZERO}",
+        env_extra={guard.NO_AUTOFIX: "0"},
+        path=path,
+    )
+    tail = [line for line in got.stdout.strip().splitlines() if line.strip()][-1]
+    assert "do not push again" in tail, tail
+    assert "feat/dead-2" in tail, tail
+    assert "pull/999" in tail, tail
+
+
 def test_the_fix_never_touches_the_working_tree(fake_estate):
     """It pushes `<sha>:refs/heads/<name>`, which needs no local branch. A hook that moved HEAD
     under a running `git push` would be the worse bug."""

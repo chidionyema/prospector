@@ -85,10 +85,24 @@ class TestStopsOnSignal:
             cwd=repo, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
             start_new_session=True,
         )
-        deadline = time.time() + 20
-        while time.time() < deadline and not (repo / "child.pid").exists():
+        # Wait for CONTENT, not for the path -- the same race, and the same fix, as the
+        # sh-driver test further down this file. The batch creates child.pid and writes to it as
+        # two steps, so `.exists()` goes true while the file is still zero bytes and int() gets
+        # "". That was measured once already (ValueError: invalid literal for int() with base 10:
+        # '', CI run 32101433859) and only one of the two sites was repaired; this one failed the
+        # commit gate on 2026-08-21 under `-n auto` and passes every time on an idle laptop.
+        deadline = time.time() + 30
+        raw = ""
+        while time.time() < deadline:
+            try:
+                raw = (repo / "child.pid").read_text().strip()
+            except OSError:
+                raw = ""
+            if raw:
+                break
             time.sleep(0.1)
-        child_pid = int((repo / "child.pid").read_text())
+        assert raw, "batch child never started"
+        child_pid = int(raw)
 
         proc.send_signal(signal.SIGTERM)
         proc.communicate(timeout=30)

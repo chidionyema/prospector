@@ -32,9 +32,11 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 import subprocess
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 #: What a share can cover. `file` is one path. `tree` is a directory and everything under it,
@@ -78,6 +80,46 @@ _READS_FILENAME = "share_reads.jsonl"
 # --------------------------------------------------------------------------- #
 # The allow-list
 # --------------------------------------------------------------------------- #
+def _compile_deny(globs: tuple[str, ...]):
+    """Precompile every deny pattern into the three tests `is_denied` runs.
+
+    THIS IS A SPEED FIX AND NOTHING ELSE. The answers are identical to the fnmatch loop it
+    replaces -- `tests/ops/test_share_deny_is_unchanged_by_compilation.py` runs both
+    implementations over every tracked file and a crafted adversarial set and asserts the same
+    pattern comes back. That citation read `tests/unit/test_share_deny_globs.py` until
+    2026-08-21; `git log --all -- <that path>` returns nothing, so it named a file that has
+    never existed on any branch. A docstring that cites a guard nobody can find reads as proof
+    and is not one.
+
+    The measurement that bought it: the shares view calls this once per repo file, and with
+    2,169 files and 39 patterns that was 140,716 `fnmatch.fnmatch` calls per page load --
+    0.60s on the laptop, and `fnmatch` re-runs `os.path.normcase` on every one. Compiling the
+    patterns once at import moves that work out of the loop.
+    """
+    out = []
+    for pat in globs:
+        low_pat = pat.lower()
+        path_re = re.compile(fnmatch.translate(low_pat))
+        # Basename patterns only. A pattern carrying a `/` is a path pattern and must never be
+        # matched against a bare basename -- see the comment in `is_denied`.
+        base_re = path_re if "/" not in low_pat else None
+        prefix = low_pat[:-1] if low_pat.endswith("/*") else None
+        out.append((pat, path_re, base_re, prefix))
+    return tuple(out)
+
+
+_DENY_COMPILED = _compile_deny(DENY_GLOBS)
+
+#: One alternation of every pattern, so the common case -- a file that matches nothing -- costs
+#: two regex matches and one `str.startswith` instead of a walk over all 39 patterns.
+_ANY_PATH_RE = re.compile("|".join(f"(?:{fnmatch.translate(p.lower())})" for p in DENY_GLOBS))
+_ANY_BASE_RE = re.compile(
+    "|".join(f"(?:{fnmatch.translate(p.lower())})" for p in DENY_GLOBS if "/" not in p.lower())
+    or r"(?!)"  # matches nothing, for the day every pattern carries a slash
+)
+_ANY_PREFIX = tuple(p.lower()[:-1] for p in DENY_GLOBS if p.lower().endswith("/*"))
+
+
 def is_denied(rel: str) -> str:
     """The reason `rel` may never be shared, or "" if it may.
 
@@ -89,21 +131,33 @@ def is_denied(rel: str) -> str:
     if not low or "\x00" in rel:
         return "not a path"
     base = low.rsplit("/", 1)[-1]
-    for pat in DENY_GLOBS:
-        low_pat = pat.lower()
-        if fnmatch.fnmatch(low, low_pat):
+    # Fast reject. Nothing below can match if none of these do, and almost every file lands here.
+    if not (_ANY_PATH_RE.match(low)
+            or _ANY_BASE_RE.match(base)
+            or low.startswith(_ANY_PREFIX)):
+        return ""
+    for pat, path_re, base_re, prefix in _DENY_COMPILED:
+        if path_re.match(low):
             return pat
         # EVERY PATTERN IS ALSO MATCHED AGAINST THE BASENAME. Without this, `id_rsa*` refuses
         # `id_rsa` at the repo root and hands over `keys/id_rsa`, which is the same key one
         # directory down. Found by the parametrised test on 2026-08-19, before this shipped.
-        # The directory patterns below carry a `/`, so they never match a basename by accident.
-        if "/" not in low_pat and fnmatch.fnmatch(base, low_pat):
+        # The directory patterns carry a `/`, so they never match a basename by accident.
+        if base_re is not None and base_re.match(base):
             return pat
-        # A directory pattern must also refuse things nested deeper than one level:
-        # `store/*` matches `store/a` but not `store/a/b` under fnmatch alone.
-        if low_pat.endswith("/*") and low.startswith(low_pat[:-1]):
+        # Belt and braces on the directory patterns, and it is REDUNDANT TODAY -- measured
+        # 2026-08-21. The comment here used to claim `store/*` matches `store/a` but not
+        # `store/a/b` under fnmatch. That is false: fnmatch's `*` crosses `/` (it translates to
+        # `.*` with DOTALL, unlike glob), so `store/*` already refuses `store/a/b/c`. Proved by
+        # deleting this branch from the fast-reject and finding no test could tell.
+        # It stays because it is free -- it only runs on a path something already matched --
+        # and because it is the one check that does not depend on fnmatch keeping that
+        # behaviour. Do not add a pattern that RELIES on it; write the pattern to stand alone.
+        if prefix is not None and low.startswith(prefix):
             return pat
     return ""
+
+
 
 
 def _git_tracked(repo_root: Path) -> list[str] | None:
@@ -125,11 +179,16 @@ def _git_tracked(repo_root: Path) -> list[str] | None:
     return [p for p in out.stdout.decode("utf-8", "replace").split("\0") if p]
 
 
-def _walked(repo_root: Path) -> list[str]:
+def _walked(repo_root: Path, keep: Callable[[str], bool] | None = None) -> list[str]:
     """Every file in the tree, minus the denied ones. The container path.
 
     Prunes denied directories as it descends rather than filtering at the end, because walking
     `node_modules/` only to throw it away is how a listing takes minutes.
+
+    `keep` narrows the population BEFORE the deny-list runs. It is a COST change and not a fence
+    change: every path that survives `keep` is still put through `is_denied`, so nothing reaches
+    a caller that the fence would have refused. A caller that wants only documents pays the
+    deny-list on documents instead of on all ~2,200 files in the tree.
     """
     found: list[str] = []
     for dirpath, dirnames, filenames in os.walk(repo_root):
@@ -138,15 +197,24 @@ def _walked(repo_root: Path) -> list[str]:
         dirnames[:] = [d for d in dirnames if not is_denied(f"{prefix}{d}/x")]
         for name in filenames:
             rel = f"{prefix}{name}"
+            if keep is not None and not keep(rel):
+                continue
             if not is_denied(rel):
                 found.append(rel)
     return found
 
 
-def shareable_files(repo_root: Path) -> list[str]:
-    """Every path this repo will serve, sorted. Both sources pass through `is_denied`."""
+def shareable_files(repo_root: Path, *, keep: Callable[[str], bool] | None = None) -> list[str]:
+    """Every path this repo will serve, sorted. Both sources pass through `is_denied`.
+
+    `keep` is an optional predicate on the repo-relative path, applied BEFORE the deny-list — see
+    `_walked`. The fence still runs on every path that comes back, so narrowing can only ever
+    return fewer paths, never a path the full call would have refused.
+    """
     tracked = _git_tracked(repo_root)
-    raw = tracked if tracked is not None else _walked(repo_root)
+    raw = tracked if tracked is not None else _walked(repo_root, keep=keep)
+    if keep is not None:
+        raw = [p for p in raw if keep(p)]
     return sorted({p for p in raw if not is_denied(p)})
 
 
@@ -259,30 +327,56 @@ def _now() -> float:
 
 
 def status_of(row: dict, now: float | None = None) -> str:
+    """live, expired or revoked. A PUBLIC share has no expiry, so `expires_at` is None.
+
+    The None case is written out rather than leaning on `or 0`, which is what the check used to
+    say: `float(row.get("expires_at") or 0) <= now` reads a missing expiry as the epoch and calls
+    a link that should never expire expired. A row with no `expires_at` KEY is a different
+    thing from one whose expiry is None, and it still fails closed. Revocation is checked
+    first either way — it is how a public link dies.
+    """
     now = _now() if now is None else now
     if row.get("revoked_at"):
         return "revoked"
-    if float(row.get("expires_at") or 0) <= now:
+    # The DEFAULT is 0, not None. A public row carries `"expires_at": None` deliberately; a row
+    # with no expiry key at all is a broken row and must fail closed, not become immortal.
+    expires_at = row.get("expires_at", 0)
+    if expires_at is not None and float(expires_at) <= now:
         return "expired"
     return "live"
 
 
 def mint(store_ops_dir: Path, repo_root: Path, *, scope: str, target: str,
-         days: int = DEFAULT_DAYS, note: str = "", actor: str = "console") -> dict:
+         days: int = DEFAULT_DAYS, note: str = "", actor: str = "console",
+         public: bool = False) -> dict:
     """Create a share and return it WITH its token, once.
 
     Refuses at mint time as well as at read time. Both checks are load-bearing: this one gives
     the operator an error they can act on, and the read-time one covers everything that changes
     between now and whenever the link is opened.
+
+    PUBLIC vs PRIVATE is a decision about the CLOCK, and nothing else. The founder's ruling,
+    2026-08-21, choosing it over two wider options: a public link is "the same secret link, no
+    expiry". So both kinds are the same unguessable token, both are refused by the same
+    deny-list, both are logged on every read, and both die the moment you revoke them. A private
+    link also dies on its own after `days`; a public one waits to be revoked.
+
+    What public deliberately does NOT mean here: it does not mint a readable URL, it does not
+    list the file anywhere, and it does not make anything crawlable. Nothing about a public link
+    is reachable without holding the token.
     """
     if scope not in SCOPES:
         raise ValueError(f"scope must be one of {', '.join(SCOPES)}")
-    try:
-        days = int(days)
-    except (TypeError, ValueError):
-        raise ValueError("days must be a whole number of days") from None
-    if not 1 <= days <= MAX_DAYS:
-        raise ValueError(f"days must be between 1 and {MAX_DAYS}")
+    public = bool(public)
+    if public:
+        days = 0  # recorded as "no expiry"; the days field is meaningless for a public link
+    else:
+        try:
+            days = int(days)
+        except (TypeError, ValueError):
+            raise ValueError("days must be a whole number of days") from None
+        if not 1 <= days <= MAX_DAYS:
+            raise ValueError(f"days must be between 1 and {MAX_DAYS}")
 
     target = (target or "").strip().strip("/")
     if scope == "repo":
@@ -309,7 +403,8 @@ def mint(store_ops_dir: Path, repo_root: Path, *, scope: str, target: str,
         "note": (note or "").strip()[:200],
         "actor": actor,
         "created_at": now,
-        "expires_at": now + days * 86_400,
+        "public": public,
+        "expires_at": None if public else now + days * 86_400,
         "revoked_at": None,
         "reads": 0,
         "last_read_at": None,
