@@ -1,5 +1,5 @@
 /**
- * Docs — the decisions, incidents and runbooks, readable without a checkout.
+ * Docs — every document in the repo, readable without a checkout.
  *
  * Why this page exists. On 2026-08-19 the founder asked twice whether the stack documents were
  * reachable from ops. They were not: no page rendered markdown, no API route read `docs/`, and
@@ -37,6 +37,22 @@
  *     the page where the operator is actually standing. Measured 2026-08-20 against the live
  *     store: 0 shares had ever been minted. Reading a path off this page and typing it into
  *     another one is a step nobody takes.
+ *
+ * WHAT CHANGED ON 2026-08-21: COVERAGE. The founder's words were "no docs are nissed out".
+ * Measured that morning on origin/main: **298 tracked document files, 113 of them on this page
+ * and 185 invisible** — the index root was `docs/`, it never recursed, and its suffix list was
+ * `(.md, .json)`. So `docs/design/`, `docs/storefront/`, `tools/`, `scripts/`, `prompts/`,
+ * `specs/` and every `.html` and `.txt` in the estate simply did not exist here, on a page that
+ * looked complete. The index now draws from `share.shareable_files()` — the same population the
+ * share tokens are minted from, so listed and shareable are one set — and carries 321 documents
+ * in 28 sections. Two consequences for this file:
+ *
+ *  - DOCUMENT NAMES ARE REPO-RELATIVE (`docs/LINKS.md`, `tools/NOTES.md`). `ShareDoc` mints
+ *    against the name as-is; prefixing `docs/` here would target `docs/docs/LINKS.md`. Links
+ *    minted in the old docs-relative form still resolve, on the backend.
+ *  - A ROW CAN BE LISTED AND NOT RENDERABLE (`readable: false`, today one PDF). It is listed
+ *    because a silent exception is the exact defect above; opening it returns an explanation
+ *    rather than an error, so the click still does something.
  */
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -179,7 +195,9 @@ function ShareDoc({ name }: { name: string }) {
   // somebody presses one of the two buttons below — which refresh it — not every thirty seconds.
   const shares = useOps<Shares>('shares', {}, { pollMs: 0 });
 
-  const target = `docs/${name}`;
+  // Repo-relative since 2026-08-21, when the index widened past docs/. Prefixing
+  // `docs/` here would mint a link to `docs/docs/LINKS.md`, which does not exist.
+  const target = name;
   const rows = shares.data?.shares ?? [];
   const live =
     rows.find((r) => r.status === 'live' && r.scope === 'file' && r.target === target) ?? null;
@@ -508,7 +526,7 @@ export default function Docs() {
           {doc.data?.truncated ? (
             <Note>
               Showing the first {size(doc.data.text.length)} of {size(doc.data.bytes)}. The rest is
-              in the repo at docs/{doc.data.name}.
+              in the repo at {doc.data.name}.
             </Note>
           ) : null}
           {doc.data ? (

@@ -32,9 +32,11 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 import subprocess
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 #: What a share can cover. `file` is one path. `tree` is a directory and everything under it,
@@ -78,6 +80,35 @@ _READS_FILENAME = "share_reads.jsonl"
 # --------------------------------------------------------------------------- #
 # The allow-list
 # --------------------------------------------------------------------------- #
+def _compile_deny() -> tuple[tuple[str, "re.Pattern[str]", "re.Pattern[str] | None", str | None], ...]:
+    """Turn `DENY_GLOBS` into matchers ONCE, at import.
+
+    Same three rules as before, same order, same answers — this is a cost change, not a fence
+    change, and `tests/ops/test_share_deny_is_unchanged_by_compilation.py` holds it to that over
+    every path in the repo.
+
+    WHY. Measured 2026-08-21 on this repo: `shareable_files()` spent **1,561 ms of its 1,688 ms in
+    `is_denied`** — 2,208 paths x 39 globs x up to 3 `fnmatch` calls each is roughly a quarter of a
+    million pattern compilations-and-lookups per page load. `fnmatch.fnmatch` re-normcases and
+    re-looks-up its cache on every call. The docs index and the share file picker both walk the
+    whole repo through this function, so it is the dominant line in two of the pages the founder
+    called slow.
+
+    `fnmatch.fnmatch(name, pat)` is `_compile_pattern(normcase(pat)).match(normcase(name))`, and
+    on this estate (darwin/linux) `os.path.normcase` is the identity. Both sides are already
+    lower-cased by the caller, so matching `translate(pat)` against the path is the same test.
+    """
+    out = []
+    for pat in DENY_GLOBS:
+        low = pat.lower()
+        full = re.compile(fnmatch.translate(low))
+        # Patterns carrying a `/` are directory patterns and must never match a bare basename.
+        base = full if "/" not in low else None
+        prefix = low[:-1] if low.endswith("/*") else None
+        out.append((pat, full, base, prefix))
+    return tuple(out)
+
+
 def is_denied(rel: str) -> str:
     """The reason `rel` may never be shared, or "" if it may.
 
@@ -89,21 +120,24 @@ def is_denied(rel: str) -> str:
     if not low or "\x00" in rel:
         return "not a path"
     base = low.rsplit("/", 1)[-1]
-    for pat in DENY_GLOBS:
-        low_pat = pat.lower()
-        if fnmatch.fnmatch(low, low_pat):
+    for pat, full_re, base_re, prefix in _DENY_COMPILED:
+        if full_re.match(low):
             return pat
         # EVERY PATTERN IS ALSO MATCHED AGAINST THE BASENAME. Without this, `id_rsa*` refuses
         # `id_rsa` at the repo root and hands over `keys/id_rsa`, which is the same key one
         # directory down. Found by the parametrised test on 2026-08-19, before this shipped.
-        # The directory patterns below carry a `/`, so they never match a basename by accident.
-        if "/" not in low_pat and fnmatch.fnmatch(base, low_pat):
+        # The directory patterns carry a `/`, so they never match a basename by accident.
+        if base_re is not None and base_re.match(base):
             return pat
         # A directory pattern must also refuse things nested deeper than one level:
         # `store/*` matches `store/a` but not `store/a/b` under fnmatch alone.
-        if low_pat.endswith("/*") and low.startswith(low_pat[:-1]):
+        if prefix is not None and low.startswith(prefix):
             return pat
     return ""
+
+
+#: Built at import. Nothing mutates `DENY_GLOBS` at runtime; a test asserts the two stay in step.
+_DENY_COMPILED = _compile_deny()
 
 
 def _git_tracked(repo_root: Path) -> list[str] | None:
@@ -125,7 +159,7 @@ def _git_tracked(repo_root: Path) -> list[str] | None:
     return [p for p in out.stdout.decode("utf-8", "replace").split("\0") if p]
 
 
-def _walked(repo_root: Path) -> list[str]:
+def _walked(repo_root: Path, keep: "Callable[[str], bool] | None" = None) -> list[str]:
     """Every file in the tree, minus the denied ones. The container path.
 
     Prunes denied directories as it descends rather than filtering at the end, because walking
@@ -138,15 +172,30 @@ def _walked(repo_root: Path) -> list[str]:
         dirnames[:] = [d for d in dirnames if not is_denied(f"{prefix}{d}/x")]
         for name in filenames:
             rel = f"{prefix}{name}"
+            if keep is not None and not keep(rel):
+                continue
             if not is_denied(rel):
                 found.append(rel)
     return found
 
 
-def shareable_files(repo_root: Path) -> list[str]:
-    """Every path this repo will serve, sorted. Both sources pass through `is_denied`."""
+def shareable_files(repo_root: Path, *, keep: "Callable[[str], bool] | None" = None) -> list[str]:
+    """Every path this repo will serve, sorted. Both sources pass through `is_denied`.
+
+    `keep` is an optional predicate on the repo-relative path, applied BEFORE the deny-list. It
+    changes the COST, never the answer: the two filters commute, so narrowing first returns
+    exactly what filtering the full result afterwards would. It can only ever remove paths, so a
+    caller cannot widen what this function serves.
+
+    WHY IT EXISTS. Measured 2026-08-21 on this repo: this function took 1,688 ms and **1,561 ms
+    of that was `is_denied` over all 2,208 tracked paths**. The docs index wants the ~320 that
+    are documents, so it pays 7x for paths it is about to discard — on a page the founder had
+    already called slow.
+    """
     tracked = _git_tracked(repo_root)
-    raw = tracked if tracked is not None else _walked(repo_root)
+    raw = tracked if tracked is not None else _walked(repo_root, keep=keep)
+    if keep is not None:
+        raw = [p for p in raw if keep(p)]
     return sorted({p for p in raw if not is_denied(p)})
 
 
