@@ -396,6 +396,11 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
             <div className="f-col">
               <p className="colh">Store</p>
               <Link href="/">Catalogue</Link>
+              {/* FR-10. This is the ONLY link to `/packs`, and it is load-bearing: the footer
+                  renders on every page including the legal ones, so this one anchor is what puts
+                  all 77 packs two clicks from the whole site. Measured 2026-08-21, before it
+                  existed: 14 of 77 were three clicks from every entry route. */}
+              <Link href="/packs">Every pack</Link>
               <Link href="/ideas">Categories</Link>
               <Link href="/how-it-works">How it works</Link>
               <Link href="/kill-log" prefetch={false}>Kill log</Link>

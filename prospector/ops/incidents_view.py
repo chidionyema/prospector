@@ -91,8 +91,12 @@ def incidents_view(repo_root: Path) -> dict:
         wants_ticket = bool(rec) and incident.needs_ticket(rec)
         rows.append({
             **row,
-            # Deep link into the docs view, which already serves these files by name.
-            "doc": f"incidents/{row['id']}.json" if row.get("id") else None,
+            # Deep link into the docs view, which already serves these files by name. The name
+            # is REPO-RELATIVE since 2026-08-21, when the docs root widened from docs/ to the
+            # whole repo: every row now names the same path the index lists and the share fence
+            # mints a token from, so a link, a listing and a token cannot disagree. `_safe` still
+            # accepts the old docs-relative form, so links minted before today keep opening.
+            "doc": f"docs/incidents/{row['id']}.json" if row.get("id") else None,
             "needs_ticket": wants_ticket,
             "tier_means": TIER_MEANING.get(row.get("tier") or "", ""),
             "what_broke": (rec.get("first_order") or {}).get("what_broke"),

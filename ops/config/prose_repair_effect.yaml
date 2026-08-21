@@ -1,0 +1,39 @@
+# Prose repair effect — this startup's declaration.
+#
+# Every business fact for the `prose_repair_effect` automation lives here. The engine
+# (`ops/automations/prose_repair_effect.py`) contains none of it.
+#
+# WHAT THIS IS FOR. `listing.human_register_repair` spends a rewrite turn on any draft whose
+# prose falls outside the human band (`prospector/data/prose_target.json`). Nothing measured
+# whether that turn WORKS. On 2026-08-21 it was measured by hand for the first time: over the
+# 273 model-written artifacts produced since the target landed, the repair had moved hyphens
+# -48% and commas -20% and had moved hedging +5% and vocabulary -2%, meaning two of its four
+# armed measures had not responded at all in five days. A diagnostic says which packs are
+# outside. This is the META-diagnostic: is the thing that is supposed to fix that working.
+
+# Where the dossiers live, relative to the repo root. PROSPECTOR_STORE_DIR still wins.
+store_dir: store/dossiers
+
+# The dossiers to read. A PASS is the population that reaches a buyer.
+dossier_glob: "*.pass.json"
+
+# The model-written documents the repair rewrites, inside candidate.tags.artifacts.
+prose_keys:
+  - build_spec
+  - gtm_plan
+  - ops_plan
+
+# The committed target. Its `measured_on` date splits pre-repair from post-repair, its
+# `ours_mean` per measure IS the pre-repair figure, and `armed` says which measures count.
+target_path: prospector/data/prose_target.json
+
+# A measure is a FINDING when the repair has not moved it at least this far toward the human
+# band, as a fraction of the distance it had to travel. 0.10 = "moved at least a tenth of the
+# way". Chosen to be forgiving: the point is to catch a measure that is not responding AT ALL,
+# not to grade the repair's ambition.
+min_closed_fraction: 0.10
+
+# Below this many graded documents the run cannot establish anything and exits 2 rather than
+# reporting a clean result on a near-empty store. The hardcoded path in register_baseline.py
+# resolved to a store with 0 pass dossiers and printed "0.0% outside" for weeks.
+min_documents: 30

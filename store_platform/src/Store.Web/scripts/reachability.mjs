@@ -27,7 +27,15 @@ const BASE = (positionals[0] || 'https://mumchimp.com').replace(/\/$/, '');
 const MAX_CLICKS = 2;
 
 /* The routes a stranger can actually arrive on: what we link, what search indexes, what we put in
-   an email. Keep this in step with ROUTES in `e2e/first-run.spec.ts`. */
+   an email. Kept in step with ROUTES in `e2e/first-run.spec.ts`, with ONE deliberate exception.
+
+   `/packs` is in ROUTES and is NOT here, and the omission is the point. It is the plain index
+   added by FR-10, so as an entry route it would score every pack at one click and lift this
+   number by grading the fix with the fix. Left out, the 11 routes below are unchanged from the
+   2026-08-21 baseline, the denominator is the same 847 pairs, and the only thing that can move
+   the figure is that those eleven OTHER pages now reach the whole shelf through the one footer
+   link. That is the thing worth measuring. Adding it here later is legitimate, but it is a new
+   baseline, not a better score. */
 const ENTRY = [
   '/', '/ideas', '/how-it-works', '/faq', '/about', '/sample',
   '/pricing', '/terms', '/privacy', '/refund', '/kill-log',

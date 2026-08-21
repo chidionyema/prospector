@@ -63,10 +63,19 @@ t_preflight() {
   command -v docker >/dev/null || { echo "docker not installed locally (needed to build)" >&2; return 1; }
   [ -f "$REPO_DIR/scripts/store_migrate.py" ] \
     || { echo "no $REPO_DIR/scripts/store_migrate.py — the pack/verify tool is missing" >&2; return 1; }
-  if [ -n "$CTX" ]; then
-    kubectl config get-contexts "$CTX" >/dev/null 2>&1 \
-      || { echo "no kubectl context named $CTX" >&2; return 1; }
-  fi
+  # An empty PROSPECTOR_K8S_CONTEXT means "whatever `kubectl config current-context` says", which
+  # is machine-global state this adapter does not own and cannot see the history of. Measured on
+  # the founder's laptop 2026-08-21: current-context is `docker-desktop`, and `colima start
+  # --kubernetes` would set it to `colima` because --activate defaults to true. Either way a
+  # cutover drill would run entirely against a laptop and print a green migration proof. Name the
+  # context or do not start.
+  [ -n "$CTX" ] || {
+    echo "PROSPECTOR_K8S_CONTEXT is unset, so every kubectl below would go to the current context" >&2
+    echo "  ($(kubectl config current-context 2>/dev/null || echo '<none>')), which is whatever the" >&2
+    echo "  last tool to touch ~/.kube/config chose. Set PROSPECTOR_K8S_CONTEXT explicitly." >&2
+    return 1; }
+  kubectl config get-contexts "$CTX" >/dev/null 2>&1 \
+    || { echo "no kubectl context named $CTX" >&2; return 1; }
   _kubectl cluster-info --request-timeout=10s >/dev/null \
     || { echo "cluster unreachable for context ${CTX:-current}" >&2; return 1; }
   # An image tag with no registry host cannot be pulled by any node but the one that built it.
