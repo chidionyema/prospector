@@ -77,7 +77,7 @@ const ROOTS = [
   {
     title: 'Page mockups — the build bundle',
     note: 'The earlier sample set: twelve full screens, one file each, static.',
-    dir: '/private/tmp/claude-501/-Users-chidionyema-Documents-code-prospector/3fa47c70-c6d2-4273-9620-19dc9810b132/scratchpad/wt-redesign/docs/design/mumchimp-build-bundle/mockups',
+    dir: new URL('../../design/mumchimp-build-bundle/mockups', import.meta.url).pathname,
   },
 ];
 const sets = ROOTS.filter((r) => existsSync(r.dir)).map((r) => ({

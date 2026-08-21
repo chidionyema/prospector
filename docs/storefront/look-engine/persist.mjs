@@ -13,12 +13,12 @@
  * grading a page whose storage was switched off by the way the test opened it.
  */
 /* Playwright is not a dependency of this prototype; it is borrowed from the storefront's own
- * node_modules. The path is absolute because that is where it lives on this machine, and it
- * is overridable because that will not be true on the next one:
+ * node_modules. It is resolved from THIS file's own location, so it works in the main
+ * checkout and in every worktree. It stays overridable for a machine that keeps it elsewhere:
  *   PLAYWRIGHT_MJS=/path/to/playwright/index.mjs node <tool>.mjs
  */
 const { chromium } = await import(process.env.PLAYWRIGHT_MJS
-  || '/private/tmp/claude-501/-Users-chidionyema-Documents-code-prospector/3fa47c70-c6d2-4273-9620-19dc9810b132/scratchpad/wt-redesign/store_platform/src/Store.Web/node_modules/playwright/index.mjs');
+  || new URL('../../../store_platform/src/Store.Web/node_modules/playwright/index.mjs', import.meta.url).href);
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { join, extname } from 'node:path';
