@@ -248,6 +248,15 @@ def main() -> int:
             print(f"    git branch -m {branch} {name} && git branch --set-upstream-to=origin/{name}")
         print("")
         print("The PR is a DRAFT because this repo auto-merges on green. Mark it ready yourself.")
+        print("")
+        # THE LAST LINE HAS TO BE THE ONE THAT SURVIVES A `tail`. git prints its own
+        # "error: failed to push some refs" after this hook returns non-zero, and a caller that
+        # pipes the push through `| tail -4` sees that error and the draft note and concludes the
+        # push did nothing. It did: the commits are on GitHub and a PR is open. On 2026-08-21 that
+        # misreading cost a duplicate PR (#603 and #604, same tip, two CI runs) because the agent
+        # went and made a second branch by hand. So the summary is repeated last, with the URL.
+        for _branch, name, url in fixed:
+            print(f"ALREADY PUSHED AND OPEN, do not push again: {name}  {url}")
         return 1
 
     print("Do this instead:")
