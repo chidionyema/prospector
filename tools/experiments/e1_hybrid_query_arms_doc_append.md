@@ -13,3 +13,5 @@ _Run 2026-08-07T23:26:35+00:00 · `e1_hybrid_query_arms.py` · registered docs/C
 - **deltas**: {'payer_solvency': 0.3036, 'incumbency': 0.25, 'legality': 0.7083}
 
 Receipt: `tools/experiments/e1_hybrid_query_arms_receipts.json` — reproduce with `.venv/bin/python tools/experiments/runner.py run E1 --live --verbose`
+
+**Follow-through:** NO ACTION — separable_checks is EMPTY, so no arm separated and the design as built cannot rule. Re-running it unchanged would produce the same non-result at live-call cost.
