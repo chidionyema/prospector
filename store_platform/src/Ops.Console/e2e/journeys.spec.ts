@@ -38,7 +38,24 @@ const DOC = 'docs/LINKS.md';
  */
 async function openSharePanel(page: import('@playwright/test').Page): Promise<void> {
   const opener = page.getByRole('button', { name: /Share this doc|Change who can read it/ });
-  if (await opener.count()) await opener.first().click();
+  if (await opener.count()) {
+    await opener.first().click();
+    return;
+  }
+  // Finding no opener has two very different causes and they must not report the same way.
+  // Either the panel is ALREADY open — ShareDoc stops rendering the opener then — or ShareDoc is
+  // not on the page at all, because no document was ever opened. In the second case every step
+  // after this waits on a control that cannot appear, and the run dies 240s later pointing at the
+  // wrong line. Measured 2026-08-21: exactly that, a timeout on `getByLabel(/Who is it for/i)`
+  // that said nothing about the document never having opened.
+  await expect(
+    page
+      .getByRole('button', { name: 'Turn it off' })
+      .or(page.getByLabel(/Who is it for/i))
+      .first(),
+    'no share panel on this page: the opener is absent and so are the controls it opens, which ' +
+      'means the document was never opened, not that sharing failed',
+  ).toBeVisible({ timeout: 30_000 });
 }
 
 /** Revoke the document's live link if it has one, so the journey starts from a known state. */
@@ -173,6 +190,14 @@ test.describe('the control plane', () => {
     await search.waitFor({ state: 'visible', timeout: 60_000 });
     await search.fill(DOC);
     await page.locator('li', { hasText: DOC }).getByRole('button').first().click();
+
+    // The row is clicked; that is not the same as the document being open. Assert it here so a
+    // search that matched nothing is reported as a search that matched nothing.
+    await expect(
+      page.getByRole('button', { name: /Share this doc|Change who can read it|Turn it off/ }).first(),
+      `clicking the row for ${DOC} did not open a document that can be shared — check that the ` +
+        'search matched it at all',
+    ).toBeVisible({ timeout: 60_000 });
 
     // Mint. `Confirm` previews first and applies second — that two-step is the safety rail, so
     // the test drives it rather than routing around it.
