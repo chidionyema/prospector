@@ -195,6 +195,40 @@ export default function Share() {
               });
               shares.refresh();
             }}
+            /*
+             * The link, as the first thing on screen, in the box the operator is already
+             * looking at. `path` comes back relative (`/s/<token>`) because the gateway has no
+             * idea what hostname the console is being served on; the absolute URL can only be
+             * built here, against `window.location.origin`.
+             */
+            renderReceipt={(receipt) => {
+              const url = `${window.location.origin}${String(receipt.path ?? '')}`;
+              return (
+                <div className="rounded-sm border border-ok/40 bg-ok-bg px-3 py-3">
+                  <div className="text-[13px] font-[560] text-ok-strong">
+                    Your link. Copy it now — it is not stored and cannot be shown again.
+                  </div>
+                  <div className="wrap-any mt-2 select-all font-mono text-[13px]">{url}</div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Button kind="primary" onClick={() => copy(url)}>
+                      {copied ? 'Copied' : 'Copy link'}
+                    </Button>
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[12.5px] underline"
+                    >
+                      Open it
+                    </a>
+                    <span className="text-[12px] text-muted">
+                      Public: anyone with this link can read it, with no login, until{' '}
+                      {when(Number(receipt.expires_at ?? 0))} or until you revoke it.
+                    </span>
+                  </div>
+                </div>
+              );
+            }}
           />
         </div>
 
@@ -215,6 +249,13 @@ export default function Share() {
       <Card title="Links you have given out">
         {shares.loading && !shares.data ? <Spinner what="the links" /> : null}
         {shares.data && rows.length === 0 ? <Empty>No links have been minted.</Empty> : null}
+        {rows.length > 0 ? (
+          <div className="mb-2 text-[12px] text-muted">
+            The links themselves are not shown here and cannot be recovered — only their hash is
+            kept, which is what stops this page from being a place to steal one. Lost a link?
+            Revoke it and mint another.
+          </div>
+        ) : null}
 
         <ul className="m-0 list-none p-0">
           {rows.map((r) => (

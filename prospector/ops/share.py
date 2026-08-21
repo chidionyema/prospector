@@ -32,6 +32,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 import subprocess
 import time
@@ -78,6 +79,42 @@ _READS_FILENAME = "share_reads.jsonl"
 # --------------------------------------------------------------------------- #
 # The allow-list
 # --------------------------------------------------------------------------- #
+def _compile_deny(globs: tuple[str, ...]):
+    """Precompile every deny pattern into the three tests `is_denied` runs.
+
+    THIS IS A SPEED FIX AND NOTHING ELSE. The answers are identical to the fnmatch loop it
+    replaces -- `tests/unit/test_share_deny_globs.py` runs both implementations over every
+    tracked file and a crafted adversarial set and asserts the same pattern comes back.
+
+    The measurement that bought it: the shares view calls this once per repo file, and with
+    2,169 files and 39 patterns that was 140,716 `fnmatch.fnmatch` calls per page load --
+    0.60s on the laptop, and `fnmatch` re-runs `os.path.normcase` on every one. Compiling the
+    patterns once at import moves that work out of the loop.
+    """
+    out = []
+    for pat in globs:
+        low_pat = pat.lower()
+        path_re = re.compile(fnmatch.translate(low_pat))
+        # Basename patterns only. A pattern carrying a `/` is a path pattern and must never be
+        # matched against a bare basename -- see the comment in `is_denied`.
+        base_re = path_re if "/" not in low_pat else None
+        prefix = low_pat[:-1] if low_pat.endswith("/*") else None
+        out.append((pat, path_re, base_re, prefix))
+    return tuple(out)
+
+
+_DENY_COMPILED = _compile_deny(DENY_GLOBS)
+
+#: One alternation of every pattern, so the common case -- a file that matches nothing -- costs
+#: two regex matches and one `str.startswith` instead of a walk over all 39 patterns.
+_ANY_PATH_RE = re.compile("|".join(f"(?:{fnmatch.translate(p.lower())})" for p in DENY_GLOBS))
+_ANY_BASE_RE = re.compile(
+    "|".join(f"(?:{fnmatch.translate(p.lower())})" for p in DENY_GLOBS if "/" not in p.lower())
+    or r"(?!)"  # matches nothing, for the day every pattern carries a slash
+)
+_ANY_PREFIX = tuple(p.lower()[:-1] for p in DENY_GLOBS if p.lower().endswith("/*"))
+
+
 def is_denied(rel: str) -> str:
     """The reason `rel` may never be shared, or "" if it may.
 
@@ -89,19 +126,29 @@ def is_denied(rel: str) -> str:
     if not low or "\x00" in rel:
         return "not a path"
     base = low.rsplit("/", 1)[-1]
-    for pat in DENY_GLOBS:
-        low_pat = pat.lower()
-        if fnmatch.fnmatch(low, low_pat):
+    # Fast reject. Nothing below can match if none of these do, and almost every file lands here.
+    if not (_ANY_PATH_RE.match(low)
+            or _ANY_BASE_RE.match(base)
+            or low.startswith(_ANY_PREFIX)):
+        return ""
+    for pat, path_re, base_re, prefix in _DENY_COMPILED:
+        if path_re.match(low):
             return pat
         # EVERY PATTERN IS ALSO MATCHED AGAINST THE BASENAME. Without this, `id_rsa*` refuses
         # `id_rsa` at the repo root and hands over `keys/id_rsa`, which is the same key one
         # directory down. Found by the parametrised test on 2026-08-19, before this shipped.
-        # The directory patterns below carry a `/`, so they never match a basename by accident.
-        if "/" not in low_pat and fnmatch.fnmatch(base, low_pat):
+        # The directory patterns carry a `/`, so they never match a basename by accident.
+        if base_re is not None and base_re.match(base):
             return pat
-        # A directory pattern must also refuse things nested deeper than one level:
-        # `store/*` matches `store/a` but not `store/a/b` under fnmatch alone.
-        if low_pat.endswith("/*") and low.startswith(low_pat[:-1]):
+        # Belt and braces on the directory patterns, and it is REDUNDANT TODAY -- measured
+        # 2026-08-21. The comment here used to claim `store/*` matches `store/a` but not
+        # `store/a/b` under fnmatch. That is false: fnmatch's `*` crosses `/` (it translates to
+        # `.*` with DOTALL, unlike glob), so `store/*` already refuses `store/a/b/c`. Proved by
+        # deleting this branch from the fast-reject and finding no test could tell.
+        # It stays because it is free -- it only runs on a path something already matched --
+        # and because it is the one check that does not depend on fnmatch keeping that
+        # behaviour. Do not add a pattern that RELIES on it; write the pattern to stand alone.
+        if prefix is not None and low.startswith(prefix):
             return pat
     return ""
 

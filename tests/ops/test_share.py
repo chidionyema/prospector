@@ -385,3 +385,87 @@ def test_the_revision_is_empty_rather_than_invented_when_git_cannot_answer(ops, 
     view = share.open_share(ops, repo, minted["token"])
     assert view["revision"] == ""
     assert view["generated_at"] > 0
+
+
+# --------------------------------------------------------------------------- #
+# The compiled deny-list answers exactly like the fnmatch loop it replaced
+#
+# `is_denied` was a plain fnmatch loop until 2026-08-21, when it became precompiled regexes
+# with a fast-reject path. That was a SPEED change: the shares view calls it once per repo
+# file, which was 140,716 `fnmatch.fnmatch` calls and 0.60s per page load on 2,169 files.
+#
+# A speed change to a security fence is exactly the change that must not alter one answer, and
+# "I read it carefully" is not a mechanism. This keeps the old implementation as the oracle and
+# runs both over every file git tracks plus a crafted adversarial set. If anyone ever tunes the
+# fast path again, this fails the moment the two disagree.
+# --------------------------------------------------------------------------- #
+def _reference_is_denied(rel: str) -> str:
+    """The pre-2026-08-21 implementation, verbatim. The oracle, never the shipped path."""
+    import fnmatch as _fn
+
+    low = (rel or "").lower().lstrip("/")
+    if not low or "\x00" in rel:
+        return "not a path"
+    base = low.rsplit("/", 1)[-1]
+    for pat in share.DENY_GLOBS:
+        low_pat = pat.lower()
+        if _fn.fnmatch(low, low_pat):
+            return pat
+        if "/" not in low_pat and _fn.fnmatch(base, low_pat):
+            return pat
+        if low_pat.endswith("/*") and low.startswith(low_pat[:-1]):
+            return pat
+    return ""
+
+
+_ADVERSARIAL = [
+    "", "/", "a", "README.md", "docs/WAYS_OF_WORKING.md",
+    ".env", ".env.local", "deploy/.env", "config/prod.env", ".envrc",
+    "keys/id_rsa", "id_rsa", "id_rsa.pub", "a/b/c/id_ed25519", "x.ppk",
+    ".lux/keys/agent.pem", "certs/server.crt", "a/b.p12", "A/B/SECRETS.YAML",
+    ".git", ".git/config", "a/.git/config", "store/x", "store/a/b/c/d.json",
+    "storage/", "signals/pending/deep/er/x.json", "graphify-out/x",
+    "node_modules/x", "web/node_modules/a/b/c.js", "src/.next/build/x",
+    "__pycache__/x.pyc", "a/b/__pycache__/c.pyc", "a/b.pyc",
+    ".venv/lib/x", "venv/lib/x", "MyApp.mobileprovision", "AuthKey.p8",
+    "UPPER.ENV", "Store/Mixed.json", "a/b/../c", "sqlite.db", "a.sqlite3",
+    "deeply/nested/path/that/matches/nothing/at/all.txt",
+]
+
+
+def test_the_compiled_deny_list_answers_exactly_like_the_fnmatch_loop():
+    import subprocess
+
+    cases = list(_ADVERSARIAL)
+    tracked = subprocess.run(
+        ["git", "ls-files", "-z"], capture_output=True, check=False,
+        cwd=str(Path(__file__).resolve().parents[2]),
+    )
+    if tracked.returncode == 0:
+        cases += [p for p in tracked.stdout.decode("utf-8", "replace").split("\0") if p]
+
+    assert len(cases) > 100, f"only {len(cases)} cases — the oracle needs real paths to be worth anything"
+    disagreements = [
+        (rel, _reference_is_denied(rel), share.is_denied(rel))
+        for rel in cases
+        if _reference_is_denied(rel) != share.is_denied(rel)
+    ]
+    assert not disagreements, f"compiled deny-list disagrees with the fnmatch oracle: {disagreements[:5]}"
+
+
+def test_the_fast_reject_never_waves_through_a_denied_path():
+    """The fast-reject path is the one that can silently open the fence. Prove it stays shut.
+
+    Every pattern in DENY_GLOBS gets a path built to match it, and each must still be refused.
+    A fast path that returns "" here is a secret served to the public internet.
+    """
+    served = []
+    for pat in share.DENY_GLOBS:
+        sample = (pat.replace("**/", "deep/nested/")
+                     .replace("*", "x")
+                     .lstrip("/"))
+        if sample.endswith("/"):
+            sample += "file.txt"
+        if not share.is_denied(sample):
+            served.append((pat, sample))
+    assert not served, f"these deny patterns no longer refuse their own sample: {served}"

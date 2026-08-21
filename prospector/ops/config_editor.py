@@ -133,7 +133,8 @@ def _read_config_raw() -> tuple[dict[str, Any], bool]:
         return {}, True
     try:
         with open(_config_path(), encoding="utf-8") as f:
-            return (yaml.safe_load(f) or {}), True
+            from prospector.yaml_fast import safe_load as _fast_safe_load
+            return (_fast_safe_load(f) or {}), True
     except (yaml.YAMLError, OSError) as exc:
         logger.error("control_center: %s unparseable (%s: %s)",
                      _config_path(), type(exc).__name__, exc)

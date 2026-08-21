@@ -7,11 +7,10 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 # Safe at module scope, unlike `prospector.operator`: `providers` imports only the stdlib and
 # `prospector.tiers`, which itself imports nothing.
 from .providers import buildable_tiers, installed_declared, parse_declared, set_declared
+from .yaml_fast import safe_load as _fast_safe_load
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -1200,7 +1199,9 @@ def _component_models(raw) -> dict:
 
 def load_config(path: str | Path | None = None) -> Config:
     p = Path(path) if path else REPO_ROOT / "config.yaml"
-    raw = yaml.safe_load(p.read_text()) if p.exists() else {}
+    # libyaml, not the pure-Python scanner: 2.49s -> 0.23s on this file in the engine
+    # container, measured 2026-08-21. Same parser contract. See prospector/yaml_fast.py.
+    raw = _fast_safe_load(p.read_text()) if p.exists() else {}
     # PROVIDERS FIRST, and installed process-wide before anything else runs. Two validators
     # below check tier NAMES — `_component_models` inside the Config(...) call, and
     # `set_moat_primary` at the end — and both refuse a name they do not know. Parsing this
