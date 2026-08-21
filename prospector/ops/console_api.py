@@ -3688,8 +3688,18 @@ TOOLS: list[dict] = [
        cmd=".venv/bin/python -m ops.automations.stranded_packs"),
     _t("ops/automations/retired_terms.py", "Retired wording still in the tree", False,
        "/processes", cmd=".venv/bin/python -m ops.automations.retired_terms"),
-    _t("ops/automations/human_register.py", "Figures a human still has to verify", False,
-       "/processes", cmd=".venv/bin/python -m ops.automations.human_register"),
+    # The purpose text here read "Figures a human still has to verify" until 2026-08-21,
+    # which is review_figures.py's purpose two rows up. The console told the operator this
+    # panel was about figure verification; it is about whether every lint record carries the
+    # human-register block the style panel reads.
+    _t("ops/automations/human_register.py", "Lint records missing the human-register block",
+       False, "/processes", cmd=".venv/bin/python -m ops.automations.human_register"),
+    # The META-diagnostic beside it. human_register says which packs sit outside the human
+    # band; this says whether the repair turn spent on them is moving the number. Measured
+    # 2026-08-21: five of six armed measures responding, hedges_per_1k moved 1% in five days.
+    _t("ops/automations/prose_repair_effect.py",
+       "Is the prose repair turn actually moving the number", False, "/processes",
+       cmd=".venv/bin/python -m ops.automations.prose_repair_effect"),
     # --- integrity / probes ---
     _t("scripts/backup_store.py", "Back up dossiers and ledger to R2", True, "/tools",
        risk="external"),
