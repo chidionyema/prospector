@@ -48,6 +48,20 @@ is a wish reinterpreted.
 16. *"disucs idead, edge cases with peers but bias towards action"* / *"doing over narrating is
     favoured"* — broadcast a plan to peers for the edge case you cannot see, then act.
 
+17. *"what is the idea generation lacking to psh it to the next level of enganenent, in talking
+    dragon den, sharktank level of ideas"* — the headline question of 2026-08-21.
+18. *"needs special attention"* / *"super crtical"*
+19. *"we need engagent as well as viablity"* — engagement is a SECOND axis beside viability, not a
+    replacement for it.
+20. *"for sales"* — engagement is wanted because it sells, so the metric has to be buyer-facing.
+21. *"everything fron healie/title crafing to content crafing"* / *"and pack crafting"* — the scope
+    runs the whole way from the idea to the document the buyer reads.
+22. *"needs 1000x inprovenet"*
+23. *"researcch like a possesed agent"*
+24. *"add to notes"* / *"deep link"*
+25. *"we need to docunent where these dossiers live, and nake it claer in pos panel, part of
+    extrenen visibility, follow the pattern"*
+
 ### What that translates to, operationally
 
 | Wish | Operational rule for this programme |
@@ -62,6 +76,9 @@ is a wish reinterpreted.
 | all experiments and outcomes | Negative results get rows. See section 4's rule. |
 | state of the art | Section 5 tracks what the literature and the open-source field do that we do not. |
 | any resource is available | Hosted models, paid APIs, local models, extra machines are all in scope. |
+| engagement as well as viability | Section 9. Engagement is a new axis with its own unit and baseline. It may RANK survivors and STEER generation. It may never un-KILL a candidate that failed a grounding gate — "two loops never merge" is unchanged. |
+| title, content and pack crafting | The buyer-facing half is measured in section 9.3 and has its own baselines. A copy change ships against a number, never against taste. |
+| extreme visibility of the corpus | `prospector/ops/data.py::_corpus` reports the store path, whether it is the production path, catalogue rows and on-disk dossier files, and reports `unknown` with the error text rather than rendering a failed read as zero. |
 
 ---
 
@@ -773,3 +790,123 @@ the founder's, and this experiment is designed so that the free tier answers it 
 that question. If the free tier proves useful, the paid tier's price becomes a separate ticket
 with its own estimate.
 
+---
+
+## 9. Engagement — the axis the engine does not have
+
+Founder, 2026-08-21: *"what is the idea generation lacking to psh it to the next level of
+enganenent, in talking dragon den, sharktank level of ideas"*, *"we need engagent as well as
+viablity"*, *"for sales"*.
+
+### 9.0 The headline number, and the control that decides it
+
+**100.0% of the 64 ideas the engine has ever passed match the title frame `<X> for <buyer>`.
+Across all 2,044 verdict dossiers, 21.2% do.**
+
+A raw rate on 64 items decides nothing by itself, so it was run against a null: 2,000 random
+subsamples of size 64 drawn from the same 2,044 titles, fixed seed. Reproduce with
+`scratchpad/measure_template.py`.
+
+| property | PASS (n=64) | ALL (n=2,044) | null p5 | null p95 | verdict |
+|---|---:|---:|---:|---:|---|
+| `<X> for <buyer>` frame | **100.0%** | 21.2% | 12.5% | 29.7% | **outside null — 0 of 2,000 draws reached it** |
+| names a jurisdiction | **43.8%** | 13.2% | 6.2% | 20.3% | **outside null — 0 of 2,000 draws reached it** |
+| <= 8 words | **71.9%** | 49.9% | 39.1% | 60.9% | **outside null — 0 of 2,000 draws reached it** |
+| contains a digit | 1.6% | 3.2% | 0.0% | 7.8% | inside null — no effect |
+
+Corpus: `prospector-ship-wt/store/dossiers`, 2,044 verdict dossiers, 1,976 kill / 64 pass /
+4 defer, a 3.1% pass rate.
+
+Every survivor is a narrow admin-friction arbitrage: "Dropped kerb application service for car
+owners", "Council Tax exemption claims for dementia carers", "Bin store recycling signs for small
+flat landlords". All viable. None is a business a Dragon leans forward for.
+
+### 9.0b The claim the same control KILLED — recorded so it is not re-made
+
+I first wrote that "generation produces variety and the filter selects a monoculture". Run against
+the same null, that is **false as a statement about diversity**. Four lexical-diversity metrics on
+the 64 PASSes all land INSIDE the null distribution for n=64 (`scratchpad/measure_diversity.py`):
+
+| metric | PASS | null p5 | null p95 | percentile |
+|---|---:|---:|---:|---:|
+| distinct-1 | 0.7034 | 0.7018 | 0.7743 | 5.8% |
+| distinct-2 | 0.9569 | 0.9460 | 0.9846 | 18.6% |
+| opening-word entropy | 0.9844 | 0.9792 | 1.0000 | 9.8% |
+| mean pairwise Jaccard | 0.0160 | 0.0091 | 0.0176 | 88.2% |
+
+**The survivors are as lexically varied as any random 64 from the corpus. They are identical in
+FORM.** That is a sharper finding than the one it replaces, and it changes the fix: vocabulary
+diversity is not the problem and more diverse generation will not help. The scoring rewards one
+SHAPE of proposition, and every idea that does not take that shape dies on the composite.
+
+### 9.1 Why — three angles that agree
+
+**Angle 1, structural. Twelve measurement points, none about desirability.** Six kill checks
+(pain_reality, value_durability, incumbency, payer_solvency, distribution, legality); six score
+axes (`prospector/models.py:114`); six weights summing to 1.00 (`config.yaml:850-855`).
+`rg -i 'engag|novelty|surpris|compelling'` over `score.py`, `kill_filter.py` and `models.py`
+returns one hit, and it is the word "engaged" in an unrelated comment.
+
+**Angle 2, steering. The loop is closed.** `config.yaml:1521` aims the generation controller at
+`target_qualities: [acute_pain, solvent_motivated_payer, durable_hard_core, real_distribution,
+clean_legality, high_automatability]` — the same six qualities the filter grades. Nothing anywhere
+asks for an idea that is interesting.
+
+**Angle 3, outcome. The ambitious lane is wiped out.** `config.yaml:1515` records
+*"venture is at 0 PASS in 35"*. An independent count over the dossier store gives `venture` 97.9%
+of scored candidates below their own threshold (n=47) against `side_hustle` 42.5% (n=120).
+`config.yaml:1523` records `min_composite` as the modal kill gate in **8 of 9 persona cells**:
+candidates clear the hard evidence gates and then die on the score.
+
+### 9.2 Why a weight will not fix it
+
+The filter is grounded-evidence-only, so a candidate's score rises with how much prior art exists
+to cite. A genuinely novel idea retrieves thin, returns `unverifiable` (73.3% of 14,006 checks
+already do), and dies. A crowded, obvious, well-documented idea retrieves cleanly and passes.
+**The selection pressure runs toward the obvious by construction.** No re-weighting helps: there is
+no term in the composite that can reward a thing the evidence cannot yet confirm.
+
+### 9.3 The buyer-facing half — measured 2026-08-21
+
+Full report: scratchpad `RESEARCH_D_buyer_facing_measured_2026-08-21.md`. Five findings with
+numbers, each with a locator and a kill condition.
+
+| # | Finding | Measured | Locator | Cost to fix |
+|---|---|---|---|---|
+| B1 | Packs repeat each other | median **23.7%** of a pack's sentences appear in >=50% of the catalogue (n=150 bundles); `"Fifteen minutes this week or next?"` byte-identical in **136 of 161** | `pack_linter.py:198 check_repetition` sees one pack at a time; `config.yaml:1919 lint_repetition_block: false` | $0.00/pack |
+| B2 | Search returns nothing for plain English | **14 of 27** buyer queries return zero against 77 live packs (`side hustle` 0, `cleaning` 0, `dentist` 0); plurals break six pairs (`vet` 1, `vets` 0) | `Store.Web/src/lib/discovery.ts:246 matchesQuery` is a raw substring match | stemming $0.00; alias field <1% of a PASS |
+| B3 | Related-packs ties | scorer emits **10 distinct values**; **32 of 77** packs have more than 3 candidates tied for 3 slots | `discovery.ts:686 scoreSimilar` | <$0.10 one-off |
+| B4 | Price tracks nothing visible | **Spearman(price, sourceCount) = 0.1366**, 23 of 76 adjacent pairs inverted; the £29.99 rung carries more sources on average than £49.99 | `pricing.py` docstring claims a non-decreasing step function; `config.yaml:2102-2106` applies it at listing time only | $0.00 |
+| B5 | No A/B test is possible | `resolveVariant` pins every visitor to `'a'`; counters exist and are allowlisted; last analytics read was 24 rows, all `page_view`, all dev traffic | `Store.Web/src/lib/getCopyVariant.ts` | $0.00 |
+
+B5 is the precondition. Nothing learned on this list can be decided until randomised assignment
+exists, and its own kill condition is honest: if 30 days cannot produce 126 catalogue views, no
+A/B test is fittable on this site and every click-dependent proposal closes.
+
+### 9.4 The constraint any fix must respect
+
+CLAUDE.md, "two loops never merge": demand never overrides truth. An engagement score may **rank**
+survivors and may **steer** generation. It must **never** un-kill an idea that failed a grounding
+gate. An engagement axis wired into `kill_filter` would be the exact failure that rule exists to
+prevent.
+
+### 9.5 Where the dossiers live — wish 25
+
+| store | verdict dossiers | catalogue rows |
+|---|---:|---:|
+| `~/Documents/code/prospector/store` (canonical; every plist points here) | 0 | 0 |
+| 17 other laptop worktree stores | 0 | 0 |
+| iCloud `prospector-ship-wt/store` | **2,044** | **0** |
+| Fly volume `prospector_store` -> `/data/store` (`deploy/engine/fly.toml:65-67`) | live | unread from here |
+
+Two defects fall out of that table. The product corpus sits in an iCloud-synced worktree that has
+lost its git, not in the canonical store and not on Fly. And that store holds 2,044 dossier files
+against **0 index rows**, while `store.py::save` writes the JSON and upserts the row in the same
+call — so the rows were lost, not never written. `store.py:414 catalogue_titles()` and
+`recent_titles()` both read that index and both are generation's cross-run dedup memory: where the
+index is empty, the engine can regenerate ideas it has already ruled on and not know.
+
+`prospector/ops/data.py::_corpus` now reports this on the ops panel: store path, whether
+`PROSPECTOR_STORE_DIR` declared it, whether it is the production path, catalogue rows by decision,
+and on-disk dossier files with lint receipts excluded by suffix. A read that fails is reported as
+`unknown` with the sqlite error, never as zero.
