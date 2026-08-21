@@ -1258,6 +1258,15 @@ def _lint_receipt(root: str, cid: str) -> Any:
         return None
 
 
+def _lint_receipt(root: str, cid: str) -> Any:
+    """The pack's stored gate verdict, or None if there is not one this reader can parse."""
+    try:
+        return json.loads(
+            (Path(root) / "store" / "dossiers" / f"{cid}.lint.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
 def _read_shelf(cfg, args: dict) -> dict:
     """Every PASS the engine produced that a buyer cannot buy, and what is holding each one back.
 

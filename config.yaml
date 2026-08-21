@@ -2566,6 +2566,29 @@ schedule:
   # goes to rows that can still reach the publish gate.
   revet_provisional_kills: true
   gate_generation_on_grounding: true
+  # How many packs one tick may RE-GATE: rehearse the publish gate on a pack whose stored
+  # verdict is stale, refresh `store/dossiers/<id>.lint.json`, list nothing. It is the
+  # counterpart to the unlist drain. The daemon pulls a pack off sale the moment a re-vet
+  # kills it and then never looks at it again, so a pack blocked by a rule that has since
+  # been fixed stays off the shelf permanently — 24 packs were "published UNLISTED and
+  # forgotten" (`tools/verify_pass_shelf_coverage.py:14`), and on 2026-08-17 five rule fixes
+  # freed seven more that no receipt on disk knew about.
+  #
+  # A rehearsal mints NOTHING and calls NO model. `--dry-run` returns at `bridge.py:1256-1272`
+  # before `price_for` — no Stripe Price, no R2 upload, no catalogue row, nothing on sale — and
+  # its generation loop is `range(1, 1)`, which never runs. What it costs is network: the linter
+  # probes the URLs each pack cites, ~124s a pack measured 2026-08-17.
+  #
+  # Two earlier versions of this comment were wrong about that cost, in opposite directions, so
+  # do not re-derive it from prose: 300s was an unmeasured guess, and "regenerates empty
+  # artifacts, so it costs model spend" came from a log line that printed on a path a dry run
+  # never takes. Both are fixed at source.
+  #
+  # 10 per tick because the gate now runs ~10 at a time (`publish_passes._DRY_RUN_JOBS`), so a
+  # full batch costs roughly one pack's wall clock against a 900s ceiling. The work SELF-DRAINS:
+  # a re-gate stamps the current ruleset whatever the verdict, so a still-blocked pack drops out
+  # of the queue too and the backlog converges to empty. 0 = off.
+  regate_unlisted_per_tick: 10
   reload_on_code_change: true
   gen_budget_frac: 0.35
   # `lease_ttl_s: 7200` — how long a worker may hold a queue row before the lease

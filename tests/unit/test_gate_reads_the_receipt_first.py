@@ -19,6 +19,7 @@ import time
 import unittest
 from pathlib import Path
 
+from prospector.pack_linter import RULESET_VERSION
 from tools import publish_passes
 
 
@@ -38,9 +39,15 @@ class TestFreshLint(unittest.TestCase):
         self._tmp.cleanup()
 
     def test_a_record_written_after_the_pack_is_used(self):
+        """Newer than the pack AND written by today's rules. Both, since 2026-08-17.
+
+        mtime answers "has the pack changed" and cannot answer "have the rules changed", so
+        the receipt also carries `pack_linter.RULESET_VERSION` — a fingerprint of the linter
+        source — and a receipt from any other ruleset is refused like a missing one.
+        """
         now = time.time()
         _write(self.pack, {"candidate": {}}, mtime=now - 100)
-        _write(self.lint, {"ok": False, "problems": []}, mtime=now)
+        _write(self.lint, {"ok": False, "problems": [], "ruleset": RULESET_VERSION}, mtime=now)
 
         rec = publish_passes._fresh_lint(str(self.pack))
 
