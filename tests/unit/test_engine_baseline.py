@@ -125,6 +125,59 @@ def test_a4_picks_the_newest_run_by_timestamp_not_by_operator_name(store):
     assert axis.detail["gate_accuracy_pct"] == 50.0
 
 
+def test_a4_reports_the_age_and_the_store_it_read(store):
+    """A golden score with no provenance is the axis's second way of printing a wrong number.
+
+    `setup_worktree.sh:186` CoW-clones `store/golden_runs` out of the main checkout, so a
+    worktree carries a frozen snapshot. Measured 2026-08-20: seven worktrees each held the same
+    77 records, newest 5.42 days old, while the canonical store had no `golden_runs` directory
+    at all — one question, two answers, decided by cwd. Age and store root make that visible on
+    the axis itself instead of leaving it to be rediscovered.
+
+    The age must come from the FILENAME STAMP, not the file mtime: a clone's mtime dates the
+    copy, not the measurement. Over all 77 records the stamp and the record's own `timestamp`
+    field agreed exactly, 0 mismatches, so the stamp is the authoritative one.
+    """
+    golden = store / "golden_runs"
+    golden.mkdir()
+    (golden / "minimax_20260815T111104521041.json").write_text(
+        json.dumps(
+            {
+                "discrimination": 1.0,
+                "operator": "minimax",
+                "config_hash": "68f8be37dd91",
+                "per_case": [{"gate_match": True}, {"gate_match": False}],
+            }
+        )
+    )
+    axis = eb.axis_a4(store)
+
+    assert axis.value == 100.0
+    assert axis.detail["store"] == str(store), "the axis must say which store it read"
+    assert axis.detail["measured_at"].startswith("2026-08-15T11:11:04")
+    assert axis.detail["age_days"] is not None and axis.detail["age_days"] > 0
+    assert axis.detail["config_hash"] == "68f8be37dd91"
+
+
+def test_a4_survives_a_record_whose_filename_stamp_is_not_a_timestamp(store):
+    """An unparsable stamp must cost the AGE, never the whole axis.
+
+    The value is still real and still worth reporting; only its age is unknown, and saying so is
+    the honest answer. Returning UNOBTAINABLE here would throw away a good measurement over a
+    naming defect.
+    """
+    golden = store / "golden_runs"
+    golden.mkdir()
+    (golden / "minimax_notatimestamp.json").write_text(
+        json.dumps({"discrimination": 0.75, "operator": "minimax", "per_case": []})
+    )
+    axis = eb.axis_a4(store)
+
+    assert axis.value == 75.0, "an unreadable stamp must not blank a real score"
+    assert axis.detail["age_days"] is None
+    assert "unparsable" in axis.detail["measured_at"]
+
+
 def test_a4_is_unobtainable_when_nothing_has_been_stored(store):
     axis = eb.axis_a4(store)
     assert axis.value == eb.UNOBTAINABLE

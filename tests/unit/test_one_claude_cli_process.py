@@ -78,6 +78,20 @@ def test_the_env_var_cannot_raise_it_either(monkeypatch, asked):
     assert claude_cli._MAX_CLI == 1
 
 
+@pytest.mark.parametrize("asked", [0, -1, -40])
+def test_asking_for_less_than_one_still_gets_one(asked):
+    """The clamp is a floor as well as a ceiling.
+
+    A ceiling alone lets `claude_concurrency: 0` through, and zero is not a cheaper engine, it
+    is an engine with no failover brain at all — the one thing this file exists to keep alive.
+    Merged here from a second implementation of this rule that grew on a branch on 2026-08-21;
+    this was its only check that had no counterpart, and two implementations of one rule is
+    worse than none.
+    """
+    claude_cli.configure_concurrency(asked)
+    assert claude_cli._MAX_CLI == 1, f"config asked for {asked} and got it"
+
+
 def test_a_junk_env_value_does_not_widen_it(monkeypatch):
     """Fail toward the ceiling, never away from it."""
     monkeypatch.setenv("PROSPECTOR_CLAUDE_CONCURRENCY", "lots")

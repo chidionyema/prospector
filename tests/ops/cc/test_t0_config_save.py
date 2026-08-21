@@ -92,10 +92,24 @@ def test_t0_2_the_selector_offers_only_tiers_that_can_be_built():
 
 def test_t0_2_the_live_chain_is_representable_in_the_selector():
     """The regression in one line: whatever config.yaml names must be selectable, or the widget
-    silently proposes something else."""
-    from prospector.operator import BUILDABLE_TIERS
+    silently proposes something else.
+
+    It grades the SELECTOR, never `operator.BUILDABLE_TIERS`. Those were the same list until
+    2026-08-21, when `config.yaml providers:` started declaring tiers: `groq` and `mistral` went
+    live in `operator:` and this test went red while the console could in fact offer both. The
+    built-in table can never answer "is this selectable" once a name can arrive from config, and
+    a test that keeps asking it is pinning the roster instead of the widget.
+
+    Two halves, because the page has two: the dropdown must OFFER every live name, and the save
+    path must ACCEPT it. Those are separate code paths and each has failed on its own.
+    """
+    from prospector.ops.console_api import KNOBS_BY_KEY, _coerce, refresh_declared_knobs
+
+    refresh_declared_knobs()
+    spec = KNOBS_BY_KEY["operator"]
     live = yaml.safe_load(open("config.yaml", encoding="utf-8").read())["operator"]
-    assert all(t in BUILDABLE_TIERS for t in live), live
+    assert all(t in spec["choices"] for t in live), (live, spec["choices"])
+    assert _coerce(spec, live) == live
 
 
 def test_t0_2_writing_an_empty_operator_is_refused(cfg_file):

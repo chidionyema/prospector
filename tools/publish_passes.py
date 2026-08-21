@@ -37,7 +37,9 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from prospector.artifacts import generate_artifacts, generate_marketing_content
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from prospector.artifacts import generate_artifacts, generate_marketing_content  # noqa: E402
 from prospector.config import load_config, store_root
 from prospector.models import (
     Candidate,
@@ -50,6 +52,7 @@ from prospector.models import (
 )
 from prospector.operator import make_operator
 from prospector.pack_floors import ensure_marketing_floor
+from prospector.pack_linter import receipt_is_current
 from prospector.pack_validation import validate_pack
 from prospector.run import (
     _NONCRITICAL_ORDER,
@@ -122,13 +125,23 @@ def reconstruct(d: dict) -> Dossier:
 #: This is that lesson in code rather than in a rule. A rule gets forgotten; a default does
 #: not.
 def _fresh_lint(pass_path: str) -> dict | None:
-    """The pack's own lint record if it is NEWER than the pack, else None.
+    """The pack's own lint record if it is NEWER than the pack AND was written by the rules
+    running now, else None.
 
     Freshness is mtime, not trust. The recovery tool rewrites the `.pass.json` and then
     re-gates, so a repaired pack is always newer than the receipt describing it before the
     repair — and this returns None there, which is exactly when running the gate is the only
     honest answer. Any unreadable or malformed record also returns None: the guard may cost
     a run it did not need to, never a wrong verdict.
+
+    MTIME ANSWERS ONE HALF OF THE QUESTION. It sees a changed pack; it cannot see changed
+    RULES, because editing the linter touches no dossier. On 2026-08-17 five rules stopped
+    blocking and every receipt on disk stayed byte-identical and newer than its pack, so this
+    would have gone on reporting seven freed packs as blocked — from a file, with no gate run
+    able to correct it. `pack_linter.RULESET_VERSION` is stamped into each receipt and a
+    mismatch is treated exactly like a missing record: re-gate and find out.
+
+    A receipt with NO `ruleset` key predates the stamp, so it is stale by definition.
     """
     lint_path = re.sub(r"\.pass\.json$", ".lint.json", pass_path)
     if lint_path == pass_path:
@@ -140,7 +153,9 @@ def _fresh_lint(pass_path: str) -> dict | None:
             rec = json.load(fh)
     except (OSError, ValueError):
         return None
-    return rec if isinstance(rec, dict) else None
+    if not receipt_is_current(rec):
+        return None
+    return rec
 
 
 def _report_cached(cid: str, rec: dict) -> bool:
@@ -157,6 +172,65 @@ def _report_cached(cid: str, rec: dict) -> bool:
     if len(errors) > 6:
         print(f"    ... {len(errors) - 6} more")
     return listed
+
+
+#: How many packs ONE PROCESS gates at once on a --dry-run when the caller did not say.
+#:
+#: Deliberately smaller than it looks like it should be, because "the gate is network waiting"
+#: was only half true. Measured 2026-08-17, serial: ~124s per pack (373.4s for 3). Measured the
+#: same day with a 10-THREAD pool: 57 packs in 30 minutes, ~31s per pack. That is 4x, not 10x —
+#: threads stop scaling here because a large part of a gate is Python work (parsing the pack,
+#: readability, the currency and dash sweeps) and the GIL serialises exactly that.
+#:
+#: So threads carry the network half and PROCESSES carry the rest — see _DRY_RUN_PROCS.
+_DRY_RUN_JOBS = 3
+
+#: How many worker PROCESSES a --dry-run splits its packs across. This is the half of the
+#: fan-out that actually beats the GIL, and it is the tool's default rather than something a
+#: caller remembers: founder directive 2026-08-17, "are we running in parallel, this needs to be
+#: enforced across our repair tools".
+#:
+#: 8 x 3 = 24 gates in flight. Sized off the measured 124s serial cost: the 57 remaining stale
+#: verdicts land in about 5 minutes instead of 118. Not wider, because each gate probes the URLs
+#: its pack cites and a bigger fan-out starts to look like a hammer to the hosts being probed.
+_DRY_RUN_PROCS = 8
+
+#: Set on a child so it never fans out again. Without it the split is recursive and one call
+#: becomes 64 processes.
+_CHILD_ENV = "PROSPECTOR_PUBLISH_PASSES_CHILD"
+
+
+def _fan_out_across_processes(paths: list[str], *, procs: int, jobs: int,
+                              force_regate: bool, cheap: bool) -> int:
+    """Split a --dry-run's packs across `procs` child processes and wait for them all.
+
+    Threads alone were not enough. A 10-thread pool moved 57 packs in 30 minutes against a
+    124s-per-pack serial cost — 4x, where the thread count promised 10x — because a gate is not
+    pure network waiting. Parsing the pack and running the readability, currency and dash sweeps
+    is Python, and the GIL lets exactly one thread do that at a time.
+
+    Each child gates its own slice and writes `store/dossiers/<id>.lint.json`, one file per
+    candidate id. No two children ever touch the same file, and a dry run mints no Stripe object
+    and writes no catalogue row, so there is nothing shared for them to race over.
+
+    Returns the worst child's exit code.
+    """
+    import subprocess
+
+    chunks = [paths[i::procs] for i in range(procs)]
+    flags = ["--dry-run", f"--jobs={jobs}", "--procs=1"]
+    if force_regate:
+        flags.append("--force-regate")
+    if cheap:
+        flags.append("--cheap")
+
+    env = dict(os.environ, **{_CHILD_ENV: "1"})
+    print(f"gating {len(paths)} pack(s) across {procs} process(es), {jobs} at a time in each "
+          f"— output is per-pack in store/dossiers/<id>.lint.json", flush=True)
+    running = [subprocess.Popen([sys.executable, str(Path(__file__).resolve()), *flags, *c],
+                                env=env)
+               for c in chunks if c]
+    return max((p.wait() for p in running), default=0)
 
 
 def main(argv: list[str]) -> int:
@@ -218,12 +292,24 @@ def main(argv: list[str]) -> int:
     force_regate = "--force-regate" in argv
     argv = [a for a in argv if a != "--force-regate"]
 
-    # How many packs to GENERATE at once (publishing stays serial — see the fan-out below).
-    # Default 1 keeps every existing invocation byte-identical in behaviour.
+    # How many packs to work on at once. On the REAL path this is generation only and
+    # publishing stays serial (see the fan-out below). On a --dry-run it covers the gate too,
+    # because a dry run mints nothing and so has no money-rail bookkeeping to serialise.
+    # Default 1 keeps every existing real invocation byte-identical in behaviour; a dry run
+    # defaults to _DRY_RUN_JOBS instead.
     jobs = 1
     for a in list(argv):
         if a.startswith("--jobs="):
             jobs = max(1, int(a.split("=", 1)[1]))
+            argv.remove(a)
+
+    # How many PROCESSES to split the packs across. Only a dry run uses it; see the fan-out
+    # below for why the real path must not. 1 switches the split off and keeps everything in
+    # this process.
+    procs = 0
+    for a in list(argv):
+        if a.startswith("--procs="):
+            procs = max(1, int(a.split("=", 1)[1]))
             argv.remove(a)
 
     if argv == ["--all"]:
@@ -291,6 +377,15 @@ def main(argv: list[str]) -> int:
                 cand.tags["marketing"] = stored_marketing
                 log.append(f"  reusing stored artifacts: "
                            f"{ {k: len(v or '') for k, v in stored.items()} } (no model call)")
+            elif dry_run:
+                # Say what will HAPPEN, not what the real path would do. This line used to read
+                # "-> regenerating" on every path, and on a dry run that is a lie: the attempt
+                # loop below is `range(1, 1)`, so generation never runs. It cost a session on
+                # 2026-08-17, where the log was read as evidence that a rehearsal makes model
+                # calls, and a config comment, a docstring and a programme doc were all written
+                # around the wrong number before the loop bound was checked.
+                log.append(f"  stored artifacts incomplete -> gating as-is, no model call "
+                           f"(dry run). {problems}")
             else:
                 log.append(f"  stored artifacts incomplete -> regenerating. {problems}")
 
@@ -416,10 +511,57 @@ def main(argv: list[str]) -> int:
               f"Per-pack reasons: store/dossiers/<id>.lint.json")
         return 0
 
+    # A DRY RUN GATES IN THE POOL TOO, and the serial rule above does not apply to it.
+    #
+    # `publish(..., dry_run=True)` returns at `bridge.py:1256-1272`, BEFORE `price_for`. No
+    # Stripe product, no Stripe price, no R2 upload, no catalogue row. So the reason publish()
+    # is serial — two packs racing the same money-rail bookkeeping — is simply absent on this
+    # path. What a dry run writes is `store/dossiers/<id>.lint.json`, one file per candidate id,
+    # which is exactly the same "touches only its own id" property that makes the generation
+    # fan-out safe.
+    #
+    # What that cost while it was serial, measured 2026-08-17: the gate is ~124s of network per
+    # pack (373.4s for 3), so re-gating the 40 stranded packs was an 80-minute wall-clock job
+    # for a step with nothing to protect. `--jobs` did not help, because the fan-out covered
+    # GENERATION and a dry run does no generation (`range(1, 1)` at the attempt loop is empty).
+    # The slow part was the only part still running one at a time.
+    #
+    # 10 by default rather than the caller's 1: a rehearsal nobody will wait for is a rehearsal
+    # nobody runs, and running it first is the entire point of the flag. An explicit --jobs=N
+    # still wins.
+    if dry_run and jobs == 1:
+        jobs = _DRY_RUN_JOBS
+
+    # AND SPLIT ACROSS PROCESSES, because threads alone measured 4x where they promised 10x.
+    # See _fan_out_across_processes for the measurement and why a dry run is safe to split.
+    #
+    # A real publish is never split: it mints Stripe objects and writes the shared catalogue,
+    # which is the one step two workers must never do at once. A child never splits again
+    # (_CHILD_ENV), and one process worth of packs is not worth the process at all.
+    if dry_run and procs == 0:
+        procs = _DRY_RUN_PROCS
+    if (dry_run and procs > 1 and len(paths) > jobs
+            and not os.environ.get(_CHILD_ENV)):
+        return _fan_out_across_processes(paths, procs=min(procs, len(paths)), jobs=jobs,
+                                         force_regate=force_regate, cheap=cheap)
+
+    def _prepare_and_gate(p: str):
+        """Generate-or-reuse AND, on a dry run, gate — both inside the worker.
+
+        The gate is the network-bound half. Leaving it in the serial loop below meant the pool
+        finished in seconds and then the run spent 124s a pack, one at a time, doing the work
+        the pool exists for.
+        """
+        p, dossier, complete, problems = _prepare(p)
+        if dossier is None or not dry_run:
+            return p, dossier, complete, problems, None
+        return p, dossier, complete, problems, publish(dossier, cfg, dry_run=True)
+
     ex = ThreadPoolExecutor(max_workers=jobs) if jobs > 1 else None
-    prepared = ex.map(_prepare, paths) if ex is not None else (_prepare(p) for p in paths)
+    prepared = (ex.map(_prepare_and_gate, paths) if ex is not None
+                else (_prepare_and_gate(p) for p in paths))
     try:
-        for p, dossier, complete, problems in prepared:
+        for p, dossier, complete, problems, gated in prepared:
             if dossier is None:
                 print(f"SKIP (not pass): {p}")
                 continue
@@ -436,7 +578,9 @@ def main(argv: list[str]) -> int:
                 held_back += 1
                 continue
 
-            res = publish(dossier, cfg, dry_run=dry_run) if dry_run else publish(dossier, cfg)
+            # On a dry run the worker already gated it; only the real path publishes here, and
+            # it still publishes strictly one at a time, in submission order.
+            res = gated if gated is not None else publish(dossier, cfg)
             print(f"{cid}: {'gate' if dry_run else 'publish'} -> {res}", flush=True)
             if res.get("status") == "published" or res.get("content_ok"):
                 ok += 1

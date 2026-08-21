@@ -20,6 +20,7 @@ type ShelfRow = {
   why: string;
   checks: string[];
   repair: string;
+  verdict: string;
 };
 
 type ShelfView = {
@@ -27,6 +28,7 @@ type ShelfView = {
   reason?: string;
   shelf_packs: number | null;
   stranded: number | null;
+  stale_verdicts?: number;
   rows: ShelfRow[];
   by_reason?: Record<string, number>;
   by_repair?: Record<string, number>;
@@ -60,6 +62,7 @@ type ContentRulesView = {
 const REPAIR_LABEL: Record<string, string> = {
   'shelf.repair_copy': 'rewrite the title and one-liner',
   'shelf.publish_pending': 'publish it',
+  'shelf.regate': 're-ask the gate',
   manual: 'needs a person',
 };
 
@@ -80,6 +83,7 @@ export default function StrandedShelf() {
   const byRepair = data?.by_repair ?? {};
   const copyCount = byRepair['shelf.repair_copy'] ?? 0;
   const publishCount = byRepair['shelf.publish_pending'] ?? 0;
+  const regateCount = byRepair['shelf.regate'] ?? 0;
   const manualCount = byRepair['manual'] ?? 0;
 
   return (
@@ -105,13 +109,19 @@ export default function StrandedShelf() {
           title="The gap"
           right={<AsOf asOf={envelope?.as_of} tookMs={envelope?.took_ms} />}
         >
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
             <Stat label="on the shelf" value={data.shelf_packs ?? 0} note="a buyer can buy these" tone="ok" />
             <Stat
               label="stranded"
               value={data.stranded ?? 0}
               note="passed, unbuyable"
               tone={(data.stranded ?? 0) > 0 ? 'bad' : 'ok'}
+            />
+            <Stat
+              label="stale verdicts"
+              value={data.stale_verdicts ?? 0}
+              note="gated by older rules"
+              tone={(data.stale_verdicts ?? 0) > 0 ? 'warn' : 'ok'}
             />
             <Stat label="copy to rewrite" value={copyCount} note="one button" />
             <Stat label="never published" value={publishCount} note="one button" />
@@ -172,10 +182,34 @@ export default function StrandedShelf() {
                 />
               </div>
             </div>
+            <div>
+              <Row label={`Re-ask the gate (${regateCount})`}>
+                these were judged by linter rules that have since changed, so the stored verdict
+                is not an answer about today&apos;s rules
+              </Row>
+              <div className="mt-2">
+                <Confirm
+                  action="shelf.regate"
+                  kind="primary"
+                  label={`Re-gate ${regateCount} pack${regateCount === 1 ? '' : 's'}`}
+                  disabled={regateCount === 0}
+                  payload={() => ({ actor: 'console', reason: 'the linter rules moved' })}
+                  renderPreview={(p) => (
+                    <div className="flex flex-col gap-1">
+                      <div>{String(p.effect ?? '')}</div>
+                      <Mono>{String(p.command ?? '')}</Mono>
+                      <Note>{String(p.note ?? '')}</Note>
+                    </div>
+                  )}
+                  onApplied={refresh}
+                />
+              </div>
+            </div>
           </div>
           <Note>
-            Neither of these touches price or payment. They unblock packs the engine already
-            passed, at the price the catalogue already holds.
+            None of these touches price or payment. They unblock packs the engine already
+            passed, at the price the catalogue already holds. Re-gating is a rehearsal: it
+            refreshes the verdict on disk, mints no Stripe object and puts nothing on sale.
           </Note>
         </Card>
       ) : null}
@@ -208,6 +242,9 @@ export default function StrandedShelf() {
                     <Pill tone={r.repair === 'manual' ? 'mute' : 'ok'}>
                       {REPAIR_LABEL[r.repair] ?? r.repair}
                     </Pill>
+                    {r.verdict && r.verdict !== 'current' ? (
+                      <Pill tone="warn">{r.verdict}</Pill>
+                    ) : null}
                   </div>
                   <div className="mt-1 text-[13px] text-muted">{r.why}</div>
                 </div>
