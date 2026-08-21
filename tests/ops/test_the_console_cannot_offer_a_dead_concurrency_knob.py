@@ -1,7 +1,7 @@
 """The console must not show a control the engine ignores.
 
 Founder directive 2026-08-21, repeated: "i dont want consurreny onclaude code", "its too
-expencice". The number is clamped in code at `claude_cli._CLAUDE_MAX_EVER`, so a console knob
+expencice". The number is clamped in code at `claude_cli.MAX_CLAUDE_CLI`, so a console knob
 offering 16 would move config.yaml, print a receipt, and change nothing the engine does. That is
 worse than having no knob at all: the operator believes they turned it down.
 
@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from prospector.claude_cli import _CLAUDE_MAX_EVER
+from prospector.claude_cli import MAX_CLAUDE_CLI
 from prospector.ops import console_api as api
 
 KEY = "retrieval.claude_concurrency"
@@ -27,20 +27,20 @@ def _knob(key: str) -> dict:
 def test_the_console_ceiling_is_the_code_ceiling():
     """Not "is 1" — is THE SAME NUMBER. A test asserting 1 twice would pass while the two
     drifted apart in opposite directions."""
-    assert _knob(KEY)["max"] == _CLAUDE_MAX_EVER
+    assert _knob(KEY)["max"] == MAX_CLAUDE_CLI
 
 
 def test_the_knob_says_why_it_will_not_move():
     reason = _knob(KEY).get("pinned_reason") or ""
     assert reason, "a pinned knob with no reason is a broken control, not a pinned one"
-    assert "_CLAUDE_MAX_EVER" in reason, "the reason must name where the ceiling actually lives"
+    assert "MAX_CLAUDE_CLI" in reason, "the reason must name where the ceiling actually lives"
     assert "expensive" in reason.lower(), "the reason must carry the founder's reason, not just a rule"
 
 
 def test_a_write_is_refused_and_the_refusal_carries_the_reason():
     with pytest.raises(ValueError) as exc:
         api._act_config_set(None, {"key": KEY, "value": 4, "reason": "faster"}, preview=True)
-    assert "_CLAUDE_MAX_EVER" in str(exc.value)
+    assert "MAX_CLAUDE_CLI" in str(exc.value)
 
 
 def test_the_refusal_fires_before_the_value_is_even_read():
@@ -79,5 +79,5 @@ def test_the_page_renders_it_read_only_with_the_reason():
     assert len(knobs) == 1, "the knob must still be listed — a hidden control cannot be explained"
     knob = knobs[0]
     assert knob["writable"] is False
-    assert "_CLAUDE_MAX_EVER" in (knob["reason"] or "")
-    assert knob["current"] == _CLAUDE_MAX_EVER, "the page must show the value the engine uses"
+    assert "MAX_CLAUDE_CLI" in (knob["reason"] or "")
+    assert knob["current"] == MAX_CLAUDE_CLI, "the page must show the value the engine uses"

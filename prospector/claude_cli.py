@@ -13,6 +13,7 @@ Invoked headless: `claude -p <prompt> --output-format json [--allowedTools WebSe
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import shutil
@@ -59,14 +60,56 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _NEUTRAL_CWD = os.path.join(tempfile.gettempdir(), "prospector_cli_cwd")
 os.makedirs(_NEUTRAL_CWD, exist_ok=True)
 
+# THE CEILING IS ONE. It is a CLAMP, not a default: nothing below may raise it -- not
+# config.yaml, not the dashboard overlay, not PROSPECTOR_CLAUDE_CONCURRENCY.
+#
+# WHY (founder directive 2026-08-20, verbatim): "for the last tine i donnt want 4 claude
+# processes, its epensive. this should never have happencd", "1 cludclaude cli", "not 4",
+# "this needs to be enforce ruthlessly", "i alredy wanred you about this".
+#
+# The measurement behind it, taken inside the prospector-engine container the same day. Four
+# concurrent `claude` Node runtimes on a shared-cpu-2x slice, by pid:
+#
+#     pid 4072  claude -p You write web search queries to fairly assess a business idea...
+#     pid 4056  claude -p You write web search queries that fairly assess a business idea...
+#     pid 4064  claude -p You write web search queries that fairly assess a business idea...
+#     pid 4058  claude -p You are a ruthless, evidence-bound analyst...
+#
+# Host accounting at that moment: steal 91.7%, user 6.8%, sys 1.4%. The ops console was being
+# starved 50-150x by its own engine -- importing console_api took 6078ms under that load and
+# 125ms on the same machine idle. Nothing in the console had got slower.
+#
+# Two costs, and the money one is the reason this is a clamp rather than a tuned number. Each
+# `claude -p` is a full Node runtime and spends the SUBSCRIPTION allowance; four of them spend
+# it four times as fast and reach `usage_wall` four times sooner, which takes the whole
+# failover chain down. claude_cli is the FAILOVER brain now (config.yaml `operator:` heads
+# minimax), so there is no throughput argument on the other side of the ledger.
+#
+# If you are here because a config knob "does not take effect": that is this clamp working as
+# ordered. Do not raise it. tests/unit/test_one_claude_cli_process.py fails if you do.
+MAX_CLAUDE_CLI = 1
+
+
+def _clamped(n: int) -> int:
+    """Coerce any requested width down to MAX_CLAUDE_CLI, saying so when it bites."""
+    try:
+        n = int(n)
+    except (TypeError, ValueError):
+        n = MAX_CLAUDE_CLI
+    n = max(1, n)
+    if n > MAX_CLAUDE_CLI:
+        logging.getLogger(__name__).warning(
+            "claude CLI concurrency %d requested; refusing and using %d. The ceiling is a "
+            "founder directive (2026-08-20, \"1 claude cli, not 4\"), not a tuned default. "
+            "See prospector/claude_cli.py MAX_CLAUDE_CLI.",
+            n, MAX_CLAUDE_CLI,
+        )
+        n = MAX_CLAUDE_CLI
+    return n
+
+
 # Cap concurrent heavy CLI subprocesses.
-# FOUNDER DIRECTIVE 2026-08-21, repeated: "i dont want consurreny onclaude code",
-# "its too expencice". ONE claude subprocess at a time, machine-wide, whatever config or the
-# environment asks for. It is a CLAMP and not a default, because the default is what kept
-# drifting back up (2 -> 4 by 2026-08-15). Pinned by
-# tests/unit/test_claude_cli_is_never_concurrent.py.
-_CLAUDE_MAX_EVER = 1
-_MAX_CLI = _CLAUDE_MAX_EVER
+_MAX_CLI = _clamped(os.environ.get("PROSPECTOR_CLAUDE_CONCURRENCY") or MAX_CLAUDE_CLI)
 # Machine-wide, not per-process — see prospector/cli_governor.py. The 45s "grounding queue
 # saturated" tail that killed job 20260730T212901866 was oversubscription across pipelines,
 # not a too-small limit here.
@@ -76,15 +119,15 @@ _BACKOFFS = (2, 5, 10)
 
 
 def configure_concurrency(n: int) -> None:
-    """Resize the CLI subprocess governor from config (single source of truth).
-    PROSPECTOR_CLAUDE_CONCURRENCY env var, if set, pins the value and wins.
-    Call at startup (make_provider) before any calls are in flight."""
+    """Resize the CLI subprocess governor from config, bounded by MAX_CLAUDE_CLI.
+
+    PROSPECTOR_CLAUDE_CONCURRENCY still pins the value against config, but it is clamped
+    too: the env var is an ops LOWER-ing hatch, never a way back up to four. Call at startup
+    (make_provider) before any calls are in flight.
+    """
     global _CLI_SEM, _MAX_CLI
-    if os.environ.get("PROSPECTOR_CLAUDE_CONCURRENCY"):
-        return
-    # Clamped, never raised. A config file, a plist or a caller asking for more than one
-    # claude subprocess gets one. See _CLAUDE_MAX_EVER above.
-    n = min(max(1, int(n)), _CLAUDE_MAX_EVER)
+    env = os.environ.get("PROSPECTOR_CLAUDE_CONCURRENCY")
+    n = _clamped(env) if env else _clamped(n)
     with _SEM_LOCK:
         if n != _MAX_CLI:
             _MAX_CLI = n

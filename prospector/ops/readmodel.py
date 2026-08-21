@@ -415,6 +415,10 @@ def pause_view(cfg, *, now: Optional[float] = None) -> dict:
     `consumer._blocked_reason` all call `.exists()`), so the body written by `ops/pause.py` is
     provenance only and an empty file armed by hand behaves identically.
 
+    The body is read tolerantly: `ops/pause.py` writes JSON, an operator with a shell writes a
+    sentence, and both must reach the panel. A pause that renders without a reason is the same
+    to the reader as a crash.
+
     Re-read every cycle by the engine — no restart is needed to arm or clear one — which is why
     this panel can be a CONTROL rather than a request.
     """
@@ -429,15 +433,29 @@ def pause_view(cfg, *, now: Optional[float] = None) -> dict:
         body: dict = {}
         mtime = None
         if armed:
+            # A HAND-ARMED PAUSE MUST STILL SAY WHY. Every runbook in the estate documents
+            # `touch store/scheduler/PAUSE`, and an operator in an incident writes a sentence
+            # into it rather than JSON. Until 2026-08-20 that sentence was thrown away here —
+            # `json.loads` raised, `body` was reset to `{}`, and the console rendered the engine
+            # stopped with `reason: null`. Measured that day on the live container: the
+            # generation pause armed during the console outage carried a full explanation on
+            # disk and showed the founder nothing at all, which is precisely the state
+            # `ops/pause.py` warns about ("an unexplained pause reads as a crash").
+            # So: JSON wins when it parses, and plain text becomes the reason when it does not.
             try:
                 mtime = path.stat().st_mtime
                 text = path.read_text(errors="replace").strip()
-                if text:
+            except OSError:
+                text = ""
+            if text:
+                try:
                     parsed = json.loads(text)
-                    if isinstance(parsed, dict):
-                        body = parsed
-            except (OSError, ValueError):
-                body = {}
+                except ValueError:
+                    parsed = None
+                if isinstance(parsed, dict):
+                    body = parsed
+                else:
+                    body = {"actor": "hand", "reason": text}
         scopes.append({
             "scope": scope, "path": str(path), "armed": armed,
             "armed_at": _iso(mtime),

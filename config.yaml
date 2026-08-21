@@ -578,11 +578,27 @@ retrieval:
     price_comparables: 16384
     artifacts: 32768
     score: 32768
-  claude_concurrency: 1          # max concurrent claude CLI subprocesses. FOUNDER DIRECTIVE
-                                 # 2026-08-21, repeated: no concurrency on Claude Code, it is
-                                 # too expensive. This key can no longer raise it — the ceiling
-                                 # is clamped at claude_cli._CLAUDE_MAX_EVER = 1, so editing
-                                 # this number upward does nothing.
+  # ONE, and it is welded. FOUNDER DIRECTIVE 2026-08-20, verbatim: "for the last tine i donnt
+  # want 4 claude processes, its epensive. this should never have happencd" / "1 cludclaude
+  # cli" / "not 4" / "this needs to be enforce ruthlessly" / "i alredy wanred you about this".
+  #
+  # WHY, measured inside prospector-engine the same day: four concurrent `claude` Node
+  # runtimes (pids 4072, 4056, 4064, 4058) on a shared-cpu-2x slice drove host steal to 91.7%
+  # with user at 6.8%. The ops console was starved by its own engine — importing console_api
+  # measured 6078ms under that load against 125ms on the same machine idle, and 20 of 34
+  # console reads hit a 30s ceiling. The founder saw "reading the engine" and nothing else.
+  #
+  # Money is the other half and it is why the number is 1 rather than 2. Each `claude -p` is a
+  # full Node runtime spending the SUBSCRIPTION allowance; four spend it four times faster and
+  # hit `usage_wall` four times sooner, which takes the whole failover chain down with it.
+  # claude_cli is the FAILOVER brain only (`operator:` heads minimax), so nothing is bought by
+  # a wider ceiling here.
+  #
+  # EDITING THIS NUMBER UP DOES NOTHING. `claude_cli.MAX_CLAUDE_CLI` clamps every path —
+  # config, dashboard overlay and PROSPECTOR_CLAUDE_CONCURRENCY alike — and logs a warning
+  # naming this directive. tests/unit/test_one_claude_cli_process.py fails if the clamp moves.
+  claude_concurrency: 1          # max concurrent claude CLI subprocesses (failover brain only
+                                 # now that grounding resolves on ddg/exa — see chain above)
   # cursor_concurrency REMOVED 2026-08-06 with the cursor_cli adapter.
   vet_workers: 8                 # parallel candidates. RAISED 3 -> 8 (2026-08-15). The old 3 was
                                  # pinned to claude_concurrency (4) from when claude_cli was the
@@ -2580,6 +2596,39 @@ schedule:
   # goes to rows that can still reach the publish gate.
   revet_provisional_kills: true
   gate_generation_on_grounding: true
+
+  # ---------------------------------------------------------------------------------------
+  # autopause_on_barren_streak — STOP GENERATING WHEN GENERATION IS PRODUCING NOTHING.
+  #
+  # Founder directive 2026-08-20, verbatim: "we eed it to autopause whe this happens",
+  # "we can restat fron adnindashboard hwen we are able to", "so we dont get into this
+  # situation again".
+  #
+  # WHAT HAPPENED. The MiniMax token plan ran out. Every call came back HTTP 429, which
+  # `errors.classify_exhaustion` grades TRANSIENT — correctly, in general — so the adapter
+  # slept 5s, 10s, 20s, 40s and retried, and no brain was ever marked dead. `_moat_blind_reason`
+  # only skips a tick when EVERY verdict brain carries a dead mark, so it never fired, and the
+  # scheduler generated again, and again. Measured on the container: 90.7% steal, four
+  # `claude -p` runtimes from the fallthrough, ZERO candidates produced, and 20 of 34 ops-console
+  # reads hitting a 30s ceiling. The founder could not open his own dashboard.
+  #
+  # WHY THIS AND NOT ANOTHER ERROR PATTERN. The four comment blocks in prospector/errors.py are
+  # a record of the same fix being attempted four times by adding the vendor's newest noun to a
+  # list — "free usage", then "free trial", then "spend limit" rather than "usage limit", then
+  # `\b429\b` on a word boundary. Each one was missed in production first. Grading the OUTCOME
+  # instead of the error text does not care which provider, which wording, or which HTTP code:
+  # if generation produced nothing N ticks running, generating again is spending money to make
+  # the box slower.
+  #
+  # ONE THRESHOLD. It fires exactly when the existing CRITICAL `barren_streak` alert fires
+  # (prospector/scheduler/alerts.py::alerts_for_tick, >= 3 consecutive barren ticks), because
+  # two numbers meaning "outage" and "stop" would drift apart. That alert existed all along and
+  # stopped nothing; this is the actuator it never had.
+  #
+  # IT DOES NOT SELF-CLEAR. Resume from the admin console: /engine -> "Start it again" on the
+  # generation scope. Scope is `generation` only, so the drain keeps running and pays down the
+  # backlog the outage created.
+  autopause_on_barren_streak: true
   reload_on_code_change: true
   gen_budget_frac: 0.35
   # `lease_ttl_s: 7200` — how long a worker may hold a queue row before the lease

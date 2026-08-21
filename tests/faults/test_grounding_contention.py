@@ -36,7 +36,7 @@ def _reset_concurrency(monkeypatch, tmp_path):
     monkeypatch.setattr(C, "_CLI_SEM", make_governor(C._MAX_CLI, "claude"))
     yield
     G.configure_concurrency(2)
-    C.configure_concurrency(2)
+    C.configure_concurrency(1)   # claude's ceiling is 1 (MAX_CLAUDE_CLI); restoring 2 is a no-op
 
 
 def test_gemini_bounded_acquire_fails_fast_when_saturated():
@@ -65,13 +65,13 @@ def test_claude_bounded_acquire_fails_fast_when_saturated():
 def test_configure_concurrency_resizes_from_config():
     G.configure_concurrency(4)
     assert G._MAX_CLI == 4
-    # Claude does NOT resize. Founder directive 2026-08-21, repeated: "i dont want consurreny
-    # onclaude code", "its too expencice". `configure_concurrency` clamps down to
-    # claude_cli._CLAUDE_MAX_EVER, so asking for 3 gets 1. The clamp itself is proved in
-    # tests/unit/test_claude_cli_is_never_concurrent.py; this asserts it holds on the path
-    # config actually takes.
+    # Claude is the exception and stays at 1 however much config asks for. Founder directive
+    # 2026-08-20 ("1 cludclaude cli", "not 4"): the ceiling is a clamp at
+    # claude_cli.MAX_CLAUDE_CLI, not a tuned default, so the resize is one-way DOWN. Gemini
+    # above is a different brand with a different governor and is untouched by it.
+    # tests/unit/test_one_claude_cli_process.py owns that rule.
     C.configure_concurrency(3)
-    assert C._MAX_CLI == C._CLAUDE_MAX_EVER == 1
+    assert C._MAX_CLI == 1
 
 
 def test_env_var_pins_concurrency_over_config(monkeypatch):

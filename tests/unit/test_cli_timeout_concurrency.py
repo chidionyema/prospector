@@ -14,6 +14,10 @@ from prospector.config import load_config
 def test_config_loads_concurrency_and_timeout_knobs():
     cfg = load_config()
     r = cfg.retrieval
+    # ONE since 2026-08-20 (founder: "1 cludclaude cli", "not 4", "its epensive"). Four
+    # concurrent claude Node runtimes measured 91.7% host steal inside prospector-engine and
+    # starved the ops console. The number is welded by claude_cli.MAX_CLAUDE_CLI;
+    # tests/unit/test_one_claude_cli_process.py is where that rule lives.
     assert r.claude_concurrency == 1
     assert r.vet_workers == 8
     assert not hasattr(r, "cursor_concurrency"), "cursor_cli knob was removed 2026-08-06"
@@ -52,16 +56,22 @@ def test_config_loads_concurrency_and_timeout_knobs():
 
 
 def test_configure_concurrency_from_config(monkeypatch):
+    """Config reaches the governor, and the clamp bounds it.
+
+    Rewritten 2026-08-20. This used to prove config could resize to 3 and that the env var
+    beat config outright. Both halves are now bounded by claude_cli.MAX_CLAUDE_CLI = 1:
+    config and env may both LOWER the width, neither may raise it. What survives is the
+    invariant the test existed for -- these knobs reach the real semaphore rather than
+    sitting in a dataclass nothing reads.
+    """
     original = claude_cli._MAX_CLI
     try:
         monkeypatch.delenv("PROSPECTOR_CLAUDE_CONCURRENCY", raising=False)
         claude_cli.configure_concurrency(3)
-        # CLAMPED, not applied. Founder directive 2026-08-21: no concurrency on Claude Code.
-        assert claude_cli._MAX_CLI == 1
-        # Env wins — configure must no-op when set.
-        monkeypatch.setenv("PROSPECTOR_CLAUDE_CONCURRENCY", "1")
+        assert claude_cli._MAX_CLI == 1, "config asked for 3 and the clamp let it through"
+        monkeypatch.setenv("PROSPECTOR_CLAUDE_CONCURRENCY", "9")
         claude_cli.configure_concurrency(9)
-        assert claude_cli._MAX_CLI == 1  # unchanged while env pins
+        assert claude_cli._MAX_CLI == 1, "the env var reopened the door to four runtimes"
     finally:
         monkeypatch.delenv("PROSPECTOR_CLAUDE_CONCURRENCY", raising=False)
         claude_cli.configure_concurrency(original)

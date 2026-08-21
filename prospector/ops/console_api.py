@@ -1880,16 +1880,16 @@ def _claude_ceiling() -> int:
     control that does nothing, and an operator who moves it and sees no change has been lied to
     by their own dashboard. Importing the constant makes the two incapable of drifting apart.
     """
-    from prospector.claude_cli import _CLAUDE_MAX_EVER
+    from prospector.claude_cli import MAX_CLAUDE_CLI
 
-    return int(_CLAUDE_MAX_EVER)
+    return int(MAX_CLAUDE_CLI)
 
 
 #: Why the Claude concurrency knob will not move. Shown on the knob itself and returned as the
 #: refusal when a write is attempted, so the reason reaches the operator either way.
 _CLAUDE_CONC_PINNED = (
     "Pinned at {n} by founder directive 2026-08-21, repeated: no concurrency on Claude Code, it "
-    "is too expensive. The ceiling lives in code at claude_cli._CLAUDE_MAX_EVER and this console "
+    "is too expensive. The ceiling lives in code at claude_cli.MAX_CLAUDE_CLI and this console "
     "reads it rather than restating it, so editing config.yaml upward would change nothing. "
     "MiniMax leads the chain — 'MiniMax calls at once' above is the throughput knob."
 )
@@ -3673,6 +3673,8 @@ TOOLS: list[dict] = [
        "/tools", cmd=".venv/bin/python scripts/dns_zone.py --check "
                      "--zone mumchimp.com"),
     _t("scripts/store_audit.py", "Audit the operator's store", False, "/tools"),
+    _t("scripts/rework_metrics.py", "Rework rate: the guard on the cost scoreboard",
+       False, "/method"),
     _t("scripts/blocker_probe.py", "Which programme items are blocked", False, "/tools"),
     _t("scripts/load_gate.py", "Is the machine fit to trust a test result", False, "/tools"),
     _t("scripts/popdd_verify.py", "The lane-aware proof runner", False, "/tools"),

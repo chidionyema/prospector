@@ -85,14 +85,17 @@ Founder directive 2026-08-21, said twice and then a third time with the reason:
 It had to be said three times because the number lived in a DEFAULT, and a default drifts. It
 went 2 -> 4 by 2026-08-15 through ordinary edits, each of which looked reasonable on its own.
 
-**It is now a clamp, not a default.** `prospector/claude_cli.py:68` sets
-`_CLAUDE_MAX_EVER = 1`, and `configure_concurrency` clamps DOWN to it
-(`claude_cli.py:87`), so config.yaml, the plist and `PROSPECTOR_CLAUDE_CONCURRENCY` all get 1.
-Raising the config key changes nothing. Pinned by
-`tests/unit/test_claude_cli_is_never_concurrent.py` (5 tests, 3 mutations, all three kill).
+**It is now a clamp, not a default.** `prospector/claude_cli.py:90` sets
+`MAX_CLAUDE_CLI = 1`, and `_clamped` (`claude_cli.py:93`), called by `configure_concurrency`
+(`claude_cli.py:121`), coerces DOWN to it, so config.yaml, the plist and
+`PROSPECTOR_CLAUDE_CONCURRENCY` all get 1. Raising the config key changes nothing. Pinned by
+`tests/unit/test_one_claude_cli_process.py` (16 tests, measured 2026-08-21). There were briefly
+TWO implementations of this one rule — a second grew on a branch the same day and was deleted
+into this one, because two implementations of a rule are worse than none: each has passing
+tests, so neither can be removed without deleting tested work.
 
 **The Ops Console reads that ceiling rather than restating it.**
-`prospector/ops/console_api.py::_claude_ceiling` imports `_CLAUDE_MAX_EVER`, so the knob's `max`
+`prospector/ops/console_api.py::_claude_ceiling` imports `MAX_CLAUDE_CLI`, so the knob's `max`
 IS the code's ceiling and the two cannot drift. The knob carries a `pinned_reason`, which does
 three things:
 

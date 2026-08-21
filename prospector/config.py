@@ -207,7 +207,10 @@ class Retrieval:
     # Keep vet_workers <= claude_concurrency so parallel vets do not self-induce
     # queue_timeout / CLI hangs. `cursor_concurrency` was removed 2026-08-06 with the
     # cursor_cli adapter; claude_concurrency is now the only CLI ceiling.
-    claude_concurrency: int = 2         # max concurrent claude CLI subprocesses
+    # ONE. Founder directive 2026-08-20: "1 cludclaude cli", "not 4", "its epensive".
+    # This is the default only; the real refusal is the clamp at claude_cli.MAX_CLAUDE_CLI,
+    # because a default can be overridden from config.yaml or the dashboard and a clamp cannot.
+    claude_concurrency: int = 1         # max concurrent claude CLI subprocesses
     # minimax_concurrency: the PRIMARY brain's ceiling since 2026-08-15, so this — not
     # claude_concurrency — is what bounds throughput now. Was env-only inside operator.py, which
     # made it the one knob you could not turn from config. Env still overrides for ops.
