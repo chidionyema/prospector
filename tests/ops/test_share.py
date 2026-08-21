@@ -385,3 +385,160 @@ def test_the_revision_is_empty_rather_than_invented_when_git_cannot_answer(ops, 
     view = share.open_share(ops, repo, minted["token"])
     assert view["revision"] == ""
     assert view["generated_at"] > 0
+
+
+# --------------------------------------------------------------------------- #
+# The compiled deny-list answers exactly like the fnmatch loop it replaced
+#
+# `is_denied` was a plain fnmatch loop until 2026-08-21, when it became precompiled regexes
+# with a fast-reject path. That was a SPEED change: the shares view calls it once per repo
+# file, which was 140,716 `fnmatch.fnmatch` calls and 0.60s per page load on 2,169 files.
+#
+# A speed change to a security fence is exactly the change that must not alter one answer, and
+# "I read it carefully" is not a mechanism. This keeps the old implementation as the oracle and
+# runs both over every file git tracks plus a crafted adversarial set. If anyone ever tunes the
+# fast path again, this fails the moment the two disagree.
+# --------------------------------------------------------------------------- #
+def _reference_is_denied(rel: str) -> str:
+    """The pre-2026-08-21 implementation, verbatim. The oracle, never the shipped path."""
+    import fnmatch as _fn
+
+    low = (rel or "").lower().lstrip("/")
+    if not low or "\x00" in rel:
+        return "not a path"
+    base = low.rsplit("/", 1)[-1]
+    for pat in share.DENY_GLOBS:
+        low_pat = pat.lower()
+        if _fn.fnmatch(low, low_pat):
+            return pat
+        if "/" not in low_pat and _fn.fnmatch(base, low_pat):
+            return pat
+        if low_pat.endswith("/*") and low.startswith(low_pat[:-1]):
+            return pat
+    return ""
+
+
+_ADVERSARIAL = [
+    "", "/", "a", "README.md", "docs/WAYS_OF_WORKING.md",
+    ".env", ".env.local", "deploy/.env", "config/prod.env", ".envrc",
+    "keys/id_rsa", "id_rsa", "id_rsa.pub", "a/b/c/id_ed25519", "x.ppk",
+    ".lux/keys/agent.pem", "certs/server.crt", "a/b.p12", "A/B/SECRETS.YAML",
+    ".git", ".git/config", "a/.git/config", "store/x", "store/a/b/c/d.json",
+    "storage/", "signals/pending/deep/er/x.json", "graphify-out/x",
+    "node_modules/x", "web/node_modules/a/b/c.js", "src/.next/build/x",
+    "__pycache__/x.pyc", "a/b/__pycache__/c.pyc", "a/b.pyc",
+    ".venv/lib/x", "venv/lib/x", "MyApp.mobileprovision", "AuthKey.p8",
+    "UPPER.ENV", "Store/Mixed.json", "a/b/../c", "sqlite.db", "a.sqlite3",
+    "deeply/nested/path/that/matches/nothing/at/all.txt",
+]
+
+
+def test_the_compiled_deny_list_answers_exactly_like_the_fnmatch_loop():
+    import subprocess
+
+    cases = list(_ADVERSARIAL)
+    tracked = subprocess.run(
+        ["git", "ls-files", "-z"], capture_output=True, check=False,
+        cwd=str(Path(__file__).resolve().parents[2]),
+    )
+    if tracked.returncode == 0:
+        cases += [p for p in tracked.stdout.decode("utf-8", "replace").split("\0") if p]
+
+    assert len(cases) > 100, f"only {len(cases)} cases — the oracle needs real paths to be worth anything"
+    disagreements = [
+        (rel, _reference_is_denied(rel), share.is_denied(rel))
+        for rel in cases
+        if _reference_is_denied(rel) != share.is_denied(rel)
+    ]
+    assert not disagreements, f"compiled deny-list disagrees with the fnmatch oracle: {disagreements[:5]}"
+
+
+def test_the_fast_reject_never_waves_through_a_denied_path():
+    """The fast-reject path is the one that can silently open the fence. Prove it stays shut.
+
+    Every pattern in DENY_GLOBS gets a path built to match it, and each must still be refused.
+    A fast path that returns "" here is a secret served to the public internet.
+    """
+    served = []
+    for pat in share.DENY_GLOBS:
+        sample = (pat.replace("**/", "deep/nested/")
+                     .replace("*", "x")
+                     .lstrip("/"))
+        if sample.endswith("/"):
+            sample += "file.txt"
+        if not share.is_denied(sample):
+            served.append((pat, sample))
+    assert not served, f"these deny patterns no longer refuse their own sample: {served}"
+
+
+# --------------------------------------------------------------------------- #
+# Public links: the same secret token, on a different clock
+# --------------------------------------------------------------------------- #
+# The founder ruled on what "public" means here on 2026-08-21, choosing between three
+# readings of "control if public or not". It is a decision about the CLOCK and nothing
+# else: a public link is the same unguessable token, refused by the same deny-list, logged
+# on the same read counter, and listed nowhere. It simply does not expire on its own.
+#
+# These tests exist to keep it that way. The dangerous drift is not the expiry — it is
+# somebody later reading "public" as "skip the fence", so the deny-list and the scope are
+# asserted again here on a public link rather than assumed from the private cases above.
+def test_a_public_link_does_not_expire_on_its_own(ops, repo, monkeypatch):
+    out = share.mint(ops, repo, scope="file", target="README.md", public=True)
+    assert out["expires_at"] is None
+    assert out["public"] is True
+
+    monkeypatch.setattr(share, "_now", lambda: time.time() + 400 * 86_400)
+    assert share.open_share(ops, repo, out["token"])["kind"] == "file", (
+        "a year later it must still open — that is the whole difference from a private link")
+
+
+def test_revoking_is_the_only_way_a_public_link_dies(ops, repo, monkeypatch):
+    out = share.mint(ops, repo, scope="file", target="README.md", public=True)
+    monkeypatch.setattr(share, "_now", lambda: time.time() + 400 * 86_400)
+
+    share.revoke(ops, out["id"])
+    with pytest.raises(PermissionError):
+        share.open_share(ops, repo, out["token"])
+
+
+def test_a_public_link_is_refused_by_the_same_deny_list(ops, repo):
+    """`public` must never read as "skip the fence"."""
+    out = share.mint(ops, repo, scope="repo", target="", public=True)
+    listing = share.open_share(ops, repo, out["token"])
+    names = {f["name"] for folder in listing["folders"] for f in folder["files"]} \
+        if "folders" in listing else set()
+    assert ".env" not in names
+    with pytest.raises((PermissionError, ValueError, FileNotFoundError)):
+        share.open_share(ops, repo, out["token"], ".env")
+
+
+def test_a_public_link_holds_its_scope(ops, repo):
+    out = share.mint(ops, repo, scope="tree", target="docs", public=True)
+    assert share.open_share(ops, repo, out["token"], "docs/GUIDE.md")["kind"] == "file"
+    with pytest.raises((PermissionError, ValueError, FileNotFoundError)):
+        share.open_share(ops, repo, out["token"], "prospector/run.py")
+
+
+def test_private_is_the_default_and_still_expires(ops, repo, monkeypatch):
+    """The other half of the pair. A flag that is always on says nothing."""
+    out = share.mint(ops, repo, scope="file", target="README.md", days=1)
+    assert out["public"] is False
+    assert isinstance(out["expires_at"], (int, float))
+
+    monkeypatch.setattr(share, "_now", lambda: time.time() + 2 * 86_400)
+    with pytest.raises(PermissionError):
+        share.open_share(ops, repo, out["token"])
+
+
+def test_a_row_minted_before_public_existed_is_read_the_old_way(ops, repo):
+    """Rows already on disk carry no `public` key. They must keep expiring, not become
+    immortal because a later reader saw a missing flag as False and a missing expiry as
+    None."""
+    now = time.time()
+    assert share.status_of({"expires_at": now + 100}, now=now) == "live"
+    assert share.status_of({"expires_at": now - 1}, now=now) == "expired"
+    assert share.status_of({}, now=now) == "expired", (
+        "a row with no expiry AT ALL is a broken row, not a public one")
+    assert share.status_of({"expires_at": None}, now=now) == "live"
+    assert share.status_of({"expires_at": None, "revoked_at": now}, now=now) == "revoked", (
+        "revoked outranks never-expiring")

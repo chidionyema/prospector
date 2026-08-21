@@ -13,11 +13,9 @@ because the next person reads this file to decide what is left.
 Delete a line when its adapter lands.
 
 - `ci_runner`
-- `datastore`
 - `dns`
 - `log_sink`
 - `object_storage`
 - `payment_integration`
 - `scheduled_job`
-- `secret`
 - `tls_certificate`

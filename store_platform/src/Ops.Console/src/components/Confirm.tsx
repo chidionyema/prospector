@@ -10,13 +10,45 @@
  * for a pause, a config edit and a delisting. What is common is the SHAPE of the interaction and
  * the refusal handling, and that is what lives here.
  */
-import { useState } from 'react';
+import React, { useState } from 'react';
 
 import { Button, Note, Problem } from '@/components/ui';
 import type { Envelope } from '@/lib/contract';
 import { applyAction, confirmTokenOf, previewAction } from '@/lib/contract';
 
 type Stage = 'idle' | 'previewing' | 'confirm' | 'applying' | 'done';
+
+/** snake_case_key -> "Snake case key", so a receipt reads as English rather than as a payload. */
+function humanise(key: string): string {
+  const words = key.replace(/_/g, ' ').trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/**
+ * A receipt's scalar fields as label/value rows.
+ *
+ * Scalars only, deliberately. Nested objects and arrays are the part of a receipt that is
+ * genuinely a payload -- rendering them here would rebuild the wall of JSON this replaced. They
+ * are still in `Raw receipt`, one click away.
+ */
+function ReceiptSummary({ receipt }: { receipt: Record<string, unknown> }) {
+  const rows = Object.entries(receipt).filter(
+    ([k, v]) =>
+      k !== 'action' &&
+      (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean'),
+  );
+  if (rows.length === 0) return null;
+  return (
+    <dl className="m-0 grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-3 gap-y-1 text-[12.5px]">
+      {rows.map(([k, v]) => (
+        <React.Fragment key={k}>
+          <dt className="text-muted">{humanise(k)}</dt>
+          <dd className="wrap-any m-0 font-mono">{String(v)}</dd>
+        </React.Fragment>
+      ))}
+    </dl>
+  );
+}
 
 export default function Confirm({
   action,
@@ -26,6 +58,7 @@ export default function Confirm({
   disabled,
   renderPreview,
   onApplied,
+  renderReceipt,
   applyLabel = 'Yes, do it',
   requireAck,
 }: {
@@ -37,6 +70,20 @@ export default function Confirm({
   disabled?: boolean;
   renderPreview: (data: Record<string, unknown>) => React.ReactNode;
   onApplied?: (receipt: Record<string, unknown>) => void;
+  /**
+   * The result, rendered as the thing the operator actually wanted, not as a field in a blob.
+   *
+   * Why this exists. Every write in this console ended by dumping `JSON.stringify(receipt)` on
+   * screen, on all 11 pages that use this component. For most writes that is merely ugly. For
+   * `share.create` it hid the deliverable: the founder minted a link and reported "it mints a
+   * link but I don't see the link ... there is a path output but the whole thing isn't user
+   * friendly" (2026-08-21). The path WAS there, as `"path": "/s/..."` inside the blob.
+   *
+   * Callers with a first-class result render it here. Everyone else gets a readable summary,
+   * and the raw JSON stays one click away rather than being deleted -- it is the audit
+   * affordance, and demoting it is not the same as losing it.
+   */
+  renderReceipt?: (receipt: Record<string, unknown>) => React.ReactNode;
   applyLabel?: string;
   /**
    * A second, explicit acknowledgement for the cases where the preview reveals the write is
@@ -125,11 +172,15 @@ export default function Confirm({
             ? 'Written — nothing actually changed; it was already in that state.'
             : 'Done. A receipt was written to the audit log.'}
         </div>
-        <div className="scroll-x">
-          <pre className="font-mono text-[11px] text-muted">
-            {JSON.stringify(receipt, null, 1)}
-          </pre>
-        </div>
+        {renderReceipt && receipt ? renderReceipt(receipt) : <ReceiptSummary receipt={receipt ?? {}} />}
+        <details className="text-[12px] text-muted">
+          <summary className="cursor-pointer select-none">Raw receipt</summary>
+          <div className="scroll-x mt-1">
+            <pre className="font-mono text-[11px] text-muted">
+              {JSON.stringify(receipt, null, 1)}
+            </pre>
+          </div>
+        </details>
         <div>
           <Button onClick={reset}>Close</Button>
         </div>

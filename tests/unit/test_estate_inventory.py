@@ -23,7 +23,9 @@ from scripts.estate_inventory import (
     CLASSES,
     DEFAULT_DECLARATION,
     Found,
+    cited_issues,
     reconcile,
+    stale_citation,
     stale_entries,
     verdict,
 )
@@ -31,6 +33,11 @@ from scripts.estate_inventory import (
 # A committed-path set standing in for `git ls-tree`. The join only ever asks "is this path on
 # the ref", so a set is the whole of what it needs.
 COMMITTED = {"deploy/engine/fly.toml", "deploy/secrets.required", "ops/launchd/com.a.json"}
+
+# The tracker's answer for every issue these tests cite, all open. Passed in rather than looked
+# up, so nothing here touches the network. The tests below that care about a CLOSED issue build
+# their own dict.
+OPEN = {74: "OPEN", 82: "OPEN", 102: "OPEN"}
 
 
 def _cfg(**kw):
@@ -50,9 +57,9 @@ def test_a_resource_of_any_class_with_no_entry_fails(cls):
     added without a gate. If someone appends an eleventh class to CLASSES and the discoverer
     finds something undescribed, this test starts failing on that class the same day.
     """
-    rows = reconcile([Found(cls, "something-new", "somewhere")], _cfg(), COMMITTED)
+    rows = reconcile([Found(cls, "something-new", "somewhere")], _cfg(), COMMITTED, OPEN)
     assert rows[0].problem, f"{cls}: an undeclared resource was accepted"
-    assert verdict(rows, {}, _cfg()) != 0
+    assert verdict(rows, {}, _cfg(), OPEN) != 0
 
 
 def test_a_described_and_restorable_resource_passes():
@@ -60,9 +67,9 @@ def test_a_described_and_restorable_resource_passes():
     cfg = _cfg(resources={
         "compute:app": {"described_by": "deploy/engine/fly.toml", "restore": "bash deploy/cutover.sh"}
     })
-    rows = reconcile([Found("compute", "app", "fly/deployed")], cfg, COMMITTED)
+    rows = reconcile([Found("compute", "app", "fly/deployed")], cfg, COMMITTED, OPEN)
     assert rows[0].problem is None, rows[0].problem
-    assert verdict(rows, {}, cfg) == 0
+    assert verdict(rows, {}, cfg, OPEN) == 0
 
 
 # ───────────────────────────── a describing file must exist ─────────────────────────────
@@ -71,7 +78,7 @@ def test_a_described_and_restorable_resource_passes():
 def test_a_describing_file_that_is_not_on_the_ref_is_not_a_description():
     """A file on someone's branch describes nothing. The estate reads the merged tree."""
     cfg = _cfg(resources={"compute:app": {"described_by": "deploy/not-merged.toml", "restore": "x"}})
-    rows = reconcile([Found("compute", "app", "fly/deployed")], cfg, COMMITTED)
+    rows = reconcile([Found("compute", "app", "fly/deployed")], cfg, COMMITTED, OPEN)
     assert "not on" in rows[0].problem
 
 
@@ -80,13 +87,13 @@ def test_an_unreadable_ref_fails_rather_than_passing_everything():
     would pass nothing; treating it as "no paths to check" would pass everything. It must be
     the first, because a tool that cannot look must never report clean."""
     cfg = _cfg(resources={"compute:app": {"described_by": "deploy/engine/fly.toml", "restore": "x"}})
-    rows = reconcile([Found("compute", "app", "fly/deployed")], cfg, None)
-    assert rows[0].problem and verdict(rows, {}, cfg) != 0
+    rows = reconcile([Found("compute", "app", "fly/deployed")], cfg, None, OPEN)
+    assert rows[0].problem and verdict(rows, {}, cfg, OPEN) != 0
 
 
 def test_an_entry_with_no_describing_file_is_undescribed():
     cfg = _cfg(resources={"compute:app": {"restore": "bash deploy/cutover.sh"}})
-    rows = reconcile([Found("compute", "app", "fly/deployed")], cfg, COMMITTED)
+    rows = reconcile([Found("compute", "app", "fly/deployed")], cfg, COMMITTED, OPEN)
     assert "names no describing file" in rows[0].problem
 
 
@@ -103,7 +110,7 @@ def test_a_family_entry_still_requires_each_member_to_have_its_own_file():
     rows = reconcile(
         [Found("scheduled_job", "launchd/com.a", "launchd"),
          Found("scheduled_job", "launchd/com.new", "launchd")],
-        cfg, COMMITTED,
+        cfg, COMMITTED, OPEN,
     )
     by = {r.found.name: r for r in rows}
     assert by["launchd/com.a"].problem is None
@@ -116,7 +123,7 @@ def test_an_exact_entry_beats_a_glob_that_also_matches():
         "secret:app/*": {"described_by": "deploy/secrets.required", "restore": "x"},
         "secret:app/ODD_ONE": {"described_by": "deploy/engine/fly.toml", "restore": "x"},
     })
-    rows = reconcile([Found("secret", "app/ODD_ONE", "fly")], cfg, COMMITTED)
+    rows = reconcile([Found("secret", "app/ODD_ONE", "fly")], cfg, COMMITTED, OPEN)
     assert rows[0].described_by == "deploy/engine/fly.toml"
 
 
@@ -124,7 +131,7 @@ def test_a_glob_that_matched_something_is_not_reported_as_stale():
     """A pattern never equals a discovered key, so a literal comparison called every family
     entry stale. Measured: ten false alarms on the real declaration."""
     cfg = _cfg(resources={"secret:app/*": {"described_by": "deploy/secrets.required", "restore": "x"}})
-    rows = reconcile([Found("secret", "app/KEY", "fly")], cfg, COMMITTED)
+    rows = reconcile([Found("secret", "app/KEY", "fly")], cfg, COMMITTED, OPEN)
     assert stale_entries(rows, cfg) == []
 
 
@@ -138,8 +145,8 @@ def test_a_declared_resource_nothing_found_is_reported():
 
 def test_an_admitted_gap_does_not_fail_the_run():
     cfg = _cfg(admitted_gaps={"compute:app": {"issue": 74, "why": "undecided"}})
-    rows = reconcile([Found("compute", "app", "fly/deployed")], cfg, COMMITTED)
-    assert rows[0].admitted and verdict(rows, {}, cfg) == 0
+    rows = reconcile([Found("compute", "app", "fly/deployed")], cfg, COMMITTED, OPEN)
+    assert rows[0].admitted and verdict(rows, {}, cfg, OPEN) == 0
 
 
 def test_a_restore_gap_excuses_the_restore_and_nothing_else():
@@ -154,17 +161,17 @@ def test_a_restore_gap_excuses_the_restore_and_nothing_else():
     rows = reconcile(
         [Found("scheduled_job", "launchd/com.a", "launchd"),
          Found("scheduled_job", "launchd/com.new", "launchd")],
-        cfg, COMMITTED,
+        cfg, COMMITTED, OPEN,
     )
     by = {r.found.name: r for r in rows}
     assert by["launchd/com.a"].problem is None, "a described member should pass"
     assert by["launchd/com.new"].problem, "restore_gap must not excuse a missing describing file"
-    assert verdict(rows, {}, cfg) != 0
+    assert verdict(rows, {}, cfg, OPEN) != 0
 
 
 def test_a_missing_restore_with_no_gap_fails():
     cfg = _cfg(resources={"compute:app": {"described_by": "deploy/engine/fly.toml"}})
-    rows = reconcile([Found("compute", "app", "fly/deployed")], cfg, COMMITTED)
+    rows = reconcile([Found("compute", "app", "fly/deployed")], cfg, COMMITTED, OPEN)
     assert rows[0].problem == "no restore command"
 
 
@@ -172,11 +179,11 @@ def test_not_applicable_needs_a_reason():
     """Otherwise `restore: not_applicable` is a way to silence any resource at all."""
     cfg = _cfg(resources={"log_sink:/x": {"described_by": "deploy/engine/fly.toml",
                                           "restore": "not_applicable"}})
-    rows = reconcile([Found("log_sink", "/x", "fly")], cfg, COMMITTED)
-    assert rows[0].problem and verdict(rows, {}, cfg) != 0
+    rows = reconcile([Found("log_sink", "/x", "fly")], cfg, COMMITTED, OPEN)
+    assert rows[0].problem and verdict(rows, {}, cfg, OPEN) != 0
 
     cfg["resources"]["log_sink:/x"]["restore_why"] = "output, not state"
-    rows = reconcile([Found("log_sink", "/x", "fly")], cfg, COMMITTED)
+    rows = reconcile([Found("log_sink", "/x", "fly")], cfg, COMMITTED, OPEN)
     assert rows[0].problem is None
 
 
@@ -186,12 +193,12 @@ def test_not_applicable_needs_a_reason():
 def test_an_unadmitted_blind_class_fails_the_run():
     """A class that could not be probed reports zero resources, which reads exactly like a
     healthy class with nothing in it. A silent hole must cost the same as a loud one."""
-    assert verdict([], {"payment_integration": "no key"}, _cfg()) != 0
+    assert verdict([], {"payment_integration": "no key"}, _cfg(), OPEN) != 0
 
 
 def test_an_admitted_blind_class_passes():
     cfg = _cfg(admitted_blind_classes={"payment_integration": {"issue": 102, "why": "no key here"}})
-    assert verdict([], {"payment_integration": "no key"}, cfg) == 0
+    assert verdict([], {"payment_integration": "no key"}, cfg, OPEN) == 0
 
 
 # ───────────────────────────── the real declaration ─────────────────────────────
@@ -286,3 +293,83 @@ def test_the_job_can_reach_the_command_line_tools_it_shells_out_to():
     if fly:
         assert str(Path(fly).parent) in path, (
             f"fly is installed here at {fly} and is not reachable from the job's PATH: {path}")
+
+
+# ───────────────────────── an admission is only as live as its issue ─────────────────────────
+#
+# Measured 2026-08-21: the declaration cited six issue numbers and every one of them was closed.
+# Five were CSS or copy tickets, and #79 -- an em-dash fix -- was excusing the 1GB volume the
+# file itself calls the only record of who bought what. The file's own comment says each
+# admission "names an open issue". Nothing graded it, so four resources and two whole classes
+# were excused from migration by tickets that had been finished for weeks.
+
+
+def test_an_admission_whose_issue_is_closed_does_not_excuse_anything():
+    cfg = _cfg(admitted_gaps={"compute:app": {"issue": 74, "why": "undecided"}})
+    rows = reconcile([Found("compute", "app", "fly/deployed")], cfg, COMMITTED, {74: "MERGED"})
+    assert rows[0].admitted is None, "a merged issue must not admit"
+    assert rows[0].problem and "#74" in rows[0].problem
+    assert verdict(rows, {}, cfg, {74: "MERGED"}) != 0
+
+
+def test_an_admission_whose_issue_could_not_be_read_does_not_excuse_anything():
+    """The miss case is the one that matters. Falling through to `admitted` when the tracker is
+    unreachable is how an excuse survives whatever it was waiting on, with nothing going red."""
+    cfg = _cfg(admitted_gaps={"compute:app": {"issue": 74, "why": "undecided"}})
+    rows = reconcile([Found("compute", "app", "fly/deployed")], cfg, COMMITTED, {74: None})
+    assert rows[0].admitted is None
+    assert verdict(rows, {}, cfg, {74: None}) != 0
+
+
+def test_an_issue_nobody_checked_does_not_excuse_anything():
+    cfg = _cfg(admitted_gaps={"compute:app": {"issue": 74, "why": "undecided"}})
+    rows = reconcile([Found("compute", "app", "fly/deployed")], cfg, COMMITTED, {})
+    assert rows[0].admitted is None
+    assert "not checked" in rows[0].problem
+
+
+@pytest.mark.parametrize("bad", [None, "", "soon", "#74", 0.5])
+def test_an_admission_that_names_no_issue_number_does_not_excuse_anything(bad):
+    cfg = _cfg(admitted_gaps={"compute:app": {"issue": bad, "why": "undecided"}})
+    rows = reconcile([Found("compute", "app", "fly/deployed")], cfg, COMMITTED, OPEN)
+    assert rows[0].admitted is None, f"{bad!r} admitted something"
+
+
+def test_a_restore_gap_on_a_closed_issue_stops_excusing_the_restore():
+    cfg = _cfg(resources={"compute:app": {"described_by": "deploy/engine/fly.toml",
+                                          "restore_gap": {"issue": 82, "why": "no installer"}}})
+    rows = reconcile([Found("compute", "app", "fly/deployed")], cfg, COMMITTED, {82: "CLOSED"})
+    assert rows[0].admitted is None
+    assert rows[0].problem and "no restore command" in rows[0].problem
+    assert verdict(rows, {}, cfg, {82: "CLOSED"}) != 0
+
+
+def test_a_blind_class_admitted_by_a_closed_issue_still_fails_the_run():
+    cfg = _cfg(admitted_blind_classes={"payment_integration": {"issue": 102, "why": "no key"}})
+    assert verdict([], {"payment_integration": "no key"}, cfg, {102: "MERGED"}) != 0
+    assert verdict([], {"payment_integration": "no key"}, cfg, OPEN) == 0
+
+
+def test_every_place_an_issue_can_be_cited_is_collected():
+    """Three places cite an issue. A resolver that reads two of them leaves the third excused
+    by a number nobody looked up, which is the defect this whole section is about."""
+    cfg = _cfg(
+        admitted_gaps={"compute:a": {"issue": 74}},
+        admitted_blind_classes={"dns": {"issue": 102}},
+        resources={"compute:b": {"restore_gap": {"issue": 82}}},
+    )
+    assert cited_issues(cfg) == {74, 82, 102}
+
+
+def test_the_live_declaration_cites_only_open_issues():
+    """The instance, not the class. This is the one that was red on 2026-08-21."""
+    import yaml as _yaml
+    cfg = _yaml.safe_load(DEFAULT_DECLARATION.read_text())
+    assert cited_issues(cfg), "the declaration cites no issues at all -- has the shape changed?"
+
+
+def test_stale_citation_returns_a_reason_on_every_branch_that_is_not_open():
+    """No silent fall-through. Each of these must produce a sentence a reader can act on."""
+    assert stale_citation(74, {74: "OPEN"}) is None
+    for num, states in [(74, {74: "MERGED"}), (74, {74: None}), (74, {}), (None, {}), ("x", {})]:
+        assert stale_citation(num, states), f"{num!r} {states!r} fell through silently"

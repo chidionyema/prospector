@@ -91,9 +91,11 @@ def config_load_error() -> str:
     genuinely says nothing.
     """
     import yaml
+
+    from prospector.yaml_fast import safe_load as _fast_safe_load
     try:
         with open("config.yaml", encoding="utf-8") as f:
-            yaml.safe_load(f)
+            _fast_safe_load(f)
     except (OSError, UnicodeDecodeError, yaml.YAMLError) as exc:
         return f"config.yaml unreadable — {type(exc).__name__}: {exc}"
     try:
@@ -113,9 +115,11 @@ def load_config_dict() -> dict[str, Any]:
     `config_load_error()` is what a page shows the operator.
     """
     import yaml
+
+    from prospector.yaml_fast import safe_load as _fast_safe_load
     try:
         with open("config.yaml", encoding="utf-8") as f:
-            return yaml.safe_load(f) or {}
+            return _fast_safe_load(f) or {}
     except (OSError, UnicodeDecodeError, yaml.YAMLError):
         logger.exception("control_center: config.yaml unreadable — returning empty config")
         return {}
