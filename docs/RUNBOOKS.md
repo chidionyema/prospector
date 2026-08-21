@@ -68,8 +68,8 @@ the next session does not rediscover it at the same cost.
 | RB3 | The storefront is down or failing its checks | **DONE** | 2026-08-21, live smoke red on one viewport |
 | RB4 | The engine cannot rule a verdict | **DONE** | 2026-08-20, moat blind 19.6h |
 | RB5 | Spend spikes | **DONE** | 2026-08-21, $592 day traced to its real owner |
-| RB6 | A guard or hook is refusing everything | **NOT STARTED** | — |
-| RB7 | A worktree or checkout has gone bad | **NOT STARTED** | — |
+| RB6 | A guard or hook is refusing everything | **DONE** | 2026-08-21, a false alarm on pr-freeze traced to its selftest |
+| RB7 | A worktree or checkout has gone bad | **DONE** | 2026-08-21, this session's own tree; 44 of 113 dead |
 
 ---
 
@@ -188,18 +188,100 @@ sessions, which no halt in this estate can touch.
 
 ### RB6 — A guard or hook is refusing everything
 
-`NOT STARTED`. The shape is known and the incident is on record — two of the founder's own
-guards deadlocked on 2026-08-20 and no session in the estate could ship anything at all — but
-the steps that ended it have not been written down as a procedure, so there is nothing here to
-follow yet.
+**Proven 2026-08-21.** The first question is not "which guard is broken". It is **whether the
+guard is broken at all**, because the two cheapest instruments both lie in the same direction.
+
+**Step 1 — read the refusal text, not the exit code.** A PreToolUse hook writes its reason to
+stderr and exits 2. That text names the guard and usually the escape hatch. An exit code alone
+names nothing, and `cmd | tail` reports TAIL's status, so a refused command can read as `exit 0`.
+
+**Step 2 — check the guard's PRECONDITION before believing its selftest.** Most guards here are
+inert until something exists on disk. Run the precondition first:
+
+```bash
+ls -la ~/.claude/PR_FREEZE            # pr-freeze: absent => it refuses nothing, by design
+ls -la store/scheduler/PAUSE          # the engine's kill switch
+git config --get core.hooksPath       # set => THAT directory wins over .git/hooks
+```
+
+This step exists because skipping it produced a false alarm on 2026-08-21: `pr-freeze.py
+--selftest` reported `3 failed`, and the honest-looking conclusion — "the freeze is not blocking
+`gh pr create` while every session believes it is" — was written down and reported. It was wrong.
+No `~/.claude/PR_FREEZE` existed, so `check()` returned `None` correctly on all three cases. The
+SELFTEST was broken, not the guard: it called `check()` with no freeze file on disk and then
+asserted a block. It was grading the guard's OFF state and asserting it was ON.
+
+**Step 3 — run every guard's selftest, in parallel, and read the two buckets separately.**
+
+```bash
+for f in ~/.claude/scripts/*.py; do python3 "$f" --selftest >/dev/null 2>&1 \
+  || echo "$f -> $?"; done
+```
+
+Exit 2 with `unrecognized arguments` is not a failing guard. It is a guard that ADVERTISES a
+selftest it does not have, which is worse, because every reader assumes it is proven.
+
+**Step 4 — a passing selftest is not a working guard.** Prove the test grades the file:
+
+```bash
+python3 ~/.claude/scripts/edge_test.py --mutate ~/.claude/scripts/<guard>.py \
+        --test "python3 ~/.claude/scripts/<guard>.py --selftest"
+```
+
+A surviving mutant is a line no test grades. On 2026-08-21 this found `pr-freeze.py`'s hook
+entry point ungraded: flipping `!= "Bash"` to `==` makes the guard fire for every tool EXCEPT
+Bash, so during a real freeze it would refuse nothing and say nothing.
+
+**Step 5 — when two guards are each correct alone and wrong together, the PAIR is the defect.**
+Fix the pair, not your own way around it. A workaround gets one session moving and leaves the
+next to rediscover the whole thing from a standing start.
+
+**Do not** edit your own permission settings to get past a classifier refusal, and do not ask a
+peer to run what your permissions refused. A denial you have to disguise is a denial to respect.
 
 ### RB7 — A worktree or checkout has gone bad
 
-`NOT STARTED`. 44 of 113 worktrees on this machine have no git. `git ls-files` prints nothing
-AND EXITS 0 in one, so every guard that asks git for the tracked file list grades an empty repo
-and fails while naming anything but git. The SessionStart guard now says so; the recovery
-procedure is not yet written as steps.
+**Proven 2026-08-21.** The tell is that tests and guards fail while naming anything but git.
 
+**Step 1 — read what SessionStart already told you.** The `worktree-git-guard` hook prints
+`THIS WORKING TREE HAS NO GIT` with the exact path its `.git` file points at. It is above the
+first message of the session, which is precisely where nobody looks.
+
+**Step 2 — ask git, never the filesystem.**
+
+```bash
+cat .git                              # in a worktree .git is a FILE containing `gitdir:`
+git rev-parse --git-common-dir        # the shared dir; hooks-active lives HERE
+git ls-files | wc -l                  # 0 with exit 0 is the signature of a dead worktree
+```
+
+`git ls-files` printing nothing AND EXITING 0 is the whole trap: every guard and test that asks
+git for the tracked file list then grades an empty repo and passes or fails for invented reasons.
+Anything that reads `<root>/.git/…` as a directory is a bug for the same reason.
+
+**Step 3 — do not repair it. Make a new one and RE-APPLY.**
+
+```bash
+git -C /Users/chidionyema/Documents/code/prospector worktree add --detach ../wt-new origin/main
+/Users/chidionyema/Documents/code/prospector/scripts/setup_worktree.sh ../wt-new
+```
+
+Re-apply your edits by hand; never copy whole files across. A dead tree can be many commits
+adrift from main, and copying reverts other sessions' work without a conflict to warn you.
+
+**Step 4 — `git worktree add` alone produces a tree that LOOKS complete and is not.**
+`setup_worktree.sh` is the only correct way to make one. It fixes four traps that each
+misdirect the diagnosis: `node_modules` cannot be symlinked (Turbopack rejects any symlink
+leaving the project root — use `cp -Rc`); `.lux/keys/agent.pem` is untracked, so the commit gate
+runs and then fails for want of a signing key, reading as a gate violation; `.venv` is absent
+while the hook pins `.venv/bin/python` relative to cwd, so commits die over a missing
+interpreter; and `store/` and `storage/` are TRACKED runtime state that pytest writes to, so
+`git add -A` in a worktree commits another session's scratch.
+
+**Step 5 — one session, one worktree.** Sessions sharing a checkout share one `.git/index`, and
+`git worktree add` succeeds even while that index is locked, which is exactly the point.
+
+**Files are still readable in a dead tree.** Read your work out of it; write it into the new one.
 
 ## retired-terms
 
