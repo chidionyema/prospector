@@ -167,6 +167,30 @@ def test_the_incident_pattern_is_gone_from_dockerignore():
     )
 
 
+def _written_by_the_process_that_serves_it(rel: str) -> bool:
+    """Is `rel` a runtime document, so being absent from the build context is CORRECT?
+
+    A rule rather than entries in LISTED_BUT_NOT_SHIPPED, and it has to be a rule: the founder's
+    acceptance criterion is that a generated document appears with no code change, and five names
+    in a dict is the code change he refused.
+
+    WHY THIS IS NOT THE DEFECT THIS FILE GUARDS. The defect is a row that opens onto nothing,
+    and it happens to a TRACKED file: git lists it on a laptop, `.dockerignore` keeps it out of
+    the image, and the two answers disagree. These files are untracked -- measured 2026-08-21,
+    `git ls-files store/scheduler/` returns 0 -- and the listing is computed from whatever
+    filesystem it runs on (`share.shareable_files`, which walks when there is no `.git/`). So the
+    container lists exactly the ones the container has, and there is no row to open onto nothing.
+    Shipping them in the image would be the wrong fix: they would arrive stale and then never
+    change.
+
+    `store/launch/` is the tracked case and is deliberately NOT carved, for this reason among
+    others. See `prospector.ops.share.GENERATED_DOC_DIRS`.
+    """
+    from prospector.ops.share import GENERATED_DOC_DIRS
+
+    return rel.lower().startswith(GENERATED_DOC_DIRS)
+
+
 def test_every_document_the_console_lists_is_in_the_image():
     """The population, not a sample of it.
 
@@ -192,7 +216,9 @@ def test_every_document_the_console_lists_is_in_the_image():
     missing = {
         rel: hit
         for rel in listed
-        if (hit := matching_pattern(rel, patterns)) and rel not in LISTED_BUT_NOT_SHIPPED
+        if (hit := matching_pattern(rel, patterns))
+        and rel not in LISTED_BUT_NOT_SHIPPED
+        and not _written_by_the_process_that_serves_it(rel)
     }
     assert not missing, (
         f"{len(missing)} of {len(listed)} documents the console lists are excluded from the "

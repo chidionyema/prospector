@@ -84,6 +84,8 @@ that would settle it. A row with no proof is not done, however finished it feels
 | R51 | **A solid plan for how the whole thing gets delivered** | "i need a solit plan of how this whole thing will be delivedered" | **NOT STARTED** | R43 is the mechanism; this row is the deliverable he asked for and has not had |
 | R52 | **The database decisions** — storefront onto Postgres | "are yoy aware of the db decisions? storefrint to postgress etc" | **NOT STARTED** | asked and never answered. Unknown to this register: which store, which migration, who decided |
 | R53 | **DNS, everything** | "dns everthng" | **NOT STARTED** | asked and never answered |
+| R54 | **Every document the engine generates is in the admin portal, with no code change** | "tbhh we should not have to nake a chage, every single dic generatd should be there without having o ake cod change" — and, asked what done looked like, "that is the cceptance criteria" | **DONE** | `tests/ops/test_generated_docs_are_shareable.py` — 36 assertions, and the same five documents list whether or not `.git/` is present |
+| R55 | **Every listed document is readable in the portal and through a share link** | "this docentshould be nintable fron adnin portal every single doc should be" | **DONE** | `store_platform/src/Ops.Console/tests/doc-render.test.ts` — both readers draw through one renderer, and the frame is `sandbox="allow-same-origin"` with no scripts |
 
 ---
 

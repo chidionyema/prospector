@@ -15,12 +15,13 @@
  * filter etc or categorise". That is the bill for the deferral, and this commit pays it. Four
  * things, all of which the earlier version scoped as "a later commit that touches only this file":
  *
- *  1. RENDERED MARKDOWN, with a Source toggle. `react-markdown` + `remark-gfm` — the renderer
- *     with the largest community, and GFM because these documents are full of tables. Raw HTML is
- *     NOT enabled (no `rehype-raw`), so an HTML tag in a doc is inert rather than executed. That
- *     is the sanitisation: nothing is parsed into markup that react-markdown did not produce.
- *     `.json` documents render as source always — a JSON file put through a markdown parser is
- *     one long paragraph, which is worse than the file.
+ *  1. RENDERED DOCUMENTS, with a Source toggle. WHICH renderer a document gets is not decided
+ *     here any more: `@/components/DocBody` decides it, and `/s/<token>` uses the same component,
+ *     so the two readers cannot drift. This page used to send every non-`.json` document to
+ *     `react-markdown`, which meant the 18 tracked `.html` documents were listed as readable and
+ *     arrived as stranded attribute text. Markdown still renders through `react-markdown` +
+ *     `remark-gfm` with raw HTML NOT enabled; HTML gets a sandboxed frame that cannot run
+ *     scripts; everything else is source. The argument for each is in `@/lib/docKind`.
  *  2. SEARCH AND CATEGORY CHIPS, entirely client-side over the index that is already loaded.
  *     Typing costs nothing: no read, no spawn.
  *  3. REAL CATEGORIES, from `prospector/ops/docs_view.py::_CATEGORIES`. There used to be three
@@ -57,10 +58,9 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useMemo, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 
 import Confirm from '@/components/Confirm';
+import DocBody from '@/components/DocBody';
 import Shell from '@/components/Shell';
 import {
   AsOf,
@@ -74,6 +74,7 @@ import {
   Scroll,
   Spinner,
 } from '@/components/ui';
+import { kindOf } from '@/lib/docKind';
 import { useOps } from '@/lib/useOps';
 
 type DocEntry = {
@@ -102,47 +103,6 @@ function size(bytes: number): string {
   return bytes < 1024 ? `${bytes} B` : `${Math.round(bytes / 1024)} KB`;
 }
 
-/**
- * How a rendered document is styled.
- *
- * Written out rather than pulled in as `@tailwindcss/typography`. The plugin is a build-time
- * dependency and a set of defaults tuned for marketing pages; this is twenty lines that match the
- * console's own type scale, and it is the only place a heading size is decided.
- */
-const md = {
-  h1: (p: object) => <h1 className="mb-3 mt-6 text-[20px] font-[650] first:mt-0" {...p} />,
-  h2: (p: object) => <h2 className="mb-2 mt-6 text-[16px] font-[650]" {...p} />,
-  h3: (p: object) => (
-    <h3 className="mb-2 mt-5 text-[13px] font-[650] uppercase tracking-wide text-subtle" {...p} />
-  ),
-  p: (p: object) => <p className="my-3 text-[14px] leading-[1.65]" {...p} />,
-  ul: (p: object) => <ul className="my-3 list-disc pl-5 text-[14px] leading-[1.65]" {...p} />,
-  ol: (p: object) => <ol className="my-3 list-decimal pl-5 text-[14px] leading-[1.65]" {...p} />,
-  li: (p: object) => <li className="my-1" {...p} />,
-  blockquote: (p: object) => (
-    <blockquote className="my-3 border-l-2 border-line pl-3 text-[14px] italic text-subtle" {...p} />
-  ),
-  code: (p: object) => (
-    <code className="wrap-any rounded bg-black/5 px-1 py-[1px] font-mono text-[12.5px]" {...p} />
-  ),
-  // A fenced block is a `<pre>` wrapping the `<code>` above, and it is the one thing on the page
-  // that is allowed to scroll sideways: wrapping a shell command changes what it says.
-  pre: (p: object) => (
-    <pre className="my-3 overflow-x-auto rounded bg-black/5 p-3 font-mono text-[12.5px]" {...p} />
-  ),
-  // Tables are why `remark-gfm` is here. They also overflow on a phone, so each one gets its own
-  // horizontal scroller rather than pushing the page sideways.
-  table: (p: object) => (
-    <div className="my-3 overflow-x-auto">
-      <table className="w-full border-collapse text-[13px]" {...p} />
-    </div>
-  ),
-  th: (p: object) => (
-    <th className="border border-line px-2 py-1 text-left font-[650] align-top" {...p} />
-  ),
-  td: (p: object) => <td className="border border-line px-2 py-1 align-top" {...p} />,
-  hr: () => <hr className="my-5 border-0 border-t border-line" />,
-};
 
 type ShareRow = {
   id: string;
@@ -427,7 +387,9 @@ export default function Docs() {
   const total = sections.reduce((n, s) => n + (s.docs?.length ?? 0), 0);
   const matched = shown.reduce((n, s) => n + s.docs.length, 0);
   const filtering = Boolean(q.trim() || chip);
-  const isJson = (doc.data?.name ?? open ?? '').toLowerCase().endsWith('.json');
+  // A document already shown as source has nothing to toggle TO, and that is a property of the
+  // format rather than of `.json` specifically — see `@/lib/docKind`.
+  const alreadySource = kindOf(doc.data?.name ?? open ?? '') === 'source';
 
   return (
     <Shell
@@ -530,7 +492,7 @@ export default function Docs() {
           right={
             <div className="flex items-center gap-2">
               <AsOf asOf={doc.envelope?.as_of} tookMs={doc.envelope?.took_ms} />
-              {isJson ? null : (
+              {alreadySource ? null : (
                 <Button onClick={() => setSource((v) => !v)}>
                   {source ? 'Rendered' : 'Source'}
                 </Button>
@@ -550,17 +512,12 @@ export default function Docs() {
           ) : null}
           {doc.data ? (
             <Scroll>
-              {source || isJson ? (
-                <pre className="m-0 whitespace-pre-wrap break-words font-mono text-[12.5px] leading-[1.6]">
-                  {doc.data.text}
-                </pre>
-              ) : (
-                <div className="wrap-any">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={md}>
-                    {doc.data.text}
-                  </ReactMarkdown>
-                </div>
-              )}
+              <DocBody
+                name={doc.data.name}
+                text={doc.data.text}
+                title={doc.data.title ?? doc.data.name}
+                source={source}
+              />
             </Scroll>
           ) : null}
         </Card>

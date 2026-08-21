@@ -620,7 +620,7 @@ def _read_shares(cfg, args: dict) -> dict:
     out["max_days"] = _share.MAX_DAYS
     out["default_days"] = _share.DEFAULT_DAYS
     if args.get("files"):
-        out["files"] = _share.shareable_files(root)
+        out["files"] = _share.linkable_files(root)
     return out
 
 
@@ -643,7 +643,7 @@ def _read_repo_files(cfg, args: dict) -> dict:
     from . import share as _share
 
     root = _repo_root()
-    return _share.folder_view(root, _share.shareable_files(root))
+    return _share.folder_view(root, _share.linkable_files(root))
 
 
 def _read_share_open(cfg, args: dict) -> dict:
