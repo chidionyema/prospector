@@ -803,6 +803,34 @@ viablity"*, *"for sales"*.
 **100.0% of the 64 ideas the engine has ever passed match the title frame `<X> for <buyer>`.
 Across all 2,044 verdict dossiers, 21.2% do.**
 
+**CORRECTION 2026-08-21, before you read the number as causal. The 100% is SPECIFIED, not
+selected.** A peer asked whether the PASS titles came from the same generation config as the other
+2,044. They do not. `prompts/retitle.md` mandates that exact frame in writing — *"title — what the
+business does, and who pays for it: `<what the business does> for <who pays>`. Both halves,
+always."* It reaches PASS dossiers on two paths and neither one touches a KILL:
+
+1. `tools/retitle_catalogue.py:394 _write_dossier_title` writes `candidate.title` into
+   `store/dossiers/<id>.pass.json`, so a republish preserves it (`tools/retitle_catalogue.py:52`).
+2. `prospector/field_write.py:143 _propose_title` renders the same `retitle` prompt in-engine
+   whenever the register linter breaches a title.
+
+So "100% of PASSes carry the frame" is a prompt instruction observed working. It is **not**
+evidence that the scoring filter rewards one shape, and the null control above cannot separate the
+two, because the null is drawn from titles the retitle prompt never saw.
+
+**What survives the correction, and is now the headline: the KILL-only drift.** KILL dossiers never
+reach `retitle.md`, so their frame rate is generation's own. It is rising with nothing telling it
+to:
+
+| month | KILL dossiers | carry `<X> for <buyer>` |
+|---|---:|---:|
+| 2026-06 | 724 | 8.6% |
+| 2026-07 | 220 | 16.4% |
+| 2026-08 | 1,032 | **25.9%** |
+
+A 3.0x rise in two months, on the population no prompt is steering. The August weekly figures
+(40.5 / 22.1 / 40.0) are noisy and must not be read as a within-month trend.
+
 A raw rate on 64 items decides nothing by itself, so it was run against a null: 2,000 random
 subsamples of size 64 drawn from the same 2,044 titles, fixed seed. Reproduce with
 `scratchpad/measure_template.py`.
@@ -814,8 +842,11 @@ subsamples of size 64 drawn from the same 2,044 titles, fixed seed. Reproduce wi
 | <= 8 words | **71.9%** | 49.9% | 39.1% | 60.9% | **outside null — 0 of 2,000 draws reached it** |
 | contains a digit | 1.6% | 3.2% | 0.0% | 7.8% | inside null — no effect |
 
-Corpus: `prospector-ship-wt/store/dossiers`, 2,044 verdict dossiers, 1,976 kill / 64 pass /
-4 defer, a 3.1% pass rate.
+Corpus: 2,044 verdict dossiers, 1,976 kill / 64 pass / 4 defer, a 3.1% pass rate. **Do not copy
+the worktree path this was first read from — `prospector-ship-wt` no longer exists.** `store/` is
+tracked runtime state cloned into every worktree, so any literal path rots; resolve it with
+`config.store_root()`. Re-measured 2026-08-21 in a clone carrying the current corpus: 2,929
+dossier files, 2,698 kill / 108 pass / 0 defer.
 
 Every survivor is a narrow admin-friction arbitrage: "Dropped kerb application service for car
 owners", "Council Tax exemption claims for dementia carers", "Bin store recycling signs for small
@@ -836,8 +867,10 @@ the 64 PASSes all land INSIDE the null distribution for n=64 (`scratchpad/measur
 
 **The survivors are as lexically varied as any random 64 from the corpus. They are identical in
 FORM.** That is a sharper finding than the one it replaces, and it changes the fix: vocabulary
-diversity is not the problem and more diverse generation will not help. The scoring rewards one
-SHAPE of proposition, and every idea that does not take that shape dies on the composite.
+diversity is not the problem and more diverse generation will not help. Read the correction in
+9.0 before attributing the shared form to the scoring filter — the PASS titles were rewritten to
+that form by `prompts/retitle.md`, so this table measures a corpus the prompt has already touched.
+The claim that survives is about generation, not selection, and it is the KILL-only drift.
 
 ### 9.1 Why — three angles that agree
 
