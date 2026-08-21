@@ -18,6 +18,189 @@ class, and grade it. A runbook entry that keeps getting used is an incident nobo
 
 ---
 
+## Incident runbooks — the five fires
+
+The entries BELOW this section are one per automation in `ops/automations/`: what that job
+does, and what to do when its line goes red. The entries in THIS section are one per
+INCIDENT CLASS, and they exist because the founder named the gap on 2026-08-21: "we need to
+dvelop and naintain runbook/protocols to reduce firefightinh, eg when a pr fails, when nain
+is broken, when site goes down, we need sturctured stepes thathave been proven to work,
+shortest path to reolutions etc, root cause if first tine occuring etc".
+
+The two halves answer different questions and neither replaces the other. A red automation
+line tells you WHICH job failed; an incident runbook tells you what to do when the failure
+is not one job — a pull request that will not go green, a storefront that will not serve.
+
+Two rules bind every entry here:
+
+1. **The first command always reads the actual failure text.** Not a status letter, not a
+   colour, not a count. LAW 2 exists because six Fly machines were bought to fix a queue
+   that was never full, off a table that already said `F` for FAILED.
+2. **An unrun step is a proposal, and is marked UNPROVEN.** A runbook that carries a step
+   nobody has executed is worse than a short one: it reads as proven and sends the next
+   person down a path that may not exist.
+
+
+Founder directive 2026-08-21: "we need to dvelop and naintain runbook/protocols to reduce
+firefightinh, eg when a pr fails, when nain is broken , when site goes down, we need sturctured
+stepes thathave been proven to work, shortest path to reolutions etc, root cause if first tine
+occuring etc".
+
+Every step below was run on this estate and worked. Where a step has a receipt, the receipt is
+named. This file is not advice: it is the record of what actually ended the fire last time, so
+the next session does not rediscover it at the same cost.
+
+**Two rules bind every runbook here.**
+
+1. **The first command is always the one that reads the actual failure text.** Not the status
+   table, not the colour, not the count. LAW 2 exists because on 2026-08-19 a session read `F`
+   in a status column as congestion and bought six machines to fix a queue that was not the
+   problem; the failing job log named the real cause — one red test on main — in seconds.
+2. **A runbook step that has never been run is a proposal, not a step.** Mark it `UNPROVEN` and
+   say so, so nobody follows it into a fire believing it worked before.
+
+### Status
+
+| ID | Runbook | Status | Last proven |
+|----|---------|--------|-------------|
+| RB1 | A pull request is red | **DONE** | 2026-08-21, PR #568, cause found in 2 commands |
+| RB2 | `main` is red | **DONE** | 2026-08-19, one test red on main blocking 12 PRs |
+| RB3 | The storefront is down or failing its checks | **DONE** | 2026-08-21, live smoke red on one viewport |
+| RB4 | The engine cannot rule a verdict | **DONE** | 2026-08-20, moat blind 19.6h |
+| RB5 | Spend spikes | **DONE** | 2026-08-21, $592 day traced to its real owner |
+| RB6 | A guard or hook is refusing everything | **NOT STARTED** | — |
+| RB7 | A worktree or checkout has gone bad | **NOT STARTED** | — |
+
+---
+
+### RB1 — A pull request is red
+
+**How you know.** `gh pr view <n> --repo chidionyema/prospector --json statusCheckRollup`.
+
+**Shortest path, in order. Stop at the first step that answers.**
+
+1. **Read the failing job's log, not the check name.** One command:
+   `gh run view <run-id> --repo chidionyema/prospector --log-failed | grep -iE "Error|assert|✘" | head -40`.
+   The check name tells you which lane; only the log tells you the cause.
+2. **Ask whether the cause is in YOUR diff.** `git diff origin/main...HEAD --name-only`. If the
+   failing file is not in that list, the cause is upstream — go to RB2 and do not debug it here.
+3. **Refresh on main before anything else.** `git fetch origin main && git merge origin/main
+   --no-edit`. A stale branch fails as somebody else's bug: on 2026-08-20 a branch reported five
+   failures, three of them in a test file main had already deleted. Merge, never rebase, never
+   force push.
+4. **If the failure is in your diff, reproduce it locally before editing.**
+   `.venv/bin/python scripts/popdd_verify.py --staged`.
+5. **Fix at the source, then prove the test grades the fix:**
+   `python3 ~/.claude/scripts/edge_test.py --mutate <file> --test "pytest <test> -q"`.
+   A mutation that survives means the test would not have caught the bug you just fixed.
+6. **Push, then follow it to MERGED.** An open green pull request is not delivered work.
+
+**Proven, 2026-08-21, PR #568.** The check said `python` failed. Step 1 printed
+`assert re.search(...)` naming a capacity contract. Step 2 said the file WAS mine. The cause was
+a comment I had added in the same diff: the checker greps the workflow source for `pytest -n N`,
+and it read the width out of my prose. Two commands from red to cause.
+
+**Root-cause it when it is the first time.** RB1 ends at "merged". LAW 6 then asks what let it
+break. That one produced `_uncommented()` in `scripts/ci_capacity.py` and a test that fails if a
+commented width ever masks a real one again.
+
+---
+
+### RB2 — `main` is red
+
+**This outranks every open pull request.** While main is red, every branch inherits the failure
+and every session debugs a fiction. Nobody's PR can be diagnosed until this is out.
+
+1. **Confirm it is main and not you.**
+   `gh run list --repo chidionyema/prospector --branch main --limit 5 --json conclusion,databaseId`.
+2. **Read the log** (RB1 step 1) and get the failing symbol.
+3. **Search for an existing fix before writing one.** `git log --all --oneline -1 -- <path>`,
+   `git show origin/main:<path>`, `rg -l '<the distinctive symbol>'`. On 2026-08-19 the fix for
+   the red test blocking twelve pull requests was already open as PR #425.
+4. **If a fix exists, land THAT.** If not, the smallest diff that makes main green, on its own
+   branch, merged ahead of everything else.
+5. **Say it once on the board**, so the other sessions stop debugging their own diffs:
+   `~/.claude/ESTATE_BOARD.jsonl` gets every peer message automatically.
+
+**Proven, 2026-08-19.** Seven jobs failed on the same assertion. One red test on main, inherited
+by every branch. Reading one job log replaced a day of per-PR diagnosis.
+
+---
+
+### RB3 — The storefront is down or failing its checks
+
+**How you know.** The board's "Shipped — is it live?" section, or
+`gh run list --repo chidionyema/prospector --workflow e2e-live-smoke.yml --limit 3`.
+
+1. **Is the site answering at all?** A 200 and a body over 2000 bytes is the floor. Anything
+   less is an outage and skips to step 5.
+2. **Is it answering with the RIGHT build?** `e2e-live-smoke` runs only after a Deploy Store.Web
+   run and on a daily cron — never on a pull request. So a green smoke can be grading a build
+   two deploys old. Check `Deploy Store.Web`'s last run before trusting it.
+3. **Read which spec failed, and at which viewport.** A single failing viewport is a layout
+   defect, not an outage, and it does not justify a rollback.
+4. **Reproduce against the same live URL before touching CSS:**
+   `cd store_platform/src/Store.Web && WEB_BASE_URL=https://mumchimp.com npx playwright test e2e/<spec> --project=chromium`.
+   When local and CI disagree, that disagreement is the finding — take a third measurement
+   before believing either.
+5. **A real outage rolls back first and diagnoses after.** Restoring service outranks knowing why.
+
+**Proven, 2026-08-21.** The smoke went red on one phone viewport, `360x780`, at 18px of the first
+card visible. Local runs of the same spec against the same URL passed at 72px. Blocking webfonts
+locally changed nothing, which killed the font-metrics theory. Measuring the stack rather than
+the total found the budget: a 490px hero section under a 116px header, on a 780px screen.
+
+---
+
+### RB4 — The engine cannot rule a verdict
+
+**How you know.** `.venv/bin/python scripts/live_checkout.py`, and the daemon's tick log saying
+`moat_blind`.
+
+1. **Read which brains carry a dead mark, and why.** A dead mark is TRANSIENT (429/503/529) or
+   PERMANENT (402, credit balance, spend allowance). They need different answers: transient
+   clears itself in 60s, permanent needs a key or money.
+2. **One live brain of any tier is enough to generate.** The generation preflight skips a tick
+   only when EVERY configured verdict brain is dead.
+3. **The drain is trusted-only, on purpose.** Re-vetting a `provisional` row on a provisional
+   brain re-stamps it `provisional`: the row does not move and the money is spent.
+4. **When the moat recovers, drain it:** `vet --resume` finalises both populations.
+
+**Proven, 2026-08-20.** The engine was moat blind for 19.6 hours with 75 finished PASSes stranded
+off the shelf, and no session noticed, because every session was holding the stack view and none
+was holding the platform view. That is now a row on the founder's board.
+
+---
+
+### RB5 — Spend spikes
+
+1. **Get the real owner before touching a knob.** `python3 ~/.claude/scripts/estate_spend.py --json`
+   breaks the day down by owner.
+2. **Know what your lever actually reaches.** `halt_usd` fires on the DAEMON leg only.
+3. **Only then decide.** Money leaving the account is the founder's decision, always.
+
+**Proven, 2026-08-21.** A $516.79 day. The board said "spend halt DISARMED — nothing stops the
+spend", which pointed at the wrong lever: the daemon spent $1.51 of it. Arming the halt would
+have saved 0.3% and stopped the engine. The other 99.7% was five concurrent interactive coding
+sessions, which no halt in this estate can touch.
+
+---
+
+### RB6 — A guard or hook is refusing everything
+
+`NOT STARTED`. The shape is known and the incident is on record — two of the founder's own
+guards deadlocked on 2026-08-20 and no session in the estate could ship anything at all — but
+the steps that ended it have not been written down as a procedure, so there is nothing here to
+follow yet.
+
+### RB7 — A worktree or checkout has gone bad
+
+`NOT STARTED`. 44 of 113 worktrees on this machine have no git. `git ls-files` prints nothing
+AND EXITS 0 in one, so every guard that asks git for the tracked file list grades an empty repo
+and fails while naming anything but git. The SessionStart guard now says so; the recovery
+procedure is not yet written as steps.
+
+
 ## retired-terms
 
 **What it checks.** Every tracked file, for names that were deliberately removed from the
