@@ -72,7 +72,6 @@ export const GROUPS: Group[] = [
       { href: '/docs', label: 'Docs', what: 'the decisions, incidents and runbooks, in here' },
       { href: '/reports', label: 'Reports', what: 'every sheet published, and who can see it' },
       { href: '/incidents', label: 'Incidents', what: 'what broke, and what stops it recurring' },
-      { href: '/share', label: 'Share', what: 'give someone outside a link to a file or the repo' },
     ],
   },
   {
