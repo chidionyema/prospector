@@ -744,10 +744,18 @@ def _key_is_moat_affecting(ce, key: tuple) -> bool:
 def _probe_all(text: str, raw: dict) -> dict[tuple, Optional[str]]:
     """Ask the REAL rewriter, in ONE pass, which knobs it can locate.
 
-    This is how the console knows that `schedule.batch_size` — the wave size — cannot be edited:
-    `schedule:` is a multi-line FLOW mapping (`schedule: { cadence: daily, batch_size: 50, ...`)
-    and `yaml_surgery` edits block-style `key: value` lines. It refuses rather than guessing,
-    which is correct; the console's job is to say so out loud instead of offering a dead button.
+    This is how the console knows which knobs the rewriter can actually reach. `yaml_surgery`
+    edits block-style `key: value` lines and refuses anything else rather than guessing, which is
+    correct; the console's job is to say so out loud instead of offering a dead button.
+
+    THIS PARAGRAPH USED TO NAME `schedule.batch_size` AS THE EXAMPLE THAT CANNOT BE EDITED,
+    because `schedule:` was "a multi-line FLOW mapping". It is not one. Measured 2026-08-21, two
+    angles: `config.yaml:2549` is block style — `schedule:` then `  cadence: daily` then
+    `  batch_size: 50`, no brace anywhere — and `apply_edits` on `schedule.batch_size`,
+    `schedule.interval_s` and `generation.candidates_per_signal` returned NO unresolved paths and
+    rewrote all three lines. The stale version mattered: `batch_size` is the platform's one
+    production-rate control, so a comment saying it cannot be turned from the console sends the
+    next agent to build a detour around a wall that is not there.
 
     One `apply_edits` call for all knobs, not one per knob. Probing individually measured 4.0s on
     a 2,316-line config — a four-second page load on a phone, to answer a question one pass
@@ -3854,6 +3862,14 @@ TOOLS: list[dict] = [
 #: and no test could tell. The registry was hand-written, so adding a tool and forgetting to
 #: register it was silent — which is how an operator ends up unable to see what the system can do.
 NOT_AN_OPS_TOOL: dict[str, str] = {
+    "scripts/deploy_reconcile.py": "the hourly robot that dispatches a deploy when the "
+                                   "image production runs is not the commit main points "
+                                   "at. It needs `gh` and a git checkout to decide "
+                                   "anything, and the engine container has neither, so "
+                                   "from here it could only ever answer UNKNOWN. GitHub "
+                                   "Actions runs it, on the hour. The operator's version "
+                                   "of the same question is the `scripts/live_checkout.py` "
+                                   "button, which reads /app/GIT_SHA directly",
     # developer and CI tooling — it runs in a terminal or in GitHub Actions, never from an ops page
     "scripts/ci-gate.sh": "the POPDD CI gate; GitHub Actions runs it, not an operator",
     "scripts/green_guard_cause.py": "asks whether main was ALREADY red before a given commit "

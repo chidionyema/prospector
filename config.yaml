@@ -176,24 +176,109 @@ model_version_tag: ""            # filled at runtime for audit
 # it a separate dead mark: bench one and both are benched. That is why `minimax_m27` is a
 # separate tier name rather than a model pin, and it is the reason to reach for a second tier
 # when you want survivability, and for a pin when you want a different model.
+# EVERY DECLARED PROVIDER CARRIES AN EMPTY PIN ON EVERY COMPONENT, AND THE BLANKS ARE THE POINT.
+# `refresh_declared_knobs` (`prospector/ops/console_api.py:2186`) builds a model-pin knob for every
+# declared provider on every component, and `_act_config_set` REFUSES a path the rewriter cannot
+# locate — `yaml_surgery` edits existing scalar lines and never creates one (`_has_path`, no
+# insert). Without these lines the console offered 75 pins that all errored on save: a control that
+# shows a button and delivers an error. Empty means "no pin, use the tier default", exactly as it
+# already does for the built-ins. Caught by
+# `tests/unit/test_component_models.py::test_every_model_knob_names_a_key_that_exists_in_config_yaml`,
+# which passes alone and fails in the suite — the knobs only exist once some earlier test has
+# loaded a config. A provider declared LATER still needs its five lines added here.
 component_models:
   moat:
     claude_cli:  ""
     minimax:     ""
+    cerebras:    ""
+    dashscope:   ""
+    deepinfra:   ""
+    fireworks:   ""
+    groq:        ""
+    hyperbolic:  ""
+    mistral:     ""
+    moonshot:    ""
+    nebius:      ""
+    novita:      ""
+    sambanova:   ""
+    scaleway:    ""
+    together:    ""
+    xai:         ""
+    zai:         ""
   noncritical:
     minimax:     ""
     minimax_m27: ""
     deepseek:    ""
     ollama:      ""
     openrouter:  ""
+    cerebras:    ""
+    dashscope:   ""
+    deepinfra:   ""
+    fireworks:   ""
+    groq:        ""
+    hyperbolic:  ""
+    mistral:     ""
+    moonshot:    ""
+    nebius:      ""
+    novita:      ""
+    sambanova:   ""
+    scaleway:    ""
+    together:    ""
+    xai:         ""
+    zai:         ""
   artifact:
     claude_cli:  ""
     minimax:     ""
+    cerebras:    ""
+    dashscope:   ""
+    deepinfra:   ""
+    fireworks:   ""
+    groq:        ""
+    hyperbolic:  ""
+    mistral:     ""
+    moonshot:    ""
+    nebius:      ""
+    novita:      ""
+    sambanova:   ""
+    scaleway:    ""
+    together:    ""
+    xai:         ""
+    zai:         ""
   marketing:
     claude_cli:  ""
     minimax:     ""
+    cerebras:    ""
+    dashscope:   ""
+    deepinfra:   ""
+    fireworks:   ""
+    groq:        ""
+    hyperbolic:  ""
+    mistral:     ""
+    moonshot:    ""
+    nebius:      ""
+    novita:      ""
+    sambanova:   ""
+    scaleway:    ""
+    together:    ""
+    xai:         ""
+    zai:         ""
   grounding:
     claude_cli:  ""
+    cerebras:    ""
+    dashscope:   ""
+    deepinfra:   ""
+    fireworks:   ""
+    groq:        ""
+    hyperbolic:  ""
+    mistral:     ""
+    moonshot:    ""
+    nebius:      ""
+    novita:      ""
+    sambanova:   ""
+    scaleway:    ""
+    together:    ""
+    xai:         ""
+    zai:         ""
 
 # ADD A PROVIDER WITHOUT A SOURCE EDIT.
 #
