@@ -358,8 +358,8 @@ volume — and that cost belongs to the storefront-Postgres work already on the 
 ### 7.3 Proposed scenario G4 — the source is gone
 
 G1, G2 and G3 differ in where we are going. None differs in what we still have: all three assume a
-readable source. Two angles say the kit cannot execute the other case. `kit/classes/datastore.sh`
-packs from `$FROM`, so a dead source yields no seed; and the target contract itself defines
+readable source. Two angles say the kit cannot execute the other case. The datastore adapter (on
+PR #585, not yet on main) packs from `$FROM`, so a dead source yields no seed; and the target contract itself defines
 `t_pack` as *"pack this platform's store, for when it is the SOURCE of a move"*
 (`deploy/PORTABILITY.md:40`) — there is no verb for a source that is gone.
 

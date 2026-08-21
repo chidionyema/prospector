@@ -22,7 +22,7 @@ If you read nothing else, read these. Each one changes what gets built next.
 | | Finding | Measured | What it changes |
 |---|---|---|---|
 | **F1** | **There is no RPO.** The programme has a recovery *time* number and no recovery *point* number. | `git grep -cIE '\bRPO\b' origin/main -- docs kit scripts deploy` → **0**. Same for `RTO`. The only number acting as one is `max_age_hours: 24` at `ops/config/offsite_backup.yaml:26`. | The declared worst case is **24 hours of orders lost** and nobody has ever said so out loud. Needs clause **A8**, with a number, and a drill that measures it. |
-| **F2** | **We drill the planned move and never the unplanned one.** All three gold-standard scenarios assume a live source. Two angles agree. `kit/classes/datastore.sh` calls `t_pack` on `$FROM`, so a dead source produces no seed; and the target contract itself defines `t_pack` as *"pack this platform's store, for when it is the SOURCE of a move"* (`deploy/PORTABILITY.md:40`) — there is no verb at all for a source that is gone. | The programme is called migration **and DR** and only builds the first half. Needs scenario **G4: the source is gone**, whose only legal input is the offsite copy. |
+| **F2** | **We drill the planned move and never the unplanned one.** All three gold-standard scenarios assume a live source. Two angles agree. The datastore adapter (on PR #585, not yet on main) calls `t_pack` on `$FROM`, so a dead source produces no seed; and the target contract itself defines `t_pack` as *"pack this platform's store, for when it is the SOURCE of a move"* (`deploy/PORTABILITY.md:40`) — there is no verb at all for a source that is gone. | The programme is called migration **and DR** and only builds the first half. Needs scenario **G4: the source is gone**, whose only legal input is the offsite copy. |
 | **F3** | **The progress stream is the highest-value thing in the platform, not a progress bar.** | DORA 2025: the platform capability most correlated with a positive user experience is *clear feedback on the outcome of my tasks*. Our A4 already says no step may go ≥ 5s without an event. | A4 gets built to the same bar as an adapter, with tests, not added afterwards as a console veneer. |
 | **F4** | **An adapter that has never run in a drill is not finished.** | **9 of 10** class adapters do not exist on `origin/main`: `kit/classes/` holds `compute.sh` and `MISSING.md`, whose 9 entries name the rest. PR #585 takes it to 3 of 10. **0** end-to-end drills have been run against any of them. | "Done" for the rest means a scheduled drill has executed them, not that the file exists. |
 
@@ -176,7 +176,7 @@ admitted skip exits 78, before anything has been stopped or packed). A platform 
 platform whose safety depends on the operator reading. Ours must not.
 
 - Steers: **A2** (0 resources left behind).
-- Test: `tests/unit/test_the_plan_admits_what_it_cannot_run.py`.
+- Test: the plan-admits-what-it-cannot-run suite, on PR #563, not yet on main.
 - Source: [CNCF maturity model](https://tag-app-delivery.cncf.io/whitepapers/platform-eng-maturity-model/).
 
 ---
