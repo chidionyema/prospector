@@ -19,9 +19,12 @@ function.
 """
 from __future__ import annotations
 
+import logging
 import re
 import threading
 from dataclasses import dataclass
+
+_log = logging.getLogger(__name__)
 
 #: Tier names that were deleted along with their adapters. `_build_operator` raises an explicit
 #: ValueError for each, naming the date and the reason, so a stale config fails loudly instead of
@@ -189,3 +192,72 @@ def installed_declared() -> dict[str, DeclaredProvider]:
     """The declared block installed by the last `load_config`. `{}` before any load."""
     with _DECLARED_LOCK:
         return dict(_DECLARED)
+
+
+# The disk fallback, and its cache key. `installed_declared()` answers a question about THIS
+# PROCESS — "what did the last load_config install" — and that is `{}` in a process that never
+# loaded a config. Three validators are exactly such processes.
+_DISK_CACHE: tuple[tuple[int, int], dict[str, DeclaredProvider]] | None = None
+
+
+def declared_now() -> dict[str, DeclaredProvider]:
+    """The declared block for this process: the loaded config if there is one, else config.yaml.
+
+    Read this, not `installed_declared()`, anywhere a provider NAME is being validated outside
+    the engine's own startup path. Measured 2026-08-21, with `groq` and `mistral` live in
+    `operator:` on disk: `console_api._coerce` is reached from a knob table built at import time,
+    and `config_editor.validate_config` and `ops.routing` read `config.yaml` with `yaml.safe_load`
+    and never construct a Config at all. All three called the live file invalid, so the ops
+    console could not save ANY config change and the T0 selector test reported the live chain as
+    unrepresentable — a provider you can declare but cannot select is not configurable from the
+    dashboard.
+
+    The disk is a FALLBACK, never an override. A process that loaded a config may have loaded it
+    from somewhere other than the repo's own file — a fixture, a test copy — and that choice
+    wins. Only the empty case reads the disk.
+
+    Cached on the file's (mtime_ns, size), so validating forty knobs on one save reads the file
+    once, and a `config.set` that adds a provider is visible on the very next call rather than
+    for the life of the process. Any failure to read or parse returns `{}`: the honest answer
+    when the file cannot be read is "no declared providers", which refuses the same names the
+    old code refused rather than inventing new ones.
+    """
+    global _DISK_CACHE
+
+    installed = installed_declared()
+    if installed:
+        return installed
+
+    from . import paths
+
+    try:
+        path = paths.repo_path("config.yaml")
+        st = path.stat()
+    except OSError:
+        return {}
+
+    key = (st.st_mtime_ns, st.st_size)
+    cached = _DISK_CACHE
+    if cached is not None and cached[0] == key:
+        return dict(cached[1])
+
+    import yaml
+
+    try:
+        raw = yaml.safe_load(path.read_text()) or {}
+        parsed = parse_declared(raw.get("providers"))
+    except (OSError, ValueError, yaml.YAMLError) as exc:
+        # A config.yaml that cannot be read, or whose `providers:` block is malformed, is a real
+        # problem — but it is not THIS function's problem to RAISE on. `load_config` already
+        # raises on it at startup, loudly, with the line; raised from here it would surface from
+        # inside a dropdown, on a page whose job is to fix exactly that file.
+        #
+        # So it is logged rather than swallowed. `{}` and "the block is broken" look identical to
+        # every caller — both make a declared tier unselectable — and the ERROR line is the only
+        # thing that tells an operator which of the two they are looking at.
+        _log.error("config.yaml at %s could not be read for its `providers:` block (%s); "
+                   "no declared providers will be selectable until this is fixed", path, exc)
+        parsed = {}
+
+    _DISK_CACHE = (key, dict(parsed))
+    return dict(parsed)

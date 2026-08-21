@@ -452,6 +452,20 @@ def _read_providers(cfg, args: dict) -> dict:
     return provider_view(cfg)
 
 
+def _read_heartbeat(cfg, args: dict) -> dict:
+    """Which brains answered last time anyone asked, for every model the platform can build.
+
+    READ-ONLY AND FREE. It reads the last round off disk and calls nothing. A dashboard that
+    probes on page load bills the founder every time a tab is refreshed, and the tiers that
+    cost money are exactly the ones a person opens this page to worry about.
+
+    To take a fresh round, run the `providers.test` action.
+    """
+    from .heartbeat import heartbeat_view
+
+    return heartbeat_view(cfg)
+
+
 def _read_routing(cfg, args: dict) -> dict:
     from .routing import routing_view
 
@@ -662,6 +676,7 @@ def _read_config(cfg, args: dict) -> dict:
             readable = False
 
     probes = _probe_all(text, raw) if readable else {}
+    refresh_declared_knobs()
     knobs = []
     for spec in KNOBS:
         key = tuple(spec["path"])
@@ -740,6 +755,7 @@ def _probe_all(text: str, raw: dict) -> dict[tuple, Optional[str]]:
     """
     from prospector.ops import yaml_surgery as ys
 
+    refresh_declared_knobs()
     edits: dict[tuple, Any] = {}
     for spec in KNOBS:
         key = tuple(spec["path"])
@@ -1792,6 +1808,7 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
     "queue": _read_queue,
     "drain": _read_drain,
     "providers": _read_providers,
+    "heartbeat": _read_heartbeat,
     "routing": _read_routing,
     "spend": _read_spend,
     "money": _read_money,
@@ -1952,17 +1969,17 @@ KNOBS: list[dict] = [
     # ---- brains (high blast) ----
     {"path": ["operator"], "group": "brains", "high_blast": True,
      "label": "Verdict chain — who is asked, in order", "kind": "list",
-     "choices": list(BUILDABLE_TIERS),
+     "choices": list(BUILDABLE_TIERS), "choices_source": "tiers",
      "help": "The first entry that answers rules. Anything in this chain but NOT in the trusted "
              "roster below is stamped provisional, never publishes on PASS, and is re-vetted."},
     {"path": ["moat_primary"], "group": "brains", "high_blast": True,
      "label": "Trusted roster — who may rule FINALLY", "kind": "list",
-     "choices": list(BUILDABLE_TIERS),
+     "choices": list(BUILDABLE_TIERS), "choices_source": "tiers",
      "help": "Only these may finalise a verdict and let a PASS reach the shelf. Blank falls back "
              "to operator.MOAT_PRIMARY_DEFAULT. Changing this changes what can be sold."},
     {"path": ["noncritical_operator"], "group": "brains", "high_blast": True,
      "label": "Cheap chain — generation, prescreen, scoring", "kind": "list",
-     "choices": list(BUILDABLE_TIERS),
+     "choices": list(BUILDABLE_TIERS), "choices_source": "tiers",
      "help": "Never rules a verdict. claude_cli is BARRED here by founder directive and the "
              "builder strips it, so adding it back has no effect."},
     # The two chains below were unreachable from this page until 2026-08-18. They are real roles
@@ -1970,12 +1987,12 @@ KNOBS: list[dict] = [
     # editing config.yaml on the box — the one thing this page exists to remove.
     {"path": ["artifact_operator"], "group": "brains", "high_blast": True,
      "label": "Pack writer — who writes what the buyer reads", "kind": "list",
-     "choices": list(BUILDABLE_TIERS),
+     "choices": list(BUILDABLE_TIERS), "choices_source": "tiers",
      "help": "Runs the model-written parts of a pack. It never rules a verdict, so a change here "
              "moves prose quality and cost, never what is allowed to publish."},
     {"path": ["marketing_operator"], "group": "brains", "high_blast": True,
      "label": "Marketing writer — shelf copy and launch text", "kind": "list",
-     "choices": list(BUILDABLE_TIERS),
+     "choices": list(BUILDABLE_TIERS), "choices_source": "tiers",
      "help": "Writes titles, one-liners and marketing copy. The publish gate still grades every "
              "line it produces, so a weaker brain here strands packs rather than shipping bad ones."},
     # ---- the model each brain runs ----
@@ -2123,21 +2140,90 @@ _CHAIN_PROVIDERS = {
     "marketing": ("claude_cli", "minimax"),
     "grounding": ("claude_cli",),
 }
+
+
+def _chain_providers() -> dict[str, tuple[str, ...]]:
+    """The table above PLUS every provider declared in `config.yaml providers:`.
+
+    The comment above claims a new provider "appears on this page without anyone remembering to
+    add it". That was true only for BUILT-INS: the table is hand-written, so the 15 declared
+    providers added on 2026-08-21 had no model-pin field on any chain, and the one knob a
+    declaration exists to expose was the one knob the console could not reach. Founder directive
+    the same day: "needs to be seanless ... and seanless ability ti add nore".
+
+    It is still an ALLOW-LIST, which is the property the comment above is really protecting: the
+    names come from the PARSED `providers:` block, which `providers.parse_declared` has already
+    refused to let shadow a built-in or revive a removed tier — not from raw config text.
+    """
+    from ..providers import declared_now
+
+    declared = tuple(sorted(declared_now() or {}))
+    if not declared:
+        return dict(_CHAIN_PROVIDERS)
+    return {comp: tuple(dict.fromkeys(built + declared))
+            for comp, built in _CHAIN_PROVIDERS.items()}
+def _model_pin_knob(comp: str, prov: str) -> dict:
+    return {
+        "path": ["component_models", comp, prov],
+        "group": "models", "kind": "str",
+        "high_blast": comp == "moat",
+        "label": f"{comp} on {prov}",
+        "help": (f"The model {prov} runs for {_CHAIN_BLURB.get(comp, comp)}. Blank uses "
+                 f"the provider default above, so this field only matters when this chain "
+                 f"should differ from the rest of the estate. It does NOT give this chain "
+                 f"its own health: dead marks and circuit breakers are keyed on the tier "
+                 f"NAME, so benching {prov} anywhere benches it here too."),
+    }
+
+
 for _comp in COMPONENTS:
     for _prov in _CHAIN_PROVIDERS.get(_comp, ()):
-        KNOBS.append({
-            "path": ["component_models", _comp, _prov],
-            "group": "models", "kind": "str",
-            "high_blast": _comp == "moat",
-            "label": f"{_comp} on {_prov}",
-            "help": (f"The model {_prov} runs for {_CHAIN_BLURB.get(_comp, _comp)}. Blank uses "
-                     f"the provider default above, so this field only matters when this chain "
-                     f"should differ from the rest of the estate. It does NOT give this chain "
-                     f"its own health: dead marks and circuit breakers are keyed on the tier "
-                     f"NAME, so benching {_prov} anywhere benches it here too."),
-        })
+        KNOBS.append(_model_pin_knob(_comp, _prov))
 
 KNOBS_BY_KEY: dict[str, dict] = {".".join(k["path"]): k for k in KNOBS}
+
+
+def refresh_declared_knobs() -> None:
+    """Add a model-pin field for every DECLARED provider, once config has been loaded.
+
+    WHY THIS IS NOT DONE IN THE LOOP ABOVE. `installed_declared()` reads a process-global that
+    `config.load_config` installs, and this module is imported before any config is loaded. So
+    the loop above sees an empty declaration block and builds pins for the built-ins only —
+    measured 2026-08-21: groq and mistral, live in the chains and answering, had ZERO console
+    knobs. The list has to be topped up at the moment a caller holds a config, not at import.
+
+    Idempotent, and it only ever ADDS. `KNOBS` and `KNOBS_BY_KEY` are one list and its index, so
+    both are updated together; a knob appended without its index entry is editable on the page
+    and refused on save.
+    """
+    for comp, provs in _chain_providers().items():
+        for prov in provs:
+            label = f"component_models.{comp}.{prov}"
+            if label in KNOBS_BY_KEY:
+                continue
+            spec = _model_pin_knob(comp, prov)
+            KNOBS.append(spec)
+            KNOBS_BY_KEY[label] = spec
+
+    # THE CHAIN DROPDOWNS, which is a second and worse version of the same defect. The five
+    # chain knobs are `kind: list` with `choices: list(BUILDABLE_TIERS)` — the BUILT-IN table —
+    # and `_coerce` refuses on save anything not in `choices`. So with groq and mistral live in
+    # `operator:` on disk, the console could not save ANY config change at all: every save
+    # re-validates the whole page and died on "not allowed here: groq, mistral". A provider you
+    # can declare but cannot select is not configurable from the dashboard, which is the founder
+    # directive this whole change exists to satisfy: "lastly ensure configurability via ops
+    # dashboad".
+    #
+    # Topped up, not replaced, and it stays an ALLOW-LIST: the added names come from the PARSED
+    # `providers:` block, which `providers.parse_declared` has already refused to let shadow a
+    # built-in or revive a removed tier. `moat_primary` is topped up along with the rest — being
+    # SETTABLE is not being trusted, and `openrouter`, `ollama` and `mock` have always been
+    # offered there.
+    from ..providers import buildable_tiers, declared_now
+    tiers = list(buildable_tiers(declared_now()))
+    for spec in KNOBS:
+        if spec.get("choices_source") == "tiers":
+            spec["choices"] = tiers
 
 
 def _normalise_key(key: Any) -> tuple:
@@ -2201,6 +2287,23 @@ def _coerce(spec: dict, value: Any) -> Any:
             raise ValueError("expected a list")
         coerced = [str(v) for v in value]
         choices = spec.get("choices")
+        if spec.get("choices_source") == "tiers":
+            # Resolved HERE, at the moment a name is graded, and never from the list baked into
+            # the spec at import time. `choices` there is `tiers.BUILDABLE_TIERS`, the BUILT-IN
+            # table, because this module is imported long before any config is loaded. Measured
+            # 2026-08-21 with `groq` and `mistral` live in `operator:` on disk: every save
+            # re-validates the whole page, so the console could not save ANY config change at
+            # all — it died on "not allowed here: groq, mistral". A provider you can declare but
+            # cannot select is not configurable from the dashboard, which is the whole point of
+            # this page.
+            #
+            # Still an ALLOW-LIST. The added names come from the PARSED `providers:` block, which
+            # `providers.parse_declared` has already refused to let shadow a built-in or revive a
+            # removed tier. `moat_primary` resolves the same way as the rest: being SETTABLE is
+            # not being trusted, and `openrouter`, `ollama` and `mock` have always been offered
+            # there.
+            from ..providers import buildable_tiers, declared_now
+            choices = list(buildable_tiers(declared_now()))
         if choices:
             bad = [v for v in coerced if v not in choices]
             if bad:
@@ -2335,6 +2438,46 @@ def _act_pause_disarm(cfg, payload: dict, preview: bool) -> dict:
                   nonce=str(payload.get("nonce") or ""))
 
 
+def _act_providers_test(cfg, payload: dict, preview: bool) -> dict:
+    """Call a provider for real and confirm the configured MODEL answered.
+
+    Founder directive 2026-08-21: "when enabeld fron ops, should be able to test fron ops
+    console and cconfirn nodel is active", "for all nodels in platforn".
+
+    `--arg tier=<name>` tests one; no tier tests every model the platform can build. The probe
+    asks for one specific word and grades the reply, so a 200 carrying an upsell body or a
+    silently substituted model is reported as `answered_wrong` rather than as alive.
+
+    IT SPENDS MONEY ON METERED TIERS, and the preview says which ones and roughly how much
+    before anything is called. That is why this is an action with a preview rather than a read:
+    a person clicking Test is a person choosing to spend, and the choice should be informed.
+    """
+    from .heartbeat import METERED_TIERS, platform_tiers, run_heartbeat
+
+    tier = str(payload.get("tier") or "").strip()
+    known = platform_tiers(cfg)
+    if tier and tier not in known:
+        raise ValueError(f"unknown tier {tier!r}; expected one of {', '.join(known)}")
+    targets = (tier,) if tier else known
+    metered = sorted(t for t in targets if t in METERED_TIERS)
+
+    if preview:
+        return {
+            "action": "providers.test",
+            "tiers": list(targets),
+            "count": len(targets),
+            "metered": metered,
+            "spends_money": bool(metered),
+            "cost_note": (
+                "Free tiers cost nothing. Metered tiers bill one short call each — one "
+                "claude_cli probe measured $0.049 on 2026-08-21."
+                if metered else "No metered tier in this set; this probe is free."),
+            "effect": (f"calls {len(targets)} provider(s) once each with a one-word prompt and "
+                       "reports which model answered. Marks nothing dead either way."),
+        }
+    return run_heartbeat(cfg, force=True, tiers=tuple(targets))
+
+
 def _act_drain_reset(cfg, payload: dict, preview: bool) -> dict:
     """Hand every retired row its re-vet budget back by clearing the attempt ledger.
 
@@ -2461,6 +2604,7 @@ def _act_config_set(cfg, payload: dict, preview: bool) -> dict:
     from prospector.ops import config_editor as ce
     from prospector.ops import yaml_surgery as ys
 
+    refresh_declared_knobs()
     key = _normalise_key(payload.get("key"))
     label = ".".join(key)
     spec = KNOBS_BY_KEY.get(label)
@@ -3259,6 +3403,7 @@ ACTIONS: dict[str, Callable[[Any, dict, bool], dict]] = {
     "pause.arm": _act_pause_arm,
     "pause.disarm": _act_pause_disarm,
     "routing.set_moat_primary": _act_routing_set,
+    "providers.test": _act_providers_test,
     "drain.reset": _act_drain_reset,
     "config.set": _act_config_set,
     "config.restore": _act_config_restore,

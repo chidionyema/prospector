@@ -1782,6 +1782,32 @@ def run_tick(cfg, *, dry_run: bool = False, candidates: int | None = None, gener
         _emit_tick_digest(cfg, tick)
         return tick
 
+    # HEARTBEAT. Founder directive 2026-08-21: "need heatbeat", "for all nodels in platforn".
+    #
+    # It runs HERE, immediately before the moat preflight, for two reasons. The preflight reads
+    # dead marks, so anything the heartbeat learns is one line older than the decision that uses
+    # it. And a tick that is about to be skipped still leaves a fresh answer behind: the hours
+    # when nothing runs are exactly the hours somebody opens the console asking which brain is
+    # alive, and before this the honest answer was "nothing has asked since the last real call".
+    #
+    # It is BELOW the PAUSE and spend guards on purpose. PAUSE halts the entire tick and a rail
+    # with exceptions is not a rail, so a paused engine takes no rounds — the console's
+    # `providers.test` action is the manual path while paused, and it says so on the page.
+    #
+    # It never raises into the tick. A monitor that can stop the thing it monitors is worse than
+    # no monitor, and it marks nothing dead (see prospector/ops/heartbeat.py), so it cannot bench
+    # a brain or eat the half-open recovery probe the next real call is entitled to.
+    try:
+        from ..ops.heartbeat import run_heartbeat
+
+        beat = run_heartbeat(cfg)
+        if beat["probed"]:
+            tick["heartbeat"] = {"probed": beat["probed"], "alive": beat["alive"],
+                                 "down": beat["down"]}
+            logger.info("Heartbeat: %d alive, %d down", len(beat["alive"]), len(beat["down"]))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Heartbeat failed, continuing: %s", exc)
+
     # MOAT PREFLIGHT. Checked after the guard (spend/PAUSE still own the money rails) and
     # before any work, because both halves of a tick — the resume drain and generation — need a
     # trusted brain. Generating into a blind moat produces `provisional` rows that cannot

@@ -21,6 +21,10 @@ export const VIEWS = [
   'queue',
   'drain',
   'providers',
+  // Which brains answered a real question, and when. Separate from `providers`, which
+  // reports what config DECLARES and what health marks say; this one reports what the
+  // model actually replied. Free to read: it serves the last round off disk.
+  'heartbeat',
   'routing',
   'spend',
   'money',
