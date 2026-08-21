@@ -116,8 +116,13 @@ export default function AllPacks({ groups, total, currency, market, unavailable 
           lead="The catalogue is briefly unreachable, so this page cannot list the packs right now. Try again in a minute."
         />
         <Section bg="white" width="7xl">
+          {/* `/#catalog`, not `/`. `/` is the top of a long marketing page; the shelf itself is
+              the anchor, and it is what the other pages point at. It also matters that this link
+              is a real forward link: when the catalogue is unreachable this holding page is the
+              WHOLE page, so a link to the top of the marketing site leaves a visitor with
+              nowhere to go, and `e2e/first-run.spec.ts` FR3 says so. */}
           <p className="lede">
-            <Link href="/" className={textLinkClass('font-medium')}>
+            <Link href="/#catalog" className={textLinkClass('font-medium')}>
               Back to the catalogue
             </Link>
             .
