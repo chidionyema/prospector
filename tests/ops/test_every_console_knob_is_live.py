@@ -20,7 +20,9 @@ The list `_NO_READER_OUTSIDE_CONSOLE` is where that gap is written down rather t
 """
 from __future__ import annotations
 
-import subprocess
+import re
+import sys
+from functools import lru_cache
 
 import pytest
 import yaml
@@ -28,6 +30,38 @@ import yaml
 from prospector.config import REPO_ROOT, load_config
 from prospector.ops import config_editor as ce
 from prospector.ops import console_api as api
+
+sys.path.insert(0, str(REPO_ROOT / "tests" / "unit"))
+
+from repo_files import repo_files  # noqa: E402
+
+
+@lru_cache(maxsize=1)
+def _searchable() -> tuple[tuple[str, str], ...]:
+    """(relative path, text) for everything under prospector/ and scripts/ worth grepping.
+
+    This used to shell out to `rg` once per knob. That passed on the founder's laptop and failed
+    61 times on the Fly CI runners, whose image has no ripgrep: `FileNotFoundError: [Errno 2] No
+    such file or directory: 'rg'` (run 32444675763, job 96665192946, 2026-08-21). A test may only
+    depend on tools the runner actually has, and the local gate cannot catch the difference,
+    because the laptop has them.
+
+    Read once and cached, so this is also 61 fewer processes than the version it replaces.
+    """
+    out = []
+    for path in repo_files():
+        rel = path.relative_to(REPO_ROOT).as_posix()
+        if not (rel.startswith("prospector/") or rel.startswith("scripts/")):
+            continue
+        if rel.endswith(".md") or rel == "prospector/ops/console_api.py":
+            continue
+        if rel.startswith(("store/", "storage/")) or "/node_modules/" in rel:
+            continue
+        try:
+            out.append((rel, path.read_text(errors="ignore")))
+        except OSError:
+            continue
+    return tuple(out)
 
 _RAW = yaml.safe_load((REPO_ROOT / "config.yaml").read_text())
 _CFG = load_config()
@@ -106,13 +140,8 @@ def test_something_outside_the_console_names_this_key(knob):
         pytest.skip(_NO_READER_OUTSIDE_CONSOLE[key])
     names = [knob["path"][-1], knob["path"][0]]
     for name in names:
-        out = subprocess.run(
-            ["rg", "-l", "--no-ignore-vcs", "-g", "!node_modules/**", "-g", "!*.md",
-             "-g", "!store/**", "-g", "!storage/**", "-g", "!ops/console_api.py",
-             rf"\b{name}\b", "prospector", "scripts"],
-            capture_output=True, text=True, cwd=REPO_ROOT)
-        files = [f for f in out.stdout.splitlines() if "ops/console_api.py" not in f]
-        if files:
+        word = re.compile(rf"\b{re.escape(name)}\b")
+        if any(word.search(text) for _, text in _searchable()):
             return
     pytest.fail(
         f"{key}: nothing under prospector/ or scripts/ outside the console names either "
