@@ -19,6 +19,7 @@ green. Three independent causes, one test each here:
 from __future__ import annotations
 
 import importlib.util
+import os
 import subprocess
 from pathlib import Path
 
@@ -260,17 +261,37 @@ def test_the_drifted_copy_names_the_command_that_fixes_it():
     assert "install_failover_watch.sh" in line, line
 
 
-def test_the_running_copy_is_compared_by_content_not_by_mtime():
+def test_the_running_copy_is_compared_by_content_not_by_mtime(tmp_path, monkeypatch):
     """Two bytes-identical files with different timestamps are the SAME code.
 
     Grading a copy by its mtime is the proxy this estate keeps paying for: it goes red on a
-    harmless `cp` and green on a file edited in place. The probe hashes the bytes."""
+    harmless `cp` and green on a file edited in place. The probe hashes the bytes.
+
+    Built entirely in tmp_path, deliberately. The first version of this test asserted on the
+    real STANDBY_CHECKOUT, which is a laptop path (`engine_failover.py:76`); CI runs the repo at
+    /home/runner/_work and the test went red for the host it ran on rather than for the code.
+    """
     ef = _load("engine_failover")
+    mirror_dir = tmp_path / "checkout" / "scripts"
+    mirror_dir.mkdir(parents=True)
+    mirror = mirror_dir / "engine_failover.py"
+    running = Path(ef.__file__)
+    mirror.write_bytes(running.read_bytes())
+    # Same bytes, an hour apart. mtime is the proxy; content is the answer.
+    os.utime(mirror, (0, 0))
+    monkeypatch.setattr(ef, "STANDBY_CHECKOUT", tmp_path / "checkout")
+
     probe = ef.probe_running_code()
     assert probe.get("error") is None, probe
-    # _load() imports the checkout copy itself, so the probe must say so rather than invent a
-    # comparison between one file and itself.
-    assert probe.get("same_file") is True, probe
+    assert probe.get("same_file") is False, probe
+    assert probe["digest"] == probe["checkout_digest"], probe
+    assert " OK " in ef.running_code_line(probe), probe
+
+    # And a real difference still reads as drift, so the test above is not passing by accident.
+    mirror.write_bytes(running.read_bytes() + b"\n# drift\n")
+    drifted = ef.probe_running_code()
+    assert drifted["digest"] != drifted["checkout_digest"], drifted
+    assert "!!" in ef.running_code_line(drifted), drifted
 
 
 def test_status_actually_prints_the_running_code_line():
