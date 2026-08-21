@@ -398,6 +398,54 @@ def test_json_mode_carries_what_the_console_renders(tmp_path, monkeypatch, capsy
     assert payload["automation"] == "offsite_backup"
 
 
+def test_a_source_that_cannot_be_taken_here_does_not_cancel_the_ones_after_it(tmp_path, monkeypatch):
+    """The failure that produced this test, measured 2026-08-21.
+
+    `logs` fetches /data/logs, which is a Fly volume mount that exists in the engine container
+    and on no other host. It is declared fourth. On the laptop the fetch exited non-zero, the
+    raise left the source loop, and every source declared AFTER it was cancelled by a failure
+    that had nothing to do with it -- silently, because the run's one printed line named only
+    the source that raised. The run must still end unknown. What must not happen is a source
+    losing its backup because a different source could not be taken on this host."""
+    import ops.automations.offsite_backup as engine
+
+    storage = FakeStorage()
+    monkeypatch.setattr(engine, "storage_client",
+                        lambda _s: (storage, "backup-bucket", "offsite/"))
+    seed = _sqlite_file(tmp_path / "seed.db")
+    decl = _declaration(tmp_path, sources=[
+        {"name": "cannot-be-taken-here", "key": "nope/x.db",
+         "fetch": ["sh", "-c", "echo no such directory >&2; exit 1"], "verify": "sqlite"},
+        {"name": "money-db", "key": "money-db/store.db",
+         "fetch": ["cp", str(seed), "{dest}"], "verify": "sqlite"},
+    ])
+
+    result = engine.run(decl, fix=True)
+
+    assert result["status"] == "unknown", "a source that could not be taken is never clean"
+    assert "cannot-be-taken-here" in result["reason"]
+    taken = [key for _local, key in storage.uploaded]
+    assert any(key.startswith("offsite/money-db/") for key in taken), (
+        f"the money database was cancelled by another source's failure; uploaded {taken}"
+    )
+
+
+def test_the_live_declaration_scopes_every_engine_only_source_to_the_engine(tmp_path):
+    """/data/logs exists in the engine container and nowhere else, so without `only_where` the
+    laptop's 03:50 run exits 2 every night claiming the engine's ingest wrote nothing. It had
+    written 62 MB across four files that day. `only_where` skips the FETCH on a host that cannot
+    do it; `check` still grades the prefix from both hosts, which is the signal that matters."""
+    repo = Path(__file__).resolve().parents[2]
+    decl = load_declaration(repo / "ops" / "config" / "offsite_backup.yaml")
+
+    logs = next((s for s in decl.sources if s.name == "logs"), None)
+    assert logs is not None, "the engine log archive must stay declared"
+    assert logs.only_where == "/data/logs", (
+        "a source whose fetch reads /data/logs must say so, or every host without that mount "
+        f"fails the whole run; got only_where={logs.only_where!r}"
+    )
+
+
 def test_the_live_declaration_parses():
     """The live declaration. It is the only thing standing between a Fly account loss and
     every record of who bought what."""
