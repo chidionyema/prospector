@@ -5,7 +5,6 @@
     engine_failover.py check                      one poll; what the watchdog job runs
     engine_failover.py arm  / disarm              turn automatic failover on and off
     engine_failover.py switch --to laptop|fly     move the engine, by hand
-    engine_failover.py sync                       pull Fly's money files down to the standby
 
 WHY THIS FILE EXISTS
 --------------------
@@ -52,7 +51,6 @@ import json
 import os
 import re
 import shutil
-import sqlite3
 import subprocess
 import sys
 import time
@@ -68,7 +66,7 @@ ACTIVE_F = CTRL / "ACTIVE"
 ARMED_F = CTRL / "AUTOFAILOVER"
 FAILS_F = CTRL / "failcount"
 EVENTS_F = CTRL / "events.jsonl"
-STANDBY = CTRL / "standby"          # the pulled copy of Fly's money files
+STANDBY = CTRL / "standby"          # where a failover restores the money files TO
 #: The checkout a failback would start FROM. A different axis from the money files above:
 #: those carry the DATA, this carries the CODE, and the two rot independently and for
 #: unrelated reasons. Reporting one and calling it "the exposure" is what let the code axis
@@ -77,6 +75,17 @@ STANDBY_CHECKOUT = Path(os.environ.get(
     "PROSPECTOR_STANDBY_CHECKOUT", "/Users/chidionyema/Documents/code/prospector-live"))
 
 FLY_APP = os.environ.get("PROSPECTOR_FLY_APP", "prospector-engine")
+#: The ONE backup system. Until 2026-08-21 this file carried a second one: 220 lines that
+#: pulled both money files off Fly over `fly ssh sftp` every 15 minutes, with its own
+#: size check, partial-tail trimmer, shrink-refusal switch and stderr parser. It produced
+#: four distinct failures in one day - out of disk, a 600s timeout, a flyctl metrics
+#: WARNING parsed as "the file did not arrive", and a 1970 timestamp in its own log - while
+#: scripts/backup_store.py was already putting the same two files in R2 and getting it
+#: right. Measured the day it was deleted: R2's ledger snapshot was 2 minutes old and
+#: 34,687,133 bytes; the last thing the sftp path landed was 9,240,576 bytes of a
+#: 455,787,146-byte file, promoted as if it were complete.
+BACKUP_PY = REPO / "scripts" / "backup_store.py"
+VENV_PY = Path(os.environ.get("PROSPECTOR_VENV_PYTHON", str(REPO / ".venv" / "bin" / "python")))
 LAPTOP_STORE = Path(os.environ.get("PROSPECTOR_STORE_DIR",
                                    "/Users/chidionyema/Documents/code/prospector/store"))
 NEEDED_AGREEING_POLLS = int(os.environ.get("PROSPECTOR_FAILOVER_POLLS", "5"))
@@ -87,10 +96,9 @@ HEARTBEAT_STALE_S = int(os.environ.get("PROSPECTOR_HEARTBEAT_STALE_S", "300"))
 
 # The two files that carry money. The spend ledger decides whether the daily cap has been hit;
 # the database carries the catalogue and the entitlements. Everything else - dossiers, logs,
-# caches - is reproducible, so the standby copy does not carry it and the sync stays cheap
-# enough to run every fifteen minutes.
+# caches - is reproducible. scripts/backup_store.py puts both in R2 continuously; this file
+# no longer copies them itself, it restores them from there when a failover needs them.
 MONEY_FILES = ("prospector.jsonl", "prospector.db")
-_TAIL_WINDOW = 262144          # bytes read from the end to find the last record boundary
 
 
 def on_fly() -> bool:
@@ -394,19 +402,57 @@ def probe_standby() -> dict:
     """
     out: dict = {"files": {}, "code": probe_standby_code(),
                  "running_code": probe_running_code()}
-    oldest = None
-    for name in MONEY_FILES:
-        f = STANDBY / name
-        if not f.exists():
-            out["files"][name] = None
-            oldest = -1
-            continue
-        age = round((time.time() - f.stat().st_mtime) / 60, 1)
-        out["files"][name] = {"bytes": f.stat().st_size, "age_min": age}
-        oldest = age if oldest is None else max(oldest, age)
-    out["staleness_min"] = oldest
-    out["usable"] = oldest is not None and oldest >= 0
+    state = backup_state()
+    out["backup"] = state
+    if state.get("error"):
+        out["staleness_min"] = -1
+        out["usable"] = False
+        return out
+    for name, label in ((MONEY_FILES[0], "ledger"), (MONEY_FILES[1], "db")):
+        rec = state.get(label)
+        out["files"][name] = None if not rec else {
+            "bytes": rec["bytes"], "age_min": round(rec["age_h"] * 60, 1), "key": rec["key"]}
+    oldest = state.get("oldest_age_h")
+    out["staleness_min"] = -1 if oldest is None else round(oldest * 60, 1)
+    out["usable"] = bool(state.get("complete"))
     return out
+
+
+def backup_state() -> dict:
+    """What the ONE backup system holds, asked of it rather than reimplemented.
+
+    Shelled out to the repo's venv on purpose. This file also runs as a frozen copy under
+    /usr/bin/python3, which has no venv and no boto3 (deploy/install_failover_watch.sh) -- an
+    `import boto3` at module scope would make the whole failover watchdog unimportable on the
+    one machine it exists to protect.
+
+    Only cmd_status and do_failover reach this. cmd_check, which runs every 60 seconds, does
+    not, so the watchdog costs no network calls.
+    """
+    if not VENV_PY.exists():
+        return {"error": f"no venv python at {VENV_PY}"}
+    rc, so, se = sh([str(VENV_PY), str(BACKUP_PY), "--money-state"], timeout=120)
+    if rc != 0:
+        return {"error": (se or so or "no output").strip()[:300]}
+    try:
+        return json.loads(so)
+    except ValueError as exc:
+        return {"error": f"unreadable money-state: {exc}"}
+
+
+def restore_money(dest: Path) -> tuple[bool, str]:
+    """Bring both money files back from R2 into `dest`. Returns (ok, what happened).
+
+    The whole restore lives in scripts/backup_store.py, which verifies the round trip against
+    Content-Length and the gzip CRC written at compression time. Duplicating any of that here
+    is what produced the 220 lines this function replaced.
+    """
+    if not VENV_PY.exists():
+        return False, f"no venv python at {VENV_PY}"
+    dest.mkdir(parents=True, exist_ok=True)
+    rc, so, se = sh([str(VENV_PY), str(BACKUP_PY), "--restore-money", str(dest)], timeout=1800)
+    tail = (so or se or "").strip().splitlines()
+    return rc == 0, (tail[-1] if tail else f"rc={rc}")
 
 
 # --------------------------------------------------------------------------- commands
@@ -538,23 +584,29 @@ def do_failover() -> int:
     # on the laptop's own store, and say so loudly - a stale engine beats no engine, but the
     # operator has to be told which one they got.
     sb = probe_standby()
-    if sb["usable"]:
+    ok, detail = restore_money(STANDBY)
+    if ok and sb["usable"]:
         for name in MONEY_FILES:
-            src = STANDBY / name
-            if not src.exists():
+            pulled = STANDBY / name
+            if not pulled.exists():
                 continue
             dst = LAPTOP_STORE / name
             if dst.exists():
                 # Keep what the laptop had. A failover that turns out to have restored the wrong
                 # thing must be undoable, and the laptop's own copy is the only other candidate.
                 shutil.copy2(dst, dst.with_name(dst.name + ".pre-failover"))
-            shutil.copy2(src, dst)
-        event("restored", staleness_min=sb["staleness_min"], files=list(MONEY_FILES))
-        print(f"restored standby copy (stale by {sb['staleness_min']} min)", file=sys.stderr)
-    else:
-        event("restore_skipped", reason="no standby copy")
-        print("NO standby copy - starting the laptop on its own store, which may be old",
+            shutil.copy2(pulled, dst)
+        event("restored", staleness_min=sb["staleness_min"], files=list(MONEY_FILES),
+              detail=detail)
+        print(f"restored from R2 (snapshot {sb['staleness_min']} min old): {detail}",
               file=sys.stderr)
+    else:
+        # Never abandon the failover for this. A stale engine beats no engine; what must not
+        # happen is the operator not being told which one they got.
+        event("restore_skipped", reason=detail if not ok else "backup incomplete",
+              backup=sb.get("backup"))
+        print(f"COULD NOT RESTORE FROM R2 ({detail}) - starting the laptop on its own store, "
+              f"which may be old", file=sys.stderr)
 
     rc, so, se = call_adapter("laptop", "t_start")
     print(so, se, file=sys.stderr)
@@ -568,221 +620,6 @@ def do_failover() -> int:
     event("failover_done", frm="fly", to="laptop", staleness_min=sb.get("staleness_min"))
     print("FAILED OVER to laptop. Automatic failover is now disarmed.", file=sys.stderr)
     return 2
-
-
-def _trim_partial_tail(path: Path) -> int:
-    """Cut a trailing incomplete record off a pulled JSONL. Returns the bytes removed.
-
-    The source is APPEND-ONLY and is being appended to while it is read, so a transfer that
-    finished perfectly normally can still end mid-record: the writer added a partial line after
-    the reader passed that offset. Refusing on a ragged tail would therefore reject good copies
-    intermittently and page somebody about a file that was fine.
-
-    An append-only ledger is defined by its COMPLETE lines. A trailing partial record carries
-    nothing that is lost by dropping it, so the ragged tail is trimmed and the copy is kept. The
-    refusal is reserved for the shrink, which is the condition that actually means "truncated".
-
-    Read only the tail: these ledgers run to hundreds of megabytes and this runs every 15
-    minutes. 256 KB is far more than any single record and costs one seek.
-    """
-    try:
-        size = path.stat().st_size
-        with path.open("rb") as fh:
-            fh.seek(max(0, size - _TAIL_WINDOW))
-            window = fh.read()
-    except OSError:
-        return 0
-    if not window:
-        return 0
-    last_nl = window.rfind(b"\n")
-    if last_nl == -1:
-        return 0                        # no complete record in the window; leave it to the
-                                        # shrink rule, which is what grades this case
-    keep_to = (size - len(window)) + last_nl + 1
-    if keep_to >= size:
-        return 0                        # already ends on a record boundary
-    trailing = window[last_nl + 1:]
-    try:
-        json.loads(trailing.decode("utf-8", "replace"))
-    except ValueError:
-        pass
-    else:
-        return 0                        # a complete record with no closing newline
-    with path.open("r+b") as fh:
-        fh.truncate(keep_to)
-    return size - keep_to
-
-
-def _shrink_is_waived() -> bool:
-    """Consume a one-shot permission to accept a smaller file, and say so loudly.
-
-    A rotation on Fly or a VACUUM of the db really can shrink the source. That is rare and it is
-    a decision. An environment variable would be set once in a plist to get one rotation through
-    and then stay set forever, silently, with the guard gone and no trace -- the same shape as an
-    expired dead mark. So the switch is a FILE THAT IS DELETED AS IT IS CONSUMED, and honouring
-    it emits a critical event, so the process audit reports that the guard was waived rather than
-    reporting nothing.
-    """
-    token = STANDBY / "ALLOW_SHRINK"
-    if not token.exists():
-        return False
-    token.unlink(missing_ok=True)
-    event("sync_shrink_waived", severity="critical")
-    return True
-
-
-def _source_size(name: str) -> int | None:
-    """How many bytes the file has on Fly right now, or None if the box could not be asked.
-
-    This is the only check that can tell a FINISHED transfer from a STOPPED one, and it is worth
-    the extra round trip every fifteen minutes for exactly that reason.
-
-    Grading the arrival against the local previous copy instead grades it against local history,
-    and local history is the thing a truncating sync corrupts. Once one fragment is on disk it
-    becomes the floor, and every later fragment only has to beat the fragment: measured
-    2026-08-20 the floor was 25,296,896 bytes against a 407,981,598-byte source, so a pull cut at
-    200 MB would have been accepted and enshrined as the next floor. Peer session wt-storeroot-4a
-    found that hole in the first version of this guard.
-
-    A failed probe returns None rather than raising, and the caller falls back to the monotonic
-    rule and SAYS which check it ran. A guard that cannot ask the source is weaker; it must not
-    also be silent about it.
-    """
-    rc, so, _se = sh(["fly", "ssh", "console", "-a", FLY_APP, "-C",
-                      f"/bin/sh -c 'wc -c < /data/store/{name}'"], timeout=90)
-    if rc != 0:
-        return None
-    digits = re.search(r"\d+", so or "")
-    return int(digits.group()) if digits else None
-
-
-def _db_is_intact(path: Path) -> bool:
-    """Does the pulled SQLite file actually open and read, page by page?
-
-    Size cannot answer this one. `fly ssh sftp get` copies a database that is being WRITTEN, so
-    a transfer can finish, arrive at exactly the right length, and still hold pages from two
-    different states of the file. That copy opens perfectly and fails on the first real read -
-    which is worse than a truncated ledger, because it fails during a failover rather than
-    during the sync.
-
-    Read-only URI so the check cannot itself write a journal beside the file. The guard wraps the
-    QUERY, not the connect: a torn database connects without complaint and raises on the scan.
-    """
-    try:
-        con = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=30)
-    except sqlite3.Error:
-        return False
-    try:
-        row = con.execute("PRAGMA integrity_check").fetchone()
-        return bool(row) and row[0] == "ok"
-    except sqlite3.Error:
-        return False
-    finally:
-        con.close()
-
-
-def _rejects_arrival(tmp: Path, dest: Path, name: str, source: int | None) -> str:
-    """Say why a pulled file must not replace the standby copy, or "" to accept it.
-
-    Three checks, in order of how directly they answer "did the transfer finish":
-
-      1. Against the SOURCE size. Equal or larger means the reader reached EOF; smaller means it
-         stopped. This is the real test and it is used whenever the probe answered.
-      2. Against the copy already held, only when the probe did NOT answer. Weaker, because the
-         copy already held may itself be a fragment, but a ratchet is still better than nothing.
-      3. For the database, that it opens and scans. Size says nothing about a torn snapshot.
-
-    A stale whole file beats a fresh fragment every time, so a refusal keeps what is on disk.
-    """
-    arrived = tmp.stat().st_size
-    if arrived == 0:
-        return "arrived with no complete record"
-
-    if source is not None:
-        if arrived < source and not _shrink_is_waived():
-            return (f"{arrived:,} bytes arrived of the {source:,} on Fly - the transfer stopped "
-                    f"short (touch {STANDBY / 'ALLOW_SHRINK'} if the source really did shrink)")
-    elif dest.exists() and arrived < dest.stat().st_size:
-        if not _shrink_is_waived():
-            return (f"could not read the source size, and {arrived:,} bytes is smaller than the "
-                    f"{dest.stat().st_size:,} already held (touch "
-                    f"{STANDBY / 'ALLOW_SHRINK'} if the source really did shrink)")
-
-    if name.endswith(".db") and not _db_is_intact(tmp):
-        return "arrived as a SQLite file that does not pass an integrity check"
-    return ""
-
-
-def cmd_sync(args) -> int:
-    """Pull Fly's money files down to the standby copy. Bounds what a failover would lose."""
-    if active_side() != "fly":
-        print("active side is not fly - nothing to pull")
-        return 0
-    CTRL.mkdir(parents=True, exist_ok=True)
-    STANDBY.mkdir(parents=True, exist_ok=True)
-    ok = True
-    for name in MONEY_FILES:
-        tmp = STANDBY / (name + ".partial")
-        # Ask the source how big it is BEFORE pulling it. The answer is what turns "is this file
-        # plausible" into "did this transfer finish"; see _source_size.
-        src_size = _source_size(name)
-        rc, so, se = sh(["fly", "ssh", "sftp", "get", "-a", FLY_APP,
-                         f"/data/store/{name}", str(tmp)], timeout=600)
-        # `fly ssh sftp` has exited 0 on a failed transfer before (it cost cutover attempt 6),
-        # so the exit status is never trusted. What replaced it was `size > 0`, which is a
-        # PROXY for completeness and grades nothing: a transfer cut off at any point is
-        # non-empty, so it passed, and `tmp.replace` then destroyed the last good copy.
-        #
-        # Measured 2026-08-20. The mirror tracked the source exactly, 407,230,958 bytes at
-        # 18:50 rising to 407,981,598 at 20:26. Then three consecutive pulls hit the 600s
-        # timeout and were promoted anyway: 17,170,432 bytes, then 10,027,008, then
-        # 25,296,896 - each one a prefix ending mid-line, each one overwriting the whole
-        # copy before it. The log printed every fragment's byte count as a success line, so
-        # the rail read healthy while the standby ledger fell to 6.2% of the source. This is
-        # the disaster-recovery copy of the money file for a business running on one Fly app.
-        #
-        # The check that replaced it grades the arrival against the SOURCE size, read off Fly
-        # just before the pull. Grading it against the copy already on disk was the first
-        # version and it has a hole: a fragment on disk becomes the floor, so the next fragment
-        # only has to beat the fragment.
-        #
-        # Two conditions, two treatments, because they are not the same failure:
-        #   SHRINK -> REFUSE. The ledger is append-only, so a pull smaller than the copy already
-        #      on disk is a truncated transfer, always. A stale whole file beats a fresh fragment
-        #      every time, so the good copy stays and the arrival is parked beside it.
-        #   RAGGED TAIL -> TRIM. The source is being APPENDED TO while it is read, so a transfer
-        #      that finished normally can still end mid-record. Refusing on that would reject
-        #      good copies intermittently. An append-only ledger is defined by its complete
-        #      lines, so the partial one is cut and the copy is kept.
-        # A legitimate shrink (a rotation on Fly, a VACUUM of the db) is real but rare, and it
-        # must be a deliberate act rather than something a timeout can do by accident. The
-        # switch is a one-shot file, `standby/ALLOW_SHRINK`, deleted as it is consumed.
-        if not tmp.exists() or tmp.stat().st_size == 0:
-            print(f"sync: {name} did not arrive ({(se or so).strip()[:120]})", file=sys.stderr)
-            tmp.unlink(missing_ok=True)
-            ok = False
-            continue
-        dest = STANDBY / name
-        # Completeness FIRST, on the bytes as they arrived, because the trim below deliberately
-        # makes the file smaller and the completeness test is a size test.
-        reason = _rejects_arrival(tmp, dest, name, src_size)
-        if not reason and name.endswith(".jsonl"):
-            trimmed = _trim_partial_tail(tmp)
-            if trimmed:
-                print(f"sync: {name} trimmed {trimmed:,} bytes of an incomplete trailing record")
-        if reason:
-            kept = STANDBY / (name + ".rejected")
-            tmp.replace(kept)
-            print(f"sync: {name} REFUSED - {reason}; kept the existing copy "
-                  f"({dest.stat().st_size:,} bytes) and parked the arrival at {kept.name}",
-                  file=sys.stderr)
-            event("sync_rejected", file=name, reason=reason)
-            ok = False
-            continue
-        tmp.replace(dest)               # atomic: a half-pulled file is never the standby copy
-        print(f"sync: {name} {dest.stat().st_size:,} bytes")
-    event("sync", ok=ok, staleness_min=probe_standby()["staleness_min"])
-    return 0 if ok else 1
 
 
 def cmd_arm(args) -> int:
@@ -1102,9 +939,6 @@ def main() -> int:
 
     s = sub.add_parser("check", help="one poll; what the watchdog job runs")
     s.set_defaults(fn=cmd_check)
-
-    s = sub.add_parser("sync", help="pull Fly's money files to the standby copy")
-    s.set_defaults(fn=cmd_sync)
 
     s = sub.add_parser("receipts", help="sign the container's job receipts into Hermes")
     s.set_defaults(fn=cmd_receipts)
