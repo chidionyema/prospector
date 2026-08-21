@@ -1,46 +1,12 @@
-# LAW 0 — ROOT CAUSE, AND THE CLASS OF MISTAKE
-
-Founder directive 2026-08-19: "our rules root cause and classes of mistakes needs to headline
-claude.md file". Everything below this block is detail. This is the rule that outranks it.
-
-**A fix that stops one instance is not a fix.** Fix what broke, then ask what let it break, and
-keep asking until the answer names a CLASS of failure rather than one bug. Stop only when the
-next link is a decision a person must make, and say so plainly. Reporting the first link and
-stopping is the failure this law exists to kill.
-
-**Then close the class mechanically, in this order, every time:**
-1. **Self-healing** — can the system correct itself with no agent involved?
-2. **A guard** — can a machine REFUSE the mistake? A PreToolUse hook, a test, a CI job, a gate.
-3. **A memory file** — only when 1 and 2 are impossible, or already in place.
-
-A memory file on its own is the floor, never the answer. A documented trap is not a guarded trap
-(memory `a-documented-trap-is-not-a-guarded-trap.md`). If the failure can recur mechanically, an
-incident is not closed until something fails when it recurs.
-
-**The guard must reach EVERY agent, not this session.** Sessions share this estate and cannot see
-each other. Six agents will independently find the same defect and fix it six times unless the
-refusal lives somewhere all six pass through: a hook in `~/.claude/scripts/`, a test in the suite,
-a CI job, or the repo's own gate. "I will remember" is not a mechanism. Neither is a handoff.
-
-**Worked example — the one that produced this law.** 2026-08-19: 22 pull requests open, nothing
-merging, every agent grinding the same ground. The chain: no PR had auto-merge enabled → native
-auto-merge cannot be enabled here at all (`403 Upgrade to GitHub Pro` on both
-`/branches/main/protection` and `/rulesets`) → `.github/workflows/automerge.yml` is the substitute
-and only merges a CI run that CONCLUDES green → `.github/workflows/ci.yml` sets
-`cancel-in-progress` for every ref that is not main → so every agent push killed the in-flight run
-that was about to merge another agent's work. Measured: 7 of the last 60 CI runs succeeded, 16
-were cancelled. The class is **an agent action that silently destroys another agent's in-flight
-work**. It was closed with a guard, not a note: `~/.claude/scripts/push-pr-fence.py` now refuses a
-push while that branch's CI is live.
-
----
-
 # Prospector Operating Rules
 
-**This file is WHAT PROSPECTOR IS: its rules, its topology, its gates.** `~/.claude/CLAUDE.md` is
-HOW to work in any repo, and the two never overlap. Nothing generic belongs here; nothing about
-this project belongs there. `~/.claude/scripts/scope-guard.py` refuses a write that crosses the
-line (escape marker `SCOPE-LEAK-OK`).
+**This file is WHAT PROSPECTOR IS: its module map, its topology, its gates.** `AGENTS.md` at this
+repo root is the only governance file: the eighteen laws in priority order, then the Prospector
+contract that says who writes code here and what stays true. Rules live there, not here. When the
+two disagree, `AGENTS.md` wins, and the lower-numbered law wins inside it.
+
+The old `LAW 0` block that used to headline this file is now LAW 6 in `AGENTS.md`, unchanged in
+substance. Root cause and the class of mistake still outrank everything below.
 
 **This file carries the RULE. The incident that produced it is in memory, and the detail is in
 docs.** Every cut below names where its detail went. Verbatim pre-cut text:
