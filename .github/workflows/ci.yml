@@ -427,38 +427,46 @@ jobs:
     needs: changes
     if: needs.changes.outputs.python == 'true'
     runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
-    # 60, and the number that matters is not the suite's length -- it is the SPREAD.
+    # 60 is a STOPGAP, not the fix. The fix is recycling the runner machines; see below.
     #
-    # The 40 this replaces was picked from two laptop timings (445s at 12 workers on a quiet
-    # box, 1281s under load) and never from the box that runs the job. Measured 2026-08-21 on
-    # the real runners, same `python -m pytest -q $files -n 4` command, same ~7100 tests:
+    # MEASURED 2026-08-21 on the real fleet. A CI runner is a `shared-cpu-4x` Fly machine, and
+    # its share of the host collapses as the machine's uptime grows. Two 20-second samples of
+    # /proc/stat, taken in the same minute on two machines of the identical size in lhr:
     #
-    #   PR #553, job 96672812307, runner-7819643f1e1038: 7141 passed in  493.29s (8m13s)
-    #   PR #551, job 96666651868, runner unnamed:        7099 passed in 2256.56s (37m36s)
-    #   PR #550, job 96660189452:                        Test suite ran 37m37s
+    #   7819643f1e1038, up 1d 9h, running a real pytest job:
+    #       user+sys 540 ticks, STEAL 7341, of 8182 total  ->  6.6% of its own CPU
+    #   82d1de4f022768, up 1h 30m, under an identical 4-way full-tilt burn:
+    #       user+sys 7932 ticks, STEAL 23,  of 8002 total  ->  99.1% of its own CPU
     #
-    # 4.6x, on the same command and the same machine type. A CI runner is a `shared-cpu-4x`
-    # Fly machine, so its vCPU is burstable: a 4-worker pytest run at full tilt spends the
-    # burst balance and the rest of the run is served at the throttled baseline. The tell in
-    # the slow log is a 607-SECOND gap before xdist prints `bringing up nodes...` -- ten
-    # minutes to fork four processes is CPU starvation, not a slow test.
+    # 15x. The same ratio shows up in the suite itself, same command, same 7093 tests:
     #
-    # What that did on 2026-08-21: every open pull request was red on `python` and not one of
-    # them had a failing test. Every step inside those jobs reported success; the JOB crossed
-    # 40:00 by a couple of seconds and GitHub marked the whole thing `cancelled`, which the
-    # checks API then reports as a failure. It is indistinguishable in the pull request UI
-    # from a test that actually broke, so each agent spends an hour hunting a defect in their
-    # own diff that was never there.
+    #   job 96674219824, runner-8576715b121d68 (up ~2m):  7093 passed in  155.99s
+    #   job 96658139188, runner-48e2363f565548 (up 1d9h): 7093 passed in 2126.48s
     #
-    # The only command that tells the two apart, because step conclusions are not in the UI:
+    # Steal over lifetime busy time: 0.4% and 0.7% on the two machines rebooted at 05:04,
+    # against 281%, 365% and 433% on the three up since 2026-08-19. The machine waits three to
+    # four ticks for the host for every tick it executes.
+    #
+    # It is NOT a slow test, NOT the branch (the same sha ran 2256s and 1241s on two machines),
+    # NOT the fleet's own concurrency (the 04:56 job had the same neighbours as the 03:38 one),
+    # and NOT the two background security scans this step forks, though those do oversubscribe
+    # a 4-core box: `pytest -n 4` plus bandit plus pip-audit, with ci_capacity.yaml declaring
+    # reserved_cpus 0 and job_cpus.python 4. That is worth its own fix and it is worth ~1.5x,
+    # not 15x.
+    #
+    # The tell in a slow log is a 607-SECOND gap between `NNN test files` and xdist printing
+    # `bringing up nodes...`. Ten minutes to fork four processes is CPU starvation.
+    #
+    # What it did on 2026-08-21: every open pull request was red on `python` and not one had a
+    # failing test. Every step inside reported success; the JOB crossed 40:00 and GitHub marked
+    # it `cancelled`, which the checks API reports identically to a failure. The only command
+    # that tells the two apart, because step conclusions are not in the pull request UI:
     #   gh api repos/OWNER/REPO/actions/jobs/<job_id> \
     #     --jq '.conclusion, (.steps[] | "\(.number) \(.conclusion) \(.name)")'
-    # A cancelled job with every step `success`, and its last steps missing, is this.
+    # A cancelled job whose every step is `success`, with its last steps missing, is this.
     #
-    # So 60 is not headroom over 38 minutes of work. It is headroom over a throttled run of
-    # 8 minutes of work. Raising it stops the false red; it does not make CI faster, and the
-    # real fix is dedicated CPU for the runner fleet, which costs money and is not mine to
-    # spend. Re-measure before trusting this number: the suite grows and the ceiling does not.
+    # So 60 buys headroom over a THROTTLED run of two and a half minutes of real work. It stops
+    # the false red. It does not make CI faster and it does not touch the cause.
     timeout-minutes: 60
 
     steps:
