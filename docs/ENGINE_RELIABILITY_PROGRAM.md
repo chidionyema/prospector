@@ -449,6 +449,105 @@ fake config, now fixed. **A full-suite re-run is still owed.**
 
 ---
 
+## 8. Progress log — 2026-08-20/21: the ops console outage, and why generation is paused
+
+**Read this first if you find `store/scheduler/PAUSE_GENERATION` armed on the engine.** It was
+armed by hand at 22:53 UTC on 2026-08-20 and the reason is written inside the file. From this
+release it can also arm itself; see "The autopause" below.
+
+### What the founder saw
+
+"dashboard is not loading any data again". Measured inside the container, 34 console reads: **20
+hit the 30s ceiling and the fastest was 8475ms.** Loadavg 25.83. CPU steal 90.7%, user 6.8%.
+After the pause: nine consecutive reads at 478, 615, 620, 812, 874, 895, 1230, 1257, 1298ms,
+loadavg 4.09, no 502s.
+
+### The chain, end to end
+
+1. The MiniMax token plan ran out. Every call came back HTTP 429.
+2. `errors.classify_exhaustion` grades a bare 429 as TRANSIENT backpressure, which is correct on
+   its own terms — a 429 usually means slow down, not stop.
+3. So the MiniMax adapter's own ladder (`operator.py:833-861`) retried: 5s, 10s, 20s, 40s, four
+   times per call. No brain was ever marked dead.
+4. `_moat_blind_reason` needs EVERY verdict brain dead before it skips a tick. One brain was
+   nominally alive, so it never fired and generation kept running.
+5. Generation produced zero candidates, wave after wave, and the fallthrough spawned `claude -p`
+   runtimes to do the query-writing. Four of them at once.
+6. Four Node runtimes on a `shared-cpu-2x` took the box to 90.7% steal. The ops console
+   (`next-server`, same container) was starved: `console_api` import measured 6078ms under load
+   against 125ms idle.
+
+**The engine was minting work that no brain could finish, and paying for the privilege with the
+CPU the console needed to say so.**
+
+### Why the fix is not "teach the error classifier about this 429"
+
+`prospector/errors.py` carries four comment blocks recording the same fix attempted four times,
+each time by adding the vendor's newest noun: "free usage" (2026-08-09), "free trial"
+(2026-08-13), "spend limit" against "usage limit", and word boundaries on the HTTP codes. Every
+one of them was correct and none of them held, because the wording is the vendor's to change.
+
+**Grade the OUTCOME instead.** Barren generation is barren generation whichever provider is down
+and whatever it says. That is the rail below.
+
+### The autopause — new, and ON by default
+
+`_autopause_generation_on_barren_streak` in `prospector/scheduler/run_scheduled.py`, called from
+`_emit_tick_alerts` on every tick.
+
+- The alert `barren_streak` has existed for months and stopped nothing. It now STOPS first and
+  tells second.
+- **One threshold, not two.** It reads the alert spec the alerter already produced, so "this is
+  an outage" and "this stops generation" cannot drift apart. Change it in
+  `alerts.alerts_for_tick`, once. Today: three consecutive barren real ticks.
+- **Scope is `generation`, never `all`.** It arms `PAUSE_GENERATION`. The drain keeps running and
+  keeps finishing the work already in the queue, which is exactly the half-stop CLAUDE.md
+  describes. `PAUSE` is the liability rail and this never touches it.
+- **It does not self-clear.** The founder asked for that directly: "and we can restat fron
+  adnindashboard hwen we are able to". A rail that re-opens by itself re-opens into the same
+  outage.
+- **It writes down why.** The pause file carries the tick count, what it means, and the way back.
+  `pause.arm` keeps the FIRST armer's reason, so an automatic pause never overwrites an
+  operator's.
+- **A stop that fails to arm is louder than one that works.** If `pause.arm` raises, the function
+  emits a CRITICAL `autopause_failed` alert naming the exception and saying generation is STILL
+  RUNNING, then returns without taking the daemon down with it.
+- Switch: `schedule.autopause_on_barren_streak` in `config.yaml`, default `true`.
+
+### How to resume
+
+**From the admin console, which is what it is for.** `/engine`, the generation row, the button
+reading "Start it again" (`store_platform/src/Ops.Console/src/pages/engine.tsx:823`, registered
+at `prospector/ops/console_api.py:2549`). By hand:
+`rm /data/store/scheduler/PAUSE_GENERATION` on the engine.
+
+**Resume only after the provider is funded.** Nothing about this pause fixes the token plan; it
+stops the engine burning CPU and subscription allowance on work it cannot finish.
+
+### One Claude CLI process, not four
+
+Founder directive 2026-08-20, verbatim: "for the last tine i donnt want 4 claude processes, its
+epensive", "1 cludclaude cli", "not 4", "this needs to be enforce ruthlessly".
+
+`claude_cli.MAX_CLAUDE_CLI = 1` clamps every path into the governor — `config.yaml`, the
+dashboard overlay, and `PROSPECTOR_CLAUDE_CONCURRENCY` alike — and logs a warning naming the
+directive when a larger number is asked for. The env var still works as a way DOWN, never back
+up. `config.yaml retrieval.claude_concurrency` and `config.Retrieval.claude_concurrency` are both
+1, but they are defaults; the clamp is the refusal, because a default can be overridden from the
+dashboard and a clamp cannot. `tests/unit/test_one_claude_cli_process.py` fails if the ceiling
+moves.
+
+Money, not just CPU: every `claude -p` spends the subscription allowance, so four of them reach
+the usage wall four times sooner.
+
+### A pause reason written by a human now reaches the panel
+
+Every runbook in this repo says `touch store/scheduler/PAUSE`, and an operator in an incident
+writes a sentence, not JSON. `readmodel.pause_view` used to call `json.loads` on the body and
+reset it to `{}` when that raised, so the console rendered `reason: null`. **A pause that renders
+without a reason reads to the next person exactly like a crash.** JSON still wins when it parses;
+a plain sentence now becomes the reason with `actor: hand`.
+
 ## Open decisions (not taken unilaterally)
 
 1. **Re-vet the 5 pre-gate PASSes now?** Needs a live moat, costs CLI slots, touches live catalogue
