@@ -247,6 +247,29 @@ def staged_secrets() -> tuple[list[str] | None, str]:
     return pending, f"{len(rows)} on the app, {len(pending)} waiting for a deploy to apply them"
 
 
+def _outcome(kind: str) -> None:
+    """Tell the workflow WHICH kind of exit this was.
+
+    The step exits 0 for five different reasons and only two of them mean production matches
+    main; the other three are "waiting for CI", "a deploy is already running" and "I have just
+    dispatched one". `if: success()` cannot tell those apart, so the issue-closer commented
+    "Production matches `main` again" and closed the drift issue on runs where production had
+    not moved at all. A machine writing a false statement into the issue tracker is worse than
+    the drift it was hired to report, and it is the same class as the alarm this file's own
+    header was written to prevent: every instrument reporting green while production drifts.
+
+    Silent when GITHUB_OUTPUT is unset, so a laptop run behaves exactly as before.
+    """
+    path = os.environ.get("GITHUB_OUTPUT")
+    if not path:
+        return
+    try:
+        with open(path, "a", encoding="utf-8") as handle:
+            handle.write(f"outcome={kind}\n")
+    except OSError:
+        pass  # a report that cannot be filed must not turn a good run into a failure
+
+
 def reconcile(*, apply: bool) -> int:
     """0 = production is where it should be, or is on its way there. 1 = a human is needed."""
     checkout = point_live_checkout_at_this_checkout()
@@ -264,6 +287,7 @@ def reconcile(*, apply: bool) -> int:
     # front of it is still the commit, and comparing the raw string would report permanent drift.
     if live and live.split("-")[0] == target:
         print(f"OK: {lc.FLY_APP} runs main.")
+        _outcome("ok")
         return 0
 
     if not live:
@@ -275,12 +299,14 @@ def reconcile(*, apply: bool) -> int:
     print(f"drift           {why}")
     if not ships:
         print("OK: production is behind main by commits that change nothing it ships.")
+        _outcome("ok")
         return 0
 
     verdict, detail = lc.ci_verdict(target)
     print(f"CI on main      {verdict}: {detail}")
     if verdict == "pending":
         print("WAITING: main is still being graded, and the push deploy may still be running.")
+        _outcome("waiting")
         return 0
     if verdict != "pass":
         print(f"REFUSING: main's CI verdict is {verdict}, so shipping it does not fix this.")
@@ -289,6 +315,7 @@ def reconcile(*, apply: bool) -> int:
 
     if deploy_in_flight():
         print("WAITING: a deploy is already running; not racing it.")
+        _outcome("waiting")
         return 0
 
     storming, detail = dispatch_storm()
@@ -328,6 +355,7 @@ def reconcile(*, apply: bool) -> int:
         print(f"FAILED to dispatch {DEPLOY_WORKFLOW}: {out[:200]}")
         return 1
     print(f"DISPATCHED {DEPLOY_WORKFLOW} to bring {lc.FLY_APP} to {target[:12]}")
+    _outcome("dispatched")
     return 0
 
 

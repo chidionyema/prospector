@@ -24,6 +24,7 @@ from pathlib import Path
 
 import pytest
 
+from prospector.scheduler import alerts
 from prospector.scheduler import run_scheduled as rs
 from prospector.scheduler.alerts import (
     CRITICAL,
@@ -277,3 +278,64 @@ def test_every_key_alerts_for_tick_can_emit_is_declared_resolvable():
         f"tick clears; drift = an alert that fires and never clears. missing from the constant: "
         f"{emitted - set(TICK_ALERT_KEYS)}; declared but unreachable: {set(TICK_ALERT_KEYS) - emitted}"
     )
+
+
+# --- the all-clear must reach the same place the alarm did ---------------------------------
+#
+# Until 2026-08-21 `resolve_alert` appended the resolution to alerts.jsonl, rewrote ALERT.txt,
+# logged a warning -- and called no sink at all. So whoever was told a condition broke was never
+# told it recovered, and every loop this module opened had to be closed by a human going and
+# looking. The founder's words: "we need to close loops asap".
+
+def test_a_resolution_reaches_the_sinks_not_just_the_log(cfg, monkeypatch):
+    seen = []
+    monkeypatch.setattr(alerts, "_desktop_notify", lambda t, m: seen.append(("desktop", t, m)))
+    monkeypatch.setattr(alerts, "_webhook_post", lambda r: seen.append(("webhook", r)))
+    monkeypatch.setattr(alerts, "_telegram_push", lambda r: seen.append(("telegram", r)))
+
+    alerts.emit_alert(cfg, severity=alerts.CRITICAL, key="moat_blind",
+                      title="Moat BLIND", message="no trusted brain live")
+    seen.clear()
+
+    assert alerts.resolve_alert(cfg, key="moat_blind", reason="a brain recovered") is True
+    kinds = [s[0] for s in seen]
+    assert kinds == ["desktop", "webhook", "telegram"], kinds
+    pushed = next(s[1] for s in seen if s[0] == "telegram")
+    assert pushed["key"] == "moat_blind"
+    assert pushed["title"].startswith("RESOLVED:")
+    assert pushed["severity"] == alerts.INFO
+
+
+def test_the_all_clear_goes_through_the_same_classification_as_the_alarm(cfg, monkeypatch):
+    """An all-clear may never reach somewhere the alarm could not. Same door, same lock."""
+    pushed = []
+    monkeypatch.setattr(alerts, "_desktop_notify", lambda *a, **k: None)
+    monkeypatch.setattr(alerts, "_webhook_post", lambda r: None)
+    monkeypatch.setattr(alerts, "_load_hermes_sender",
+                        lambda: (lambda line, **kw: pushed.append((line, kw)) or True))
+
+    alerts.emit_alert(cfg, severity=alerts.WARNING, key="barren_generation",
+                      title="one barren tick", message="nothing generated")
+    pushed.clear()
+    alerts.resolve_alert(cfg, key="barren_generation", reason="a tick produced rows")
+    assert pushed == [], "a LOCAL_ONLY key announced its recovery to the phone"
+
+
+def test_announcing_a_recovery_can_never_lose_the_recovery(cfg, monkeypatch):
+    """The resolution is durable on disk BEFORE any sink runs. A sink that explodes is noise,
+    never data loss -- the same never-raises promise `emit_alert` already keeps."""
+    monkeypatch.setattr(alerts, "_desktop_notify", lambda *a, **k: None)
+    monkeypatch.setattr(alerts, "_webhook_post", lambda r: None)
+
+    alerts.emit_alert(cfg, severity=alerts.CRITICAL, key="consumer_down",
+                      title="drain died", message="no consumer")
+
+    def boom(_):
+        raise RuntimeError("sink is on fire")
+    monkeypatch.setattr(alerts, "_telegram_push", boom)
+
+    assert alerts.resolve_alert(cfg, key="consumer_down", reason="drain came back") is True
+    assert "consumer_down" not in alerts.active_alerts(cfg)
+    trail = [json.loads(x) for x in
+             (Path(cfg.store_dir) / "scheduler" / "alerts.jsonl").read_text().splitlines()]
+    assert any(r["title"].startswith("RESOLVED:") for r in trail)

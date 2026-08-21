@@ -219,8 +219,10 @@ def test_every_telegram_key_has_a_reachable_sink(unfenced, store_in_tmp, monkeyp
     for key in sorted(alerts.TELEGRAM_KEYS):
         alerts._telegram_push({"key": key, "severity": "critical",
                                "title": f"t-{key}", "message": "m"})
-    assert [k["debounce_key"] for _, k in sent] == \
+    #: `prospector:<key>:<identity digest>` since 2026-08-21 -- see test_debounce_key_is_namespaced.
+    assert [":".join(k["debounce_key"].split(":")[:2]) for _, k in sent] == \
         [f"prospector:{k}" for k in sorted(alerts.TELEGRAM_KEYS)]
+    assert all(len(k["debounce_key"].split(":")) == 3 for _, k in sent)
 
 
 def test_a_key_outside_the_set_is_not_pushed(unfenced, store_in_tmp, monkeypatch):
