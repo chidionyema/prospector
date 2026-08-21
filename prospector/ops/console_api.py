@@ -3679,6 +3679,14 @@ TOOLS: list[dict] = [
 #: and no test could tell. The registry was hand-written, so adding a tool and forgetting to
 #: register it was silent — which is how an operator ends up unable to see what the system can do.
 NOT_AN_OPS_TOOL: dict[str, str] = {
+    "scripts/deploy_reconcile.py": "the hourly robot that dispatches a deploy when the "
+                                   "image production runs is not the commit main points "
+                                   "at. It needs `gh` and a git checkout to decide "
+                                   "anything, and the engine container has neither, so "
+                                   "from here it could only ever answer UNKNOWN. GitHub "
+                                   "Actions runs it, on the hour. The operator's version "
+                                   "of the same question is the `scripts/live_checkout.py` "
+                                   "button, which reads /app/GIT_SHA directly",
     # developer and CI tooling — it runs in a terminal or in GitHub Actions, never from an ops page
     "scripts/ci-gate.sh": "the POPDD CI gate; GitHub Actions runs it, not an operator",
     "scripts/green_guard_cause.py": "asks whether main was ALREADY red before a given commit "

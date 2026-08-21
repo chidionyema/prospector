@@ -276,6 +276,18 @@ LEDGER: tuple[Mode, ...] = (
         None,
     ),
     Mode(
+        "main-moves-and-no-deploy-is-ever-dispatched",
+        "Nothing ever asks the deploy to run, so production keeps serving a commit main has "
+        "already taken back. main-green-guard.yml reverts with GITHUB_TOKEN, which starts no "
+        "workflow runs, and its own header says it does nothing to production. A deploy that "
+        "never happened leaves no failing run, so no alarm in this ledger can fire on it: it is "
+        "the one failure mode that is invisible to everything that watches runs.",
+        (".github/workflows/production-runs-main.yml", "scripts/deploy_reconcile.py"),
+        "tests/unit/test_deploy_reconcile.py",
+        None,
+        None,
+    ),
+    Mode(
         "production-runs-code-that-is-not-main",
         "The deploy succeeded and the process is still executing an older checkout, so every "
         "instrument says shipped and none of them looked at what is running.",
