@@ -31,6 +31,24 @@ TOOLS="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 _labels()        { launchctl list 2>/dev/null | awk '$3 ~ /^com\.prospector\./ {print $3}'; }
 _plist_labels()  { for f in "$AGENTS"/com.prospector.*.plist; do [ -e "$f" ] && basename "$f" .plist; done; }
 
+# Which of those t_stop makes PERSISTENTLY disabled - every label except the roll-forward
+# follower. Pure and side-effect free on purpose: t_stop itself pkills writers and sleeps for
+# half a minute, so no test may run it, and a rule that cannot be tested is a rule that gets
+# quietly reverted. This function is the rule; t_stop is the loop that obeys it.
+#
+# Why com.prospector.live-update is exempt. The `launchctl disable` in t_stop is there to stop
+# WRITERS coming back and appending to a second ledger - EDGE-1, twice the daily cap. That is
+# the scheduler and the run jobs. live-update writes no ledger; its only hazard is restarting
+# the daemon, and the NO_AUTO_UPDATE fence t_stop asserts before anything else already stops
+# exactly that, which is what that fence is for.
+#
+# Disabling it as well cost the estate its failback. `launchctl disable` is persistent, t_start
+# is the only thing that lifts it, and a migration that SUCCEEDS never calls t_start - so the
+# checkout a failback starts FROM stopped being rolled forward at the exact moment the cutover
+# worked. Measured 2026-08-21: 81 commits behind, on the day it was the failover target. A DR
+# plan whose target rots as a consequence of the DR working is not a DR plan.
+_labels_to_disable() { for l in $(_plist_labels); do [ "$l" = "com.prospector.live-update" ] || echo "$l"; done; }
+
 t_name() { echo "laptop"; }
 
 t_preflight() {
@@ -112,7 +130,9 @@ t_stop() {
     # the job cannot come back from a login, a watchdog, or a plist that is still on disk. It is
     # reversible, and t_start re-enables, which is what keeps rolling back to the laptop a single
     # command.
-    for l in $(_plist_labels); do
+    # _labels_to_disable, not _plist_labels: the exemption is a rule with a reason, so it
+    # lives in a function a test can call rather than inline in a loop nothing can run.
+    for l in $(_labels_to_disable); do
       launchctl disable "gui/$(id -u)/$l" 2>/dev/null || true
     done
 
