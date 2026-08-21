@@ -326,3 +326,102 @@ def test_the_secret_check_reads_the_status_column(raw, monkeypatch):
     assert raw.staged_secrets()[0] is None
     monkeypatch.setattr(raw, "run", lambda *a, **k: (0, "not json"))
     assert raw.staged_secrets()[0] is None
+
+
+# --------------------------------------------------------------------------------------------
+# what the step tells the workflow it did
+
+
+def _outcome_of(mod, tmp_path, monkeypatch, *, apply: bool = True) -> str:
+    """Run the reconciler with a GITHUB_OUTPUT file and return what it wrote there."""
+    out = tmp_path / "github_output"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(out))
+    mod.reconcile(apply=apply)
+    if not out.exists():
+        return ""
+    written = [ln for ln in out.read_text().splitlines() if ln.startswith("outcome=")]
+    assert len(written) <= 1, f"the step spoke more than once: {written}"
+    return written[0].split("=", 1)[1] if written else ""
+
+
+def test_a_dispatch_is_not_reported_as_ok(mod, tmp_path, monkeypatch):
+    """THE DEFECT THIS CLOSES. `reconcile` exits 0 for five different reasons and only two of
+    them mean production matches main. The closer was gated on `if: success()`, so on the three
+    that do not — waiting for CI, a deploy already running, and this one, a deploy only just
+    dispatched — it commented "Production matches `main` again" and closed the drift issue.
+
+    A machine writing a false statement into the issue tracker is worse than the drift it was
+    hired to report: it is the same class as the alarm the header of deploy_reconcile.py exists
+    to prevent, every instrument reading green while production drifts.
+    """
+    assert _outcome_of(mod, tmp_path, monkeypatch) == "dispatched"
+    assert mod.calls["dispatch"] == 1
+
+
+def test_production_on_main_reports_ok(mod, tmp_path, monkeypatch):
+    monkeypatch.setattr(mod.lc, "deployed_commit", lambda: (MAIN, "test"))
+    assert _outcome_of(mod, tmp_path, monkeypatch) == "ok"
+
+
+def test_a_gap_that_ships_nothing_reports_ok(mod, tmp_path, monkeypatch):
+    """The second true OK: production is behind main only by commits it does not ship."""
+    monkeypatch.setattr(mod, "ships_a_change", lambda live, target: (False, "docs only"))
+    assert _outcome_of(mod, tmp_path, monkeypatch) == "ok"
+
+
+def test_waiting_for_ci_is_not_ok(mod, tmp_path, monkeypatch):
+    monkeypatch.setattr(mod.lc, "ci_verdict", lambda sha: ("pending", "still running"))
+    assert _outcome_of(mod, tmp_path, monkeypatch) == "waiting"
+    assert mod.calls["dispatch"] == 0
+
+
+def test_a_deploy_already_running_is_not_ok(mod, tmp_path, monkeypatch):
+    monkeypatch.setattr(mod, "deploy_in_flight", lambda: True)
+    assert _outcome_of(mod, tmp_path, monkeypatch) == "waiting"
+    assert mod.calls["dispatch"] == 0
+
+
+def test_it_says_nothing_when_nobody_is_listening(mod, monkeypatch):
+    """A laptop run has no GITHUB_OUTPUT and must behave exactly as it did before this change.
+
+    An operator running this by hand to answer "is production on main?" is the most common way
+    it is used, and it is the one environment CI can never exercise.
+    """
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    assert mod.reconcile(apply=True) == 0
+    assert mod.calls["dispatch"] == 1, "the outcome report changed what the reconciler DID"
+    mod._outcome("ok")  # the helper itself, with nowhere to write: silent, not an exception
+
+
+def test_a_report_that_cannot_be_filed_does_not_fail_the_run(mod, monkeypatch, tmp_path):
+    """GITHUB_OUTPUT pointing somewhere unwritable is a broken runner, not a broken production.
+    Turning that into a failure would open a drift issue about a drift that does not exist."""
+    monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "no-such-dir" / "out"))
+    assert mod.reconcile(apply=True) == 0
+
+
+def test_the_closer_is_gated_on_the_outcome_not_on_the_exit_code():
+    """The workflow half of the same defect. `success()` is true on all five exits."""
+    steps = _job()["steps"]
+    closers = [s for s in steps if "issues.update({" in yaml.dump(s)
+               or "state: 'closed'" in yaml.dump(s) or 'state: "closed"' in yaml.dump(s)]
+    assert closers, "nothing ever closes the drift issue, so it would stay open forever"
+    for step in closers:
+        cond = step.get("if") or ""
+        assert "outputs.outcome == 'ok'" in cond, (
+            f"the closer {step.get('name')!r} is guarded by {cond!r}. `success()` is true on all "
+            "five zero exits, three of which mean production has NOT moved.")
+
+
+def test_the_step_that_produces_the_outcome_is_identified():
+    """`steps.<id>.outputs` needs the id. Without it the condition is silently always false and
+    the issue never closes — the failure mode is the mirror of the one above, and just as quiet."""
+    steps = _job()["steps"]
+    ids = {s.get("id") for s in steps}
+    for step in steps:
+        cond = step.get("if") or ""
+        if "steps." in cond and "outputs.outcome" in cond:
+            wanted = cond.split("steps.", 1)[1].split(".", 1)[0]
+            assert wanted in ids, (
+                f"{cond!r} names step id {wanted!r}, which no step in this job has. The "
+                "condition is then always false and the drift issue is never closed.")

@@ -44,6 +44,7 @@ export const VIEWS = [
   'method',
   'docs',
   'incidents',
+  'migration',
   // Every shareable file in the repo, grouped by folder. It is what the share page's picker
   // reads, so the operator chooses a path instead of typing one from memory.
   'repo_files',

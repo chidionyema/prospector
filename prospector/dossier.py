@@ -110,6 +110,19 @@ def build_dossier(
     The caller is responsible for computing `score` whenever gate_fired is None
     (i.e., the candidate survived all hard gates and needs ranking).
     """
+    # A scoring OUTAGE is not a low score (2026-08-21). `score.score_candidate` catches the
+    # operator error and returns all-zero scores with score_failed=True; composite 0.0 then
+    # falls through to the `min_composite` branch below and writes a KILL whose buyer-facing
+    # reason reads as a fully reasoned rejection: "composite 0.0000 below the bar of 2.5" on
+    # a candidate whose six checks were all grounded and supported. `ScoreResult.score_failed`
+    # was added for exactly this and had ZERO readers in the package.
+    #
+    # Ordered BEFORE the DEFER_REASONS test so the new reason routes through the same branch,
+    # and gated on `gate_fired is None` so a real evidentiary gate always wins: a broken
+    # scorer must not rescue a candidate that a hard gate already killed.
+    if gate_fired is None and score is not None and getattr(score, "score_failed", False):
+        gate_fired = "score_failed"
+
     if gate_fired in DEFER_REASONS:
         # Not a kill: a decisive check could not be retrieved, the moat was unavailable, the
         # tick ran out of vetting budget before this candidate started, or a producer queued
@@ -134,6 +147,17 @@ def build_dossier(
             reason = ("Deferred — the tick's vetting budget was spent before this candidate "
                       "was started. NOT an evidentiary kill and NOT an outage: no check ran. "
                       "It resumes on the next `vet --resume` at full cost.")
+        elif gate_fired == "score_failed":
+            # Deliberately says nothing about the idea's merit. Nothing scored it.
+            reason = ("Deferred — the scoring call failed, so the all-zero scores are a "
+                      "fail-safe and NOT a 0/5 verdict. NOT an evidentiary kill: the gates "
+                      "were survived and the ranking never ran. It resumes on the next "
+                      "`vet --resume`.")
+        elif gate_fired == "adversarial_unrun":
+            reason = ("Deferred — the adversarial pass did not run (the call raised). NOT an "
+                      "evidentiary kill and NOT a clean bill of health: the final gate was "
+                      "never applied, so the candidate is unchallenged rather than "
+                      "unchallengeable. It resumes on the next `vet --resume`.")
         elif gate_fired == "moat_exhausted":
             reason = ("Deferred — moat (verdict / adversarial pass) was unavailable "
                       "(Claude + Gemini exhausted).  NOT an evidentiary kill; re-vet when "

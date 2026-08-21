@@ -57,7 +57,11 @@ def test_debounce_key_is_namespaced(monkeypatch):
     monkeypatch.setattr(A, "_load_hermes_sender",
                         lambda: lambda text, **kw: seen.update(kw) or True)
     A._telegram_push(_record(key="tick_error"))
-    assert seen["debounce_key"] == "prospector:tick_error"
+    #: `prospector:<key>:<identity digest>`. The namespace is what this test guards and it is
+    #: unchanged; the digest was added 2026-08-21 so an alert whose CONDITION changes speaks again
+    #: inside the debounce window instead of being swallowed as a repeat of the old one.
+    assert seen["debounce_key"].startswith("prospector:tick_error:")
+    assert seen["debounce_key"].split(":")[2], "the digest must not be empty"
 
 
 def test_missing_hermes_degrades_silently(monkeypatch):

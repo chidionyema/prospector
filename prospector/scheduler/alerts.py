@@ -24,6 +24,7 @@ EVERY occurrence is still written to alerts.jsonl for the audit trail.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -192,6 +193,23 @@ def resolve_alert(cfg, *, key: str, reason: str) -> bool:
 
     _rewrite_alert_txt(cfg, active)
     logger.warning("RESOLVED [%s] %s: %s", key, resolved.get("title"), reason)
+
+    # THE ALL-CLEAR GOES TO THE SAME PLACE THE ALARM WENT. Until 2026-08-21 this function
+    # appended the resolution to alerts.jsonl, rewrote ALERT.txt and logged it -- and reached no
+    # sink at all. So whoever was told a thing broke was NEVER told it recovered: every loop this
+    # module opened had to be closed by a human going and looking. That is the founder's
+    # "we need to close loops asap", and it was a missing call, not a missing design.
+    #
+    # It runs through the same `_delivers` classification as the alarm, so an all-clear can never
+    # reach somewhere the alarm did not, and it is bounded by the same never-raises promise:
+    # failing to announce a RECOVERY must not be able to crash the daemon or lose the resolution,
+    # which is already durable on disk by this point.
+    try:
+        _desktop_notify(f"Prospector: {record['title']}", reason)
+        _webhook_post(record)
+        _telegram_push(record)
+    except Exception:  # noqa: BLE001 -- the resolution is already recorded; announcing is extra
+        logger.exception("Alert resolution push failed (resolution was still recorded)")
     return True
 
 
@@ -291,7 +309,63 @@ _HERMES_ALERT_PATH = Path.home() / ".hermes" / "scripts" / "estate_alert.py"
 TELEGRAM_KEYS = frozenset({
     "liveness", "tick_error", "zero_yield", "barren_streak", "moat_blind", "stranded_passes",
     "consumer_down",
+    #: Added 2026-08-21. Every one of these was CRITICAL and UNDELIVERABLE: emitted, written to
+    #: alerts.jsonl, and dropped on the floor by the `not in TELEGRAM_KEYS` line below. Measured
+    #: on the live store the same day: `store/scheduler/alerts.jsonl` held 10 rows over 18 hours,
+    #: ALL severity `critical`, ALL key `process-audit`, and not one of them could reach anybody.
+    #: `ALERT_WEBHOOK_URL` is not among the Fly secrets, so `_webhook_post` returned immediately
+    #: too; the only sink that ran was a macOS banner on a laptop, which vanishes.
+    #: `process-audit` carried "deploy engine: STALLED -- 1 commit(s) on main have not deployed".
+    "process-audit",
+    #: `supervisor` and `autopause_failed` are the daemon reporting that its OWN safety machinery
+    #: failed. If those cannot reach a human, nothing else in this list can be trusted either.
+    "supervisor", "autopause_failed",
+    #: `backlog_cap_unreadable` means the generation brake cannot read its own limit, so the brake
+    #: is not braking. Silent is the one thing it must not be.
+    "backlog_cap_unreadable",
 })
+
+#: Keys that are DELIBERATELY local. Being on this list is a decision with a reason, and the
+#: suite requires every emitted key to be on exactly one of the two lists -- see
+#: `test_alerts.py::test_every_emitted_key_is_explicitly_classified`. Nothing is silent by
+#: default any more. That default was the defect: an allow-list whose miss case is `return`
+#: means every key added in future is born undeliverable, and NO TEST FAILS when it is.
+LOCAL_ONLY_KEYS = frozenset({
+    #: The ONE-tick blip. `barren_streak` (3+ consecutive, CRITICAL) is the escalation and it IS
+    #: delivered, so putting this on the phone as well means the founder is told twice about one
+    #: condition -- once when it might be noise and again when it is real. Deliberately local, and
+    #: the pair is the reason: this key is only defensible as local while `barren_streak` is not.
+    "barren_generation",
+    #: Both of these SELF-HEAL, which is the whole test for this set. `vet --resume` finalises a
+    #: deferred row and re-vets a provisional one the moment the moat is back, with no human in
+    #: the loop -- and the outage that caused them pages already, under `moat_blind`. Putting them
+    #: on the phone would report one condition twice and page for a state that clears itself,
+    #: which is how a rail gets muted, and a muted rail is an unwired rail with extra steps.
+    "moat_deferred", "moat_provisional",
+})
+
+#: Computed keys cannot be enumerated by eye. `scripts/service_health.py:99` builds
+#: `service_down:<name>` from a table, so a service added to that table would otherwise arrive
+#: undeliverable and nobody would notice. Classify the GENERATOR, not each of its outputs.
+TELEGRAM_KEY_PREFIXES = ("service_down:",)
+
+
+def _delivers(key: str) -> bool:
+    """Does this alert key reach the founder's phone? Unclassified is LOUD, never silent.
+
+    An unclassified key is delivered AND logged at WARNING. That is the inverse of the old
+    behaviour on purpose: a key nobody classified is far more likely to be a real condition than
+    to be spam, it is throttled to once an hour like everything else, and a warning in the log is
+    a thing a person can find. Silence is not.
+    """
+    if key in LOCAL_ONLY_KEYS:
+        return False
+    if key in TELEGRAM_KEYS or key.startswith(TELEGRAM_KEY_PREFIXES):
+        return True
+    logger.warning("Alert key %r is not classified in TELEGRAM_KEYS or LOCAL_ONLY_KEYS -- "
+                   "delivering it, because an unclassified alert must never be a silent one. "
+                   "Add it to one of the two lists.", key)
+    return True
 
 
 def _under_pytest() -> bool:
@@ -373,6 +447,25 @@ def _load_estate_sender():
         return None
 
 
+#: How long an alert whose CONTENT has not changed stays quiet. Longer than the 3600s push
+#: throttle above it, so adding the digest can only ever reduce message volume.
+_UNCHANGED_S = 6 * 3600.0
+
+
+def _identity_digest(record: dict) -> str:
+    """A short digest of WHAT is wrong, for the debounce key.
+
+    `identity` when the caller supplied one, else the message. Callers whose message carries a
+    fluctuating number MUST pass `identity`: `scripts/process_audit.py` titles its alert
+    "process audit: 31 failing", and that count oscillates 31 -> 32 -> 30 -> 31 as unrelated
+    checks flap, so a digest over the message would re-alert every hour and this whole change
+    would buy nothing. Its identity is the sorted SET OF FAILING NAMES, which only moves when
+    something actually starts or stops failing.
+    """
+    basis = str(record.get("identity") or record.get("message") or "")[:4000]
+    return hashlib.sha256(basis.encode("utf-8", "replace")).hexdigest()[:12]
+
+
 def _telegram_push(record: dict) -> None:
     """Send founder-actionable alerts to Telegram via Hermes. Best-effort; never raises.
 
@@ -381,8 +474,8 @@ def _telegram_push(record: dict) -> None:
     physically cannot send: it degrades to Hermes' own `dry_run` path. Do not replace this with an
     opt-in env var a test could forget to set.
     """
-    key = record.get("key")
-    if key not in TELEGRAM_KEYS:
+    key = record.get("key") or ""
+    if not _delivers(key):
         return
     send = _load_hermes_sender()
     if send is None:
@@ -395,7 +488,19 @@ def _telegram_push(record: dict) -> None:
     line = (f"{_ICON.get(record.get('severity'), '')} Prospector [{record.get('severity')}] "
             f"{record.get('title')}: {record.get('message')}")
     try:
-        sent = send(line, debounce_key=f"prospector:{key}", debounce_s=1800.0,
+        # The debounce key carries a digest of WHAT IS WRONG, so the rail speaks when the state
+        # CHANGES and stays quiet while it does not. A bare per-key debounce is time-keyed: an
+        # 18-hour outage is 18 identical messages, which is the noise that got the last channel
+        # switched off. This is a KEY choice, not a second debounce -- `telegram_sender._debounced`
+        # is still the one implementation, and a second one would be #426 again.
+        #
+        # `_UNCHANGED_S` is deliberately longer than `emit_alert`'s own 3600s throttle, which is
+        # what makes this strictly quieter than before and never noisier: the throttle still caps
+        # a CHANGING condition at one message an hour, and this caps an UNCHANGING one at one per
+        # six. Recovery is no longer inferred from silence either -- `resolve_alert` sends its own
+        # all-clear now, so a condition that stops has an end as well as a beginning.
+        sent = send(line, debounce_key=f"prospector:{key}:{_identity_digest(record)}",
+                    debounce_s=_UNCHANGED_S,
                     dry_run="PYTEST_CURRENT_TEST" in os.environ)
         logger.info("Telegram alert key=%s sent=%s", key, sent)
     except Exception as exc:  # noqa: BLE001 — documented never-raises, but trust nothing here
@@ -403,7 +508,7 @@ def _telegram_push(record: dict) -> None:
 
 
 def emit_alert(cfg, *, severity: str, key: str, title: str, message: str,
-               throttle_s: int = 3600, **fields) -> dict:
+               throttle_s: int = 3600, identity: str | None = None, **fields) -> dict:
     """Record an alert and (unless throttled) push it to the notification sinks.
 
     `key` groups alerts for throttling (e.g. "zero_yield", "tick_error", "liveness"). The full
@@ -413,6 +518,10 @@ def emit_alert(cfg, *, severity: str, key: str, title: str, message: str,
     now = datetime.now(timezone.utc)
     record = {"ts": now.isoformat(), "severity": severity, "key": key,
               "title": title, "message": message, **fields}
+    if identity is not None:
+        # Recorded, not just used: an alert whose dedupe basis is in the audit trail can be
+        # explained later. "Why did this not fire?" is otherwise unanswerable after the fact.
+        record["identity"] = identity
 
     sdir = _scheduler_dir(cfg)
     try:

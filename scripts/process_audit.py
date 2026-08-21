@@ -483,6 +483,40 @@ def grade_worktree_drift() -> list[tuple[str, str, str]]:
     return rows
 
 
+# Matches a script path inside a hook command. The optional ~ / $VAR prefix is part of the match
+# ON PURPOSE: a regex anchored at "/" pulled "/.claude/scripts/x.py" out of
+# "~/.claude/scripts/x.py", so the ~ fell OUTSIDE the match and the old token.replace("~", home)
+# was a no-op -- every hook registered with a ~ was reported missing. Measured 2026-08-21: 3 of
+# the 4 files this check named were present on disk the whole time.
+_HOOK_SCRIPT_RE = re.compile(r"((?:~|\$[A-Za-z_]\w*)?/[\w./$~-]+\.(?:py|sh))")
+# A match only counts when it STARTS a path. Without this the regex bites a fragment out of a git
+# revision spec: in `git show origin/main:scripts/checkout_currency.py` the colon is not in the
+# character class, so it matched "/checkout_currency.py" -- a string that was never a filesystem
+# path at all, reported as a missing file.
+_PATH_STARTS_AFTER = " \t'\"=("
+
+
+def scan_hook_scripts(hooks: dict) -> tuple[int, list[str]]:
+    """Return (hooks registered, script paths that do not exist on disk).
+
+    A renamed script leaves a hook that silently never runs, which is why this check exists. But
+    a check that cries wolf costs more than no check: every session that read its output went
+    looking for a file that had been there all along.
+    """
+    events, missing = 0, []
+    for _event, matchers in (hooks or {}).items():
+        for matcher in matchers or []:
+            for h in matcher.get("hooks", []) or []:
+                cmd = str(h.get("command", ""))
+                events += 1
+                for m in _HOOK_SCRIPT_RE.finditer(cmd):
+                    if m.start() and cmd[m.start() - 1] not in _PATH_STARTS_AFTER:
+                        continue
+                    if not Path(os.path.expandvars(os.path.expanduser(m.group(1)))).exists():
+                        missing.append(m.group(1))
+    return events, missing
+
+
 def grade_enforcement() -> list[tuple[str, str, str]]:
     """Grade the mechanisms that are supposed to be REFUSING bad work.
 
@@ -516,22 +550,13 @@ def grade_enforcement() -> list[tuple[str, str, str]]:
     # Every hook the harness is configured to fire must exist. A renamed script leaves a hook that
     # silently never runs.
     settings = Path.home() / ".claude" / "settings.json"
-    missing: list[str] = []
-    events = 0
+    hooks = {}
     if settings.exists():
         try:
             hooks = json.loads(settings.read_text(encoding="utf-8")).get("hooks", {})
         except ValueError:
             hooks = {}
-        for _event, matchers in hooks.items():
-            for matcher in matchers or []:
-                for h in matcher.get("hooks", []) or []:
-                    cmd = str(h.get("command", ""))
-                    events += 1
-                    for token in re.findall(r"(/[\w./~-]+\.(?:py|sh))", cmd):
-                        target = Path(token.replace("~", str(Path.home())))
-                        if not target.exists():
-                            missing.append(token)
+    events, missing = scan_hook_scripts(hooks)
     rows.append((BAD if missing else OK, "claude hooks",
                  f"{events} registered, missing: {', '.join(missing)}" if missing
                  else f"{events} registered, all present"))
@@ -1005,7 +1030,13 @@ def alert(payload: dict, cfg=None) -> str:
                    severity="critical", key="process-audit",
                    title=f"process audit: {failing} failing",
                    message=f"process audit: {failing} failing\n" + "\n".join(lines[:12]),
-                   throttle_s=3600, failing=failing, checks=names[:12])
+                   throttle_s=3600, failing=failing, checks=names[:12],
+                   # The COUNT oscillates (31 -> 32 -> 30 -> 31) as unrelated checks flap, and the
+                   # count is in both the title and the message. Digesting either would re-alert
+                   # every hour and change nothing. The identity of this condition is WHICH checks
+                   # are failing, sorted so ordering cannot fake a change; `names` is every failing
+                   # check, not the truncated 12 the message shows.
+                   identity="|".join(sorted(names)))
     except Exception as exc:  # noqa: BLE001 -- see the docstring; this must not fail the audit
         return f"ALERT PATH BROKEN ({type(exc).__name__}: {exc}) -- {failing} failing went unsent"
     return f"alert recorded ({failing} failing: {', '.join(names[:4])})"

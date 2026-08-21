@@ -32,6 +32,16 @@ import subprocess
 import sys
 from pathlib import Path
 
+# The estate has exactly one flyctl resolver and this file used to carry a second, worse
+# spelling of it: `shutil.which("fly")`. That is why the deploy reconciler was blind from CI.
+# `superfly/flyctl-actions/setup-flyctl` installs the binary under the name `flyctl` and puts
+# only that name on PATH, so `which("fly")` found nothing on every GitHub runner. Measured
+# 2026-08-21 in run 32445393577: "Added flyctl to the path", and then, one step later,
+# "deployed (unreadable) (fly CLI not on PATH)". Nine consecutive reconciler runs failed that
+# way and each opened a critical about a drift it had never been able to measure.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from rollback_now import find_fly  # noqa: E402
+
 DEV = Path("/Users/chidionyema/Documents/code/prospector")
 LIVE = Path("/Users/chidionyema/Documents/code/prospector-live")
 #: The LAPTOP store, used only to check the pre-cutover launchd plists against each other.
@@ -425,7 +435,15 @@ ALLOW_UNVERIFIED_DEPLOY = DEV / "store" / "scheduler" / "ALLOW_UNVERIFIED_DEPLOY
 #: `cancelled`. This gate read that as `fail` and refused to roll production forward onto
 #: a commit whose tests had all passed. A green build cannot be allowed to read as red
 #: because an unrelated automation was cancelled.
-_IGNORED_WORKFLOWS = ("deploy", "smoke", "e2e", "auto-merge", "automerge", "cancel")
+#: `production runs main` is on this list for the same reason `deploy` is: it reports where
+#: production IS, not whether the commit is good. Leaving it off was a loop. It fails whenever
+#: production has drifted, this gate then read main as `fail`, and both routes that could have
+#: closed the drift -- `deploy_reconcile.py` and the console's update button -- refused because
+#: main was "red". Measured 2026-08-21 on e900a9ad, with every code lane green:
+#: ('fail', 'production runs main=failure, ..., PR keeper=cancelled, ...').
+_IGNORED_WORKFLOWS = ("deploy", "smoke", "e2e", "auto-merge", "automerge", "cancel",
+                      "production runs main", "pr keeper", "drill", "fleet",
+                      "weekly estate review", "approve parked runs")
 
 
 def ci_verdict(sha: str) -> tuple[str, str]:
@@ -481,6 +499,13 @@ def ci_verdict(sha: str) -> tuple[str, str]:
     # failure is how one workflow with a path filter walls every deploy. Dropping the rows
     # BEFORE the emptiness check keeps the safe answer: a commit whose only run was skipped
     # is "none", which this gate refuses, not "pass".
+    # Do NOT extend this to `cancelled`. It is tempting -- a cancelled run graded nothing, which
+    # is word for word the reason `skipped` is dropped -- and it is wrong, because it is not
+    # true of the ROW, only of the WORKFLOW. A CI run cancelled by the next merge landing on
+    # top, sitting beside a green `Main admission guard` row on the same sha, would then read
+    # `pass` and ship a commit CI never graded: exactly the 2026-08-17 shape that
+    # tests/unit/test_deploy_gate_on_ci_verdict.py exists to refuse. Whether a workflow has an
+    # opinion about the code is a fact about the workflow, so it belongs in the list above.
     relevant = [r for r in relevant if r[2] != "skipped"]
     if not relevant:
         return "none", "no CI run recorded against this commit"
@@ -500,9 +525,10 @@ def fly_machine_state() -> str:
     `fly status` reports an app whose machine is stopped, so the app is not the question.
     Same JSON read as deploy/targets/fly.sh t_health, for the same reason.
     """
-    if not shutil.which("fly"):
+    fly = find_fly()
+    if not fly:
         return "unknown (fly CLI not on PATH)"
-    rc, out = run(["fly", "machines", "list", "-a", FLY_APP, "--json"], timeout=60)
+    rc, out = run([fly, "machines", "list", "-a", FLY_APP, "--json"], timeout=60)
     if rc != 0:
         return f"unknown (fly machines list rc={rc})"
     try:
@@ -528,9 +554,10 @@ def deployed_commit() -> tuple[str, str]:
             return IMAGE_STAMP.read_text(encoding="utf-8").strip(), "read inside the container"
         except OSError as exc:
             return "", f"{IMAGE_STAMP} unreadable: {exc}"
-    if not shutil.which("fly"):
+    fly = find_fly()
+    if not fly:
         return "", "fly CLI not on PATH and not running inside the image"
-    rc, out = run(["fly", "ssh", "console", "-a", FLY_APP, "-C",
+    rc, out = run([fly, "ssh", "console", "-a", FLY_APP, "-C",
                    f"/bin/cat {IMAGE_STAMP}"], timeout=120)
     match = _STAMP_RE.search(out)
     if match:
@@ -625,6 +652,38 @@ def fly_report() -> int:
     return 0
 
 
+def _sync_failback_checkout(target: str) -> None:
+    """Move the failback checkout onto `target`. Never fails the caller.
+
+    A failback is the reason this checkout exists, so its currency is the DR exposure, not a
+    tidiness concern. But it is not the deploy: if the move fails, Fly is still serving the
+    right commit and the run must still report success. So this says what happened and
+    returns; the number itself is reported by engine_failover.probe_standby()["code"], which
+    is the instrument that grades it.
+
+    `--force` for the same reason the deploy path uses it: `_code_changes` has already proved
+    there is no modified tracked CODE here, so everything left dirty is tracked runtime state
+    under store/ and storage/ that every run rewrites, and a plain checkout aborts on exactly
+    those files.
+    """
+    try:
+        _, current = run(["git", "rev-parse", "HEAD"], cwd=DEPLOY_SOURCE)
+        if not target or current.strip() == target.strip():
+            return
+        rc, out = run(["git", "checkout", "--detach", "--force", target], cwd=DEPLOY_SOURCE)
+    except OSError as exc:
+        # run() only catches TimeoutExpired, so a cwd that has gone away raises out of the
+        # subprocess layer. The caller here has already released to Fly; an exception at this
+        # point would turn a successful deploy into a traceback.
+        print(f"  WARNING: cannot reach the failback checkout at {DEPLOY_SOURCE}: {exc}")
+        return
+    if rc != 0:
+        print(f"  WARNING: failback checkout is still at {current.strip()[:12]} — "
+              f"{out.strip()[:200]}")
+        return
+    print(f"  failback checkout moved to {target[:12]}")
+
+
 def fly_update(unattended: bool = False) -> int:
     """Build origin/main and release it to Fly, behind the same gates as the laptop path.
 
@@ -656,6 +715,15 @@ def fly_update(unattended: bool = False) -> int:
     _, target = run(["git", "rev-parse", "origin/main"], cwd=DEPLOY_SOURCE)
     live_sha, _ = deployed_commit()
     if live_sha[:40] == target and target:
+        # Fly is current, and THIS CHECKOUT is what a failback would start from, so it has to
+        # move too. This branch used to return here, and that is why the failover target rotted
+        # to 81 commits behind while every screen in the estate read green. Deploys come from
+        # the `Deploy Engine` workflow on a runner now, so Fly advances on its own and this is
+        # the only branch that ever runs -- the checkout was never moved by anything again.
+        # Moving it to `target` is safe by construction: `target` is the commit Fly is already
+        # serving, so it is graded and it is live. The refusal above has already proved there
+        # is no modified tracked CODE here.
+        _sync_failback_checkout(target)
         print(f"already deployed: {target[:12]} is what Fly is running")
         return fly_report()
 
