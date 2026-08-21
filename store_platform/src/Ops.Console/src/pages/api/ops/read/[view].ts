@@ -43,7 +43,7 @@ export const VIEWS = [
   'shelf',
   'method',
   'docs',
-  'incidents',
+  'incidents', 'migration',
   'shares',
   'automations',
   'content_rules',
