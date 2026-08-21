@@ -120,6 +120,12 @@ there and `/ideas` is graded like every other route. Against live it carries 15 
 |---|---|---|---|---|
 | live mumchimp.com, before the fix | 30 | 5 | **20** | 5 |
 | local build, kill ribbon scoped to `/kill-log` | 30 | 24 | **0** | 6 |
+| live mumchimp.com, after that shipped (`f5ca8e52`) | 30 | 25 | **0** | 5 |
+| local build, FR3 waiver emptied, five dead ends fixed | 30 | 29 | **0** | 1 |
+
+The one remaining skip is FR3 on `/ideas`, which is data-conditional: the CI `nextjs` job serves
+the site with no API behind it, so the page honestly renders "No categories are available right
+now". Against live it passes.
 
 The 20 live failures are FR1 on all ten routes and FR2 on all ten routes — the defect was on
 every marketing page, not only the home page the founder happened to open. FR3 passed on the
@@ -164,10 +170,11 @@ All of them need a same-origin path proxy (a Next.js `rewrites()` entry) because
 | # | item | state |
 |---|---|---|
 | FR-1 | Build the drawings' **survivor** ribbon variant and lead with it; the kill ribbon stays on `/kill-log`, where the visitor asked for it | not started |
-| FR-2 | `/faq` — add a forward link in `<main>` | not started |
-| FR-3 | `/about` — add a forward link in `<main>` | not started |
-| FR-4 | `/refund` — add a forward link in `<main>` | not started |
-| FR-5 | `/terms`, `/privacy` — decide whether a legal page should sell, or be waived permanently with a reason | not started |
+| FR-2 | `/faq` — add a forward link in `<main>` | **done 2026-08-21** — the button was already there, pointing at `/`. Now `/#catalog` |
+| FR-3 | `/about` — add a forward link in `<main>` | **done 2026-08-21** — same, `/` → `/#catalog` |
+| FR-4 | `/refund` — add a forward link in `<main>` | **done 2026-08-21** — in `components/LegalDoc.tsx`, so it fixed `/terms` and `/privacy` too |
+| FR-5 | `/terms`, `/privacy` — decide whether a legal page should sell, or be waived permanently with a reason | **decided 2026-08-21: it should.** A reader who opens the refund policy before buying is the most likely buyer on the site, and the closing block was already selling — it just pointed at `/faq`. `FR3_WAIVED` is now empty |
+| FR-10 | **14 of 77 packs are 3 clicks from everywhere.** Measured 2026-08-21 against live: home links 63, `/ideas` links 0 packs (its 15 links are categories), and the union of the 15 category pages is 77. The 14 are behind the home page's collapsed groups (`pages/index.tsx:1445` shows 2 of N groups, `:1494` shows 3 of each until `showAll`), so they exist in the sitemap and in no server-rendered listing a reader or a crawler can walk in two clicks. Needs a design call: render all groups, paginate, or add a plain index | not started |
 | FR-6 | `/sample` promises differ from delivery: the homepage says "Read a full pack free — no email needed", `/sample` is titled "Read the opening of a real pack, free". One of the two is wrong | not started |
 | FR-7 | `/sample` has no buy call to action at all — its only button is "Put it in the queue" | not started |
 | FR-8 | Stripe checkout-session webhooks into a funnel table | not started |
@@ -186,55 +193,78 @@ All of them need a same-origin path proxy (a Next.js `rewrites()` entry) because
 
 `ENGINE_1000X_ACTION_PLAN.md` has one rule: **a row that moves no axis is not work.** A gate plus
 five missing links is a snag list, not a 1000x answer. So this programme registers an axis, with a
-baseline measured today and a target that is a number.
+baseline and a target that are numbers.
 
 **Axis N1 — entry coverage.** Of every (entry route x pack) pair, what fraction can a stranger
-actually reach? It needs no traffic, no analytics and no split test, which is why it can be measured
-today and why it can gate a pull request.
+actually reach, and in how many clicks? It needs no traffic, no analytics and no split test, which
+is why it can be measured today and why it can gate a pull request.
 
-Measured 2026-08-21 against live, following links inside `<main>` only, 12 entry routes x 77 packs
-= 924 possible pairs:
+### The instrument
+
+`store_platform/src/Store.Web/scripts/reachability.mjs`, added 2026-08-21. Before it, this section
+carried a hand-crawled table and the sentence "the measurement script is the gate" — and there was
+no script, so the baseline could not be re-run, so it could not be a target. Run it:
+
+```bash
+node scripts/reachability.mjs                        # live
+node scripts/reachability.mjs http://localhost:3000  # a local build
+```
+
+The pack universe comes from `sitemap.xml`, never from a listing page, because a pack that no
+listing links must not be invisible to the measurement that exists to find it.
+
+### The baseline, measured 2026-08-21 against live
+
+11 entry routes x 77 packs = 847 pairs.
 
 | | reachable pairs | coverage |
 |---|---|---|
-| within 1 click | 63 | **6.8%** |
-| within 2 clicks | 329 | **35.6%** |
-| target | 878+ | **95%** |
-
-Per entry route, packs reachable in two clicks:
+| within 1 click | 63 | **7.4%** |
+| within 2 clicks | 707 | **83.5%** |
+| target, within 2 clicks | 805+ | **95%** |
 
 | entry | 1 click | 2 clicks |
 |---|---|---|
 | `/ideas` | 0 | **77** |
 | `/` | 63 | 63 |
-| `/kill-log` | 0 | 63 |
-| `/sample` | 0 | 63 |
-| `/pricing` | 0 | 63 |
-| `/how-it-works` | 0 | **0** |
-| `/faq` | 0 | **0** |
-| `/about` | 0 | **0** |
-| `/terms` | 0 | **0** |
-| `/privacy` | 0 | **0** |
-| `/refund` | 0 | **0** |
-| `/account` | 0 | **0** |
+| `/how-it-works`, `/faq`, `/about`, `/sample`, `/pricing`, `/terms`, `/privacy`, `/refund`, `/kill-log` | 0 | 63 each |
 
-**Seven of twelve entry routes reach no product at all in two clicks.** A stranger who lands on the
-FAQ from a search result cannot get to anything we sell without going back to the header and
-guessing.
+### Two instruments disagreed, and that is the finding
 
-**And the homepage is not the catalogue.** It links 63 distinct packs. There are 77. Fourteen packs
-are reachable only through `/ideas`, and `/ideas` is labelled "Categories" in the navigation, which
-is not a word that promises "everything we have".
+This table replaces one measured the same day by hand that read **6.8% @1 click and 35.6% @2**, with
+seven of twelve entry routes at zero. Neither number is wrong. They model different readers:
 
-**Cost class: ONE-OFF.** Every number above comes from HTTP fetches of pages we already serve. No
-new service, no subscription, no rented box. The measurement script is the gate.
+- the hand crawl followed links inside `<main>` only — a reader who follows the page's own argument;
+- `reachability.mjs` follows every same-origin link, header nav included — a reader who uses the nav.
 
-**Proof, two angles.** Angle one is the reachability crawl above. Angle two is FR1-FR3 in
-`e2e/first-run.spec.ts`, which runs in a real browser against a built server and grades geometry
-rather than parsed HTML. They can fail differently: the crawl cannot see an element that is present
-but `display:none`, and the browser gate cannot see a route nobody listed.
+The nav is why `/faq` jumps from 0 to 63: the wordmark and the crumb both reach `/`, and `/` carries
+63 packs. **The target is set against the script**, because a nav click is a real click and the
+script is the re-runnable one. FR3 in `e2e/first-run.spec.ts` keeps grading `<main>` only, and that
+asymmetry is deliberate: FR3 asks "does this page lead anywhere", the script asks "can the shelf be
+got to at all". Keeping both is what surfaced the disagreement.
+
+### The whole remaining gap is 14 packs
+
+`/` reaches 63 packs at one click **and still 63 at two**. The other 14 are reachable only through a
+category page — `/ideas` -> `/ideas/<category>` -> pack, three clicks from anywhere else on the
+site. They are in the sitemap and in no server-rendered listing a reader or a crawler can walk in
+two. The cause is at `pages/index.tsx:1445`, which renders 2 of N groups until `showAll`, and
+`:1494`, which renders 3 packs of each.
+
+Arithmetic: every entry route that reaches 63 would reach 77, and the total goes 707 -> 847.
+
+**Fixing FR-10 alone takes Axis N1 from 83.5% to 100% at two clicks**, and 7.4% to 9.1% at one. It is
+the only work left on this axis, and it needs a design call rather than a link: render every group
+server-side, paginate, or add a plain index page.
+
+**Cost class: ONE-OFF.** Every number above comes from HTTP fetches of pages we already serve. No new
+service, no subscription, no rented box.
+
+**Proof, two angles.** Angle one is `reachability.mjs`, which parses served HTML. Angle two is
+FR1-FR3 in `e2e/first-run.spec.ts`, which runs in a real browser against a built server and grades
+geometry. They fail differently: the crawl cannot see an element that is present but `display:none`,
+and the browser gate cannot see a route nobody listed.
 
 **Why this is the right axis and conversion is not.** Conversion needs sales, and the storefront has
 had none. Entry coverage is upstream of conversion, is fully determined by our own markup, and is
-already 93.2% short of its ceiling. There is no measurement problem here; there was only ever a
-missing gate.
+measurable today.
