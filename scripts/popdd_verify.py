@@ -163,6 +163,19 @@ RUST_CONFIG_FILES = frozenset({
 ENGINE_CONFIGS = ("config.yaml",)
 ENGINE_DIRS = ("prospector/scheduler/",)
 
+# ── the estate config catchment ──────────────────────────────────────────────
+# The same shape as ENGINE_CONFIGS above, found the same way, one week later. On 2026-08-21
+# commit c0ecb178 changed ops/config/ci_capacity.yaml -- the file that declares which runner
+# pool every CI job lands on -- and this gate printed "no source changes staged, nothing to
+# prove". `.yaml` is in no lane, so nothing ran. Hours earlier that same file had turned every
+# open pull request red: it still said `label: fly` after the four CI_*_RUNS_ON variables moved
+# to ubuntu-latest, and `guard` failed in 11s on #643 and #644.
+#
+# The catchment is the whole directory and the lane is python. Eight of the nine files in
+# ops/config/ are named by a file in tests/unit/; the ninth, prose_repair_effect.yaml, has no
+# test of its own, which is a reason to run the suite over it rather than a reason to exempt it.
+OPS_CONFIG_REL = "ops/config/"
+
 
 def _is_engine_path(path: str) -> bool:
     return path in ENGINE_CONFIGS or path.startswith(ENGINE_DIRS)
@@ -471,6 +484,10 @@ def lanes_for(paths: list[str]) -> tuple[list[str], list[str]]:
         # can still complete one. Neither substitutes for the other.
         if _is_engine_path(path):
             lanes.add("engine")
+        # Outside the elif chain, like the engine check above: a .yaml here matches no
+        # extension rule below and would otherwise fall off the end of the loop unrecorded.
+        if path.startswith(OPS_CONFIG_REL):
+            lanes.add("python")
         if path.startswith(CONSOLE_REL) and ext in WEB_EXTS:
             lanes.add("console")
         elif path.startswith(WEB_REL) and ext in WEB_EXTS:
