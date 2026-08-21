@@ -84,8 +84,12 @@ def _compile_deny(globs: tuple[str, ...]):
     """Precompile every deny pattern into the three tests `is_denied` runs.
 
     THIS IS A SPEED FIX AND NOTHING ELSE. The answers are identical to the fnmatch loop it
-    replaces -- `tests/unit/test_share_deny_globs.py` runs both implementations over every
-    tracked file and a crafted adversarial set and asserts the same pattern comes back.
+    replaces -- `tests/ops/test_share_deny_is_unchanged_by_compilation.py` runs both
+    implementations over every tracked file and a crafted adversarial set and asserts the same
+    pattern comes back. That citation read `tests/unit/test_share_deny_globs.py` until
+    2026-08-21; `git log --all -- <that path>` returns nothing, so it named a file that has
+    never existed on any branch. A docstring that cites a guard nobody can find reads as proof
+    and is not one.
 
     The measurement that bought it: the shares view calls this once per repo file, and with
     2,169 files and 39 patterns that was 140,716 `fnmatch.fnmatch` calls per page load --
@@ -152,6 +156,8 @@ def is_denied(rel: str) -> str:
         if prefix is not None and low.startswith(prefix):
             return pat
     return ""
+
+
 
 
 def _git_tracked(repo_root: Path) -> list[str] | None:
