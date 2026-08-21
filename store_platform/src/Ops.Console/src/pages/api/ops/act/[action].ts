@@ -48,6 +48,10 @@ export const ACTIONS = [
   'engine.switch',
   'engine.arm',
   'engine.disarm',
+  // Re-run one of the three network-bound console views for real and write its snapshot.
+  // It is a measurement, so it changes nothing and a failed run leaves the previous answer
+  // in place. See prospector/ops/slow_read.py.
+  'snapshot.refresh',
 ] as const;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

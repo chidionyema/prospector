@@ -13,6 +13,7 @@
  */
 import Confirm from '@/components/Confirm';
 import Shell from '@/components/Shell';
+import SnapshotBar, { type Snapshot } from '@/components/SnapshotBar';
 import { AsOf, Card, Empty, Mono, Note, Pill, Problem, Scroll } from '@/components/ui';
 import { ago } from '@/lib/time';
 import { useOps } from '@/lib/useOps';
@@ -64,6 +65,7 @@ type DeploysView = {
   headline: string;
   needs_attention: number;
   fixed?: string[];
+  snapshot?: Snapshot;
 };
 
 /** The probe's six states, and how loudly each one should read. */
@@ -194,7 +196,9 @@ function Deployable({ d }: { d: Deployable }) {
 }
 
 export default function Deploys() {
-  const { data, envelope, error } = useOps<DeploysView>('deploys', {}, { pollMs: 300_000 });
+  const { data, envelope, error, refresh } = useOps<DeploysView>('deploys', {}, {
+    pollMs: 300_000,
+  });
   const fleet = data?.runners;
 
   return (
@@ -203,9 +207,18 @@ export default function Deploys() {
       intro="What each deployable is running, and how far behind main it is. A merge is not a deploy: this is the page that says whether the live site has the commit yet."
     >
       {error && <Problem>{error}</Problem>}
-      {!data && !error && <Note>reading it — this asks GitHub and Fly, so it takes a moment</Note>}
+      {!data && !error && <Note>reading the last measurement</Note>}
 
       {data && (
+        <SnapshotBar
+          view="deploys"
+          snapshot={data.snapshot}
+          what="every deployable, asked of GitHub and Fly"
+          onRefreshed={refresh}
+        />
+      )}
+
+      {data?.snapshot?.have_snapshot && (
         <>
           <Card
             title="Verdict"
