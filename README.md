@@ -72,7 +72,7 @@ Two more, both estate-wide rather than engine-only:
 - [The eight-step pipeline](#the-eight-step-pipeline)
 - [The six grounded checks (the moat)](#the-six-grounded-checks-the-moat)
 - [Ambition lanes — one engine, four bars](#ambition-lanes--one-engine-four-bars)
-- [Two model chains: the moat vs. the cheap stuff](#two-model-chains-the-moat-vs-the-cheap-stuff)
+- [The model chains: the moat vs. the cheap stuff](#the-model-chains-the-moat-vs-the-cheap-stuff)
 - [Resilience: failover, circuit breakers, DEFER](#resilience-failover-circuit-breakers-defer)
 - [Principal Upgrades — Architectural Resilience](#principal-upgrades--architectural-resilience)
 - [Polymorphic Vetting — The Persona System](#polymorphic-vetting--the-persona-system)
@@ -85,7 +85,8 @@ Two more, both estate-wide rather than engine-only:
 - [Tests](#tests)
 - [Tooling and quality gates](#tooling-and-quality-gates)
 - [Key docs](#key-docs)
-- [Pi Agent Autonomous Workflow](#pi-agent-autonomous-workflow)
+- [Research index — how the platform writes](docs/RESEARCH_INDEX.md)
+- [Pi Agent Autonomous Workflow](docs/PI_AUTONOMY.md)
 
 ---
 
@@ -249,7 +250,7 @@ procedure; the engine is the guarantee):
 
 Steps 1–3 are cheap and run on the **non-critical chain**. Step 4 — the moat — is
 the only step that produces verdicts, and it runs **exclusively on Claude/Gemini**
-(see [Two model chains](#two-model-chains-the-moat-vs-the-cheap-stuff)).
+(see [The model chains](#the-model-chains-the-moat-vs-the-cheap-stuff)).
 
 ---
 

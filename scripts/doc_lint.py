@@ -4,13 +4,17 @@
 ENG-6 was a doc that told an operator to run a provider no config had selected for weeks.
 Nothing caught it, because prose has no compiler. This is the compiler.
 
-Three checks, and each one exists because that exact shape of rot has happened here:
+Four checks, and each one exists because that exact shape of rot has happened here:
 
 1. **A referenced path that does not exist.** `RUN.md` sent readers to a module that had moved.
 2. **A referenced path that exists and is empty.** `prospector/publish.py` is a 0-byte stub; a
    doc naming it reads as correct to grep and to a human skimming, and is useless to run.
 3. **A provider named as if it were current, that `config.yaml` does not select.** `RUN.md:95`
    said the moat was "Claude+Gemini". There has been no `gemini` key in `config.yaml` for weeks.
+4. **A deep link that does not resolve.** A `[text](docs/X.md#anchor)` whose file moved or
+   whose heading was reworded still looks like a citation and takes the reader nowhere.
+   This one runs only under `--links` and stays out of the ratchet baseline; see the block
+   above `main` for why.
 
 Check 3 must not ban discussing a retired provider — the incidents ARE the reasoning behind
 the current rules, and `CLAUDE.md` is mostly that. So a line carrying `doc-lint-ok` is exempt,
@@ -22,6 +26,8 @@ Usage
     python3 scripts/doc_lint.py            # report; exit 1 if anything is wrong
     python3 scripts/doc_lint.py --json     # same, machine-readable
     python3 scripts/doc_lint.py --list     # what it scanned and what it knows, then exit 0
+    python3 scripts/doc_lint.py --links    # every relative link and #anchor in every tracked
+                                           # .md; exit 1 if any does not resolve
     python3 scripts/doc_lint.py --check    # ratchet: a doc may not get worse, and a suppression
                                            # may not outlive the deadline written beside it
 
@@ -32,6 +38,7 @@ from __future__ import annotations
 import argparse
 import functools
 import json
+import posixpath
 import re
 import subprocess
 import sys
@@ -393,12 +400,172 @@ def check_ratchet(findings: list[dict], scope: set[str] | None = None) -> tuple[
     return not problems, problems + notes
 
 
+# ---------------------------------------------------------------------------
+# Check 4: a deep link that does not resolve.
+#
+# Deliberately NOT part of `lint()` and NOT in the ratchet baseline. The three checks above
+# grade a doc's PROSE against the repo; this one grades its NAVIGATION, over every tracked
+# `.md` rather than SCAN_GLOBS. Folding it into `lint()` would move every per-file count in
+# `docs/doc_lint_baseline.json` at once, which turns one burn-down queue into two and makes
+# `test_doc_lint_never_increases.py` fail for a reason that has nothing to do with doc rot.
+#
+# It exists because `docs/RESEARCH_INDEX.md` consolidates the estate's research by deep link:
+# a link that resolves today and rots next week takes the reader to the wrong claim, and the
+# index is the one doc whose entire value is that its pointers land.
+# ---------------------------------------------------------------------------
+
+#: A markdown link, excluding images (`![alt](src)`), with an optional `"title"`.
+_MD_LINK = re.compile(r'(?<!!)\[([^\]\n]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)')
+
+#: An inline code span. A `[text](url)` INSIDE one is prose ABOUT markdown, not a link.
+_INLINE_CODE = re.compile(r"`[^`\n]*`")
+
+#: A fenced code block delimiter. Links inside a fence are samples, not navigation.
+_FENCE = re.compile(r"^\s*(```|~~~)")
+
+#: An ATX heading, with any trailing closing hashes stripped.
+_ATX = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
+
+
+def anchor_slug(text: str) -> str:
+    """The `#fragment` GitHub generates for this heading text.
+
+    Three rules here were each learned by this instrument reporting a WORKING link as broken,
+    so none of them are cosmetic:
+
+    1. **An underscore between word characters is literal, not emphasis.** GitHub keeps it:
+       a heading `B. Dead: cta_text has no consumer` anchors at `#b-dead-cta_text-has-no-consumer`.
+       Stripping every underscore alongside `*` and `~` reported that link broken when it
+       resolves. Only DELIMITER underscores come out.
+    2. **GitHub converts each whitespace character to a hyphen and does NOT collapse runs.**
+       A spaced em dash `" \u2014 "` loses the dash to the punctuation rule and leaves two
+       spaces, so the slug carries a DOUBLE hyphen. Collapsing with a `\\s+` run reported 8
+       anchors in `README.md` as broken.
+    3. Backticks and inline links in a heading contribute their TEXT, not their markup.
+    """
+    t = re.sub(r"`([^`]*)`", r"\1", text)
+    t = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", t)
+    t = re.sub(r"[*~]", "", t)
+    t = re.sub(r"(?<!\w)_|_(?!\w)", "", t)
+    t = t.strip().lower()
+    t = re.sub(r"[^\w\s-]", "", t, flags=re.UNICODE)
+    return re.sub(r"\s", "-", t)
+
+
+@functools.lru_cache(maxsize=None)
+def heading_anchors(path: Path) -> frozenset[str]:
+    """Every `#fragment` this file answers to.
+
+    A repeated heading text gets `-1`, `-2` and so on from GitHub; the bare slug still points
+    at the first one, so both forms are accepted.
+    """
+    found: set[str] = set()
+    seen: dict[str, int] = {}
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return frozenset()
+    fenced = False
+    for line in lines:
+        if _FENCE.match(line):
+            fenced = not fenced
+            continue
+        if fenced:
+            continue
+        m = _ATX.match(line)
+        if not m:
+            continue
+        s = anchor_slug(m.group(2))
+        if not s:
+            continue
+        n = seen.get(s, 0)
+        seen[s] = n + 1
+        found.add(s if n == 0 else f"{s}-{n}")
+        found.add(s)
+    return frozenset(found)
+
+
+def _markdown_files() -> list[str]:
+    """Every tracked `.md` path, repo-relative.
+
+    Same doctrine as `_tracked()`: grade against the repository, never against whatever this
+    machine happens to have lying around, so the number is the same in a clean clone.
+    """
+    try:
+        out = subprocess.run(["git", "ls-files", "-z", "*.md"], cwd=REPO_ROOT,
+                             capture_output=True, text=True, timeout=120, check=True)
+    except (OSError, subprocess.SubprocessError):
+        return sorted(p.relative_to(REPO_ROOT).as_posix()
+                      for p in REPO_ROOT.rglob("*.md") if p.is_file())
+    return [rel for rel in out.stdout.split("\0") if rel]
+
+
+def check_links() -> tuple[list[dict], dict[str, int]]:
+    """Return (findings, tally) for every relative markdown link in every tracked doc.
+
+    `http(s)` and `mailto:` links are counted and not fetched — a network call would make the
+    result depend on the weather, and a linter that is red for a reason nobody can fix gets
+    switched off.
+    """
+    tracked = _tracked()
+    findings: list[dict] = []
+    tally: dict[str, int] = {"ok": 0, "missing_link_target": 0,
+                             "missing_anchor": 0, "external": 0}
+
+    for rel in _markdown_files():
+        src = REPO_ROOT / rel
+        try:
+            lines = src.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError:
+            continue
+        fenced = False
+        for lineno, line in enumerate(lines, 1):
+            if _FENCE.match(line):
+                fenced = not fenced
+                continue
+            if fenced:
+                continue
+            # Blank inline code spans, keeping the line length so column maths still works.
+            scan = _INLINE_CODE.sub(lambda m: " " * len(m.group(0)), line)
+            for _text, href in _MD_LINK.findall(scan):
+                if href.startswith(("http://", "https://", "mailto:")):
+                    tally["external"] += 1
+                    continue
+                path_part, _, frag = href.partition("#")
+                if not path_part:
+                    target_rel, target = rel, src
+                else:
+                    target_rel = posixpath.normpath(
+                        posixpath.join(posixpath.dirname(rel), path_part))
+                    target = REPO_ROOT / target_rel
+                known = target_rel in tracked if tracked else target.exists()
+                if not known and not target.exists():
+                    tally["missing_link_target"] += 1
+                    findings.append({"file": rel, "line": lineno,
+                                     "kind": "missing_link_target", "detail": href,
+                                     "why": "the link points at a path the repo does not have"})
+                    continue
+                if frag and target.suffix == ".md" and target.is_file():
+                    if frag.lower() not in heading_anchors(target):
+                        tally["missing_anchor"] += 1
+                        findings.append({"file": rel, "line": lineno,
+                                         "kind": "missing_anchor", "detail": href,
+                                         "why": "the file is there; no heading in it makes "
+                                                "that anchor"})
+                        continue
+                tally["ok"] += 1
+    return findings, tally
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--json", action="store_true", help="machine-readable findings")
     parser.add_argument("--list", action="store_true",
                         help="print what would be scanned and which providers are live, then stop")
+    parser.add_argument("--links", action="store_true",
+                        help="check every relative markdown link and #anchor in every tracked "
+                             ".md file. Separate from the ratchet: never enters the baseline")
     parser.add_argument("--check", action="store_true",
                         help="ratchet mode: fail only when a doc got WORSE than the baseline")
     parser.add_argument("--write-baseline", action="store_true",
@@ -416,6 +583,20 @@ def main(argv: list[str] | None = None) -> int:
         print(f"live providers:    {', '.join(sorted(live)) or '(none)'}")
         print(f"retired providers: {', '.join(sorted(KNOWN_PROVIDERS - live))}")
         return 0
+
+    if args.links:
+        link_findings, tally = check_links()
+        if args.json:
+            print(json.dumps({"ok": not link_findings, "count": len(link_findings),
+                              "tally": tally, "findings": link_findings}, indent=2))
+            return 1 if link_findings else 0
+        for f in link_findings:
+            print(f"{f['file']}:{f['line']}: {f['kind']}: {f['detail']} — {f['why']}")
+        print(f"doc_lint --links: {tally['ok']} ok, "
+              f"{tally['missing_link_target']} missing-file, "
+              f"{tally['missing_anchor']} missing-anchor, "
+              f"{tally['external']} external (not fetched)")
+        return 1 if link_findings else 0
 
     findings = lint()
 
