@@ -254,8 +254,13 @@ jobs:
           # added to fix in the first place, arriving by a different door.
           py=false; dn=false; wb=false; cn=false
 
-          # Python: engine sources, tests, deps, and the config/prompt files the engine reads.
-          if match '\.py$|^requirements|^pytest\.ini$|^config\.yaml$|^prompts/|^tests/|^scripts/'; then py=true; fi
+          # Python: engine sources, tests, deps, and the config/prompt files the engine reads,
+          # plus ops/config/ -- which steers the ESTATE rather than the engine, and was missed
+          # for exactly that reason. PR #645 changed ops/config/ci_capacity.yaml and this filter
+          # reported `python skipping`, so tests/unit/test_ci_capacity.py, the test written to
+          # grade that very file, did not run on the pull request that changed it. Only the
+          # unfiltered `guard` job caught it, and only after the fact.
+          if match '\.py$|^requirements|^pytest\.ini$|^config\.yaml$|^prompts/|^tests/|^scripts/|^ops/config/'; then py=true; fi
 
           if match '^store_platform/src/Store\.(Api|Catalog|Tests)/|\.cs$|\.csproj$|\.sln$'; then dn=true; fi
 

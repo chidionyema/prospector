@@ -295,6 +295,31 @@ class TestTheLaneMapCoversEachSourceKind:
         assert lanes == ["engine"], "the file that steers the live daemon must be proven"
         assert unclassified == []
 
+    def test_the_estate_config_selects_the_python_lane(self, runner):
+        """The same hole as config.yaml above, one directory over and one week later.
+
+        On 2026-08-21 commit c0ecb178 changed ops/config/ci_capacity.yaml and this gate
+        printed "no source changes staged, nothing to prove". That file declares which
+        runner pool every CI job lands on, and hours earlier it had turned every open pull
+        request red by still saying `label: fly` after the CI_*_RUNS_ON variables moved to
+        ubuntu-latest. `guard` failed in 11s on #643 and #644. Four files in tests/unit/
+        grade that one yaml, and the gate ran none of them.
+        """
+        lanes, unclassified = runner.lanes_for(["ops/config/ci_capacity.yaml"])
+        assert lanes == ["python"], "the file that steers every CI run must be proven"
+        assert unclassified == []
+
+    def test_the_estate_config_catchment_is_named_not_every_yaml(self, runner):
+        """The reason ENGINE_CONFIGS gives for not putting .yaml in SOURCE_EXTS holds here.
+
+        A blanket extension rule would make every docs and workflow yaml unprovable and
+        therefore uncommittable, and a gate that blocks unrelated work is a gate people
+        turn off with --no-verify. So this must stay empty, not become "python".
+        """
+        lanes, unclassified = runner.lanes_for(["docs/storefront/look-engine/palette.yaml"])
+        assert lanes == [], "a yaml outside a named catchment must not conscript the suite"
+        assert unclassified == []
+
     def test_scheduler_code_selects_the_engine_lane_AND_python(self, runner):
         """Both, not either. pytest proves the code; the dry-run tick proves the daemon can
         still complete a tick with it — a green suite over a scheduler that no longer starts
