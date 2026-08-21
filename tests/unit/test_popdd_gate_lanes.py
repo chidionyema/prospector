@@ -524,6 +524,60 @@ class TestTheHookDelegatesInsteadOfKeepingASecondCopy:
             "project interpreter by path"
         )
 
+    def test_a_missing_interpreter_does_not_report_itself_as_a_failed_proof(
+        self, tmp_path: Path
+    ):
+        """A tree with no environment must say so, not accuse the diff.
+
+        `sh -c` returns the same non-zero exit for "the interpreter does not exist" and
+        "a lane went red", so before 2026-08-21 the gate printed `No such file or
+        directory` and then its BLOCKED message about lanes, ruff and receipt chains.
+        The founder lost three commit attempts to it in one sitting, and 12 of the 62
+        worktrees on that machine had no environment at the time.
+
+        Run against a real throwaway repository and a real `git commit`, because what is
+        under test is what a person sees in their terminal.
+        """
+        env = {
+            **os.environ,
+            "GIT_CONFIG_GLOBAL": str(tmp_path / "nogitconfig"),
+            "GIT_CONFIG_SYSTEM": str(tmp_path / "nogitconfig"),
+        }
+        run = lambda *a: subprocess.run(  # noqa: E731 - one-line local, not an API
+            ["git", *a], cwd=tmp_path, capture_output=True, text=True, check=True, env=env,
+        )
+        run("init", "-q", "-b", "main")
+        run("config", "user.email", "t@t")
+        run("config", "user.name", "t")
+        run("config", "commit.gpgsign", "false")
+
+        installed = tmp_path / ".git" / "hooks" / "pre-commit"
+        installed.write_text(HOOK.read_text(encoding="utf-8"), encoding="utf-8")
+        installed.chmod(0o755)
+
+        (tmp_path / "a.txt").write_text("hi\n", encoding="utf-8")
+        run("add", "a.txt")
+        done = subprocess.run(
+            ["git", "commit", "-m", "x"],
+            cwd=tmp_path, capture_output=True, text=True, env=env,
+        )
+        said = done.stdout + done.stderr
+
+        assert done.returncode != 0, (
+            "the gate passed a commit it could not test. Unproven must block:\n" + said
+        )
+        assert "NOTHING WAS TESTED" in said, (
+            "a tree with no interpreter must be told the environment is missing:\n" + said
+        )
+        assert "setup_worktree" in said, (
+            "the message must name the command that repairs it:\n" + said
+        )
+        for wrong in ("POPDD gate BLOCKED", "ruff", "receipt"):
+            assert wrong not in said, (
+                f"the missing-environment message still says {wrong!r}, so it reads as a "
+                "failed proof and sends the reader into their own diff:\n" + said
+            )
+
     def test_the_hook_holds_no_extension_list_of_its_own(self):
         """The duplicated list is how `.tsx` went missing. Comments are stripped first."""
         code = _hook_code()
