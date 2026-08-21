@@ -2174,8 +2174,59 @@ Then, and only then:
 
 - **Per-user allowance**: how many vets a registered user gets, and whether the paid tier is
   a bundle or per-vet. Founder decision, not ours.
-- **Front-end wiring**: the transport for the event stream (SSE against the run URL is the
-  obvious candidate given 12.4, but it is unmeasured here). A third peer lens was requested on
-  this and had not answered when this section was written; it is a spec gap, not a settled call.
+- ~~Front-end wiring~~ — **decided, see §12.8.** This bullet said SSE was the obvious
+  candidate. That is the wrong call, and the measurement against it is in §12.8.
 - **Does a visitor's idea enter the catalogue?** It must not, by default — they typed it, it is
   theirs — but that is a founder call about the product, not an engineering default.
+
+### 12.8 How it is wired — POST a job, poll it. Not SSE.
+
+Measured 2026-08-21. Three facts, each of which removes a decision rather than adding one.
+
+**1. This is not the storefront's first long job with a progress surface. One already ships, and
+a paying buyer already sees it.** `store_platform/src/Store.Web/src/pages/orders/success.tsx` is
+POST-then-poll: `POLL_INTERVAL_MS = 2000` (`:13`), `MAX_POLL_ATTEMPTS = 12` (`:18`), six phases
+(`resolving | ready | no-session | timed-out | unfulfilled | revoked`), a progress bar driven by
+`pollAttempt / MAX_POLL_ATTEMPTS` (`:440`), and terminal states that end the poll early instead of
+running the ceiling out.
+
+**Read the comment at `:14-17` before building this.** The ceiling used to be 20 attempts, tuned
+for a delay nobody had ever observed, and all the extra ceiling did was prolong the runs that were
+never going to resolve. **Reuse the component; do not reuse the constants** — that surface is
+bounded at 24 seconds and a vet runs minutes.
+
+**2. SSE is rejected on capacity, not on taste.** `prospector-engine` is one machine on
+`internal_port = 8611`. One open connection per visitor is a capacity question that has to be
+answered before launch, and polling never asks it. Ship the poll; add SSE later behind the same
+job id if the desk earns it.
+
+**3. The public route does not go through the ops read door, and there is a pattern to copy
+rather than invent.** The console's read door is a session-gated allowlist
+(`store_platform/src/Ops.Console/src/pages/api/ops/read/[view].ts`), and a drift test refuses a
+commit unless the Python gateway and that file agree. **Exactly one read is reachable without a
+console session — `share_open` — and it is deliberately absent from that allowlist**, with its own
+route at `pages/api/s/[token].ts`; the reasoning is written down at
+`tests/unit/test_console_tools_run.py:353-358`. That is the shape to copy: **a dedicated public
+route naming its one read as a literal, never a hole punched in the admin allowlist.**
+
+The job machinery to copy is `_act_tools_run` (`prospector/ops/console_api.py:2960`) plus
+`_read_job` (`:3101`) — POST a job, it writes receipts to `store/ops/intents.jsonl`, the read
+greps them back by job id. **Reusable as a pattern, never as an endpoint**: it is admin-authed and
+it takes a repo-relative tool path to execute, and a stranger naming what runs is the last thing
+that door should accept.
+
+**The shareable result is already solved.** `share.mint` returns `/s/<token>`; the token is
+unguessable, only its sha256 is on disk, and it is checked again at read time rather than only at
+mint. The same shape carries a vet result and delivers the growth loop of §12.4 with no second
+auth story. The web never touches `store/` — it asks the engine, and `PROSPECTOR_STORE_DIR` pins
+where the engine writes.
+
+**Queued-and-notify is out of v1**, and the reason is the opposite of the obvious one: it is
+*more* new surface, not less. Notify needs an address, which needs a form, a consent decision,
+deliverability, bounce handling and a spam target. Polling adds no new infrastructure at all —
+the component exists, the public-route pattern exists, the job-and-receipt pattern exists.
+
+**A cheap prescreen runs before any moat call.** Registration (§12.6) bounds who, and the spend
+sub-cap bounds how much, but neither bounds one registered user pasting the same idea forty times.
+`prescreen.py` is the existing first triage gate and it is the cheap one: it runs first, and the
+per-user bound is decided in this spec rather than after launch.
