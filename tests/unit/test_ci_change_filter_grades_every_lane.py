@@ -94,6 +94,11 @@ def test_the_filter_is_still_a_shell_block_this_test_can_run():
     ("dotnet", "store_platform/src/Store.Api/Program.cs"),
     ("web", "store_platform/src/Store.Web/app/page.tsx"),
     ("console", "store_platform/src/Ops.Console/src/pages/queue.tsx"),
+    # Not engine config and not under .github/, so neither existing rule saw it. PR #645
+    # changed this exact file and the filter reported `python skipping`, which meant
+    # tests/unit/test_ci_capacity.py did not run on the pull request that changed the file
+    # it was written to grade. Only the unfiltered `guard` job caught it.
+    ("python", "ops/config/ci_capacity.yaml"),
     ("rust", "engine-rs/crates/prospector-core/src/decision.rs"),
     # Not a .rs file. The rust lane grades the whole tree, and a Cargo.toml or a
     # deny.toml changes what the build DOES without changing a line of Rust.
