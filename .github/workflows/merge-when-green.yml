@@ -67,7 +67,15 @@ permissions:
 
 jobs:
   merge:
-    runs-on: ubuntu-latest
+    # NOT `ubuntu-latest`. Measured 2026-08-21: every GitHub-hosted job on this account is refused
+    # before its first step with "The job was not started because recent account payments have
+    # failed or your spending limit needs to be increased". This workflow was the only one in the
+    # tree that asked for a hosted runner with no escape, so it failed in 3 seconds on every one of
+    # its runs and has never merged anything. Every workflow that works uses the line below, and
+    # `CI_RUNS_ON=fly` is set on the repository, so this lands on the self-hosted fleet like the
+    # rest. The `|| 'ubuntu-latest'` tail is the house idiom and is what runs if the vars are ever
+    # cleared.
+    runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     steps:
       - name: Merge every pull request that is genuinely finished
         env:
