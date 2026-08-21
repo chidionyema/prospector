@@ -99,6 +99,9 @@ SERVICES: dict[str, dict] = {
     },
 }
 
+#: GitHub run statuses that mean "not finished". Same list as scripts/deploy_now.py::_RUNNING.
+_CI_RUNNING = ("queued", "in_progress", "waiting", "requested", "pending")
+
 #: Services with no rollback route, and why. A DEPLOYABLE that is in neither map fails
 #: tests/unit/test_rollback_is_wired_to_the_console.py.
 NO_ROLLBACK: dict[str, str] = {
@@ -207,8 +210,30 @@ def find_fly() -> str | None:
 
 
 # --------------------------------------------------------------------------- #
-def _run(cmd: list[str], cwd: Path | None = None, timeout: int = 180) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, capture_output=True, text=True, cwd=str(cwd or ROOT), timeout=timeout)
+#: See deploy_now for the same two constants and the same reason.
+RC_TIMEOUT = 124
+RC_NO_BINARY = 127
+
+
+def _run(cmd: list[str], cwd: Path | None = None,
+         timeout: int = 180) -> subprocess.CompletedProcess:
+    """Run a command and ALWAYS return a CompletedProcess, never an exception.
+
+    The worst case this closes is not the read of `flyctl releases`. It is `_probe_one`: the
+    health checks run AFTER the rollback has already deployed, so a curl that hung for 120s
+    raised TimeoutExpired out of `rollback()` and the operator saw a traceback at the exact
+    moment they needed to be told "the previous image is live but it is not answering". A
+    non-zero return code instead means the probe reports FAIL, which is the honest answer to a
+    URL that did not respond.
+    """
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True,
+                              cwd=str(cwd or ROOT), timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        return subprocess.CompletedProcess(
+            cmd, RC_TIMEOUT, "", f"{cmd[0]} did not answer within {exc.timeout:g}s")
+    except OSError as exc:
+        return subprocess.CompletedProcess(cmd, RC_NO_BINARY, "", f"cannot run {cmd[0]}: {exc}")
 
 
 def _releases(fly: str, app: str) -> tuple[list[dict], str]:
@@ -219,17 +244,74 @@ def _releases(fly: str, app: str) -> tuple[list[dict], str]:
     return parse_releases(p.stdout), ""
 
 
+def _deploy_workflow(name: str) -> str:
+    """The workflow that ships this service, read from DEPLOYABLES rather than retyped here."""
+    for d in DEPLOYABLES:
+        if d["name"] == name:
+            return d.get("workflow") or ""
+    return ""
+
+
+def _ci_deploy_in_flight(name: str) -> tuple[str, str]:
+    """Is GitHub already deploying or rolling back this service? Returns (blocker, why-not-known).
+
+    THE RACE THIS CLOSES, and it is one CI sets off by itself. Every deploy workflow ends with a
+    self-healing step that runs THIS SCRIPT on the runner when the deploy does not answer
+    (deploy-engine.yml, "Roll back, because this deploy does not answer"). So the most likely
+    moment an operator presses Rollback is the exact moment CI is already running one. Two
+    `flyctl deploy --image` against one app is what this file's own docstring calls the way "an
+    app ends up serving neither image", and the engine is one machine on strategy `immediate`.
+
+    `choose_target`'s in-flight guard does not cover it. That reads FLY releases, and neither
+    rollback has created a release yet at the instant both start, so both see InProgress False
+    and both proceed.
+
+    WHEN GH IS NOT AVAILABLE THIS PROCEEDS, and that asymmetry is deliberate. The ops console
+    inside the engine image has no `gh` and no GitHub token (deploy/engine/Dockerfile installs
+    flyctl only). Failing closed there would mean no rollback at all from the one console that is
+    up when the laptop is not -- so a check we cannot make must not become an outage. It says so
+    out loud instead, and the operator decides.
+    """
+    workflow = _deploy_workflow(name)
+    if not workflow:
+        return "", ""
+    gh = shutil.which("gh") or shutil.which("/usr/local/bin/gh")
+    if gh is None:
+        return "", "no `gh` on this host, so a CI deploy or rollback in flight cannot be seen"
+    p = _run([gh, "run", "list", "--workflow", workflow, "--limit", "5",
+              "--json", "status,url,headBranch"], timeout=60)
+    if p.returncode != 0:
+        return "", ((p.stderr or p.stdout).strip().splitlines() or ["gh run list failed"])[0]
+    try:
+        runs = json.loads(p.stdout or "[]")
+    except json.JSONDecodeError:
+        return "", "gh run list did not return JSON"
+    if not isinstance(runs, list):
+        return "", "gh run list returned JSON that is not a list of runs"
+    for r in runs:
+        if isinstance(r, dict) and r.get("status") in _CI_RUNNING:
+            return (f"{workflow} has a run {r.get('status')} on {r.get('headBranch')}: "
+                    f"{r.get('url')}"), ""
+    return "", ""
+
+
 def _probe_one(check: dict) -> tuple[bool, str]:
     """One curl, with the deploy workflow's own retry budget."""
     url = check["url"]
     if "expect_body" in check:
         p = _run(["curl", "-s", "--max-time", "30", "--retry", "5", "--retry-delay", "5",
                   "--retry-all-errors", url], timeout=120)
+        if p.returncode in (RC_TIMEOUT, RC_NO_BINARY):
+            return False, f"GET {url} -> {p.stderr}"
         body = (p.stdout or "")[:400]
         ok = check["expect_body"] in body
         return ok, f"GET {url} -> {body.strip()[:120] or '(empty)'}"
     p = _run(["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "30",
               "--retry", "5", "--retry-delay", "5", "--retry-all-errors", url], timeout=120)
+    if p.returncode in (RC_TIMEOUT, RC_NO_BINARY):
+        # Without this the line reads "GET <url> ->  (want 200)", an empty status code that looks
+        # like a server answering nothing rather than a probe that never ran.
+        return False, f"GET {url} -> {p.stderr} (want {check['expect']})"
     code = (p.stdout or "").strip()
     return code == check["expect"], f"GET {url} -> {code} (want {check['expect']})"
 
@@ -340,7 +422,7 @@ def drill(name: str | None = None) -> int:
     return 0
 
 
-def rollback(name: str, check_only: bool) -> int:
+def rollback(name: str, check_only: bool, force: bool = False) -> int:
     r = routes().get(name)
     if r is None:
         print(f"unknown service {name!r}. Known: {', '.join(routes())}", file=sys.stderr)
@@ -378,10 +460,42 @@ def rollback(name: str, check_only: bool) -> int:
           "current code again. Revert the commit as well.")
     print(f"$ (cd {r['cwd']} && {' '.join(cmd)})")
     if check_only:
-        print("--check: nothing was rolled back. A target resolves and flyctl is present.")
+        print("--check: nothing was rolled back. A target resolves and flyctl is present. "
+              "The CI-in-flight check runs at rollback time, not here -- this preflight asks "
+              "flyctl and nothing else.")
         return 0
 
-    p = subprocess.run(cmd, cwd=str(cwd), timeout=900)
+    blocker, unknown = _ci_deploy_in_flight(name)
+    if blocker and not force:
+        print(f"REFUSED: {blocker}\n"
+              "That run may be deploying, or may already be rolling this service back by itself "
+              "-- every deploy workflow ends with a step that runs this script when the deploy "
+              "does not answer. Two rollbacks against one app can leave it serving neither "
+              "image.\n"
+              "Watch that run first. If it is stuck, re-run this with --force.", file=sys.stderr)
+        return 2
+    if blocker and force:
+        print(f"--force: proceeding while {blocker}")
+    if unknown:
+        print(f"note: {unknown}. Proceeding, because a check this host cannot make must not "
+              f"become an outage -- but if CI is deploying {name} right now, these two will "
+              f"race.")
+
+    try:
+        p = subprocess.run(cmd, cwd=str(cwd), timeout=900)
+    except subprocess.TimeoutExpired:
+        # The single most dangerous moment in this file: flyctl was still deploying the previous
+        # image when we stopped watching. Production is mid-rollback and we do not know which
+        # image it is serving. Never report this as either success or failure.
+        print(f"TIMED OUT WATCHING THE ROLLBACK after 900s. flyctl was still running, so "
+              f"{r['app']} may be part-way between v{current.get('Version')} and "
+              f"v{target.get('Version')}.\n"
+              f"Do NOT run this again yet. Check what is live first: "
+              f"`flyctl releases -a {r['app']}`, or the /deploys page.", file=sys.stderr)
+        return 1
+    except OSError as exc:
+        print(f"REFUSED: cannot run {cmd[0]}: {exc}", file=sys.stderr)
+        return 2
     if p.returncode != 0:
         print(f"flyctl exited {p.returncode}. The app may be part-way through a deploy; "
               f"run --check to see what it is serving now.", file=sys.stderr)
@@ -408,13 +522,15 @@ def main(argv: list[str] | None = None) -> int:
                     help="prove every rollback resolves and every health check works; deploy nothing")
     ap.add_argument("--check", action="store_true",
                     help="run the preflight and print the command, roll nothing back")
+    ap.add_argument("--force", action="store_true",
+                    help="roll back even though CI has a deploy run in flight for this service")
     args = ap.parse_args(argv)
 
     if args.drill:
         return drill(args.service)
     if args.list or not args.service:
         return print_routes()
-    return rollback(args.service, args.check)
+    return rollback(args.service, args.check, args.force)
 
 
 if __name__ == "__main__":
