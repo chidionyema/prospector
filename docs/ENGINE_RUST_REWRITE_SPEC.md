@@ -9,26 +9,31 @@ written scope was the body of PR #644 plus a comment in `engine-rs/Cargo.toml` r
 The founder's framing, verbatim: "I was designing for a Series C company. You're building on
 ramen. Let me fix that."
 
-Two Fly apps, zero GPU, zero new infrastructure bills.
+Four Fly apps, zero GPU, zero new infrastructure bills. (The design said two. The founder
+settled on 2026-08-21 that the API stays .NET, which puts it back to four — see section 4a.)
 
 ---
 
-## 1. The lean stack (2 apps, $0 extra)
+## 1. The lean stack (4 apps, $0 extra)
 
 | What | Current | Lean rebuild | Why |
 |---|---|---|---|
-| Fly apps | 5 (engine, api, web, searxng, ci) | 2 (prospector + store-web) | The Rust engine serves its own API. SearXNG stays. The CI runner dies — use the GitHub Actions free tier. |
-| Engine | Python 73k LOC + supervisord | One Rust binary (Axum + Tokio) | Single binary, no GIL, no supervisord. Serves HTTP, runs the scheduler, generates packs. |
+| Fly apps | 5 deployed (engine, store-api, store-web, searxng, hermes) | 4 (engine, store-api, store-web, searxng) | The CI runner dies — use the GitHub Actions free tier. Everything else stays. **The API stays .NET** (founder, 2026-08-21). |
+| Engine | Python 73k LOC + supervisord (10 programs) | One Rust binary (Tokio) | Single binary, no GIL, no supervisord. Runs the scheduler, vets, generates packs, and serves its own internal/ops HTTP. It does **not** serve the storefront API. |
 | Brain | Python threads in the same process | Python HTTP server on localhost inside the same container | The LLM logic stays Python. Rust calls it over `localhost:8001`. One container, two processes. |
 | Database | SQLite | Fly Postgres (free tier) | 3GB, shared CPU, $0. MVCC. Real backups. You can query it. |
 | Queue / checkpointing | `threading.Timer` + files | pgmq (Postgres message queue) | A queue built into Postgres. Free. Durable. If the engine dies, another worker picks up the job and resumes from the last checkpoint. |
 | Cache | Disk | Fly Upstash Redis (free tier) | Rate limits, search cache, brain slot locks. |
 | Dedup / retrieval | `difflib` + Jaccard | CPU embeddings + pgvector | Same Postgres instance. Just an extension. No GPU. |
 | Pack gen | `fpdf2` + `mistune` | Typst + `pulldown-cmark` (Rust) | Native PDF, parallel render, no Python GIL blocking. |
-| Ops console | Next.js inside the engine image | Axum + htmx (served by the same Rust binary) | 500KB binary, not a 200MB Node image. |
+| Ops console | Next.js inside the engine image (`supervisord` program `ops-console`, port 8611) | Unchanged | Deferred. Section 9 rejects rewriting it and section 9 wins: it works, there are zero users, and it is not on the critical path. |
 
 Total new bill: **$0**. Fly Postgres free tier plus Upstash Redis free tier. Fly is already
 being paid for.
+
+**The API stays .NET.** The founder settled this on 2026-08-21, after the design above was
+written. Section 4a is the correction; where the rest of this document implies Rust serves the
+storefront API, section 4a overrules it.
 
 ---
 
@@ -95,8 +100,9 @@ Inside the one `prospector` Fly app:
 │  ┌───────────────────────────────────────┐  │
 │  │         Rust Binary (Tokio)           │  │
 │  │  ┌─────────┐ ┌──────────┐ ┌────────┐  │  │
-│  │  │  HTTP   │ │Scheduler │ │  Pack  │  │  │
-│  │  │  API    │ │  (pgmq)  │ │  Gen   │  │  │
+│  │  │Internal │ │Scheduler │ │  Pack  │  │  │
+│  │  │ /ops    │ │  (pgmq)  │ │  Gen   │  │  │
+│  │  │  HTTP   │ │          │ │        │  │  │
 │  │  └────┬────┘ └────┬─────┘ └───┬────┘  │  │
 │  │       │           │           │       │  │
 │  │  ┌────┴───────────┴───────────┴────┐  │  │
@@ -111,9 +117,19 @@ Inside the one `prospector` Fly app:
 │  │    verdict ruling, structured JSON)   │  │
 │  └───────────────────────────────────────┘  │
 └─────────────────────────────────────────────┘
-         │                      │
-    Fly Postgres           Fly Upstash
-    (dossiers + queue)     (cache + locks)
+      │              │                │
+      │         Fly Postgres      Fly Upstash
+      │      (dossiers + queue)   (cache + locks)
+      │
+      │ HTTPS, STORE_API_URL, STORE_INTERNAL_API_KEY
+      ▼
+┌─────────────────────────────────────────────┐
+│   prospector-store-api (.NET) — UNCHANGED   │
+│   checkout, entitlements, downloads,        │
+│   orders, catalog, auth, disputes           │
+└──────────────────┬──────────────────────────┘
+                   ▼
+        prospector-store-web (Next.js)
 ```
 
 The Python brain is not a separate Fly app. It is a subprocess — or a sidecar container on the
@@ -125,6 +141,68 @@ handles 100 concurrent candidates; each fires one blocking Python call. The para
 the Rust level, not the Python level.
 
 ---
+
+## 4a. The API stays .NET
+
+Founder decision, 2026-08-21. The storefront API is not in scope for the rewrite and never was.
+Where section 1 or section 4 implies the Rust binary serves the storefront, this section
+overrules them.
+
+**What stays.** `prospector-store-api` is a deployed Fly app. Its source is
+`store_platform/src/Store.Api` — 110 C# files, 11,794 lines — plus `store_platform/src/Store.Catalog`
+at 13,757 lines. It is deployed by `.github/workflows/deploy-api.yml`. It owns everything a
+customer or a card touches:
+
+| Surface | Endpoints |
+|---|---|
+| Money | `POST /checkout`, `POST /entitlements`, `GET /download/{token}`, `GET /healthz/money-rail` |
+| Orders | `GET /api/orders/{token}`, `GET /api/orders/by-session/{sessionId}`, `GET /v1/auth/me/orders` |
+| Catalog (public) | `GET /catalog`, `GET /catalog/{id}`, `GET /catalog/stats`, `POST /catalog/waitlist` |
+| Catalog (internal) | `POST /internal/catalog`, `PATCH /internal/catalog/{id}/{listing,price,copy,facets,content}` |
+| Ops | `GET /internal/ops/{orders,sales,deliveries,disputes}`, `POST /internal/ops/deliveries/{id}/resend` |
+| Auth | `POST /login`, `POST /exchange`, `GET /me`, `GET /providers`, provider link and unlink |
+| Backup | `GET /internal/backup/database`, `GET /internal/backup/keyring` |
+
+Rewriting that in Rust would mean re-deriving Stripe handling, entitlement issuance, download
+token signing and dispute handling — the parts where a bug is money, not latency. It is not on
+the critical path to a faster engine.
+
+**The boundary the rewrite inherits.** The engine is already an HTTP client of the .NET API and
+nothing about that changes. Today, in Python:
+
+- `prospector/bridge.py:629` reads `STORE_API_URL`, defaulting to `http://localhost:5291`.
+- `prospector/bridge.py:558` is `_validate_store_api_url`, an SSRF and credential-leak guard.
+  It refuses a non-`http(s)` scheme, a missing host, a host containing `metadata`, and any
+  link-local, unspecified, multicast or reserved IP. It fails closed: a bad URL raises and stops
+  the publish rather than forwarding the internal key to it.
+- Auth is `STORE_INTERNAL_API_KEY`. Unset means `None`, and `_update_catalog` refuses to publish
+  rather than falling back to a committed key in a public repo.
+- The two call sites are `prospector/bridge.py:1710` and `prospector/bridge.py:2269`, both
+  `requests.post(url, json=payload, headers=headers, timeout=10)`.
+
+**What that means for the Rust port.** `prospector/bridge.py` still moves to Rust — it is on the
+hot path list in section 9 — but it moves as a **client**, not as a replacement. The port has to
+carry three things across, and each is a place where a miss is money:
+
+1. The SSRF guard. Port `_validate_store_api_url` behaviour first, with the same fail-closed
+   default, before any code path can send `STORE_INTERNAL_API_KEY` anywhere.
+2. The fail-closed missing-key rule. No default key, no publish without one.
+3. The six listing fences. Section 9 says Rust's type system makes them unmissable. They fence
+   what the engine sends to `PATCH /internal/catalog/{id}/listing`; the .NET side keeps its own
+   checks and neither replaces the other.
+
+**Contract stability is now a hard requirement.** The Python engine and the .NET API share
+request shapes today — `prospector/price_rationale.py:4` cites
+`store_platform/src/Store.Api/Contracts/PricePatchRequest.cs:28` directly, and
+`prospector/bridge.py:1625` cites `Store.Api`'s `Program.cs` for update-path behaviour. The
+Rust client must serialise to the same JSON the C# contracts deserialise. That is a parity
+obligation with a live money rail on the other side of it, and it belongs in whatever the
+parity tiers turn out to mean (see section 10).
+
+**Effect on the app count.** The target is four Fly apps, not two: `prospector` (Rust engine plus
+the Python brain subprocess), `prospector-store-api` (.NET), `prospector-store-web` (Next.js) and
+`prospector-searxng`. The only app the rewrite removes is the CI runner, which the GitHub Actions
+free tier replaces.
 
 ## 5. The migration: no big bang, no downtime
 
@@ -179,7 +257,7 @@ a library that converts text to numbers.
 |---|---|---|
 | Temporal | pgmq (Postgres queue) | Temporal needs a server. pgmq is a table. Same durability, zero infra cost. |
 | Kubernetes | Single Fly app | Zero users. One app is enough. Scale later. |
-| 6 microservices | 2 Fly apps | `prospector` (Rust + Python brain) and `store-web` (Next.js). |
+| 6 microservices | 4 Fly apps | `prospector` (Rust + Python brain), `prospector-store-api` (.NET), `prospector-store-web` (Next.js) and `prospector-searxng`. Only the CI runner goes. |
 | GPU embeddings | CPU embeddings (`fastembed-rs`) | 22MB model, 50ms per doc on CPU. Good enough. |
 | Rust for everything | Rust for engine and API, Python for the brain | The prompts already exist and work. Don't rewrite what works. |
 
@@ -193,6 +271,10 @@ No platform team required. What is required:
 2. One Fly Postgres to replace SQLite and files.
 3. One CPU embedding model to replace Jaccard.
 4. One queue table to replace `threading.Timer`.
+
+What is explicitly **not** required: rewriting the .NET storefront API, the Next.js ops console,
+or the tuned prompt layer. All three work, none is the bottleneck, and each is a place where a
+rewrite trades working code for regression risk.
 
 That is 100x on throughput, 50x on dedup accuracy and unbounded improvement on state
 durability, for $0 extra per month and a single developer.
@@ -248,7 +330,7 @@ measured number is the one to plan against — the totals move the same way.
 | `prospector/scheduler/` | ~3,000 | 5,189 | Tick logic, spend guard, backlog, PAUSE file checks. Becomes pgmq consumers. |
 | `prospector/retrieval.py` | ~2,500 | 2,522 | HTTP concurrency, circuit breakers, disk cache. Tokio handles this natively. |
 | `prospector/verify.py` | ~2,000 | 1,336 | The orchestration of the six checks, not the verdict ruling. The loop, the kill-fast logic, the confidence scoring. The `verdict_for()` call itself becomes an HTTP POST to Python. |
-| `prospector/bridge.py` | ~2,500 | 2,511 | Publish, bundle, listing fences. The money rail. Rust's type system makes the six fences unmissable. |
+| `prospector/bridge.py` | ~2,500 | 2,511 | Publish, bundle, listing fences. The engine's side of the money rail. Rust's type system makes the six fences unmissable. It moves as an HTTP **client** of the .NET API, not as a replacement for it — see section 4a. |
 | `prospector/pack_*.py` | ~3,500 | 7,786 | HTML, PDF, manifest, CSV, card generation. Rayon parallelism plus Typst. |
 | `prospector/dedup.py` | ~400 | 190 | Jaccard dies. pgvector plus `fastembed-rs` lives. |
 | `prospector/dossier.py` | ~300 | 1,090 | JSON file writes become Postgres rows. |
@@ -288,3 +370,26 @@ $ wc -l < prospector/run.py
 ```
 
 The design said 73,401. The 192-line difference is commits landed since it was written.
+
+---
+
+## 10. Open: what the parity tiers are
+
+`engine-rs/Cargo.toml:61` is the only place in the repo that uses the phrase, and it assumes a
+scheme that is written down nowhere:
+
+> Parity tier T1 requires bit-exact f64 against the Python implementation, so an accidental...
+
+T1 implies a T2 and probably a T3. Nothing defines them. The rewrite needs them, because "does
+the Rust match the Python" has at least three different right answers depending on what is being
+ported:
+
+- **Scoring and money maths** — `prospector/score.py`, the price patch path, anything the .NET
+  API deserialises. Bit-exact f64 or the port is wrong.
+- **Retrieval and ranking** — same inputs should give the same ordering, but a float in the
+  fifteenth place does not matter.
+- **LLM-adjacent output** — nothing is reproducible; the bar is a golden-set score that does not
+  regress.
+
+Naming the tiers is a founder decision and is not made in this document. Until it is made, the
+week-1-to-2 dual-write and the week-5-to-6 shadow dedup have no defined pass mark.
