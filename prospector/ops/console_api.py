@@ -4071,6 +4071,12 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     "scripts/seed_action_cache.sh": "fills the self-hosted runners' action cache; CI plumbing, "
                                     "run once on the runner box, not from an ops page",
     "scripts/setup_worktree.sh": "makes a git worktree usable; a developer's machine, not ops",
+    "scripts/dual_write_parity.py": "grades the Postgres shadow against the SQLite store "
+                                    "during the engine rewrite. It needs a psql binary, a "
+                                    "readable SQLite file and a route to Postgres, and the "
+                                    "engine container has none of the three. A migration-time "
+                                    "developer tool: it answers a question that stops existing "
+                                    "the day the rewrite lands",
     "scripts/install_control_center_agent.sh": "writes the Control Center launchd plist into the operator's own "
                                                "~/Library/LaunchAgents and reloads the agent. It installs the "
                                                "console itself, on that one Mac, and the console runs on Fly — "
