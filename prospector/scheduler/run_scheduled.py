@@ -2142,6 +2142,82 @@ def _trailing_barren_count(cfg, window: int = 50) -> int:
     return streak
 
 
+def _autopause_generation_on_barren_streak(cfg, specs: list, streak: int) -> None:
+    """Arm the generation half-stop when the engine declares a barren-generation outage.
+
+    THE ALERT ALREADY EXISTED AND STOPPED NOTHING. `alerts.alerts_for_tick` has raised CRITICAL
+    `barren_streak` — "Generation DEAD: N consecutive barren ticks" — since it was written, and
+    an alert is a sentence in a file. On 2026-08-20 the founder's ops console stopped answering
+    because generation kept minting waves against a MiniMax token plan that returned HTTP 429 to
+    every call. The 429 classifies TRANSIENT (`errors.classify_exhaustion`), so the adapter slept
+    5s/10s/20s/40s and retried, no brain was ever marked dead, `_moat_blind_reason` never saw a
+    blind moat, and the next tick generated again. Measured on the container: four `claude -p`
+    runtimes, 90.7% steal, and 20 of 34 console reads hitting a 30s ceiling while generation
+    produced ZERO candidates. Founder, verbatim: "we eed it to autopause whe this happens",
+    "so we dont get into this situation again".
+
+    ONE THRESHOLD, NOT TWO. This fires exactly when that CRITICAL alert fires, by reading the
+    spec the alerter has already produced, so the number that means "outage" cannot drift away
+    from the number that means "stop". Change it in `alerts.alerts_for_tick`, once.
+
+    IT DOES NOT SELF-CLEAR, AND THAT IS THE ASK. Founder: "we can restat fron adnindashboard hwen
+    we are able to". A barren streak means something outside the engine is spent — a token plan,
+    a credential, a provider — and self-resuming would put the box straight back into the state
+    that took the console down. The `Start it again` button on `/engine` disarms it
+    (`pause.disarm`, scope `generation`; `store_platform/src/Ops.Console/src/pages/engine.tsx`).
+
+    SCOPE IS `generation`, NEVER `all`. The drain must keep running: the backlog this outage
+    created is exactly the work that still needs finishing, and CLAUDE.md's rule is that
+    generation must not outrun its own drain — stopping the drain too would be the opposite fix.
+
+    It never raises. An autopause that kills the daemon is worse than the outage it was written
+    for.
+    """
+    if not _sched(cfg, "autopause_on_barren_streak", True):
+        return
+    if not any(isinstance(s, dict) and s.get("key") == "barren_streak" for s in specs):
+        return
+    ticks = streak + 1
+    try:
+        from prospector.ops import pause
+
+        receipt = pause.arm(
+            cfg, "generation",
+            actor="autopause:barren_streak",
+            reason=(f"automatic: {ticks} consecutive barren generation ticks. Generation was "
+                    f"minting work no brain could finish, which is how the ops console was "
+                    f"starved on 2026-08-20. The drain keeps running. Resume from the admin "
+                    f"dashboard (/engine, \"Start it again\") once the provider is funded."),
+        )
+    except Exception as exc:  # noqa: BLE001 — a failed STOP must not also kill the tick
+        # A stop that fails to arm is the worst state this function can leave behind: the log
+        # says the engine paused generation, and generation is still running. Swallowing that
+        # into a bare `return` would hand the caller the same silence a healthy tick gives it
+        # (tools/audit_swallow_sites.py, tier 1). So the failure gets its own CRITICAL alert
+        # and its own named flag, and only then do we decline to take the daemon down with it.
+        from prospector.scheduler.alerts import CRITICAL, emit_alert
+
+        autopause_failed = repr(exc)
+        logger.exception("Barren-streak autopause failed to arm")
+        emit_alert(
+            cfg, severity=CRITICAL, key="autopause_failed",
+            title="Generation autopause FAILED to arm",
+            message=(f"{ticks} consecutive barren generation ticks were detected and the "
+                     f"generation half-stop could NOT be armed: {autopause_failed}. "
+                     f"Generation is STILL RUNNING and still minting work no brain can "
+                     f"finish. Arm it by hand from the admin console (/engine -> generation "
+                     f"-> Stop), or by touching store/scheduler/PAUSE_GENERATION."),
+            autopause_failed=autopause_failed, barren_ticks=ticks)
+        return
+    if not receipt.get("changed"):
+        return
+    logger.critical(
+        "AUTOPAUSED generation after %d barren ticks. The drain keeps running. "
+        "Resume from the admin console (/engine).", ticks)
+    print(f"\u23f8 generation AUTOPAUSED after {ticks} barren ticks — the drain keeps running; "
+          f"resume from the admin console (/engine)", file=sys.stderr, flush=True)
+
+
 def _emit_tick_alerts(cfg, tick: dict) -> None:
     """Fire real-time operator alerts for a bad tick (error / barren / zero-yield).
 
@@ -2163,7 +2239,10 @@ def _emit_tick_alerts(cfg, tick: dict) -> None:
     # inside the function.
     _emit_stranded_pass_alert(cfg, tick)
 
-    specs = alerts_for_tick(tick, consecutive_barren=_trailing_barren_count(cfg))
+    streak = _trailing_barren_count(cfg)
+    specs = alerts_for_tick(tick, consecutive_barren=streak)
+    # STOP, then tell. The alert below has existed all along and stopped nothing.
+    _autopause_generation_on_barren_streak(cfg, specs, streak)
     for spec in specs:
         try:
             emit_alert(cfg, **spec)
