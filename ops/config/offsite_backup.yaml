@@ -169,6 +169,14 @@ sources:
     # Opened as a tar archive and its index read, the same check the key ring gets. A gzip stream
     # that ends mid-member fails here rather than sitting in the bucket looking like a backup.
     verify: tgz
+    # The mirror image of `agent-estate` above, and it was missing until 2026-08-21. /data/logs is
+    # a Fly volume mount that exists in the engine container and on no other host, so the laptop's
+    # 03:50 launchd run reached this source, found nothing, and exited saying "the ingest wrote
+    # nothing yesterday" -- a claim about the ENGINE made by a host that cannot see it. Measured
+    # that day: /data/logs held four 2026-08-20 files totalling 62 MB while the laptop said they
+    # did not exist. `only_where` skips the fetch on the laptop and still GRADES the prefix there,
+    # so a real stall on the engine is still caught from both hosts.
+    only_where: /data/logs
     # 90 days of cold retention, and it is `keep:` rather than an R2 lifecycle rule on purpose.
     # A lifecycle rule lives in Cloudflare's console, where it cannot be read from a clone, does
     # not move with the estate, and nothing in this repo can grade it. `keep:` is enforced by

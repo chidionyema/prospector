@@ -569,6 +569,7 @@ def run(config_path: Path, *, fix: bool = False) -> dict[str, Any]:
         if fix:
             repo = config_path.resolve().parents[2]
             backups: list[dict[str, Any]] = []
+            failures: list[str] = []
             for source in decl.sources:
                 if not takeable_here(source):
                     # Recorded, not silent. A source that quietly does nothing on every host is a
@@ -579,8 +580,21 @@ def run(config_path: Path, *, fix: bool = False) -> dict[str, Any]:
                         "skipped": f"{source.only_where} does not exist on this host",
                     })
                     continue
-                backups.append(take_backup(client, bucket, prefix, source, repo=repo))
+                try:
+                    backups.append(take_backup(client, bucket, prefix, source, repo=repo))
+                except CannotEstablish as exc:
+                    # Per-source, deliberately, and this is the whole reason the laptop had no
+                    # agent-estate copy on 2026-08-20. `logs` is declared fourth; it raised on a
+                    # host with no /data/logs, the raise left this loop, and every source AFTER it
+                    # was cancelled by a failure that had nothing to do with it. The run still
+                    # ends unknown below -- the exit code does not change -- but a source that
+                    # cannot be taken here now costs only itself.
+                    failures.append(str(exc))
+                    backups.append({"source": source.name, "failed": str(exc)})
             result["backups"] = backups
+            if failures:
+                result.update({"status": "unknown", "reason": "; ".join(failures)})
+                return result
         report = check(client, bucket, prefix, decl.sources)
         report += check_watched(client, bucket, decl.watched)
     except CannotEstablish as exc:
