@@ -1,0 +1,854 @@
+<title>Signal to Shelf</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@400;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap">
+
+<style>
+:root{
+  --paper:#F4F6F3;
+  --card:#FFFFFF;
+  --ink:#14181A;
+  --ink-2:#3A423F;
+  --muted:#6B7570;
+  --rule:#DCE0DA;
+  --rule-2:#EAEDE7;
+  --accent:#2E6B5E;
+  --accent-soft:#E2EDE8;
+  --kill:#A6432B;
+  --kill-soft:#F6E6E0;
+  --warn:#8A6A1F;
+  --warn-soft:#F5EEDC;
+  --code-bg:#ECEFE9;
+  --shadow:0 1px 2px rgba(20,24,26,.06), 0 8px 24px rgba(20,24,26,.04);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0F1211;
+    --card:#171B1A;
+    --ink:#E4E8E3;
+    --ink-2:#BCC4BF;
+    --muted:#8A948E;
+    --rule:#2A302E;
+    --rule-2:#202624;
+    --accent:#71C3AE;
+    --accent-soft:#1B2E2A;
+    --kill:#E28A6B;
+    --kill-soft:#2E1F19;
+    --warn:#D6B266;
+    --warn-soft:#2C2617;
+    --code-bg:#1D2321;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.28);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0F1211;
+  --card:#171B1A;
+  --ink:#E4E8E3;
+  --ink-2:#BCC4BF;
+  --muted:#8A948E;
+  --rule:#2A302E;
+  --rule-2:#202624;
+  --accent:#71C3AE;
+  --accent-soft:#1B2E2A;
+  --kill:#E28A6B;
+  --kill-soft:#2E1F19;
+  --warn:#D6B266;
+  --warn-soft:#2C2617;
+  --code-bg:#1D2321;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.28);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"IBM Plex Serif",Georgia,"Times New Roman",serif;
+  font-size:16.5px;
+  line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+code,kbd,.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+h1,h2,h3,h4,.sans{font-family:"IBM Plex Sans Condensed","Helvetica Neue",Arial,sans-serif}
+
+/* ---------- shell ---------- */
+.shell{display:grid;grid-template-columns:250px minmax(0,1fr);gap:0;max-width:1320px;margin:0 auto}
+.rail{
+  position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+  padding:34px 20px 60px 28px;border-right:1px solid var(--rule);
+}
+.main{padding:34px 40px 140px;min-width:0}
+@media (max-width:1000px){
+  .shell{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:0;border-bottom:1px solid var(--rule);padding:24px}
+  .main{padding:24px 20px 100px}
+}
+
+/* ---------- rail ---------- */
+.rail .mark{font-family:"IBM Plex Sans Condensed",sans-serif;font-weight:700;font-size:15px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink);margin-bottom:2px}
+.rail .sub{font-size:12.5px;color:var(--muted);margin-bottom:22px;line-height:1.45}
+.rail nav{display:flex;flex-direction:column;gap:1px}
+.rail a{
+  display:grid;grid-template-columns:26px 1fr;gap:8px;align-items:baseline;
+  font-family:"IBM Plex Sans Condensed",sans-serif;font-size:13.5px;line-height:1.35;
+  color:var(--ink-2);text-decoration:none;padding:5px 7px;border-radius:3px;
+}
+.rail a:hover{background:var(--accent-soft);color:var(--ink)}
+.rail a .n{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--muted);font-weight:500}
+.rail a.grp{margin-top:14px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;font-size:11px;color:var(--muted);pointer-events:none;grid-template-columns:1fr}
+.rail a:focus-visible,.main a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---------- masthead ---------- */
+.masthead{border-bottom:2px solid var(--ink);padding-bottom:20px;margin-bottom:30px}
+.eyebrow{
+  font-family:"IBM Plex Sans Condensed",sans-serif;font-size:11.5px;font-weight:600;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;
+}
+h1{font-size:clamp(34px,5.2vw,50px);line-height:1.02;font-weight:700;margin:0 0 14px;letter-spacing:-.015em;text-wrap:balance}
+.standfirst{font-size:19px;line-height:1.55;color:var(--ink-2);max-width:66ch;margin:0}
+.stamp{
+  margin-top:18px;display:flex;flex-wrap:wrap;gap:8px 22px;
+  font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted);
+}
+.stamp b{color:var(--ink-2);font-weight:500}
+
+/* ---------- sections ---------- */
+section{margin:0 0 46px;scroll-margin-top:20px}
+h2{
+  font-size:13px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--ink);margin:0 0 4px;display:flex;align-items:baseline;gap:11px;
+}
+h2 .n{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--accent);font-weight:600}
+h2::after{content:"";flex:1;height:1px;background:var(--rule);margin-left:4px}
+.h2sub{font-family:"IBM Plex Sans Condensed",sans-serif;font-size:24px;font-weight:600;line-height:1.2;margin:0 0 16px;letter-spacing:-.01em;text-wrap:balance}
+h3{font-family:"IBM Plex Sans Condensed",sans-serif;font-size:17px;font-weight:600;margin:26px 0 8px;letter-spacing:-.005em}
+p{margin:0 0 14px;max-width:72ch}
+.main a{color:var(--accent);text-decoration:underline;text-underline-offset:2px;text-decoration-thickness:1px}
+
+code{
+  font-size:.855em;background:var(--code-bg);padding:1px 5px;border-radius:3px;
+  color:var(--ink);white-space:nowrap;
+}
+.path{color:var(--accent);font-weight:500}
+
+/* ---------- tables ---------- */
+.scroller{overflow-x:auto;margin:16px 0 20px;border:1px solid var(--rule);border-radius:5px;background:var(--card);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-family:"IBM Plex Sans Condensed",sans-serif}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--rule-2);vertical-align:top}
+th{
+  font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;
+  color:var(--muted);background:var(--code-bg);border-bottom:1px solid var(--rule);white-space:nowrap;
+}
+tbody tr:last-child td{border-bottom:0}
+td code{font-size:12px;white-space:nowrap}
+td.num{font-variant-numeric:tabular-nums;text-align:right;font-family:"IBM Plex Mono",monospace;font-size:12px}
+.wrap code{white-space:normal}
+
+/* ---------- pipeline ladder ---------- */
+.ladder{margin:22px 0 26px;border-left:2px solid var(--rule);padding-left:0}
+.rung{position:relative;padding:0 0 20px 30px}
+.rung::before{
+  content:"";position:absolute;left:-7px;top:5px;width:12px;height:12px;border-radius:50%;
+  background:var(--paper);border:2px solid var(--accent);
+}
+.rung.gate::before{border-color:var(--kill);border-radius:2px;transform:rotate(45deg)}
+.rung .lab{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);
+}
+.rung .ttl{font-family:"IBM Plex Sans Condensed",sans-serif;font-size:16.5px;font-weight:600;line-height:1.3;margin:1px 0 3px}
+.rung .body{font-size:14.5px;color:var(--ink-2);max-width:70ch;margin:0}
+.rung .src{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--accent);margin-top:4px;display:block;word-break:break-word}
+
+/* ---------- callouts ---------- */
+.note{
+  border:1px solid var(--rule);border-left:3px solid var(--accent);background:var(--card);
+  padding:13px 16px;border-radius:0 4px 4px 0;margin:18px 0;font-size:15px;box-shadow:var(--shadow);
+}
+.note.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.note.kill{border-left-color:var(--kill);background:var(--kill-soft)}
+.note .lbl{
+  font-family:"IBM Plex Sans Condensed",sans-serif;font-weight:700;font-size:10.5px;
+  letter-spacing:.11em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px;
+}
+.note p:last-child{margin-bottom:0}
+
+/* ---------- pills ---------- */
+.pill{
+  display:inline-block;font-family:"IBM Plex Sans Condensed",sans-serif;font-size:10.5px;
+  font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:3px;
+  background:var(--accent-soft);color:var(--accent);white-space:nowrap;
+}
+.pill.k{background:var(--kill-soft);color:var(--kill)}
+.pill.w{background:var(--warn-soft);color:var(--warn)}
+.pill.n{background:var(--code-bg);color:var(--muted)}
+
+/* ---------- invariants ---------- */
+.laws{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:12px;margin:20px 0 6px}
+.law{border:1px solid var(--rule);border-radius:5px;padding:14px 15px;background:var(--card);box-shadow:var(--shadow)}
+.law h4{font-size:14.5px;font-weight:600;margin:0 0 5px;letter-spacing:-.005em}
+.law p{font-size:14px;color:var(--ink-2);margin:0;max-width:none}
+
+/* ---------- cmd block ---------- */
+pre{
+  background:var(--code-bg);border:1px solid var(--rule);border-radius:5px;
+  padding:13px 15px;overflow-x:auto;font-family:"IBM Plex Mono",monospace;
+  font-size:12.5px;line-height:1.6;margin:14px 0 18px;
+}
+pre code{background:none;padding:0;white-space:pre}
+
+ul,ol{max-width:72ch;padding-left:22px;margin:0 0 14px}
+li{margin-bottom:6px}
+hr{border:0;border-top:1px solid var(--rule);margin:44px 0}
+.foot{font-size:13.5px;color:var(--muted);max-width:72ch}
+@media (prefers-reduced-motion:no-preference){
+  .rail a{transition:background .12s ease}
+}
+</style>
+
+<div class="shell">
+<aside class="rail">
+  <div class="mark">Prospector</div>
+  <div class="sub">End-to-end engine reference.<br>Measured 21 Aug 2026 against <code style="font-size:11px">9e2cfef2</code>.</div>
+  <nav>
+    <a class="grp"><span>Orientation</span></a>
+    <a href="#thesis"><span class="n">00</span><span>What the engine is</span></a>
+    <a href="#topology"><span class="n">01</span><span>Where it runs</span></a>
+    <a href="#entry"><span class="n">02</span><span>How work starts</span></a>
+    <a class="grp"><span>The eight steps</span></a>
+    <a href="#pipeline"><span class="n">03</span><span>The pipeline, in order</span></a>
+    <a href="#sources"><span class="n">04</span><span>Sources and retrieval</span></a>
+    <a href="#moat"><span class="n">05</span><span>The moat: verification</span></a>
+    <a href="#gate"><span class="n">06</span><span>Gate, score, price</span></a>
+    <a href="#pack"><span class="n">07</span><span>Pack assembly</span></a>
+    <a href="#shelf"><span class="n">08</span><span>Publish, sell, deliver</span></a>
+    <a class="grp"><span>The machinery</span></a>
+    <a href="#state"><span class="n">09</span><span>State and durability</span></a>
+    <a href="#brains"><span class="n">10</span><span>Model routing</span></a>
+    <a href="#rails"><span class="n">11</span><span>Safety rails</span></a>
+    <a href="#deps"><span class="n">12</span><span>Dependency inventory</span></a>
+    <a href="#toolchain"><span class="n">13</span><span>Toolchain and CI</span></a>
+    <a href="#gaps"><span class="n">14</span><span>Gaps and cautions</span></a>
+  </nav>
+</aside>
+
+<main class="main">
+
+<header class="masthead">
+  <div class="eyebrow">Principal architect's reference</div>
+  <h1>Signal to Shelf</h1>
+  <p class="standfirst">Everything the engine does between a line of text in <code>signals/</code> and a buyer downloading a zip: the eight steps, the code that runs them, the data they touch, and the machinery that keeps them honest.</p>
+  <div class="stamp">
+    <span><b>Repo</b> chidionyema/prospector</span>
+    <span><b>HEAD</b> 9e2cfef2</span>
+    <span><b>prospector/</b> 73,401 lines Python</span>
+    <span><b>Suite</b> 8,330 passing</span>
+    <span><b>Packs built</b> 189</span>
+  </div>
+</header>
+
+<section id="thesis">
+<h2><span class="n">00</span>What the engine is</h2>
+<p class="h2sub">A grounded-verification machine that tries to kill business ideas, and sells the ones it cannot.</p>
+
+<p>The engine takes a signal — a news item, a regulation change, a hand-written note — and generates candidate businesses from it. Then it does the opposite of what a pitch deck does: it goes out to the live web, fetches real pages, and looks for evidence that each candidate is <em>dead</em>. Six checks, cheapest first, stopping at the first one that fires. Most candidates die. The survivors are written up as a paid research pack and listed for sale.</p>
+
+<p>Everything downstream of that is plumbing. The part that matters architecturally is the set of invariants the whole system is arranged to protect:</p>
+
+<div class="laws">
+  <div class="law"><h4>Source-or-die</h4><p>Every factual claim and every number cites a retrievable source or is stamped <code>unverifiable</code>. No unsourced figure ships.</p></div>
+  <div class="law"><h4>Verdict from retrieval only</h4><p>The model rules on passages it actually fetched. Prior knowledge is not admissible. No matching passage means <code>unverifiable</code> — never <code>supported</code>.</p></div>
+  <div class="law"><h4>A kill needs a citation</h4><p>Silence cannot kill. Only a <code>refuted</code> verdict backed by a fetched passage fires a hard gate.</p></div>
+  <div class="law"><h4>Kill fast</h4><p>Stop at the first hard fail. Never spend research budget on an idea already dead.</p></div>
+  <div class="law"><h4>Creativity generates, constraint verifies</h4><p>Nothing is killed at generation time. The two halves never merge.</p></div>
+  <div class="law"><h4>Two loops never merge</h4><p>Sales metrics tune what to <em>offer</em>. Truth metrics veto what may <em>ship</em>. Demand never overrides truth.</p></div>
+  <div class="law"><h4>Who may rule is config</h4><p>The trusted verdict roster is a line in <code>config.yaml</code>, not code. Anything outside it is stamped <code>provisional</code> and never publishes.</p></div>
+  <div class="law"><h4>The repo is the whole system</h4><p>No behaviour lives only in a dashboard or a provider account. A fresh clone plus an env file runs the engine.</p></div>
+</div>
+
+<p style="margin-top:18px">The canonical procedure is <code class="path">RUN.md</code> — eight numbered steps, and the file states plainly that the procedure <em>is</em> the guarantee. The sections below map each step onto the code that executes it.</p>
+</section>
+
+<hr>
+
+<section id="topology">
+<h2><span class="n">01</span>Where it runs</h2>
+<p class="h2sub">Five Fly apps, three languages, one shared object store.</p>
+
+<p>The engine is Python, the storefront API is .NET 9, and both web surfaces are Next.js. They meet at two seams: an HTTP call to the Store API's <code>/internal/catalog</code> endpoint, and a Cloudflare R2 bucket that holds the deliverable itself.</p>
+
+<div class="scroller">
+<table>
+<thead><tr><th>Fly app</th><th>What it is</th><th>Stack</th><th>Public?</th><th>Config</th></tr></thead>
+<tbody>
+<tr><td><code>prospector-engine</code></td><td>The engine. Scheduler, consumer, watchdog, backups, log ingest, ops console — ten supervisord programs in one image.</td><td>Python 3 + Node (console)</td><td>Port 8611 only (ops console)</td><td><code class="path">deploy/engine/fly.toml</code></td></tr>
+<tr><td><code>prospector-store-api</code></td><td>Catalogue, checkout, entitlements, delivery, identity, webhooks.</td><td>.NET 9, EF Core, SQLite</td><td>Yes</td><td><code class="path">store_platform/deploy/fly/api.fly.toml</code></td></tr>
+<tr><td><code>prospector-store-web</code></td><td>The storefront a buyer sees.</td><td>Next 16.2.11, React 19</td><td>Yes</td><td><code class="path">store_platform/deploy/fly/web.fly.toml</code></td></tr>
+<tr><td><code>prospector-searxng</code></td><td>Self-hosted metasearch. The free, unlimited, keyless leg of the grounding chain.</td><td>SearXNG container</td><td><strong>No public IP.</strong> Reachable only at <code>prospector-searxng.internal:8080</code> over Fly 6PN.</td><td><code class="path">deploy/searxng/fly.toml</code></td></tr>
+<tr><td><code>prospector-ci</code></td><td>Self-hosted GitHub Actions runner fleet. Outbound long-poll only.</td><td>Container</td><td><strong>No public IP.</strong></td><td><code class="path">deploy/runner/fly.toml</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>What runs inside the engine image</h3>
+<p>One container, <code>tini</code> as PID 1, <code>supervisord</code> underneath it. Every process is either a daemon or a <code>periodic.sh</code> loop wrapping a receipt.</p>
+
+<div class="scroller">
+<table>
+<thead><tr><th>Program</th><th>Command</th><th>Cadence</th></tr></thead>
+<tbody>
+<tr><td><code>scheduler</code></td><td><code>python -m prospector.scheduler.run_scheduled --daemon --interval 7200</code></td><td>2h tick</td></tr>
+<tr><td><code>consumer</code></td><td><code>python -m prospector.run consume --publish</code></td><td>continuous drain</td></tr>
+<tr><td><code>watchdog</code></td><td><code>run_scheduled --watchdog</code></td><td>900s</td></tr>
+<tr><td><code>backup</code></td><td><code>python scripts/backup_store.py</code></td><td>86400s</td></tr>
+<tr><td><code>offsite-backup</code></td><td><code>ops.automations.offsite_backup --fix</code></td><td>86400s</td></tr>
+<tr><td><code>restore-drill</code></td><td><code>deploy/engine/offsite_drill.sh</code></td><td>604800s (weekly)</td></tr>
+<tr><td><code>health-watch</code></td><td><code>scripts/service_health.py</code></td><td>300s</td></tr>
+<tr><td><code>ops-console</code></td><td><code>next start -H :: -p 8611</code></td><td>daemon</td></tr>
+<tr><td><code>log-ingest</code></td><td><code>python -m prospector.log_ingest</code></td><td>daemon</td></tr>
+<tr><td><code>log-retention</code></td><td><code>ops.automations.log_rotation --fix</code></td><td>86400s</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note warn">
+<span class="lbl">Trap worth knowing on day one</span>
+<p>Production is <strong>not</strong> the repo checkout you are reading. The laptop's <code>store/</code> stopped updating at the Fly cutover; the canonical store is <code>/data/store</code> on the engine's Fly volume. A local process resolving <code>config.store_root()</code> reads the dead copy and reports a confident zero. Ask production through <code class="path">scripts/engine_failover.py</code>.</p>
+</div>
+</section>
+
+<hr>
+
+<section id="entry">
+<h2><span class="n">02</span>How work starts</h2>
+<p class="h2sub">One CLI, one daemon, and a producer/consumer split for when the brains go down.</p>
+
+<p>Everything routes through <code class="path">prospector/run.py</code> — 4,532 lines, an argparse dispatch table at <code>run.py:4437</code>, entry at <code>run.py:4187</code>.</p>
+
+<div class="scroller">
+<table>
+<thead><tr><th>Entry point</th><th>Command</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Signal run</td><td><code>python -m prospector.run signal --file signals/x.txt</code></td><td>The original model: a human drops a signal file in.</td></tr>
+<tr><td>Blue-sky</td><td><code>python -m prospector.run generate --candidates 10 --exploration 0.7</code></td><td>No signal.</td></tr>
+<tr><td>Self-sourced sweep</td><td><code>python -m prospector.run discover --signals 10 --count 5</code></td><td>A deliberate extension: the engine sources its own diverse signal portfolio. Sits strictly upstream of the eight steps and changes none of them.</td></tr>
+<tr><td>One-off vet</td><td><code>python -m prospector.run vet --title "…" --one_liner "…"</code></td><td>Single candidate, useful for reproducing a verdict.</td></tr>
+<tr><td>Daemon</td><td><code>python -m prospector.scheduler.run_scheduled --daemon --interval 7200</code></td><td><code>main()</code> at <code>run_scheduled.py:3158</code>; tick logic <code>run_tick()</code> at <code>:1841</code>. Restarted by supervisord, not cron.</td></tr>
+<tr><td>Consumer</td><td><code>python -m prospector.run consume --publish</code></td><td><code>_cmd_consume</code> at <code>run.py:3412</code>. Drains DEFER rows the producer enqueued.</td></tr>
+<tr><td>Resume</td><td><code>vet --resume</code> / <code>generate --resume</code></td><td>Finalises deferred and provisional rows once a trusted brain recovers.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>The producer/consumer split</h3>
+<p>When the trusted verdict brains are exhausted, the pipeline does not stall and it does not guess. <code>generate --no-vet</code> enqueues candidates as <code>DEFER</code> rows (<code>run.py:1938</code>); <code>consume</code> drains them later. This is why an outage costs latency rather than correctness.</p>
+
+<div class="note kill">
+<span class="lbl">The asymmetry, and it is deliberate</span>
+<p>Generation may run into a provisional tail. <strong>The drain may not.</strong> Re-vetting a provisional row on a provisional brain re-stamps it provisional: the row does not move and the money is spent. Measured: provisional −14 / defer +13 in thirty minutes, net −1 row of progress. One shared function with one parameter, so the two paths cannot disagree by accident.</p>
+</div>
+</section>
+
+<hr>
+
+<section id="pipeline">
+<h2><span class="n">03</span>The pipeline, in order</h2>
+<p class="h2sub">Eleven code stages implementing the eight documented steps. Orchestrator: <code>run_signal()</code>, <code class="path">prospector/run.py:1529</code>.</p>
+
+<p>Diamonds are gates — a candidate can exit the pipeline there.</p>
+
+<div class="ladder">
+
+  <div class="rung">
+    <span class="lab">Setup</span>
+    <div class="ttl">Build the brains and the search provider</div>
+    <p class="body">Moat operator via <code>make_operator</code>; a separate non-critical chain for generation and scoring; the grounding chain. Who may rule a verdict is decided here, from config, once per run.</p>
+    <span class="src">run.py:1607–1668</span>
+  </div>
+
+  <div class="rung">
+    <span class="lab">Setup</span>
+    <div class="ttl">Adaptive controller and spend guard</div>
+    <p class="body">Reads recent failure modes, exemplars and grid priorities to set exploration level and lens selection. Then <code>SpendGuard</code> arms the daily ceiling.</p>
+    <span class="src">run.py:1671–1701 · prospector/adaptive.py</span>
+  </div>
+
+  <div class="rung">
+    <span class="lab">Step 1</span>
+    <div class="ttl">Generate candidates</div>
+    <p class="body">Single-lane <code>generate()</code> or <code>generate_multilane()</code> across the four ambition tiers. Capped by <code>candidates_per_signal</code> (20) and <code>schedule.batch_size</code> (15).</p>
+    <span class="src">run.py:1740–1770 · prospector/generate.py · prompts/generate.md</span>
+  </div>
+
+  <div class="rung">
+    <span class="lab">Step 2</span>
+    <div class="ttl">Dedup against the catalogue</div>
+    <p class="body">Near-duplicate drop by string similarity — <code>difflib</code> plus Jaccard, deliberately <em>not</em> embeddings. Near-dupes reuse a recent KILL dossier instead of paying for a fresh vet.</p>
+    <span class="src">run.py:1836, 1849–1867 · prospector/dedup.py</span>
+  </div>
+
+  <div class="rung gate">
+    <span class="lab">Step 3 · gate</span>
+    <div class="ttl">Prescreen — cheap triage</div>
+    <p class="body">Kills only the obviously dead: no acute pain, no plausibly solvent payer, plain commodity, plainly illegal. <strong>When in doubt, pass.</strong> Runs in a thread pool.</p>
+    <span class="src">run.py:1876–1890 · prospector/prescreen.py · prompts/prescreen.md</span>
+  </div>
+
+  <div class="rung">
+    <span class="lab">Selection</span>
+    <div class="ttl">Novelty and diversity selection</div>
+    <p class="body"><code>select_diverse_candidates()</code> — stops a batch collapsing into variations on one theme.</p>
+    <span class="src">run.py:1922 · prospector/novelty.py</span>
+  </div>
+
+  <div class="rung">
+    <span class="lab">Fork</span>
+    <div class="ttl">Producer/consumer split point</div>
+    <p class="body">With <code>--no-vet</code>, candidates are enqueued as DEFER and the run ends here. Otherwise each candidate enters the vet pool.</p>
+    <span class="src">run.py:1937–1944</span>
+  </div>
+
+  <div class="rung gate">
+    <span class="lab">Step 4–5 · gate</span>
+    <div class="ttl">Verify, kill-fast — the moat</div>
+    <p class="body">Six hard gates in configured order, each fetching real pages and ruling from passages. First <code>refuted</code> ends the candidate. Then an adversarial pass makes the strongest evidence-based case that it is dead.</p>
+    <span class="src">run.py:1971–1979 → vet_candidate (run.py:1254) → verify.py:1043</span>
+  </div>
+
+  <div class="rung">
+    <span class="lab">Step 6</span>
+    <div class="ttl">Score on six axes, then build the artifacts</div>
+    <p class="body">Composite = Σ(score × weight). If publishing, <code>generate_artifacts</code> and <code>generate_marketing_content</code> produce the build spec, GTM, ops plan, financial model and marketing copy — each claim-checked before it is allowed to stand.</p>
+    <span class="src">run.py:1412, 1428–1437 · prospector/score.py · prospector/artifacts.py</span>
+  </div>
+
+  <div class="rung">
+    <span class="lab">Step 5/7</span>
+    <div class="ttl">Build the dossier and persist it</div>
+    <p class="body">A dossier is written for <strong>every</strong> outcome, kill included. The kill log is the receipt that the filter is real.</p>
+    <span class="src">run.py:1454–1462 · prospector/dossier.py:91</span>
+  </div>
+
+  <div class="rung gate">
+    <span class="lab">Step 7 · gate</span>
+    <div class="ttl">Publish, on PASS and non-provisional only</div>
+    <p class="body">Bundle, price, provision, upload, list. Six independent listing fences, all of which must clear.</p>
+    <span class="src">run.py:1465 → publish_and_record (run.py:1168) → bridge.publish_pass (bridge.py:702)</span>
+  </div>
+
+  <div class="rung">
+    <span class="lab">Step 8</span>
+    <div class="ttl">Summary and calibration alarms</div>
+    <p class="body">Pass/kill/defer counts, funnel diagnostics persisted for the adaptive controller to read next run.</p>
+    <span class="src">run.py:2159–2179 · prospector/diagnostics.py</span>
+  </div>
+
+</div>
+
+<h3>Concurrency</h3>
+<p>Threads, not processes or async, at three layers: the prescreen pool, the vet pool (both sized by <code>retrieval.vet_workers</code>, overridable with <code>PROSPECTOR_VET_WORKERS</code>), and a per-check search fan-out with one worker per query at <code>verify.py:816</code>. Phases are bounded by wall-clock budgets — <code>gen_time_budget_s</code>, <code>artifact_time_budget_s</code>, <code>vet_time_budget_s</code> — and the whole tick by a hard deadline enforced with a <code>threading.Timer</code> that force-exits the process and lets supervisord restart it cleanly (<code>run_scheduled.py:1623, 2069</code>).</p>
+
+<p>Physical concurrency to CLI-based brains is capped <em>across processes</em>, not within one: <code class="path">prospector/cli_governor.py</code> holds <code>flock</code>-based slot files under <code>~/.prospector/cli_slots/</code>, so a crashed process cannot leak a slot. <code>claude_cli</code> is clamped to exactly one machine-wide.</p>
+
+<h3>Lanes and markets — two axes that must never be confused</h3>
+<div class="scroller">
+<table>
+<thead><tr><th></th><th>Lane (ambition tier)</th><th>Market</th></tr></thead>
+<tbody>
+<tr><td>Values</td><td><code>side_hustle</code>, <code>smb</code>, <code>growth</code>, <code>venture</code></td><td><code>uk</code>, <code>us</code>, …</td></tr>
+<tr><td>May change</td><td>hard gates, thresholds, weights, price rung</td><td>evidence terrain only — retrieval and generation overrides, authority domains</td></tr>
+<tr><td>May <strong>not</strong> change</td><td>—</td><td>gates, thresholds, weights. Structurally forbidden by <code>MARKET_FORBIDDEN_KEYS</code>, <code>config.py:36-46</code></td></tr>
+<tr><td>Why</td><td>A £30 side hustle and a unicorn are graded against their own class, like items in one catalogue.</td><td>Where the evidence lives differs by country; what counts as evidence does not.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Generation fans across <code>active_lanes</code> by weight. Those weights are evidence-led, from the PASS rate across 221 tier-tagged dossiers: smb 11.8%, growth 4.9%, side_hustle 4.3%, venture 0.0%. Venture stays funded at a small share purely so the zero stays <em>measured</em> rather than assumed.</p>
+</section>
+
+<hr>
+
+<section id="sources">
+<h2><span class="n">04</span>Sources and retrieval</h2>
+<p class="h2sub">A four-provider fallback chain, a self-hosted metasearch box, and a disk cache in front of all of it.</p>
+
+<p>Live chain, <code>config.yaml:485</code>: <code>[searxng, ddg, exa, claude_cli]</code>. Two queries per check, three results per query, 1500 characters of passage.</p>
+
+<div class="scroller">
+<table>
+<thead><tr><th>Provider</th><th>Class</th><th>Credential</th><th>Implementation</th></tr></thead>
+<tbody>
+<tr><td><code>searxng</code></td><td>Real metasearch, self-hosted. Free and unlimited — the reason it leads.</td><td>None</td><td><code>retrieval.py:1372</code></td></tr>
+<tr><td><code>ddg</code></td><td>Real web search, free, keyless</td><td>None (<code>ddgs</code> package)</td><td><code>retrieval.py:1444</code></td></tr>
+<tr><td><code>exa</code></td><td>Real web search API. Inserted at position 2 after a measurement: 14.0s for five queries against 900s on <code>claude_cli</code> — 64×.</td><td><code>EXA_API_KEY</code></td><td><code>retrieval.py:1254</code></td></tr>
+<tr><td><code>claude_cli</code></td><td>Real web search through the Claude Code subscription. <strong>Backstop only</strong> (<code>config.yaml:499</code>).</td><td>Subscription, no key</td><td><code>prospector/claude_cli.py</code></td></tr>
+<tr><td><code>brave</code>, <code>tavily</code></td><td>Real search, declared but not in the live chain</td><td><code>BRAVE_API_KEY</code> / Tavily key</td><td><code>retrieval.py:1170, 1310</code></td></tr>
+<tr><td><code>deepseek</code>, <code>minimax_search</code>, <code>openrouter</code></td><td class="wrap"><span class="pill k">Not search</span> LLM synthesis. They hallucinate URLs. Present as classes; must never carry grounding.</td><td>API keys</td><td><code>retrieval.py:1610, 1758, 1904</code></td></tr>
+<tr><td><code>FixtureProvider</code></td><td>Offline determinism for the test suite and the golden set</td><td>None</td><td><code>retrieval.py:1072</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>What happens to a fetched page</h3>
+<ol>
+<li><strong>Search</strong> through <code>FallbackSearchProvider</code> (<code>retrieval.py:2177</code>), wrapped by <code>DiskCache</code> (<code>:2011</code>) and per-provider circuit breakers.</li>
+<li><strong>Resolve and fetch</strong> — <code>fetch_page</code> (<code>:751</code>), 8s timeout, 8 workers, 400KB ceiling. An lxml landmark ladder extracts the body; <code>trafilatura</code> is the fallback and only fires below 200 characters, because it costs ~2s a page against lxml's ~0.05s.</li>
+<li><strong>Strip consent furniture</strong> — <code>strip_consent_sentences</code> (<code>:687</code>). Cookie banners were being cited as evidence.</li>
+<li><strong>Select the passage</strong> — <code>select_passage</code> (<code>:346</code>) picks the best 1500-character window around the query anchor.</li>
+<li><strong>Rank by relevance</strong> — <code>RelevanceRankedProvider</code> (<code>:492</code>), overfetch 3×, floor <code>min_relevance: 0.35</code>.</li>
+<li><strong>Date the source</strong> — <code>_extract_published_at</code> (<code>:605</code>) reads JSON-LD then meta tags. Recency matters to <code>value_durability</code>.</li>
+</ol>
+
+<div class="note">
+<span class="lbl">Datacenter IPs change the answer</span>
+<p>The free providers behave differently from Fly than from a laptop — measured refusals from <code>prospector-engine</code> including <code>exa</code> returning <code>HTTP 402 NO_MORE_CREDITS</code>. Any retrieval measurement taken locally is not a measurement of production.</p>
+</div>
+</section>
+
+<hr>
+
+<section id="moat">
+<h2><span class="n">05</span>The moat: verification</h2>
+<p class="h2sub">Six checks, one polarity, and a rule that silence may never kill.</p>
+
+<p>Entry <code>verify()</code> at <code class="path">prospector/verify.py:1043</code>; the work is in <code>_verify_inner</code> at <code>:1071</code>. One check is one call to <code>run_check()</code> at <code>:781</code>.</p>
+
+<div class="scroller">
+<table>
+<thead><tr><th>#</th><th>Gate</th><th>The question</th><th>Kills on</th></tr></thead>
+<tbody>
+<tr><td class="num">1</td><td><code>value_durability</code></td><td>Is the value still there in three years, or is it already being obsoleted?</td><td><code>refuted</code></td></tr>
+<tr><td class="num">2</td><td><code>incumbency</code></td><td>Is the space already owned by someone who does this?</td><td><code>refuted</code></td></tr>
+<tr><td class="num">3</td><td><code>payer_solvency</code></td><td>Does the payer have money and a budget line?</td><td><code>refuted</code></td></tr>
+<tr><td class="num">4</td><td><code>distribution</code></td><td>Is there a reachable route to the buyer?</td><td><code>refuted</code></td></tr>
+<tr><td class="num">5</td><td><code>legality</code></td><td>Does the margin require breaking law or terms?</td><td><code>refuted</code></td></tr>
+<tr><td class="num">6</td><td><code>pain_reality</code></td><td>Is the pain acute and real, or asserted?</td><td><code>refuted</code></td></tr>
+<tr><td class="num">7</td><td><code>adversarial</code></td><td>Strongest evidence-based case that the idea is dead.</td><td><span class="pill n">records only</span> <code>decisive: false</code></td></tr>
+<tr><td class="num">8</td><td><code>price_comparables</code></td><td>What do comparable things sell for?</td><td><span class="pill n">can never kill</span> barred in <code>kill_filter.is_hard_fail</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note kill">
+<span class="lbl">Do not "fix" the polarity — that is the bug, not the fix</span>
+<p>All six checks are framed positively: <code>supported</code> means the space is open, legal, durable, solvent; <code>refuted</code> means an incumbent exists, it is illegal, it is obsolete. So <strong>every</strong> gate kills on <code>refuted</code>. <code>legality</code> once killed on <code>supported</code>, which inverted it and killed <em>lawful</em> ideas — receipts on disk, <code>store/dossiers/459b72f3630d21be.kill.json</code>, killed because heirloom tomatoes are "completely legal to grow, sell, buy, and eat anywhere in the United States". A lawful workaround must survive.</p>
+</div>
+
+<h3>Inside one check</h3>
+<ol>
+<li><strong>Frame the question</strong> — <code>_check_question</code> (<code>verify.py:358</code>), with market variables injected.</li>
+<li><strong>Generate disconfirming queries</strong> — <code>gen_queries_batched</code> (<code>:420</code>), driven by <code class="path">prompts/query_gen.md</code>. The queries are written to <em>disprove</em>, not to confirm.</li>
+<li><strong>Fetch, in parallel</strong> — one thread per query into the grounding chain (<code>:816</code>).</li>
+<li><strong>Rule from passages</strong> — <code>verdict_for</code> (<code>:481</code>), driven by <code class="path">prompts/verdict.md</code>, on a <code>moat_primary</code> brain only.</li>
+<li><strong>Score confidence</strong> — <code>_calc_confidence</code> (<code>:91</code>) over sources and citations. Floor to count as a supporting check: <code>min_supported_confidence: 0.3</code>.</li>
+</ol>
+
+<div class="note">
+<span class="lbl">An exception is never evidence</span>
+<p>A verdict call that raises returns <code>retrieval_failed=True</code> (<code>verify.py:365</code>) and fires the DEFER gate (<code>:693</code>). It does <em>not</em> contribute an <code>unverifiable</code> check to the kill gates. The counter-example is on disk: <code>store/dossiers/2102bacc6dd75cf9.kill.json</code> — a candidate killed by our own outage, in a dossier that reads as fully reasoned.</p>
+</div>
+</section>
+
+<hr>
+
+<section id="gate">
+<h2><span class="n">06</span>Gate, score, price</h2>
+<p class="h2sub">Deterministic once the verdicts are in.</p>
+
+<h3>Score — six axes, re-weighted to stop rewarding clonability</h3>
+<div class="scroller">
+<table>
+<thead><tr><th>Axis</th><th>Weight</th><th>Was</th></tr></thead>
+<tbody>
+<tr><td><code>defensibility</code></td><td class="num">0.25</td><td class="num">0.15</td></tr>
+<tr><td><code>pain_acuity</code></td><td class="num">0.20</td><td class="num">0.20</td></tr>
+<tr><td><code>money_provability</code></td><td class="num">0.20</td><td class="num">0.20</td></tr>
+<tr><td><code>automatability</code></td><td class="num">0.15</td><td class="num">0.20</td></tr>
+<tr><td><code>distribution</code></td><td class="num">0.15</td><td class="num">0.15</td></tr>
+<tr><td><code>build_feasibility</code></td><td class="num">0.05</td><td class="num">0.10</td></tr>
+</tbody>
+</table>
+</div>
+<p>The old weights paid out 0.30 of the composite for "trivially easy to build and automate" — which is the same sentence as "trivially easy to clone" — while defensibility, the only moat axis, carried 0.15. A generic AI wrapper was the global maximum of that formula. Composite must clear <code>min_composite_to_pass: 2.5</code>.</p>
+
+<h3>Price — a rung, never a continuous number</h3>
+<p>Segment (ambition tier × market) selects a rung index; the rung is a fixed price. GBP rungs <code>[1999, 2999, 4999, 7999, 9999]</code>, USD rungs <code>[2499, 3999, 6999, 10999, 13999, 19999, 26999]</code>, ladder <code>L1-ladder-2026-08-09-charm</code>. Tier offsets: side_hustle 1, smb 2, growth 3, venture 4; market offset uk 0, us 1.</p>
+
+<div class="note warn">
+<span class="lbl">Evidence and action are separate switches</span>
+<p>Price comparables are retrieved by default (<code>comparables.enabled: true</code>). Letting them <em>move</em> a rung is a second, independent flag — <code>rung_adjust_enabled: false</code>. One flag for both is how a catalogue re-prices itself the day a feature merges. FX is config-declared with a dated source, never inferred.</p>
+</div>
+</section>
+
+<hr>
+
+<section id="pack">
+<h2><span class="n">07</span>Pack assembly</h2>
+<p class="h2sub">Six files in a zip. Each has one producer, and the producers are deliberately model-free.</p>
+
+<p>Confirmed from a shipped artifact, <code>publish/bundles/08b22037fc2afc07/prospector_pack_08b22037.zip</code>:</p>
+
+<div class="scroller">
+<table>
+<thead><tr><th>File</th><th>Size</th><th>What it is</th><th>Producer</th></tr></thead>
+<tbody>
+<tr><td><code>index.html</code></td><td class="num">159,732</td><td>The reading experience — fourteen sections, self-contained.</td><td><code class="path">prospector/pack_html.py</code></td></tr>
+<tr><td><code>Complete_Pack.pdf</code></td><td class="num">272,133</td><td>The same sections, typeset.</td><td><code class="path">prospector/pack_pdf.py</code></td></tr>
+<tr><td><code>manifest.jsonld</code></td><td class="num">37,301</td><td>The machine-readable half: every file with its hash, and the promised-deliverable contract.</td><td><code class="path">prospector/pack_manifest.py</code></td></tr>
+<tr><td><code>Assumptions.csv</code></td><td class="num">9,162</td><td>Every assumption as a row, so it can be re-run rather than read.</td><td><code class="path">prospector/pack_table.py</code></td></tr>
+<tr><td><code>Marketing_Assets.txt</code></td><td class="num">10,047</td><td>Plain text on purpose — the one document a buyer edits.</td><td><code>bridge.py:1924</code></td></tr>
+<tr><td><code>First_Fortnight.html</code></td><td class="num">6,806</td><td>The one printable page: what to do in the first two weeks.</td><td><code class="path">prospector/pack_card.py</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Assembly runs inside <code>EngineBridge._create_bundle</code> (<code class="path">prospector/bridge.py:1728</code>) in numbered steps you can follow in the source comments: prose deliverable → financial model → QA report → marketing assets → evidence and constraints → the five narrative sections → the printable card and the CSV → the PDF → the manifest.</p>
+
+<p>Citations are archived <em>before</em> the bundle is built from them (<code>bridge.py:1051</code>) — a cited URL that 404s later must not take the pack's evidence with it. The passage text is already durable in <code>Source.text</code>.</p>
+
+<h3>Fonts are a correctness concern, not a style one</h3>
+<p><code>pack_pdf.py</code> embeds vendored OFL fonts from <code>prospector/assets/fonts/</code> and imports <code>fontTools</code> directly to read their metrics. fpdf2's core fonts are latin-1 only, which silently drops the £ sign and every em-dash in engine prose.</p>
+</section>
+
+<hr>
+
+<section id="shelf">
+<h2><span class="n">08</span>Publish, sell, deliver</h2>
+<p class="h2sub">Six independent fences, one price decision, and a presigned URL.</p>
+
+<p><code>EngineBridge.publish_pass</code> (<code class="path">prospector/bridge.py:702</code>) is the money rail's entry. Its ordered steps:</p>
+
+<div class="scroller">
+<table>
+<thead><tr><th>Step</th><th>What happens</th><th>Anchor</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Prepare pack files</td><td><code>bridge.py:820</code></td></tr>
+<tr><td>1b</td><td>Archive the citations, before the bundle is built from them</td><td><code>:1051</code></td></tr>
+<tr><td>2</td><td>Create the bundle zip</td><td><code>:1086</code></td></tr>
+<tr><td>2c</td><td><strong>Content gates decided before anything is minted</strong></td><td><code>:1094</code></td></tr>
+<tr><td>2b</td><td>Decide the price <strong>once</strong> — one <code>PriceDecision</code></td><td><code>:1313</code></td></tr>
+<tr><td>3</td><td>Provision product and price with the active payment provider</td><td><code>:1362</code></td></tr>
+<tr><td>3.5</td><td>Upload the deliverable to R2, content-addressed by hash</td><td><code>:1477</code></td></tr>
+<tr><td>4</td><td>PATCH the .NET Store API's <code>/internal/catalog</code></td><td><code>:1495</code>, <code>_update_catalog :2200</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note">
+<span class="lbl">One price decision, two consumers</span>
+<p>The same <code>PriceDecision</code> mints the provider Price object <em>and</em> writes the catalogue row, and <code>_update_catalog</code> takes <code>price_pence</code> with no default on purpose. A default would be a second source of truth. The fulfilment fence reads the catalogue's number — so a drift charges the buyer and then refuses delivery.</p>
+</div>
+
+<h3>The six listing fences</h3>
+<p><code>listing_blockers()</code> at <code>bridge.py:55</code> returns the names of <em>all</em> failing fences, not the first. Kill-fast is right for the moat, where each check costs model spend; here every operand is already computed, and stopping at the first name hides a pack that needs two fixes behind one of them.</p>
+
+<div class="scroller">
+<table>
+<thead><tr><th>Fence</th><th>Passes when</th></tr></thead>
+<tbody>
+<tr><td><code>uploaded</code></td><td>The zip is in R2 and has a content key.</td></tr>
+<tr><td><code>pack_complete</code></td><td>Every promised deliverable is present.</td></tr>
+<tr><td><code>priced</code></td><td>A provider price object exists at the decided rung.</td></tr>
+<tr><td><code>bundle_complete</code></td><td><code>audit_bundle</code> (<code>:464</code>) finds no missing and no undeclared zip entries.</td></tr>
+<tr><td><code>lint_ok</code></td><td>The pack linter passes. It refused <em>silently</em> until 2026-08-18.</td></tr>
+<tr><td><code>figures_verified</code></td><td>The §33 figure fence. <span class="pill w">defaults OFF</span> — barring untraceable packs is a revenue action on up to 30% of the catalogue, and that is the founder's call, not the engine's.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>The buyer's side</h3>
+<p>The Store API is .NET 9 minimal APIs over EF Core and <strong>SQLite</strong> (<code class="path">store_platform/src/Store.Api/Program.cs:29</code>) — migrations under <code>Store.Catalog/Migrations/</code>. Endpoint groups: <code>CheckoutEndpoints</code>, <code>WebhookEndpoints</code>, <code>DeliveryEndpoints</code>, <code>UnlistedEndpoints</code>, <code>AnalyticsEndpoints</code>, <code>OpsEndpoints</code>, <code>BackupEndpoints</code>, <code>FounderPreviewEndpoints</code>, plus a full identity stack (JWT, revocation, external login, password reset).</p>
+
+<p>Payments go through <code>IPaymentProvider</code> with <code>StripeProvider</code> behind it and a <code>MoneyRailConfigGate</code> in front. Delivery is <code>GET /download/{token}</code> → look up the entitlement's <code>ContentKey</code> → <code>CreatePresignedGetUrlAsync</code> against R2. Presigned mints are capped per entitlement so a leaked link cannot fan out.</p>
+
+<p>The storefront is Next 16.2.11 / React 19 with <code>@stripe/react-stripe-js</code>. The ops console is a second, separate Next app that ships <em>inside the engine image</em> and serves on 8611 — the founder's ruling being that a dashboard whose only door is a laptop tunnel goes dark when the laptop does.</p>
+</section>
+
+<hr>
+
+<section id="state">
+<h2><span class="n">09</span>State and durability</h2>
+<p class="h2sub">Mostly files. One SQLite table on each side. R2 is the only copy that survives the box.</p>
+
+<div class="scroller">
+<table>
+<thead><tr><th>Path</th><th>Format</th><th>Holds</th><th>Note</th></tr></thead>
+<tbody>
+<tr><td><code>store/prospector.db</code></td><td>SQLite (WAL)</td><td>One table: <code>dossiers</code></td><td>The verdict record for every candidate, pass and kill.</td></tr>
+<tr><td><code>store/prospector.jsonl</code></td><td>JSONL</td><td>The spend and decision ledger</td><td>Read by the daily spend cap. This is the money trail.</td></tr>
+<tr><td><code>store/dossiers/</code></td><td>JSON files</td><td>Rendered dossiers</td><td>Gitignored — it is the paid product and the repo is public.</td></tr>
+<tr><td><code>store/listings/</code></td><td>JSON</td><td>Listing receipts</td><td>Lets the control centre show <code>Pub=Y</code>. The catalogue API stays the source of truth.</td></tr>
+<tr><td><code>store/provider_health.json</code></td><td>JSON + lockfile</td><td>Dead marks per brain</td><td>Half-open probes claimed through the lock.</td></tr>
+<tr><td><code>store/scheduler/PAUSE</code></td><td>Empty file</td><td>The kill switch</td><td>Halts the entire tick.</td></tr>
+<tr><td><code>publish/bundles/&lt;id&gt;/</code></td><td>zip</td><td>The shipped pack</td><td>189 on this checkout.</td></tr>
+<tr><td>R2 bucket</td><td>S3-compatible</td><td>Deliverables + backups</td><td>Same bucket serves delivery and backup.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Pack IDs are 16 hex characters — <code>08b22037fc2afc07</code>. The engine writes atomically through <code class="path">prospector/jsonl_atomic.py</code>; telemetry is structured JSON logging with <code>contextvars</code> for session, candidate, phase and stage (<code class="path">prospector/telemetry.py</code>).</p>
+
+<div class="note kill">
+<span class="lbl">Why <code>backup_store.py</code> is loud when <code>R2Uploader</code> is silent</span>
+<p><code>R2Uploader</code> returns <code>False</code> rather than raising and no-ops entirely when unconfigured, so a missing credential can never stop a pack from selling. That is right for the publish path and exactly wrong for backup. <code class="path">scripts/backup_store.py</code> fails loudly and reads the copy back, because a backup that "succeeds" by doing nothing is worse than no backup — you stop looking. It was written after a day when 1,153 dossiers and an 84MB ledger existed in exactly one place, with no Time Machine destination configured.</p>
+</div>
+</section>
+
+<hr>
+
+<section id="brains">
+<h2><span class="n">10</span>Model routing</h2>
+<p class="h2sub">Three separate rosters. Crossing them is the failure mode the design exists to prevent.</p>
+
+<div class="scroller">
+<table>
+<thead><tr><th>Chain</th><th>Config key</th><th>Live value</th><th>May rule a verdict?</th></tr></thead>
+<tbody>
+<tr><td>Moat</td><td><code>operator:</code></td><td><code>[minimax, claude_cli, groq, mistral]</code></td><td>Only if also in <code>moat_primary</code></td></tr>
+<tr><td>Trusted set</td><td><code>moat_primary:</code></td><td><code>[minimax, claude_cli]</code></td><td><span class="pill">yes — final</span></td></tr>
+<tr><td>Non-critical</td><td><code>noncritical_operator:</code></td><td><code>[minimax, minimax_m27, groq]</code></td><td><span class="pill k">never</span> <code>claude_cli</code> is barred from this chain at build time</td></tr>
+<tr><td>Grounding</td><td><code>retrieval.provider:</code></td><td><code>[searxng, ddg, exa, claude_cli]</code></td><td>n/a — retrieval only</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Anything ruling from outside <code>moat_primary</code> is stamped <code>provisional</code> (<code>is_provisional_provider</code>), never publishes on PASS, and is automatically re-vetted. Promotion into the trusted set is that config line plus a golden-set pass — never a patch.</p>
+
+<p><code>claude_cli</code> shells out to the local Claude CLI pinned to the cheapest model, concurrency clamped to one machine-wide. Operator classes in <code class="path">prospector/operator.py</code>: Gemini, MiniMax, DeepSeek, OpenRouter, Ollama, an OpenAI-compatible generic, a Mock, and <code>FallbackOperator</code> which chains named tiers behind circuit breakers. A removed tier name raises <code>ValueError</code> at startup, so a stale config fails loudly rather than silently building a shorter chain.</p>
+
+<div class="note">
+<span class="lbl">A dead brain must leave a trace</span>
+<p>A fallback chain that works hides its own degradation. Permanence is classified by one shared, tested function — <code>errors.looks_exhausted</code> — used by every metered adapter. Transient backpressure (429/503/529, <code>overloaded_error</code>) benches a brain for 60s; permanent exhaustion (402, credit balance, any usage allowance) for an hour, and permanent wins ties. HTTP codes match on <strong>word boundaries</strong>: a bare substring once let a request id bench a live brain.</p>
+</div>
+</section>
+
+<hr>
+
+<section id="rails">
+<h2><span class="n">11</span>Safety rails</h2>
+<p class="h2sub">The engine runs unattended. These are what replaced the human.</p>
+
+<div class="scroller">
+<table>
+<thead><tr><th>Rail</th><th>Mechanism</th><th>Scope</th></tr></thead>
+<tbody>
+<tr><td>Daily spend ceiling</td><td><code>spend.daily_cap_usd</code>, computed from <code>store/prospector.jsonl</code></td><td>Whole engine</td></tr>
+<tr><td>Kill switch</td><td><code>store/scheduler/PAUSE</code></td><td>The <strong>entire</strong> tick — generation and drain together. A rail with exceptions is not a rail.</td></tr>
+<tr><td>Half-stop</td><td><code>store/scheduler/PAUSE_GENERATION</code></td><td>Generation only; drain keeps running</td></tr>
+<tr><td>Grounding brake</td><td><code>schedule.gate_generation_on_grounding</code></td><td>One bounded live search per tick. Suppresses generation only while retrieval is <em>actually</em> degraded, then self-clears.</td></tr>
+<tr><td>Backlog cap</td><td><code>schedule.backlog_cap</code>, default 0 = off</td><td>Above the cap a tick drains only, then self-releases</td></tr>
+<tr><td>Moat-blind skip</td><td><code>_moat_blind_reason</code>, <code>run_scheduled.py:465</code></td><td>Skips a tick only when <em>every</em> verdict brain carries a live dead mark</td></tr>
+<tr><td>Tick hard deadline</td><td><code>threading.Timer</code> → force exit → supervisord restart</td><td>Writes a tick row and an alert before it kills the daemon</td></tr>
+<tr><td>In-flight markers</td><td><code class="path">prospector/inflight.py</code></td><td>A marker on disk the instant a vet starts, so a SIGKILL leaves a recoverable trace</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note warn">
+<span class="lbl">Gate on the rate, not the stock</span>
+<p>A stock brake has unbounded memory: one outage suppresses generation indefinitely. The grounding brake measures the <em>rate</em> instead. And when the backlog count fails, <code>run.drainable()</code> returns <code>None</code>, never <code>0</code> — so generation stops rather than being waved through by a failed measurement.</p>
+</div>
+</section>
+
+<hr>
+
+<section id="deps">
+<h2><span class="n">12</span>Dependency inventory</h2>
+<p class="h2sub">Thirty Python packages, and every one of them has a written reason.</p>
+
+<p><code class="path">requirements.txt</code> is unusually annotated — most lines carry the incident that put them there. Grouped:</p>
+
+<div class="scroller">
+<table>
+<thead><tr><th>Group</th><th>Packages</th><th>Note</th></tr></thead>
+<tbody>
+<tr><td>LLM</td><td><code>anthropic&gt;=0.40</code>, <code>google-genai&gt;=0.3</code></td><td></td></tr>
+<tr><td>Core</td><td><code>pyyaml&gt;=6.0</code>, <code>pydantic&gt;=2.6</code>, <code>requests&gt;=2.31</code>, <code>json_repair&gt;=0.63</code></td><td><code>json_repair</code> is last-resort JSON repair for <code>operator._extract_json</code> strategy 5.</td></tr>
+<tr><td>Search</td><td><code>ddgs&gt;=9.14</code>, <code>exa_py&gt;=2.14</code></td><td>Both imported <em>lazily</em>. A lazy import means nothing fails at boot — the process dies at the first call that reaches the provider.</td></tr>
+<tr><td>Extraction</td><td><code>trafilatura&gt;=2.2</code>, <code>nltk&gt;=3.9</code></td><td><code>nltk</code>'s import is guarded, so a clean install does not crash — it silently stems fixture keys differently. That is worse than a crash.</td></tr>
+<tr><td>Pack rendering</td><td><code>mistune&gt;=3.3</code>, <code>fpdf2&gt;=2.8</code>, <code>fonttools&gt;=4.5</code>, <code>openpyxl&gt;=3.1</code>, <code>pillow&gt;=12.3.0</code></td><td><code>fonttools</code> is a direct import that used to resolve only because fpdf2 pulled it in transitively.</td></tr>
+<tr><td>Quality</td><td><code>rapidfuzz&gt;=3.14</code>, <code>textstat&gt;=0.7</code></td><td><code>rapidfuzz</code> because <code>difflib.SequenceMatcher</code> took over two minutes on one pack. <code>textstat</code> is <strong>recorded and never actuated</strong> — a grade ceiling would block a pack for quoting a statute.</td></tr>
+<tr><td>API</td><td><code>fastapi&gt;=0.110</code>, <code>uvicorn&gt;=0.29</code>, <code>starlette&gt;=0.36</code>, <code>httpx&gt;=0.27</code></td><td></td></tr>
+<tr><td>Money &amp; storage</td><td><code>stripe&gt;=15.2</code>, <code>boto3&gt;=1.34</code></td><td>Without boto3 the R2 path silently disables and packs publish unlisted.</td></tr>
+<tr><td>Data</td><td><code>numpy&gt;=1.26</code></td><td>Only reached the file because Streamlit was deleted and stopped pulling it in transitively.</td></tr>
+<tr><td>Testing &amp; lint</td><td><code>pytest&gt;=8.0</code>, <code>pytest-xdist&gt;=3.5</code>, <code>pypdf&gt;=5.0</code>, <code>ruff&gt;=0.16</code>, <code>python-json-logger&gt;=2.0</code></td><td>xdist is declared because <code>pytest.ini</code> passes <code>-n auto</code> on every invocation — a config naming an absent plugin exits 4 before collecting a single test.</td></tr>
+<tr><td>Advisory pins</td><td><code>pyasn1&gt;=0.6.4</code></td><td>Nothing imports it. It is here because CI's advisory scan named it.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p><code class="path">requirements-local.txt</code> holds three sibling-repo installs (<code>lux-popdd</code>, <code>lux-spec</code>, <code>lux-spec-cli</code>) as <code>file:</code> paths, used only by <code>run_v2.py</code> and the commit gate. They were moved out of the main file because absolute local paths made it uninstallable anywhere else, CI included.</p>
+
+<h3>Node and .NET</h3>
+<div class="scroller">
+<table>
+<thead><tr><th>Surface</th><th>Runtime</th><th>Key packages</th></tr></thead>
+<tbody>
+<tr><td>Store.Web</td><td>Next 16.2.11, React 19.2.7</td><td><code>@stripe/react-stripe-js</code> 6.6, <code>stripe</code> 22.2, <code>@daily-co/daily-js</code>, <code>lucide-react</code>, <code>geist</code>, Inter + IBM Plex Mono via fontsource</td></tr>
+<tr><td>Ops.Console</td><td>Next 16.3.1, React 19.2.7</td><td><code>react-markdown</code>, <code>remark-gfm</code></td></tr>
+<tr><td>Store.Api / Store.Catalog</td><td>.NET 9</td><td>EF Core over SQLite; central pins in <code>Directory.Packages.props</code></td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<hr>
+
+<section id="toolchain">
+<h2><span class="n">13</span>Toolchain and CI</h2>
+<p class="h2sub">Seventeen workflows. The interesting ones are the guards, not the builds.</p>
+
+<h3>Local</h3>
+<div class="scroller">
+<table>
+<thead><tr><th>Tool</th><th>Config</th><th>Settings that matter</th></tr></thead>
+<tbody>
+<tr><td>ruff</td><td><code class="path">ruff.toml</code></td><td>line-length 100, target py312, <code>select = ["E4","E7","E9","F","I"]</code>. Deliberately narrow — the default set reports 1,085 findings, and a lint gate whose first act is a 700-file autofix gets turned off. Baseline ratchet: <strong>393 findings</strong>, must go down, never up.</td></tr>
+<tr><td>pytest</td><td><code class="path">pytest.ini</code></td><td><code>addopts = -n auto --dist loadfile</code>. <code>loadfile</code> because the suite has genuine process-global state. <code>tmp_path_retention_policy = failed</code> — the default retention once made the commit gate look like a hang while it spent 9m48s of CPU unlinking 4,296 directories.</td></tr>
+<tr><td>Commit gate</td><td><code class="path">scripts/popdd_verify.py</code></td><td>Lanes of ruff → mypy → pytest, 2400s per step. Runs inside the hook, so <code>git commit</code> holds <code>.git/index.lock</code> for the duration.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note warn">
+<span class="lbl">Any test that asserts a duration must measure CPU</span>
+<p><code>test_a_huge_page_is_selected_in_reasonable_time</code> asserted a cost property with <code>time.monotonic()</code>. It passed serially and at 8 workers, and failed at 12 — identical code, purely from being descheduled. It now uses <code>time.process_time()</code>. Wall clock plus parallelism makes a test a coin toss, and the fix always <em>looks</em> like "raise the budget".</p>
+</div>
+
+<h3>CI jobs</h3>
+<p><code>ci.yml</code> fans out on a <code>changes</code> filter into: <code>guard</code> (doc lint, link check, capacity, runner tools), <code>python</code> (the suite plus the golden set), <code>engine</code> (<code>verify_engine_change.sh</code>), <code>dotnet</code> (Store.Tests), <code>nextjs</code> and <code>ops-console</code> (typecheck, lint, CSS lint, unit, <code>npm audit --audit-level=high</code>, build, Playwright, a11y, e2e), converging on <code>ci-ok</code>.</p>
+
+<p>Deploy is three workflows — <code>deploy-engine</code>, <code>deploy-api</code>, <code>deploy-web</code> — each a checkout plus <code>flyctl deploy</code> with <code>--config</code> and <code>--dockerfile</code> both explicit, so a stale <em>remote</em> config cannot decide what ships. <code>deploy-web</code> goes further: it proves the site serves after deploying and <strong>rolls back automatically</strong> if it does not.</p>
+
+<p>The rest are estate guards: <code>main-admission-guard</code>, <code>main-green-guard</code>, <code>merge-when-green</code>, <code>pr-keeper</code>, <code>ci-fleet-keeper</code>, <code>ci-fleet-watch</code>, <code>cancel-ci-on-pr-close</code>, <code>approve-parked-runs</code>, <code>dns-drift-drill</code>, <code>escape-hatch-drill</code>, <code>e2e-live-smoke</code>, <code>production-runs-main</code>, <code>weekly-estate-review</code>.</p>
+
+<div class="note">
+<span class="lbl">Why so many guards</span>
+<p>Native auto-merge is not available on this plan — <code>403 Upgrade to GitHub Pro</code> on both branch protection and rulesets. The workflows above are the substitute. One consequence worth internalising: <code>ci.yml</code> sets <code>cancel-in-progress</code> for every ref that is not main, so an agent pushing to its own branch could kill the in-flight run about to merge someone else's work. Measured at the time: 7 of 60 CI runs succeeded, 16 were cancelled.</p>
+</div>
+</section>
+
+<hr>
+
+<section id="gaps">
+<h2><span class="n">14</span>Gaps and cautions</h2>
+<p class="h2sub">What an architect should not take on trust.</p>
+
+<ul>
+<li><strong><code>run_v2.py</code> is a second pipeline.</strong> A standalone moat runner using <code>prospector/pipeline/</code> (<code>generator.py</code> → <code>verifier.py</code> → <code>middleware.py</code>), not wired into <code>run.py</code> or the scheduler. Whether it is a live path or a dev harness is <span class="pill w">unverified</span>.</li>
+<li><strong>No checkpointing inside a single vet.</strong> The in-flight marker records that a vet started; a kill mid-vet loses that candidate's partial check results and it re-runs from scratch. Six checks of paid retrieval.</li>
+<li><strong>The figure fence ships OFF.</strong> Up to 30% of the catalogue is listed without figure verification. That is a recorded, deliberate revenue decision, not an oversight — but it is a decision, and it is still open.</li>
+<li><strong>The laptop store is dead data.</strong> Any number derived from <code>store/</code> on a dev machine describes a snapshot frozen at the Fly cutover, not production.</li>
+<li><strong>Both search-provider classes named "search" are not search.</strong> <code>DeepSeekSearchProvider</code>, <code>MiniMaxSearchProvider</code> and <code>OpenRouterSearchProvider</code> are LLM synthesis and will hallucinate URLs. They exist as classes; nothing should put them in a grounding chain.</li>
+<li><strong>The 393-finding ruff baseline includes 10 <code>F821</code> undefined names.</strong> Those are NameErrors waiting for the branch that reaches them, not style debt.</li>
+<li><strong>Prose in docs drifts; commands do not.</strong> Whether the pre-commit gate is installed has been documented wrongly in <em>both</em> directions. Ask <code>git config --get core.hooksPath</code>, never a paragraph.</li>
+</ul>
+
+<hr>
+
+<p class="foot">Every figure on this page was measured on 21 August 2026 against <code>9e2cfef2</code> — file counts from <code>wc -l</code>, pack contents from the zip's own index, config values with comments stripped, dependency lists from the requirements files themselves. Where a claim could not be verified from the code it is marked <span class="pill w">unverified</span> rather than smoothed over. Re-measure before quoting: the suite grows, the config moves, and the ceilings do not.</p>
+
+</section>
+
+</main>
+</div>
