@@ -95,7 +95,7 @@ An axis with no unit cannot be improved by 100x, because nobody can say what 100
 | A4 | Discrimination | golden-set accuracy | 1.00 on 9 items | see below | measured, NO RESOLUTION |
 | A5 | Yield | PASSes per 1000 candidates that survive founder review | TBD | 100x | NOT MEASURED |
 | A6 | Cost | USD per 1000 verdicts | ~$3.60 (MiniMax M3, 10k in / 500 out assumed) | observation only | estimated, not measured |
-| A7 | Grounding fidelity | % of verdict citations whose anchor text literally appears in the fetched passage | TBD | 100% | NOT MEASURED |
+| A7 | Grounding fidelity | % of ruled checks whose rationale shares a literal 12-word run with a passage it cites | **2.92%**, 109 of 3,732 ruled checks, Wilson 95% [2.43, 3.51] | 100% | **MEASURED 2026-08-20** — [instrument and null control](ENGINE_BASELINE_2026-08-20.md#3-a7-a-grounding-instrument-that-is-free-deterministic-and-passes-its-own-control) |
 | A8 | Abstention calibration | accuracy on attempted, vs % attempted | TBD | see E-045 | NOT MEASURED |
 
 ### A4 is the blocker, and it is the first finding of this programme
@@ -183,7 +183,14 @@ when run. Ordering within a group is by expected effect, not by ease.
 | E-031 | The drain is trusted-only AND serial. The trusted-only part is a deliberate correctness rule and stays. The serial part is not. |
 | E-032 | Async I/O end to end in `retrieval.py` rather than thread-per-fetch. |
 
-### Group 4 — quality (A4, A7, A8) — all blocked on E-001
+### Group 4 — quality (A4, A7, A8) — A7 is measured; A4 and A8 are still blocked on E-001
+
+A7 came off this list on 2026-08-20 and the reading is the finding: **2.92%**, against a null
+control of **0.0%** [0.0, 0.1]. The control is what makes the number usable — the instrument
+reads zero on evidence that cannot be the source, so 2.92% is real signal and not a floor.
+It says the verdicts are almost never quoting the passages they cite. E-044 (generalise
+`price_comparables`' literal-anchor rule to all six checks) is the cheapest thing that moves
+it, and it needs no model change at all.
 
 | ID | Hypothesis |
 |---|---|
