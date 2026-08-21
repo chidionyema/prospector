@@ -78,6 +78,28 @@ def _gap_reason(resource: dict[str, Any]) -> str:
             return f"admitted gap, owned by issue #{found.group(1)}"
     return "admitted gap with NO owning issue -- nobody is on the hook for this resource"
 
+def adapter_present(adapter: str | None) -> bool:
+    """Is the file that would actually run this step on disk?
+
+    `_step` used to copy `decl.adapter` into the plan and stop there, so a plan to any target
+    read as 80 runnable steps while 73 of them named a file that does not exist. The runner
+    does fail loudly at such a step, and the migration page does admit which classes are
+    unwired -- but the PLAN is the artifact a person reads BEFORE starting the clock, and it
+    was the one place that could not say so. Under a 30-minute whole-stack budget, finding out
+    at minute 40 is the same as not having a plan.
+
+    Relative adapter paths are resolved against the repo root rather than the caller's cwd:
+    the plan is compiled from the console, from CI and from a terminal in a worktree, and the
+    answer to "does this file exist" must not depend on which.
+    """
+    if not adapter:
+        return False
+    path = Path(adapter)
+    if not path.is_absolute():
+        path = REPO / path
+    return path.is_file()
+
+
 def substrate_of(where: str | None) -> str:
     """The platform half of the probe's `where` field, which reads `<substrate>/<state>`."""
     if not where:
@@ -99,6 +121,7 @@ def _step(resource: dict[str, Any], decl: ClassDecl, target: str) -> dict[str, A
         "needs": list(decl.needs),
         "downtime": decl.downtime,
         "described_by": resource.get("described_by"),
+        "adapter_present": adapter_present(decl.adapter),
         # Verbatim from the declaration, never read by the kit. See ClassDecl.options.
         "options": dict(decl.options),
     }
@@ -164,7 +187,13 @@ def compile_plan(report: dict[str, Any], project: Project, target: str) -> dict[
         "target": target,
         "steps": steps,
         "skipped": skipped,
-        "counts": {"resources": len(resources), "steps": len(steps), "skipped": len(skipped)},
+        "unrunnable": sorted({s["adapter"] for s in steps if not s["adapter_present"]}),
+        "counts": {"resources": len(resources), "steps": len(steps), "skipped": len(skipped),
+                   # Steps whose adapter is not on disk. Reported rather than refused, on
+                   # purpose: kit/classes/MISSING.md is the declared ledger of unwired classes,
+                   # and a plan that refuses to compile until every adapter exists cannot be
+                   # used to SEE how much is left. Loud, not fatal.
+                   "unrunnable_steps": sum(1 for s in steps if not s["adapter_present"])},
     }
 
 

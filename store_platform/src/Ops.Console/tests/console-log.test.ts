@@ -167,6 +167,12 @@ describe('the logger cannot cost the request', () => {
     expect((captured.body as { ok: boolean }).ok).toBe(false);
   });
 
+  // 1005 synchronous appends, each re-reading the whole file: on an idle box this is under a
+  // second, and vitest's default 5s timeout is an unwritten performance assertion sitting on top
+  // of the bound this test is actually about. Measured 2026-08-21 at load average 442 -- five
+  // sessions share this laptop -- it took over 9s and failed the commit gate of a diff that
+  // contained no TypeScript at all. The timeout below is explicit so the test fails on the
+  // BEHAVIOUR (a file that grows without bound) rather than on how busy the machine is.
   it('keeps the file bounded so it can never fill the volume', () => {
     for (let i = 0; i < KEEP * 2 + 5; i += 1) {
       logConsoleEvent({ kind: 'read_failed', view: `v${i}` });
@@ -176,5 +182,5 @@ describe('the logger cannot cost the request', () => {
     expect(kept.length).toBeLessThanOrEqual(KEEP * 2);
     // Trimming keeps the NEWEST. Losing the newest would be worse than not logging.
     expect(kept[kept.length - 1]).toMatchObject({ view: `v${KEEP * 2 + 4}` });
-  });
+  }, 60_000);
 });
