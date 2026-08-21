@@ -1896,7 +1896,11 @@ class EngineBridge:
                 # Deterministic floors, but not id-free: they embed `check.rationale`, which is
                 # verdict-brain prose and carries the same passage ids as everything else.
                 exec_summary_content = prose_pass_document(
-                    exec_summary_md(dossier.candidate, getattr(dossier, "checks", []) or []))
+                    exec_summary_md(dossier.candidate,
+                                    getattr(dossier, "checks", []) or [],
+                                    # The lede is quoted out of a passage a supported
+                                    # check cited, so the sources have to reach it.
+                                    getattr(dossier, "sources", []) or []))
                 written["00_Executive_Summary.md"] = exec_summary_content
 
                 # The action document. `pack_checklist.render` is preferred and the six-line

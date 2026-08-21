@@ -179,11 +179,16 @@ def _git_tracked(repo_root: Path) -> list[str] | None:
     return [p for p in out.stdout.decode("utf-8", "replace").split("\0") if p]
 
 
-def _walked(repo_root: Path, keep: "Callable[[str], bool] | None" = None) -> list[str]:
+def _walked(repo_root: Path, keep: Callable[[str], bool] | None = None) -> list[str]:
     """Every file in the tree, minus the denied ones. The container path.
 
     Prunes denied directories as it descends rather than filtering at the end, because walking
     `node_modules/` only to throw it away is how a listing takes minutes.
+
+    `keep` narrows the population BEFORE the deny-list runs. It is a COST change and not a fence
+    change: every path that survives `keep` is still put through `is_denied`, so nothing reaches
+    a caller that the fence would have refused. A caller that wants only documents pays the
+    deny-list on documents instead of on all ~2,200 files in the tree.
     """
     found: list[str] = []
     for dirpath, dirnames, filenames in os.walk(repo_root):
@@ -199,18 +204,12 @@ def _walked(repo_root: Path, keep: "Callable[[str], bool] | None" = None) -> lis
     return found
 
 
-def shareable_files(repo_root: Path, *, keep: "Callable[[str], bool] | None" = None) -> list[str]:
+def shareable_files(repo_root: Path, *, keep: Callable[[str], bool] | None = None) -> list[str]:
     """Every path this repo will serve, sorted. Both sources pass through `is_denied`.
 
-    `keep` is an optional predicate on the repo-relative path, applied BEFORE the deny-list. It
-    changes the COST, never the answer: the two filters commute, so narrowing first returns
-    exactly what filtering the full result afterwards would. It can only ever remove paths, so a
-    caller cannot widen what this function serves.
-
-    WHY IT EXISTS. Measured 2026-08-21 on this repo: this function took 1,688 ms and **1,561 ms
-    of that was `is_denied` over all 2,208 tracked paths**. The docs index wants the ~320 that
-    are documents, so it pays 7x for paths it is about to discard — on a page the founder had
-    already called slow.
+    `keep` is an optional predicate on the repo-relative path, applied BEFORE the deny-list — see
+    `_walked`. The fence still runs on every path that comes back, so narrowing can only ever
+    return fewer paths, never a path the full call would have refused.
     """
     tracked = _git_tracked(repo_root)
     raw = tracked if tracked is not None else _walked(repo_root, keep=keep)
