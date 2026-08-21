@@ -44,11 +44,20 @@ type StatusCount = { status: string | null; orders: number | null };
  * TypeScript could not catch it: the type was the thing that was wrong.
  */
 type SalesView = {
-  today: Gross[];
-  by_currency: Gross[];
-  by_day: DayGross[];
-  by_pack: PackSales[];
-  order_statuses: StatusCount[];
+  /**
+   * `shop.sales_view` returns `reachable: false` and EVERY datum as None when the store API does
+   * not answer — `today`, `by_currency`, `by_day`, `by_pack` and `order_statuses` are all null,
+   * with a warning that says so. This type claimed they were always arrays, so the page read
+   * `.map` off null and took itself down. Measured 2026-08-21 by the e2e journey "every screen
+   * reads real data": /revenue rendered "This page broke while drawing itself. TypeError".
+   */
+  reachable?: boolean;
+  error?: string | null;
+  today: Gross[] | null;
+  by_currency: Gross[] | null;
+  by_day: DayGross[] | null;
+  by_pack: PackSales[] | null;
+  order_statuses: StatusCount[] | null;
   order_count: number | null;
   days: number | null;
   day_boundary: string | null;
@@ -117,6 +126,43 @@ export default function Revenue() {
 
   const packs = data?.by_pack ?? [];
 
+  /**
+   * A read that failed is not a quiet day, and this page must never suggest it was.
+   *
+   * Every list below is guarded with `?? []`, which turns "we could not measure" into "No pack
+   * sold in this window" and "No day in this window has a sale recorded against it". Those are
+   * confident statements about the shop's takings, made when the store said nothing at all. The
+   * page's own second rule, at the top of this file, forbids exactly that for a NUMBER; nothing
+   * was enforcing it for a LIST.
+   */
+  if (data && data.reachable === false) {
+    return (
+      <Shell title="Revenue" intro="What the shop took, today and over a window.">
+        {error ? <Problem>{error}</Problem> : null}
+        {(data.warnings ?? []).map((w) => (
+          <Problem key={w}>{w}</Problem>
+        ))}
+        <Card
+          title="Revenue could not be read"
+          right={<AsOf asOf={envelope?.as_of} tookMs={envelope?.took_ms} />}
+        >
+          <Note>{data.error || 'The store API did not answer.'}</Note>
+          <Note>
+            That is UNKNOWN, not zero. This page will not show you an empty day, an empty window or
+            a shop that sold nothing because the read failed.
+          </Note>
+          <button
+            type="button"
+            onClick={refresh}
+            className="tap inline-flex items-center px-2 text-[13px] text-muted underline"
+          >
+            try the read again
+          </button>
+        </Card>
+      </Shell>
+    );
+  }
+
   return (
     <Shell title="Revenue" intro="What the shop took, today and over a window.">
       {error ? <Problem>{error}</Problem> : null}
@@ -128,7 +174,7 @@ export default function Revenue() {
         title="Taken today"
         right={<AsOf asOf={envelope?.as_of} tookMs={envelope?.took_ms} />}
       >
-        {!data ? <Spinner what="the shop's sales" /> : <GrossTiles rows={data.today} what="today" />}
+        {!data ? <Spinner what="the shop's sales" /> : <GrossTiles rows={data.today ?? []} what="today" />}
         {data?.day_boundary ? (
           <Row label="A day starts at">
             <Mono>{data.day_boundary}</Mono>

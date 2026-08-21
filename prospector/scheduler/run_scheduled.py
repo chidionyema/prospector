@@ -2821,6 +2821,11 @@ def _status_lines(cfg) -> list[str]:
     out.append(f"  guard       : {'OK' if d.can_run else 'BLOCKED'} — {pause}")
     out.append(f"  spend today : ${d.today_spend_usd:.2f} of ${d.daily_cap_usd:.2f} cap "
                f"(metered/billed, local day {d.day})")
+    if d.today_ledger_holes:
+        # Printed only when it is not zero, because a line that is always there is a line nobody
+        # reads. The figure above is a lower bound whenever this appears.
+        out.append(f"  LEDGER HOLE : {d.today_ledger_holes} unreadable line(s) today — the spend "
+                   f"above is a LOWER BOUND and the cap has less room than it shows")
     sub_cap = (f"of ${d.daily_subscription_cap_usd:.2f} cap"
                if d.daily_subscription_cap_usd > 0 else "UNCAPPED")
     out.append(f"  cli usage   : ${d.today_subscription_usd:.2f} {sub_cap} "

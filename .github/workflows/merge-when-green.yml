@@ -18,11 +18,31 @@
 # reads as too small. That misreading was already paid for once, on 2026-08-19, when six machines
 # were bought for a queue that was not queueing.
 #
-# WHY NOT NATIVE AUTO-MERGE. The repository allows it (`allow_auto_merge: true`, measured
-# 2026-08-21), but GitHub only arms it on a pull request that is currently BLOCKED by a required
-# status check, and required checks need branch protection, which this plan answers `403 Upgrade
-# to GitHub Pro` for. An already-green pull request cannot be armed at all, which is exactly the
-# population sitting in the queue now.
+# NATIVE AUTO-MERGE IS NOW ON TOO, AND THIS FILE IS STILL NEEDED. The paragraph here used to say
+# native auto-merge was impossible because required status checks need branch protection and the
+# plan answered `403 Upgrade to GitHub Pro`. That stopped being true on 2026-08-21, when the
+# repository was made public: rulesets became available, `strict` (20109556) now requires
+# `guard, python, dotnet, nextjs`, and every open pull request has been armed with
+# `gh pr merge <n> --auto --merge`.
+#
+# Neither mechanism replaces the other, so do not delete this one when you find the other.
+# GitHub arms native auto-merge only on a pull request that is currently BLOCKED by a required
+# check; an ALREADY-GREEN pull request cannot be armed at all, and that is the exact population
+# this file was written for. Native auto-merge lands a pull request the second its last required
+# check reports; this cron catches whatever native auto-merge could not arm, within 10 minutes.
+#
+# `--merge`, never `--squash`, in BOTH. `main-admission-guard.yml` reads `Merge pull request #N`
+# out of the commit subject and reverts with `-m 1`, which needs the two parents only a merge
+# commit has. A squash would leave that audit unable to see or undo the merge.
+#
+# ONE GAP, and it is the reason to keep reading. Required checks are a NAMED list, and it does
+# not name `ci-ok` -- the aggregator that `needs:` every lane. So native auto-merge lands a pull
+# request when the four named jobs are green while other lanes are still running. Measured:
+# #644 merged 2026-08-21T22:34:07Z with its `rust` job `in_progress`; rust reported success at
+# 22:34:38Z, 31 seconds after the merge. It passed, so nothing broke, but nothing was checking.
+# The fix is to add `ci-ok` to `strict`'s required_status_checks; until then this cron's own
+# rule is the stricter of the two, because it refuses any pull request with a check still
+# running (`len(done) != len(checks)` below).
 #
 # WHAT IT REFUSES TO MERGE, each a real case rather than a precaution:
 #   draft                      the author is still writing it
@@ -67,14 +87,18 @@ permissions:
 
 jobs:
   merge:
-    # NOT `ubuntu-latest`. Measured 2026-08-21: every GitHub-hosted job on this account is refused
-    # before its first step with "The job was not started because recent account payments have
-    # failed or your spending limit needs to be increased". This workflow was the only one in the
-    # tree that asked for a hosted runner with no escape, so it failed in 3 seconds on every one of
-    # its runs and has never merged anything. Every workflow that works uses the line below, and
-    # `CI_RUNS_ON=fly` is set on the repository, so this lands on the self-hosted fleet like the
-    # rest. The `|| 'ubuntu-latest'` tail is the house idiom and is what runs if the vars are ever
-    # cleared.
+    # Read the variable, do not hardcode a runner. The history is why. GitHub-hosted jobs on this
+    # account were refused before their first step -- "recent account payments have failed or your
+    # spending limit needs to be increased" -- so this workflow, the only one asking for a hosted
+    # runner with no escape, failed in 3 seconds on every run and merged nothing. The answer was
+    # the line below plus `CI_RUNS_ON=fly`, which sent it to the self-hosted fleet.
+    #
+    # On 2026-08-21 the repository was made public, GitHub-hosted runners became free on it, and
+    # all four CI_*_RUNS_ON variables were set to `ubuntu-latest`. This line needed no edit, which
+    # is the point of reading a variable. `ops/config/ci_capacity.yaml` did need one and did not
+    # get it in the same change, so it still declared `label: fly` and every open pull request
+    # went red until #645 fixed it. The `|| 'ubuntu-latest'` tail is the house idiom and is what
+    # runs if the vars are ever cleared.
     runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     steps:
       - name: Merge every pull request that is genuinely finished

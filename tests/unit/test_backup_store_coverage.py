@@ -557,3 +557,25 @@ def test_the_ledger_is_restored_before_the_index(store, tmp_path, monkeypatch):
     monkeypatch.setattr(bs, "restore_db", lambda *a, **k: order.append("db") or "")
     bs.restore(fake, "b", tmp_path / "restored")
     assert order == ["ledger", "db"], order
+# ── Gap 3: the ledger was uploaded every day and never read back ──────────────
+# Found 2026-08-21. `LEDGER_PREFIX` appeared at exactly three sites in the repo -- the
+# constant, the upload key, and the pruner's list call. `restore()` walked DOSSIER_PREFIX and
+# then called `restore_db`. Nothing anywhere downloaded a ledger object. The daily upload also
+# had no read-back, so the audit trail was the one artifact of the three written blind.
+def test_the_ledger_upload_is_read_back_and_a_corrupted_write_is_caught(store):
+    """The db snapshot has had this check since it was written; the ledger had none. An upload
+    nobody reads back is a write into a bucket you find out about on the day you need it."""
+    s3 = FakeS3()
+
+    real_upload = s3.upload_file
+
+    def corrupt_the_ledger(filename, Bucket, Key, ExtraArgs=None):  # noqa: N803
+        real_upload(filename, Bucket, Key, ExtraArgs)
+        if Key.startswith(bs.LEDGER_PREFIX):
+            s3.objects[Key] = b"something else entirely"
+
+    s3.upload_file = corrupt_the_ledger
+    with pytest.raises(SystemExit, match="reads back differently"):
+        bs.sync(s3, "b")
+
+

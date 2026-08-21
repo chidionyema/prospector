@@ -295,6 +295,31 @@ class TestTheLaneMapCoversEachSourceKind:
         assert lanes == ["engine"], "the file that steers the live daemon must be proven"
         assert unclassified == []
 
+    def test_the_estate_config_selects_the_python_lane(self, runner):
+        """The same hole as config.yaml above, one directory over and one week later.
+
+        On 2026-08-21 commit c0ecb178 changed ops/config/ci_capacity.yaml and this gate
+        printed "no source changes staged, nothing to prove". That file declares which
+        runner pool every CI job lands on, and hours earlier it had turned every open pull
+        request red by still saying `label: fly` after the CI_*_RUNS_ON variables moved to
+        ubuntu-latest. `guard` failed in 11s on #643 and #644. Four files in tests/unit/
+        grade that one yaml, and the gate ran none of them.
+        """
+        lanes, unclassified = runner.lanes_for(["ops/config/ci_capacity.yaml"])
+        assert lanes == ["python"], "the file that steers every CI run must be proven"
+        assert unclassified == []
+
+    def test_the_estate_config_catchment_is_named_not_every_yaml(self, runner):
+        """The reason ENGINE_CONFIGS gives for not putting .yaml in SOURCE_EXTS holds here.
+
+        A blanket extension rule would make every docs and workflow yaml unprovable and
+        therefore uncommittable, and a gate that blocks unrelated work is a gate people
+        turn off with --no-verify. So this must stay empty, not become "python".
+        """
+        lanes, unclassified = runner.lanes_for(["docs/storefront/look-engine/palette.yaml"])
+        assert lanes == [], "a yaml outside a named catchment must not conscript the suite"
+        assert unclassified == []
+
     def test_scheduler_code_selects_the_engine_lane_AND_python(self, runner):
         """Both, not either. pytest proves the code; the dry-run tick proves the daemon can
         still complete a tick with it — a green suite over a scheduler that no longer starts
@@ -319,6 +344,52 @@ class TestTheLaneMapCoversEachSourceKind:
     def test_the_engine_lane_runs_before_the_expensive_ones(self, runner):
         assert runner.LANE_ORDER[0] == "engine", runner.LANE_ORDER
 
+    def test_rust_sources_reach_the_rust_lane(self, runner):
+        """Before 2026-08-21 a commit of nothing but .rs files was allowed with
+        "no source changes staged — nothing to prove". `.rs` was in neither SOURCE_EXTS nor
+        any lane, so it was not even recorded as unclassified: the gate said green having
+        graded nothing, which is the defect the whole lane system exists to prevent."""
+        lanes, unclassified = runner.lanes_for(
+            ["engine-rs/crates/prospector-core/src/decision.rs"])
+        assert lanes == ["rust"], lanes
+        assert not unclassified
+
+    def test_the_rust_lane_covers_the_files_that_change_what_a_build_does(self, runner):
+        """rust-toolchain.toml pins the compiler, so editing it can turn a green tree red
+        with no code change. Cargo.lock decides which dependency versions are compiled, and
+        clippy.toml decides which lints fire. None of them are source, and all of them are
+        the lane's business."""
+        for name in ("Cargo.toml", "Cargo.lock", "rust-toolchain.toml",
+                     "clippy.toml", "rustfmt.toml", "deny.toml"):
+            lanes, unclassified = runner.lanes_for([f"engine-rs/{name}"])
+            assert lanes == ["rust"], f"engine-rs/{name} -> {lanes}"
+            assert not unclassified
+
+    def test_a_rust_file_outside_the_engine_tree_blocks_rather_than_passing(self, runner):
+        """The lane is scoped to engine-rs/, so a .rs anywhere else has no proof. It must be
+        refused by name, not silently allowed — an unclassified file is a question for a
+        human, and sailing through is an answer nobody gave."""
+        lanes, unclassified = runner.lanes_for(["tools/stray.rs"])
+        assert lanes == []
+        assert unclassified == ["tools/stray.rs"]
+
+    def test_the_rust_lane_fails_closed_without_a_toolchain(self, runner):
+        """A machine with no cargo must BLOCK, not skip. Skipping is how an unproven commit
+        reads as green, and rustup installs outside the PATH a git hook inherits."""
+        rust = runner.LANES["rust"]
+        assert runner.CARGO in rust.preflight, rust.preflight
+        assert rust.cwd == runner.RUST_DIR
+        argv0 = {step[1][0] for step in rust.steps}
+        assert argv0 == {str(runner.CARGO)}, f"a step calls bare cargo: {argv0}"
+
+    def test_the_rust_lane_denies_warnings(self, runner):
+        """clippy without -D warnings prints and exits 0, which makes the whole
+        [workspace.lints] block decoration rather than a gate."""
+        clippy = next(a for name, a in runner.LANES["rust"].steps if name == "clippy")
+        assert "-D" in clippy and "warnings" in clippy, clippy
+        fmt = next(a for name, a in runner.LANES["rust"].steps if name == "fmt")
+        assert "--check" in fmt, fmt
+
     def test_a_mixed_commit_runs_every_lane_cheapest_first(self, runner):
         lanes, _ = runner.lanes_for([
             "prospector/run.py",
@@ -340,6 +411,7 @@ class TestTheLaneMapCoversEachSourceKind:
             ".cs": "store_platform/src/Store.Api/X.cs",
             ".csproj": "store_platform/src/Store.Api/Store.Api.csproj",
             ".css": "store_platform/src/Store.Web/src/styles/globals.css",
+            ".rs": "engine-rs/crates/prospector-core/src/decision.rs",
         }
         assert set(samples) == runner.SOURCE_EXTS, "a new source extension needs a lane + a sample"
         for ext, path in samples.items():
@@ -523,6 +595,60 @@ class TestTheHookDelegatesInsteadOfKeepingASecondCopy:
             f"the gate runs `{interpreter}`, i.e. whatever is first on PATH — pin the "
             "project interpreter by path"
         )
+
+    def test_a_missing_interpreter_does_not_report_itself_as_a_failed_proof(
+        self, tmp_path: Path
+    ):
+        """A tree with no environment must say so, not accuse the diff.
+
+        `sh -c` returns the same non-zero exit for "the interpreter does not exist" and
+        "a lane went red", so before 2026-08-21 the gate printed `No such file or
+        directory` and then its BLOCKED message about lanes, ruff and receipt chains.
+        The founder lost three commit attempts to it in one sitting, and 12 of the 62
+        worktrees on that machine had no environment at the time.
+
+        Run against a real throwaway repository and a real `git commit`, because what is
+        under test is what a person sees in their terminal.
+        """
+        env = {
+            **os.environ,
+            "GIT_CONFIG_GLOBAL": str(tmp_path / "nogitconfig"),
+            "GIT_CONFIG_SYSTEM": str(tmp_path / "nogitconfig"),
+        }
+        run = lambda *a: subprocess.run(  # noqa: E731 - one-line local, not an API
+            ["git", *a], cwd=tmp_path, capture_output=True, text=True, check=True, env=env,
+        )
+        run("init", "-q", "-b", "main")
+        run("config", "user.email", "t@t")
+        run("config", "user.name", "t")
+        run("config", "commit.gpgsign", "false")
+
+        installed = tmp_path / ".git" / "hooks" / "pre-commit"
+        installed.write_text(HOOK.read_text(encoding="utf-8"), encoding="utf-8")
+        installed.chmod(0o755)
+
+        (tmp_path / "a.txt").write_text("hi\n", encoding="utf-8")
+        run("add", "a.txt")
+        done = subprocess.run(
+            ["git", "commit", "-m", "x"],
+            cwd=tmp_path, capture_output=True, text=True, env=env,
+        )
+        said = done.stdout + done.stderr
+
+        assert done.returncode != 0, (
+            "the gate passed a commit it could not test. Unproven must block:\n" + said
+        )
+        assert "NOTHING WAS TESTED" in said, (
+            "a tree with no interpreter must be told the environment is missing:\n" + said
+        )
+        assert "setup_worktree" in said, (
+            "the message must name the command that repairs it:\n" + said
+        )
+        for wrong in ("POPDD gate BLOCKED", "ruff", "receipt"):
+            assert wrong not in said, (
+                f"the missing-environment message still says {wrong!r}, so it reads as a "
+                "failed proof and sends the reader into their own diff:\n" + said
+            )
 
     def test_the_hook_holds_no_extension_list_of_its_own(self):
         """The duplicated list is how `.tsx` went missing. Comments are stripped first."""
