@@ -1017,8 +1017,106 @@ def restore(s3, bucket: str, dest: Path) -> int:
         print(f"  {len(diverged)} objects differ from the local copy. The bucket holds the bytes "
               f"it was given (ETag verified above); these local files changed after upload, "
               f"which is what a live daemon does. e.g. {', '.join(sorted(diverged)[:3])}")
+    # Ledger first. It is the only artifact here that cannot be rebuilt from
+    # another, and the comment 25 lines up records what a hard exit above a
+    # restore step costs: `restore_db` never ran at all.
+    restore_ledger(s3, bucket, dest)
     restore_db(s3, bucket, dest)
     return len(remote)
+
+
+class _CountingReader:
+    """Wrap a boto3 StreamingBody and count what was actually read off the wire.
+
+    The point is the truncation check below. `fly ssh sftp` exited 0 on a short transfer often
+    enough that scripts/engine_failover.py grew 215 lines trying to detect it by hand; a
+    download that compares bytes-read to Content-Length settles the same question in two lines,
+    and gzip's own CRC settles whether they are the RIGHT bytes.
+    """
+
+    def __init__(self, body):
+        self._body = body
+        self.count = 0
+
+    def read(self, size=-1):
+        chunk = self._body.read(size)
+        self.count += len(chunk)
+        return chunk
+
+
+def restore_ledger(s3, bucket: str, dest: Path) -> str:
+    """Pull the newest ledger snapshot into `dest/prospector.jsonl` and report what came back.
+
+    This function did not exist until 2026-08-21. `sync()` had been uploading the ledger daily
+    since 2026-07-31, `restore()` covered the dossiers and `restore_db()` covered the index, and
+    the audit trail -- the one artifact here that cannot be rebuilt from any other -- had an
+    upload path and no way home. A backup nothing can restore is not a backup.
+
+    WHAT IS FATAL, and it is only ever a statement about the round trip:
+      * fewer bytes arrive than Content-Length says exist, i.e. the download stopped short;
+      * the gzip CRC32, written at compression time, does not match the bytes decompressed.
+    Both have an outside referent, which is the test the rest of this file applies.
+
+    WHAT IS NOT FATAL: a record that does not parse. The CRC above already proved these are the
+    bytes we uploaded, so an unparseable record means the SOURCE was already broken -- and the
+    file records at `restore()` what making that fatal costs: the run went red on every live
+    host and `restore_db` never executed once. Measured here on 2026-08-21: 42 records in the
+    live ledger are runs of NUL bytes, 81,809 bytes across 1,469,219 records, and reading Fly's
+    own file at byte 275,480,676 shows the same NULs, so the engine wrote them and the backup
+    copied them faithfully. A restore that refuses to run until they are gone is a restore that
+    never runs.
+
+    Streamed, never read whole. The uncompressed file is 453 MB and the machine running a
+    restore is by definition already having a bad day.
+    """
+    keys = sorted(_remote_index(s3, bucket, LEDGER_PREFIX))
+    if not keys:
+        print("  no ledger snapshot in the bucket -- restore is dossiers and index only",
+              file=sys.stderr)
+        return ""
+    dest.mkdir(parents=True, exist_ok=True)
+    key = keys[-1]
+    out = dest / LEDGER.name
+    expected = s3.head_object(Bucket=bucket, Key=key)["ContentLength"]
+
+    records = 0
+    broken: list[str] = []
+    reader = _CountingReader(s3.get_object(Bucket=bucket, Key=key)["Body"])
+    try:
+        with gzip.GzipFile(fileobj=reader) as gz, out.open("wb") as fh:
+            for line in gz:
+                fh.write(line)
+                text = line.strip()
+                if not text:
+                    continue
+                records += 1
+                try:
+                    json.loads(text.decode("utf-8"))
+                except (ValueError, UnicodeDecodeError) as exc:
+                    # Decode utf-8 explicitly. Handed raw bytes, json guesses the encoding from
+                    # the first four, so a record of NULs reports itself as a utf-32-be codec
+                    # error and sends the reader looking for an encoding bug that is not there.
+                    if len(broken) < 20:
+                        broken.append(f"record {records} ({len(text)}B): {str(exc)[:70]}")
+                    else:
+                        broken.append("")
+    except (OSError, EOFError) as exc:
+        sys.exit(f"STORE_BACKUP RESTORE FAIL {key}: the gzip stream did not decompress "
+                 f"cleanly ({type(exc).__name__}: {str(exc)[:120]}). "
+                 f"{reader.count} of {expected} bytes had been read.")
+    if reader.count != expected:
+        sys.exit(f"STORE_BACKUP RESTORE FAIL {key}: {reader.count} bytes arrived of the "
+                 f"{expected} R2 reports -- the download stopped short.")
+
+    print(f"  restored {key} -> {out.name}, {records} records, {out.stat().st_size} bytes, "
+          f"{reader.count} compressed bytes, gzip CRC ok")
+    if broken:
+        shown = [b for b in broken if b]
+        print(f"  {len(broken)} of {records} records do not parse. The gzip CRC above proves "
+              f"these are the bytes that were uploaded, so they were already broken in the "
+              f"source file -- restoring them is correct and losing them would be the bug. "
+              f"e.g. {'; '.join(shown[:3])}")
+    return key
 
 
 def restore_db(s3, bucket: str, dest: Path) -> str:
@@ -1067,6 +1165,10 @@ def main() -> int:
                         help="upload nothing; just prove the remote copy matches local")
     parser.add_argument("--restore", metavar="DIR",
                         help="download every backed-up dossier into DIR and verify each")
+    parser.add_argument("--restore-money", metavar="DIR",
+                        help="download ONLY the ledger and the index into DIR and verify both. "
+                             "What a failover needs: the 1,581 dossiers are a catalogue that can "
+                             "wait, the ledger and the db are the business")
     parser.add_argument("--sample", type=int, default=DEFAULT_SAMPLE,
                         help=f"how many objects to read back and check (default {DEFAULT_SAMPLE})")
     parser.add_argument("--db-keep", type=int, default=DEFAULT_DB_KEEP,
@@ -1091,6 +1193,17 @@ def main() -> int:
     args = parser.parse_args()
 
     s3, bucket = _client()
+
+    if args.restore_money:
+        # Deliberately not a subset flag on --restore. A failover restores two files onto a
+        # machine that is about to start an engine; making it walk 1,581 dossiers first is how
+        # a recovery path becomes too slow to use, and an unused recovery path is an absent one.
+        dest = Path(args.restore_money)
+        ledger_key = _retry_on_skew(restore_ledger, s3, bucket, dest)
+        db_key = _retry_on_skew(restore_db, s3, bucket, dest)
+        print(f"STORE_BACKUP RESTORE_MONEY PASS ledger={ledger_key or '(none)'} "
+              f"db={db_key or '(none)'} dest={dest}")
+        return 0
 
     if args.restore:
         count = _retry_on_skew(restore, s3, bucket, Path(args.restore))
