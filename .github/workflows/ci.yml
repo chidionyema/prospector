@@ -427,11 +427,39 @@ jobs:
     needs: changes
     if: needs.changes.outputs.python == 'true'
     runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
-    # 40, not the 25 a shard needed. One job now runs all 352 test files instead of ~117, and
-    # a timeout is the one failure that looks exactly like the cancellations this change is
-    # fixing. Reference points: 445s for the whole suite at 12 workers on a quiet box, 1281s
-    # on a merged tree while four CI jobs shared the machine (both in CLAUDE.md).
-    timeout-minutes: 40
+    # 60, and the number that matters is not the suite's length -- it is the SPREAD.
+    #
+    # The 40 this replaces was picked from two laptop timings (445s at 12 workers on a quiet
+    # box, 1281s under load) and never from the box that runs the job. Measured 2026-08-21 on
+    # the real runners, same `python -m pytest -q $files -n 4` command, same ~7100 tests:
+    #
+    #   PR #553, job 96672812307, runner-7819643f1e1038: 7141 passed in  493.29s (8m13s)
+    #   PR #551, job 96666651868, runner unnamed:        7099 passed in 2256.56s (37m36s)
+    #   PR #550, job 96660189452:                        Test suite ran 37m37s
+    #
+    # 4.6x, on the same command and the same machine type. A CI runner is a `shared-cpu-4x`
+    # Fly machine, so its vCPU is burstable: a 4-worker pytest run at full tilt spends the
+    # burst balance and the rest of the run is served at the throttled baseline. The tell in
+    # the slow log is a 607-SECOND gap before xdist prints `bringing up nodes...` -- ten
+    # minutes to fork four processes is CPU starvation, not a slow test.
+    #
+    # What that did on 2026-08-21: every open pull request was red on `python` and not one of
+    # them had a failing test. Every step inside those jobs reported success; the JOB crossed
+    # 40:00 by a couple of seconds and GitHub marked the whole thing `cancelled`, which the
+    # checks API then reports as a failure. It is indistinguishable in the pull request UI
+    # from a test that actually broke, so each agent spends an hour hunting a defect in their
+    # own diff that was never there.
+    #
+    # The only command that tells the two apart, because step conclusions are not in the UI:
+    #   gh api repos/OWNER/REPO/actions/jobs/<job_id> \
+    #     --jq '.conclusion, (.steps[] | "\(.number) \(.conclusion) \(.name)")'
+    # A cancelled job with every step `success`, and its last steps missing, is this.
+    #
+    # So 60 is not headroom over 38 minutes of work. It is headroom over a throttled run of
+    # 8 minutes of work. Raising it stops the false red; it does not make CI faster, and the
+    # real fix is dedicated CPU for the runner fleet, which costs money and is not mine to
+    # spend. Re-measure before trusting this number: the suite grows and the ceiling does not.
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v4
