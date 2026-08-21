@@ -1879,7 +1879,7 @@ READS: dict[str, Callable[[Any, dict], Any]] = {
 # --------------------------------------------------------------------------- #
 #: Groups are named for what the knob DOES, not for its YAML path. An operator looking for "how
 #: many ideas per batch" should not have to know it is called `batch_size` under `schedule`.
-GROUP_ORDER = ["work", "evidence", "brains", "models", "speed", "money", "content"]
+GROUP_ORDER = ["work", "evidence", "bar", "brains", "models", "speed", "money", "content"]
 GROUP_BLURBS = {
     "content": ("Which content rules may REFUSE a pack. Every rule grades either way; these "
                 "switches decide whether a breach blocks the sale or only lands on the receipt. "
@@ -1887,6 +1887,11 @@ GROUP_BLURBS = {
                 "of the catalogue the moment it is promoted."),
     "work": "How much the engine takes on, and when it stops taking on more.",
     "evidence": "Where the engine looks for proof, and what counts as relevant.",
+    "bar": ("How good an idea has to be before it may be SOLD. These two decide the pass rate "
+            "directly, and they are the only knobs in the portal that can empty the shelf "
+            "without anything looking broken -- raise either one far enough and every candidate "
+            "is killed by a number rather than by evidence. Both are moat-affecting, so a change "
+            "here drops the certification until a golden run re-earns it."),
     "brains": ("Which brain does which job. Every role the engine has is here: the verdict "
                "chain and its trusted roster, the cheap chain, the pack writer and the "
                "marketing writer. WHICH MODEL each of them runs is the next section. The "
@@ -1983,6 +1988,14 @@ KNOBS: list[dict] = [
      "help": "One bounded live search per tick. Generation is suppressed only while retrieval is "
              "ACTUALLY degraded, and it self-clears when the outage ends. Generation volume does "
              "not create backlog; failed retrieval does."},
+    {"path": ["active_lanes"], "group": "work", "high_blast": True,
+     "label": "Which lanes the engine works", "kind": "list",
+     "choices": ["side_hustle", "smb", "growth", "venture"],
+     "help": "The market lanes generation rotates through. The four choices are the four keys "
+             "under `lanes:` in config.yaml, which is where each lane's own gates and thresholds "
+             "live -- a lane named here with no block there has no rules of its own. Emptying "
+             "the list stops the engine inventing anything at all, which is why it is marked "
+             "high blast."},
     # ---- evidence ----
     {"path": ["retrieval", "provider"], "group": "evidence",
      "label": "Search engines, in order", "kind": "list",
@@ -2002,6 +2015,26 @@ KNOBS: list[dict] = [
      "min": 0.0, "max": 1.0,
      "help": "Below this a passage is not evidence. Raising it escalates the search chain more "
              "often, which costs time; lowering it admits weaker passages."},
+    # ---- bar ----
+    # Both sit inside the ("thresholds",) fence in config_editor.MOAT_AFFECTING_KEYS already, and
+    # the bounds below are the SAME bounds config_editor.validate_config enforces. They are
+    # restated here because a knob carries its own min/max to the browser;
+    # tests/ops/test_every_console_knob_is_live.py reads both and fails if they drift apart, so
+    # the portal can never offer a value the validator refuses on save.
+    {"path": ["thresholds", "min_composite_to_pass"], "group": "bar", "high_blast": True,
+     "label": "Composite score an idea must reach to PASS", "kind": "float",
+     "min": 0.0, "max": 20.0,
+     "help": "The six axes are scored 1-5 and weighted into one number; this is the bar that "
+             "number must clear. On disk it is 2.5. `prospector/pass_ceiling.py` is the check "
+             "that catches the version of this nothing can satisfy -- with the weights summing "
+             "to 1.0, every axis at 5 gives 5.0, so anything above that kills every candidate no "
+             "matter how good it is, and nothing else in the engine would say why."},
+    {"path": ["thresholds", "confidence_floor"], "group": "bar", "high_blast": True,
+     "label": "Confidence a check needs before it counts", "kind": "float",
+     "min": 0.0, "max": 1.0,
+     "help": "Below this a check is treated as unverifiable rather than as an answer. Raising it "
+             "makes the engine stricter about its own certainty, and at 1.0 nothing is ever "
+             "certain enough, so nothing passes. On disk it is 0.4."},
     # ---- brains (high blast) ----
     {"path": ["operator"], "group": "brains", "high_blast": True,
      "label": "Verdict chain — who is asked, in order", "kind": "list",
@@ -2058,6 +2091,12 @@ KNOBS: list[dict] = [
      "label": "DeepSeek model",
      "help": "Read only when `deepseek` appears in a chain above. Naming a model here does not "
              "put DeepSeek to work; adding it to a chain does."},
+    {"path": ["claude_cli_model"], "group": "models", "kind": "str",
+     "label": "Claude Code CLI model",
+     "help": "Which model the Claude Code CLI is asked for, when `claude_cli` is in a chain. "
+             "Blank means the CLI's own default. It is a TOP-LEVEL key rather than one under "
+             "`model_defaults`, because the CLI is a subscription tier and not a metered "
+             "provider -- read at `operator.py:1965` and `retrieval.py:2426`."},
     {"path": ["model_defaults", "ollama"], "group": "models", "kind": "str",
      "label": "Ollama model (local)",
      "help": "Fully local, zero token cost, CPU-only on this box. Same rule: this pin is inert "
@@ -2095,6 +2134,19 @@ KNOBS: list[dict] = [
      "label": "Minimum pack-writing time (seconds)", "kind": "int", "min": 0, "max": 86400,
      "help": "A floor under the fraction above, so a short deadline cannot leave a PASS with too "
              "little time to render the artifact a buyer actually reads."},
+    {"path": ["retrieval", "vet_workers"], "group": "speed",
+     "label": "Candidate vets in flight at once", "kind": "int", "min": 1, "max": 64,
+     "help": "How many candidates are vetted in parallel. KEEP IT AT OR BELOW the MiniMax "
+             "number above: every vet drives calls through that chain, so a higher number here "
+             "adds no throughput, it only queues -- oversubscribing the CLI is what produced the "
+             "HTTP-429 flapping on 2026-08-06. PROSPECTOR_VET_WORKERS overrides it for one "
+             "manual run (`prospector/run.py::_vet_workers`)."},
+    {"path": ["retrieval", "breaker_failure_threshold"], "group": "speed",
+     "label": "Failures before a provider is benched", "kind": "int", "min": 1, "max": 20,
+     "help": "Consecutive TRANSIENT failures before the breaker opens and the chain falls "
+             "through to the next tier. Permanent exhaustion -- a spend limit, a 402 -- benches "
+             "a brain immediately and never waits for this count. Lower fails over sooner, and "
+             "also benches a brain that was only briefly busy."},
     # ---- money ----
     {"path": ["spend", "daily_cap_usd"], "group": "money",
      "label": "Daily spend ceiling (USD)", "kind": "float", "min": 0.0, "max": 1000.0,
@@ -2103,6 +2155,26 @@ KNOBS: list[dict] = [
     {"path": ["spend", "warn_at_usd"], "group": "money",
      "label": "Warn at (USD)", "kind": "float", "min": 0.0, "max": 1000.0,
      "help": "Where the alert rail fires, below the ceiling."},
+    # THE SECOND LEDGER. The two above govern INVOICED spend -- ledger rows tagged
+    # `event: "spend"` with an `amount_usd`. The two below govern the SUBSCRIPTION leg: the
+    # Claude Code CLI's own `total_cost_usd`, which is API-equivalent rather than billed, written
+    # with no `event` key. They are separate ceilings because they are separate money, and a
+    # figure read against the wrong one is the mistake both key names exist to prevent.
+    {"path": ["spend", "daily_subscription_cap_usd"], "group": "money",
+     "label": "Daily subscription-equivalent ceiling (USD)", "kind": "float",
+     "min": 0.0, "max": 1000.0,
+     "help": "0.0 means NO CAP, same as the ceiling above. Above this the tick HALTS -- "
+             "generation and drain together. It covers the tiers in `ops/spend.py "
+             "SUBSCRIPTION_TIERS`, which today is claude_cli alone; a tier is metered instead "
+             "whenever `telemetry.get_price` gives it a non-zero price."},
+    {"path": ["spend", "daily_subscription_soft_cap_usd"], "group": "money",
+     "label": "Stop inventing at (USD subscription-equivalent)", "kind": "float",
+     "min": 0.0, "max": 1000.0,
+     "help": "0.0 means off. A BRAKE, not a halt: above this the tick stops generating and keeps "
+             "draining, so work already minted still reaches a verdict. Set it BELOW the "
+             "subscription ceiling above -- at or above it the hard cap halts the tick first and "
+             "this never fires, which the daemon logs as a warning rather than an error "
+             "(`scheduler/run_scheduled.py:570`)."},
 ]
 
 
