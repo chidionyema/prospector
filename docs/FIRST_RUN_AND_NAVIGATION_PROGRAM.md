@@ -175,8 +175,8 @@ All of them need a same-origin path proxy (a Next.js `rewrites()` entry) because
 | FR-4 | `/refund` — add a forward link in `<main>` | **done 2026-08-21** — in `components/LegalDoc.tsx`, so it fixed `/terms` and `/privacy` too |
 | FR-5 | `/terms`, `/privacy` — decide whether a legal page should sell, or be waived permanently with a reason | **decided 2026-08-21: it should.** A reader who opens the refund policy before buying is the most likely buyer on the site, and the closing block was already selling — it just pointed at `/faq`. `FR3_WAIVED` is now empty |
 | FR-10 | **14 of 77 packs are 3 clicks from everywhere.** Measured 2026-08-21 against live: home links 63, `/ideas` links 0 packs (its 15 links are categories), and the union of the 15 category pages is 77. The 14 are behind the home page's collapsed groups (`pages/index.tsx:1445` shows 2 of N groups, `:1494` shows 3 of each until `showAll`), so they exist in the sitemap and in no server-rendered listing a reader or a crawler can walk in two clicks. Needs a design call: render all groups, paginate, or add a plain index | not started |
-| FR-6 | `/sample` promises differ from delivery: the homepage says "Read a full pack free — no email needed", `/sample` is titled "Read the opening of a real pack, free". One of the two is wrong | not started |
-| FR-7 | `/sample` has no buy call to action at all — its only button is "Put it in the queue" | not started |
+| FR-6 | `/sample` promises differ from delivery | **done 2026-08-21.** The page was right and every link into it was wrong. `data/sample-report.json` ships `sectionsShown: 3` against `sectionsTotal: 14` and names the other eleven in `withheld`; the founder settled that on 2026-08-15 and `pages/sample.tsx` was rewritten the same day. The three strings in `lib/siteCopy.ts` were not: `sampleLinkHero` (homepage hero), `sampleLinkPanel` (the pack page buy rail) and `sampleLink` (`/faq`, `/ideas`, the mobile bar) all still said "a full pack free". All three now say "the opening of a real pack". `__tests__/sampleOfferIsTrue.test.ts` reads the fixture and fails if any of them claims a whole pack while the fixture withholds sections |
+| FR-7 | `/sample` has no buy call to action | **withdrawn 2026-08-21 — the row was stale.** `pages/sample.tsx:495` is an `id="buy"` block headed "Now read one that survived all of it.", whose primary button is "Browse the packs" → `/#catalog`, with "See how the filter works" beside it. The waitlist form sits UNDER it, deliberately. Nothing to do |
 | FR-8 | Stripe checkout-session webhooks into a funnel table | not started |
 | FR-9 | GoatCounter behind a same-origin rewrite | not started |
 
@@ -228,6 +228,25 @@ listing links must not be invisible to the measurement that exists to find it.
 | `/ideas` | 0 | **77** |
 | `/` | 63 | 63 |
 | `/how-it-works`, `/faq`, `/about`, `/sample`, `/pricing`, `/terms`, `/privacy`, `/refund`, `/kill-log` | 0 | 63 each |
+
+### The five dead-end fixes moved this number by zero, and that is not a failure
+
+Re-measured against live at 13:0x on 2026-08-21, after FR-2 to FR-5 shipped and deployed: 7.4% and
+83.5%, identical to the row above. Nobody should read that as "the fix did nothing".
+
+Axis N1 follows every same-origin link, the header included. Every page on the site already reached
+`/` through the header logo, so every page was already two clicks from those 63 packs before a
+single dead end was fixed. And `reachability.mjs` strips fragments, so the new `/#catalog` buttons
+are recorded as links to `/` — the same edge the logo already provided.
+
+What the five fixes moved is the instrument that grades the page's own argument: FR3 in
+`e2e/first-run.spec.ts` counts forward links inside `<main>` only. Against live it went from **20
+failed to 0 failed**, and with `FR3_WAIVED` emptied it is now **30 passed, 0 failed, 0 skipped**
+against production.
+
+Two instruments, two numbers, one honest reading: a reader who uses the nav could always get to the
+shelf, and a reader who follows the page they are on could not. Axis N1 is the wrong instrument for
+a dead end, and FR-10 is the work that will actually move it.
 
 ### Two instruments disagreed, and that is the finding
 
