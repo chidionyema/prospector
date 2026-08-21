@@ -17,6 +17,7 @@ whole value of the inventory is that it cannot.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -83,11 +84,24 @@ class DeclarationError(ValueError):
 
 @dataclass(frozen=True)
 class ClassDecl:
+    """One class of resource, as one project declares it.
+
+    `options` is the seam that keeps clause A5 and clause A7 from fighting each other. An
+    adapter for `secret` has to know WHICH keys travel, and an adapter for `datastore` has
+    to know where the state lands on the far side -- and both answers differ per business.
+    Compiling either into `kit/` puts a product's private facts in the shared code, which is
+    A5 gone; asking for a code change to add the second business is A7 gone. So every key in
+    a class block other than `targets` becomes an option, the kit never reads one, and the
+    runner hands them to the adapter as `OPT_<NAME>`. The kit stays ignorant of what any of
+    them mean, which is what lets a class grow a knob without the kit learning about it.
+    """
+
     name: str
     targets: tuple[str, ...]
     adapter: str
     needs: tuple[str, ...]
     downtime: str
+    options: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -106,6 +120,48 @@ class Project:
                 if t not in seen:
                     seen.append(t)
         return tuple(seen)
+
+
+_OPTION_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
+
+
+def _options(klass: str, body: dict[str, Any], *, source: str) -> dict[str, str]:
+    """Every key in a class block except `targets`, as strings the runner can put in an env.
+
+    THE REFUSALS HERE ARE THE POINT. Each of them is knowable from this file alone, and each
+    of them would otherwise surface as an adapter behaving oddly at whatever minute the move
+    first reached this class -- which is the most expensive place in the run to learn anything.
+
+    A value that is not a scalar is refused because an environment variable cannot carry a
+    list or a mapping, and quietly stringifying one hands the adapter `['a', 'b']` to parse.
+    A name that is not a plain identifier is refused because `OPT_MY-KEY` is not a variable
+    any shell can read back. Two names differing only in case are refused because they
+    collide once upper-cased, and the survivor would be whichever the mapping yielded last.
+    """
+    out: dict[str, str] = {}
+    seen: dict[str, str] = {}
+    for key, value in body.items():
+        if key == "targets":
+            continue
+        if not isinstance(key, str) or not _OPTION_NAME.match(key):
+            raise DeclarationError(
+                f"{source}: class `{klass}`: option name `{key}` is not a plain identifier, so "
+                f"it cannot be passed to the adapter as OPT_{str(key).upper()}"
+            )
+        if isinstance(value, bool) or not isinstance(value, (str, int, float)):
+            raise DeclarationError(
+                f"{source}: class `{klass}`: option `{key}` must be a string or a number, got "
+                f"{type(value).__name__} -- an environment variable cannot carry that"
+            )
+        upper = key.upper()
+        if upper in seen:
+            raise DeclarationError(
+                f"{source}: class `{klass}`: options `{seen[upper]}` and `{key}` both become "
+                f"OPT_{upper}. Rename one."
+            )
+        seen[upper] = key
+        out[key] = str(value)
+    return out
 
 
 def validate(raw: Any, *, source: str = "<declaration>") -> Project:
@@ -149,6 +205,7 @@ def validate(raw: Any, *, source: str = "<declaration>") -> Project:
             adapter=CLASS_ADAPTERS[name],
             needs=CLASS_NEEDS[name],
             downtime=CLASS_DOWNTIME[name],
+            options=_options(name, body, source=source),
         )
 
     # A class whose prerequisite is not declared cannot be ordered, and finding that out

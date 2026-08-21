@@ -99,6 +99,8 @@ def _step(resource: dict[str, Any], decl: ClassDecl, target: str) -> dict[str, A
         "needs": list(decl.needs),
         "downtime": decl.downtime,
         "described_by": resource.get("described_by"),
+        # Verbatim from the declaration, never read by the kit. See ClassDecl.options.
+        "options": dict(decl.options),
     }
 
 

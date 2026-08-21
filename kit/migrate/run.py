@@ -122,10 +122,15 @@ def step_vars(step: dict[str, Any]) -> dict[str, str]:
     rollback is the same move with the ends swapped, which the adapter can only do if it holds
     both. The rollback path was worse than the step path, carrying neither end.
     """
-    return {"RESOURCE": step["resource"],
-            "FROM": str(step.get("from") or ""),
-            "TO": str(step.get("to") or ""),
-            "VERB": step["verb"], "CLASS": step["class"], "STEP_ID": step["id"]}
+    out = {"RESOURCE": step["resource"],
+           "FROM": str(step.get("from") or ""),
+           "TO": str(step.get("to") or ""),
+           "VERB": step["verb"], "CLASS": step["class"], "STEP_ID": step["id"]}
+    # The declaration's own knobs, as OPT_<NAME>. The prefix is what keeps a project from
+    # naming an option `from` and quietly redirecting the move; and because the kit never
+    # reads one, a class can grow a knob without any file in kit/migrate/ learning about it.
+    out.update({f"OPT_{k.upper()}": v for k, v in (step.get("options") or {}).items()})
+    return out
 
 
 def run_step(step: dict[str, Any], *, verb_env: dict[str, str],
