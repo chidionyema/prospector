@@ -1093,6 +1093,149 @@ def _unlist_pass(cfg) -> dict | None:
     return out
 
 
+#: A re-gate makes NO model call and mints NOTHING. `--dry-run` returns at `bridge.py:1256-1272`
+#: before `price_for` (no Stripe Price, no R2 upload, no catalogue row) and its generation loop
+#: is `range(1, 1)` — empty (`tools/publish_passes.py`). What it costs is network: the linter
+#: probes the URLs each pack cites, measured at ~124s per pack on 2026-08-17.
+#:
+#: TWO CORRECTIONS ARE BAKED INTO THIS NUMBER, both from that day. The first cut said 300s, on
+#: an unmeasured guess. Then a log line reading "stored artifacts incomplete -> regenerating"
+#: was taken as proof that a rehearsal regenerates artifacts and costs model spend; it does not,
+#: the line printed on a path that never runs, and it has since been corrected at its source.
+#: 900s stands because it is generous against the real cost, not because of the wrong one:
+#: `publish_passes` now gates ~10 packs at a time on a dry run, so a full tick batch is roughly
+#: one pack's wall clock, and this ceiling is ~7x that.
+_REGATE_TIMEOUT_S = 900
+
+#: Ten per tick, ON by default.
+#:
+#: ON, because the first cut defaulted it to 0 under "report mode before fix mode", and that is
+#: the wrong reading of that rule here. Report mode is about not CHANGING things unasked, and a
+#: re-gate changes nothing a buyer can see — it replaces an out-of-date reason with a current
+#: one and lists nothing. Off by default meant the stored verdicts stayed wrong until somebody
+#: remembered a knob, which is the exact failure this whole change exists to remove.
+#:
+#: TEN, because the gate now runs concurrently. This was 2 while a re-gate was serial at ~124s a
+#: pack; ten packs then meant twenty minutes of tick. Gating in the pool makes ten cost about
+#: what one used to, so the bound can match a tick's appetite instead of the tool's old floor.
+#: The queue self-drains: a re-gate stamps the current ruleset whatever the verdict, so a
+#: still-blocked pack drops out too and the backlog converges to empty.
+_REGATE_PER_TICK_DEFAULT = 10
+
+
+def _regate_per_tick(cfg) -> int:
+    """How many stale-verdict packs one tick may re-gate. 0 disables the step.
+
+    The default is `_REGATE_PER_TICK_DEFAULT` — do not restate the number here. It moved 2 -> 10
+    when the gate learned to run concurrently, and a docstring that names the old figure is the
+    kind of drift this module's own config test exists to catch.
+    """
+    raw = _sched(cfg, "regate_unlisted_per_tick", _REGATE_PER_TICK_DEFAULT)
+    try:
+        return max(0, int(raw))
+    except (TypeError, ValueError):
+        logger.warning("schedule.regate_unlisted_per_tick=%r is not an integer", raw)
+        return _REGATE_PER_TICK_DEFAULT
+
+
+def _stale_verdicts(cfg, limit: int) -> list[Path]:
+    """PASS dossiers whose stored gate verdict cannot be trusted, worst first.
+
+    Two populations, and the daemon could see neither until now:
+
+    1. A receipt from a RETIRED ruleset. `pack_linter.RULESET_VERSION` changes whenever a rule
+       changes, and editing the linter touches no dossier — every receipt stays byte-identical
+       and newer than its pack, so mtime freshness says "current" forever. On 2026-08-17 five
+       rules stopped blocking and seven stranded packs became sellable; not one receipt knew.
+    2. NO receipt at all. Nobody has ever gated the pack, so "why is it not on sale?" had no
+       answer on disk. Nine of seventeen republishable PASSes were in this state on 2026-08-09.
+
+    The selection is SELF-DRAINING, which is what makes the step safe to leave on. A re-gate
+    stamps the current ruleset whatever the verdict, so a pack that is still blocked drops out
+    of this list too. The queue empties and stays empty until the rules move again.
+    """
+    from prospector.pack_linter import receipt_is_current
+
+    retired, never = [], []
+    for pack in sorted(Path(str(cfg.store_dir), "dossiers").glob("*.pass.json")):
+        receipt = pack.with_name(pack.name[:-len(".pass.json")] + ".lint.json")
+        try:
+            rec = json.loads(receipt.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            never.append(pack)
+            continue
+        if not receipt_is_current(rec):
+            retired.append(pack)
+    # Retired first: those packs have a verdict that is demonstrably out of date, and a rules
+    # change is the event that frees them. A pack nobody ever gated has been waiting longer but
+    # is no more likely to clear, and both populations drain within a few ticks either way.
+    return (retired + never)[:limit]
+
+
+def _regate_pass(cfg, n_regate: int) -> dict | None:
+    """Re-gate up to `n_regate` packs whose stored verdict is stale. Never raises.
+
+    THE COUNTERPART TO `_unlist_pass`, and the half that did not exist. The daemon pulls a pack
+    off sale the moment a re-vet kills it, and then never looks at it again: nothing in the tick
+    re-reads an UNLISTED pass, so a pack blocked by a rule that has since been fixed stays off
+    the shelf permanently. `tools/verify_pass_shelf_coverage.py:14` records the cost of that in
+    one sentence — "Twenty-four had been published UNLISTED and forgotten."
+
+    IT LISTS NOTHING. The rehearsal refreshes the verdict on disk; putting a pack back on sale
+    is a separate, deliberate act. That asymmetry is the same one the unlist drain has, pointed
+    the other way: unlisting unattended can only cost a sale, listing unattended takes money.
+    """
+    import subprocess  # local, matching this module's existing convention
+
+    if not n_regate:
+        return None
+    stale = _stale_verdicts(cfg, n_regate)
+    if not stale:
+        return None
+
+    script = Path(__file__).resolve().parents[2] / "tools" / "publish_passes.py"
+    if not script.exists():
+        logger.warning("regate step is on but %s is missing", script)
+        return {"error": f"missing {script.name}"}
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(script), "--dry-run", *[str(p) for p in stale]],
+            capture_output=True, text=True, timeout=_REGATE_TIMEOUT_S,
+            cwd=str(script.parent.parent))
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        out = {"error": f"{type(exc).__name__}: {exc}"}
+        logger.warning("Re-gate FAILED (tick continues): %s", out["error"])
+        print(f"⟳ re-gate FAILED (tick continues): {out['error']}", file=sys.stderr, flush=True)
+        return out
+
+    # Count from the RECEIPTS, not from the tool's stdout. The receipt is the artifact the rest
+    # of the estate reads, so counting it proves the rehearsal actually landed on disk.
+    sellable = []
+    for pack in stale:
+        try:
+            rec = json.loads(pack.with_name(
+                pack.name[:-len(".pass.json")] + ".lint.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(rec, dict) and rec.get("ok"):
+            sellable.append(pack.name[:-len(".pass.json")])
+
+    out = {"rc": proc.returncode, "regated": len(stale), "clears_the_gate": sellable,
+           # BOTH, joined. `stdout or stderr` drops stderr whenever stdout is non-empty,
+           # and a re-gate that printed progress and then died is exactly that case: the
+           # tail would carry the progress and not the reason.
+           "tail": "\n".join(x for x in (proc.stdout, proc.stderr) if x).strip()[-300:]}
+    # CRITICAL for the same reason the unlist drain is: anything below it never reaches
+    # launchd.err.log (verified 2026-08-05), and "these packs are sellable and are not on sale"
+    # is the one line an operator needs to see.
+    logger.critical("Re-gate: %d pack(s), %d now clear the gate: %s",
+                    len(stale), len(sellable), ", ".join(sellable) or "none")
+    print(f"⟳ re-gate: {len(stale)} pack(s), {len(sellable)} now clear the gate "
+          f"({', '.join(sellable) or 'none'}) — none listed, listing stays deliberate",
+          file=sys.stderr, flush=True)
+    return out
+
+
 _RECOVER_TIMEOUT_S = 900
 
 
@@ -1226,6 +1369,15 @@ def _decay_pass(cfg, n_decay: int) -> dict | None:
     if unlisted is not None:
         out = dict(out or {})
         out["unlisted"] = unlisted
+
+    # The re-gate rides here, beside the unlist drain, because they are the same loop pointed in
+    # opposite directions: one takes a pack off sale when the truth turns against it, the other
+    # notices when the truth turns back. It runs even when the decay sweep is off, for the same
+    # reason the drain does — switching one step off must not strand the other.
+    regated = _regate_pass(cfg, _regate_per_tick(cfg))
+    if regated is not None:
+        out = dict(out or {})
+        out["regated"] = regated
     return out
 
 

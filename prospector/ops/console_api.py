@@ -3870,6 +3870,10 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     "scripts/seed_action_cache.sh": "fills the self-hosted runners' action cache; CI plumbing, "
                                     "run once on the runner box, not from an ops page",
     "scripts/setup_worktree.sh": "makes a git worktree usable; a developer's machine, not ops",
+    "scripts/install_control_center_agent.sh": "writes the Control Center launchd plist into the operator's own "
+                                               "~/Library/LaunchAgents and reloads the agent. It installs the "
+                                               "console itself, on that one Mac, and the console runs on Fly — "
+                                               "so there is no page from which pressing it would mean anything",
     "scripts/guard_main_push.py": "the pre-push fence that refuses a direct push to main; "
                                   "git runs it and feeds it the push on stdin, so it has "
                                   "no meaning without that input and nothing to show an "
@@ -3945,8 +3949,6 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
                                  "housekeeping, not an estate action",
     "scripts/warm_ci_uv_cache.sh": "prebuilds wheels into the runners' shared uv cache; CI "
                                    "plumbing, run on the runner box",
-    "tools/_audit_baseline_tmp.py": "a one-off inventory of failure-swallowing call sites; the "
-                                    "audit it fed is done, it is kept as the baseline",
     # the migration control plane. Both are reachable from the console already, as actions rather
     # than as tool buttons, so listing them again would give the operator two ways to do one thing.
     "scripts/engine_failover.py": "the engine failover control plane; the console drives it through "
