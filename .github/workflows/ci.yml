@@ -1130,11 +1130,21 @@ jobs:
       - name: Install Chromium for the fold gate
         run: npx playwright install --with-deps --only-shell chromium
 
-      - name: Fold gate (pre-deploy geometry)
+      # `e2e/first-run.spec.ts` rides the same server, and it asks the question the fold gate
+      # cannot. Fold measures GEOMETRY -- is the shelf on screen. First-run measures what the
+      # screen SAYS. On 2026-08-21 the storefront was serving a dark strip above the header
+      # reading "Killed 7 Aug / <the killed idea> / Read the verdict ->", so the first four
+      # things a stranger read were a kill notice, and the brand was the fifth. Four gates were
+      # green on it: component_parity compares tag names and classes (a kill ribbon and a
+      # survivor ribbon are the same DOM), visual_regression compares pixels against a drawing
+      # that also shows a kill, fold-budget measures whether the shelf is visible, and
+      # site_spec_probe compares the source tree to a prose ledger. Every one grades the SHAPE
+      # of the first screen; none grades its MEANING. See docs/FIRST_RUN_AND_NAVIGATION_PROGRAM.md.
+      - name: Fold and first-run gates (pre-deploy)
         run: |
           npm run start -- --port 3111 &
           for i in $(seq 1 40); do curl -sf -o /dev/null http://localhost:3111/ && break; sleep 2; done
-          npx playwright test e2e/fold-budget.spec.ts --reporter=list
+          npx playwright test e2e/fold-budget.spec.ts e2e/first-run.spec.ts --reporter=list
         env:
           WEB_BASE_URL: http://localhost:3111
 
