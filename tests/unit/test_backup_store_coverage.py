@@ -465,3 +465,27 @@ def test_a_zero_byte_source_dossier_does_not_fail_the_restore(store, tmp_path, c
     out = capsys.readouterr().out
     assert "1 restored objects do not parse as JSON" in out
     assert "bbb.kill.json (0B, local file is unparseable too)" in out
+
+
+# ── Gap 3: the ledger was uploaded every day and never read back ──────────────
+# Found 2026-08-21. `LEDGER_PREFIX` appeared at exactly three sites in the repo -- the
+# constant, the upload key, and the pruner's list call. `restore()` walked DOSSIER_PREFIX and
+# then called `restore_db`. Nothing anywhere downloaded a ledger object. The daily upload also
+# had no read-back, so the audit trail was the one artifact of the three written blind.
+def test_the_ledger_upload_is_read_back_and_a_corrupted_write_is_caught(store):
+    """The db snapshot has had this check since it was written; the ledger had none. An upload
+    nobody reads back is a write into a bucket you find out about on the day you need it."""
+    s3 = FakeS3()
+
+    real_upload = s3.upload_file
+
+    def corrupt_the_ledger(filename, Bucket, Key, ExtraArgs=None):  # noqa: N803
+        real_upload(filename, Bucket, Key, ExtraArgs)
+        if Key.startswith(bs.LEDGER_PREFIX):
+            s3.objects[Key] = b"something else entirely"
+
+    s3.upload_file = corrupt_the_ledger
+    with pytest.raises(SystemExit, match="reads back differently"):
+        bs.sync(s3, "b")
+
+
