@@ -730,6 +730,36 @@ def verdict_for(op: Operator, cand: Candidate, check_name: str,
         # NOT `[]`. A trace that raised has not certified anything; leaving None means the pack
         # reads `untraced` at the listing fence rather than clean, which is the honest answer.
         _untraceable = None
+    # AN UNVERIFIABLE RULING CARRIES NO GROUNDING CONFIDENCE (2026-08-21).
+    # `_calc_confidence` is `citation_score + diversity_score + relevance_score` and has no
+    # verdict term (`:91-199`), so it measures how much evidence RETRIEVAL returned, not how
+    # well the claim was established. For `supported`/`refuted` those track together. For
+    # `unverifiable` they invert: a check that fetched four diverse, on-topic passages and
+    # established nothing outscored one that fetched two and proved its claim.
+    #
+    # MEASURED over 14,006 checks in 2,806 dossiers (`tools/experiments/e19_confidence_gap.py`):
+    #   unverifiable  n=9,965  mean 0.5627  MEDIAN 0.700
+    #   supported     n=3,079  mean 0.5695  median 0.600
+    #   refuted       n=662    mean 0.5418  median 0.580
+    # 7,304 of 9,965 unverifiable checks (73.3%) scored >= 0.5, and the median unverifiable
+    # check was MORE confident than the median supported one. `confidence` did not separate
+    # ruled from unruled at all (gap +0.0019), while `kill_filter.py:5` documents it as
+    # "grounding confidence" and gates on it. W0.2's standing receipt measured the same
+    # inversion at -0.0405 over a narrower window and it was never acted on.
+    #
+    # 0.0, not a smaller number: it is what the file's OTHER two unverifiable exits already
+    # write (`:857`, `:898`), so every unverifiable in the store now carries one value
+    # instead of the retrieval-failure paths saying 0.0 and the ruled path saying 0.70.
+    #
+    # NOTHING IS LOST. `_calc_confidence` is a pure function of `(sources, citations,
+    # check_name)`, and `CheckResult.to_dict` ships both `sources` and `citations`, so the
+    # retrieval measure stays recomputable from any stored record.
+    #
+    # Placed at the single computed exit rather than beside `_calc_confidence`, because the
+    # verdict is still mutated after that line (source-or-die, three admissibility gates) and
+    # a guard at the exit cannot be bypassed by a path added later.
+    if verdict == Verdict.UNVERIFIABLE:
+        confidence = 0.0
     return CheckResult(
         check_name=check_name, verdict=verdict,
         confidence=confidence,
