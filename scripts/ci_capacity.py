@@ -41,6 +41,24 @@ CI = ROOT / ".github/workflows/ci.yml"
 _RUNS_ON = re.compile(r"runs-on:\s*\$\{\{\s*vars\.([A-Z_]+)")
 _JOB = re.compile(r"^  ([a-z][a-z0-9-]*):\s*$")
 _WORKERS = re.compile(r'^\s*PYTEST_XDIST_AUTO_NUM_WORKERS:\s*"?(\d+)"?', re.M)
+_COMMENT = re.compile(r"^\s*#")
+
+
+def _uncommented(text: str) -> str:
+    """ci.yml with its whole-line comments removed.
+
+    Everything below greps the workflow SOURCE for the commands it runs, and a grep over source
+    grades the source's own prose too. Measured 2026-08-21 on pull request #568: a comment added
+    inside the `python` job read "a 4-core box: `pytest -n 4` plus bandit plus pip-audit", so
+    `_explicit_n` saw widths [4, 2] where the job runs one command at `-n 2`, took the max, and
+    printed "ci capacity contract: holds" while the contract did not hold. The checker cannot see
+    a width change it is supposed to catch, which is the one failure this whole file exists to
+    prevent. `jobs_and_pools` has the same hole for `runs-on:` and is fixed with it.
+
+    Whole-line only. An inline `#` can be a real character inside a shell command in a `run:`
+    block, and dropping the rest of that line would delete the command being graded.
+    """
+    return "\n".join(ln for ln in text.split("\n") if not _COMMENT.match(ln))
 
 
 def jobs_and_pools(text: str) -> dict[str, str]:
@@ -48,7 +66,7 @@ def jobs_and_pools(text: str) -> dict[str, str]:
     `jobs:`; a job with no `runs-on` of that shape maps to the empty string so it still fails."""
     out: dict[str, str] = {}
     job = None
-    for line in text.split("\n"):
+    for line in _uncommented(text).split("\n"):
         m = _JOB.match(line)
         if m:
             job = m.group(1)
@@ -106,7 +124,8 @@ def _job_block(text: str, job: str) -> str:
 def _explicit_n(text: str, job: str) -> int | None:
     """The widest `pytest ... -n N` this job runs on its command line, or None when it leaves the
     width to `-n auto` (which resolves through PYTEST_XDIST_AUTO_NUM_WORKERS)."""
-    ns = [int(m) for m in re.findall(r"pytest[^\n]*?-n (\d+)", _job_block(text, job))]
+    ns = [int(m) for m in re.findall(r"pytest[^\n]*?-n (\d+)",
+                                     _uncommented(_job_block(text, job)))]
     return max(ns) if ns else None
 
 

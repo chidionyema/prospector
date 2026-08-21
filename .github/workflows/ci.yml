@@ -445,10 +445,50 @@ jobs:
     needs: changes
     if: needs.changes.outputs.python == 'true'
     runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
-    # 40, not the 25 a shard needed. One job now runs all 352 test files instead of ~117, and
-    # a timeout is the one failure that looks exactly like the cancellations this change is
-    # fixing. Reference points: 445s for the whole suite at 12 workers on a quiet box, 1281s
-    # on a merged tree while four CI jobs shared the machine (both in CLAUDE.md).
+    # 40 minutes, and the founder ruled on why it is not 60: "thats not the fix". Raising the
+    # ceiling hides a throttled runner instead of un-throttling it. The cause is measured below
+    # so that the next session reading a cancelled `python` job does not re-diagnose it, and
+    # the actual fix is recycling the runner machines.
+    #
+    # MEASURED 2026-08-21 on the real fleet. A CI runner is a `shared-cpu-4x` Fly machine, and
+    # its share of the host collapses as the machine's uptime grows. Two 20-second samples of
+    # /proc/stat, taken in the same minute on two machines of the identical size in lhr:
+    #
+    #   7819643f1e1038, up 1d 9h, running a real pytest job:
+    #       user+sys 540 ticks, STEAL 7341, of 8182 total  ->  6.6% of its own CPU
+    #   82d1de4f022768, up 1h 30m, under an identical 4-way full-tilt burn:
+    #       user+sys 7932 ticks, STEAL 23,  of 8002 total  ->  99.1% of its own CPU
+    #
+    # 15x. The same ratio shows up in the suite itself, same command, same 7093 tests:
+    #
+    #   job 96674219824, runner-8576715b121d68 (up ~2m):  7093 passed in  155.99s
+    #   job 96658139188, runner-48e2363f565548 (up 1d9h): 7093 passed in 2126.48s
+    #
+    # Steal over lifetime busy time: 0.4% and 0.7% on the two machines rebooted at 05:04,
+    # against 281%, 365% and 433% on the three up since 2026-08-19. The machine waits three to
+    # four ticks for the host for every tick it executes.
+    #
+    # It is NOT a slow test, NOT the branch (the same sha ran 2256s and 1241s on two machines),
+    # NOT the fleet's own concurrency (the 04:56 job had the same neighbours as the 03:38 one),
+    # and NOT the two background security scans this step forks, though those do oversubscribe
+    # a 4-core box: `pytest -n 4` plus bandit plus pip-audit, with ci_capacity.yaml declaring
+    # reserved_cpus 0 and job_cpus.python 4. That is worth its own fix and it is worth ~1.5x,
+    # not 15x.
+    #
+    # The tell in a slow log is a 607-SECOND gap between `NNN test files` and xdist printing
+    # `bringing up nodes...`. Ten minutes to fork four processes is CPU starvation.
+    #
+    # What it did on 2026-08-21: every open pull request was red on `python` and not one had a
+    # failing test. Every step inside reported success; the JOB crossed 40:00 and GitHub marked
+    # it `cancelled`, which the checks API reports identically to a failure. The only command
+    # that tells the two apart, because step conclusions are not in the pull request UI:
+    #   gh api repos/OWNER/REPO/actions/jobs/<job_id> \
+    #     --jq '.conclusion, (.steps[] | "\(.number) \(.conclusion) \(.name)")'
+    # A cancelled job whose every step is `success`, with its last steps missing, is this.
+    #
+    # A raised ceiling would buy headroom over a THROTTLED run and stop the false red, without
+    # making CI any faster and without touching the cause. The ceiling stays at 40; a runner
+    # young enough to get its own CPU finishes the same 7093 tests in 156 seconds.
     timeout-minutes: 40
 
     steps:
