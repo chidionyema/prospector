@@ -27,13 +27,19 @@ def _reset_concurrency(monkeypatch, tmp_path):
     # files, so the acquire returned False and this file failed on any machine where
     # prospector was actually running — blocking every commit through the POPDD gate for a
     # reason that had nothing to do with the change being committed.
-    # PROSPECTOR_CLI_SLOTS is the documented escape hatch for exactly this
-    # (cli_governor.py:92); tests/unit/test_cli_governor_scope.py proves it takes effect.
+    # `root=` is the escape hatch. It used to be the PROSPECTOR_CLI_SLOTS environment
+    # variable, and that variable no longer moves the "claude" governor: any process could
+    # export it and give itself a second pool of 1 on top of the machine-wide 1, which is
+    # the exact number the founder said no to (cli_governor.PINNED_BRANDS).
+    # tests/unit/test_pinned_governor_cannot_be_moved.py proves both halves.
     monkeypatch.setenv("PROSPECTOR_CLI_SLOTS", str(tmp_path / "cli_slots"))
     # Rebuild rather than trust configure_concurrency(): it is a no-op when the requested
     # size already equals _MAX_CLI (claude_cli.py:64), which would silently leave the
     # machine-wide governor in place and reintroduce the coupling.
-    monkeypatch.setattr(C, "_CLI_SEM", make_governor(C._MAX_CLI, "claude"))
+    monkeypatch.setattr(
+        C, "_CLI_SEM",
+        make_governor(C._MAX_CLI, "claude", root=str(tmp_path / "cli_slots")),
+    )
     yield
     G.configure_concurrency(2)
     C.configure_concurrency(1)   # claude's ceiling is 1 (MAX_CLAUDE_CLI); restoring 2 is a no-op
