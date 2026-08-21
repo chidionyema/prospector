@@ -133,6 +133,12 @@ def test_every_served_path_names_the_view_that_reads_it(reason: str):
     ("docs/design/", "docs", False),                 # the narrowed form that replaced it
     ("docs/design/", "docs/design/diff/a.png", True),
     ("docs/design/", "docs/decisions/0002.md", False),
+    # The 2026-08-21 shape: the narrowed form was STILL too wide. docs/design/ held 25 text
+    # documents the console lists, and this row is the one that says so out loud.
+    ("docs/design/", "docs/design/mumchimp-build-bundle/README.md", True),
+    ("docs/design/diff/", "docs/design/diff/a.png", True),
+    ("docs/design/diff/", "docs/design/mumchimp-build-bundle/README.md", False),
+    ("docs/design/visual/", "docs/design/visual/index-390.diff.png", True),
     ("**/node_modules/", "a/b/node_modules", True),  # any depth
     ("**/node_modules/", "specs", False),
     ("store/", "specs", False),
@@ -159,3 +165,81 @@ def test_the_incident_pattern_is_gone_from_dockerignore():
         "workflow files, so the console's Deploys tab reported every service as UNKNOWN and "
         "accused the repo of deleting workflows that were on main the whole time."
     )
+
+
+def test_every_document_the_console_lists_is_in_the_image():
+    """The population, not a sample of it.
+
+    SERVED above is five hand-written directory names. It passed on 2026-08-20 with
+    `docs/design/` excluded and it passes now with that line narrowed, because `docs` is
+    not `docs/design` — so it could never have seen the defect it was written to stop.
+    Measured 2026-08-21: 25 text documents under docs/design/ were listed by the console
+    and absent from the container, and the founder got rows that opened onto nothing.
+
+    This asks the console itself which documents it lists, so the list cannot drift from
+    the thing it is meant to grade.
+    """
+    from prospector.ops.docs_view import docs_index
+
+    listed = [
+        doc["name"]
+        for section in docs_index(REPO_ROOT)["sections"]
+        for doc in section["docs"]
+    ]
+    assert listed, "docs_index listed nothing, so this test graded nothing"
+
+    patterns = _patterns()
+    missing = {
+        rel: hit
+        for rel in listed
+        if (hit := matching_pattern(rel, patterns)) and rel not in LISTED_BUT_NOT_SHIPPED
+    }
+    assert not missing, (
+        f"{len(missing)} of {len(listed)} documents the console lists are excluded from the "
+        f"build context, so in production those rows open onto nothing and no 404 is raised:\n"
+        + "\n".join(f"  {rel}  excluded by {hit!r}" for rel, hit in sorted(missing.items())[:20])
+    )
+
+
+LISTED_BUT_NOT_SHIPPED: dict[str, str] = {
+    #: These five are agent instructions, not product documents. `.claude/` is excluded from
+    #: the image deliberately and must stay excluded: it is the directory that holds settings
+    #: and local agent state, and prospector-engine is on the public internet. So the console
+    #: lists them on a developer laptop and cannot serve them in production.
+    #:
+    #: This is a real open decision and it is recorded here rather than settled quietly in
+    #: either direction. Shipping `.claude/` wholesale is not an option. The two honest fixes
+    #: are a negation that re-includes only these markdown files, or dropping `.claude/` from
+    #: what docs_index enumerates. Both change what the founder can see, so both are his call.
+    ".claude/agents/estate-recon.md": "agent instructions; .claude/ stays out of a public image",
+    ".claude/agents/receipt-auditor.md": "agent instructions; .claude/ stays out of a public image",
+    ".claude/skills/ship-a-pr/SKILL.md": "agent instructions; .claude/ stays out of a public image",
+    ".claude/skills/where-production-runs/SKILL.md": "agent instructions; .claude/ stays out of a public image",
+    ".claude/skills/worktree-and-gate/SKILL.md": "agent instructions; .claude/ stays out of a public image",
+}
+
+
+def test_no_exception_outlives_the_reason_for_it():
+    """An exception list rots into a way of passing. Each entry must still be both true.
+
+    True means: the console still lists it, AND .dockerignore still excludes it. When either
+    stops holding, the entry is a lie that suppresses a real finding, and this fails.
+    """
+    from prospector.ops.docs_view import docs_index
+
+    listed = {
+        doc["name"]
+        for section in docs_index(REPO_ROOT)["sections"]
+        for doc in section["docs"]
+    }
+    patterns = _patterns()
+
+    stale = []
+    for rel, why in LISTED_BUT_NOT_SHIPPED.items():
+        if rel not in listed:
+            stale.append(f"{rel}: the console no longer lists it, so delete this entry")
+        elif not matching_pattern(rel, patterns):
+            stale.append(f"{rel}: the image ships it now, so delete this entry")
+        elif len(why) <= 40:
+            stale.append(f"{rel}: reason too short to review: {why!r}")
+    assert not stale, "\n".join(stale)

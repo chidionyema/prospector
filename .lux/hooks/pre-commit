@@ -66,6 +66,44 @@ cd "$(git rev-parse --show-toplevel)" || exit 1
 # without breaking the real suite). Unset in normal operation.
 VERIFY_CMD="${POPDD_VERIFY_CMD:-.venv/bin/python scripts/popdd_verify.py --staged}"
 
+# A MISSING INTERPRETER IS NOT A FAILING TEST, and `sh -c` gives the same non-zero
+# exit for both. Without this check a worktree with no environment prints
+# "No such file or directory" and then the BLOCKED message below, which sends you
+# reading about lanes, ruff and receipt chains for a fault that is none of those.
+# The founder lost three commit attempts to it on 2026-08-21; 12 of the 62 worktrees
+# on this machine had no environment when that was measured.
+#
+# Only a first word containing a slash is checked. That is the interpreter this gate
+# pins by path. A bare command name is left to PATH, so the self-test override still
+# runs whatever it likes.
+INTERPRETER="${VERIFY_CMD%% *}"
+case "$INTERPRETER" in
+  */*)
+    if [ ! -x "$INTERPRETER" ]; then
+      TOP="$(pwd)"
+      case "$INTERPRETER" in
+        /*) SHOWN="$INTERPRETER" ;;
+        *)  SHOWN="$TOP/$INTERPRETER" ;;
+      esac
+      echo "─────────────────────────────────────────────────────────"
+      echo "⚠️  NOTHING WAS TESTED. This tree has no Python environment."
+      echo ""
+      echo "   Missing: $SHOWN"
+      echo ""
+      echo "   No lane ran, no check failed and nothing in your diff is wrong. The gate"
+      echo "   could not start, so it cannot say your commit is proven, and it blocks."
+      echo ""
+      echo "   One command repairs it, and it is safe to re-run:"
+      echo "     ./scripts/setup_worktree.sh \"$TOP\""
+      echo ""
+      echo "   That links the environment, the signing key, node_modules and .env from"
+      echo "   the main checkout. Then commit again."
+      echo "   (Emergency override, recorded as a deliberate choice: git commit --no-verify)"
+      exit 1
+    fi
+    ;;
+esac
+
 if sh -c "$VERIFY_CMD"; then
   echo "─────────────────────────────────────────────────────────"
   echo "✅ POPDD gate PASSED — every lane covering this diff is green, receipts"
