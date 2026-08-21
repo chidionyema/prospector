@@ -175,4 +175,29 @@ autoscale_max: 12
 # one PR queues behind itself. `scripts/ci_fleet_keeper.py` starts machines up to this number
 # and never past it, so raising it raises the bill and lowering it raises the wait.
 fleet:
-  min_started: 6
+  # 3, NOT 6, SINCE 2026-08-21. The founder read the utilisation and said "we are bleeding
+  # money". The two measurements behind that are these, taken over the busiest 9h04m this
+  # estate has had (2026-08-20 16:05 -> 2026-08-21 01:09 UTC, the outage plus four sessions
+  # pushing), across the 327 self-hosted jobs that actually ran:
+  #
+  #   OVERLAP, from the job event stream : 58.3% of the window had ZERO jobs running. Peak was
+  #                                        8 of 12. 95.2% of it was 3 busy or fewer.
+  #   DURATION, a different quantity     : 25,464 machine-seconds of work against 392,126
+  #                                        available = 6.5% utilisation. The work equals 0.78
+  #                                        machines running flat out. Median queue wait from
+  #                                        created to started was 2s, max 53s; not one job of
+  #                                        327 waited a minute.
+  #
+  # Two angles that can fail differently, same verdict: twelve machines started around the
+  # clock were nine times the capacity the work needed.
+  #
+  # WHAT 6 WAS FOR, AND WHAT 3 COSTS. 6 was one pull request's peak fan-out off the `needs:`
+  # graph in ci.yml, so that a single PR never queues behind itself. At 3 it does: the heavy
+  # lanes still run together, the rest serialise, and a PR's wall clock rises. That trade was
+  # made deliberately against a measured 6.5% utilisation.
+  #
+  # THE POOL IS STILL 12. `autoscale_max` is unchanged and nine machines are STOPPED, not
+  # destroyed. A stopped machine bills rootfs only ($0.15 per GB per 30 days) and starts in
+  # seconds because the image is already on the host. Going back to 6 is six
+  # `fly machine start` calls and one line here.
+  min_started: 3
