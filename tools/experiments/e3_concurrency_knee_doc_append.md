@@ -14,3 +14,5 @@ _Run 2026-08-07T22:13:00+00:00 · `e3_concurrency_knee.py` · registered docs/CO
 - **order_effect_material**: 1
 
 Receipt: `tools/experiments/e3_concurrency_knee_receipts.json` — reproduce with `.venv/bin/python tools/experiments/runner.py run E3 --levels 8,6,4,1`
+
+**Follow-through:** SHIPPED config.yaml — `minimax_concurrency` is 8, the knee this experiment measured, and the comment above it cites the 16/16-clean zero-429 receipt. No line number on purpose; grep `minimax_concurrency`.

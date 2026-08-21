@@ -176,9 +176,35 @@ export default function MarketingLayout({ children, breadcrumbs, breadcrumbsWidt
         Skip to content
       </a>
 
-      {/* The drawing puts the dark strip ABOVE the header on all eleven pages, and it scrolls
-          away rather than sticking. See `TodayRibbon` for why the tag prints a date. */}
-      <TodayRibbon />
+      {/* THE KILL RIBBON NOW APPEARS ONLY ON `/kill-log`, AND THAT IS A DELIBERATE DIVERGENCE
+          FROM THE DRAWINGS.
+
+          The drawings put the dark strip above the header on all eleven pages, and until
+          2026-08-21 so did we. Measured that day against live, all twelve marketing routes opened
+          with the identical line, printed above the logo:
+
+            "Killed 7 Aug · Sound Check Rounds, the monthly noise test that keeps a small music
+             venue's licence safe · Read the verdict"
+
+          The founder read it cold and said: "first tine user just gets hit with kill log no
+          contexxt no idea wtf is going on", "NOno brand acquainyance", "just a static headline
+          about kill log". The first sentence on the shop was a dated rejection of a business the
+          reader had never heard of, using a word that only means something once you know what we
+          do, and the brand came second.
+
+          On `/kill-log` the strip is right, because the visitor clicked "Kill log" and is oriented
+          by their own click. Everywhere else the header goes first.
+
+          WHAT THIS COSTS. The strip was added 2026-08-18 for pixel parity: without it every page
+          rendered 44px higher than its drawing. Those eleven pages now diverge from their drawings
+          by that 44px again, and the drawings should be redrawn rather than the strip put back.
+          `docs/FIRST_RUN_AND_NAVIGATION_PROGRAM.md` §2 carries the trade and item FR-1 carries the
+          replacement: the drawings' OTHER documented variant, the teal "survivor" ribbon that
+          links to a pack (`docs/design/mumchimp-build-bundle/components.html:541`), which was
+          never built. That one orients instead of confusing, and it belongs above the header.
+
+          Gated by `e2e/first-run.spec.ts` FR1 and FR2 so it cannot come back by accident. */}
+      {router.pathname === '/kill-log' && <TodayRibbon />}
 
       {/*
         White chrome (brand v3, 2026-08-06). The near-black band is gone.

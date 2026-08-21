@@ -25,3 +25,5 @@ Limitations:
 - Nothing was built. This module writes no passage store, no index and no cache.
 
 Receipt: `tools/experiments/l1_corpus_reuse_overlap_receipts.json` — reproduce with `.venv/bin/python tools/experiments/runner.py run L1`
+
+**Follow-through:** TICKET #566 — BUILD at 21.84% but only without a freshness policy; a 30-day TTL puts it at 19.71%, below the bar. The TTL is a decision about serving stale evidence to a buyer, which is a founder call, not an engineering one.

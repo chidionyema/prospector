@@ -27,7 +27,9 @@ THE CLOSE, in the order the laws ask for it:
 """
 from __future__ import annotations
 
+import ast
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -201,3 +203,92 @@ def test_the_gate_behaves_differently_on_a_laptop_and_on_a_runner(module, env_ex
         assert proc.returncode != 0, "a CI runner missing a tool must fail the job, not pass it"
     else:
         assert proc.returncode == 0, f"a laptop without node must not be walled:\n{tail}"
+
+
+# --------------------------------------------------------------------------------------------
+# The hole the marker did not cover: a test that never declares the tool at all
+# --------------------------------------------------------------------------------------------
+#
+# WHAT PAID FOR THIS SECTION. 2026-08-21, PR #544: `tests/ops/test_every_console_knob_is_live.py`
+# shelled out to `rg` once per knob. ripgrep is on the founder's laptop and is not in
+# `deploy/runner/Dockerfile`, so the local POPDD gate said `Verdict: PASS` with 7437 passed and
+# the same commit produced 61 failures on the runner -- `FileNotFoundError: [Errno 2] No such
+# file or directory: 'rg'` (run 32444675763, job 96665192946).
+#
+# Everything above this line grades tests that DECLARE a tool and then skip. This one had no
+# marker and no skipif; it simply ran a binary and assumed it was there. The marker cannot help
+# a test that never says the tool's name, and the local gate structurally cannot catch it,
+# because the laptop is the box that has the tool.
+
+#: Present on every runner image, so a test may use them without declaring anything. The basis
+#: for each is a fact rather than a habit: `git` is `INSTALLED_BY` above via actions/checkout,
+#: and `deploy/runner/Dockerfile` runs its own build steps through `bash`/`sh`, which is proof
+#: those exist in the image it produces. `true` is coreutils, present in any Linux base.
+_ON_EVERY_RUNNER_IMAGE = {"git", "bash", "sh", "true"}
+
+#: (test file, binary) pairs that run an external name the runner does not have, WITH the reason
+#: it is safe. This is a debt list, not a waiver: every row has to say why the CI runner is not
+#: about to fail on it. Adding a row without a real reason is how `rg` would come back.
+_FAKED_ON_PATH_BY_THE_TEST = {
+    ("tests/unit/test_secrets_set_reads_stdin.py", "age"):
+        "the fixture puts a FAKE `age` and `age-keygen` on PATH, so the file needs no binary "
+        "installed and runs identically on a laptop and a runner. The fake also records the "
+        "argv it was called with, which is the only way to prove the secret value never "
+        "reaches a command line -- real encryption could not prove that.",
+}
+
+
+def _external_binaries(path: Path) -> set[str]:
+    """Every bare binary name this test file hands to subprocess, from its AST.
+
+    Only `subprocess.<call>([...])` with a literal string first element counts. A local helper
+    named `run` is not subprocess, `sys.executable` is not a literal, and anything with a `/` in
+    it is a path the test built and therefore already knows the location of.
+    """
+    try:
+        tree = ast.parse(path.read_text(errors="ignore"))
+    except (OSError, SyntaxError):
+        return set()
+    found = set()
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call) and node.args):
+            continue
+        fn = node.func
+        if not (isinstance(fn, ast.Attribute)
+                and fn.attr in {"run", "Popen", "check_output", "check_call", "call"}
+                and isinstance(fn.value, ast.Name) and fn.value.id in {"subprocess", "sp"}):
+            continue
+        argv = node.args[0]
+        if isinstance(argv, ast.List) and argv.elts and isinstance(argv.elts[0], ast.Constant):
+            first = argv.elts[0].value
+            if isinstance(first, str) and first and "/" not in first:
+                found.add(first)
+    return found
+
+
+@pytest.mark.parametrize("path", _test_sources(), ids=lambda p: p.name)
+def test_no_test_runs_a_binary_it_never_declared(path):
+    """A test may only shell out to a name CI is known to have, or one it declares.
+
+    THE PROXY IS STATED RATHER THAN HIDDEN: the `needs_tool` names are matched anywhere in the
+    file, not resolved per test item. A file that declares a tool for one test and uses it in
+    another passes here. That is deliberate -- the failure this closes is a binary NAMED NOWHERE
+    in the file, and per-item marker resolution through the AST would be a second, more fragile
+    thing to be wrong about.
+    """
+    rel = path.relative_to(ROOT).as_posix()
+    if path.name in _NOT_A_DECLARATION:
+        pytest.skip("this file quotes the spellings it grades")
+    declared = set(re.findall(r"needs_tool\(\s*['\"]([A-Za-z0-9_.-]+)['\"]", path.read_text()))
+    for tool in sorted(_external_binaries(path)):
+        if tool in _ON_EVERY_RUNNER_IMAGE or tool in INSTALLED_BY or tool in declared:
+            continue
+        if (rel, tool) in _FAKED_ON_PATH_BY_THE_TEST:
+            continue
+        pytest.fail(
+            f"{rel} runs `{tool}` and never says so. It is not in INSTALLED_BY, not in "
+            f"_ON_EVERY_RUNNER_IMAGE, and the file carries no needs_tool({tool!r}). On the "
+            f"founder's laptop that passes; on the runner it is FileNotFoundError. Either mark "
+            f"the test `@pytest.mark.needs_tool({tool!r})` and add a row to INSTALLED_BY saying "
+            f"what installs it, or stop shelling out -- `rg` was replaced by "
+            f"tests/unit/repo_files.py plus a re.compile, which is faster anyway.")

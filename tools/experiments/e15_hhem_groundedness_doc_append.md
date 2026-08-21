@@ -24,3 +24,5 @@ Limitations:
 - store/dossiers is written by the live daemon; _meta.run_at_utc pins the corpus.
 
 Receipt: `tools/experiments/e15_hhem_groundedness_receipts.json` — reproduce with `.venv/bin/python tools/experiments/runner.py run E15 --limit 350`
+
+**Follow-through:** TICKET #564 — 48.9% rationale infidelity on the sampled run. Not shipped as a gate because E17 measures HHEM at AUC 0.567 on the full corpus, so tau needs an independently-labelled control first.

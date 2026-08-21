@@ -16,3 +16,5 @@ _Run 2026-08-07T23:28:41+00:00 · `e5_coverage_sampler_entropy.py` · registered
 - **design_runnable**: 1
 
 Receipt: `tools/experiments/e5_coverage_sampler_entropy_receipts.json` — reproduce with `.venv/bin/python tools/experiments/runner.py run E5`
+
+**Follow-through:** TICKET #567 — design_runnable is 1 and treatment_engages is 1, so the code path is live, but the flag has never been switched on and ruling needs 41 batches per arm.

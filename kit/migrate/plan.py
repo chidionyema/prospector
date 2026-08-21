@@ -122,6 +122,8 @@ def _step(resource: dict[str, Any], decl: ClassDecl, target: str) -> dict[str, A
         "downtime": decl.downtime,
         "described_by": resource.get("described_by"),
         "adapter_present": adapter_present(decl.adapter),
+        # Verbatim from the declaration, never read by the kit. See ClassDecl.options.
+        "options": dict(decl.options),
     }
 
 

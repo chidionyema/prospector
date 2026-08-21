@@ -16,3 +16,5 @@ _Run 2026-08-07T21:19:39+00:00 · `e6_prefilter_agreement.py` · registered docs
 **Verdict:** {'observed_meets_bar': False, 'any_threshold_meets_bar': False, 'sample_large_enough_to_rule_on_observed': False, 'min_rows_to_rule': 100, 'killed_on_arithmetic_ceiling': True, 'decision': 'KILL'}
 
 Receipt: `tools/experiments/e6_prefilter_agreement_receipts.json` — reproduce with `.venv/bin/python tools/experiments/runner.py run E6`
+
+**Follow-through:** NO ACTION — the report's own verdict is KILL on the arithmetic ceiling: no threshold meets the bar, so there is no version of this change worth making.

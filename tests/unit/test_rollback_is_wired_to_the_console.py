@@ -272,10 +272,25 @@ def test_check_mode_prints_the_command_and_runs_nothing(monkeypatch, capsys):
     assert "nothing was rolled back" in out
 
 
+def _no_ci_deploy_running(monkeypatch):
+    """These three tests are about the flyctl half, so say that rather than let the guard leak in.
+
+    `rollback` asks GitHub whether CI is already deploying this service before it deploys
+    anything (`_ci_deploy_in_flight`, added 2026-08-21). That is a real subprocess, and these
+    tests replace `subprocess.run` wholesale with a stub that answers for flyctl -- so without
+    this, they would be grading the CI check while claiming to grade the rollback. Neutralising
+    it here is deliberate and narrow: the guard itself is covered in
+    tests/unit/test_deploy_and_rollback_survive_their_edges.py, including a test that fails if
+    `rollback` ever stops calling it.
+    """
+    monkeypatch.setattr(rollback_now, "_ci_deploy_in_flight", lambda name: ("", ""))
+
+
 def test_a_rollback_that_deploys_but_does_not_answer_is_not_reported_as_success(monkeypatch,
                                                                                capsys):
     """The worst possible lie is "rolled back" while the service is still down."""
     _stub_releases(monkeypatch, [_rel(2, "NEW"), _rel(1, "OLD")])
+    _no_ci_deploy_running(monkeypatch)
     monkeypatch.setattr(rollback_now.subprocess, "run",
                         lambda *a, **k: type("P", (), {"returncode": 0})())
     monkeypatch.setattr(rollback_now, "_probe_all", lambda name, svc: (False, ["  FAIL x"]))
@@ -285,6 +300,7 @@ def test_a_rollback_that_deploys_but_does_not_answer_is_not_reported_as_success(
 
 def test_a_failing_flyctl_returns_its_own_exit_code(monkeypatch, capsys):
     _stub_releases(monkeypatch, [_rel(2, "NEW"), _rel(1, "OLD")])
+    _no_ci_deploy_running(monkeypatch)
     monkeypatch.setattr(rollback_now.subprocess, "run",
                         lambda *a, **k: type("P", (), {"returncode": 137})())
     assert rollback_now.rollback("store-web", check_only=False) == 137
@@ -293,6 +309,7 @@ def test_a_failing_flyctl_returns_its_own_exit_code(monkeypatch, capsys):
 
 def test_a_successful_rollback_that_answers_its_checks_exits_zero(monkeypatch, capsys):
     _stub_releases(monkeypatch, [_rel(2, "NEW"), _rel(1, "OLD")])
+    _no_ci_deploy_running(monkeypatch)
     monkeypatch.setattr(rollback_now.subprocess, "run",
                         lambda *a, **k: type("P", (), {"returncode": 0})())
     monkeypatch.setattr(rollback_now, "_probe_all", lambda name, svc: (True, ["  ok   x"]))

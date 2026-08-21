@@ -196,8 +196,31 @@ fleet:
   # lanes still run together, the rest serialise, and a PR's wall clock rises. That trade was
   # made deliberately against a measured 6.5% utilisation.
   #
-  # THE POOL IS STILL 12. `autoscale_max` is unchanged and nine machines are STOPPED, not
+  # THE POOL IS STILL 12. `autoscale_max` is unchanged and the rest are STOPPED, not
   # destroyed. A stopped machine bills rootfs only ($0.15 per GB per 30 days) and starts in
-  # seconds because the image is already on the host. Going back to 6 is six
-  # `fly machine start` calls and one line here.
-  min_started: 3
+  # seconds because the image is already on the host. Moving this number is one
+  # `fly machine start` per machine and one line here.
+  #
+  # 5, NOT 3, SINCE 2026-08-21 03:55Z. Three lasted about two hours. The founder's words were
+  # "lets try 5", and the reason to trust 5 over 3 is what the estate did in between, which is
+  # a measurement the 9h04m window above could not contain:
+  #
+  #   `scripts/deploy_status.py` reported "4 run(s) queued while 9 CI machine(s) are stopped,
+  #   oldest 28m". One pull request's own run sat queued for 47 minutes against a median run
+  #   time of 8.3 minutes for the 16 runs before it.
+  #
+  # The 6.5% utilisation figure is still true and is not the number that decides this. It
+  # averages a window that is 58.3% idle, and CI demand is not an average -- it arrives in
+  # bursts when several sessions push at once, which is exactly when anyone is waiting. A
+  # fleet sized for the mean is a fleet that is short every time it matters.
+  #
+  # THE CONFIRMATION, taken 20 seconds after starting the two: all five runners reported
+  # `status=online busy=true` to the GitHub API. Not one of them idled. Capacity that is busy
+  # the moment it appears was capacity that was already owed. Two angles that fail
+  # differently: Fly says 5 of 12 started, GitHub says 5 online -- so these are registered
+  # runners and not the 2026-08-19 case where nine machines were started and none could
+  # receive a job.
+  #
+  # 5 sits one below the 6 that covers a single PR's peak fan-out, so a lone PR can still
+  # queue behind itself by one job. That is the deliberate remainder of the cost cut.
+  min_started: 5

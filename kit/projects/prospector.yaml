@@ -25,10 +25,21 @@ resources_declaration: ops/config/estate_resources.yaml
 # party holds a pointer at us, and it is re-aimed rather than moved. Their target list is
 # the same, because what changes is the address, not the substrate they live on.
 classes:
+  # Everything below `targets` is an option: the kit passes it to the class adapter as
+  # OPT_<NAME> and never reads it. These are prospector's private facts, and they are here
+  # rather than in kit/ for exactly that reason -- a second business changes this file only.
   secret:
     targets: [fly, sshdocker, k8s, laptop]
+    # Which keys travel. An extended regex over the `KEY=` lines of the env file. Only the
+    # keys the engine actually needs: dead keys are not carried onto a new platform, where
+    # they become a credential nobody remembers issuing.
+    keep_pattern: '^(MINIMAX_API_KEY|EXA_API_KEY|STORE_INTERNAL_API_KEY|STORE_API_URL|STRIPE_LIVE_API_KEY|PROSPECTOR_ENTITLEMENTS_API_KEY|R2_ACCOUNT_ID|R2_ACCESS_KEY_ID|R2_SECRET_ACCESS_KEY|R2_BUCKET|CONTROL_CENTER_PASSWORD|FLY_API_TOKEN|TELEGRAM_[A-Z_]+)='
   datastore:
     targets: [fly, sshdocker, k8s, laptop]
+    # Where the store lands on the far side, and what proves it arrived whole. The verify
+    # command is given the incoming copy as its argument, before it is moved into place.
+    remote_path: /data/store
+    verify_cmd: python /app/scripts/store_migrate.py verify
   object_storage:
     targets: [fly, sshdocker, k8s, laptop]
   compute:
