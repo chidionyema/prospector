@@ -1,0 +1,202 @@
+# Merge a pull request that is green, up to date and unblocked. Nothing else does.
+#
+# WHAT WAS BROKEN. `automerge.yml` was deleted with the integration batch in #522 on 2026-08-20,
+# and nothing replaced it. The workflows around it were never told:
+#   pr-keeper.yml header          "leaves the green ones to automerge"
+#   main-admission-guard.yml:40   "automerge.yml already refuses to merge anything that is not
+#                                 green and not up to date with main"
+#   ci.yml:114, main-green-guard.yml:12, approve-parked-runs.yml:3,6,21,24
+# Every one of them describes a file that is not in the tree. So a pull request that goes green
+# is finished, and then it stops.
+#
+# WHAT THAT COSTS, measured 2026-08-21 at 11:20 BST: 7 open pull requests, all 7 `CLEAN`, not one
+# failing check, the oldest raised at 02:11Z and still open 8h49m later. The founder, the same
+# morning: "should not have prs ready juust stting there", "this is how we get pileup and
+# contention", "and then need capacity unnecessrily". The last one is the second-order effect and
+# it is the expensive one: idle branches are re-graded by `pr-keeper`'s 15-minute tick and by
+# every push to main, so a queue that lands nothing still burns the CI fleet, and the fleet then
+# reads as too small. That misreading was already paid for once, on 2026-08-19, when six machines
+# were bought for a queue that was not queueing.
+#
+# WHY NOT NATIVE AUTO-MERGE. The repository allows it (`allow_auto_merge: true`, measured
+# 2026-08-21), but GitHub only arms it on a pull request that is currently BLOCKED by a required
+# status check, and required checks need branch protection, which this plan answers `403 Upgrade
+# to GitHub Pro` for. An already-green pull request cannot be armed at all, which is exactly the
+# population sitting in the queue now.
+#
+# WHAT IT REFUSES TO MERGE, each a real case rather than a precaution:
+#   draft                      the author is still writing it
+#   mergeStateStatus != CLEAN  covers BEHIND (pr-keeper updates it), DIRTY (a conflict, a person),
+#                              BLOCKED and UNSTABLE (a check failing or still running)
+#   no checks at all           that is unproven, not green
+#   any completed check that is not SUCCESS/SKIPPED/NEUTRAL
+#   the `hold`, `do-not-merge` or `wip` label   the one-word way for any session or the founder
+#                              to stop one merge without turning the mechanism off
+#
+# It merges with `--merge`, never squash: `main-admission-guard.yml` reads `Merge pull request
+# #N` and `... (#N)` out of the commit subject to audit that a merge was allowed, and reverts
+# with `-m 1`, which needs the two parents a merge commit has.
+name: Merge when green
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  # An event-only trigger cannot see a pull request that went green while this workflow did not
+  # exist, and that is the whole backlog on the day it lands. The tick also covers a run that
+  # completed while pushes were frozen. It merges at most MAX_PER_RUN, so one bad batch can never
+  # take the entire queue in a single tick.
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  # Never two merges at once: the second would be computing its own mergeability against a main
+  # the first is in the middle of moving.
+  group: merge-when-green
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+  # A merge here pushes to main with GITHUB_TOKEN, and GitHub starts NO workflow run from a
+  # GITHUB_TOKEN event. So this workflow has to dispatch what that push would have started.
+  # See the dispatch step for why, and for what is left uncovered.
+  actions: write
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge every pull request that is genuinely finished
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          MAX_PER_RUN: '6'
+        run: |
+          set -euo pipefail
+          gh pr list --state open --limit 50 \
+            --json number,isDraft,mergeStateStatus,labels,statusCheckRollup,title \
+            > prs.json
+          python3 - <<'PY' > todo.txt
+          import json
+          HOLD = {"hold", "do-not-merge", "wip"}
+          for pr in json.load(open("prs.json")):
+              why = None
+              labels = {l["name"].lower() for l in pr.get("labels") or []}
+              checks = pr.get("statusCheckRollup") or []
+              done = [c for c in checks if (c.get("status") or "COMPLETED") == "COMPLETED"]
+              bad = [c for c in done
+                     if (c.get("conclusion") or "") not in ("SUCCESS", "SKIPPED", "NEUTRAL")]
+              if pr["isDraft"]:
+                  why = "draft"
+              elif labels & HOLD:
+                  why = "labelled " + ",".join(sorted(labels & HOLD))
+              elif pr["mergeStateStatus"] != "CLEAN":
+                  why = "state " + pr["mergeStateStatus"]
+              elif not checks:
+                  why = "no checks ran, so it is unproven rather than green"
+              elif len(done) != len(checks):
+                  why = str(len(checks) - len(done)) + " check(s) still running"
+              elif bad:
+                  why = "failing: " + ",".join(c.get("name", "?") for c in bad[:3])
+              # Every pull request is printed, merged or not. A queue that silently drops one is
+              # how a branch waits a day for a reason nobody can see.
+              print("MERGE" if why is None else "SKIP.", pr["number"],
+                    why or "green, clean, unblocked", "|", pr["title"][:60])
+          PY
+          cat todo.txt
+          : > merged_files.txt
+          merged=0
+          while read -r verdict number rest; do
+            [ "$verdict" = "MERGE" ] || continue
+            if [ "$merged" -ge "$MAX_PER_RUN" ]; then
+              echo "stopping at $MAX_PER_RUN this run; the next tick takes the rest"
+              break
+            fi
+            # The file list is read BEFORE the merge. Afterwards the branch is deleted, and a
+            # deleted head can make the file list come back empty -- which the dispatch step
+            # below would then read as "touched nothing" and skip a deploy that was needed.
+            gh pr view "$number" --json files --jq '.files[].path' >> merged_files.txt || \
+              echo "__UNKNOWN__" >> merged_files.txt
+            # A pull request can go stale between the listing and this line, because a merge
+            # earlier in this same loop just moved main. The command refuses on its own in that
+            # case, and the refusal is reported and skipped rather than failing the whole run.
+            if gh pr merge "$number" --merge --delete-branch; then
+              merged=$((merged + 1))
+              echo "landed #$number"
+            else
+              echo "could not land #$number; leaving it for the next tick"
+            fi
+          done < todo.txt
+          echo "landed $merged pull request(s)"
+          echo "merged=$merged" >> "$GITHUB_OUTPUT"
+        id: land
+
+      # ---------------------------------------------------------------------------------------
+      # A merge performed here pushes to main with GITHUB_TOKEN, and GitHub starts NO workflow
+      # run from a GITHUB_TOKEN event. `main-admission-guard.yml` states the same fact about its
+      # own revert push, at the comment above its `permissions:` block and again at :310 --
+      # "the revert push uses GITHUB_TOKEN and GitHub starts NO workflow run from one, so after a
+      # revert nothing re-deploys and nothing re-grades main by itself" -- and it answers it by
+      # dispatching, "exactly as automerge.yml does after it merges". This step is that answer.
+      #
+      # Without it the failure is worse than the one this file fixes and much harder to see: the
+      # queue drains, every pull request reads as merged, and production quietly stops tracking
+      # main. `production-runs-main.yml`'s hourly cron would eventually notice the drift, so the
+      # damage is bounded at about an hour -- but an hour of production running the previous
+      # commit, with nothing red anywhere, is not a state to design for.
+      #
+      # `workflow_dispatch` is one of the two documented exceptions to the suppression, and all
+      # four workflows below already expose it. No new credential is needed, and a personal
+      # access token would be worse: another secret on a plan with no rotation path.
+      #
+      # The path patterns are each deploy workflow's OWN `paths:` filter, read from the tree on
+      # 2026-08-21, so this dispatches exactly what the suppressed push would have started. If
+      # you add a path to a deploy workflow, add it here -- `main-admission-guard.yml` carries a
+      # third copy of the same map and says the same thing.
+      #
+      # WHAT THIS DOES NOT COVER, stated rather than hidden: `main-admission-guard.yml` and
+      # `main-green-guard.yml` cannot be dispatched at all -- neither declares
+      # `workflow_dispatch`. main-green-guard runs on CI's `workflow_run`, so dispatching ci.yml
+      # brings it back. main-admission-guard runs only on `push: main`, so a merge made here is
+      # not audited by it. That audit exists to catch a merge that went around the green check;
+      # this workflow cannot make one, because green is the only condition under which it acts.
+      # ---------------------------------------------------------------------------------------
+      - name: Start what the merge push could not
+        if: steps.land.outputs.merged != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # CI first: it is the thing every other open pull request is waiting on. ci.yml's
+          # `changes` job refuses to build a pull request while main is red or unknown, so
+          # skipping this would stall the whole queue behind the merge that was supposed to
+          # unstall it.
+          gh workflow run ci.yml --ref main || echo "could not dispatch ci.yml"
+
+          files=$(cat merged_files.txt)
+          want() { grep -Eq "$1" <<<"$files"; }
+          if grep -q '__UNKNOWN__' <<<"$files"; then
+            # One pull request would not say what it touched. Guessing narrow means skipping a
+            # deploy that was needed, so every deploy is dispatched instead -- the same choice
+            # main-admission-guard.yml makes for a commit whose file list is truncated.
+            echo "a merged pull request did not report its files; dispatching every deploy"
+            want() { true; }
+          fi
+
+          if want '^(prospector/|scripts/|deploy/engine/|store_platform/src/Ops\.Console/|requirements\.txt$|config\.yaml$|\.github/workflows/deploy-engine\.yml$)'; then
+            gh workflow run deploy-engine.yml --ref main -f dry_run=false || \
+              echo "could not dispatch deploy-engine.yml"
+          fi
+          if want '^(store_platform/src/Store\.Web/|store_platform/deploy/fly/web\.fly\.toml$|store_platform/scripts/deploy_web\.sh$|store_platform/scripts/predeploy_guard\.sh$|\.github/workflows/deploy-web\.yml$)'; then
+            gh workflow run deploy-web.yml --ref main -f target=prod -f dry_run=false || \
+              echo "could not dispatch deploy-web.yml"
+          fi
+          if want '^(store_platform/src/Store\.Api/|store_platform/src/Store\.Catalog/|store_platform/deploy/fly/api\.fly\.toml$|\.github/workflows/deploy-api\.yml$)'; then
+            gh workflow run deploy-api.yml --ref main -f dry_run=false || \
+              echo "could not dispatch deploy-api.yml"
+          fi
+          echo "dispatched what the merge push could not start"

@@ -443,7 +443,7 @@ ALLOW_UNVERIFIED_DEPLOY = DEV / "store" / "scheduler" / "ALLOW_UNVERIFIED_DEPLOY
 #: ('fail', 'production runs main=failure, ..., PR keeper=cancelled, ...').
 _IGNORED_WORKFLOWS = ("deploy", "smoke", "e2e", "auto-merge", "automerge", "cancel",
                       "production runs main", "pr keeper", "drill", "fleet",
-                      "weekly estate review", "approve parked runs")
+                      "weekly estate review", "approve parked runs", "merge when green")
 
 
 def ci_verdict(sha: str) -> tuple[str, str]:
