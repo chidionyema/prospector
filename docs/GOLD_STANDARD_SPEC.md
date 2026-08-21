@@ -93,7 +93,7 @@ and nothing joins them.
 |-------|-------|--------------|---------------------|
 | `scripts/estate_inventory.py` | 683 | Probes the **running world** for 10 resource classes — compute, datastore, object storage, DNS, TLS, secret, log sink, scheduled job, payment integration, CI runner (`:48`, discoverers `:137`–`:311`). Emits JSON (`:672`). Refuses to read its own declaration as truth. | Never produces a *plan*. It is a census, not a work list. |
 | `deploy/cutover.sh` | 153 | Moves the engine between platforms in 8 ordered phases (`:89`–`:147`), resumable with `--from-phase` (`:41`), and restarts the source on failure rather than pressing on. | Moves **one class**: compute plus its volume. Knows nothing of DNS, the storefront, jobs, logs or payments. |
-| `deploy/targets/{fly,k8s,laptop,sshdocker}.sh` | 269 (k8s) | Four substrates behind one verb contract of six verbs (`deploy/PORTABILITY.md:21`–`:28`). Adding a substrate costs one file. | The contract describes *a place to run a container*. There is no contract for moving a DNS zone or a database. |
+| `deploy/targets/{fly,k8s,laptop,sshdocker}.sh` | 269 (k8s) | Four substrates behind one verb contract of twelve functions (`deploy/PORTABILITY.md:44`–`:54`). Adding a substrate costs one file. | The contract describes *a place to run a container*. There is no contract for moving a DNS zone or a database. |
 | `scripts/store_migrate.py` | 451 | `plan` / `pack` / `verify` for the engine's store, with a sha256 manifest shared by both ends. | Engine store only. |
 | `scripts/restore_drill.py` | 584 | Restores the R2 backup end to end and asserts five properties with receipts. | Proves a *backup*, not a *move*. Different question, as its own docstring says. |
 
@@ -220,7 +220,7 @@ Rules the compiler enforces, each one a test:
 
 ### 3.2 The class adapter contract
 
-Five verbs, on the model of `deploy/PORTABILITY.md:21`. Every class implements all five; a verb
+Five verbs, on the model of the target adapters' twelve (`deploy/PORTABILITY.md:44`–`:54`). Every class implements all five; a verb
 it cannot honour exits 78 (`EX_CONFIG`) with a reason, and the compiler refuses to build a plan
 containing it rather than discovering it at minute 20.
 
