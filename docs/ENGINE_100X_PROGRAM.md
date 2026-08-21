@@ -1019,3 +1019,321 @@ needed and would be a second implementation of one class. In priority order:
 3. **Steer second**, through `select_lenses` and the generate prompt, once the rubric has a
    baseline and a null.
 4. **Never into `kill_filter`.** Section 9.4.
+
+---
+
+## 10. The specialist code review, 2026-08-21
+
+Founder directive, verbatim: *"etrene code review by top nathenatician and nachine learning
+specialist - both need to do extentive resach be fore reviewwing and doubel thriple cgeck their
+nuers ad counent rigirously"*.
+
+Two reviewers ran in parallel over the engine, read-only, with no model spend. What follows is
+their output after I re-verified on disk every claim that changed code. Where my own measurement
+disagreed with theirs, my number is the one printed and the disagreement is stated.
+
+### 10.1 The bar these reviews were held to, and why it is not a persona
+
+A persona label buys no accuracy. The measured result is that 162 role labels across 2,410
+questions produced no gain, and adding identities cut one task from 68.1% to 29.3%. So "top
+mathematician" and "ML specialist" are not what made these reviews good. Three mechanical
+conditions did, and they are the standing bar for any review of this engine:
+
+1. **Research before reviewing.** Grade against a published standard, not intuition. The ML
+   reviewer read arXiv:2407.09007 in full before judging `denylist.py`, which is the only reason
+   finding 10.5 exists.
+2. **Two angles that can fail differently.** Every number carries the command that produced it and
+   a second route that agrees. A static grep and an executed repro are two angles; two greps are one.
+3. **An executed repro, not a reading.** A claim about what code does is a hypothesis until it has
+   been run.
+
+Both reviewers were also required to report what is CORRECT, to attempt to refute their own
+findings, and to mark each one CONFIRMED or HYPOTHESIS. Two findings were withdrawn by their own
+authors under that rule, which is the rule working.
+
+### 10.2 The class: a component's own failure written as a finding about the idea
+
+This is one defect wearing three costumes, and the engine has already paid for it once. The
+dossier `store/dossiers/2102bacc6dd75cf9.kill.json` is a KILL on `min_composite` whose seven
+checks all read "Verdict call failed; fail-safe" — a candidate killed by our own outage, in a
+document that reads as fully reasoned. `verify.run_check` was fixed then, and its error path is
+now the reference pattern: `degraded=True, retrieval_failed=True`, which fires DEFER.
+
+The review found the same class alive at the two stages *after* it, escaping in opposite
+directions.
+
+| # | Where | What a failure was written as | Reaches |
+|---|---|---|---|
+| 10.2a | `prospector/verify.py` `adversarial()` | "no decisive case against it" | PASS, and **publishes** |
+| 10.2b | `prospector/score.py` `score_candidate()` | "composite 0.0, below the bar of 2.5" | a false, buyer-facing KILL |
+
+**10.2a — CONFIRMED, fixed.** `adversarial()`'s catch-all returned
+`AdversarialResult(kill_case="adversarial call failed", decisive=False)`. `AdversarialResult` had
+no failure field, and the consumer reads `adv.decisive` only, so the candidate reached
+`Decision.PASS` with `provisional=False` and satisfied the publish condition. The sentinel string
+occurred exactly once in the repo: written, never read. Aggravating: `@track_latency` logs
+`status=success` whenever the wrapped call returns, so a systematically failing adversarial stage
+was invisible in telemetry.
+
+**10.2b — CONFIRMED, fixed.** `ScoreResult.score_failed` exists and carries the comment "Lets the
+publish gate distinguish 'scored and weak' from 'could not score'". It had zero readers in the
+package: `grep -c score_failed prospector/dossier.py` returned `0`. A scoring outage on a
+candidate whose six checks were all grounded and supported wrote a KILL quoting a bar the idea was
+never measured against.
+
+Both now route to DEFER through the existing mechanism, with reasons that say what actually
+happened and refuse to imply a verdict. The guard is
+`tests/unit/test_a_failure_is_never_a_finding.py`, which carries a **control arm** — the same
+pipeline with nothing broken must not defer — so it cannot pass on an engine that defers
+everything. All three fixes were mutation-proved: each one reverted, the corresponding test fails.
+
+### 10.3 One source cited three times scored as three sources — CONFIRMED, fixed
+
+`verify._calc_confidence` filtered citations to valid source ids but never deduplicated them, so
+`fraction = cited / total` was not a fraction and `saturating = min(1, cited / 3)` counted one
+passage repeatedly. Measured here, on one source and one passage:
+
+| citations list | confidence |
+|---|---|
+| `["s1"]` | 0.63 |
+| `["s1","s1"]` | 0.93 |
+| `["s1","s1","s1"]` | **1.00** |
+| `["s1"] * 10` | 1.00 |
+
+One real source cited twice (0.63) scored 86% of two genuinely distinct sources (0.73). The
+internal citation term reached 3.0 against its documented 0.30 cap, hidden only by the final
+`min(1.0, ...)`. `prompts/verdict.md` says "cite the source_ids you relied on" and does not forbid
+repeats, so this is reachable on any well-behaved reply.
+
+This is the single highest-leverage fix in the review by ratio of impact to diff, because
+`confidence` is upstream of `confidence_floor`, `min_supported_confidence`, the kill gates, and
+the KILL branch of `dense_reward`. Deduplicating is one line. It is applied in two places on
+purpose: in `run_check`'s citation filter, so the stored dossier is clean, and inside
+`_calc_confidence`, so the arithmetic is correct read on its own and every future caller inherits
+the guarantee.
+
+**Disagreement, recorded.** The mathematician reported 0.45 at one citation where I measure 0.63.
+The gap is the relevance term, which depends on the passage — the mechanism reproduces exactly and
+the absolute value does not transfer between passages. Any number quoted from this table must name
+its passage.
+
+### 10.4 A deliberate non-fix: `FAMILY_GATES` — CONFIRMED, NOT fixed, and this is the decision
+
+`prospector/denylist.py:33` declares `FAMILY_GATES = frozenset({"value_durability", "incumbency",
+"adversarial"})`. The only literal the adversarial path ever emits is `"adversarial_decisive"`
+(`prospector/verify.py:1262`, `prospector/kill_filter.py:62`, `prospector/dossier.py:160`), so one
+third of the declared set matches nothing. It is a one-character-class fix and I did not make it.
+
+Correcting the string would *enlarge* the denial list, and finding 10.5 says the denial list is
+the part of the engine standing on the weakest ground. Making a mechanism bigger while its
+justification is in question is the wrong order. This is a founder decision, not a typo.
+
+### 10.5 The denial list cites a paper that describes a different mechanism — CONFIRMED
+
+`prospector/denylist.py` cites "DENIAL PROMPTING (arXiv:2407.09007)". The ML reviewer read it:
+*Benchmarking Language Model Creativity: A Case Study on Code Generation* (Lu et al., 2024).
+Denial prompting there is per-problem and single-thread — the model detects a technique inside its
+own just-generated solution, and that technique constrains the next turn, on the same problem, up
+to T=5. The paper makes no cross-problem transfer claim.
+
+`denylist.py` inverts all four properties: it mines an **external** corpus of KILLed candidates
+into a **standing** list, injected into **fresh, unrelated** generation prompts, persisted across
+runs. The shipped directive asserts the transferability the paper does not claim, verbatim: *"they
+are DEAD regardless of sector or wording"*.
+
+The paper's own numbers argue against the implementation. GPT-4, constraint states 0 → 5:
+
+| state | pass@1 | convergent | divergent | constraint-following |
+|---|---|---|---|---|
+| 0 | 16.1% | 16.2% | 4.5% | 100% |
+| 1 | 11.6% | 8.1% | 11.9% | — |
+| 5 | 2.1% | 0% | 15.3% | 14.4% |
+
+Novelty rises, correctness collapses. `max_families: 12` carries up to 12 simultaneous
+prohibitions, well past the T=5 at which the cited paper measured constraint-following at 14.4%
+and convergent creativity at zero — and in this pipeline, generation feeds a paid verification
+moat, so correctness traded for novelty is money spent on candidates that then fail the gates.
+
+The citation should be removed or corrected regardless of what happens to the mechanism: it
+currently reads as published support for something the paper neither describes nor tested.
+
+**Second, independent defect in the same file — CONFIRMED.** The PASS exclusion compares each PASS
+row to the family *seed* only, never to the family's other members, and clustering is greedy and
+seed-anchored. A constructed family survives exclusion with a PASS row at Jaccard 0.800 from
+member 3 while sitting 0.333 from the seed — so a proven-good idea is injected into the generation
+prompt as DEAD. Jaccard supports a metric, but membership judged against a single anchor gives no
+bound on member-to-member distance, so seed-proximity does not transfer.
+
+### 10.6 Two numbers the engine is not entitled to claim — CONFIRMED
+
+**The golden gate cannot support a discrimination claim.** `fixtures/golden_set.json` is n=9, 7
+KILL / 2 PASS. Stamping KILL on everything scores 0.7778, and a constant-KILL stamper produces a
+flawless 9/9 about once in ten runs — `(7/9)**9 = 0.1042`. A perfect 9/9 has an exact 95% lower
+bound of 0.6637, *below* the majority baseline. Both reviewers computed this independently and by
+two routes each (bisection on the binomial tail and the closed form), agreeing to 1e-6. The
+promotion gate's three runs reuse the same nine items, so they are repeat measurements of one item
+set, not independent trials.
+
+Two further facts from the fixture file itself: both PASS cases — the only two items carrying
+discriminative power — say in `label_basis` that they were rewritten on 2026-08-15 because both
+brains killed them; and one of the nine says of itself that *"NO FIXTURE ENTRY EXISTS for this
+idea"*. The fixture last changed at 2026-08-15 10:01, and the `moat_primary` promotion landed at
+13:01 the same day.
+
+This does not retroactively invalidate the MiniMax promotion, and it is not an argument to revert
+it. It means the golden gate must be described as what it is — a smoke test that the lane runs
+end to end — until it is grown past the majority baseline with held-out items. n=42 distinguishes
+0.95 from 0.80 at 80% power.
+
+**A market is declared READY on one decided candidate.** `prospector/markets.py` computes
+`discrimination = correct / decided` with no minimum sample size. `n_candidates` is recorded and
+printed and gated nowhere. A constructed market with 10 candidates, 9 deferred and 1 decided,
+returns `discrimination 1.0, defer_rate 0.9, verdict ready`. Exact Clopper–Pearson on 1/1 gives a
+lower bound of 0.025 against a bar of 0.70. `defer_rate` is computed, returned, and gated by
+nothing. Readiness gates market entry.
+
+**And the pooled rates can invert the ranking across the shipped bar.** `grounding_rate` and
+`authority_rate` are micro-averages over candidates with very different check and source counts —
+the textbook Simpson configuration. A constructed pair where market A grounds better than market B
+on *every single candidate* gives A `0.5364 → not_ready` and B `0.7636 → ready`. Verified in exact
+rational arithmetic outside the module, so it is not float noise.
+
+### 10.7 Order-dependence in dedup — CONFIRMED
+
+`difflib.SequenceMatcher.ratio()` is not symmetric, and `prospector/dedup.py:62` asserts that it
+is. `find_longest_match`'s documented tie-break is not swap-invariant, so the matched-block total
+changes when the arguments swap. Measured: 9.59% of 200,000 random short pairs are asymmetric
+(worst gap 0.533), rising to 62.46% on realistic phrase pairs. The consequence is at the catalogue
+level — `dedup([A,B])` drops one and `dedup([B,A])` keeps both, so what is in the catalogue depends
+on arrival order. `max(ratio(a,b), ratio(b,a))` is the fix.
+
+Separately, the calibration comment claims dupe pairs score ≥ 0.38 and distinct pairs ~0.00. On
+the real titles in `tests/unit/test_dedup.py` the only thresholds that separate the corpus
+perfectly are `(0.2222, 0.2500]`; the shipped 0.34 sits far outside it, and 3 of 7 same-idea pairs
+fall below it. The pinned test passes on 12 of the 24 possible input orders. And at 0.34 the
+Jaccard bound makes any pair whose token-set sizes differ by more than 2.94× invisible even under
+total containment — a 27-token restatement literally containing all 4 tokens of a title scores
+0.1481 and is not a duplicate. The same threshold binds `denylist.py` and `diversity.distinct_k`.
+
+### 10.8 The instrument that would catch generation collapse is blind, and unread — CONFIRMED
+
+`diversity.distinct_k` clusters on the same lexical Jaccard. Ten restatements of one idea in
+disjoint wording score **10 of 10** — perfect diversity. Ten lexical near-copies score 1 of 10.
+Denial prompting forbids lexical families, which pushes the generator to re-skin one idea in new
+vocabulary: precisely the case the meter scores 10/10.
+
+And nothing reads it. `write_receipt` has no reader, no threshold and no brake;
+`kill_decay.check_diversity_floor` has zero production callers; the `diversity_collapse` alarm is
+reachable only from `simulation.py`, which neither `run.py` nor `prospector/scheduler/` imports.
+So the answer to "would we notice if generation collapsed" is no — three instruments exist, two
+are unreachable, and the reachable one cannot see semantic collapse.
+
+### 10.9 Lower severity, confirmed, not fixed
+
+- **Relevance rewards padding.** `verify.py`'s relevance term is recall of question words with no
+  precision term and no length normalisation, so a 4,000-word junk passage containing every
+  question token scores 0.75 against an on-topic short passage's 0.57.
+- **The relevance denominator varies 8× across checks.** Credit per matched token runs from 0.0375
+  (`value_durability`, 8 tokens) to 0.0047 (`currency`, 64 tokens), all graded against one
+  `confidence_floor`. The split is whitespace-only, so 65 of 239 question tokens (27.2%) carry
+  punctuation and can only match a passage token bearing identical punctuation.
+- **The composite has no provenance.** `run.py` passes the **non-critical** chain as the scorer.
+  `ScoreResult` has no provider field and the store schema has no provider column — while
+  `CheckResult.provider`, `AdversarialResult.provider` and `Dossier.provider_chain` all exist
+  precisely so brains can be audited. `min_composite_to_pass` is an absolute bar on a number that
+  cannot be attributed, so scorer drift is undetectable from disk.
+- **A per-call market override is honoured for half its keys.** `prompts.market_kwargs(market=X)`
+  passes X to the block but not to the fragment chain, so three exemplar keys silently follow
+  `cfg.active_market`. 3,322 bytes of US-specific query exemplars exist on disk and are never
+  served; the UK file is served instead. The moat is not affected — the scheduler rebuilds config
+  per market — but per-candidate pack generation is. The docstring immediately above the defect
+  documents this identical class being fixed for currency; the override was added to one and not
+  the other.
+- **Provider health has a cross-process lost-update window.** `_claim_probe` takes an `fcntl`
+  lock and its docstring explains at length why a `threading.Lock` cannot do this job.
+  `mark_exhausted` and `clear` do load-modify-save without it. Reproduced by the file's own
+  documented method: a brain that just proved itself alive is silently re-benched for the full
+  hour. The daemon and a `vet --resume` drain are separate processes on one store — the exact
+  pair the docstring names.
+- **A lane may override weights and skip validation.** `config.for_lane` merges weight overrides
+  and never revalidates, while the market path is guarded. A lane summing to 1.65 raises the
+  ceiling to 8.25 against an absolute `min_composite_to_pass`, flipping a verdict on identical
+  evidence. Latent — no shipped lane declares weights — and the fix is one call.
+- **The RL signal rewards an outage over a marginal pass.** `Dossier.dense_reward` scores a PASS
+  with no score at all at 0.92, above a genuine PASS at the live bar at 0.90, because the
+  missing-score fallback is a hardcoded composite of 3.0. Its KILL branch is mean check confidence,
+  which is polarity-blind, so the signal rises with how well an idea was proved dead.
+- **A malformed verdict token is scored as evidential absence.** `_coerce_verdict` maps an
+  out-of-vocabulary string to `UNVERIFIABLE` with no `degraded` and no `retrieval_failed`, so it
+  reaches the kill gates as a genuine finding. Low severity: `prompts/verdict.md` constrains the
+  output vocabulary to exactly the enum, so this needs a model error rather than a systematic
+  mismatch. It is a one-line gap in an otherwise consistent policy.
+- **The prompt suite leans permissive.** The only precedent in the base `prompts/verdict.md`
+  teaches SUPPORTED from thin evidence and is followed by "Do not act like a pedantic computer",
+  under a SYSTEM line reading "NEVER 'supported' without a passage that directly supports it". The
+  REFUTED precedent teaches good evidence using an invented statute — in an engine whose first
+  rule is source-or-die. `prompts/score.md` carries the matching asymmetry.
+- **FX rounding.** `round()` is banker's rounding on money: 13 of 400,000 scanned amounts disagree
+  with exact `Decimal` ROUND_HALF_UP by 1 penny, and 5 disagree on operand order alone. The USD
+  rung ladder is positional rather than converted, so the implied rate per rung spreads 12.00%
+  against a declared 1.34980, and `usd_rungs` has 7 entries against 5 `rungs` with nothing
+  validating the two lengths against each other. Bounded: `comparables.rung_adjust_enabled` is
+  off, so none of it moves a price today. The ladder spread is live regardless.
+
+### 10.10 Checked and found correct
+
+Reporting only defects makes a review unfalsifiable. These were attacked and held.
+
+- `config._validate_weights` enforces axis membership, non-negativity and sum-to-1.0 within 1e-6,
+  fails loudly at startup, and correctly refused three deliberately-bad blocks. Live weights sum
+  to exactly 1 in rational arithmetic.
+- `health._claim_probe` under concurrency is correct: `fcntl.flock` on a dedicated lock file makes
+  load-decide-write atomic machine-wide, with the thread lock kept as a fast path. `_save` writes
+  to a temp file and `Path.replace()`s, so a reader outside the lock cannot see a partial file.
+- **The trusted/provisional fence holds.** One provisional check taints the whole dossier, and
+  `make_operator` stamps the tier name on the single-tier case so a bare `operator: minimax` cannot
+  rule as trusted. Neither reviewer could construct a path where an untrusted brain publishes. A
+  suspected thread-local trust leak in `FallbackOperator._served` was investigated and **refuted**:
+  the only `ThreadPoolExecutor` in `verify.py` submits retrieval, not verdicts.
+- `run_check`'s error path is the correct pattern and is the reference the two fixes above copy.
+- The empty-rationale guard is exemplary — it treats a well-formed reply with a blank argument as
+  a failed call, and was justified with a real measurement before shipping.
+- `errors.classify_exhaustion` matches HTTP codes on word boundaries with PERMANENT winning ties.
+- `prescreen` fails open by design and says so; `llm_called` keeps the cost visible.
+- `pricing._band_index` is non-decreasing in source count by construction, and `_usable_bands`
+  validates length against rungs with loud logging — which is exactly what `usd_rungs` lacks.
+- `lane_yield`'s shrinkage is dimensionally correct and refuses to divide when the global mean is
+  non-positive; the largest-remainder apportionment is the right choice and is correctly stated.
+- **`round(..., 4)` in `score.composite` is correct to keep.** The composite lattice is 46,656
+  vectors → 101 distinct exact values, smallest gap 0.05. At every *live* bar there are zero
+  float-vs-rational disagreements with or without the round; at one comment-only bar the unrounded
+  sum misclassifies 5 vectors reading `3.1999999999999997`. 1,198 vectors land exactly on the 2.5
+  bar, so the knife-edge is real and is currently handled. The mathematician's first conclusion
+  here was refuted by their own second angle and then re-established only for a non-live bar —
+  recorded because that is the process working, not a wobble.
+
+### 10.11 What is fixed, and what is not
+
+Fixed in this change, each mutation-proved:
+
+| Finding | Change |
+|---|---|
+| [10.2a](#102-the-class-a-components-own-failure-written-as-a-finding-about-the-idea) | `AdversarialResult.retrieval_failed`; the consumer defers on `adversarial_unrun` |
+| [10.2b](#102-the-class-a-components-own-failure-written-as-a-finding-about-the-idea) | `build_dossier` reads `score.score_failed` and defers on `score_failed` |
+| [10.3](#103-one-source-cited-three-times-scored-as-three-sources--confirmed-fixed) | citations deduplicated in `run_check` and in `_calc_confidence` |
+
+Not fixed, deliberately, and each needs a decision rather than a patch:
+[10.4](#104-a-deliberate-non-fix-family_gates--confirmed-not-fixed-and-this-is-the-decision) and
+[10.5](#105-the-denial-list-cites-a-paper-that-describes-a-different-mechanism--confirmed) are one
+question — whether the denial list stays at all;
+[10.6](#106-two-numbers-the-engine-is-not-entitled-to-claim--confirmed) is a claim to stop making
+until the fixture grows; [10.7](#107-order-dependence-in-dedup--confirmed) through
+[10.9](#109-lower-severity-confirmed-not-fixed) are ordinary work, ranked in that order.
+
+### 10.12 What neither reviewer could measure
+
+Neither could state a production **incidence** for any of this. There is no verdict corpus
+reachable from the engine's own store: `store/dossiers/` holds 14 lint receipts and no dossiers,
+and the canonical store's dossier directory is empty. Every finding above is therefore a statement
+about the function, not about the catalogue. That is a fact about where the corpus lives, which is
+already a known defect and is with the platform engineer.
