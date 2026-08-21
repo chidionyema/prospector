@@ -45,18 +45,28 @@ def test_console_tool_registry_has_no_drift():
     registered = {t["path"] for t in api.TOOLS}
     classified = registered | set(api.NOT_AN_OPS_TOOL)
 
+    # ONE assert, three directions. This was three sequential asserts until 2026-08-21, and the
+    # first one to fire hid the other two: CI on integrate/2026-08-20-final-3 reported only the
+    # unregistered file, so fixing that traded one red for the next red, a full CI cycle later.
+    # A grader that stops at its first finding under-reports by design.
+    problems = []
+
     unclassified = sorted(on_disk - classified)
-    assert not unclassified, (
-        "these tools are on disk but in neither TOOLS nor NOT_AN_OPS_TOOL, so the operator "
-        "cannot see them and cannot be told why:\n  " + "\n  ".join(unclassified)
-    )
+    if unclassified:
+        problems.append(
+            "these tools are on disk but in neither TOOLS nor NOT_AN_OPS_TOOL, so the operator "
+            "cannot see them and cannot be told why:\n  " + "\n  ".join(unclassified))
 
     # The other direction: an excuse for a file that no longer exists is rot of its own.
     stale = sorted(p for p in api.NOT_AN_OPS_TOOL if not (root / p).exists())
-    assert not stale, "NOT_AN_OPS_TOOL names files that are gone:\n  " + "\n  ".join(stale)
+    if stale:
+        problems.append("NOT_AN_OPS_TOOL names files that are gone:\n  " + "\n  ".join(stale))
 
     overlap = sorted(registered & set(api.NOT_AN_OPS_TOOL))
-    assert not overlap, "these are both a button and excluded:\n  " + "\n  ".join(overlap)
+    if overlap:
+        problems.append("these are both a button and excluded:\n  " + "\n  ".join(overlap))
+
+    assert not problems, "\n\n".join(problems)
 
 
 def test_every_excluded_tool_gives_a_reason():

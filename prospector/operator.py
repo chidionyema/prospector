@@ -1402,6 +1402,13 @@ class OllamaOperator(Operator):
         return content
 
 
+#: Sent by `OpenAICompatibleOperator` on every call. It exists because urllib's default
+#: (`Python-urllib/3.x`) is refused with 403 by the bot filters in front of several providers —
+#: measured against Groq on 2026-08-21. Keep it a plain, honest product identifier: this is not
+#: an attempt to look like a browser, it is the engine saying which client it is.
+_OPENAI_COMPAT_UA = "prospector/1.0 (+https://github.com/chidionyema/prospector)"
+
+
 class OpenAICompatibleOperator(Operator):
     """One provider declared in `config.yaml providers:`, spoken to over OpenAI-compatible HTTP.
 
@@ -1464,7 +1471,18 @@ class OpenAICompatibleOperator(Operator):
             f"{self.base_url}/chat/completions",
             data=body,
             headers={"Content-Type": "application/json",
-                     "Authorization": f"Bearer {self._key}"},
+                     "Authorization": f"Bearer {self._key}",
+                     # WHY THIS HEADER IS NOT OPTIONAL. Without it urllib sends
+                     # `User-Agent: Python-urllib/3.x`, and the bot filters in front of several
+                     # providers refuse that string outright. Measured against Groq on
+                     # 2026-08-21, same key, same body, same endpoint, one header apart:
+                     #     curl's own User-Agent  -> HTTP 200
+                     #     Python-urllib/3.11     -> HTTP 403 Forbidden
+                     # A 403 reads as a bad key, so the failure sends whoever meets it to
+                     # re-issue a credential that was fine. It is also invisible until a
+                     # DECLARED provider is actually used, which is why it survived: the
+                     # built-in tiers do not come through this adapter.
+                     "User-Agent": _OPENAI_COMPAT_UA},
             method="POST",
         )
         try:
@@ -2072,7 +2090,7 @@ def make_operator(cfg, fast: bool = False, component: str | None = "moat") -> Op
     if r0 is not None:
         try:
             from .claude_cli import configure_concurrency as _claude_conc
-            _claude_conc(int(getattr(r0, "claude_concurrency", 2) or 2))
+            _claude_conc(int(getattr(r0, "claude_concurrency", 1) or 1))
         except Exception:
             pass
     from .telemetry import logger
