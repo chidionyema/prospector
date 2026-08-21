@@ -247,13 +247,13 @@ guideline: every long verb streams progress or it is not finished.
 
 ## 4. The twelve components
 
-Ordered by the slice that needs them. **Every path in the File column is a file to be BUILT — none
-of them exist yet**, and the slice that creates each one is named in §5. "Done when" is always a
+Ordered by the slice that needs them. **A path in the File column with no waiver comment is BUILT and on main; the rest are
+still to be built**, and the slice that creates each one is named in §5. "Done when" is always a
 drill that goes green, never a file that exists.
 
 | C | Component | File | Done when |
 |---|-----------|------|-----------|
-| C1 | **Plan compiler** | `kit/migrate/plan.py` | It compiles a plan from a real probe report, and a test proves every found resource is either in a step or in `skipped` with a reason. Refuses a plan whose adapter cannot honour a verb, rather than finding out at minute 20. |  <!-- doc-lint-ok: the File column names what slice S1 builds; the path is the deliverable, not a claim it is there -->
+| C1 | **Plan compiler** | `kit/migrate/plan.py` | It compiles a plan from a real probe report, and a test proves every found resource is either in a step or in `skipped` with a reason. Refuses a plan whose adapter cannot honour a verb, rather than finding out at minute 20. |
 | C2 | **Runner** | `kit/migrate/run.py` | It executes a plan, honours `needs`, resumes with `--from-step`, rolls back on a failed `verify`, and emits an event per transition. |  <!-- doc-lint-ok: the File column names what slice S1 builds; the path is the deliverable, not a claim it is there -->
 | C3 | **Class adapter: compute** | `kit/classes/compute.sh` | It wraps the existing `deploy/cutover.sh` unchanged. Proves the contract fits what already works before six more are written to it. |  <!-- doc-lint-ok: the File column names what slice S1 builds; the path is the deliverable, not a claim it is there -->
 | C4 | **Console page + live progress** | `prospector/ops/migration_view.py` | A page picks a project and a target, starts a run, shows a bar per step and the clock, and offers rollback. |  <!-- doc-lint-ok: the File column names what slice S1 builds; the path is the deliverable, not a claim it is there -->
@@ -262,9 +262,9 @@ drill that goes green, never a file that exists.
 | C7 | **Class adapter: datastore** | `kit/classes/datastore.sh` | Engine store via `store_migrate.py`; storefront via `pg_dump`/`pg_restore` per the D6 ruling. Row counts equal at both ends. |  <!-- doc-lint-ok: the File column names what slice S3 builds; the path is the deliverable, not a claim it is there -->
 | C8 | **Class adapters: DNS + TLS** | `kit/classes/{dns,tls}.sh` | Health-gated flip with the TTL pre-lowered, and a rollback that flips back. Includes the DNS-01 path through the registrar, which is what G3 needs and no platform supplies. |  <!-- doc-lint-ok: the File column names what slice S4 builds; the path is the deliverable, not a claim it is there -->
 | C9 | **Class adapters: the rest** | `kit/classes/{scheduled_job,log_sink,object_storage,payment_integration}.sh` | The probe's diff at both ends is empty — clause A2. `payment_integration` is a **re-point**, not a move. |  <!-- doc-lint-ok: the File column names what slice S6 builds; the path is the deliverable, not a claim it is there -->
-| C10 | **Project declaration + validator** | `kit/projects/schema.py`, `kit/projects/prospector.yaml` | A declaration is validated before a run starts, and a missing block fails at second 0 with the name of what is missing. This is the A7 seam. |  <!-- doc-lint-ok: the File column names what slice S1 builds; the path is the deliverable, not a claim it is there -->
+| C10 | **Project declaration + validator** | `kit/projects/schema.py`, `kit/projects/prospector.yaml` | A declaration is validated before a run starts, and a missing block fails at second 0 with the name of what is missing. This is the A7 seam. |
 | C11 | **The sell-path prober** | `kit/verify/can_we_sell.py` | It completes a test-mode purchase against a named base URL and asserts the catalogue row and the webhook delivery that follow. Red until all of DNS, TLS, storefront, API, database and payments point at the target. |  <!-- doc-lint-ok: the File column names what slice S5 builds; the path is the deliverable, not a claim it is there -->
-| C12 | **The names lift, and the test that holds it** | `kit/` tree + `tests/unit/test_kit_names_no_product.py` | Every name in the table at §2.1 has moved into a declaration, and the test fails on any product name appearing under `kit/`. Clause A5 becomes mechanical instead of a promise. |  <!-- doc-lint-ok: the File column names what slice S1 builds; the path is the deliverable, not a claim it is there -->
+| C12 | **The names lift, and the test that holds it** | `kit/` tree + `tests/unit/test_kit_names_no_product.py` | Every name in the table at §2.1 has moved into a declaration, and the test fails on any product name appearing under `kit/`. Clause A5 becomes mechanical instead of a promise. |
 
 ## 5. Delivery order — six slices, each one provable
 
