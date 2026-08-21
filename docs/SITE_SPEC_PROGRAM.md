@@ -77,7 +77,7 @@ introduced twice" below. |
 | 6.7 | Catalogue & intent search | P1 | ❌ not started | Skills-picker not yet merged into a single intent input. |
 | 6.8 | Pack pages & /sample | P2 | ❌ not started | Standard defined, next pass. |
 | 7 | Performance & transitions | P2 | 🟡 partial | **View transitions are shipped**, not "not started": `@view-transition { navigation: auto }` (`globals.css:575`), a 0.16s root cross-fade (`:584`), per-card shared elements via `viewTransitionName` (`PackMark.tsx:65`, name minted by `lib/packMark.ts:132` with a `pm-` prefix because the value is a CSS custom-ident), and reduced-motion coverage for the pseudo-tree (`:596`). `site_spec_probe.py --section 7`. **Unmeasured:** LCP <1.2s — no number has been taken, so that half is neither done nor failing, it is unknown, and the row stays 🟡 until someone measures it. |
-| 12 | "Run your idea through the engine" — the vetting desk | P1 | ❌ not started | Founder 2026-08-21, "killer featuure", registered users only. Spec §12 below. **Blocked on one thing:** the MiniMax adapter emits no `cost_usd`, so `spend.daily_cap_usd` caps only the Claude fallback — no public write path may ship until it does. [`REQUIREMENTS.md`](REQUIREMENTS.md) R12. |
+| 12 | "Run your idea through the engine" — the vetting desk | P1 | ❌ not started | Founder 2026-08-21, "killer featuure", registered users only. Spec §12 below. Not blocked: the cost claim that read as a blocker was withdrawn the same day — see §12.6. [`REQUIREMENTS.md`](REQUIREMENTS.md) R12. |
 
 ### The spec contradicted itself once — resolved
 
@@ -2132,43 +2132,54 @@ result.
 `verify.py:365` / `:693` exists to prevent inside the engine — a failed call DEFERS, it never
 contributes an `unverifiable` to a gate — and a public page is not allowed to undo it.
 
-### 12.6 The money rail, and the one thing that blocks the whole feature
+### 12.6 The money rail
 
-**Cost per vet is UNOBTAINABLE today, and that is a defect rather than a gap in the research.**
+**Correction, 2026-08-21, same day it was written.** This section first said the MiniMax adapter
+emits no cost row, therefore `spend.daily_cap_usd` caps only the `claude_cli` fallback, therefore
+no public write path could ship until an adapter fix landed. **That was false and the blocker is
+withdrawn.** It is kept here rather than deleted because the way it was wrong is the useful part.
 
-Measured 2026-08-21 against `/Users/chidionyema/Documents/code/prospector/store/prospector.jsonl`
-(528 rows): 39 rows carry a `cost_usd`, totalling $2.2455 — $0.0576 per priced **call**, and a
-full vet is up to seven checks. **But that number prices the wrong brain.** Two angles that fail
-differently and agree: every one of the 39 priced rows names `claude`, none names `minimax`; and
-of the 241 latency rows, 78 name `claude`, 5 name `minimax`, 1 `deepseek` — so MiniMax calls do
-happen and not one of them is priced. Third angle: `store/dossiers/` in that store holds 0 files,
-so there is no per-run figure to recover either.
+The chain, each link confirmed on disk:
 
-MiniMax **leads** and rules finally (`config.yaml:58`, `config.yaml:81`). `claude_cli` is the
-fallback. **The cost meter prices only the fallback.**
+- the daily cap enforces rows tagged `event: "spend"`, summing `amount_usd` — `scheduler/guard.py:315`,
+  with the two accumulators spelled out in the docstring at `:271`. It deliberately does **not**
+  enforce `cost_usd` rows: those are the subscription leg, the Claude Code CLI's own
+  `total_cost_usd`, in the file's own words "API-equivalent, not invoiced";
+- MiniMax is priced — `telemetry.py:189`, `minimax` and `minimax_m27` both at $0.30/$0.30;
+- its adapter passes real token counts — `MiniMaxOperator._raw_once` calls `record_usage(...)` with
+  `prompt_tokens` / `completion_tokens` off the stream's usage block, `operator.py:896`;
+- `record_usage` emits `event: "spend"` with an `amount_usd` whenever cost is above zero,
+  `telemetry.py:305`.
 
-The consequence decides the order of work. `spend.daily_cap_usd` is read off that same ledger,
-so **today's daily cap is a cap on the Claude fallback only** — while MiniMax leads, spend runs
-without the counter moving. Give a public endpoint that cap and you have given it no cap at all,
-and a viral front page and a denial-of-wallet attack become not merely indistinguishable but
-both invisible.
+**So MiniMax already emits a metered row and is already inside the cap.** There is no adapter fix
+and nothing here blocks this feature.
 
-**Therefore: the MiniMax adapter must emit a cost row before any public write path ships.** It
-is small and it is in one adapter. Until it exists, no budget rail on this estate can be
-trusted — this feature's or the daemon's. It is also the LAW 14 answer to "is this operational
-cost or one-off": you cannot classify a cost you cannot measure.
+**How the false version was reached, because the same trap is one grep away from anyone.** Three
+angles were offered for it — priced rows all naming `claude`, latency rows split 78/5, an empty
+`store/dossiers/` — and all three were counts of the same file. Two greps of one ledger cannot
+disagree with each other. The second instrument had to be the code that *reads* the ledger, and
+that code is the thing that says the two buckets are separate and only one of them is the cap.
 
-Then, and only then:
+**What is actually true, and it is smaller.** Measured 2026-08-21 on
+`/Users/chidionyema/Documents/code/prospector/store/prospector.jsonl`, 528 rows: **0 metered rows
+totalling $0.0000**, 39 subscription rows totalling $2.2455, and `store/dossiers/` holds 0 files.
+So **cost per vet is unobtainable from this store, because this store carries no priced run** —
+that is a statement about one nearly-empty local store, not about the engine. Production runs in
+the `prospector-engine` Fly app, and the real figure has to be measured where that writes. Until
+someone does, this spec carries no per-vet number, and a rail sized from a guess is not a rail.
 
-- **its own sub-cap and its own ledger key**, never the catalogue's. The catalogue is the
-  business; a stranger's vet is marketing, and marketing sheds first;
+**The rails that stand, none of which depended on the withdrawn claim:**
+
+- **registered users only** — the founder's ruling, 2026-08-21: *"only for registered uers i nust
+  say"*. One free run per browser would have been a speed bump, because a browser is free to make
+  and an attacker makes thousands. Registration is the identity gate;
+- **its own sub-cap and its own ledger key.** Registration bounds *who*, not *how many*, and a
+  public path on the shared `daily_cap_usd` competes with the catalogue for the same allowance.
+  The catalogue is the business; a stranger's vet is marketing;
 - **the public path sheds FIRST as the cap is approached**, so a busy desk can never starve the
   daemon;
-- **registered users only** — the founder's ruling, 2026-08-21. That is what makes the identity
-  side of the rail real: one free run per browser would have been a speed bump, because a
-  browser is free to make and an attacker makes thousands. Registration is the gate; the spend
-  sub-cap is the second rail behind it, because spend is the axis the damage is actually
-  measured in.
+- **a cheap `prescreen.py` pass before any moat call**, which is what bounds one registered user
+  pasting the same idea forty times.
 
 ### 12.7 What is not decided yet
 
