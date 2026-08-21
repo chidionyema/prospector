@@ -167,6 +167,7 @@ jobs:
       dotnet: ${{ steps.filter.outputs.dotnet }}
       web: ${{ steps.filter.outputs.web }}
       console: ${{ steps.filter.outputs.console }}
+      rust: ${{ steps.filter.outputs.rust }}
     steps:
       # ─── THE "MAIN COMES FIRST" GATE WAS REMOVED HERE ON 2026-08-20 ───────────────
       #
@@ -252,7 +253,7 @@ jobs:
           # ops-console job reported `skipped`. Nothing typechecked the console, and the run was
           # green. That is the same defect the Ops.Console rule at the bottom of this block was
           # added to fix in the first place, arriving by a different door.
-          py=false; dn=false; wb=false; cn=false
+          py=false; dn=false; wb=false; cn=false; rs=false
 
           # Python: engine sources, tests, deps, and the config/prompt files the engine reads.
           if match '\.py$|^requirements|^pytest\.ini$|^config\.yaml$|^prompts/|^tests/|^scripts/'; then py=true; fi
@@ -266,6 +267,12 @@ jobs:
           # console reported `nextjs skipping` and shipped with nothing typechecked. PR #289
           # changed `Ops.Console/src/pages/shelf.tsx` and CI produced no console result at all.
           if match '^store_platform/src/Ops\.Console/'; then cn=true; fi
+
+          # The Rust engine. Its own tree, its own toolchain, and no Python in it — so the
+          # python filter above cannot see it and would report `rust skipping` on a diff that
+          # is entirely Rust. That is the same hole the Ops.Console rule above was added to
+          # close, and it is worth stating once per lane rather than learning once per lane.
+          if match '^engine-rs/'; then rs=true; fi
 
           # A change to the pipeline itself used to run EVERY lane. The reasoning was that a
           # broken workflow gates itself out of the jobs that would catch it, and that part is
@@ -287,6 +294,7 @@ jobs:
             if names 'dotnet|Store\.(Api|Catalog|Tests)|\.cs\b|csproj'; then dn=true; fi
             if names 'nextjs|Store\.Web'; then wb=true; fi
             if names 'ops-console|Ops\.Console'; then cn=true; fi
+            if names 'rust|engine-rs'; then rs=true; fi
           fi
 
           {
@@ -294,6 +302,7 @@ jobs:
             echo "dotnet=$dn"
             echo "web=$wb"
             echo "console=$cn"
+            echo "rust=$rs"
           } >> "$GITHUB_OUTPUT"
 
       - name: What will run
@@ -302,6 +311,7 @@ jobs:
           echo "dotnet=${{ steps.filter.outputs.dotnet }}"
           echo "web=${{ steps.filter.outputs.web }}"
           echo "console=${{ steps.filter.outputs.console }}"
+          echo "rust=${{ steps.filter.outputs.rust }}"
 
   # ──────────────────────────────────────────────────────────────────
   # Guard — protected files (money rail, moat, identity) cannot be
@@ -1282,8 +1292,74 @@ jobs:
   # cancelled. A skipped job is a pass here, which is exactly what "that area was
   # not touched" means.
   # ──────────────────────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────────
+  # Rust — the engine rewrite. Four gates, cheapest first, so a
+  # formatting slip fails in seconds instead of after a full build.
+  # ──────────────────────────────────────────────────────────────────
+  rust:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ${{ vars.CI_HEAVY_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: engine-rs
+    # WIDTH, DECLARED AND ENFORCED. ops/config/ci_capacity.yaml says this job is 3 processes
+    # wide, and `scripts/ci_capacity.py` can only read a width off a `pytest -n N`, which this
+    # job does not run. So the number is made true here instead of trusted: cargo would
+    # otherwise default both its build jobs and its test threads to the machine's CPU count,
+    # which is 4, and the contract would be wrong by one CPU with nothing able to see it.
+    env:
+      CARGO_BUILD_JOBS: "3"
+      RUST_TEST_THREADS: "3"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # No toolchain is named here on purpose. engine-rs/rust-toolchain.toml pins the exact
+      # version, and rustup honours it, so CI and every laptop compile the same code with the
+      # same lints. Naming a version here as well would give two sources of truth that drift
+      # apart silently — the build would keep passing while grading something else.
+      - name: Show the pinned toolchain
+        run: |
+          rustup show active-toolchain
+          cargo --version && rustc --version && cargo clippy --version
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            engine-rs/target
+          key: rust-${{ runner.os }}-${{ hashFiles('engine-rs/Cargo.lock', 'engine-rs/rust-toolchain.toml') }}
+          restore-keys: rust-${{ runner.os }}-
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      # -D warnings is what makes the [workspace.lints] block a gate rather than advice.
+      # Without it clippy prints and exits 0, and the whole lint stack becomes decoration.
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: Tests
+        run: cargo test --workspace --all-features
+
+      # cargo-audit answers "is a dependency known-vulnerable"; cargo-deny answers "may we
+      # legally ship it, is it banned, did it come from crates.io". Different questions, and
+      # a green audit says nothing about a licence.
+      - name: Install supply-chain tools
+        run: |
+          cargo install cargo-audit cargo-deny --locked
+
+      - name: Audit dependencies
+        run: cargo audit
+
+      - name: Supply-chain policy
+        run: cargo deny --all-features check
+
   ci-ok:
-    needs: [changes, guard, python, engine, dotnet, nextjs, ops-console]
+    needs: [changes, guard, python, engine, dotnet, nextjs, ops-console, rust]
     if: always()
     runs-on: ${{ vars.CI_LIGHT_RUNS_ON || vars.CI_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 5

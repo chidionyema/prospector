@@ -41,6 +41,11 @@ box:
 job_cpus:
   python: 4
   engine: 3
+  # 3, and ci.yml pins CARGO_BUILD_JOBS and RUST_TEST_THREADS to 3 to make it true.
+  # cargo defaults both to the CPU count, so left alone this job is 4 wide and this
+  # line would be a number nobody could check: ci_capacity.py reads widths off
+  # `pytest -n N` and there is no pytest in the rust lane.
+  rust: 3
   dotnet: 1
   nextjs: 1
   ops-console: 1
@@ -103,7 +108,7 @@ pools:
     # `fly` at 12:01 on 2026-08-19; this file has to agree or scripts/ci_capacity.py fails
     # the guard job on every branch.
     label: fly
-    jobs: [python, engine, dotnet]
+    jobs: [python, engine, dotnet, rust]
   # Short jobs: a checkout, a doc lint, a shell loop over already-computed results. They must
   # never wait behind a suite -- `ci-ok` queueing behind a 24-minute python job is what left runs
   # reading `queued` after every job in them had finished.
