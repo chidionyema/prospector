@@ -16,6 +16,7 @@ in section 13. That file stays as the record of what was decided a day earlier a
 | [0009](decisions/0009-strangler-sequencing.md) | Build it as a strangler; the golden set is the oracle |
 | [0010](decisions/0010-the-pack-is-an-ir.md) | The pack is a typed IR compiled to views; two arms of support, not three |
 | [0011](decisions/0011-sourceref-is-minted-by-the-fetch-path.md) | A SourceRef can only be minted by the fetch path, never by a model |
+| [0012](decisions/0012-the-test-ladder.md) | Tests are written on a ladder, cheapest rung first; the suite shrinks when the engine is rewritten |
 
 **What this document is not.** It is not a plan with dates, and it is not permission to start. The
 sequencing in section 12 is the order things must happen in if they happen; each step is a separate
@@ -538,3 +539,52 @@ overstating it would cost a real guard. Schema mode guarantees the tokens confor
 does not stop a model emitting a `SourceRef` to a URL it never fetched, or a `Decimal` that appears
 in no passage. It would retire `json_repair` Strategy 5 (`prospector/operator.py:203,255`) and
 nothing more. The guard that closes the remaining gap is ADR 0011.
+
+---
+
+## 15. The test suite the redesign inherits
+
+Full reasoning and the measurements in [ADR 0012](decisions/0012-the-test-ladder.md). Section 8
+says what to instrument. This says what to test, and what to stop testing.
+
+The suite has **8,303 tests in 543 files**, and **444 of those files (82%) are under
+`tests/unit/`**. Most of them assert the shape of the orchestration that ADR 0004 replaces. They do
+not survive the redesign, and rewriting them against the new shape would cost more than the
+redesign.
+
+The four incident tests worth keeping unchanged are the ones that assert a rule rather than a
+call: legality polarity, latin-1 fonts, HTTP word boundaries, CPU-time budgets. They cost nothing
+to keep.
+
+**Always use the cheapest rung that can express the guarantee.**
+
+1. **Types** — the failure becomes unrepresentable. Zero tests. This is where ADR 0010 and 0011
+   already put the pack layer.
+2. **Property tests** — one test, thousands of cases, and it survives the rewrite because it
+   describes behaviour rather than structure. `hypothesis` to `proptest` is near-mechanical, which
+   matters when the kernel moves to Rust.
+3. **Differential replay** — for any rewrite the oracle is the current implementation. This is the
+   same free oracle section 12 already leans on for the strangler, and its precondition is naming:
+   the 3,608-dossier corpus is on the live volume and in R2, not in this checkout.
+4. **Incident tests** — one per real bug, named for the bug.
+5. **Evals with deterministic graders** — for probabilistic output, prefer a mechanical grader over
+   a model's opinion. This one is load-bearing here and not a style preference: grading a verdict
+   with a model's judgement re-admits prior knowledge, which is the exact invariant the engine
+   exists to protect. Six graders that need no judge: does the cited passage contain the claim,
+   did the fetched URLs resolve, does every figure carry a `SourceRef`, did kill-fast stop at the
+   first refuted check, did cost stay inside the lease, does the golden set still agree.
+6. **LLM-as-judge** — subjective quality only. Sampled, reported, never blocking.
+7. **Production oracles** — deploy-verify with rollback, health checks, canaries, alerts. Already
+   built.
+
+**The seven properties** this engine wants are listed in ADR 0012. They are not written yet.
+
+**What the engine deletes:** example-based unit tests of orchestration, tests named for a function
+rather than a rule, mocks of our own internals, and anything self-healing. A test that rewrites
+itself to match new code always agrees, which removes the oracle — and with agents writing the code
+as well, that is a closed loop with no external check.
+
+**Order.** Adopt the policy, write the properties, build the differential harness, formalise the
+golden set, then prune. Pruning first would remove cover with nothing underneath it: the estate has
+**0** `hypothesis` properties, **0** tests named `test_incident_*`, and **1** `proptest!` block
+today.
