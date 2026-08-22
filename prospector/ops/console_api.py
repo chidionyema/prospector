@@ -4071,6 +4071,13 @@ NOT_AN_OPS_TOOL: dict[str, str] = {
     "scripts/seed_action_cache.sh": "fills the self-hosted runners' action cache; CI plumbing, "
                                     "run once on the runner box, not from an ops page",
     "scripts/setup_worktree.sh": "makes a git worktree usable; a developer's machine, not ops",
+    "scripts/retrieval_parity.py": "grades the Rust retrieval port against the Python "
+                                  "it replaces by fetching live pages in both. It needs "
+                                  "the open web and a release-built Rust binary, and it "
+                                  "is deliberately not a CI lane: a check that fails when "
+                                  "gov.uk is slow teaches everyone to ignore it. A "
+                                  "migration-time developer tool, like the parity check "
+                                  "above it",
     "scripts/dual_write_parity.py": "grades the Postgres shadow against the SQLite store "
                                     "during the engine rewrite. It needs a psql binary, a "
                                     "readable SQLite file and a route to Postgres, and the "
