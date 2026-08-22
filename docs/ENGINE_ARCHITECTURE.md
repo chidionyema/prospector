@@ -14,6 +14,8 @@ in section 13. That file stays as the record of what was decided a day earlier a
 | [0007](decisions/0007-spend-is-a-leased-budget.md) | Spend is a leased budget, not a checked ceiling |
 | [0008](decisions/0008-shared-content-addressed-fetch-cache.md) | The fetch cache is shared and content-addressed |
 | [0009](decisions/0009-strangler-sequencing.md) | Build it as a strangler; the golden set is the oracle |
+| [0010](decisions/0010-the-pack-is-an-ir.md) | The pack is a typed IR compiled to views; two arms of support, not three |
+| [0011](decisions/0011-sourceref-is-minted-by-the-fetch-path.md) | A SourceRef can only be minted by the fetch path, never by a model |
 
 **What this document is not.** It is not a plan with dates, and it is not permission to start. The
 sequencing in section 12 is the order things must happen in if they happen; each step is a separate
@@ -469,3 +471,70 @@ changed:
 
 Unchanged from that spec: the API stays .NET; the ops console is not rewritten; embeddings run on
 CPU; Typst for packs; scope is the hot path.
+
+---
+
+## 14. The pack layer: an IR compiled to views
+
+The buyer-facing pack is a separate layer with its own decisions, recorded in
+[ADR 0010](decisions/0010-the-pack-is-an-ir.md) and [ADR 0011](decisions/0011-sourceref-is-minted-by-the-fetch-path.md).
+`docs/PACK_NARRATIVE_PROGRAM.md` owns what the pack *says*; this owns what it *is*.
+
+**One structure, several views.** The pack is a typed value — sections, claims, figures, citations —
+and PDF, HTML, CSV and JSON are pure functions of it. Not prose generated then repaired.
+
+```rust
+pub enum Support { Cited(SourceRef), Unverifiable }     // two arms, and only two
+
+pub struct Figure {
+    label: String,
+    value: Decimal,      // research figures are exact; see below on price
+    unit: Unit,
+    as_of: NaiveDate,
+    source: SourceRef,   // no constructor path exists without one
+}
+```
+
+**Two arms, not three.** A proposed `Support::VerifiedFact` — true because the model knows it — is
+refused. It re-admits prior knowledge into a system whose founding invariant is
+verdict-from-retrieval-only, and it fails in the same shape as the legality polarity bug: a
+reasonable-looking addition that inverts the rule the type was built to enforce. Cited or
+Unverifiable.
+
+**`Unverifiable` is not a configurable blocker.** The same proposal wrote
+`Unverifiable // triggers an explicit listing blocker if unallowed`. "If unallowed" is the fence
+being smuggled back in as a switch someone can leave off, which is the exact history of programme
+doc section 33. Making an unsourced figure unrepresentable is what retires that switch.
+
+**But the section 33 fence stays post-hoc for the VERDICT, and that asymmetry is deliberate.**
+`prospector/models.py:318-327` records why: `untraceable_figures` is observed only and must never
+demote a verdict, because an absent number is *our* extraction failure and `kill_filter` can hard
+fail on an `unverifiable` hard gate — demoting there would let our own bug kill a sound idea. So the
+rule is: **a figure that cannot cite cannot be built into a pack; a figure that cannot cite must not
+kill a candidate.** Two layers, two rules, and conflating them is a regression either way.
+
+**Decimal for research figures. Price is already exact.** `prospector/pricing.py:64` holds
+`price_pence: int`, so the money rail has never had a float. The exposure is in figures a buyer can
+check — growth rates, market sizes, inflation assumptions — and those get `Decimal`.
+
+**What ships in the box.** Beyond today's per-file `sha256`
+(`prospector/pack_manifest.py:253,269`), two additions:
+
+1. **A manifest hash over the whole set.** `prospector/bridge.py:1484` hashes the zip and uses it as
+   the R2 key, but a zip digest moves with compression and entry order. A digest over the sorted
+   file list and their content hashes is stable and is what a buyer can quote back.
+2. **The archived source snapshots, as files, under `./sources/`.** Today
+   `prospector/archive.py:471` stores a Wayback memento URL, best-effort inside a blanket except,
+   and the documented worst case is "a pack with no mementos". Shipping the bytes does not depend on
+   archive.org accepting a save, cannot 404 later, and works for pages the Internet Archive will not
+   take. It turns "we cite sources" into "here are the pages, as they existed, dated" — at
+   £2k-£27k a pack that is a product difference, not hygiene.
+
+   **ADR 0008 makes this nearly free**: `fetch_cache.body_key` already puts the fetched bytes in R2
+   before anything is built from them, so the snapshot is a copy, not a second fetch.
+
+**Structured output kills parse failures, not fabrication.** It is worth being exact, because
+overstating it would cost a real guard. Schema mode guarantees the tokens conform to the shape. It
+does not stop a model emitting a `SourceRef` to a URL it never fetched, or a `Decimal` that appears
+in no passage. It would retire `json_repair` Strategy 5 (`prospector/operator.py:203,255`) and
+nothing more. The guard that closes the remaining gap is ADR 0011.
