@@ -1,7 +1,7 @@
 """The reconciler must heal a real drift and refuse everything else.
 
 WHAT IT IS FOR. Production could run a commit main has already reverted, and nothing in the
-estate would have said so: `main-green-guard.yml` reverts with GITHUB_TOKEN, which starts no
+estate would have said so: `main-green-guard.yml` reverted with GITHUB_TOKEN, which starts no
 workflow runs, and a deploy that never happens leaves no failing run for an alert to fire on.
 `scripts/deploy_reconcile.py` is the only thing here that can see an action that did not happen.
 
@@ -218,7 +218,8 @@ def test_it_actually_runs_on_a_clock():
 
 def test_it_runs_when_ci_finishes_on_main():
     """The moment a drift can first be healed is the moment CI concludes green on main — which
-    is exactly the case main-green-guard.yml leaves behind after a revert."""
+    is exactly the case main-green-guard.yml left behind after a revert, until it was deleted
+    on 2026-08-21."""
     wr = _on(_doc()).get("workflow_run") or {}
     assert "CI" in (wr.get("workflows") or []), "not wired to CI finishing"
     assert "main" in (wr.get("branches") or []), "not restricted to main"

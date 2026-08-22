@@ -4,10 +4,14 @@ These pin the 2026-08-19 outage: ten of twelve `prospector-ci` machines sat `sto
 hours, capacity was 2/12, `main`'s CI run queued and never got a machine, and every check in
 the estate graded the fleet as fine because the declared floor was 2.
 
-Two of these tests are guards rather than unit tests. `test_the_keeper_never_runs_on_the_fleet
-_it_heals` and `test_the_floor_that_notices_is_above_the_floor_that_collapsed` fail if someone
-undoes the fix in the obvious, well-meaning way -- by making the workflow match every other
-workflow, or by folding the new floor back onto the old one.
+`test_the_floor_that_notices_is_above_the_floor_that_collapsed` is a guard rather than a unit
+test: it fails if someone undoes the fix in the obvious, well-meaning way, by folding the new
+floor back onto the old one.
+
+The three tests that graded `ci-fleet-keeper.yml` went with that workflow on 2026-08-22. They
+pinned its `vars.HOSTED_RUNNERS_AVAILABLE` gate, which existed because Actions billing refused
+every hosted job on this account; the repository is public now and hosted jobs start. The keeper
+survives as `scripts/ci_fleet_keeper.py`, run from the ops console.
 """
 from __future__ import annotations
 
@@ -120,79 +124,8 @@ def test_a_contract_without_the_key_falls_back_rather_than_crashing(tmp_path):
 
 
 # --------------------------------------------------------------------------- #
-# The two guards
+# The guard on the contract
 # --------------------------------------------------------------------------- #
-def test_the_keeper_never_runs_on_the_fleet_it_heals():
-    """A self-hosted runner cannot start a dead self-hosted fleet.
-
-    Every other workflow here targets the `fly` pool, so making this one match is the obvious
-    tidy-up -- and it would make the keeper unable to run in exactly the situation it exists
-    for: no runner is left to pick the job up.
-
-    The `announce` job is the deliberate exception and runs on the fleet on purpose: it makes no
-    repair, it only says that no repair is happening, so a dead fleet costs it nothing it was
-    going to do anyway.
-    """
-    wf = yaml.safe_load((ROOT / ".github/workflows/ci-fleet-keeper.yml").read_text())
-    assert wf["jobs"]["keep"]["runs-on"] == "ubuntu-latest", (
-        "the keeper must stay on a GitHub-hosted runner; a self-hosted runner cannot start a "
-        "dead self-hosted fleet"
-    )
-    for name, job in wf["jobs"].items():
-        if name == "keep":
-            continue
-        assert "ubuntu-latest" not in str(job["runs-on"]), (
-            f"job {name} does no repair, so it must not sit on the hosted runners this account "
-            "cannot start. Measured 2026-08-20: a hosted job fails at start with a billing "
-            "annotation and zero steps."
-        )
-
-
-def test_the_keeper_is_skipped_and_not_failed_while_hosted_runners_cannot_start():
-    """main is never red. A job that cannot start is a failure like any other.
-
-    This account cannot start a GitHub-hosted job: the keeper's first ever scheduled run
-    (2026-08-20 08:57) ran zero steps, its log 404s, and its only record is the annotation
-    "The job was not started because recent account payments have failed or your spending limit
-    needs to be increased". Hourly, that paints main red for ever, and no code change fixes it
-    because the fix is a payment.
-
-    So the repair job waits behind a variable the founder sets, and the announcement job carries
-    the reason on every tick. If somebody deletes the switch before billing is fixed, this fails
-    and says why rather than letting the hourly red come back.
-    """
-    wf = yaml.safe_load((ROOT / ".github/workflows/ci-fleet-keeper.yml").read_text())
-    keep, announce = wf["jobs"]["keep"], wf["jobs"]["announce"]
-    assert keep["if"] == "vars.HOSTED_RUNNERS_AVAILABLE == 'yes'", (
-        "the repair job must be gated on the variable, or its run fails at start and main is red"
-    )
-    assert announce["if"] == "vars.HOSTED_RUNNERS_AVAILABLE != 'yes'", (
-        "the two conditions must be exact opposites, or a tick either says nothing or says both"
-    )
-    body = " ".join(
-        str(step.get("run", "")) for step in announce["steps"]
-    )
-    assert "GITHUB_STEP_SUMMARY" in body, "an alarm nobody can read is not an alarm"
-    assert "HOSTED_RUNNERS_AVAILABLE" in body, (
-        "the announcement must name the switch that turns the keeper back on; a message that "
-        "reports a problem without naming the fix is how a loop stays in the dark"
-    )
-
-
-def test_the_workflow_has_a_trigger_github_will_actually_honour():
-    """`on:` is the boolean True under YAML 1.1, and a webhook name is not a trigger.
-
-    `.github/workflows/ci-autoscale.yml` used `on: workflow_job`, which GitHub rejects outright:
-    35 of its 40 runs were push startup-failures with zero jobs, so it never executed a single
-    step and nothing anywhere was red. A workflow GitHub cannot start reports nothing.
-    """
-    doc = yaml.safe_load((ROOT / ".github/workflows/ci-fleet-keeper.yml").read_text())
-    triggers = doc.get("on", doc.get(True))
-    assert set(triggers) <= {"schedule", "workflow_dispatch", "push", "pull_request",
-                             "workflow_call"}
-    assert "schedule" in triggers, "a keeper nobody schedules is a report nobody reads"
-
-
 def test_the_floor_that_notices_is_above_the_floor_that_collapsed():
     """The whole lesson of 2026-08-19, as an assertion.
 

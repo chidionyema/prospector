@@ -1,7 +1,7 @@
 """`merge-when-green.yml` must dispatch exactly what its own merge push cannot start.
 
 A merge made by that workflow pushes to main with GITHUB_TOKEN, and GitHub starts no workflow run
-from a GITHUB_TOKEN event. `main-admission-guard.yml` states the same fact about its revert push,
+from a GITHUB_TOKEN event. `main-admission-guard.yml` stated the same fact about its revert push,
 above its `permissions:` block and again at :310. So the deploys that a human merge would have
 triggered have to be dispatched by hand, from a map of path patterns held in the merging
 workflow.
@@ -11,7 +11,7 @@ copy is narrower than the original, a merge that should have shipped the engine 
 nothing: the queue drains, every pull request reads as merged, and production stops tracking main
 with nothing red anywhere.
 
-`main-admission-guard.yml:381` records that the two tests which used to grade exactly this drift
+`main-admission-guard.yml:381` recorded that the two tests which used to grade exactly this drift
 were deleted with `automerge.yml` on 2026-08-20. This is that grading, restored, and widened by
 the case the originals did not have: a deploy workflow added later that nobody adds to the map.
 """

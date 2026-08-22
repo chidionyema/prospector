@@ -53,15 +53,22 @@ LEDGER: tuple[Mode, ...] = (
     # ---- at the merge
     Mode(
         "merge-over-a-red-check",
-        "A pull request is merged while its own ci-ok is failing. Nothing in GitHub refuses it: "
-        "both branch-protection endpoints answer 403 on this plan, so ci-ok is a required check "
-        "in name only. Six PRs went in this way on 2026-08-19 and main was red for over an hour.",
-        (".github/workflows/main-admission-guard.yml",),
+        "A pull request is merged while its own ci-ok is failing. Six PRs went in this way on "
+        "2026-08-19 and main was red for over an hour.\n\n"
+        "CLOSED 2026-08-21, and by GitHub rather than by a robot. This row read `both "
+        "branch-protection endpoints answer 403 on this plan, so ci-ok is a required check in "
+        "name only` -- true while the repository was private. It went public, so rulesets work: "
+        "ruleset `strict` (id 20109556) is active on ~DEFAULT_BRANCH with bypass_actors: [] and "
+        "requires guard, python, dotnet, nextjs and ci-ok. Nothing merges over a red ci-ok and "
+        "nothing pushes to main at all, which is why main-admission-guard.yml and "
+        "main-green-guard.yml were deleted rather than fixed.\n\n"
+        "Verify the platform half with `gh api repos/chidionyema/prospector/rulesets/20109556`. "
+        "The proof below covers the repository half, which is the half a merge can break: a "
+        "required check that does not actually aggregate the lanes is green while a lane is red.",
+        (".github/workflows/ci.yml",),
+        "tests/unit/test_ci_ok_is_the_required_check.py",
         None,
-        475,
-        "Only a person or GitHub Pro can refuse this. rule-guard.py fences a typed `gh pr merge`; "
-        "nothing sees a merge made in the GitHub web UI. The candidates are on the incident "
-        "record docs/incidents/INC-2026-08-19-merged-over-a-red-check.json.",
+        None,
     ),
     Mode(
         "merge-of-a-branch-behind-main",
@@ -77,21 +84,6 @@ LEDGER: tuple[Mode, ...] = (
         None,
     ),
     Mode(
-        "merge-robot-finishes-green-having-merged-nothing",
-        "A robot with power over main swallows its own failure and reports success. A workflow "
-        "that silently does nothing is worse than one that is absent, because it is trusted. The "
-        "merge robot that row was written about is gone -- automerge.yml was deleted on "
-        "2026-08-20 -- and merge-when-green.yml replaced it on 2026-08-21 with its own row "
-        "below. The robot THIS row describes is main-admission-guard.yml, which "
-        "REVERTS. Its proof executes the decide script in node against a stubbed Octokit rather "
-        "than grepping the YAML for keywords, because a guard whose tests pass on a broken guard "
-        "reports a safety it is not providing.",
-        (".github/workflows/main-admission-guard.yml",),
-        "tests/unit/test_main_admission_guard.py",
-        None,
-        None,
-    ),
-    Mode(
         "a-merge-robot-merges-and-nothing-ships-what-it-merged",
         "merge-when-green.yml merges with GITHUB_TOKEN, and GitHub starts NO workflow run from a "
         "GITHUB_TOKEN push. So the deploys that a human merge would have started never run, and "
@@ -99,9 +91,9 @@ LEDGER: tuple[Mode, ...] = (
         "`paths:` filter. A copy drifts. When the copy is narrower than the original, the queue "
         "drains, every pull request reads as merged, and production quietly stops tracking main "
         "with nothing red anywhere -- bounded at about an hour by production-runs-main.yml's "
-        "cron, which is a detection, not a prevention. main-admission-guard.yml:381 records that "
-        "the two tests which used to grade exactly this drift were deleted with automerge.yml on "
-        "2026-08-20.",
+        "cron, which is a detection, not a prevention. The two tests that used to grade exactly "
+        "this drift were deleted with automerge.yml on 2026-08-20; the note recording that "
+        "lived in main-admission-guard.yml:381, which went with it on 2026-08-21.",
         (".github/workflows/merge-when-green.yml",),
         "tests/unit/test_merge_when_green_dispatches_what_the_push_could_not.py",
         None,
@@ -126,7 +118,7 @@ LEDGER: tuple[Mode, ...] = (
         "An unhandled error part way through a github-script step silently skips the rest of the "
         "step. On 2026-08-19 checks.listForRef threw 403 above the CI dispatch, so the merge of "
         "#451 landed on main and main was never graded.",
-        (".github/workflows/main-admission-guard.yml",),
+        (".github/workflows/merge-when-green.yml",),
         "tests/unit/test_a_workflow_step_cannot_hide_its_own_failure.py",
         None,
         None,
@@ -136,61 +128,18 @@ LEDGER: tuple[Mode, ...] = (
         "An explicit `permissions:` block is a whitelist: every scope it does not name is set to "
         "none, and a job-level block replaces the top-level one outright. The call fails with 403 "
         "at run time, not at lint time.",
-        (".github/workflows/main-admission-guard.yml", ".github/workflows/e2e-live-smoke.yml"),
+        (".github/workflows/merge-when-green.yml", ".github/workflows/e2e-live-smoke.yml"),
         "tests/unit/test_a_workflow_permission_block_covers_its_api_calls.py",
         None,
         None,
     ),
     # ---- on main
     Mode(
-        "the-green-guard-reverts-the-head-not-the-cause",
-        "main-green-guard.yml reverts the commit at main's HEAD when CI fails twice. The HEAD is "
-        "not necessarily the cause. On 2026-08-19 it reverted #463, three commits past the commit "
-        "that actually broke the build, filed an issue blaming it, and left main red because the "
-        "broken file was never touched.",
-        (".github/workflows/main-green-guard.yml",),
-        "tests/unit/test_the_green_guard_reverts_the_cause_not_the_head.py",
-        None,
-        None,
-    ),
-    Mode(
-        "a-main-run-ends-with-no-verdict-at-all",
-        "A CI run on main can end `cancelled`, `timed_out` or `stale`. Main's colour is then "
-        "UNKNOWN, not red, and both of the green guard's other jobs require `conclusion == "
-        "'failure'`, so neither fires. Measured 2026-08-20: main's runs at 802a2e4b and fe6fcd13 "
-        "both ended cancelled with zero jobs, the guard skipped both, and main sat red on two "
-        "tests with nothing watching. An unknown main is a non-green main to ci.yml's `changes` "
-        "step, so every pull request skipped every build job -- and a skipped job renders neutral "
-        "grey, not red. Four pull requests were merged by hand on that appearance.",
-        (".github/workflows/main-green-guard.yml",),
-        "tests/unit/test_a_main_run_with_no_verdict_gets_asked_again.py",
-        None,
-        None,
-    ),
-    Mode(
         "a-push-lands-straight-on-main",
         "Someone or something pushes to main without a pull request, so no CI verdict ever "
         "covered the code that main now contains.",
         (".github/workflows/ci.yml",),
         "tests/unit/test_main_push_guard.py",
-        None,
-        None,
-    ),
-    Mode(
-        "a-merge-lands-on-main-with-no-green-run-at-its-head",
-        "Code reaches main that no CI run ever graded -- a direct push, a merge whose run was "
-        "cancelled, or a merge made on the strength of a run at an older sha. Main goes red, and "
-        "a red main used to stop the whole repository.\n\n"
-        "This replaced `a-red-main-blocks-every-pull-request` on 2026-08-20. That mode described "
-        "ci.yml's gate, which refused to build any pull request while main's CI was queued or "
-        "last red, and recorded the refusal as a FAILED check. It could not do what it claimed: "
-        "it is a check, not a reservation, so it could not hand main a runner -- it only failed "
-        "every other branch while main waited for one. Measured that day: 12 of 12 runners busy, "
-        "main's run 32327977452 queued since 03:22, and PR #517 failed in 18 seconds having "
-        "compiled nothing. The gate was deleted. main-admission-guard is what protects main now, "
-        "and it acts on main itself rather than on every other branch.",
-        (".github/workflows/main-admission-guard.yml",),
-        "tests/unit/test_main_admission_guard.py",
         None,
         None,
     ),
@@ -209,7 +158,7 @@ LEDGER: tuple[Mode, ...] = (
         "GitHub refuses to build a push made with the default GITHUB_TOKEN: it creates a run with "
         "conclusion action_required and ZERO jobs. It sorts newest, so any tool reading 'the "
         "latest run at this head' reports a green PR as pending, or a red one as unknown.",
-        (".github/workflows/main-admission-guard.yml", "scripts/pr_triage.py"),
+        ("scripts/pr_triage.py",),
         "tests/unit/test_pr_triage_reads_the_cause_not_the_colour.py",
         None,
         None,
@@ -295,7 +244,7 @@ LEDGER: tuple[Mode, ...] = (
     Mode(
         "main-moves-and-no-deploy-is-ever-dispatched",
         "Nothing ever asks the deploy to run, so production keeps serving a commit main has "
-        "already taken back. main-green-guard.yml reverts with GITHUB_TOKEN, which starts no "
+        "already taken back. main-green-guard.yml reverted with GITHUB_TOKEN, which starts no "
         "workflow runs, and its own header says it does nothing to production. A deploy that "
         "never happened leaves no failing run, so no alarm in this ledger can fire on it: it is "
         "the one failure mode that is invisible to everything that watches runs.",
@@ -335,7 +284,7 @@ LEDGER: tuple[Mode, ...] = (
         "mode the founder has accepted as permanent: it is visible, it is a money decision, and "
         "it degrades rather than corrupts. Everything else in this ledger must be guarded so that "
         "this is the only thing left that can go wrong.",
-        (".github/workflows/ci-fleet-watch.yml",),
+        ("ops/config/ci_capacity.yaml", "scripts/ci_capacity.py"),
         "tests/unit/test_ci_capacity.py",
         None,
         None,
@@ -355,8 +304,7 @@ LEDGER: tuple[Mode, ...] = (
         "destroys or creates one, so the worst outcome of a bug in it is a machine running that "
         "did not need to be. It must stay on ubuntu-latest: a self-hosted runner cannot start a "
         "dead self-hosted fleet, because when the fleet is down nothing picks the job up.",
-        (".github/workflows/ci-fleet-keeper.yml", "scripts/ci_fleet_keeper.py",
-         "ops/config/ci_capacity.yaml"),
+        ("scripts/ci_fleet_keeper.py", "ops/config/ci_capacity.yaml"),
         "tests/unit/test_ci_fleet_keeper.py",
         None,
         None,
@@ -366,7 +314,7 @@ LEDGER: tuple[Mode, ...] = (
         "A Fly standby machine registers with GitHub and is stopped by the platform mid-build. "
         "Every count says twelve; the number that can work is two. The build dies as 'the "
         "self-hosted runner lost communication with the server', which reads as a flaky test.",
-        (".github/workflows/ci-fleet-watch.yml", "scripts/ci_fleet_probe.py"),
+        ("scripts/ci_fleet_probe.py",),
         "tests/unit/test_a_standby_machine_is_not_capacity.py",
         None,
         None,
@@ -392,10 +340,16 @@ LEDGER: tuple[Mode, ...] = (
     ),
 )
 
-# The modes with no proof, as of 2026-08-20. This set is a RATCHET: removing an entry is the
-# point of the exercise, and adding one must be a deliberate, reviewable edit rather than a
-# regression that slips in. See test_the_open_list_does_not_grow.
-OPEN_BASELINE = frozenset({"merge-over-a-red-check"})
+# The modes with no proof. This set is a RATCHET: removing an entry is the point of the
+# exercise, and adding one must be a deliberate, reviewable edit rather than a regression
+# that slips in. See test_the_open_list_does_not_grow.
+#
+# It reached empty on 2026-08-21. Its one entry, merge-over-a-red-check, closed when the
+# repository went public and ruleset `strict` made ci-ok a required check with no bypass
+# actors -- a platform control, not a test. That is also why five rows left this ledger the
+# same day: they described robots (main-admission-guard.yml, main-green-guard.yml) that
+# existed only because branch protection answered 403.
+OPEN_BASELINE: frozenset[str] = frozenset()
 
 # Workflows that grade or ship nothing and hold no write scope still have to be named, but a
 # purely advisory workflow does not need its own failure mode. Nothing is exempt today; this
@@ -485,8 +439,9 @@ def test_every_workflow_is_named_by_the_ledger(wf: Path):
 def test_a_workflow_that_can_write_is_covered_by_a_proof_or_an_admitted_gap(wf: Path):
     """A workflow holding contents: write or actions: write can damage the estate on its own.
 
-    main-green-guard.yml reverts commits on main and had no test of any kind until this ledger
-    said so out loud. The scope is read from the file rather than from a list here, so granting a
+    main-green-guard.yml reverted commits on main and had no test of any kind until this ledger
+    said so out loud -- it was deleted on 2026-08-21, and this check is what would catch its
+    replacement arriving unnamed. The scope is read from the file rather than from a list here, so granting a
     new write scope drags the workflow into this check automatically.
     """
     text = wf.read_text(encoding="utf-8")

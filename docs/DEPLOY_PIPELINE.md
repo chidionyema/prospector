@@ -55,10 +55,10 @@ automerge workflow had to dispatch by hand everything its own merge could not st
 workflows the ordinary way, off the `push:` triggers they already carried. That is why the deploys
 survived automerge's deletion untouched.
 
-One push in this estate is still a `GITHUB_TOKEN` push: the revert that
-`.github/workflows/main-admission-guard.yml` makes when a merge lands on main with no green run at
-its head. It therefore keeps a `DEPLOY` path map of its own and dispatches the deploys itself --
-otherwise production would keep running the code that was just taken back out of main.
+One push in this estate is still a `GITHUB_TOKEN` push: the merge that
+`.github/workflows/merge-when-green.yml` makes when a pull request goes green. It therefore
+dispatches the deploys itself with `gh workflow run` -- otherwise a merge it performed would ship
+nothing, which is the failure that left production on old code before.
 
 That map is the thing that broke before. Until 2026-08-19 the dispatch list covered exactly one
 deploy, the engine's. Merges that changed the API or the storefront went green, landed on `main`,
@@ -132,12 +132,15 @@ launchctl enable gui/501/actions.runner.chidionyema-prospector.mumchimp-mac
 - **CI finishing before the deploy does.** The `push: branches: [main]` trigger fires at the same
   moment CI on main does, not after it, so a deploy can be in flight while main is still being
   graded. Nothing here waits. This is the accepted cost of the 2026-08-20 change, and the
-  compensating control is `.github/workflows/main-admission-guard.yml`: it reverts a merge that
-  has no green run at its head and re-dispatches the deploys, so a bad merge is undone rather than
-  prevented. Merge through a PR whose CI is already green and the window is empty.
+  compensating control is no longer a revert robot. Ruleset `strict` (id 20109556, active on
+  `~DEFAULT_BRANCH`, no bypass actors) requires `guard`, `python`, `dotnet`, `nextjs` and `ci-ok`
+  to pass before anything reaches main, so a merge with no green run at its head cannot land and
+  there is nothing to take back out. Merge through a PR whose CI is already green and the window
+  is empty.
 - **A direct push to `main`.** Same trigger, same lack of a wait, and no pull request was ever
-  graded. `scripts/guard_main_push.py` is the local pre-push hook that refuses it; the admission
-  guard is the server-side half, because no local hook can see a merge clicked in the web UI.
+  graded. `scripts/guard_main_push.py` is the local pre-push hook that refuses it; ruleset `strict`
+  is the server-side half, because no local hook can see a merge clicked in the web UI. Its
+  `pull_request` rule means a direct push to main is refused by GitHub outright.
 - **Proving the deploy landed.** `deploy-engine.yml` ends with three requests against the running
   console and fails if the old image is still answering. The other two do not have an equivalent
   yet.
