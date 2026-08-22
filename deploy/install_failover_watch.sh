@@ -2,7 +2,6 @@
 # Install the two laptop-side watch jobs that make automatic failover real.
 #
 #   com.prospector-control.failover-watch   every 60s   engine_failover.py check
-#   com.prospector-control.standby-sync     every 900s  engine_failover.py sync
 #
 # Three deliberate choices, each of which is a defect we have already had:
 #
@@ -91,14 +90,12 @@ EOF
 }
 
 plist com.prospector-control.failover-watch 60  check
-plist com.prospector-control.standby-sync   900 sync
 # Hermes decides what is broken from its receipt ledger. The engine's jobs run on Fly now, so
 # something has to carry their real exit codes back to this laptop or three capabilities grade
 # DARK while the jobs work. Same cadence as the sync; both are cheap SSH reads.
 plist com.prospector-control.receipt-bridge 900 receipts
 
-for L in com.prospector-control.failover-watch com.prospector-control.standby-sync \
-         com.prospector-control.receipt-bridge; do
+for L in com.prospector-control.failover-watch com.prospector-control.receipt-bridge; do
     launchctl bootout "gui/$(id -u)/$L" 2>/dev/null || true
     # enable BEFORE bootstrap: bootstrap silently refuses a disabled label, so the other order
     # reads as success while starting nothing.

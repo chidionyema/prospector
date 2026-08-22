@@ -189,9 +189,27 @@ def test_a_missing_checkout_is_an_error_not_a_zero(tmp_path, monkeypatch):
     assert "error" in code and "behind" not in code
 
 
+# `probe_standby()` no longer looks at the STANDBY directory for `usable`. `ae56ab6b
+# refactor(failover): one backup system, not two` routed that axis through `backup_state()`,
+# which shells out to the venv and LISTS THE R2 BUCKET. Writing MONEY_FILES into a tmp directory
+# therefore proved nothing, and the two tests below made a live network call on every run.
+#
+# They passed on the laptop and failed in CI, run 32536039045, `assert False is True`. CI was the
+# honest instrument: it has no R2 credentials, so `backup_state()` returned an error, so `usable`
+# came back False. A unit test that is green only on a machine holding production credentials is
+# not testing the code, and it hides the very regression it is supposed to catch.
+def _bucket_has_both(**over):
+    """A complete `backup_state()`, so these tests grade probe_standby and not the network."""
+    state = {"bucket": "b", "complete": True, "oldest_age_h": 0.5,
+             "ledger": {"key": "ledger/x", "bytes": 1, "age_h": 0.5},
+             "db": {"key": "db/x", "bytes": 1, "age_h": 0.5}}
+    state.update(over)
+    return state
+
+
 def test_probe_standby_carries_the_code_axis(tmp_path, monkeypatch):
     ef = _load("engine_failover")
-    monkeypatch.setattr(ef, "STANDBY", tmp_path / "standby")
+    monkeypatch.setattr(ef, "backup_state", _bucket_has_both)
     monkeypatch.setattr(ef, "STANDBY_CHECKOUT", tmp_path / "gone")
     assert "code" in ef.probe_standby()
 
@@ -199,15 +217,31 @@ def test_probe_standby_carries_the_code_axis(tmp_path, monkeypatch):
 def test_code_drift_never_makes_the_standby_unusable(tmp_path, monkeypatch):
     """Failing over 81 commits behind beats staying down. That call is the operator's."""
     ef = _load("engine_failover")
-    standby = tmp_path / "standby"
-    standby.mkdir()
-    for name in ef.MONEY_FILES:
-        (standby / name).write_text("x")
-    monkeypatch.setattr(ef, "STANDBY", standby)
+    monkeypatch.setattr(ef, "backup_state", _bucket_has_both)
     monkeypatch.setattr(ef, "STANDBY_CHECKOUT", tmp_path / "gone")
     out = ef.probe_standby()
     assert out["usable"] is True
     assert "error" in out["code"]
+
+
+def test_usable_is_the_bucket_and_an_unreadable_bucket_is_never_usable(tmp_path, monkeypatch):
+    """The axis `usable` grades moved, and this pins where it moved TO.
+
+    Before the refactor it meant "the local standby directory holds both money files". It now
+    means "R2 holds both", which is the right fact -- a failover restores FROM the bucket -- but
+    it is a different fact, and nothing said so. An unreadable bucket must read False rather than
+    inherit a stale True from a directory nobody restores out of any more.
+    """
+    ef = _load("engine_failover")
+    monkeypatch.setattr(ef, "STANDBY_CHECKOUT", tmp_path / "gone")
+
+    monkeypatch.setattr(ef, "backup_state", lambda: {"error": "no credentials"})
+    out = ef.probe_standby()
+    assert out["usable"] is False
+    assert out["staleness_min"] == -1
+
+    monkeypatch.setattr(ef, "backup_state", lambda: _bucket_has_both(complete=False, db=None))
+    assert ef.probe_standby()["usable"] is False
 
 
 @pytest.mark.parametrize(
