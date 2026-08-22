@@ -47,8 +47,32 @@ into Postgres, with `lease_owner` and `lease_until` already present, and
 `scripts/dual_write_parity.py` grades the shadow. That is step 2 of ADR 0009 begun, and it was
 deliberately a transcription rather than an improvement so that a mismatch is unambiguous.
 
-## The risk
+## The risk, and it is larger than "one failure domain"
 
-One Postgres is one failure domain. Fly Postgres restore is the drill that has to exist before the
-engine depends on it — that drill is a requirement in `docs/MIGRATION_AND_DR_PROGRAM.md` section 11
-and it is not optional here.
+One Postgres is one failure domain, and the drill that restores it has to exist before the engine
+depends on it (`docs/MIGRATION_AND_DR_PROGRAM.md` section 11).
+
+**A second angle sharpens this and it is not comfortable.**
+`docs/INFRA_DR_AND_PLATFORM_ANALYSIS_2026-08-22.md`, written independently and merged the same day,
+counts **eleven distinct Fly Managed Postgres incidents in six months** (2026-04-10, 04-27, 05-16,
+06-11, 08-01, 08-04/05, 08-20, plus MPG degradation inside the 07-20 and 08-19 incidents), and
+records that on **2026-08-01 existing clusters kept serving while their backups silently lagged**.
+Its verdict: "Fly Managed Postgres is the weakest component in the whole record."
+
+That does not overturn this decision — the alternative datastores are worse on every axis and adding
+a second one makes the failure domain bigger, not smaller. It changes what has to be true before the
+engine depends on it:
+
+1. **The off-Fly verified copy is a precondition, not a nice-to-have.** `scripts/backup_store.py`
+   already writes a daily verified copy to Cloudflare R2 and `scripts/restore_drill.py` already
+   restores from it weekly, unattended, recording `took_s`. Postgres must be inside that same
+   backup and drill before it holds anything the engine cannot rebuild.
+2. **Backup lag must be measured, not trusted.** The 2026-08-01 failure mode was a healthy cluster
+   with stale backups. A dashboard saying "backed up" is a shape, not the content.
+3. **"Postgres or R2, nothing in between" survives, and R2 is the durable half.** Bodies and
+   deliverables live in R2 (ADR 0008), which is already off-Fly. Postgres holds state that can be
+   rebuilt from R2 plus the append-only ledger; it should not become the only copy of anything.
+
+That analysis also records that the engine store today is **903 MB of files with no Postgres in the
+engine path at all**. This decision puts one there. That is a real increase in operational surface
+and it is the price of N workers.
