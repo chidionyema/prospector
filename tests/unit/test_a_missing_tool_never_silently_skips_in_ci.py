@@ -130,9 +130,10 @@ def test_every_tool_a_test_needs_is_installed_by_the_job_that_runs_it():
                     part.strip().strip("\"'") for part in inside.split(",") if part.strip()
                 )
     assert named, (
-        "no test declares `pytest.mark.needs_tool(...)` any more. If the node-executed proofs of "
-        "main-admission-guard.yml and pr-keeper.yml were deleted, this whole file is measuring "
-        "nothing; if they were merely renamed, point it at them."
+        "no test declares `pytest.mark.needs_tool(...)` any more. The node-executed proofs of "
+        "main-admission-guard.yml went with that workflow on 2026-08-21; if pr-keeper.yml's "
+        "were deleted too this whole file is measuring nothing, and if they were merely "
+        "renamed, point it at them."
     )
 
     unmapped = sorted(t for t in named if t not in INSTALLED_BY)
@@ -171,7 +172,7 @@ def _run_without_node(module: str, env_extra: dict[str, str]) -> subprocess.Comp
 # words, same consequence, which is the only part that matters: the job cannot be green while
 # the test did not run.
 _MARKED = "tests/unit/test_pr_keeper.py"
-_HELPER_GATED = "tests/unit/test_the_green_guard_reverts_the_cause_not_the_head.py"
+_HELPER_GATED = "tests/unit/test_only_our_own_parked_runs_are_approved.py"
 
 
 @pytest.mark.parametrize(
