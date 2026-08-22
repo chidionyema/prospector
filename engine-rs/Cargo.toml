@@ -9,6 +9,7 @@
 resolver = "2"
 members = [
   "crates/prospector-core",
+  "crates/prospector-retrieval",
 ]
 
 [workspace.package]
