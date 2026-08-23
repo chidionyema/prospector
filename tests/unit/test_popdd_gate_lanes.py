@@ -242,11 +242,32 @@ class TestTheLaneMapCoversEachSourceKind:
         assert "--force-exclude" in ruff_argv, ruff_argv
         assert dict(scoped.steps)["pytest"] == dict(py.steps)["pytest"], "only ruff is scoped"
 
-        # Three ways of not knowing, all of which must grade MORE, never less.
-        for label, paths in [("caller knows nothing", []), ("no .py in the commit", ["a.md"])]:
-            fallback = dict(runner.scope_ruff(py, paths).steps)["ruff"]
-            assert fallback == dict(py.steps)["ruff"], f"{label}: {fallback}"
+        # Not knowing the paths must grade MORE, never less. `--lanes` and a bare invocation
+        # both arrive with an empty list, and only they do: a `--staged` run that selected a
+        # lane always carries at least one path.
+        fallback = dict(runner.scope_ruff(py, []).steps)["ruff"]
+        assert fallback == dict(py.steps)["ruff"], fallback
         assert runner.scope_ruff(runner.LANES["web"], ["a.py"]) is runner.LANES["web"]
+
+    def test_incident_a_python_free_diff_does_not_get_a_repo_wide_ruff(self, runner):
+        """Paths known and none of them Python must DROP ruff, not widen it to the repo.
+
+        2026-08-23. A commit of `.gitignore`, `deploy/secrets.sh` and
+        `ops/config/offsite_backup.yaml` was refused by the gate for an unsorted import block
+        in `tools/experiments/q4b_live_catalogue_exposure.py`. The committer had never opened
+        that file. `scope_ruff` treated "no .py in this diff" as "caller does not know the
+        paths" and fell through to the repo-wide run, which is the exact failure the whole
+        function exists to remove, reached by a narrower door.
+
+        The rule, and not the code: ruff grades Python in the diff. No Python in the diff, no
+        ruff. The lane still runs, because a `.yaml` under `ops/config` drives Python and
+        pytest is what proves it.
+        """
+        py = runner.LANES["python"]
+        scoped = runner.scope_ruff(py, [".gitignore", "deploy/secrets.sh",
+                                        "ops/config/offsite_backup.yaml"])
+        assert "ruff" not in dict(scoped.steps), dict(scoped.steps).keys()
+        assert dict(scoped.steps)["pytest"] == dict(py.steps)["pytest"], "the lane still runs"
 
     def test_the_web_lane_proof_is_not_pytest(self, runner):
         """A green pytest is not evidence about a .tsx diff, so the web lane must not use it."""

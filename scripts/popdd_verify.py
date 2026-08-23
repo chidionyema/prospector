@@ -533,12 +533,25 @@ def scope_ruff(lane: Lane, paths: list[str]) -> Lane:
 
     When the caller does not know the paths — `--lanes`, or a bare invocation — the lane is
     returned untouched and ruff runs repo-wide. Failing safe means grading MORE, never less.
+    An empty `paths` is exactly that case and only that case: `--staged` reaches here with at
+    least one path whenever it selected a lane at all.
+
+    A diff that HAS paths and none of them Python is the other case, and until 2026-08-23 it
+    fell through to the same repo-wide run. That is not failing safe, it is the original defect
+    with a narrower trigger: a commit of one .yaml and one .sh was blocked by an unsorted import
+    block in tools/experiments/q4b_live_catalogue_exposure.py, a file the committer had never
+    opened, and the person who has to fix it is again never the person the gate stopped. There
+    is no Python in the diff, so ruff has nothing to say about it and the step is dropped. The
+    lane still runs, because a .yaml under ops/config drives Python and pytest is what proves
+    that.
     """
     if lane.key != "python":
         return lane
     py = sorted({p for p in paths if p.endswith(".py")})
     if not py:
-        return lane
+        if not paths:
+            return lane
+        return replace(lane, steps=tuple((n, a) for n, a in lane.steps if n != "ruff"))
     steps = tuple(
         (name, [*argv, "--force-exclude", *py] if name == "ruff" else argv)
         for name, argv in lane.steps
