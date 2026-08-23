@@ -26,9 +26,9 @@ the `watch:` entries other jobs write - it downloads the NEWEST object and opens
 NO SECRET VALUE IS EVER PRINTED (LAW 21). The decrypted store is counted and dropped. What reaches
 stdout is a count.
 
-  .venv/bin/python -m ops.automations.restore_drill            # drill everything
-  .venv/bin/python -m ops.automations.restore_drill --only secret-store,architect-code
-  .venv/bin/python -m ops.automations.restore_drill --json     # for the board
+  .venv/bin/python -m ops.automations.offsite_restore_drill            # drill everything
+  .venv/bin/python -m ops.automations.offsite_restore_drill --only secret-store,architect-code
+  .venv/bin/python -m ops.automations.offsite_restore_drill --json     # for the board
 
 Exit 0 means every prefix drilled came back and opened. Exit 1 means at least one did not, and the
 line naming it is the finding.

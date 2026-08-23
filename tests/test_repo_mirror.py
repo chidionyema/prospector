@@ -24,7 +24,7 @@ What can go wrong, and the test that holds the line
 - Pruning runs on the wrong day: only the newest `keep` survive, and only after the read-
   back passed.
 
-The live end-to-end proof is `ops/automations/restore_drill.py` against the real bucket,
+The live end-to-end proof is `ops/automations/offsite_restore_drill.py` against the real bucket,
 not here.
 """
 from __future__ import annotations
