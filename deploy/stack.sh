@@ -78,14 +78,19 @@ if [ "$VERB" = "recover" ]; then
   PY="python3"
   for c in "$REPO/.venv/bin/python3" "$REPO/venv/bin/python3"; do [ -x "$c" ] && PY="$c" && break; done
 
-  echo
-  echo "WHAT WE STILL HAVE IF EVERYTHING ELSE BURNS"
-  echo
+  # --json must emit JSON and nothing else. A banner around a machine-readable payload is
+  # how a monitoring check ends up parsing a headline.
+  if [ "$JSON" = 0 ]; then
+    echo
+    echo "WHAT WE STILL HAVE IF EVERYTHING ELSE BURNS"
+    echo
+  fi
 
-  "$PY" - "$REPO" <<'PYEOF'
+  "$PY" - "$REPO" "$JSON" <<'PYEOF'
 import os, sys, datetime, pathlib
 
 repo = pathlib.Path(sys.argv[1])
+as_json = sys.argv[2] == "1"
 
 # The same .env the backup job reads. Parsed here rather than imported from backup_store.py
 # because that module exits the process on a missing credential, and this verb must survive
@@ -192,22 +197,46 @@ for what, path, cmd in [
     else:
         row(what, "this laptop", "MISSING", "-", cmd)
 
+bad = sum(1 for r in ROWS if r[2] in ("MISSING", "UNKNOWN"))
+
+# A copy older than this is a stopped job, not a slow one. The money snapshots are written
+# daily, so 26h is one missed run plus two hours of slack for a late start. Without this the
+# table renders a backup that died last month in exactly the same ink as one written at dawn.
+STALE_H = 26.0
+stale = []
+for _w, _where, _age, _s, _c in ROWS:
+    if not _where.startswith("r2:"):
+        continue
+    if _age.endswith("d") or (_age.endswith("h") and float(_age[:-1]) > STALE_H):
+        stale.append(_w)
+
+if as_json:
+    import json as _json
+    print(_json.dumps({
+        "rows": [{"what": a, "where": b, "age": c, "newest": d, "restore": e} for a, b, c, d, e in ROWS],
+        "missing": bad,
+        "stale": stale,
+        "stale_after_hours": STALE_H,
+    }, indent=2))
+    sys.exit(1 if (bad or stale) else 0)
+
 w = [max(len(str(r[i])) for r in ROWS + [("WHAT", "WHERE", "AGE", "NEWEST", "")]) for i in range(4)]
 # AGE and NEWEST describe the most recent object under the prefix, not the whole prefix.
 # A total would be a second listing pass for a number nobody restores by.
 print(f"{'WHAT':<{w[0]}}  {'WHERE':<{w[1]}}  {'AGE':<{w[2]}}  {'NEWEST':<{w[3]}}  RESTORE WITH")
 print(f"{'-'*w[0]}  {'-'*w[1]}  {'-'*w[2]}  {'-'*w[3]}  {'-'*12}")
-bad = 0
 for what, where, age, size, cmd in ROWS:
-    if age in ("MISSING", "UNKNOWN"):
-        bad += 1
     print(f"{what:<{w[0]}}  {where:<{w[1]}}  {age:<{w[2]}}  {size:<{w[3]}}  {cmd}")
 print()
-print(f"{len(ROWS)} copies listed, {bad} missing or unreadable")
-sys.exit(1 if bad else 0)
+print(f"{len(ROWS)} copies listed, {bad} missing or unreadable, {len(stale)} older than {STALE_H:.0f}h")
+if stale:
+    print("STALE: " + ", ".join(stale) + " -- whatever writes these has stopped")
+sys.exit(1 if (bad or stale) else 0)
+
 PYEOF
   RC=$?
 
+  [ "$JSON" = 1 ] && exit "$RC"
   cat <<'DRILL'
 
 prove a copy actually restores (do not wait for the outage to find out):
@@ -239,10 +268,23 @@ row() {
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
+# Every probe runs under a clock. Measured 2026-08-23: `fly machines list` answers in under
+# 1.1s for all five apps, and `docker info` against a wedged colima VM did not answer at all
+# -- one `status` run passed two minutes and was killed. A status screen that can hang is not
+# a status screen, it is a wait, and the founder is looking at it on the day everything else
+# is already broken.
+#
+# `timeout` is GNU and is not on a stock macOS. Falling back to running the command bare is
+# deliberate: a box without coreutils should still get an answer, just without the guard.
+if have timeout; then TMO=timeout
+elif have gtimeout; then TMO=gtimeout
+else TMO=""; fi
+tmo() { local s="$1"; shift; if [ -n "$TMO" ]; then "$TMO" "$s" "$@"; else "$@"; fi; }
+
 fly_machine() {   # fly_machine <app>
   have fly || { echo "UNKNOWN no fly CLI on this box"; return; }
   local out
-  out="$(fly machines list -a "$1" --json 2>/dev/null)" || { echo "UNKNOWN fly did not answer for $1"; return; }
+  out="$(tmo 20 fly machines list -a "$1" --json 2>/dev/null)" || { echo "UNKNOWN fly did not answer for $1"; return; }
   [ -n "$out" ] || { echo "UNKNOWN fly returned nothing for $1"; return; }
   local n started
   n="$(printf '%s' "$out" | python3 -c 'import sys,json;m=json.load(sys.stdin);print(len(m))' 2>/dev/null)" \
@@ -271,9 +313,11 @@ local_proc() {    # local_proc <pattern> <what>
 
 local_container() { # local_container <name>
   have docker || { echo "UNKNOWN no docker CLI"; return; }
-  docker info >/dev/null 2>&1 || { echo "UNKNOWN docker daemon not answering"; return; }
+  # 8s, not "until it answers". A colima VM that is up but wedged leaves `docker info`
+  # blocked indefinitely, which is how this script first came to take over two minutes.
+  tmo 8 docker info >/dev/null 2>&1 || { echo "UNKNOWN docker daemon not answering in 8s"; return; }
   local s
-  s="$(docker ps --filter "name=^${1}$" --format '{{.Status}}' 2>/dev/null)"
+  s="$(tmo 10 docker ps --filter "name=^${1}$" --format '{{.Status}}' 2>/dev/null)"
   [ -n "$s" ] && echo "UP $s" || echo "DOWN no container named $1"
 }
 
